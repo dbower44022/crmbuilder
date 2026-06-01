@@ -25,6 +25,26 @@ Applying one flat rule (§4.2 of v0.3: "scope = Work Task creation; do = Area Sp
 
 ---
 
+## The thesis — *why* this shape (the payoff, decided 06-01-26)
+
+Everything below is in service of one trade: **front-load the coherence so you can unleash the parallelism.**
+
+The **design + reconciliation phases are deliberately rigid and serial**, gated **all-or-nothing**: *no development begins on a release until **all** its design reconciliation — review and resolution — is complete and clean* (the **coarse gate**; see §4 and §6 for the structural + principled reasons). That rigidity is the *investment*. The **payoff** is that the moment the gate opens, **a large number of build agents can spin up at once and develop in parallel with little or no issues** — because reconciliation has handed them:
+
+1. a **locked, stable design** (no moving target);
+2. **precise, mutually-consistent specs** — complete per-area contracts that reconciliation has *proven* don't contradict; and
+3. the **dependency-ordered build plan** (`blocked_by` edges) — so agents parallelize maximally along the DAG.
+
+This **eliminates the "ping-pong" effect by construction** — the failure mode where independent workers/agents make breaking changes in each other's work and only discover it at integration. Here, every cross-cutting decision that *would* collide is surfaced and resolved **once, up front, at design time** (cheap — change a spec) instead of at integration time (expensive — rip up code).
+
+**The economics:** you **serialize the cheap thing (design/coherence — judgment + documents) and parallelize the expensive thing (build).** That puts the rigid serial bottleneck on the inexpensive phase and lets the costly phase explode into N parallel agents — the opposite of the common failure of rushing design and serializing rework at the end.
+
+**Two honest qualifiers:**
+- It eliminates the **class** of failure from *independent design* (structural/breaking conflicts), **not** implementation bugs — those are still caught by the **Test** pass. Defects shift *left* to where they're cheap.
+- It **concentrates risk in the design phase**: a *wrong* design is now parallel-built fast and consistently. That is exactly why the high-leverage investments are the **deep area experts**, the **reconciliation gate**, and the **learning loop** that improves each release's design — the org's intelligence must live at the *front* of the pipeline.
+
+---
+
 ## 1. The shape: a matrix organization (passes × areas)
 
 The ADO is reframed as a **matrix**:
@@ -173,6 +193,19 @@ This is the most significant structural addition. v0.3 had only the vertical axi
 
 **Why this is load-bearing, not incidental:** the release model is the *condition under which the cross-PI area expert (§5) is most valuable.* The project-vs-functional tension I raised — "batching across PIs delays an individual PI" — only bites under continuous delivery, where each PI optimizes its own speed. Under release-batching you optimize the **release's coherence**, not any single PI's speed, so "the Database Architect reviews every schema change in the release together" stops being a tension and becomes **the whole point.** The horizontal expert and the release model reinforce each other.
 
+### 6.1 The gate semantics (DECIDED 06-01-26) — see the thesis above
+
+- **Coarse / all-or-nothing gate.** No development begins on a release until **all** its design reconciliation (review *and* resolution) is complete and clean. Two reasons it holds: (1) **structural** — the horizontal (cross-PI) reconcile for an area *cannot run* until every PI's design for that area is in, so any shared-resource area is unbuildable until then; (2) **principled** — resolving a conflict is itself a design change that can *ripple* into specs that looked clean, so you have no stable target to build against until every blocking finding is resolved. The only theoretical early-build candidate (a single-PI area whose vertical reconcile is clean) is held anyway because of the ripple risk. The **fine-grained** alternative (let provably-isolated clean items build while a conflict resolves) is available only if it also re-gates items a resolution touches, and is *not* the default.
+- **Hard sync at Design; flow after.** The lockstep barrier is **only** the Design→Develop gate. Once it opens, Develop/Test **flow under the reconciled plan** (honoring the `blocked_by` sequencing) — they are not lockstep-gated. This is the payoff in the thesis: rigid serial design → massively parallel, conflict-free build.
+
+### 6.2 Release as an entity (RECOMMENDED 06-01-26 — to confirm/detail)
+
+These were recommended and not yet contested; flagged as the remaining Release-model details to lock:
+- **Release = a new entity (`REL-`), orthogonal to Project.** A PI carries two memberships: its **Project** (long-running *theme*) and its **Release** (*shipping batch*, via `planning_item_assigned_to_release`). A Release can batch PIs from **several Projects** (what ships together isn't one theme). Reusing Project conflates theme with cadence; a tag is too thin to carry a lifecycle, a gate, and the horizontal reconcile's home.
+- **Lifecycle:** `Open (intake) → Design → Develop → Test → Shipped (+ Cancelled)`. The PM **closes intake** before Design (you can't reconcile a moving target); a not-ready PI **defers to a future release** rather than stalling the batch.
+- **Horizontal-reconcile home (resolves §4's residual dependency):** generalize **Workstream parentage** so a Workstream belongs to a **PI** (delivery phases) *or* a **Release** (per-area **reconciliation Workstreams** that hold the horizontal Reconcile Work Tasks). Alternatives (a reconciliation-PI per release; relaxing "reconciliation is a Work Task") were weaker.
+- **PM gains a release-management layer:** assign eligible PIs to a release, close intake, drive the release gates, arbitrate horizontal-reconcile conflicts, defer troubled PIs; `dispatch` becomes release-scoped (PIs dispatched to Leads when the release enters Design).
+
 ---
 
 ## 7. Learning / Experience agents — the registry becomes the organization's **memory**
@@ -244,7 +277,7 @@ These were surfaced but not fully settled; detail them before/while building:
 1. **Reconciliation mechanism** — ✅ **DETAILED (06-01-26), see §4.** Settled: Reconcile-as-Work-Task; `finding` entity (`FND-`); detect-vs-resolve with a `complete-phase` blocking-findings precondition; Lead-resolves-vertical / Architect-detects-PM-arbitrates-horizontal; efficiencies flag-and-propose; conservative-then-earned automation; findings feed learning. **One residual dependency:** the *horizontal* Reconcile task's structural home is (release, area) → waits on the **Release entity** (item 4).
 2. **Expert taxonomy** — which disciplines/areas are first-class; how UI sub-areas (Web / Mobile / Desktop) map onto the area vocab (`SYSTEM_AREA_RANKS` vs. Engagement areas); architect-vs-developer profile pairs per area.
 3. **Learning store + loop** — the experience entity schema; the capture/propose/promote lifecycle; the human-gate boundary (proposed default: human review required to promote to an *enforced* rule); whether developers learn implementation knowledge; **curation cadence** (per-release review vs. continuous).
-4. **Release model mechanics** — how a release batches PIs; how the PM sequences a release; the relationship between a "Release" and the Project/PI entities (is a Release a new entity, or a Project-level grouping?).
+4. **Release model mechanics** — 🟡 **PARTLY DETAILED (06-01-26), see §6 + the thesis.** DECIDED: the **coarse / all-or-nothing design gate** (no build until all reconciliation is complete and clean) and **hard-sync-at-Design / flow-after**. RECOMMENDED, to confirm: Release as a new entity (`REL-`) orthogonal to Project (two memberships; cross-Project batches allowed); the `Open→Design→Develop→Test→Shipped` lifecycle with explicit intake-close + defer-to-next-release; the horizontal-reconcile home via **generalized Workstream parentage (PI *or* Release)**; the PM's release-management layer + release-scoped dispatch.
 5. **Phases-vs-cross-cutting** — confirm the four core passes (Plan/Design/Develop/Test) and where Documentation / Data Migration / Deployment attach.
 6. **Standing-agent runtime** — how standing experts are hosted/woken (pull-based), distinct from the per-task spawn; ties to the registry↔runtime seam (registry PRD §12) and the worktree-from-HEAD requirement.
 
