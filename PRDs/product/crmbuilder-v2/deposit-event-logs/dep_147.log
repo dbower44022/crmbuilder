@@ -1,0 +1,22 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_152.json
+Label:  Surface UI requirement: all message/error dialogs must be selectable + copyable (PI-124)
+Deposit event: DEP-147
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-054 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (1 record) ===
+  ✓ POST planning_items  PI-124 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  CNV-054 conversation_belongs_to_project PRJ-015 (HTTP 201)
+  ✓ POST references  SES-152 session_follows_from SES-151 (HTTP 201)
+  ✓ POST references  PI-124 planning_item_belongs_to_project PRJ-015 (HTTP 201)
+
+✓ All 6 operations complete.
+
+✓ Recorded apply as deposit_event DEP-147 (HTTP 201).

@@ -1,7 +1,8 @@
 [
   {
     "created_at": "2026-05-06T00:00:00",
-    "id": 1,
+    "engagement_id": "ENG-001",
+    "id": 1000000001,
     "is_current": false,
     "payload": {
       "date": "05-06-26",
@@ -13,7 +14,8 @@
   },
   {
     "created_at": "2026-05-07T00:00:00",
-    "id": 2,
+    "engagement_id": "ENG-001",
+    "id": 1000000002,
     "is_current": false,
     "payload": {
       "date": "05-07-26",
@@ -25,7 +27,8 @@
   },
   {
     "created_at": "2026-05-07T00:00:00",
-    "id": 3,
+    "engagement_id": "ENG-001",
+    "id": 1000000003,
     "is_current": false,
     "payload": {
       "markdown": "# CRMBuilder v2 — Status\n\n**Last Updated:** 05-07-26 15:30\n**Status:** Active\n\n**Revision Control:** This document is a living status snapshot updated as project state changes. The \"Last Updated\" field above reflects the most recent revision; prior states are recoverable through git history.\n\n---\n\n## Change Log\n\n| Version | Date | Description |\n|---------|------|-------------|\n| 0.1 | 05-06-26 | Initial status established alongside charter and decisions log via the v2-A bootstrap. |\n| 0.2 | 05-07-26 | Updated for planning dimension #5 resolution (SES-002). |\n| 0.3 | 05-07-26 | Storage system v0.1 build started. Planning dimensions #6/#7/#8 paused; build resumes them after v0.1 retires the markdown source-of-truth. |\n\n---\n\n## Current Phase\n\n**Phase:** Build (storage system v0.1, in progress)\n\n**Sub-step:** Implementing the four-layer storage stack per `storage-system-PRD-v0.1.md` and `storage-system-implementation-plan.md`. Acceptance criteria #1–#8 in the PRD define done.\n\n**Note on planning dimensions #6 / #7 / #8:** Resolution of these three remaining planning dimensions is paused until v0.1 retires the markdown source-of-truth. Once the database is operational, those dimensions are re-engaged, and their resolution lands as database records (decision rows, planning-item rows) rather than markdown updates.\n\n---\n\n## v1 / v2 / Transition Inventory\n\n### What's in v2\n\n- `charter.md` v0.2 — scope, name, architectural foundations, current state, open planning items (Open Planning Items trimmed at v0.2 to reflect dimension #5 resolution). Slated for migration into the v0.1 database; markdown removed in the migration commit.\n- `decisions.md` — DEC-001 through DEC-016, architectural and operational decisions. Slated for migration; markdown removed in the migration commit.\n- `sessions.md` — SES-001 and SES-002. Slated for migration; markdown removed in the migration commit.\n- `status.md` — this document. Slated for migration; markdown removed in the migration commit.\n- `storage-system-PRD-v0.1.md` — storage system v0.1 requirements (stays in markdown; this is a PRD, not bootstrapped governance content).\n- `storage-system-implementation-plan.md` — Claude Code's implementation plan companion to the PRD (stays in markdown).\n- `prompts/CLAUDE-CODE-PROMPT-v2-A-bootstrap.md` — bootstrap prompt\n- `prompts/CLAUDE-CODE-PROMPT-v2-B-pacing.md` — planning dimension #5 prompt\n- `prompts/CLAUDE-CODE-PROMPT-v2-B-storage-system.md` — storage system v0.1 build prompt (executing now)\n\n### What's in v1 (unchanged)\n\nThe following remain in v1 form and are explicitly NOT part of v2 work:\n\n- The crmbuilder PySide6 desktop application code (`espo_impl/`, `automation/`)\n- The existing methodology guides (`PRDs/process/interviews/`, `PRDs/process/CRM-Builder-Document-Production-Process.docx`)\n- The existing app-level product specs (`PRDs/product/CRMBuilder-PRD.md`, `PRDs/product/app-*.md`)\n- The engine pluggability planning (`PRDs/product/crmbuilder-automation-PRD/engine-pluggability-planning.md`)\n- The CBM client repo and all its content (`ClevelandBusinessMentoring/PRDs/`, `ClevelandBusinessMentoring/programs/`)\n\n### What's in transition\n\nNone at this stage. v2 has not yet begun migrating any v1 artifacts.\n\n---\n\n## Active Work\n\nStorage system v0.1 build (this conversation), per `storage-system-PRD-v0.1.md` and `storage-system-implementation-plan.md`.\n\n---\n\n## Pending — Immediate\n\n- Acceptance criteria #1–#8 from `storage-system-PRD-v0.1.md` Section 8 (in-progress).\n\n## Pending — Planning (paused until v0.1 lands)\n\n- Planning dimension #6 — division of labor\n- Planning dimension #7 — risk register\n- Planning dimension #8 — exit criteria\n- Project-structure split decision (Claude Project, repository) — deferred to end of planning per DEC-012\n\n## Pending — Build (after v0.1)\n\n- Step 0 follow-on — methodology entity schema (personas, entities, fields, processes, requirements, manual-config items, test specifications)\n- Renderers — Word, YAML, test cases generated from the database (DEC-008)\n- Application integration — CRMBuilder PySide6 reads/writes against the v2 database\n- MN domain migration as proving ground (per DEC-010)\n- Test infrastructure first deliverable (CRUD layer)\n- Subsequent: MR, CR, FU migration; integration / process / UI test layers; methodology guide evolution; application UI changes\n\n---\n\n## Blockers\n\nNone at this stage. The architecture is defined sufficiently for the next planning conversation to proceed; no external dependencies block forward motion.\n\n---\n\n## Reading Order for New Sessions\n\nPer DEC-011 (session orientation protocol):\n\n**Tier 1:** `crmbuilder/CLAUDE.md`\n\n**Tier 2 (when v2 work is engaged, before the MCP server exists):**\n\n1. `status.md` — current state (this file)\n2. `charter.md` — project scope and architectural foundations\n3. `sessions.md` — most recent session(s), starting from the latest\n4. `decisions.md` — referenced on demand when sessions reference DEC-NNN\n\n**Tier 2 (once the MCP server exists):** Replace the file reads above with MCP queries (`get_status`, `get_charter`, `get_recent_sessions`, `get_decisions`).\n",
@@ -57,7 +60,8 @@
   },
   {
     "created_at": "2026-05-07T05:56:59.599603",
-    "id": 4,
+    "engagement_id": "ENG-001",
+    "id": 1000000004,
     "is_current": false,
     "payload": {
       "active_work": "None.",
@@ -113,7 +117,8 @@
   },
   {
     "created_at": "2026-05-07T21:23:29.536416",
-    "id": 5,
+    "engagement_id": "ENG-001",
+    "id": 1000000005,
     "is_current": false,
     "payload": {
       "active_work": "v2-ui-A scaffold: package skeleton under crmbuilder-v2/src/crmbuilder_v2/ui/, console script crmbuilder-v2-ui, sidebar shell with placeholders, GET /health endpoint on the storage API.",
@@ -180,7 +185,8 @@
   },
   {
     "created_at": "2026-05-08T05:26:42.271584",
-    "id": 6,
+    "engagement_id": "ENG-001",
+    "id": 1000000006,
     "is_current": false,
     "payload": {
       "active_work": "None — UI v0.1 shipped. Next priorities are v0.2 backlog items (write surfaces for non-decision entities, reference rendering on remaining detail panes, charter/status replace flows) and resuming planning dimensions #6/#7/#8.",
@@ -247,7 +253,8 @@
   },
   {
     "created_at": "2026-05-08T23:25:03.606115",
-    "id": 7,
+    "engagement_id": "ENG-001",
+    "id": 1000000007,
     "is_current": false,
     "payload": {
       "active_work": "Slice A — foundation refactor (this conversation's execution work).",
@@ -312,7 +319,8 @@
   },
   {
     "created_at": "2026-05-09T05:11:20.258234",
-    "id": 8,
+    "engagement_id": "ENG-001",
+    "id": 1000000008,
     "is_current": false,
     "payload": {
       "active_work": "None — UI v0.2 shipped. Awaiting v0.3 planning conversation.",
@@ -383,7 +391,8 @@
   },
   {
     "created_at": "2026-05-09T15:26:23.100466",
-    "id": 9,
+    "engagement_id": "ENG-001",
+    "id": 1000000009,
     "is_current": false,
     "payload": {
       "active_work": "Slice A — foundation and factory refactor (this conversation's execution work).",
@@ -452,7 +461,8 @@
   },
   {
     "created_at": "2026-05-10T04:39:46.996077",
-    "id": 10,
+    "engagement_id": "ENG-001",
+    "id": 1000000010,
     "is_current": false,
     "payload": {
       "active_work": "v0.3 shipped 05-10-26 (SES-009). Awaiting v0.4 planning conversation; PI-001 (full styling design pass per DEC-024) is the forcing-function tracker for the deferred-three-times styling work and should anchor v0.4 scoping.",
@@ -525,7 +535,8 @@
   },
   {
     "created_at": "2026-05-14T03:55:52.201644",
-    "id": 11,
+    "engagement_id": "ENG-001",
+    "id": 1000000011,
     "is_current": false,
     "payload": {
       "active_work": "Catalog ingestion v0.1 build in progress (see catalog-ingestion-PRD-v0.1.md). Brings the 42-entry base entity catalog (~5,700 rows) into V2's database as authoritative data; decommissions the YAML files at PRDs/product/crmbuilder-v2/research/base-entity-catalog/. v0.4 methodology entity schema-design workstream paused on the build side until this lands; PI-001 (full styling design pass per DEC-024) remains the forcing-function tracker for the deferred styling work.",
@@ -598,7 +609,8 @@
   },
   {
     "created_at": "2026-05-14T04:47:55.122543",
-    "id": 12,
+    "engagement_id": "ENG-001",
+    "id": 1000000012,
     "is_current": false,
     "payload": {
       "active_work": "Catalog ingestion v0.1 COMPLETE (SES-016, 05-14-26). The 42-entry base entity catalog (~5,530 rows) is now authoritative in the v2 database; the YAML source files are decommissioned. The methodology entity schema-design workstream (SES-011 through SES-015) can now proceed to its build phase against a populated catalog. PI-001 (full styling design pass per DEC-024) remains the forcing-function tracker for the deferred styling work.",
@@ -672,7 +684,8 @@
   },
   {
     "created_at": "2026-05-15T15:45:06.246041",
-    "id": 13,
+    "engagement_id": "ENG-001",
+    "id": 1000000013,
     "is_current": false,
     "payload": {
       "active_work": "Catalog ingestion v0.1 COMPLETE (SES-016, 05-14-26). The 42-entry base entity catalog (~5,530 rows) is now authoritative in the v2 database; the YAML source files are decommissioned. The methodology entity schema-design workstream (SES-011 through SES-015) can now proceed to its build phase against a populated catalog. PI-001 (full styling design pass per DEC-024) remains the forcing-function tracker for the deferred styling work.",
@@ -746,7 +759,8 @@
   },
   {
     "created_at": "2026-05-18T02:44:39.849005",
-    "id": 14,
+    "engagement_id": "ENG-001",
+    "id": 1000000014,
     "is_current": false,
     "payload": {
       "active_work": "v0.5 (engagement management) is shipped. The multi-engagement routing foundation is live: meta DB at crmbuilder-v2/data/engagements.db holds the engagements registry; per-engagement DBs at crmbuilder-v2/data/engagements/{engagement_code}.db hold the methodology + governance content; the two-database API server routes /engagements/* to the meta DB and everything else to the active engagement DB; the desktop top-strip + picker + activation worker orchestrate the kill-relaunch dance to switch engagements; cross-restart active-state persists via current_engagement.json; the dogfood migration rehoused the existing v2.db into engagements/CRMBUILDER.db with backup-first verify-row-counts delete-original discipline. The slice A follow-up (SES-030) closed the launcher-wiring gap (bootstrap_meta_db at API startup, dogfood-migration trigger at desktop startup) plus a latent data_dir-derivation defect that surfaced when access/meta_db.meta_db_path() and migration/lazy_migration.engagement_db_path() were called against a post-activation engagements/{code}.db path. v0.5 plus its follow-up is now governance-complete (SES-029 PRD authoring + DEC-098..104; SES-030 launcher-wiring + slice D follow-up; SES-031..SES-035 build-execution closeout).\n\nv0.6 (UI styling rollout) is in progress in parallel. Slices A-E of v0.6 have shipped (foundation infrastructure, sidebar + master-pane delegate, panel retrofits + sub-sectioned ReferencesSection, dialogs + form controls, status + error + warning + crash banner); slice F (closeout — version 0.6.0 bump, README release note, WCAG contrast test as build gate per DEC-097, full regression + integration smoke) is the only remaining work. Slice F prompt is authored at PRDs/product/crmbuilder-v2/prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-F-closeout.md. PI-001 (full styling design pass per DEC-024) discharges with slice F.\n\nThe paper-test workstream (DEC-077) is now fully unblocked. The next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement via the single-gesture creation+activation flow that slice D shipped.",
@@ -814,7 +828,8 @@
   },
   {
     "created_at": "2026-05-18T22:41:40.421089",
-    "id": 15,
+    "engagement_id": "ENG-001",
+    "id": 1000000015,
     "is_current": false,
     "payload": {
       "active_work": "v0.5 (engagement management) is shipped and governance-complete. The multi-engagement routing foundation is live: meta DB at crmbuilder-v2/data/engagements.db holds the engagements registry; per-engagement DBs at crmbuilder-v2/data/engagements/{engagement_code}.db hold the methodology and governance content; the two-database API server routes /engagements/* to the meta DB and everything else to the active engagement DB; the desktop top-strip + picker + activation worker orchestrate the kill-relaunch dance to switch engagements; cross-restart active-state persists via current_engagement.json; the dogfood migration rehoused the existing v2.db into engagements/CRMBUILDER.db with backup-first verify-row-counts delete-original discipline. v0.5 governance trail: SES-029 (PRD authoring) + DEC-098..104; SES-030 (slice A launcher-wiring follow-up + slice D follow-up); SES-031..SES-035 (build-execution closeouts). __version__ is 0.5.0.\n\nv0.6 (UI styling rollout) build planning is governance-complete but the build itself has NOT started. Source state at HEAD: ui/styling.py is still the 72-line v0.1 minimal QSS stub from DEC-024 (legacy navy #1F3864 accent, no tokens, no QFontDatabase font loading, no Lucide icons); ui/assets/ does not exist; ui/widgets/master_pane_delegate.py does not exist; ui/icons.py and ui/elevation.py do not exist; ui/widgets/references_section.py is still the v0.3-shipped widget with inbound/outbound grouping (not sub-sectioned plain-list). The styling design pass (SES-027, DEC-087..094) settled tokens, fonts, icons, modal elevation, selected-state vocabulary, and component visual decisions. The build planning (SES-036, DEC-105..107) settled version bundling as separate v0.6 release, six-slice structure A-F, and slice acceptance pattern (per-slice screenshots + closeout WCAG check). Six slice build prompts authored at prompts/CLAUDE-CODE-PROMPT-v2-ui-v0.6-{A..F}-*.md. None executed yet. Slice A (foundation + About dialog) is next.\n\nPI-001 (full styling design pass per DEC-024) discharges with slice F when __version__ bumps to 0.6.0. The four prior deferral decisions (DEC-026/037/042/076) are settled by virtue of v0.6 build being queued.\n\nThe paper-test workstream (DEC-077) is fully unblocked. The next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement via the single-gesture creation+activation flow shipped in v0.5 slice D.\n\nIdentifier reconciliation history: the styling Conversation 2 originally anticipated SES-028 at PRD-authoring time, rebased to SES-030 at close-out artifact authoring (commit 7255667 on 05-16-26) based on snapshot showing SES-029 as latest applied. Between that rebase and Doug's apply-prompt run (05-18-26), a separate v0.5 follow-up conversation independently claimed SES-030 on 05-17-26 by direct API POST without committing a ses_030.json file. When Doug ran the styling Conversation 2's apply prompt (commit cfdd088), the script absorbed the SES-030 conflict as SKIP and DEC-105/106/107 plus four references inserted pointing at the wrong SES-030 record. Reconciled at commit b41fb04: the styling Conversation 2 session content was applied at SES-036 (next available after SES-035), four corrected references added pointing at SES-036, and four orphan references (ids 136, 137, 138, 139) deleted. SES-030 in the DB remains correctly the v0.5 follow-up record. The styling Conversation 2's governance trail is now consistent at SES-036.",
@@ -882,7 +897,8 @@
   },
   {
     "created_at": "2026-05-18T22:47:02.421284",
-    "id": 16,
+    "engagement_id": "ENG-001",
+    "id": 1000000016,
     "is_current": false,
     "payload": {
       "active_work": "v0.6 (UI styling rollout) is shipped. __version__ is 0.6.0. PI-001 (full styling design pass per DEC-024) is discharged after four prior deferrals (DEC-024 → DEC-026 → DEC-037 → DEC-042 → DEC-076 reopening → discharge at slice F). All six slices A-F plus the slice A follow-up palette fix landed on 05-18-26 across seven Claude Code build-execution conversations (SES-037..SES-043).\n\nSlice A (foundation + About dialog, commit 7e5c010 / SES-037) replaced the 72-line v0.1 QSS stub with the full token system: TOKENS dict (theme-keyed per DEC-089), t() accessor, build_app_stylesheet() generator. Bundled Inter Variable + JetBrains Mono Variable (DEC-090) and the initial 14-icon Lucide wave (DEC-092) at ui/assets/. Modal elevation (DEC-091) landed as ui/elevation.py + ui/widgets/modal_backdrop.py with per-dialog hooks across five modal dialogs. About dialog re-skinned per design pass §2.8 + DEC-094 as the canary surface.\n\nSlice B (sidebar + master-pane delegate, commit 86d9072 / SES-038) delivered the DEC-093 selected-state vocabulary uniformly: 3px left accent bar + color.accent.subtle background + medium-weight text, applied identically to sidebar entries and master-pane rows across all 13 panels via centralized ListDetailPanel registration. Sentence-cased sidebar group headers; SidebarItemDelegate + MasterPaneDelegate + MasterPaneTreeDelegate; Topics tree-view chevron variant. VersionedPanel inheritance positive surprise — slice B's anticipated VersionedPanel fallback was no-work because Charter and Status inherit the delegate automatically as ListDetailPanel subclasses.\n\nSlice A follow-up (force-light-palette fix, commit ad7df1b / SES-040, landed after slice C in commit order) is the surgical defect fix for a Linux Mint OS-theme bleed-through: dark backgrounds with near-black text rendered as 'dark blue on black' because slice A's build_application() didn't force a Qt style or palette. Fix: setStyle('Fusion') + explicit QPalette construction from TOKENS['light']. Five regression tests at tests/crmbuilder_v2/ui/test_app_palette.py.\n\nSlice C (panel retrofits + ReferencesSection sub-section rewrite, commit 0114324 / SES-039) delivered panel-level visual coherence: QFormLayout.WrapAllRows across 13 panels + crud_dialog + versioned_panel base, required_label helper with Lucide asterisk, status hint captions on classification combos, CollapsibleSection for Notes, and the in-place rewrite of widgets/references_section.py from v0.5's two-level Inbound/Outbound grouping to sub-sectioned plain-list rendering with kind labels.\n\nSlice D (dialogs + form controls, commit a54adc5 / SES-041) landed five button categories (primary/secondary/destructive/text-link/icon-only) with full state coverage plus helpers in widgets/form_helpers.py. Migrated 13 panels' New + Delete CTAs, ReferencesSection's Add reference (text_link_button), toolbar refresh (icon_button). Internal edit-dialog context strip per design pass §2.7 (mono identifier + body name); delete-confirm body line-height + Destructive-right button order. Combo dropdown chevron + checkbox check pre-tinted Lucide SVGs.\n\nSlice E (status, error, warning + crash banner, commit 296aa2a / SES-042) delivered the four small visible surfaces: new inline WarningCallout widget (Lucide circle-alert + warning.default); Processes soft-deleted-domain warning retoken'd off legacy #B22222 onto WarningCallout (warning-amber, not danger-red, because it's informational); error dialog header retoken'd off legacy #1F3864 navy onto Lucide circle-x + danger.default + heading-3; crash banner re-skinned onto color.danger.default + Lucide circle-alert + neutral.0 white text.\n\nSlice F (closeout, commit 583f511 / SES-043) bumped __version__ to '0.6.0', added the README v0.6 release note, and landed the WCAG contrast test as build gate per DEC-107 (8 design-pass §4.4 combinations + 1 sanity case = 9 cases). The test surfaced two design-pass transcription errors: color.neutral.500 #7A8694 (claimed 4.62:1 but actually 3.71:1) corrected to #6A7480 (4.75:1); color.warning.default #B0731A (claimed ~4.7 but actually 3.95:1) corrected to #9D6517 (4.88:1) per design pass §4.4 + PRD Open Question #4 recommendation. Design pass §4.4 updated with corrected ratios and traceability notes pointing to the slice F build gate as authoritative. Full regression green: 1250 passed, 1 skipped.\n\nGovernance follow-up: this status update (version 16, replacing the misleading version 15) plus the seven SES-037..SES-043 build-execution session records are applied via the v0.6 build-execution closeout prompt at prompts/CLAUDE-CODE-PROMPT-apply-v0.6-build-execution-closeout.md. The deferred slice screenshot captures (slice-B initial set already in working tree as styling-screenshots/slice-B/, untracked) land in subsequent operator commits.\n\nThe paper-test workstream (DEC-077) is fully unblocked. The next Claude.ai conversation can be the paper-test kickoff against a freshly-created CBM engagement via the single-gesture creation+activation flow shipped in v0.5 slice D.",
@@ -950,7 +966,8 @@
   },
   {
     "created_at": "2026-05-30T14:53:01.578569",
-    "id": 17,
+    "engagement_id": "ENG-001",
+    "id": 1000000017,
     "is_current": true,
     "payload": {
       "active_work": "Active direction per CLAUDE.md: consolidate into a single canonical Master CRMBuilder PRD at specifications/master-crmbuilder-PRD.md, authored by running its own process against CRMBuilder itself (dogfood). CBM is the next-phase validation case. Approach is iterative: draft enough PRD to make the next phase runnable, execute it against CRMBuilder, refine.\n\nShipped since the v0.6 styling rollout (this status was last refreshed at v0.6 / 05-18-26 and had drifted ~12 sessions; refreshed at SES-128 / 05-30-26):\n\n- PI-052 — Chat UI on the Anthropic API with native tool definitions. Resolved. The chat tab is fully built at ui/chat/ (controller, persistence, session, worker, widgets, auth, tools) consuming the shared mcp_server.tools.tool_definitions(http) registry (ToolDefinition dataclass; 51 tools; read/write partition by name-prefix). PI-106 (Slice D follow-ups — sidebar staleness indicator + interactive context-window Trim) Resolved. The throwaway Slice A terminal spike (chat_spike.py) was retired at SES-128 (commit 74d4195) once the production tab made it dead scaffolding.\n\n- PI-073 / DEC-314 — Session/Conversation redesign. Session is now the medium-agnostic communication container (one chat / email / call / meeting = one session) with a six-status lifecycle and schedulability; Conversation is a topical sub-unit nested 1:N within a session. New conversations use the CNV-NNN prefix.\n\n- v0.7 governance-entity release — six new entity types (workstream, conversation, reference_book, work_ticket, close_out_payload, deposit_event) with tables, REST endpoints, desktop panels under the Governance group, and access-layer edge-rule enforcement. deposit_event POST is atomic and lazy-creates its close_out_payload.\n\n- PI-075 — executive_summary is NOT NULL (200-800 chars) on decisions, planning_items, and sessions.\n\n- PI-090 / PI-101 — close-out pre-flight + apply-pipeline validator hardening against governance-recording-rules.md.\n\n- PI-108 — universal created/last-edited timestamp visibility across the V2 desktop UI.\n\n- PI-109 — references.create auto-consumes ready work_tickets on inbound opens-against edges of either kind (replacing the fragile explicit-PATCH discipline).\n\n- PI-110 / DEC-333 — API rotating log file (data/logs/api.log) + desktop UI auto-restart of the API on connection loss / subprocess crash.\n\nNotable open work: PI-084 (author the canonical governance-recording-rules.md to released status), PI-104 (re-test/enable the claude.ai-web custom connector once Anthropic ships the post-OAuth bearer-attachment fix — DEC-244/DEC-245 record the upstream block and the chat-UI-on-API pivot that succeeded it), PI-111 (optional periodic /health heartbeat to proactively detect an external API's death).\n\n__version__ is 0.7.0 (crmbuilder-v2/src/crmbuilder_v2/__init__.py).",

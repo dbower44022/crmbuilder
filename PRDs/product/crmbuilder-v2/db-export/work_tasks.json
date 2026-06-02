@@ -1,5 +1,6 @@
 [
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "storage",
     "work_task_claimed_at": "2026-05-31T14:56:32.063944",
     "work_task_claimed_by": "CNV-039",
@@ -15,6 +16,7 @@
     "work_task_updated_at": "2026-05-31T15:49:25.966811"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "access",
     "work_task_claimed_at": "2026-05-31T19:17:04.816730",
     "work_task_claimed_by": "CNV-042",
@@ -30,6 +32,7 @@
     "work_task_updated_at": "2026-05-31T19:17:34.027828"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "access",
     "work_task_claimed_at": "2026-05-31T19:34:36.377958",
     "work_task_claimed_by": "CNV-043",
@@ -45,6 +48,7 @@
     "work_task_updated_at": "2026-05-31T19:34:37.342064"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "ui",
     "work_task_claimed_at": "2026-05-31T20:19:49.718813",
     "work_task_claimed_by": "CNV-044-ui-session",
@@ -60,6 +64,7 @@
     "work_task_updated_at": "2026-05-31T20:33:45.283355"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "access",
     "work_task_claimed_at": "2026-05-31T20:19:50.996766",
     "work_task_claimed_by": "CNV-045-this-session",
@@ -75,6 +80,7 @@
     "work_task_updated_at": "2026-05-31T20:33:45.636212"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "access",
     "work_task_claimed_at": "2026-05-31T20:48:21.250564",
     "work_task_claimed_by": "CNV-046",
@@ -90,6 +96,7 @@
     "work_task_updated_at": "2026-05-31T20:55:03.116509"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "methodology-product",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -105,6 +112,7 @@
     "work_task_updated_at": "2026-06-01T00:07:06.687734"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "methodology-product",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -120,6 +128,7 @@
     "work_task_updated_at": "2026-06-01T00:07:06.693101"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "methodology-product",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -135,6 +144,7 @@
     "work_task_updated_at": "2026-06-01T00:07:06.697541"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "storage",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -150,6 +160,7 @@
     "work_task_updated_at": "2026-06-01T00:07:06.701757"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "access",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -165,6 +176,7 @@
     "work_task_updated_at": "2026-06-01T00:07:06.706053"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "storage",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -180,6 +192,7 @@
     "work_task_updated_at": "2026-06-01T00:08:28.605453"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "access",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -195,6 +208,7 @@
     "work_task_updated_at": "2026-06-01T00:08:28.610304"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "api",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -210,6 +224,7 @@
     "work_task_updated_at": "2026-06-01T00:08:28.614785"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "mcp",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -225,6 +240,7 @@
     "work_task_updated_at": "2026-06-01T00:08:28.619285"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "ui",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -240,6 +256,7 @@
     "work_task_updated_at": "2026-06-01T00:08:28.623531"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "storage",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -255,6 +272,7 @@
     "work_task_updated_at": "2026-06-01T00:09:45.782233"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "access",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -270,6 +288,7 @@
     "work_task_updated_at": "2026-06-01T00:09:45.787654"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "api",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -285,6 +304,7 @@
     "work_task_updated_at": "2026-06-01T00:09:45.792191"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "mcp",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -300,6 +320,7 @@
     "work_task_updated_at": "2026-06-01T00:09:45.796400"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "methodology-product",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -315,6 +336,7 @@
     "work_task_updated_at": "2026-06-01T00:11:04.064446"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "methodology-product",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -330,6 +352,7 @@
     "work_task_updated_at": "2026-06-01T00:11:04.106550"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "methodology-process",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -345,6 +368,7 @@
     "work_task_updated_at": "2026-06-01T00:11:04.111489"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "methodology-process",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -360,6 +384,7 @@
     "work_task_updated_at": "2026-06-01T00:11:04.116085"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "storage",
     "work_task_claimed_at": "2026-06-02T01:46:43.203249",
     "work_task_claimed_by": "claude-code (PI-123 Architecture pass)",
@@ -375,6 +400,7 @@
     "work_task_updated_at": "2026-06-02T01:47:31.190392"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "storage",
     "work_task_claimed_at": "2026-06-02T02:10:03.566036",
     "work_task_claimed_by": "claude-code (PI-123 Dev Slice 1)",
@@ -390,6 +416,7 @@
     "work_task_updated_at": "2026-06-02T02:10:04.266082"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "access",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -405,6 +432,7 @@
     "work_task_updated_at": "2026-06-02T02:10:03.208852"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "storage",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -420,6 +448,7 @@
     "work_task_updated_at": "2026-06-02T02:10:03.209461"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "access",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,
@@ -435,6 +464,7 @@
     "work_task_updated_at": "2026-06-02T02:10:03.210021"
   },
   {
+    "engagement_id": "ENG-001",
     "work_task_area": "api",
     "work_task_claimed_at": null,
     "work_task_claimed_by": null,

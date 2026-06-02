@@ -15,7 +15,8 @@
     "conversation_summary": "PI-073 ships. Eight commits (init + A + B.1 + B.2 + C + D + E + F) on the pi-073-redesign branch carry the redesign end-to-end: schema migration with legacy-table preservation, vocabulary updates, ORM models, repositories, REST endpoints, schemas, apply_close_out.py update, MCP tools, desktop UI rewrite, and the data migration that translates 66 conversations + 95 sessions into the new shape with full reference-edge retargeting. PI-073 is resolved by this close-out's resolves_planning_items section. The Phase G conversation does not produce additional decisions or planning items; DEC-314 (active since SES-095) is the architectural authority and remains so.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-073 close-out — audit and documentation propagation",
-    "conversation_updated_at": "2026-05-27T17:38:48.293850"
+    "conversation_updated_at": "2026-05-27T17:38:48.293850",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -33,7 +34,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Phase 2 Domain Discovery for CRMBUILDER dogfood — domain set definition with mid-session methodology-shape pivot",
-    "conversation_updated_at": "2026-05-27T17:59:46.730774"
+    "conversation_updated_at": "2026-05-27T17:59:46.730774",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -51,7 +53,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "PI-091/092/093 implementation — orchestrated parallel-agent build of executive_summary UI surface",
-    "conversation_updated_at": "2026-05-27T18:09:31.314398"
+    "conversation_updated_at": "2026-05-27T18:09:31.314398",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -69,7 +72,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Author PI-096 — executive_summary backfill on existing planning items",
-    "conversation_updated_at": "2026-05-27T18:13:55.440326"
+    "conversation_updated_at": "2026-05-27T18:13:55.440326",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -87,7 +91,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Second autonomous orchestrator run — triage 68 Open PIs, dispatch 5 parallel sub-agents",
-    "conversation_updated_at": "2026-05-27T18:30:43.417145"
+    "conversation_updated_at": "2026-05-27T18:30:43.417145",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -105,7 +110,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Author PI-097 + PI-098 — executive_summary backfill for decisions and sessions",
-    "conversation_updated_at": "2026-05-27T22:24:46.036236"
+    "conversation_updated_at": "2026-05-27T22:24:46.036236",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -123,7 +129,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "PI-018 implementation — oneToOne YAML link-type support",
-    "conversation_updated_at": "2026-05-27T23:11:47.717386"
+    "conversation_updated_at": "2026-05-27T23:11:47.717386",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -141,7 +148,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Resolve PI-096 + PI-097 + PI-098 — review pass complete",
-    "conversation_updated_at": "2026-05-28T02:15:55.048094"
+    "conversation_updated_at": "2026-05-28T02:15:55.048094",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -159,7 +167,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "PI-099 — file and fix apply_close_out section ordering bug",
-    "conversation_updated_at": "2026-05-28T02:22:08.599265"
+    "conversation_updated_at": "2026-05-28T02:22:08.599265",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -177,7 +186,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Resolve PI-075 — NOT NULL tightening on executive_summary",
-    "conversation_updated_at": "2026-05-28T02:28:30.854687"
+    "conversation_updated_at": "2026-05-28T02:28:30.854687",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -195,7 +205,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "PI-090 implementation — apply-pipeline close-out validator",
-    "conversation_updated_at": "2026-05-28T03:02:18.230257"
+    "conversation_updated_at": "2026-05-28T03:02:18.230257",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -213,7 +224,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Concurrency-safety design — from identifier collisions to the SessionDraftToken draft model",
-    "conversation_updated_at": "2026-05-28T04:05:11.343921"
+    "conversation_updated_at": "2026-05-28T04:05:11.343921",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -231,7 +243,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "File SES-110 apply follow-ups and split edit-locking into its own item",
-    "conversation_updated_at": "2026-05-28T04:55:02.340561"
+    "conversation_updated_at": "2026-05-28T04:55:02.340561",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -249,7 +262,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Reclaiming remote MCP access — from the Cloudflare OAuth diagnosis to an own Google-backed authorization server",
-    "conversation_updated_at": "2026-05-28T05:07:32.331598"
+    "conversation_updated_at": "2026-05-28T05:07:32.331598",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -267,7 +281,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Building the PI-052 chat tab end to end — MVP, full tool surface, and polish across Slices B/C/D",
-    "conversation_updated_at": "2026-05-29T02:06:56.618193"
+    "conversation_updated_at": "2026-05-29T02:06:56.618193",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -285,7 +300,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "PI-031 description amendment and PI-105 authoring — empirical discovery of MCP write-surface gap",
-    "conversation_updated_at": "2026-05-29T02:15:27.618798"
+    "conversation_updated_at": "2026-05-29T02:15:27.618798",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -303,7 +319,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Reconciling executive_summary nullability to the live schema across the model, access, API, MCP, and UI layers",
-    "conversation_updated_at": "2026-05-29T17:56:47.653508"
+    "conversation_updated_at": "2026-05-29T17:56:47.653508",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -321,7 +338,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Building the WS-012 orchestrator foundation end to end (PI-076–083)",
-    "conversation_updated_at": "2026-05-29T18:28:59.161117"
+    "conversation_updated_at": "2026-05-29T18:28:59.161117",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -339,7 +357,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "File PI-107 — show planning_item created/updated timestamps in the UI",
-    "conversation_updated_at": "2026-05-29T23:35:52.584105"
+    "conversation_updated_at": "2026-05-29T23:35:52.584105",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -357,7 +376,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Implementing PI-107 — planning_item timestamps in the UI",
-    "conversation_updated_at": "2026-05-30T03:05:45.167597"
+    "conversation_updated_at": "2026-05-30T03:05:45.167597",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -375,7 +395,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "PI-106 — chat slice-D polish: staleness indicator and interactive context-window Trim",
-    "conversation_updated_at": "2026-05-30T03:27:47.792473"
+    "conversation_updated_at": "2026-05-30T03:27:47.792473",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -393,7 +414,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Building the PI-031 commits/resolution-chain UI on the post-PI-073 schema",
-    "conversation_updated_at": "2026-05-30T03:45:27.528654"
+    "conversation_updated_at": "2026-05-30T03:45:27.528654",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -411,7 +433,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Setting up universal created/last-edited timestamp visibility",
-    "conversation_updated_at": "2026-05-30T03:47:21.550057"
+    "conversation_updated_at": "2026-05-30T03:47:21.550057",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -429,7 +452,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Hardening the close-out pre-flight validator (PI-101)",
-    "conversation_updated_at": "2026-05-30T04:00:49.390804"
+    "conversation_updated_at": "2026-05-30T04:00:49.390804",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -447,7 +471,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Backfilling the PI-101 kickoff work ticket",
-    "conversation_updated_at": "2026-05-30T04:11:57.617807"
+    "conversation_updated_at": "2026-05-30T04:11:57.617807",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -465,7 +490,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Backfilling the PI-107 and PI-031 kickoff work tickets",
-    "conversation_updated_at": "2026-05-30T04:17:55.942116"
+    "conversation_updated_at": "2026-05-30T04:17:55.942116",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -483,7 +509,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Diagnosing the API outage and hardening the v2 API lifecycle",
-    "conversation_updated_at": "2026-05-30T05:12:07.002174"
+    "conversation_updated_at": "2026-05-30T05:12:07.002174",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -501,7 +528,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Investigating the WT-049 drift and closing the auto-consume gap (PI-109)",
-    "conversation_updated_at": "2026-05-30T05:32:55.817938"
+    "conversation_updated_at": "2026-05-30T05:32:55.817938",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -519,7 +547,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Finishing PI-108 universal timestamp visibility under a parallel-orchestrator race",
-    "conversation_updated_at": "2026-05-30T14:30:57.652424"
+    "conversation_updated_at": "2026-05-30T14:30:57.652424",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -537,7 +566,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Dropping the superseded PI-052 Slice C-early prompt, retiring the chat spike, and refreshing the status singleton",
-    "conversation_updated_at": "2026-05-30T14:53:05.970267"
+    "conversation_updated_at": "2026-05-30T14:53:05.970267",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -555,7 +585,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Auditing and closing the executive_summary write-surface gaps (PI-105)",
-    "conversation_updated_at": "2026-05-30T15:04:47.826515"
+    "conversation_updated_at": "2026-05-30T15:04:47.826515",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -573,7 +604,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Implementing the /health heartbeat (PI-111)",
-    "conversation_updated_at": "2026-05-30T15:31:02.775304"
+    "conversation_updated_at": "2026-05-30T15:31:02.775304",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -591,7 +623,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Implementing the orchestrator _execute() dispatch path (PI-081)",
-    "conversation_updated_at": "2026-05-30T19:52:00.776793"
+    "conversation_updated_at": "2026-05-30T19:52:00.776793",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -609,7 +642,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Redesigning the governance & delivery model around Areas",
-    "conversation_updated_at": "2026-05-30T22:33:58.393052"
+    "conversation_updated_at": "2026-05-30T22:33:58.393052",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -627,7 +661,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Closing the redesign's remaining open decisions",
-    "conversation_updated_at": "2026-05-31T00:16:46.279448"
+    "conversation_updated_at": "2026-05-31T00:16:46.279448",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -645,7 +680,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Executing the PI-112 governance & delivery migration",
-    "conversation_updated_at": "2026-05-31T03:34:13.092990"
+    "conversation_updated_at": "2026-05-31T03:34:13.092990",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -663,7 +699,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Drafting YAML schema v1.3 Section 12 — Role-Based Access Control",
-    "conversation_updated_at": "2026-05-31T03:47:10.774310"
+    "conversation_updated_at": "2026-05-31T03:47:10.774310",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -681,7 +718,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Define PRJ-015 and build its first improvement — references as an enriched grid",
-    "conversation_updated_at": "2026-05-31T04:23:26.335871"
+    "conversation_updated_at": "2026-05-31T04:23:26.335871",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -699,7 +737,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Specifying the Agent Delivery Organization",
-    "conversation_updated_at": "2026-05-31T06:04:08.500663"
+    "conversation_updated_at": "2026-05-31T06:04:08.500663",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -717,7 +756,8 @@
     "conversation_summary": null,
     "conversation_superseded_at": null,
     "conversation_title": "Are branches appropriate for crmbuilder? — fork diagnosis and the Model A governance guard",
-    "conversation_updated_at": "2026-05-31T14:43:20.363646"
+    "conversation_updated_at": "2026-05-31T14:43:20.363646",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -735,7 +775,8 @@
     "conversation_summary": "ADO state-model substrate delivered and applied to the live DB via migration 0036: Architecture-phase rename, expanded gate lifecycle, and the needs_attention flag. WTK-001 Complete; PI-114 addressed. DEC-361 records the derived (not stored) PI rollup. First scheduled-session execution path.",
     "conversation_superseded_at": null,
     "conversation_title": "Execute WTK-001 — ADO Workstream state-model substrate (migration 0036)",
-    "conversation_updated_at": "2026-05-31T15:51:47.398052"
+    "conversation_updated_at": "2026-05-31T15:51:47.398052",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -753,7 +794,8 @@
     "conversation_summary": "ADO structural decomposer delivered: POST /planning-items/{id}/decompose creates all six phase Workstreams (Planned) with serial blocked_by gates, once-only. WTK-002 Complete; PI-114 addressed. DEC-362 records the interface. Endpoint goes live on the next API restart.",
     "conversation_superseded_at": null,
     "conversation_title": "Build the ADO structural decomposer — PI -> six phase Workstreams (WTK-002)",
-    "conversation_updated_at": "2026-05-31T19:23:00.528471"
+    "conversation_updated_at": "2026-05-31T19:23:00.528471",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -771,7 +813,8 @@
     "conversation_summary": "ADO phase-specialist substrate delivered: scope_workstream records scope (Work Tasks or Not Applicable) atomically, prior_phase_outputs feeds it forward; two endpoints + an end-to-end integration test. WTK-003 Complete; PI-114 addressed. DEC-363 records the interface. Endpoints go live on the next API restart.",
     "conversation_superseded_at": null,
     "conversation_title": "Build the ADO phase-specialist substrate — scope + feed-forward (WTK-003)",
-    "conversation_updated_at": "2026-05-31T19:40:28.557990"
+    "conversation_updated_at": "2026-05-31T19:40:28.557990",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -789,7 +832,8 @@
     "conversation_summary": "ADO PI Lead substrate delivered: phase_overview (gate state), start_phase (open + ready tasks), complete_phase (verify + advance), over serial blocked_by gates. Three endpoints + a Lead-driven end-to-end. WTK-005 Complete; PI-114 addressed. DEC-364 records the interface.",
     "conversation_superseded_at": null,
     "conversation_title": "Build the ADO PI Lead substrate — execution gate + phase advance (WTK-005)",
-    "conversation_updated_at": "2026-05-31T20:40:02.156394"
+    "conversation_updated_at": "2026-05-31T20:40:02.156394",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -807,7 +851,8 @@
     "conversation_summary": "Workstream + Work Task UI monitoring panels delivered under the Governance sidebar (read-only, mirroring existing panels), closing the WSK-/WTK- visibility gap. Built by a parallel worktree session, cherry-picked onto main. WTK-004 Complete; PI-114 addressed.",
     "conversation_superseded_at": null,
     "conversation_title": "Build the Workstream + Work Task UI monitoring panels (WTK-004)",
-    "conversation_updated_at": "2026-05-31T20:40:10.277777"
+    "conversation_updated_at": "2026-05-31T20:40:10.277777",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -825,7 +870,8 @@
     "conversation_summary": "ADO Project Manager substrate delivered: project_backlog (dependency eligibility), eligible_planning_items, dispatch_planning_item, over PI blocked_by edges. Three endpoints + a full-org capstone test. WTK-006 Complete; PI-114 addressed. DEC-365 records the interface. All four ADO tier substrates now exist.",
     "conversation_superseded_at": null,
     "conversation_title": "Build the ADO Project Manager substrate — PI backlog + dispatch (WTK-006)",
-    "conversation_updated_at": "2026-05-31T20:54:41.673376"
+    "conversation_updated_at": "2026-05-31T20:54:41.673376",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -843,7 +889,8 @@
     "conversation_summary": "Four link-UI enhancement Planning Items captured as Draft under PRJ-016: PI-116 in-panel search/filter, PI-117 sortable/groupable columns with multi-column sort, PI-118 inline preview of a linked record, PI-119 resizable columns. Each attached via planning_item_belongs_to_project; decomposition deferred. Governance-only — no code, no decisions.",
     "conversation_superseded_at": null,
     "conversation_title": "Add link-UI enhancement Planning Items to PRJ-016",
-    "conversation_updated_at": "2026-05-31T22:28:41.870010"
+    "conversation_updated_at": "2026-05-31T22:28:41.870010",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -861,7 +908,8 @@
     "conversation_summary": "Further link/related-record UI enhancement Planning Items captured as Draft under PRJ-016: PI-120 render Workstream-panel child Work Tasks as a grid like References; PI-121 per-row 'Open <item type>' action opening a related record's full view in a separate non-modal window. Attached via planning_item_belongs_to_project; decomposition deferred. Governance-only — no code, no decisions.",
     "conversation_superseded_at": null,
     "conversation_title": "Add further related-record UI enhancement Planning Items to PRJ-016",
-    "conversation_updated_at": "2026-05-31T22:57:04.710469"
+    "conversation_updated_at": "2026-05-31T22:57:04.710469",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -879,7 +927,8 @@
     "conversation_summary": "Registry design reviewed, merged, reconciled to v0.2; two ADO agents proven end-to-end (Phase Specialist scope judgment + Area Specialist implementation) and captured as profile prompts; the registry build scoped as PI-122 under PRJ-018 (DEC-366). PI-114 addressed.",
     "conversation_superseded_at": null,
     "conversation_title": "Review + reconcile the agent-profile-registry PRD, prove two agents, scope the registry as PI-122",
-    "conversation_updated_at": "2026-05-31T23:01:58.486404"
+    "conversation_updated_at": "2026-05-31T23:01:58.486404",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -897,7 +946,8 @@
     "conversation_summary": "First real ADO run: PI-122 dispatched, decomposed into six phases, and scoped by six real phase-specialist agents into 18 Work Tasks (4 active phases; Data Migration + Deployment Not Applicable). all_scoped=true, next_executable=Architecture. The ADO planned its own next layer. PI-122 advanced.",
     "conversation_superseded_at": null,
     "conversation_title": "ADO planning loop for PI-122 — PM dispatch, decompose, six phase specialists scope",
-    "conversation_updated_at": "2026-06-01T00:15:54.094055"
+    "conversation_updated_at": "2026-06-01T00:15:54.094055",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -915,7 +965,8 @@
     "conversation_summary": "Design-complete evolution of the ADO agent layer: matrix org / four passes / (area x tier) three-tier experts / reconciliation gate (finding entity) / release model / the registry as a system-level living learning memory with engagement overlays + cross-engagement learning + the unified-DB direction / spawn-on-demand runtime. Seven decisions recorded (DEC-367..373). PI-114 advanced.",
     "conversation_superseded_at": null,
     "conversation_title": "ADO agent-layer evolution — the design-complete conversation (matrix org → learning registry → runtime)",
-    "conversation_updated_at": "2026-06-01T21:16:41.341113"
+    "conversation_updated_at": "2026-06-01T21:16:41.341113",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -933,7 +984,8 @@
     "conversation_summary": "Scoped the unified multi-engagement-DB migration as PI-123 (Draft) under a new Production Architecture project (PRJ-019), and wired PI-122 (Agent Profile Registry) blocked_by PI-123 — the registry's cross-engagement learning needs the unified DB to be practical (DEC-373). The project-home choice is recorded as DEC-374. Closes the ADO evolution's §10 NEXT list.",
     "conversation_superseded_at": null,
     "conversation_title": "Scope the unified multi-engagement-DB migration (PI-123) and wire PI-122 blocked_by it",
-    "conversation_updated_at": "2026-06-01T21:55:56.617211"
+    "conversation_updated_at": "2026-06-01T21:55:56.617211",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -951,7 +1003,46 @@
     "conversation_summary": "Authored the PI-123 Architecture-phase deliverable — pi-123-unified-db-architecture.md, settling D1-D11 (meta-fold; engagement_id discriminator with catalog system/shared; the identifier-collision crux -> composite (engagement_id, identifier) keying preserving per-engagement sequences; refs scoping; a central ContextVar + do_orm_execute + before_flush routing rewrite over threaded params; X-Engagement header with marker-file default; scoped snapshot; single Alembic chain; one-shot idempotent consolidation of the live CRMBUILDER.db + CBM.db; single-file ops; registry hooks for PI-122) and the six-phase decomposition. Dogfooded the ADO substrate end-to-end (dispatch -> decompose -> scope -> start -> execute WTK-025 -> complete) so the Architecture Workstream (WSK-008) is Complete and Development (WSK-009) is unblocked. Recorded the defining choices as DEC-375; addressed (did not resolve) PI-123.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-123 Architecture phase — unified-DB migration design + ADO-substrate dogfood",
-    "conversation_updated_at": "2026-06-02T01:51:59.825246"
+    "conversation_updated_at": "2026-06-02T01:51:59.825246",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-06-02T16:34:34.678414",
+    "conversation_created_at": "2026-06-02T16:34:34.677965",
+    "conversation_deleted_at": null,
+    "conversation_description": "Surfaced 06-02-26 from a non-selectable 'Switching failed at step 3' dialog during PI-123 cutover testing. Creates PI-124 under PRJ-015 (UI usability improvements). No code change in this conversation; the fix is scoped by PI-124.",
+    "conversation_executive_summary": null,
+    "conversation_identifier": "CNV-054",
+    "conversation_in_flight_at": null,
+    "conversation_not_started_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Record, as a planning item, the requirement that all UI message/error dialogs support select-all and copy, surfaced when a non-selectable engagement-switch error dialog blocked copying the error text.",
+    "conversation_status": "complete",
+    "conversation_summary": "Created PI-124 (all UI message/error dialogs selectable + copyable) under PRJ-015.",
+    "conversation_superseded_at": null,
+    "conversation_title": "Capture UI message-copyability requirement (PI-124)",
+    "conversation_updated_at": "2026-06-02T16:34:34.678818",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "conversation_cancelled_at": null,
+    "conversation_completed_at": "2026-06-02T16:34:50.254285",
+    "conversation_created_at": "2026-06-02T16:34:50.254078",
+    "conversation_deleted_at": null,
+    "conversation_description": "Executed PI-123 Stages 2-4 (strict-schema flip, consolidation + leak-test, runtime cutover to v2-unified.db), built + validated the live unified DB (CRMBUILDER folded in, CBM fresh), fixed the Session-class scope-registration bug, and authored this build-closure.",
+    "conversation_executive_summary": null,
+    "conversation_identifier": "CNV-055",
+    "conversation_in_flight_at": null,
+    "conversation_not_started_at": null,
+    "conversation_notes": null,
+    "conversation_purpose": "Close out PI-123: ingest the slice + cutover commits, record the build-discovered refinements as a decision, and resolve PI-123.",
+    "conversation_status": "complete",
+    "conversation_summary": "Resolved PI-123; recorded refinements as DEC-376; unblocked PI-122.",
+    "conversation_superseded_at": null,
+    "conversation_title": "PI-123 build-closure — unified-DB cutover Stages 1-4",
+    "conversation_updated_at": "2026-06-02T16:34:50.254377",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -969,7 +1060,8 @@
     "conversation_summary": "Started as a request to create a functional testing routine for CRM Builder YAML processing. Through iterative reframing during the conversation, the scope evolved into a substantially larger architectural redesign — a structured database as source of truth for all CRM implementation artifacts (methodology and project management both), with Word documents, deployment YAML, and test cases as renders.\n\nKey reframes during the conversation, in order:\n\n- Testing system → behavior-driven testing → cross-cutting persona/process testing → end-to-end PRD-to-deployed-CRM verification with feedback loop to Claude Code\n- Word documents as source → structured database as source\n- Project artifacts as markdown documents → project artifacts as database records (dogfooding)\n- YAML files in git → SQLite + REST API + MCP server (real database)\n- MCP-direct → layered (REST API as durable interface, MCP as Claude.ai bridge)\n- Topics as one of many junction tables → universal references pattern with controlled relationship vocabulary\n\nWorking through the eight planning dimensions:\n\n- Resolved #1 (project identity) including all sub-questions A–F\n- Resolved #2.1 (session orientation protocol)\n- Substantially resolved #2.3, #2.4, #3 by virtue of the database architecture\n- Collapsed #4 (CBM coexistence) — CBM is the test case, not parallel commitment\n- Did not address #5–#8 (deferred to future conversations)",
     "conversation_superseded_at": null,
     "conversation_title": "Initial Planning — Project Identity, Architecture, and Initial Artifacts",
-    "conversation_updated_at": "2026-05-07T05:54:14.929680"
+    "conversation_updated_at": "2026-05-07T05:54:14.929680",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -987,7 +1079,8 @@
     "conversation_summary": "Worked through the four sub-questions of planning dimension #5. A side discussion about whether the next iteration of CRMBuilder should move to a separate Claude Project (giving v2 design conversations a clean memory slate) or a separate GitHub repository was deferred to the end of planning, after dimensions #6 through #8 are resolved. The remaining sub-questions resolved cleanly:\n\n- Anatomy of a working session: orient using the tiered orientation protocol established in the bootstrap, discuss in plain text one issue at a time, close with a Claude Code prompt that lands a commit. One Claude.ai conversation equals one session, which produces exactly one session record. Multi-conversation topics are reconstructed by reading the chronological sequence of session records that touch the topic. Every conversation that engages v2 produces a session record, even brief or exploratory ones.\n- Cadence: ad-hoc. No fixed schedule. Sessions happen when the work is ready. Long gaps between sessions are expected; the \"in-flight at session end\" capture in each session record is the load-bearing mechanism for clean resumption.\n- Milestones: the phase list already enumerated in the status document — schema design (Step 0), storage layer build (Step 1), MN domain migration as the proving ground (Step 2), then MR / CR / FU migrations in priority order, with test infrastructure layered in alongside.\n- Definition of done and gating: Doug reviews each phase's output. Proceed if it works, iterate within the current step if it doesn't, stop and reassess if the approach can't be made to work. No formal checklist per phase; judgment based on whether the output works.\n\nA communication rule was also added to Claude's stored memory during this session: Claude must never reference identifiers, codes, or shorthand tags without explaining what they mean in plain English. This is a working-style rule rather than a v2 architectural decision and is captured in stored memory rather than the v2 decisions log.",
     "conversation_superseded_at": null,
     "conversation_title": "Planning Dimension #5 — Pacing, Cadence, and Milestones",
-    "conversation_updated_at": "2026-05-07T05:54:14.930477"
+    "conversation_updated_at": "2026-05-07T05:54:14.930477",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1005,7 +1098,8 @@
     "conversation_summary": "Single-pass build of all eight acceptance criteria from the v0.1 PRD. Implementation plan was committed first (storage-system-implementation-plan.md), then status was updated to in-progress, then the build proceeded in the order: scaffold → schema (SQLAlchemy + Alembic baseline) → access layer + JSON export hook → access-layer test suite (53 tests) → REST API → API integration test suite (28 tests) → MCP server with FastMCP → MCP smoke test (5 tests) → bootstrap migration with parsers (10 tests) → run migration on real bootstrap files → retire markdown sources → close out via database (this session record).\n\nAcceptance criteria 1–8 from the PRD's Section 8 all pass: schema deployed, access layer operational, REST API operational, MCP server operational, JSON exports generated atomically with DB writes, bootstrap content migrated, test suite passing (96 tests total), session orientation reads return content equivalent to the pre-migration markdown.\n\nv2 work now operates on the database. Future updates to charter, status, decisions, and sessions go through the access layer (or the REST API or MCP) rather than markdown edits, with JSON snapshots committed alongside any DB-changing commit.",
     "conversation_superseded_at": null,
     "conversation_title": "v0.1 Storage System Build",
-    "conversation_updated_at": "2026-05-07T05:56:59.549420"
+    "conversation_updated_at": "2026-05-07T05:56:59.549420",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1023,7 +1117,8 @@
     "conversation_summary": "The planning conversation worked through the seven architectural questions listed above and produced three artifacts. The v0.1 PRD (ui-PRD-v0.1.md) captures the requirements: a standalone PySide6 desktop application that consumes the storage system REST API, providing read-only views across all seven governance entities and the references graph, with full CRUD for decisions. The implementation plan (ui-implementation-plan.md) decomposes the build into eight independently testable slices (v2-ui-A through v2-ui-H), each delivered as its own Claude Code prompt. The v2-ui-A prompt is the first of these, scaffolding the package, registering the console script, adding a GET /health endpoint, and writing this session record and DEC-018 through DEC-024 into the v2 database to capture the planning conversation.",
     "conversation_superseded_at": null,
     "conversation_title": "UI v0.1 planning",
-    "conversation_updated_at": "2026-05-07T21:23:29.117689"
+    "conversation_updated_at": "2026-05-07T21:23:29.117689",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1041,7 +1136,8 @@
     "conversation_summary": "UI v0.1 shipped: standalone PySide6 desktop application that consumes the storage system REST API. Eight read-only entity panels with master/detail navigation and cross-panel reference links. Full create/edit/delete for decisions, with client-side format validation (DEC-NNN identifier, MM-DD-YY date). File-watch live refresh with content-hash gating to suppress no-op rewrites from the snapshot exporter. Detect-then-launch API subprocess management. Soft-delete semantics added to decisions: DELETE sets status='Deleted', references to deleted decisions still resolve, list_all filters them out by default. _resolve_decision_id treats empty string as 'clear FK' so PATCH /decisions/{id} with supersedes='' works. About dialog wired to Help menu. Topics master-list 'Parent Topic' cell click navigation. Styling stub refined for navy accent + deep red error labels.",
     "conversation_superseded_at": null,
     "conversation_title": "UI v0.1 build",
-    "conversation_updated_at": "2026-05-08T05:26:05.879592"
+    "conversation_updated_at": "2026-05-08T05:26:05.879592",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1059,7 +1155,8 @@
     "conversation_summary": "The planning conversation worked through the eight architectural questions and produced three artifacts: ui-PRD-v0.2.md (intent, scope, acceptance criteria, error handling matrix, open questions, six forthcoming decisions DEC-026 through DEC-031), ui-v0.2-implementation-plan.md (six-slice breakdown with per-slice deliverables and acceptance gates), and the CLAUDE-CODE-PROMPT-v2-ui-v0.2-A through F prompt series. v0.2 is framed as \"complete the write surface\" — full create/edit/delete for Risks, Planning Items, and Topics; versioned-replace with history for Charter and Status; standardized reference rendering on every detail pane; calendar widget on date inputs; \"Show deleted\" toggle on Decisions. Sessions write surface and References write surface are deferred to v0.3 as governance-level and design-conversation-needing items respectively. The full styling pass is deferred again per DEC-024.",
     "conversation_superseded_at": null,
     "conversation_title": "UI v0.2 planning",
-    "conversation_updated_at": "2026-05-08T23:25:03.417124"
+    "conversation_updated_at": "2026-05-08T23:25:03.417124",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1077,7 +1174,8 @@
     "conversation_summary": "UI v0.2 shipped: full create/edit/delete for Risks, Planning Items, and Topics; versioned replace with Make Current for Charter and Status; reference rendering on every detail pane via the shared ReferencesSection widget; calendar widget on date inputs (DateField); QTreeView master panel for Topics with reusable HierarchicalEntityPicker; Show-deleted toggle and Restore affordance on the Decisions panel. v0.1's tests continue to pass after the slice A refactor; total v2 test count grew to 458. Sessions and References write surfaces remain deferred to v0.3 per DEC-027.",
     "conversation_superseded_at": null,
     "conversation_title": "UI v0.2 build",
-    "conversation_updated_at": "2026-05-09T05:10:47.896148"
+    "conversation_updated_at": "2026-05-09T05:10:47.896148",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1095,7 +1193,8 @@
     "conversation_summary": "The planning conversation worked through nine architectural questions and produced three artifacts: ui-PRD-v0.3.md (intent, scope, acceptance criteria, error handling matrix, open questions, six forthcoming decisions DEC-032 through DEC-037), ui-v0.3-implementation-plan.md (five-slice breakdown with per-slice deliverables and acceptance gates), and the CLAUDE-CODE-PROMPT-v2-ui-v0.3-A through E prompt series. v0.3 is framed as \"complete the testability gap so v2 can drive real governance work without leaving the UI\" — after this release ships, the next planning conversation can be captured by Doug, in the app, with no script runs. References full CRUD (create + delete; no edit; hard-delete with confirmation; source-first cascading dialog with strict RELATIONSHIP_TYPES vocab compliance), Sessions create-only (user-authored permitted; append-only stays strict; narrow-scoped to Claude.ai conversations), ListDetailPanel master-widget + context-menu factory refactor (with Topics migration and per-panel parity tests), and right-click context menus uniform across every entity row as a global UX principle. Full styling pass deferred again per DEC-037 with PI-NNN tracking to close the deferral loop.",
     "conversation_superseded_at": null,
     "conversation_title": "UI v0.3 planning",
-    "conversation_updated_at": "2026-05-09T15:26:22.868153"
+    "conversation_updated_at": "2026-05-09T15:26:22.868153",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1113,7 +1212,8 @@
     "conversation_summary": "The v0.3 build executed five Claude Code prompts (slices A through E) per the v0.3 implementation plan. Slice A landed planning records (SES-008, DEC-032 through DEC-037, PI-001), the ListDetailPanel master-widget and context-menu factory refactor, and the Topics panel migration to the new factory. Slice B swept right-click context menus across every existing entity panel. Slice C delivered the full References write surface — EntityIdentifierPicker widget, ReferenceCreateDialog with source-first cascading filters and strict relationship-rules vocab compliance, ReferenceDeleteDialog, panel toolbar New Reference button, and detail-pane Add reference affordance with right-click delete. Slice D delivered the Sessions create-only dialog with auto-assigned identifier, sensible defaults, DEC-025-aware placeholder text, and panel toolbar/right-click integration. Slice E shipped v0.3 — micro-visual adjustments observed during build, version bump to 0.3.0, About dialog refresh, README update, SES-009 (this record, written through the new Sessions create dialog as the user-facing acceptance test), and status update to v1.0 phase \"v0.3 complete\".\n\n---",
     "conversation_superseded_at": null,
     "conversation_title": "UI v0.3 build",
-    "conversation_updated_at": "2026-05-10T04:09:36.043631"
+    "conversation_updated_at": "2026-05-10T04:09:36.043631",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1131,7 +1231,8 @@
     "conversation_summary": "Supplemental record patching the SES-008 coverage gap. SES-008 captured the v0.3 planning portion of this Claude.ai conversation (the nine architectural questions and six decisions DEC-032 through DEC-037, written during slice A execution as part of the v0.3 build's planning records). Per DEC-013 one Claude.ai conversation produces one session record, but SES-008 was append-only and could not be amended after subsequent work in the same chat — the verify-first API fix across all five slice prompts, the slice C Step 0 + naming alignment update, the slice E placeholder fill-in with actual slice C/D decisions, the v0.4 planning kickoff drafting, and the v0.3 closeout review. This record covers all of the above. The v0.4 planning kickoff has been amended to specify a session-record-at-close pattern so the same coverage gap does not recur.",
     "conversation_superseded_at": null,
     "conversation_title": "v0.3 planning chat supplement (slice review + v0.4 kickoff prep)",
-    "conversation_updated_at": "2026-05-10T05:14:37.845596"
+    "conversation_updated_at": "2026-05-10T05:14:37.845596",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1149,7 +1250,8 @@
     "conversation_summary": "Planning conversation that redirected v0.4 from a UI-polish release to a methodology-entity-schema-design workstream. Twelve architectural questions resolved into six decisions (DEC-038 through DEC-043). Produced a workstream master plan, a schema-spec methodology guide, and four per-entity kickoff prompts at PRDs/product/crmbuilder-v2/, plus a supersession header on the original v0.4 kickoff and a Python apply script for the governance records. The four schema-design conversations (domain, entity, process, crm_candidate) run sequentially after this conversation closes, followed by a single v0.4-build-planning conversation that takes the four specs as input and produces the v0.4 PRD, implementation plan, and slice build prompts.",
     "conversation_superseded_at": null,
     "conversation_title": "v0.4 planning — methodology entity schema-design workstream kickoff",
-    "conversation_updated_at": "2026-05-11T14:51:05.046469"
+    "conversation_updated_at": "2026-05-11T14:51:05.046469",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1167,7 +1269,8 @@
     "conversation_summary": "First of four schema-design conversations in the methodology entity schema-design workstream. Produced the domain schema specification (PRDs/product/crmbuilder-v2/methodology-schema-specs/domain.md, 379 lines) defining the domain entity type for v2 storage under minimum-viable v0.4 scope. Nine architectural questions resolved into six decisions (DEC-044 through DEC-049). Established two cross-spec conventions inherited by the next three workstream specs: parent-prefix field naming (all non-identifier non-timestamp fields prefixed with parent entity name; forward-only for methodology, governance retrofit tracked as PI-006) and {source}_{verb}_{target} relationship-kind naming for methodology vocab. Two new planning items authored (PI-006 governance-entity retrofit; PI-007 domain.short_code deferral for mnemonic references). Successor conversation: entity schema design.",
     "conversation_superseded_at": null,
     "conversation_title": "domain schema design — methodology entity schema workstream conversation #1",
-    "conversation_updated_at": "2026-05-11T18:50:11.465934"
+    "conversation_updated_at": "2026-05-11T18:50:11.465934",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1185,7 +1288,8 @@
     "conversation_summary": "Second of four schema-design conversations in the methodology entity schema-design workstream. Produced the entity schema specification (PRDs/product/crmbuilder-v2/methodology-schema-specs/entity.md, 452 lines) defining the entity entity type for v2 storage under minimum-viable v0.4 scope. Eight architectural questions resolved into five decisions (DEC-050 through DEC-054). Inherited and applied without re-decision the two cross-spec conventions established by SES-012 (parent-prefix field naming per DEC-046; {source}_{verb}_{target} relationship-kind naming per DEC-048). Registered entity_scopes_to_domain as the first formal cross-entity vocabulary entry in the methodology workstream — many-to-many via the universal references table. Two new planning items authored (PI-009 master-pane Domains column on Entities panel paired with PI-007 short codes; PI-010 entity-schema v0.5+ extensions covering variants and base-type/kind classification). Successor conversation: process schema design.",
     "conversation_superseded_at": null,
     "conversation_title": "entity schema design — methodology entity schema workstream conversation #2",
-    "conversation_updated_at": "2026-05-12T01:23:40.943260"
+    "conversation_updated_at": "2026-05-12T01:23:40.943260",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1203,7 +1307,8 @@
     "conversation_summary": "Third of four schema-design conversations in the methodology entity schema-design workstream. Produced the process schema specification (PRDs/product/crmbuilder-v2/methodology-schema-specs/process.md, 499 lines) defining the process entity type for v2 storage under minimum-viable v0.4 scope. Architectural decisions resolved into five DEC records (DEC-055 through DEC-059). Inherited the cross-spec conventions established by SES-012 and applied by SES-013 (parent-prefix field naming, {source}_{verb}_{target} relationship-kind naming, soft-3-letter prefix posture with explicit deviation clause, rejection-via-soft-delete) and explicitly deviated on one structural point: process does not have a status field in v0.4. The deviation rationale — domain/entity use status for engagement-scope lifecycle, process uses process_classification for that role, and a definitional-completeness lifecycle field becomes meaningful only when v0.5+ adds Phase 3 detail levels — is documented in spec section 3.4.1. Registered process_hands_off_to_process as the second formal cross-entity vocabulary entry in the methodology workstream, directional (source = producer, target = consumer). Deferred process-to-entity touches entirely (no vocab registration in v0.4) under PI-005. One new planning item authored (PI-011 future scalar implementation-priority field). Mid-conversation, identified working-cadence calibration issues with the conversation's own dialog mode and produced two paste-ready prompts for a separate Claude.ai session to update userPreferences and project-level instructions: a primary prompt establishing detail / architecture / prototype mode definitions, and a follow-on prompt establishing the architecture-mode decision template (eight elements: plain-language question, concrete example, options with concrete behavior, why it matters, cost, recommendation, follow-on detail, decision request). The preferences-revision work is queued for a separate session before the next CRMBuilder conversation. Successor conversation: crm_candidate schema design.",
     "conversation_superseded_at": null,
     "conversation_title": "process schema design — methodology entity schema workstream conversation #3",
-    "conversation_updated_at": "2026-05-12T08:06:18.335816"
+    "conversation_updated_at": "2026-05-12T08:06:18.335816",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1221,7 +1326,8 @@
     "conversation_summary": "Fourth and final of four schema-design conversations in the methodology-entity-schema-design workstream. Produced the crm_candidate schema specification (PRDs/product/crmbuilder-v2/methodology-schema-specs/crm_candidate.md, 452 lines) defining the crm_candidate entity type for v2 storage under minimum-viable v0.4 scope, plus a companion artifact: the v0.4-build-planning kickoff prompt at PRDs/product/crmbuilder-v2/ui-PRD-v0.4-build-planning-kickoff.md (210 lines), which seeds the fifth and final workstream conversation. Five architectural questions resolved into five decisions (DEC-060 through DEC-064). Inherited and applied without re-decision all cross-spec conventions established and reaffirmed across SES-012 / SES-013 / SES-014 (parent-prefix field naming per DEC-046; {source}_{verb}_{target} relationship-kind naming per DEC-048; soft-3-letter prefix posture per DEC-044; engagement-global case-insensitive name uniqueness; standard 8-endpoint API surface; default ListDetailPanel UI under the Methodology sidebar group; decomposed reference handling; no archived status). Deviates from the rejection-via-soft-delete cross-spec principle (DEC-047, DEC-052) by introducing 'removed' as a first-class status value for mid-engagement candidate drops; deviation rationale in section 3.4.4 of the spec, following the deviation-rationale pattern process.md set in its section 3.4.1 (DEC-056). One new planning item authored (PI-012 — crm_candidate structured-metadata enums for v0.5+ pending CBM-redo signal). Acceptance criteria captured as 12 testable statements. Closes the per-entity schema-design portion of the workstream; the v0.4-build-planning conversation is queued against the kickoff this conversation also authored.",
     "conversation_superseded_at": null,
     "conversation_title": "crm_candidate schema design — methodology entity schema workstream conversation #4",
-    "conversation_updated_at": "2026-05-12T09:18:16.898336"
+    "conversation_updated_at": "2026-05-12T09:18:16.898336",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1239,7 +1345,8 @@
     "conversation_summary": "Executed the v2-C catalog ingestion build per catalog-ingestion-PRD-v0.1.md (v0.2) and catalog-ingestion-implementation-plan.md (v0.1). Eight commits A-H landed in sequence. The 42-entry base entity catalog (~5,530 rows) now lives in the v2 database as authoritative data; the YAML source files are decommissioned. Commit A: 10 catalog tables (SQLAlchemy models + Alembic 0003 + catalog vocabularies + 18 schema tests). Commit B: three-pass loader at bootstrap/catalog_loader.py + 13 unit tests against fixture YAMLs. Commit C: Alembic 0004 data migration + git rm of the 42 catalog YAMLs, base-entity-catalog-research.md, and entity-system-map.yaml + integration test (auto-skips once YAMLs are gone). Commit D: catalog Pydantic request schemas. Commit E: access/repositories/catalog/read.py (list/get/get_attribute/search/cross_system_map/gap_check) + 6 REST read endpoints + 27 tests. Commit F: write.py (8 entity+attribute write methods, soft-delete, nested-payload replacement) + 8 REST write endpoints + 29 tests. Commit G: 4 read-only MCP tools + 12 tests. Commit H: per-entity JSON exports under db-export/catalog/entities/ (42 files), export hook fired from all write methods with a suppression() context manager, bulk regenerate; universal references integration - catalog_entity/catalog_attribute added to ENTITY_TYPES + Alembic 0005 extends the refs and change_log CHECK constraints + inbound_references surfaced on entity/attribute detail responses + 17 tests. All 11 PRD acceptance criteria pass; all 7 build-validation-gate steps pass. Full v2 suite: 741 passed, 1 skipped (the seed-migration integration test, which auto-skips because the YAMLs are decommissioned - expected per PRD section 9).",
     "conversation_superseded_at": null,
     "conversation_title": "v2-C catalog ingestion build — 42-entry base entity catalog into the v2 database",
-    "conversation_updated_at": "2026-05-14T04:47:32.797836"
+    "conversation_updated_at": "2026-05-14T04:47:32.797836",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1257,7 +1364,8 @@
     "conversation_summary": "Fifth and final conversation in the methodology-entity-schema-design workstream. Integrated the four per-entity schema specs (`domain`, `entity`, `process`, `crm_candidate` — produced by SES-012/013/014/015) into a coherent v0.4 release. Began with the cross-spec consistency check per spec-guide section 7.2, which accepted three documented deviations across the four specs as well-justified (DEC-055 process no-status, DEC-056 process PROC prefix, DEC-062 crm_candidate removed-as-first-class-status). Resolved six architectural questions covering slice breakdown, reference-attachment flow, foundation scope, crm_candidate master-pane sort, and PI-006/PI-008 deferrals. Produced the integrated PRD (in draft pending approval), the slice-by-slice implementation plan, and six executable build prompts (A foundation, B domains panel, C entities panel, D processes panel, E crm_candidates panel, F closeout). Also produced a v1.1 amendment to the schema-spec methodology guide capturing the parent-prefix field-naming and source-first relationship-kind-naming conventions established by SES-012 and applied across SES-013/014/015 (forward-only for methodology entity types; governance entities retain pre-workstream conventions until and unless PI-006 retrofit lands).",
     "conversation_superseded_at": null,
     "conversation_title": "v0.4 build planning",
-    "conversation_updated_at": "2026-05-15T15:45:06.076698"
+    "conversation_updated_at": "2026-05-15T15:45:06.076698",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1275,7 +1383,8 @@
     "conversation_summary": "The conversation opened against a kickoff prompt that imagined methodology entity schema as unplanned greenfield needing a full PRD-implementation-plan-Claude-Code-prompt deliverable set. Inspection of the repo surfaced the actual state: the methodology-entity-schema-design workstream had already produced four schema specs, a workstream plan, a spec guide v1.1 amendment, a draft v0.4 PRD, a draft implementation plan, six build prompts, and four close-out payloads. The kickoff was stale by ~5 days. A reconciliation brief was produced laying out three options: ignore the kickoff and pick up the in-flight workstream (Option A), treat the kickoff as authoritative (Option B), or reconcile by mapping the kickoff's scope against the workstream's then deciding (Option C). Option C was selected. A second pass through ui-PRD-v0.4, the four schema specs, the implementation plan, six build prompts, decisions.json (DEC-038 through DEC-067), and sessions.json (SES-001 through SES-016) confirmed v0.4 was approval-ready with renumbering deltas. PRD §11 and the implementation plan §8 were updated to reflect the renumbering. Three previously-untracked planning items were added to PRD §2 Out of Scope: PI-013 Cross-Domain Service representation, PI-014 Catalog FK integration for methodology entities, PI-015 Methodology entity renderers. Nine files were committed as the approval pass. After slice A completed, the `run-v0.4-slice.sh` launcher was authored to streamline slice B–F invocation. After slice C completed, PI-016 was identified as a recommended candidate (router-level per-pair vocab enforcement on `/references`). After slice E completed, the gap that per-slice session record authoring had been buried in F-closeout step 2 rather than inlined in each slice prompt was surfaced and this drafts file produced as the recovery path.",
     "conversation_superseded_at": null,
     "conversation_title": "v0.4 PRD reconciliation and approval",
-    "conversation_updated_at": "2026-05-15T15:45:06.078762"
+    "conversation_updated_at": "2026-05-15T15:45:06.078762",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1293,7 +1402,8 @@
     "conversation_summary": "First slice of v0.4 build. Six work categories landed plus tests, all per PRD §4.2 and the foundation prompt's step sequence. (1) `crmbuilder-v2/src/crmbuilder_v2/access/vocab.py` extended: `ENTITY_TYPES` gained `domain`, `entity`, `process`, `crm_candidate`; `REFERENCE_RELATIONSHIPS` gained `entity_scopes_to_domain` and `process_hands_off_to_process`; two new `_kinds_for_pair` rules added per DEC-053 and DEC-058; `RELATIONSHIP_RULES` auto-recomputed. (2) Alembic migration `0006_v0_4_foundation_refs_check_extensions.py` extended the three `refs` CHECK constraints to admit the new entity types as source and target; up/down/up verified clean; valid/invalid inserts behave correctly. (3) Sidebar restructured from a flat `QListWidget` into Governance and Methodology grouped sections with non-selectable headers; the Methodology group is empty until slices B–E populate it; `Sidebar.select_entry()` added so `main_window.py` addresses entries by label rather than row index; one smoke test (`test_main_window_constructs`) updated for the new sidebar shape; remaining sidebar tests were already text-search-based and passed unchanged. (4) `refresh.py` file-watch map extended for the four new snapshot files. (5) `GET /<entity>/next-identifier` endpoints retrofitted onto all eight existing governance entity types (`decision`, `session`, `risk`, `planning_item`, `topic`, `reference`, `charter`, `status`), backed by `compute_next_identifier` / `compute_next_version` repo helpers and a shared `next_prefixed_identifier` util; the `references` endpoint returns the next integer ID with a documented deviation because `references` is tuple/integer-keyed not prefix-identified. (6) Spec guide section 6 amendment already committed by the planning conversation (renumbered to DEC-068 at SES-018 PRD approval) — slice A confirmed the amendment text was in place; no edit required.\n\n23 new tests across `test_vocab_v0_4.py` and `test_next_identifier_retrofit.py` plus an updated `test_main_window_constructs`. Full v2 suite 764 passed, 1 skipped (baseline was 741 prior to slice A).",
     "conversation_superseded_at": null,
     "conversation_title": "v0.4 slice A — foundation",
-    "conversation_updated_at": "2026-05-15T15:45:06.079472"
+    "conversation_updated_at": "2026-05-15T15:45:06.079472",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1311,7 +1421,8 @@
     "conversation_summary": "Second slice of v0.4 build. The `domain` methodology entity type landed end-to-end: schema migration, access layer, REST router and client, desktop panel and dialogs, and exporter integration. Migration `0007_v0_4_create_domains_table.py` created the `domains` table with string PK `domain_identifier`, GLOB identifier-format CHECK, status-enum CHECK, and soft-delete column; it also extended the `change_log.entity_type` CHECK to admit the four methodology entity types so the migrated schema stays in lockstep with slice A's vocab additions (a small scope addition justified by the lockstep concern; the pattern carries forward to slices C/D/E). Access layer added `access/repositories/domain.py` with eight standard methods, identifier-format / case-insensitive name-uniqueness / status-enum / one-way transition validation, collision-safe SAVEPOINT-retry auto-assignment, soft-delete + restore; two new exceptions `UnprocessableError` (422) and `StatusTransitionError` (422); `_status_for` consolidated to single-source off `http_status`. REST layer added eight endpoints at `api/routers/domains.py` plus a dedicated `status_transition_handler` emitting the spec's `{\"error\", \"from\", \"to\"}` body shape; router registered in `api/main.py`. Client added eight `*_domain` methods on `ui/client.py`. Desktop UI added `DomainsPanel` (master/detail, Show-deleted toggle, context menu), `domain_crud.py` dialogs (edge-text delete confirm, successor-restricted status combo), `_domain_schema.py`; \"Domains\" sidebar entry at Methodology position #1; panel registered in `main_window.py`; inline 422-error surfacing wired via `RequestShapeError.field_errors()`. Exporter extended to write `domains.json`; first git-tracked snapshot generated. 52 new domain tests across access/api/ui covering all 14 acceptance criteria from `domain.md` §3.7. Full v2 suite 831 passed, 1 skipped (baseline 764 after slice A).",
     "conversation_superseded_at": null,
     "conversation_title": "v0.4 slice B — Domains panel",
-    "conversation_updated_at": "2026-05-15T15:45:06.080103"
+    "conversation_updated_at": "2026-05-15T15:45:06.080103",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1329,7 +1440,8 @@
     "conversation_summary": "Third slice of v0.4 build. The `entity` methodology entity type landed end-to-end: schema migration `0008_v0_4_create_entities_table.py` with ENT-NNN GLOB CHECK, status enum CHECK, and two indexes (verified forward + backward in isolation); `Entity` ORM model; `ENTITY_STATUSES` / `ENTITY_STATUS_TRANSITIONS` vocab; entities added to the JSON-export tables; `access/repositories/entity.py` with eight standard methods mirroring `domain.py`, collision-safe identifier auto-assignment, propose-verify status gate; eight REST endpoints at `api/routers/entities.py` registered in `api/main.py`; `Entity{Create,Replace,Patch}In` schemas; eight `*_entity` methods on `ui/client.py`; `ui/panels/entities.py`, `ui/dialogs/entity_crud.py`, `ui/dialogs/_entity_schema.py` at Methodology sidebar position #2 with the first methodology panel rendering an outgoing `ReferencesSection` (for `entity_scopes_to_domain` affiliations); create-then-attach flow per DEC-070 (no domain multi-select in the New Entity dialog). 75 new tests covering all 16 acceptance criteria from `entity.md` §3.7. Full v2 suite 906 passed, 1 skipped (baseline 831 after slice B).\n\nOne finding worth carrying forward: criterion 14's \"POST /references with (entity, domain) and an unsupported kind returns 422\" check is exercised in this slice via strict-schema rejection of a body keyed `relationship_kind` (rather than the wire key `kind`), matching the prompt's literal example. The live `/references` router does not enforce per-pair `RELATIONSHIP_RULES` because doing so would break v0.3 regression tests that use cross-pair references like `session → decision / decided_in`. Per-pair vocab compliance is enforced where the prompt says it lives: the cascading `ReferenceCreateDialog` (also tested). This gap is the basis for PI-016 (recommended new planning item — see Section 3).",
     "conversation_superseded_at": null,
     "conversation_title": "v0.4 slice C — Entities panel",
-    "conversation_updated_at": "2026-05-15T15:45:06.080624"
+    "conversation_updated_at": "2026-05-15T15:45:06.080624",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1347,7 +1459,8 @@
     "conversation_summary": "Fourth slice of v0.4 build. The `process` methodology entity type landed end-to-end — architecturally the most distinctive of the four. Migration `0009_v0_4_create_processes_table.py` created the `processes` table with GLOB CHECKs on `process_identifier` (PROC-NNN), `process_domain_identifier` (DOM-NNN FK), and the four-value `process_classification` enum (`unclassified`, `mission_critical`, `supporting`, `deferred`); three indexes; verified forward + backward in isolation. `Process` ORM model; `PROCESS_CLASSIFICATIONS` / `PROCESS_CLASSIFICATION_TRANSITIONS` vocab; processes added to the JSON-export tables. `access/repositories/process.py` with eight standard methods, one-way-out-of-`unclassified` classification gate, domain-FK validation against live domains, collision-safe identifier auto-assignment. Two new exceptions `ClassificationTransitionError` and `InvalidDomainReferenceError` with dedicated 422 body-shape handlers registered ahead of the envelope handler. REST: `api/routers/processes.py` with eight endpoints; `Process{Create,Replace,Patch}In` schemas; eight `*_process` methods on `ui/client.py`. Desktop UI: `ui/panels/processes.py`, `ui/dialogs/process_crud.py`, `ui/dialogs/_process_schema.py` at Methodology sidebar position #3; master pane column #3 is Classification (no status column because `process` has no status field per the spec's documented deviation DEC-055); detail pane has a domain-FK line with an inline stale-FK re-affiliation warning per PRD §4.5, a classification combo restricted to valid successors, and a dynamic classification-rationale placeholder. `ReferencesSection` widget extended with optional `inbound_label` and `outbound_label` parameters (default behavior unchanged for v0.3 governance panels) so the panel renders the directional `process_hands_off_to_process` edges as \"Hands off to\" / \"Receives from\" sub-sections — first bidirectional reference rendering in v0.4. 89 new tests covering all 15 acceptance criteria from `process.md` §3.7. Full v2 suite 995 passed, 1 skipped (baseline 906 after slice C). Lint clean.",
     "conversation_superseded_at": null,
     "conversation_title": "v0.4 slice D — Processes panel",
-    "conversation_updated_at": "2026-05-15T15:45:06.081174"
+    "conversation_updated_at": "2026-05-15T15:45:06.081174",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1365,7 +1478,8 @@
     "conversation_summary": "Fifth slice of v0.4 build. The `crm_candidate` methodology entity type landed end-to-end. Migration `0010_v0_4_create_crm_candidates_table.py` created the eight-column table with CHECK constraints on CRM-NNN format and the four-status enum (`active`, `selected`, `declined`, `removed`). Access layer at `access/repositories/crm_candidate.py` with eight standard methods, terminal-state transition guard, and singleton-`selected` guard on POST / PATCH / PUT / restore — the comprehensive coverage the spec requires because restore is the easy mutation path to miss. REST layer at `api/routers/crm_candidates.py` introduced a new `SelectedCandidateConflictError` exception with a dedicated 422 body shape `selected_candidate_already_exists` (distinct from the from/to body shape used for status transitions, because singleton conflict carries different actionable information for the client: which specific record is currently holding `selected`). Desktop UI added `CrmCandidatesPanel` at Methodology sidebar position #4; detail pane laid out in spec §3.6.3 order; status combo restricted to valid successors; create and edit dialogs surface singleton conflicts inline with operator-actionable messaging (\"CRM-NNN is already selected — change its status first.\"); delete dialog includes the PRD §4.6 clarifying note distinguishing the soft-delete-for-authoring-error path from the transition-to-`removed` path for legitimate mid-engagement drops. 92 new tests covering all 12 acceptance criteria from `crm_candidate.md` §3.7 (50 access + 20 API + 22 UI). Slice E batched regression confirmed: 146 access + 73 API + 158 UI tests from slices A–D passing (full-suite regression timed out under sibling pytest contention from an orphaned Claude Code subprocess; batched targeted runs confirmed green).",
     "conversation_superseded_at": null,
     "conversation_title": "v0.4 slice E — CRM Candidates panel",
-    "conversation_updated_at": "2026-05-15T15:45:06.081734"
+    "conversation_updated_at": "2026-05-15T15:45:06.081734",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1383,7 +1497,8 @@
     "conversation_summary": "Sixth and final slice of v0.4 build — mechanical closeout. Five deliverables landed in one commit: (1) `__version__` in `crmbuilder-v2/src/crmbuilder_v2/__init__.py` bumped from `\"0.3.0\"` to `\"0.4.0\"`; (2) v0.4 release-note entry added to `crmbuilder-v2/README.md` directly above the v0.3 entry, matching v0.3's paragraph-plus-bulleted-highlights shape and naming the four new methodology panels, the two new vocab kinds, the Methodology sidebar group, the bidirectional handoff rendering, and the SES-010 next-identifier helper retrofit; (3) regression `uv run pytest tests/crmbuilder_v2/` confirmed green via the slice-E batched-run posture (`access + bootstrap + mcp_server + api` together = 533 passed + 1 skipped, then `ui/` = 554 passed; total 1087 passed + 1 skipped). The monolithic full-suite invocation hit `Fatal Python error: Aborted` mid-flight in `tests/crmbuilder_v2/ui/test_entities_panel.py` from an anyio-portal / FastAPI-TestClient / Qt threading interaction — the same flake slice E hit and recorded as the reason for batched runs. Pre-bump baseline full-suite did complete cleanly with the two pre-existing slice-E test failures noted in judgment call (a) below; (4) integration smoke confirmed Methodology sidebar group renders all four entries (Domains / Entities / Processes / CRM Candidates) by code-inspection plus the regression suite (the live desktop app could not be driven interactively from this Claude Code session; the regression suite plus `_resolve_version()` smoke verifying `0.4.0` cover every behavior the manual smoke would have checked), and About dialog reads `0.4.0`; (5) this SES-024 draft appended to `v0.4-closeout-session-record-drafts.md` between SES-023 and the Section 2 header. PRD §6 acceptance criteria F1–F5 all pass; the cumulative roll-up (A1–A8 plus all 57 per-entity criteria) carries forward from slices A–E. Two judgment calls. (a) The pre-flight baseline test pass detected two pre-existing failures in `tests/crmbuilder_v2/ui/test_smoke.py` (`test_sidebar_entries_constant` and `test_main_window_constructs`) caused by slice E adding `\"CRM Candidates\"` to `SIDEBAR_ENTRIES` without updating the test's `EXPECTED_ENTRIES` constant. Per the F-closeout prompt's \"fix happens in the slice that owns the failing test, not in slice F\" rule, the strict reading would have stopped here. Per Doug's no-stop directive for this conversation, the trivial one-line constant update was folded into slice F's commit as a closeout cleanup since the alternative — a separate slice E follow-up commit for a single missed line in a test constant — would pollute history without changing semantics. (b) The post-bump regression then surfaced one further failure in `tests/crmbuilder_v2/ui/test_about_dialog.py::test_version_displays_0_3_0`, which hardcoded the v0.3 closeout's expected version. Renamed to `test_version_displays_0_4_0` with the asserted version updated to `\"0.4.0\"` — this is the v0.4 closeout's parallel of the v0.3 closeout test, mechanically tied to the version bump deliverable in step 1, so its update belongs to slice F regardless of the strict rule. Both deviations identified explicitly in the commit message and in this session record so the changes are traceable.",
     "conversation_superseded_at": null,
     "conversation_title": "v0.4 slice F — closeout",
-    "conversation_updated_at": "2026-05-15T15:45:06.082250"
+    "conversation_updated_at": "2026-05-15T15:45:06.082250",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1401,7 +1516,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.5 orientation — engagement management workstream kickoff, PI-001 reopening, paper-test deferral",
-    "conversation_updated_at": "2026-05-16T05:28:38.448722"
+    "conversation_updated_at": "2026-05-16T05:28:38.448722",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1419,7 +1535,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.5 Conversation 1 — multi-engagement architecture and engagement schema",
-    "conversation_updated_at": "2026-05-16T16:12:10.991096"
+    "conversation_updated_at": "2026-05-16T16:12:10.991096",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1437,7 +1554,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Styling Conversation 1 — design pass: tokens, component visual decisions, application priorities, acceptance criteria",
-    "conversation_updated_at": "2026-05-16T23:55:16.289330"
+    "conversation_updated_at": "2026-05-16T23:55:16.289330",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1455,7 +1573,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.5 Conversation 2 — build planning (release PRD, implementation plan, five slice build prompts)",
-    "conversation_updated_at": "2026-05-17T03:55:16.596211"
+    "conversation_updated_at": "2026-05-17T03:55:16.596211",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1473,7 +1592,8 @@
     "conversation_summary": "Two-commit Claude Code session. Commit one (a4c8b35) executed the slice A launcher-wiring prompt as written: bootstrap_meta_db() at API startup, dogfood-migration trigger at desktop startup with QProgressDialog and hard-fail UX, three regression tests. Discovered a SQLite race during full-suite run (create_all(checkfirst=True) not atomic against eight parallel test-client TestClients) and absorbed it with a narrow OperationalError catch at the call site, preserving slice A's helper untouched per the prompt's 'do not modify slice A helpers' guardrail. Manual smoke surfaced a second defect: per-engagement endpoints 500 against Doug's running API. Diagnosed as a slice D gap — initial UI launch never sets CRMBUILDER_V2_DB_PATH because activation only fires on user-driven engagement switches. Investigation surfaced a third latent bug upstream: access/meta_db.meta_db_path() and migration/lazy_migration.engagement_db_path() derive their locations from s.db_path.parent, which silently produces wrong nested paths when db_path is in the post-activation engagements/{code}.db shape (the slice E end-to-end test masks this with no-op subprocess managers; the activation worker would have hit it in production). Commit two (3467764) closes both: ui/app.py.main now routes the API at the active engagement before lifecycle.start(), and a new data_dir() helper in access/meta_db.py normalises both layouts back to data/ so the meta DB and sibling engagement DBs always resolve correctly regardless of which file db_path names. Both commits pushed; operator API restarted with the env var explicitly set; UI verified green.",
     "conversation_superseded_at": null,
     "conversation_title": "v0.5 slice A follow-up (launcher wiring) + slice D follow-up (route API at active engagement, fix latent data_dir derivation) — two-commit Claude Code session",
-    "conversation_updated_at": "2026-05-18T02:33:24.779183"
+    "conversation_updated_at": "2026-05-18T02:33:24.779183",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1491,7 +1611,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.5 slice A — foundation infrastructure and dogfood migration",
-    "conversation_updated_at": "2026-05-18T02:44:22.287167"
+    "conversation_updated_at": "2026-05-18T02:44:22.287167",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1509,7 +1630,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.5 slice B — engagement schema, access layer, REST API",
-    "conversation_updated_at": "2026-05-18T02:44:29.089257"
+    "conversation_updated_at": "2026-05-18T02:44:29.089257",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1527,7 +1649,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.5 slice C — engagement management panel UI",
-    "conversation_updated_at": "2026-05-18T02:44:31.304307"
+    "conversation_updated_at": "2026-05-18T02:44:31.304307",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1545,7 +1668,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.5 slice D — engagement switching, top-strip, picker, single-gesture creation+activation",
-    "conversation_updated_at": "2026-05-18T02:44:33.416999"
+    "conversation_updated_at": "2026-05-18T02:44:33.416999",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1563,7 +1687,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.5 slice E — closeout (version 0.5.0, README release note, end-to-end integration smoke, full regression pass)",
-    "conversation_updated_at": "2026-05-18T02:44:35.612604"
+    "conversation_updated_at": "2026-05-18T02:44:35.612604",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1581,7 +1706,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Styling Conversation 2 — build planning: ui-PRD-v0.6, implementation plan, six slice prompts, version-bundling resolution",
-    "conversation_updated_at": "2026-05-18T04:31:14.583905"
+    "conversation_updated_at": "2026-05-18T04:31:14.583905",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1599,7 +1725,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.6 slice A — foundation infrastructure + About dialog",
-    "conversation_updated_at": "2026-05-18T22:46:42.833191"
+    "conversation_updated_at": "2026-05-18T22:46:42.833191",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1617,7 +1744,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.6 slice B — sidebar + master-pane delegate",
-    "conversation_updated_at": "2026-05-18T22:46:49.020143"
+    "conversation_updated_at": "2026-05-18T22:46:49.020143",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1635,7 +1763,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.6 slice C — panel retrofits + ReferencesSection sub-section rewrite",
-    "conversation_updated_at": "2026-05-18T22:46:50.769631"
+    "conversation_updated_at": "2026-05-18T22:46:50.769631",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1653,7 +1782,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.6 slice A follow-up — force Fusion style + explicit light palette to neutralize OS theme bleed-through",
-    "conversation_updated_at": "2026-05-18T22:46:53.383267"
+    "conversation_updated_at": "2026-05-18T22:46:53.383267",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1671,7 +1801,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.6 slice D — dialogs and form controls (button categories, edit-dialog context strip, delete-confirm)",
-    "conversation_updated_at": "2026-05-18T22:46:55.072273"
+    "conversation_updated_at": "2026-05-18T22:46:55.072273",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1689,7 +1820,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.6 slice E — status, error, warning + crash banner",
-    "conversation_updated_at": "2026-05-18T22:46:56.908902"
+    "conversation_updated_at": "2026-05-18T22:46:56.908902",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1707,7 +1839,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "v0.6 slice F — closeout (release 0.6.0): version bump, README, WCAG contrast build gate, design pass §4.4 traceability fix",
-    "conversation_updated_at": "2026-05-18T22:46:58.652105"
+    "conversation_updated_at": "2026-05-18T22:46:58.652105",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1725,7 +1858,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Multi-tenancy routing fix — planning: seven architectural decisions, two-slice build plan, slice prompts authored",
-    "conversation_updated_at": "2026-05-19T21:10:05.771933"
+    "conversation_updated_at": "2026-05-19T21:10:05.771933",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1743,7 +1877,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Fix engagement switching (in-process re-route) + connection/version introspection",
-    "conversation_updated_at": "2026-05-20T17:48:36.557949"
+    "conversation_updated_at": "2026-05-20T17:48:36.557949",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1761,7 +1896,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Governance entity schema gap identified; six principle-level decisions reached; workstream-establishing kickoff prompt authored",
-    "conversation_updated_at": "2026-05-20T21:51:33.999190"
+    "conversation_updated_at": "2026-05-20T21:51:33.999190",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1779,7 +1915,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Governance entity schema-design workstream established; workstream master plan, methodology guide, and six per-entity schema-design kickoff prompts produced",
-    "conversation_updated_at": "2026-05-21T00:21:53.685662"
+    "conversation_updated_at": "2026-05-21T00:21:53.685662",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1797,7 +1934,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Workstream entity schema designed; first per-entity governance schema specification produced",
-    "conversation_updated_at": "2026-05-21T01:58:12.774532"
+    "conversation_updated_at": "2026-05-21T01:58:12.774532",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1815,7 +1953,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Conversation entity schema designed; second per-entity governance schema specification produced",
-    "conversation_updated_at": "2026-05-21T13:58:47.315417"
+    "conversation_updated_at": "2026-05-21T13:58:47.315417",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1833,7 +1972,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Reference book entity schema designed; third per-entity governance schema specification produced (audit-and-finalize)",
-    "conversation_updated_at": "2026-05-21T16:01:11.595104"
+    "conversation_updated_at": "2026-05-21T16:01:11.595104",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1851,7 +1991,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Work_ticket entity schema designed; fourth per-entity governance schema specification produced (audit-and-adopt)",
-    "conversation_updated_at": "2026-05-22T03:26:26.456838"
+    "conversation_updated_at": "2026-05-22T03:26:26.456838",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1869,7 +2010,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "close_out_payload entity schema designed (fifth-of-six per-entity schema-design conversation); push convention reconciled across Claude.ai project instructions, userMemories, and repo-level CLAUDE.md files",
-    "conversation_updated_at": "2026-05-22T04:45:13.984671"
+    "conversation_updated_at": "2026-05-22T04:45:13.984671",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1887,7 +2029,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "YAML schema Category 6 (Role-Based Access Control) reordered across v1.2 and v1.3; gap-analysis Section 6 amended and v1.2 drafting kickoff committed",
-    "conversation_updated_at": "2026-05-22T05:26:45.607618"
+    "conversation_updated_at": "2026-05-22T05:26:45.607618",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1905,7 +2048,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "deposit_event entity schema designed; governance-entity schema-design workstream concluded; build-planning kickoff drafted",
-    "conversation_updated_at": "2026-05-22T14:58:22.788274"
+    "conversation_updated_at": "2026-05-22T14:58:22.788274",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1923,7 +2067,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Governance entity build-planning conversation; v0.7 release planned; close_out_payload spec reconciled to v1.1",
-    "conversation_updated_at": "2026-05-22T18:38:43.026227"
+    "conversation_updated_at": "2026-05-22T18:38:43.026227",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1941,7 +2086,8 @@
     "conversation_summary": "v0.7 ships. 24 slice commits plus 1 amend, every slice's tests green at slice close. The transaction-correctness fix is the most consequential engineering decision: every governance edge-rule failure now rolls back cleanly. The full access+api suite runs faster under explicit transactions (107s vs slower prior). WS-001 transitions to complete as the final step. Phases 2-4 of PI-022 are authored as PI-024 (prior workstreams), PI-025 (prior conversations), PI-026 (historical applies as deposit_events) for future execution.",
     "conversation_superseded_at": null,
     "conversation_title": "v0.7 governance entity release shipped",
-    "conversation_updated_at": "2026-05-23T00:02:29.544438"
+    "conversation_updated_at": "2026-05-23T00:02:29.544438",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1959,7 +2105,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Code Change Lifecycle workstream established: diagnosed planning_items resolution gap, adopted first-class commit entities (Option III), authored kickoff for methodology drafting conversation",
-    "conversation_updated_at": "2026-05-23T05:32:47.905309"
+    "conversation_updated_at": "2026-05-23T05:32:47.905309",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1977,7 +2124,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Audit feature v1.2 workstream established: planning conversation captured four design decisions, authored audit-v1.2-planning.md, decomposed into 11-prompt Claude Code series",
-    "conversation_updated_at": "2026-05-23T15:52:45.377421"
+    "conversation_updated_at": "2026-05-23T15:52:45.377421",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -1995,7 +2143,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-024 prior-workstreams backfill planned: six workstream records (WS-002 through WS-007) and three master-plan reference_book records (RB-011 through RB-013) specified, with Claude Code backfill prompt authored",
-    "conversation_updated_at": "2026-05-23T15:59:47.997062"
+    "conversation_updated_at": "2026-05-23T15:59:47.997062",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2013,7 +2162,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "audit-v1.2 planning resolved: §9 open questions and security.yaml placement decided, planning doc v1.1 through v1.3 authored; rebased from SES-059 to SES-060 to clear PI-024 collision",
-    "conversation_updated_at": "2026-05-23T20:51:27.730629"
+    "conversation_updated_at": "2026-05-23T20:51:27.730629",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2031,7 +2181,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Code Change Lifecycle methodology drafted: eight deferred design decisions settled, methodology document v1.0 authored, PI-028 commit entity schema kickoff produced",
-    "conversation_updated_at": "2026-05-23T21:10:10.381084"
+    "conversation_updated_at": "2026-05-23T21:10:10.381084",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2049,7 +2200,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-025 prior-conversations backfill planned: 37 conversation records and 37 work_ticket records specified across WS-002..WS-008, with WS-008 audit-v1.2 established inline as a one-workstream sub-step and the CBM paper-test workstream deferred via Option IV",
-    "conversation_updated_at": "2026-05-23T21:10:59.625053"
+    "conversation_updated_at": "2026-05-23T21:10:59.625053",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2067,7 +2219,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "Commit entity schema spec authored per the seven-section governance schema-spec format; PI-029 schema-migration prompt A queued",
-    "conversation_updated_at": "2026-05-23T21:29:45.421465"
+    "conversation_updated_at": "2026-05-23T21:29:45.421465",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2085,7 +2238,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "V2 remote-access deployment architecture decided: Option A (local-canonical DB + tunneled MCP) approved; transport verified stdio-only; marker-driven engagement routing chosen; tunnel under crmbuilder.com via Cloudflare Tunnel + Access",
-    "conversation_updated_at": "2026-05-23T21:29:51.006031"
+    "conversation_updated_at": "2026-05-23T21:29:51.006031",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2103,7 +2257,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-045 V2 remote-access deployment planning: DEC-205 fail-loud on engagement-marker drift; five operational implementation choices announced inline; three Claude Code prompts authored for the code-changes implementation conversation",
-    "conversation_updated_at": "2026-05-23T22:12:29.216990"
+    "conversation_updated_at": "2026-05-23T22:12:29.216990",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2121,7 +2276,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-026 historical-applies-as-deposit-events backfill planned: 24 close_out_payload records (COP-009..COP-032) and 24 deposit_event records (DEP-020..DEP-043) specified for ses_012 through ses_053 historical close-outs, with 221 wrote_record back-edges including reference targets per Option 2; SES-001 and SES-046 deferred alongside DEC-197's orphan-session pattern due to absent CONV parents required by close_out_payload.md §3.4.5",
-    "conversation_updated_at": "2026-05-24T01:39:37.272013"
+    "conversation_updated_at": "2026-05-24T01:39:37.272013",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2139,7 +2295,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-029 slice B build planning — derived endpoint scope, PATCH updatability scope, by-sha endpoint specifics, list sort/order parameters; Claude Code prompt for commit access layer + REST endpoints + tests authored",
-    "conversation_updated_at": "2026-05-24T04:58:45.856882"
+    "conversation_updated_at": "2026-05-24T04:58:45.856882",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2157,7 +2314,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-026 supersession close-out — DEC-215 supersedes DEC-206 after Option I adopted at apply time; PI-046 vocab.py schema-vs-spec contradiction and PI-047 ses_030 / ses_036 duplicate-session artifact surfaced for the planning queue",
-    "conversation_updated_at": "2026-05-24T05:24:20.572355"
+    "conversation_updated_at": "2026-05-24T05:24:20.572355",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2175,7 +2333,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-023 workstream-state reconciliation utility planning — four surface-and-settle questions settled (invariant scope, allowlist mechanism, read mechanism, output format), embedded follow-on Phase 1 references-orphan acknowledgement decision authored, one new planning item surfaced (PI-048 ses_056 stale-blocks vocabulary), three Claude.ai deliverables produced (close-out payload, apply prompt, PI-023 Claude Code prompt embedding reconcile.py and reconciliation-allowlist.yaml).",
-    "conversation_updated_at": "2026-05-24T15:33:58.189929"
+    "conversation_updated_at": "2026-05-24T15:33:58.189929",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2193,7 +2352,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-030 architecture planning — full-scope close-out payload extension + apply_close_out.py integration: scope, helper architecture, conversation gap, resolves status-flip. Three Claude Code slice prompts authored (A, B, C) plus close-out payload and matching apply prompt. Methodology §4 amendment scheduled for slice A. No new planning items.",
-    "conversation_updated_at": "2026-05-24T20:12:34.656630"
+    "conversation_updated_at": "2026-05-24T20:12:34.656630",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2211,7 +2371,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-045 V2 remote-access deployment — operational steps 1 through 4 (nameserver migration to Cloudflare with Google Workspace email preserved; cloudflared installed and tunnel crmbuilder-mcp running as systemd user service routing mcp.crmbuilder.ai to 127.0.0.1:8810; Cloudflare Access two-policy split — Service Auth for claude-ai-mcp Service Token and Allow + One-time PIN for admin browser path); DEC-225 settles the auth model revisions (Service Token added for programmatic clients, One-time PIN replaces Google login since Cloudflare retired the built-in Google OAuth shortcut)",
-    "conversation_updated_at": "2026-05-24T20:15:23.309495"
+    "conversation_updated_at": "2026-05-24T20:15:23.309495",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2229,7 +2390,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-045 code-changes implementation — slices A (transport flag + FastMCP HTTP binding), B (X-CRMBuilder-Secret middleware), C (engagement-marker fail-loud guard per DEC-205) executed in sequence at Doug's terminal via Claude Code; MCP HTTP transport now live on 127.0.0.1:8810 with two-layer authentication (Cloudflare Access edge + shared-secret app middleware) and DEC-205's drift guard on the REST API; PI-045 code-changes scope structurally complete",
-    "conversation_updated_at": "2026-05-25T01:34:14.677307"
+    "conversation_updated_at": "2026-05-25T01:34:14.677307",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2247,7 +2409,8 @@
     "conversation_summary": "PI-045 step 5 reached the claude.ai connector registration step and discovered that claude.ai's UI supports only OAuth 2.1 auth — no custom HTTP headers — making the X-CRMBuilder-Secret + Cloudflare Service Token model from DEC-204/225 incompatible. The rotation + mcp-secret persistence work completed cleanly (and end-to-end verified through the tunnel), but registration is blocked. DEC-226 settles the architectural reroute to OAuth 2.1 + PKCE; PI-049 captures the implementation scope with a timeboxed Path B (Cloudflare Access as OIDC IdP) feasibility check before committing to Path A (OAuth on our server). PI-045 is blocked by PI-049. Lesson: verify the integrating client's UI auth model before designing server-side auth that must plug into it.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-045 step-5 conversation: Service Token rotation + mcp-secret persistence completed, but claude.ai connector registration found to be incompatible with header-based auth; DEC-226 reroutes to OAuth 2.1 + PI-049 created to enable claude.ai integration",
-    "conversation_updated_at": "2026-05-25T04:34:27.967693"
+    "conversation_updated_at": "2026-05-25T04:34:27.967693",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2265,7 +2428,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "PI-030 build closure — first nine-section close-out payload acceptance test: ingests the three slice commit SHAs (slice A 70d88e6 references atomic edge+flip + methodology §4.0 conversation block, slice B 2b5557d apply_close_out.py extension for five new payload sections + conversations.py identifier-before-title-conflict reorder, slice C c6ff67a enumerate_commits.py helper), resolves PI-030, surfaces PI-050 (helper-evolution for parallel-workstream commit enumeration), promotes the Code Change Lifecycle workstream to a governance object (WS-009 pre-step in apply prompt), and settles six surface-and-settle questions (build-closure conversation type, parallel-workstream commit scoping, resolves attribution discipline per §9, executor-improvisation governance posture, conversation_purpose convention, workstream-membership requirement and methodology §4.0 example fix). Methodology amendments shipped in this conversation: §10 new section establishing the build-closure pattern, §5.5 clarification on parallel-workstream commit enumeration, §4.0 worked-example fix adding the workstream-membership edge slice A omitted, and §5.3/§5.7 cross-references to §10.",
-    "conversation_updated_at": "2026-05-25T15:28:34.692312"
+    "conversation_updated_at": "2026-05-25T15:28:34.692312",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2283,7 +2447,8 @@
     "conversation_summary": "Eleven prompts authored in the Claude.ai sandbox per the DETAIL-mode working pattern (one prompt at a time, full discussion, wait for approval before each). Each prompt was 500–850 lines documenting the specific code changes Claude Code would execute; the prompts collectively implement the audit-v1.2 schema extension, deploy-side managers for Roles and Teams, audit-side discovery and reverse-translation, role-aware AST surface with NOT_SUPPORTED deploy treatment, filtered-tab audit, UI extensions, and documentation. Six DECs surfaced and resolved during prompt kickoffs as the design space narrowed. Seven were originally tracked; DEC-6 and DEC-7 (both about §12.5 NOT_SUPPORTED treatment) merged into a single DEC-243 at close-out per Doug's call. Series complete at all eleven prompts implemented; documentation prompt (K) committed locally at c8c8e22, push deferred to Doug per local-clone convention. The audit-v1.2 series substantially expands the v1.1 audit/deploy feature with a complete Security workstream (roles, teams, scope_access, system_permissions) plus filtered-tab audit round-trip; defers the role-aware visibility surface (§12.5) and field-level permissions (§12.7) to v1.4 alongside other security-deferred items.",
     "conversation_superseded_at": null,
     "conversation_title": "audit-v1.2 prompt-series authoring (Prompts A–K, 11 prompts implementing v1.2 expansion of CRM Audit feature) — six governance DECs surfaced and resolved during prompt kickoffs (DEC-238 natural-form scope_access keys; DEC-239 audit_log removed from §12.4; DEC-240 three EspoCRM-only PATCH permissions preserved; DEC-241 role_manager pre-flight server-state validation; DEC-242 deploy ordering security-LAST with schema §12.6 corrected; DEC-243 §12.5 NOT_SUPPORTED on EspoCRM 9.x deferred to v1.4); PI-051 opened to track v1.4 deferred §12.5 deploy + §12.7 field-level permissions implementation",
-    "conversation_updated_at": "2026-05-25T15:37:43.625035"
+    "conversation_updated_at": "2026-05-25T15:37:43.625035",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2301,7 +2466,8 @@
     "conversation_summary": "",
     "conversation_superseded_at": null,
     "conversation_title": "pi-cleanup phase B — apply four missed status flips identified by artifact-evidence audit (PI-001, PI-024, PI-025, PI-026)",
-    "conversation_updated_at": "2026-05-25T17:19:25.368027"
+    "conversation_updated_at": "2026-05-25T17:19:25.368027",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2319,7 +2485,8 @@
     "conversation_summary": "PI-049 Phase 1 Path B feasibility check completed end-to-end and revealed an upstream Anthropic bug in claude.ai's connector OAuth implementation — the bug is between receiving the authorization code and exchanging it for a token, reproducible across 7+ IdPs (Cloudflare being the 7th). Path B infrastructure preserved as-configured on disk and recoverable. Strategic pivot to chat-UI-on-Anthropic-API with native tool definitions calling the REST API directly removes the third-party dependency on claude.ai-web. The original goal (a chat UI with v2 governance tools) is achievable today via a simpler architecture; the months of foundational v2 work (structured DB, REST API, MCP tools, methodology) is unaffected and load-bearing for the new path. Only PI-045 (remote MCP) and PI-049 (OAuth implementation) are shelved-blocked pending Anthropic fix.",
     "conversation_superseded_at": null,
     "conversation_title": "v2 AI surface integration — claude.ai-web blocked by upstream Anthropic connector bug (ofid_* pattern across 7+ IdPs), chat-UI-on-Anthropic-API pivot; Path B fully configured + shelved with infrastructure preserved",
-    "conversation_updated_at": "2026-05-25T19:45:34.156140"
+    "conversation_updated_at": "2026-05-25T19:45:34.156140",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2337,7 +2504,8 @@
     "conversation_summary": "PI-002 (DEC-043's option C) shipped. The v2 storage REST API now accepts an omitted or null `identifier` on `POST` for every prefixed-identifier entity type — decision, session, risk, planning_item, and topic join the twelve already-conforming methodology and governance entity types from v0.4+. The access-layer mechanism is the same SAVEPOINT-retry helper proven by the domain repository under concurrency. Backward compatibility is automatic: every existing caller that supplies an explicit identifier continues to work, subject to the format-regex tightening that surfaces a small set of legacy test-fixture prefix corrections (silently accepted before, now properly enforced). CLAUDE.md retires the post-SES-010 'compute client-side' rule. The asymmetry that SES-010 named is resolved; the `GET /<entity>/next-identifier` helpers (DEC-043 option B) remain available for clients that prefer read-then-write.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-002 build closure — server-side identifier auto-assignment retrofit for decision/session/risk/planning_item/topic; uniform format enforcement on the explicit-identifier path; option-C of SES-010 shipped",
-    "conversation_updated_at": "2026-05-25T20:26:56.837628"
+    "conversation_updated_at": "2026-05-25T20:26:56.837628",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2355,7 +2523,8 @@
     "conversation_summary": "Architecture-mode planning conversation that established WS-012 (parallel agent orchestrator and executive summary) as a new workstream. Six consequential decisions taken on orchestrator architecture (area-level parallelism with multi-valued areas, per-agent conversation+session pairs supervised by an orchestrator conversation+session pair, static-wave scheduling), governance metadata (executive_summary as required structured field across PI/DEC/SES), and workstream organization (single workstream covering both orchestrator and exec-summary tracks). Plan was revised mid-conversation after a repo pull surfaced that the workstream entity and several reference kinds already shipped in v0.7/v0.8, dropping three obsolete PIs from the original eleven-PI plan and renaming depends_on to the existing blocked_by kind. Ten planning items (PI-074 through PI-083) land in two tracks (bootstrap and orchestrator) with dependencies declared via blocked_by; first orchestrator test run is the workstream's own acceptance test.",
     "conversation_superseded_at": null,
     "conversation_title": "Parallel agent orchestrator architecture — WS-012 establishing planning conversation",
-    "conversation_updated_at": "2026-05-27T01:28:34.008805"
+    "conversation_updated_at": "2026-05-27T01:28:34.008805",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2373,7 +2542,8 @@
     "conversation_summary": "PI-052 chat UI design + slicing complete. Eleven decisions settled across Q1–Q10 + tool surface + auth + model + slicing + methodology. PySide6 chat tab as production surface confirmed (resolves DEC-245 Phase 2 deferred). All 44 tools registered with read/write partition for mode toggle. JSON file persistence under user data dir (governance-entity elevation deferred to candidate PI). Streaming on with QThread + asyncio bridge. claude.ai-web sidebar pattern for multi-conversation. Per-turn + per-session token+cost visibility. Opus 4.7 default. Four-slice implementation plan A–D with explicit acceptance criteria. Hybrid kickoff pattern (WT summary + file pointer + file-is-canonical rule) established as methodology standard. Design document at `PRDs/product/crmbuilder-v2/pi-052-chat-ui-design.md` is canonical. Slice-A terminal spike kickoff body authored as WT-048 for the first implementation session.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-052 chat-UI design + slicing — architecture for the PySide6 chat tab on the Anthropic API with native tool definitions; eleven decisions settled across Q1–Q10 + tool surface + auth + model + slicing + methodology",
-    "conversation_updated_at": "2026-05-26T02:48:33.437100"
+    "conversation_updated_at": "2026-05-26T02:48:33.437100",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2391,7 +2561,8 @@
     "conversation_summary": "Six methodology-entity schema specs and six matching build prompts authored to satisfy PI-003, PI-004, and PI-005 incrementally across six future Claude Code sessions. The design phase landed 2,909 lines of new spec documentation under `PRDs/product/crmbuilder-v2/methodology-schema-specs/` and an estimated 2,400–3,600 lines of build-prompt documentation under `PRDs/product/crmbuilder-v2/prompts/`. The three PIs remain `Open` at this session's close and advance via the `addresses` edges this session creates; resolution flips to `Resolved` happen in the future build sessions' close-outs. The six build prompts are recorded as `kickoff_prompt` work_tickets (WT-049..054) anchored to their target PIs, completing the v2 session-lifecycle pattern documented in CLAUDE.md: every unit of work has a planning_item, an addressing kickoff work_ticket pointing to a canonical kickoff `.md` file, and a future session that consumes the WT and lands the implementation.",
     "conversation_superseded_at": null,
     "conversation_title": "Methodology-schema design phase for PI-003 / PI-004 / PI-005 — six schema specs + six build prompts",
-    "conversation_updated_at": "2026-05-26T02:32:42.245768"
+    "conversation_updated_at": "2026-05-26T02:32:42.245768",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2409,7 +2580,8 @@
     "conversation_summary": "PI-003 (`persona` methodology entity type) shipped end-to-end. The v2 storage layer now hosts persona records — human roles and actors performed in the client's organization, surfaced in Phase 2 or Phase 3 of the evolved methodology. The build mirrors the v0.4 slice-C entity pattern verbatim with persona-specific adjustments per `persona.md` v1.0: three-status propose-verify lifecycle (candidate / confirmed / deferred) with one-way gate, case-insensitive name uniqueness, two outgoing reference kinds (`persona_scopes_to_domain` to domains; `persona_realized_as_entity` to entities — the first methodology entity to surface two outgoing kinds at the panel level), references-over-FK posture per DEC-053, soft-delete-with-restore via the standard mechanism, parent-prefix field naming, REST-via-`{data, meta, errors}`-envelope. The PersonasPanel adopts the v0.4 DEC-067 create-then-attach flow for cross-entity-type consistency. PI-003's deferred-since-DEC-039 status is resolved.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-003 build — `persona` methodology entity type end-to-end (migration, access, REST, UI, tests)",
-    "conversation_updated_at": "2026-05-26T03:23:25.496147"
+    "conversation_updated_at": "2026-05-26T03:23:25.496147",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2427,7 +2599,8 @@
     "conversation_summary": "PI-004 first slice (`field` methodology entity type) shipped end-to-end. The v2 storage layer now hosts field records — one attribute on one CRM-modeled entity, surfaced in evolved-methodology Phase 3 iteration build conversations and feeding the downstream YAML deploy spec. The build mirrors the v0.4 slice-C entity / v0.5+ persona pattern with two bounded field-specific deviations per `field.md` v1.0: (1) atomic POST — `POST /fields` requires `field_belongs_to_entity_identifier` in the body so row + edge land in one transaction preserving the live-edge invariant on the mandatory 1:1 affiliation (DEC-271); (2) per-entity-scoped `field_name` uniqueness — `Contact.status` and `Mentor.status` are both valid because the uniqueness key is `(parent_entity_identifier, lower(field_name))`, not `field_name` alone (DEC-269). Plus an 11-value `field_type` enum vocabulary (text/long_text/enum/multi_enum/date/datetime/money/boolean/number/reference/derived; DEC-271). The references repository gains 1:1-mandatory cardinality enforcement on the `field_belongs_to_entity` kind via two new guards: POST-second-edge rejected with 422 `cardinality_violation`; DELETE-only-edge-of-live-field rejected with 422 `cardinality_violation` (the internal `_skip_cardinality_check=True` flag enables the legitimate `delete_field` repo-to-repo path that atomically soft-deletes the row and the edge together). Master-pane primary grouping by parent entity per §3.6.2 is deferred to a follow-on slice — v1 ships flat with a TODO. 'Move to entity' reparenting affordance per §3.6.5 also deferred. PI-004 is ADDRESSED here (not resolved); the last sibling (requirement / manual_config / test_spec) resolves it per the DEC-232 / SES-074 build-closure pattern.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-004 first slice — `field` methodology entity type end-to-end (migration, access, REST, UI, tests)",
-    "conversation_updated_at": "2026-05-26T04:13:30.490612"
+    "conversation_updated_at": "2026-05-26T04:13:30.490612",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2445,7 +2618,8 @@
     "conversation_summary": "PI-004 cohort second deliverable (`requirement` methodology entity type) shipped end-to-end. The v2 storage layer now hosts requirement records — discrete testable statements of what the CRM must do, surfaced in evolved-methodology iteration build conversations and verified by `test_spec` records once that PI-004 sibling lands. The build mirrors the v0.4 slice-C entity / v0.5+ persona / v0.5+ field pattern with three bounded requirement-specific characteristics per `requirement.md` v1.0: (1) MoSCoW priority enum (`must`/`should`/`could`/`wont`) with default `should` per spec §3.2.3 — DEC-275 — and unconstrained any-to-any priority transitions (cf. status, which uses the one-way propose-verify gate); (2) separate `requirement_acceptance_summary` field alongside `requirement_description` per §3.2.2 — keeps the methodology-level success articulation distinct from the capability description; (3) five outbound reference kinds per §3.3.1 — `requirement_scopes_to_domain` (target=domain), `requirement_touches_entity` (target=entity), `requirement_touches_field` (target=field — newly live as of PI-004 first slice), `requirement_realized_by_process` (target=process), and `requirement_verified_by_test_spec` (target=test_spec — registered in REFERENCE_RELATIONSHIPS and the refs CHECK admits it, but the `_kinds_for_pair` clause is held as a TODO comment until test_spec lands). Global case-insensitive name uniqueness (mirrors entity, contrasts with process per spec §3.2.1) — DEC-275. Five-column master pane (Identifier/Name/Priority/Status/Updated) shipped by default per AC-11 — DEC-278. PI-004 remains ADDRESSED (not resolved); two siblings remain (manual_config, test_spec); the last sibling resolves PI-004 per DEC-232 / SES-074 build-closure pattern.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-004 cohort — `requirement` methodology entity type end-to-end (migration, access, REST, UI, tests)",
-    "conversation_updated_at": "2026-05-26T05:04:53.365074"
+    "conversation_updated_at": "2026-05-26T05:04:53.365074",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2463,7 +2637,8 @@
     "conversation_summary": "PI-004 cohort third deliverable (`manual_config` methodology entity type) shipped end-to-end. The v2 storage layer now hosts manual_config records — discrete CRM-configuration items the deploy pipeline cannot apply automatically and a human operator must perform in the CRM admin UI after deploy (saved views, duplicate checks, workflows, deferred-options enums, role permissions, dynamic logic, other). The build mirrors the v0.4 entity / v0.5+ requirement pattern with three bounded manual_config-specific characteristics per `manual_config.md` v1.0: (1) **four-status lifecycle** (`candidate` / `confirmed` / `deferred` / `completed`) per §3.4 — DEC-281 — adds a terminal `completed` reachable only from `confirmed`, an explicit deviation from the cross-spec three-status default; the spec guide §6 closing-paragraph rule permits documented deviations when well-justified, and operator-completion of a configuration is a meaningful methodology event distinct from client-scope confirmation; (2) **seven-value category enum** (`saved_view` / `duplicate_check` / `workflow` / `deferred_options_enum` / `role_permission` / `dynamic_logic` / `other`) per §3.2.3 — DEC-280 — aligned with the historical CRMBuilder v1 NOT_SUPPORTED categories documented in CLAUDE.md plus the v1.1 YAML schema's `optionsDeferred` flag and the role/dynamic-logic items deferred from v1.0; (3) **cross-field invariant on transition into `completed`** per §3.5.3 — DEC-281 — both `manual_config_completed_at` (server-defaultable to now() when omitted) and `manual_config_completed_by` (must be supplied or 422) are required in the same write; enforced at the access layer via a new `CompletedStatusRequiresCompletionFieldsError` exception class and matching `completed_status_requires_completion_fields_handler` that renders the dedicated `{error: 'completed_status_requires_completion_fields', missing: [...]}` body within the v2 envelope shape. Four outbound reference kinds per §3.3.1 — `manual_config_scopes_to_domain` (target=domain), `manual_config_touches_entity` (target=entity), `manual_config_touches_field` (target=field — live as of PI-004 first slice), `manual_config_realizes_requirement` (target=requirement — live as of PI-004 cohort second slice) — DEC-282; all four targets are live entity types so the four `_kinds_for_pair` clauses ship active unconditionally with no TODO comments. Five-column master pane (Identifier/Name/Category/Status/Updated) shipped by default per AC-12 — DEC-283; Category ships as a master-pane column because it is a scalar field on the entity table (no batched join required) and category-at-a-glance is high-value for the consultant scanning what kinds of manual action are pending. Detail-pane conditional reveal of completion fields when status is `completed` per AC-13 / §3.6.3. Status-combo-driven Mark-Completed UX per §3.6.5 (dedicated 'Mark Completed' button alternative deferred per §3.8.1). PI-004 remains ADDRESSED (not resolved); one sibling (test_spec) remains; the last sibling resolves PI-004 per DEC-232 / SES-074 build-closure pattern.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-004 cohort — `manual_config` methodology entity type end-to-end (migration, access, REST, UI, tests)",
-    "conversation_updated_at": "2026-05-26T05:37:48.505318"
+    "conversation_updated_at": "2026-05-26T05:37:48.505318",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2481,7 +2656,8 @@
     "conversation_summary": "PI-004 cohort closer (`test_spec` methodology entity type) shipped end-to-end. **RESOLVES PI-004** via the resolves_planning_items section's atomic edge+flip behavior. The v2 storage layer now hosts test_spec records — verification specifications that bridge requirements (what must be true) and verification runs (was it true on this deploy). The build mirrors the v0.4 entity / v0.5+ requirement / manual_config pattern with three bounded test_spec-specific characteristics per `test_spec.md` v1.0: (1) **dual-axis state** per §3.4.3 — DEC-286 — two enum fields on the row: `test_spec_status` (methodology lifecycle, restricted transitions per the propose-verify gate; same shape as domain/entity) and `test_spec_last_run_outcome` (execution outcome, UNRESTRICTED transitions per §3.4.2 because outcomes are observational, not decisional). The asymmetry IS the point — the spec calls out methodology-lifecycle vs execution-outcome separation as a v0.5+ schema convention candidate for any future verification-like entity. (2) **§3.4.4 cross-field invariant** — DEC-286 — `last_run_at` is auto-populated by the server when outcome moves to a run state (passing/failing/skipped), auto-cleared along with `last_run_notes` when outcome resets to `not_run`, and an explicit-null `last_run_at` while outcome is a run state returns 422. Enforced exclusively at the access layer via `_apply_outcome_invariant`; the API layer passes the explicit-null-vs-omitted signal via Pydantic's `model_dump(exclude_unset=True)`. (3) **`POST /test-specs/{id}/record-run` convenience endpoint** — DEC-287 — resolves the §3.8.1 open question in the affirmative; the thinner shape (just `{outcome, notes?, at?}`) is easier to call from automation than a three-field PATCH and aligns with the methodology-vs-execution principle. The PATCH endpoint still supports the same three-field update. Three outbound reference kinds per §3.3.1 — `test_spec_touches_entity` (target=entity), `test_spec_touches_field` (target=field — live as of PI-004 first slice), `test_spec_exercises_process` (target=process) — DEC-287; all three targets are live, all three `_kinds_for_pair` clauses ship active. The inbound `requirement_verified_by_test_spec` kind was registered by the requirement build per the once-per-kind rule (CLAUDE.md line 48); this build only activates the previously-dormant `(requirement, test_spec)` clause by uncommenting it. Five-column master pane (Identifier/Name/Status/Last Run/Updated) per AC-12 — DEC-287; the Last Run column ships with a color cue (passing green, failing red, not_run gray, skipped amber) per §3.6.2 UI deviation justified by verification-health-at-a-glance. Three-section detail pane (identity-and-methodology / Test body / Last run + collapsible Internal notes + ReferencesSection) per §3.6.3. Record Run convenience modal sub-dialog per §3.8.1 — transient, uses `deleteLater()` per project_qt_worker_widget_gc_hazard.md. PI-004 resolves on this close-out per DEC-232 / SES-074 build-closure pattern.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-004 cohort closer — `test_spec` methodology entity type end-to-end; RESOLVES PI-004",
-    "conversation_updated_at": "2026-05-26T06:17:43.943294"
+    "conversation_updated_at": "2026-05-26T06:17:43.943294",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2499,7 +2675,8 @@
     "conversation_summary": "PI-052 Slice A shipped. Foundational architecture validated: Anthropic SDK + native tools=[...] + blocking httpx against the local REST API compose into a working chat loop in ~130 LOC of pure Python, with no surprises in tool-use block shape, no surprises in the multi-turn tool dispatch protocol, and no surprises in the envelope-unwrap path. The lesson from DEC-244 (verify end-to-end before building infrastructure) holds: if the spike had not worked, DEC-257's threading model and DEC-261's downstream slices would have been built on a foundation that doesn't exist. It worked. Slice B (PySide6 MVP tab, streaming on, one tool wired through dispatcher) is unblocked. The script lives at crmbuilder-v2/scripts/chat_spike.py as a reference; it is throwaway code, not maintained going forward — Slice C does the refactor to mcp_server.tools.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-052 Slice A build — terminal proof-of-concept Anthropic-API chat loop with three read-only governance tools",
-    "conversation_updated_at": "2026-05-26T06:21:40.847990"
+    "conversation_updated_at": "2026-05-26T06:21:40.847990",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2517,7 +2694,8 @@
     "conversation_summary": "PI-005 (process schema growth beyond Phase 1 thin shape) shipped per the SES-081 design phase. Six new TEXT NULL Phase-3 content columns on processes (steps, triggers, outcomes, edge_cases, frequency, duration_estimate); three new references.relationship_kind values registered both in vocab and in the refs CHECK constraint (process_performed_by_persona, process_touches_field, process_touches_entity); detail pane grows with a Phase-3-sections collapsible group; Edit dialog accepts the new fields; Create dialog deliberately omits them per spec §3.6.4 (Phase 3 is post-create work). 22 new tests covering all 13 acceptance criteria in process-v2.md §3.7. Backward compatibility automatic: every v0.4-authored process record continues to validate as a legal v2 record with NULL for the six new columns. The CRMBUILDER engagement DB was migrated to head 0018 and the API restarted; PROC-001 was used as the live v0.4-record verification target. No new planning items surfaced; the spec §3.8.3 v0.7+ deferrals (structured process_steps, process variants, step-as-first-class-record, process_definition_level lifecycle, master-pane growth) remain CBM-redo-conditional per their original framing.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-005 build closure — process v2 schema growth executed end-to-end via the SES-081 build prompt (process-v2.md spec, WT-054 ticket); migration 0018 lands six TEXT NULL columns and three new refs.relationship_kind values; UI grows the detail pane Phase-3-sections group and the Edit dialog; 22 new tests; PI-005 resolves",
-    "conversation_updated_at": "2026-05-26T06:53:28.590756"
+    "conversation_updated_at": "2026-05-26T06:53:28.590756",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2535,7 +2713,8 @@
     "conversation_summary": "Strategic-direction architecture review session for the CRMBuilder project. Established a unified direction for consolidating V1 and V2 documentation under a single Master CRMBuilder PRD at a new specifications/ directory, with all internal docs in MD format and customer-facing deliverables remaining format-flexible. Adopted a discovery-driven iterative authoring model (draft enough to run a phase, run, refine), with CRMBuilder dogfood as the first client and CBM as validation. Established a three-category conceptual model (Process Management Tools/Data, Deliverables, Process Support Knowledge/Tools) that gives a home to all V2 records and methodology artifacts. Redesigned Phase 1 as client-led intake (rather than the existing consultant-led structured interview) with contextually-loaded Skills knowledge files. Surfaced the Session/Conversation entity model as cruft — redesigned conceptually as a medium-agnostic Session containing topical Conversation sub-units. Authored crmbuilder/CLAUDE.md direction-setting section, transitional headers on 17 methodology documents, Master CRMBuilder PRD v0.1 (discussion draft), and glossary.md v0.2 with five terms. Captured 13 Planning Items for V2 architectural cleanup work and ten architectural Decisions. Mid-session went through TWO rounds of identifier-collision recovery: (round 1) initial assignment SES-085 + CONV-055 + DEC-279..287 collided with parallel-applied PI-004 manual_config + test_spec close-outs; merge resolution kept those as canonical SES-085/086 and the architecture-review close-out was renumbered to SES-087 + CONV-057 + DEC-288..296 with PI-061..073 unchanged. (Round 2) during amendment authoring (folding the collision-recovery work into the same session), origin advanced with two more locally-applied close-outs — SES-087 (PI-052 Slice A) and SES-088 (PI-005 process v2 schema growth) — consuming SES-087, SES-088, CONV-057, CONV-058, DEC-288/289/290; close-out renumbered a second time to final identifiers SES-089 + CONV-059 + DEC-291..300, with PI-061..073 still unchanged. Captured the identifier-capture protocol lesson as DEC-300; the second collision happening directly after authoring this very decision underscored that 'check once at start' is insufficient — mid-conversation amendments must re-check heads too.",
     "conversation_superseded_at": null,
     "conversation_title": "Architecture review — Master CRMBuilder PRD consolidation, three-category conceptual model, Phase 1 redesign, 13 new PIs and 5 glossary terms",
-    "conversation_updated_at": "2026-05-26T19:35:52.069877"
+    "conversation_updated_at": "2026-05-26T19:35:52.069877",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2553,7 +2732,8 @@
     "conversation_summary": "PI-010 satisfier (entity v0.5+ schema growth) shipped end-to-end. RESOLVES PI-010 via slice A's atomic edge+flip behavior. NOT a new entity type — additive growth of the existing entity methodology entity per entity.md v1.1. One new TEXT NULL column (entity_kind, CHECK-constrained to NULL or one of person/organization/event/transaction/other) — DEC-302. One new outbound vocabulary kind (entity_variant_of_entity, entity → entity, many-to-one at source via access-layer cardinality guard; first entity-to-entity edge kind in v2) — DEC-301. Additive-only migration with no data backfill — no v0.4 production variant data existed — DEC-303. Existing v0.4 entity records survive intact with entity_kind NULL and zero variant edges. entity_status three-value lifecycle preserved verbatim. Master pane unchanged per the same posture as DEC-054's Domains-column deferral. Detail pane gains a Kind read-only label; Create/Edit dialogs gain a Kind combo. References-create dialog surfaces the new kind automatically for (entity, entity) via the cascading filter from RELATIONSHIP_RULES. Migration 0019 fully reversible per entity.md v1.1 §4.3. Test suite: 1876 baseline → 1893 (+17 new, 0 regressions). Identifier re-keying per CLAUDE.md's parallel-sandbox contingency: SES-089/CONV-059/DEC-291-293 → SES-090/CONV-060/DEC-301-303.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-010 satisfier — entity v0.5+ schema growth end-to-end; RESOLVES PI-010",
-    "conversation_updated_at": "2026-05-26T15:37:12.944962"
+    "conversation_updated_at": "2026-05-26T15:37:12.944962",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2571,7 +2751,8 @@
     "conversation_summary": "Introspected the 36 V2 SQLAlchemy model classes and POSTed each as a methodology entity (ENT-003..ENT-038) with all declared columns POSTed as fields (343 total). Column types mapped to V2 FIELD_TYPES (String→text/long_text by length, Text→long_text, Integer→number, Boolean→boolean, DateTime→datetime, JSON→long_text). Entity descriptions sourced from class docstring first line; field descriptions auto-generated from column metadata. All entities at status candidate. Working-tree shows regenerated db-export snapshots (entities.json, fields.json, change_log.json, references.json) only.",
     "conversation_superseded_at": null,
     "conversation_title": "Populate V2 entities and fields with V2 data model self-description",
-    "conversation_updated_at": "2026-05-27T02:22:28.565662"
+    "conversation_updated_at": "2026-05-27T02:22:28.565662",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2589,7 +2770,8 @@
     "conversation_summary": "Governance-discipline session continuation of the SES-089 architecture-review chat. Surfaced the pattern of incomplete V2 governance records: SES-089's DEC-296 (three-category conceptual model) and DEC-297 (Phase 1 client-led intake) both created downstream work (revisions of Section 3 and Section 5 of the Master CRMBuilder PRD) that was never authored as Planning Items; the work landed only in DEC `consequences` strings and `in_flight_at_end` notes, which are not queryable governance records. Combined with parallel failure modes (identifier-collision recovery despite DEC-300, commits[] schema gap during apply, ongoing chat content uncaptured in V2), this established a pattern, not a one-off. Doug declared the number-one priority: define a canonical set of process rules binding every session and conversation. Authored DEC-310 (rules document required for all sessions and conversations on any V2-tracked engagement, applying to AI and human agents equally) and PI-084 (create the rules document at specifications/governance-recording-rules.md per the 10-section structure proposed in the conversation). Identifier-head capture per DEC-300 strengthened protocol was performed before assigning identifiers in this close-out. Deferred to future sessions: the sandbox close-out commits[] schema fix; disposition decisions and revision PIs for SES-089's Section 3 and Section 5 gaps; and the broader retroactive audit of all prior session records for un-PI'd work.",
     "conversation_superseded_at": null,
     "conversation_title": "Governance recording rules — decision to author canonical rules document; surface and govern the pattern of incomplete V2 records",
-    "conversation_updated_at": "2026-05-27T02:42:39.614608"
+    "conversation_updated_at": "2026-05-27T02:42:39.614608",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2607,7 +2789,8 @@
     "conversation_summary": "Topical continuation of the SES-089/SES-092 Claude.ai chat. After SES-092 was applied and DEC-310 + PI-084 became live V2 records, the conversation surfaced two sequential reframes: first that PI-084's rules-document artifact is structurally a Process PRD; second that proper methodology dogfood per DEC-295 means producing a Domain Overview + separate Persona entities + Process PRDs rather than a standalone rules document. Doug chose Option C (4 PIs: Domain, Personas, Session/Conversation Process, meta Process PRD Definition Process) and corrected the structure: Personas are first-class entities referenced by Domains, not contained in them. Authored DEC-311 (dogfood reframe — supersedes PI-084's standalone rules document approach; DEC-310's rules mandate stays in force), PI-085 (Domain Overview, supersedes PI-084), PI-086 (Personas), PI-087 (Session/Conversation Process PRD — contains the rules content originally planned for PI-084), PI-088 (meta Process PRD Definition Process). Dependency edges (blocked_by) sequence the work: Domain first, then Personas + Session/Conv Process, then Meta Process. Also produced the kickoff prompt for the new Claude.ai session that will execute PI-085.",
     "conversation_superseded_at": null,
     "conversation_title": "Dogfood reframe — produce governance recording as Domain Overview + Personas + Process PRDs (supersedes PI-084 rules-document approach)",
-    "conversation_updated_at": "2026-05-27T03:19:58.702165"
+    "conversation_updated_at": "2026-05-27T03:19:58.702165",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2625,7 +2808,8 @@
     "conversation_summary": "Discipline-correction session. Doug asked Claude Code to author a decision (V2 lacks a Cross Domain Service object) and a PI (add one). Claude Code attempted via direct REST POSTs, was blocked by the auto-mode classifier after creating two orphan records (DEC-312, PI-089), surfaced the violation, and Doug chose to back out and redo properly. PI-089 hard-deleted, DEC-312 soft-deleted. This close-out re-authors the same substantive content as DEC-313 (skipping the soft-deleted slot) and PI-089 (identifier reusable) via the canonical session/close-out flow. Decisions: DEC-313 declares V2 needs a Cross Domain Service object and authorizes a PI to add it. Planning items: PI-089 scopes the implementation (Alembic migration adding cross_domain_service table with CDS-NNN identifier prefix, access-layer module, REST endpoints, desktop panel, reference relationship vocabulary updates, db-export emitter, tests). References: decided_in (DEC-313 → SES-094), addresses (PI-089 → DEC-313). First worked example of the option-1 back-out-and-retry path for a DEC-310 discipline violation — documents the cleanup pattern for future occurrences.",
     "conversation_superseded_at": null,
     "conversation_title": "Add a Cross Domain Service object to V2 — governance authoring (discipline retry after direct-POST violation)",
-    "conversation_updated_at": "2026-05-27T03:58:15.370410"
+    "conversation_updated_at": "2026-05-27T03:58:15.370410",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2643,7 +2827,8 @@
     "conversation_summary": "Architectural-design conversation for PI-073. Resolves the four open design questions, supersedes DEC-013 (sessions are no longer append-only — they are schedulable and stateful through a five-status lifecycle), authors the v1.0 schema specs for the redesigned session and conversation entities, and locks seven blocked_by reference edges so PI-085, PI-086, PI-087, PI-088, PI-024, PI-025, PI-026 wait on PI-073's resolution. New model: session = medium-agnostic communication container (one Claude chat or email or phone call or Zoom or in-person meeting or Slack thread = one session, with universal columns + JSON medium-specific metadata + optional medium-driven session_follows_from sequencing); conversation = topical sub-unit within a session (1:N, with its own lifecycle including the not_started terminal that captures planned-but-never-opened topics, plus cross-session linkage via conversation_follows_from and conversation_relates_to). Identifier-prefix asymmetry accepted at migration: existing CONV-NNN rows become sessions (prefix retained), existing SES-NNN rows become conversations (prefix retained), new conversations under v2 use CNV-NNN. PI-073 itself is NOT resolved here — it resolves at Conversation N+1 (the audit + documentation-propagation conversation per pi-073-execution-plan.md).",
     "conversation_superseded_at": null,
     "conversation_title": "PI-073 architectural-design conversation — Session and Conversation entity redesign",
-    "conversation_updated_at": "2026-05-27T05:22:07.539554"
+    "conversation_updated_at": "2026-05-27T05:22:07.539554",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2661,7 +2846,8 @@
     "conversation_summary": "Produced v0.1 DISCUSSION DRAFT of the canonical governance recording rules document at specifications/governance-recording-rules.md, wired it into the repository-level CLAUDE.md, codified its own kickoff pre-flight requirements within §1 of the document, aligned §3/§4/§9 with DEC-299's post-redesign Session/Conversation conceptual model, added Mandatory Logging as a core principle, and added the stop-and-log discipline for multi-conversation Claude.ai chats. Surfaced apply-pipeline payload validator as PI-090 — the highest-leverage missing enforcement layer for the rules.",
     "conversation_superseded_at": null,
     "conversation_title": "Governance recording rules v0.1 — authoring, CLAUDE.md wiring, DEC-299 conceptual alignment, stop-and-log discipline",
-    "conversation_updated_at": "2026-05-27T05:31:18.204396"
+    "conversation_updated_at": "2026-05-27T05:31:18.204396",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2679,7 +2865,8 @@
     "conversation_summary": "Implemented PI-074. Added nullable executive_summary TEXT column with a CHECK length 200-800 constraint to the planning_items, decisions, and sessions tables via a single Alembic migration (0020). Updated ORM models, access-layer create/update paths with a new validate_optional_length helper, and Pydantic API schemas. Resolved a SQLite batch_alter_table FK-enforcement collision (decisions has self-FKs) by adding a dedicated migration engine in env.py that sets foreign_keys=OFF only at migration time; the runtime engine stays FK-on. NOT NULL is deferred to PI-075's backfill migration per PI-074's body.",
     "conversation_superseded_at": null,
     "conversation_title": "PI-074 implementation — executive_summary column added to planning_items, decisions, sessions",
-    "conversation_updated_at": "2026-05-27T16:38:37.214863"
+    "conversation_updated_at": "2026-05-27T16:38:37.214863",
+    "engagement_id": "ENG-001"
   },
   {
     "conversation_cancelled_at": null,
@@ -2697,6 +2884,7 @@
     "conversation_summary": "Identified a real gap: PI-074 added executive_summary to the data layer (migration, access, API, snapshot) but no PI scopes the corresponding desktop UI work. Authored three area-disjoint PIs (PI-091, PI-092, PI-093) — one per entity type — so the orchestrator (PI-081) can dispatch them in parallel once the file-disjoint check is reliable. Each PI covers its entity's create/edit dialogs and master pane row display. PIs are optional-required until PI-075 backfills and tightens to NOT NULL.",
     "conversation_superseded_at": null,
     "conversation_title": "UI gap discovery for executive_summary — authoring PI-091/PI-092/PI-093",
-    "conversation_updated_at": "2026-05-27T16:53:59.111710"
+    "conversation_updated_at": "2026-05-27T16:53:59.111710",
+    "engagement_id": "ENG-001"
   }
 ]

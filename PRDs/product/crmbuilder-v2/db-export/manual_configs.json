@@ -1,5 +1,6 @@
 [
   {
+    "engagement_id": "ENG-001",
     "manual_config_category": "saved_view",
     "manual_config_completed_at": "2026-05-26T05:26:09.334366",
     "manual_config_completed_by": "doug@dougbower.com",
@@ -14,6 +15,7 @@
     "manual_config_updated_at": "2026-05-26T05:26:36.323215"
   },
   {
+    "engagement_id": "ENG-001",
     "manual_config_category": "workflow",
     "manual_config_completed_at": null,
     "manual_config_completed_by": null,

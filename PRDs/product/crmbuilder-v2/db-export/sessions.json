@@ -1,5 +1,6 @@
 [
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-22T23:56:22.143660",
     "session_created_at": "2026-05-22T23:56:19.385491",
@@ -24,6 +25,7 @@
     "session_updated_at": "2026-05-27T22:29:12.354133"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-22T23:56:22.212824",
     "session_created_at": "2026-05-22T23:56:19.455671",
@@ -48,6 +50,7 @@
     "session_updated_at": "2026-05-27T22:29:12.661137"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-22T23:56:22.276271",
     "session_created_at": "2026-05-22T23:56:19.521112",
@@ -72,6 +75,7 @@
     "session_updated_at": "2026-05-27T22:29:12.938958"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-22T23:56:22.347799",
     "session_created_at": "2026-05-22T23:56:19.582925",
@@ -96,6 +100,7 @@
     "session_updated_at": "2026-05-27T22:29:13.200336"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-22T23:56:22.409351",
     "session_created_at": "2026-05-22T23:56:19.648928",
@@ -120,6 +125,7 @@
     "session_updated_at": "2026-05-27T22:29:13.472823"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-22T23:56:22.474164",
     "session_created_at": "2026-05-22T23:56:19.712433",
@@ -144,6 +150,7 @@
     "session_updated_at": "2026-05-27T22:29:13.717275"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-22T23:56:22.535073",
     "session_created_at": "2026-05-22T23:56:19.776812",
@@ -168,6 +175,7 @@
     "session_updated_at": "2026-05-27T22:29:13.986579"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-22T23:56:22.607041",
     "session_created_at": "2026-05-22T23:56:19.869063",
@@ -192,6 +200,7 @@
     "session_updated_at": "2026-05-27T22:29:14.269921"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-11T23:59:00",
     "session_created_at": "2026-05-23T21:16:19.728052",
@@ -216,6 +225,7 @@
     "session_updated_at": "2026-05-27T22:29:14.552665"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-11T23:59:00",
     "session_created_at": "2026-05-23T21:16:19.823022",
@@ -240,6 +250,7 @@
     "session_updated_at": "2026-05-27T22:29:14.829050"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-12T23:59:00",
     "session_created_at": "2026-05-23T21:16:19.951728",
@@ -264,6 +275,7 @@
     "session_updated_at": "2026-05-27T22:29:15.071311"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-12T23:59:00",
     "session_created_at": "2026-05-23T21:16:20.044967",
@@ -288,6 +300,7 @@
     "session_updated_at": "2026-05-27T22:29:15.350121"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-12T23:59:00",
     "session_created_at": "2026-05-23T21:16:20.136914",
@@ -312,6 +325,7 @@
     "session_updated_at": "2026-05-27T22:29:15.652088"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-14T23:59:00",
     "session_created_at": "2026-05-23T21:16:19.638502",
@@ -336,6 +350,7 @@
     "session_updated_at": "2026-05-27T22:29:15.945631"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-12T23:59:00",
     "session_created_at": "2026-05-23T21:16:20.235851",
@@ -360,6 +375,7 @@
     "session_updated_at": "2026-05-27T22:29:16.222984"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-14T23:59:00",
     "session_created_at": "2026-05-23T21:16:20.330077",
@@ -384,6 +400,7 @@
     "session_updated_at": "2026-05-27T22:29:16.473291"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-14T23:59:00",
     "session_created_at": "2026-05-23T21:16:20.469851",
@@ -408,6 +425,7 @@
     "session_updated_at": "2026-05-27T22:29:16.752179"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-14T23:59:00",
     "session_created_at": "2026-05-23T21:16:20.577534",
@@ -432,6 +450,7 @@
     "session_updated_at": "2026-05-27T22:29:17.027633"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-14T23:59:00",
     "session_created_at": "2026-05-23T21:16:20.677152",
@@ -456,6 +475,7 @@
     "session_updated_at": "2026-05-27T22:29:17.294597"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-14T23:59:00",
     "session_created_at": "2026-05-23T21:16:20.775538",
@@ -480,6 +500,7 @@
     "session_updated_at": "2026-05-27T22:29:17.570502"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-15T23:59:00",
     "session_created_at": "2026-05-23T21:16:20.869652",
@@ -504,6 +525,7 @@
     "session_updated_at": "2026-05-27T22:29:17.851836"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-15T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.004553",
@@ -528,6 +550,7 @@
     "session_updated_at": "2026-05-27T22:29:18.090014"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-16T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.106027",
@@ -552,6 +575,7 @@
     "session_updated_at": "2026-05-27T22:29:18.367109"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-16T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.212995",
@@ -576,6 +600,7 @@
     "session_updated_at": "2026-05-27T22:29:18.645056"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-16T23:59:00",
     "session_created_at": "2026-05-23T21:16:22.064269",
@@ -600,6 +625,7 @@
     "session_updated_at": "2026-05-27T22:29:18.929587"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-16T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.310286",
@@ -624,6 +650,7 @@
     "session_updated_at": "2026-05-27T22:29:19.207235"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-17T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.448489",
@@ -648,6 +675,7 @@
     "session_updated_at": "2026-05-27T22:29:19.452787"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-17T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.542702",
@@ -672,6 +700,7 @@
     "session_updated_at": "2026-05-27T22:29:19.724689"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-17T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.640278",
@@ -696,6 +725,7 @@
     "session_updated_at": "2026-05-27T22:29:19.992821"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-17T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.733680",
@@ -720,6 +750,7 @@
     "session_updated_at": "2026-05-27T22:29:20.258977"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-17T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.829397",
@@ -744,6 +775,7 @@
     "session_updated_at": "2026-05-27T22:29:20.532589"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-17T23:59:00",
     "session_created_at": "2026-05-23T21:16:21.967832",
@@ -768,6 +800,7 @@
     "session_updated_at": "2026-05-27T22:29:20.796958"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-16T23:59:00",
     "session_created_at": "2026-05-23T21:16:22.165344",
@@ -792,6 +825,7 @@
     "session_updated_at": "2026-05-27T22:29:21.038689"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-18T23:59:00",
     "session_created_at": "2026-05-23T21:16:22.277033",
@@ -816,6 +850,7 @@
     "session_updated_at": "2026-05-27T22:29:21.310528"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-18T23:59:00",
     "session_created_at": "2026-05-23T21:16:22.377036",
@@ -840,6 +875,7 @@
     "session_updated_at": "2026-05-27T22:29:21.585753"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-18T23:59:00",
     "session_created_at": "2026-05-23T21:16:22.510001",
@@ -864,6 +900,7 @@
     "session_updated_at": "2026-05-27T22:29:21.856458"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-18T23:59:00",
     "session_created_at": "2026-05-23T21:16:22.606981",
@@ -888,6 +925,7 @@
     "session_updated_at": "2026-05-27T22:29:22.125748"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-18T23:59:00",
     "session_created_at": "2026-05-23T21:16:22.710281",
@@ -912,6 +950,7 @@
     "session_updated_at": "2026-05-27T22:29:22.404937"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-18T23:59:00",
     "session_created_at": "2026-05-23T21:16:22.807614",
@@ -936,6 +975,7 @@
     "session_updated_at": "2026-05-27T22:29:22.643506"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-18T23:59:00",
     "session_created_at": "2026-05-23T21:16:22.954066",
@@ -960,6 +1000,7 @@
     "session_updated_at": "2026-05-27T22:29:22.917937"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-19T23:59:00",
     "session_created_at": "2026-05-23T21:16:23.059801",
@@ -984,6 +1025,7 @@
     "session_updated_at": "2026-05-27T22:29:23.199438"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-20T23:59:00",
     "session_created_at": "2026-05-23T21:16:23.165724",
@@ -1008,6 +1050,7 @@
     "session_updated_at": "2026-05-27T22:29:23.484477"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-22T23:59:00",
     "session_created_at": "2026-05-23T21:16:23.278091",
@@ -1032,6 +1075,7 @@
     "session_updated_at": "2026-05-27T22:29:23.773794"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-23T23:59:00",
     "session_created_at": "2026-05-23T21:12:05.633567",
@@ -1056,6 +1100,7 @@
     "session_updated_at": "2026-05-27T22:29:24.020316"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-23T23:59:00",
     "session_created_at": "2026-05-23T21:12:05.762648",
@@ -1080,6 +1125,7 @@
     "session_updated_at": "2026-05-27T22:29:24.280888"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-25T15:28:34.813188",
     "session_created_at": "2026-05-25T15:28:34.812830",
@@ -1104,6 +1150,7 @@
     "session_updated_at": "2026-05-27T22:29:24.552183"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-25T19:45:34.276564",
     "session_created_at": "2026-05-25T19:45:34.276300",
@@ -1128,6 +1175,7 @@
     "session_updated_at": "2026-05-27T22:29:24.820860"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-25T20:26:57.012531",
     "session_created_at": "2026-05-25T20:26:57.012307",
@@ -1152,6 +1200,7 @@
     "session_updated_at": "2026-05-27T22:29:25.094735"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T01:28:34.196877",
     "session_created_at": "2026-05-27T01:28:34.193534",
@@ -1176,6 +1225,7 @@
     "session_updated_at": "2026-05-27T22:29:25.326938"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T02:48:33.571107",
     "session_created_at": "2026-05-26T02:48:33.570844",
@@ -1200,6 +1250,7 @@
     "session_updated_at": "2026-05-27T22:29:25.603676"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T02:32:42.438657",
     "session_created_at": "2026-05-26T02:32:42.438353",
@@ -1224,6 +1275,7 @@
     "session_updated_at": "2026-05-27T22:29:25.881081"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T03:23:25.678427",
     "session_created_at": "2026-05-26T03:23:25.678104",
@@ -1248,6 +1300,7 @@
     "session_updated_at": "2026-05-27T22:29:26.165263"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T04:13:30.684160",
     "session_created_at": "2026-05-26T04:13:30.683852",
@@ -1272,6 +1325,7 @@
     "session_updated_at": "2026-05-27T22:29:26.458088"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T05:04:53.536275",
     "session_created_at": "2026-05-26T05:04:53.535769",
@@ -1296,6 +1350,7 @@
     "session_updated_at": "2026-05-27T22:29:26.740712"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T05:37:48.644270",
     "session_created_at": "2026-05-26T05:37:48.643899",
@@ -1320,6 +1375,7 @@
     "session_updated_at": "2026-05-27T22:29:26.988273"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T06:17:44.093807",
     "session_created_at": "2026-05-26T06:17:44.093443",
@@ -1344,6 +1400,7 @@
     "session_updated_at": "2026-05-27T22:29:27.261060"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T06:21:41.001036",
     "session_created_at": "2026-05-26T06:21:41.000790",
@@ -1368,6 +1425,7 @@
     "session_updated_at": "2026-05-27T22:29:27.532314"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T06:53:28.732466",
     "session_created_at": "2026-05-26T06:53:28.732135",
@@ -1392,6 +1450,7 @@
     "session_updated_at": "2026-05-27T22:29:27.803361"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T19:35:52.269583",
     "session_created_at": "2026-05-26T19:35:52.269278",
@@ -1416,6 +1475,7 @@
     "session_updated_at": "2026-05-27T22:29:28.087398"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-26T15:37:13.137426",
     "session_created_at": "2026-05-26T15:37:13.137170",
@@ -1440,6 +1500,7 @@
     "session_updated_at": "2026-05-27T22:29:28.361560"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T02:23:20.282280",
     "session_created_at": "2026-05-27T02:23:20.282085",
@@ -1464,6 +1525,7 @@
     "session_updated_at": "2026-05-27T22:29:28.609114"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T02:42:39.799384",
     "session_created_at": "2026-05-27T02:42:39.799147",
@@ -1488,6 +1550,7 @@
     "session_updated_at": "2026-05-27T22:29:28.884328"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T03:19:58.961655",
     "session_created_at": "2026-05-27T03:19:58.961410",
@@ -1512,6 +1575,7 @@
     "session_updated_at": "2026-05-27T22:29:29.161877"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T03:58:15.614422",
     "session_created_at": "2026-05-27T03:58:15.614193",
@@ -1536,6 +1600,7 @@
     "session_updated_at": "2026-05-27T22:29:29.446719"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T05:22:07.804483",
     "session_created_at": "2026-05-27T05:22:07.804190",
@@ -1560,6 +1625,7 @@
     "session_updated_at": "2026-05-27T22:29:29.724364"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T05:31:18.454065",
     "session_created_at": "2026-05-27T05:31:18.453831",
@@ -1584,6 +1650,7 @@
     "session_updated_at": "2026-05-27T22:29:29.999329"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T16:38:37.488545",
     "session_created_at": "2026-05-27T16:38:37.488213",
@@ -1608,6 +1675,7 @@
     "session_updated_at": "2026-05-27T22:29:30.240789"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T16:53:59.357905",
     "session_created_at": "2026-05-27T16:53:59.357667",
@@ -1632,6 +1700,7 @@
     "session_updated_at": "2026-05-27T22:29:30.523596"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T17:39:35.866900",
     "session_created_at": "2026-05-27T17:39:35.866623",
@@ -1659,6 +1728,7 @@
     "session_updated_at": "2026-05-27T22:29:30.799057"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T17:59:59.638204",
     "session_created_at": "2026-05-27T17:59:59.637835",
@@ -1686,6 +1756,7 @@
     "session_updated_at": "2026-05-27T22:29:31.087780"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T18:10:17.195853",
     "session_created_at": "2026-05-27T18:10:17.195554",
@@ -1715,6 +1786,7 @@
     "session_updated_at": "2026-05-27T22:29:31.369641"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T18:14:55.738844",
     "session_created_at": "2026-05-27T18:14:55.738577",
@@ -1742,6 +1814,7 @@
     "session_updated_at": "2026-05-27T22:29:31.652441"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T18:31:17.934166",
     "session_created_at": "2026-05-27T18:31:17.933898",
@@ -1775,6 +1848,7 @@
     "session_updated_at": "2026-05-27T22:29:31.893689"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T22:24:56.310575",
     "session_created_at": "2026-05-27T22:24:45.752743",
@@ -1802,6 +1876,7 @@
     "session_updated_at": "2026-05-27T22:29:32.161207"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-27T23:11:54.179355",
     "session_created_at": "2026-05-27T23:11:54.179077",
@@ -1832,6 +1907,7 @@
     "session_updated_at": "2026-05-28T02:25:56.393135"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-28T02:16:09.507084",
     "session_created_at": "2026-05-28T02:15:54.687572",
@@ -1859,6 +1935,7 @@
     "session_updated_at": "2026-05-28T02:25:56.681621"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-28T02:22:08.903398",
     "session_created_at": "2026-05-28T02:22:08.903150",
@@ -1890,6 +1967,7 @@
     "session_updated_at": "2026-05-28T02:25:56.976439"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-28T02:33:33.546605",
     "session_created_at": "2026-05-28T02:33:33.546181",
@@ -1917,6 +1995,7 @@
     "session_updated_at": "2026-05-28T02:33:33.547191"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-28T03:02:18.541186",
     "session_created_at": "2026-05-28T03:02:18.540922",
@@ -1948,6 +2027,7 @@
     "session_updated_at": "2026-05-28T03:02:18.541271"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-28T04:05:11.651265",
     "session_created_at": "2026-05-28T04:05:11.650990",
@@ -1977,6 +2057,7 @@
     "session_updated_at": "2026-05-28T04:05:11.651346"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-28T04:55:02.677969",
     "session_created_at": "2026-05-28T04:55:02.677502",
@@ -2007,6 +2088,7 @@
     "session_updated_at": "2026-05-28T04:55:02.678050"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-28T05:07:32.608246",
     "session_created_at": "2026-05-28T05:07:32.607984",
@@ -2036,6 +2118,7 @@
     "session_updated_at": "2026-05-28T05:07:32.608332"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-29T02:08:42.390644",
     "session_created_at": "2026-05-29T02:08:42.390382",
@@ -2065,6 +2148,7 @@
     "session_updated_at": "2026-05-29T02:08:42.390729"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-29T02:14:16.501807",
     "session_created_at": "2026-05-29T02:14:16.501535",
@@ -2094,6 +2178,7 @@
     "session_updated_at": "2026-05-29T02:14:16.501893"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-29T17:56:48.078962",
     "session_created_at": "2026-05-29T17:56:48.078688",
@@ -2123,6 +2208,7 @@
     "session_updated_at": "2026-05-29T17:56:48.079053"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-29T18:28:59.464822",
     "session_created_at": "2026-05-29T18:28:59.464542",
@@ -2152,6 +2238,7 @@
     "session_updated_at": "2026-05-29T18:28:59.464907"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-29T23:35:52.886983",
     "session_created_at": "2026-05-29T23:35:52.886715",
@@ -2181,6 +2268,7 @@
     "session_updated_at": "2026-05-29T23:35:52.887069"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T03:05:45.444710",
     "session_created_at": "2026-05-30T03:05:45.444366",
@@ -2210,6 +2298,7 @@
     "session_updated_at": "2026-05-30T03:05:45.444803"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T03:27:48.152237",
     "session_created_at": "2026-05-30T03:27:48.151808",
@@ -2239,6 +2328,7 @@
     "session_updated_at": "2026-05-30T03:27:48.152370"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T03:45:27.850992",
     "session_created_at": "2026-05-30T03:45:27.850727",
@@ -2268,6 +2358,7 @@
     "session_updated_at": "2026-05-30T03:45:27.851081"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T03:47:21.860208",
     "session_created_at": "2026-05-30T03:47:21.859890",
@@ -2297,6 +2388,7 @@
     "session_updated_at": "2026-05-30T03:47:21.860314"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T04:00:49.655747",
     "session_created_at": "2026-05-30T04:00:49.655488",
@@ -2326,6 +2418,7 @@
     "session_updated_at": "2026-05-30T04:00:49.655832"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T04:11:57.925523",
     "session_created_at": "2026-05-30T04:11:57.925234",
@@ -2355,6 +2448,7 @@
     "session_updated_at": "2026-05-30T04:11:57.925614"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T04:17:56.286964",
     "session_created_at": "2026-05-30T04:17:56.286704",
@@ -2384,6 +2478,7 @@
     "session_updated_at": "2026-05-30T04:17:56.287045"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T05:12:07.363637",
     "session_created_at": "2026-05-30T05:12:07.363116",
@@ -2413,6 +2508,7 @@
     "session_updated_at": "2026-05-30T05:12:07.364050"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T05:32:56.212621",
     "session_created_at": "2026-05-30T05:32:56.212231",
@@ -2442,6 +2538,7 @@
     "session_updated_at": "2026-05-30T05:32:56.212891"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T14:30:57.954773",
     "session_created_at": "2026-05-30T14:30:57.954495",
@@ -2471,6 +2568,7 @@
     "session_updated_at": "2026-05-30T14:30:57.954874"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T14:53:06.277646",
     "session_created_at": "2026-05-30T14:53:06.277369",
@@ -2500,6 +2598,7 @@
     "session_updated_at": "2026-05-30T14:53:06.277731"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T15:04:48.225537",
     "session_created_at": "2026-05-30T15:04:48.225268",
@@ -2529,6 +2628,7 @@
     "session_updated_at": "2026-05-30T15:04:48.225619"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T15:31:03.113246",
     "session_created_at": "2026-05-30T15:31:03.112993",
@@ -2558,6 +2658,7 @@
     "session_updated_at": "2026-05-30T15:31:03.113325"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T19:42:55.222869",
     "session_created_at": "2026-05-30T19:42:55.222505",
@@ -2587,6 +2688,7 @@
     "session_updated_at": "2026-05-30T19:52:00.466741"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-30T22:34:51.475157",
     "session_created_at": "2026-05-30T22:34:51.474783",
@@ -2615,6 +2717,7 @@
     "session_updated_at": "2026-05-30T22:34:51.475273"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T00:16:46.716833",
     "session_created_at": "2026-05-31T00:16:46.716480",
@@ -2643,6 +2746,7 @@
     "session_updated_at": "2026-05-31T00:16:46.717105"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T03:34:13.465647",
     "session_created_at": "2026-05-31T03:34:13.465204",
@@ -2671,6 +2775,7 @@
     "session_updated_at": "2026-05-31T03:34:13.465968"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T03:48:19.627744",
     "session_created_at": "2026-05-31T03:48:19.627460",
@@ -2699,6 +2804,7 @@
     "session_updated_at": "2026-05-31T03:48:19.627829"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T04:23:26.716670",
     "session_created_at": "2026-05-31T04:23:26.716307",
@@ -2727,6 +2833,7 @@
     "session_updated_at": "2026-05-31T04:23:26.716936"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T06:04:08.843715",
     "session_created_at": "2026-05-31T06:04:08.843289",
@@ -2755,6 +2862,7 @@
     "session_updated_at": "2026-05-31T06:04:08.844007"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T14:43:20.674534",
     "session_created_at": "2026-05-31T14:43:20.674260",
@@ -2783,6 +2891,7 @@
     "session_updated_at": "2026-05-31T14:43:20.674618"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T15:52:01.345753",
     "session_created_at": "2026-05-31T15:12:57.786714",
@@ -2811,6 +2920,7 @@
     "session_updated_at": "2026-05-31T15:52:01.346043"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T19:23:00.844249",
     "session_created_at": "2026-05-31T19:23:00.843862",
@@ -2839,6 +2949,7 @@
     "session_updated_at": "2026-05-31T19:23:00.844511"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T19:40:28.888716",
     "session_created_at": "2026-05-31T19:40:28.888454",
@@ -2867,6 +2978,7 @@
     "session_updated_at": "2026-05-31T19:40:28.888802"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T20:40:02.498542",
     "session_created_at": "2026-05-31T20:40:02.498184",
@@ -2895,6 +3007,7 @@
     "session_updated_at": "2026-05-31T20:40:02.498843"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T20:40:10.616466",
     "session_created_at": "2026-05-31T20:40:10.616216",
@@ -2923,6 +3036,7 @@
     "session_updated_at": "2026-05-31T20:40:10.616545"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T20:54:41.986518",
     "session_created_at": "2026-05-31T20:54:41.986275",
@@ -2951,6 +3065,7 @@
     "session_updated_at": "2026-05-31T20:54:41.986595"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T22:28:42.236006",
     "session_created_at": "2026-05-31T22:28:42.235598",
@@ -2979,6 +3094,7 @@
     "session_updated_at": "2026-05-31T22:28:42.236295"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T22:57:05.033855",
     "session_created_at": "2026-05-31T22:57:05.033583",
@@ -3007,6 +3123,7 @@
     "session_updated_at": "2026-05-31T22:57:05.033963"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-05-31T23:01:58.818623",
     "session_created_at": "2026-05-31T23:01:58.818353",
@@ -3035,6 +3152,7 @@
     "session_updated_at": "2026-05-31T23:01:58.818715"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-06-01T00:15:54.422832",
     "session_created_at": "2026-06-01T00:15:54.422578",
@@ -3063,6 +3181,7 @@
     "session_updated_at": "2026-06-01T00:15:54.422926"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-06-01T21:16:41.685290",
     "session_created_at": "2026-06-01T21:16:41.685033",
@@ -3091,6 +3210,7 @@
     "session_updated_at": "2026-06-01T21:16:41.685371"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-06-01T21:55:56.982827",
     "session_created_at": "2026-06-01T21:55:56.982574",
@@ -3119,6 +3239,7 @@
     "session_updated_at": "2026-06-01T21:55:56.982920"
   },
   {
+    "engagement_id": "ENG-001",
     "session_cancelled_at": null,
     "session_completed_at": "2026-06-02T01:52:00.187616",
     "session_created_at": "2026-06-02T01:52:00.187295",
@@ -3145,5 +3266,63 @@
     "session_superseded_at": null,
     "session_title": "PI-123 Architecture phase — unified multi-engagement DB migration design + decomposition",
     "session_updated_at": "2026-06-02T01:52:00.187739"
+  },
+  {
+    "engagement_id": "ENG-001",
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-06-02T16:34:35.137171",
+    "session_created_at": "2026-06-02T16:34:35.136505",
+    "session_deleted_at": null,
+    "session_description": "Captured, as PI-124 under PRJ-015, the requirement that every UI message/error dialog (QMessageBox, the engagement activation-overlay failure message, the auto-reconnect/connection-loss banners, error_dialog, notification popups) render selectable text with a Select-All + Copy affordance. Surfaced 06-02-26 when a 'Switching failed at step 3' dialog during PI-123 cutover testing could not be copied. No code change in this session.",
+    "session_ended_at": null,
+    "session_executive_summary": "During PI-123 cutover testing Doug switched the desktop app to the CBM engagement and hit a 'Switching failed at step 3' dialog whose text was not selectable, so the error could not be copied. This session captures the resulting requirement as PI-124 (PRJ-015, UI usability): every UI message surface — QMessageBox error/info/warning dialogs, the activation-overlay failure message, notification/reconnect banners, and any other popup — must render selectable text with a Select-All + Copy affordance so operators can paste diagnostics verbatim. The switch failure itself is a separate concern (the engagement-switch activation worker still migrates and binds the per-engagement DB rather than the unified DB — PI-123 cutover-completion work).",
+    "session_identifier": "SES-152",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "requirement-capture",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "Post-cutover follow-up — surface UI message-copyability requirement (PI-124)",
+    "session_updated_at": "2026-06-02T16:34:35.137731"
+  },
+  {
+    "engagement_id": "ENG-001",
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-06-02T16:34:50.622051",
+    "session_created_at": "2026-06-02T16:34:50.621737",
+    "session_deleted_at": null,
+    "session_description": "PI-123 build-closure: ingested the 9 slice + cutover commits (Slice 1 through Stage 4) as CM records, recorded the build-discovered refinements as DEC-376 (string-identifier discriminator; consolidation-coupled enforce; Session-class scope registration fixing the per-sessionmaker un-stamped-write bug; get_engine lock + install-before-publish; CBM re-created fresh; deferred activation-worker de-file), and resolved PI-123 — which unblocks PI-122. Built + validated the live unified DB and cut the runtime over to v2-unified.db with per-request row-level scoping.",
+    "session_ended_at": null,
+    "session_executive_summary": "PI-123 build + cutover execution (Stages 1-4, 06-02-26): landed the unified multi-engagement DB. Made the ORM express the strict schema (composite (engagement_id, identifier) keys, NOT NULL FK), flipped the test suite to active row-level scoping, built + validated the consolidation, and cut the runtime over to data/v2-unified.db with per-request scoping. Built + validated the live unified DB (CRMBUILDER folded in with exact parity; CBM re-created fresh empty). Surfaced and fixed a real correctness bug — per-sessionmaker scope registration left some sessions writing NULL engagement_id — by registering the filter/stamp on the base ORM Session class. Records the build-discovered refinements as DEC-376 and resolves PI-123, which unblocks PI-122.",
+    "session_identifier": "SES-153",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "build-closure",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "PI-123 build-closure — unified multi-engagement DB cutover (Stages 1-4)",
+    "session_updated_at": "2026-06-02T16:34:50.622200"
   }
 ]

@@ -16,7 +16,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-046",
     "commit_sha": "70d88e6ee8b1290707da5604fa5043bfe4c5411f",
-    "commit_updated_at": "2026-05-25T15:28:35.075003"
+    "commit_updated_at": "2026-05-25T15:28:35.075003",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -35,7 +36,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-046",
     "commit_sha": "2b5557d4edbe2136ac0dd99dc93d1dc4d11f3994",
-    "commit_updated_at": "2026-05-25T15:28:35.185662"
+    "commit_updated_at": "2026-05-25T15:28:35.185662",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -54,7 +56,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-046",
     "commit_sha": "c6ff67a25eed8c33151383fd7f9e286dd41a7d80",
-    "commit_updated_at": "2026-05-25T15:28:35.338047"
+    "commit_updated_at": "2026-05-25T15:28:35.338047",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -73,7 +76,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-047",
     "commit_sha": "fc4690c3cfe699cd85d96719e833f54a60701307",
-    "commit_updated_at": "2026-05-25T19:46:40.845398"
+    "commit_updated_at": "2026-05-25T19:46:40.845398",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -92,7 +96,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-048",
     "commit_sha": "48a91e358936ae1acfc70d69cf44b60e75bd9cd3",
-    "commit_updated_at": "2026-05-25T20:26:57.146729"
+    "commit_updated_at": "2026-05-25T20:26:57.146729",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -111,7 +116,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-052",
     "commit_sha": "d6fd7c1dde3ef56deadc72e9a9fb9378ef660527",
-    "commit_updated_at": "2026-05-26T03:23:25.820730"
+    "commit_updated_at": "2026-05-26T03:23:25.820730",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -130,7 +136,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-053",
     "commit_sha": "84459330703814418c9bdc9e8ec33aca33495335",
-    "commit_updated_at": "2026-05-26T04:13:32.003129"
+    "commit_updated_at": "2026-05-26T04:13:32.003129",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -149,7 +156,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-057",
     "commit_sha": "b519df0835b150e7f8e0fcd44196206c349bfd52",
-    "commit_updated_at": "2026-05-26T06:21:41.214918"
+    "commit_updated_at": "2026-05-26T06:21:41.214918",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -168,7 +176,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-058",
     "commit_sha": "2bd7428dd7f5e16bb4bd9a632594257996c4d9b0",
-    "commit_updated_at": "2026-05-26T06:53:28.912427"
+    "commit_updated_at": "2026-05-26T06:53:28.912427",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -187,7 +196,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-060",
     "commit_sha": "3b326ce0c306453190db8ab292205f329e33ac43",
-    "commit_updated_at": "2026-05-26T15:37:13.279686"
+    "commit_updated_at": "2026-05-26T15:37:13.279686",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -206,7 +216,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-059",
     "commit_sha": "09f8f62d4a766b5b7a5ca24e29234bbe71f293cb",
-    "commit_updated_at": "2026-05-26T19:37:25.437294"
+    "commit_updated_at": "2026-05-26T19:37:25.437294",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -225,7 +236,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-059",
     "commit_sha": "cfaec2933cf3f9d6355e49ee31a61e9f3bb3c0e5",
-    "commit_updated_at": "2026-05-26T19:37:25.640535"
+    "commit_updated_at": "2026-05-26T19:37:25.640535",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -244,7 +256,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-059",
     "commit_sha": "e9d30e0be6b91c0af7e40abc815fa8639a8a4e79",
-    "commit_updated_at": "2026-05-26T19:37:25.788227"
+    "commit_updated_at": "2026-05-26T19:37:25.788227",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -263,7 +276,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-059",
     "commit_sha": "d9337607031f1b8e98e7c99988296cff0ba1069b",
-    "commit_updated_at": "2026-05-26T19:37:25.966570"
+    "commit_updated_at": "2026-05-26T19:37:25.966570",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -282,7 +296,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-059",
     "commit_sha": "794d5f41cff6373afbe7b1dde95e5c74fc27ab9d",
-    "commit_updated_at": "2026-05-26T19:37:26.114885"
+    "commit_updated_at": "2026-05-26T19:37:26.114885",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -301,7 +316,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-062",
     "commit_sha": "91c760e560f3ded397f16b12b080a6ce22e1add1",
-    "commit_updated_at": "2026-05-27T02:42:40.253712"
+    "commit_updated_at": "2026-05-27T02:42:40.253712",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -320,7 +336,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-063",
     "commit_sha": "e357bfc5d8d75bbc776d05dd4c542afebd3528eb",
-    "commit_updated_at": "2026-05-27T03:20:00.029040"
+    "commit_updated_at": "2026-05-27T03:20:00.029040",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -339,7 +356,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-066",
     "commit_sha": "5a2b6a4b64003cf09cb2f123cc5a8e61310677cb",
-    "commit_updated_at": "2026-05-27T05:31:18.931662"
+    "commit_updated_at": "2026-05-27T05:31:18.931662",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -358,7 +376,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-066",
     "commit_sha": "c28b3638f9a21d71ee20c5ceeff4e9a1694a1dba",
-    "commit_updated_at": "2026-05-27T05:31:19.116860"
+    "commit_updated_at": "2026-05-27T05:31:19.116860",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -377,7 +396,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-066",
     "commit_sha": "b8a6df17f4e22d761ac2e8843d1c4ed2475d5209",
-    "commit_updated_at": "2026-05-27T05:31:19.341359"
+    "commit_updated_at": "2026-05-27T05:31:19.341359",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -396,7 +416,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "CONV-067",
     "commit_sha": "6ae82c33291a810ccd499cc1a865ad3056627973",
-    "commit_updated_at": "2026-05-27T16:38:37.716284"
+    "commit_updated_at": "2026-05-27T16:38:37.716284",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -415,7 +436,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-099",
     "commit_sha": "d8b2d37fa42a1560cc417091d51f98e02d62ead9",
-    "commit_updated_at": "2026-05-27T17:40:12.263163"
+    "commit_updated_at": "2026-05-27T17:40:12.263163",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -434,7 +456,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-099",
     "commit_sha": "6cd62ca410e468effe8b081023b3efd63b14dfa8",
-    "commit_updated_at": "2026-05-27T17:40:12.499903"
+    "commit_updated_at": "2026-05-27T17:40:12.499903",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -453,7 +476,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-099",
     "commit_sha": "bdce21d7565e1f6f28461519a641e6dd1337b636",
-    "commit_updated_at": "2026-05-27T17:40:12.729639"
+    "commit_updated_at": "2026-05-27T17:40:12.729639",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -472,7 +496,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-099",
     "commit_sha": "63562d8740ed6b3f0e8027bf825ea9814ac6b081",
-    "commit_updated_at": "2026-05-27T17:40:12.919532"
+    "commit_updated_at": "2026-05-27T17:40:12.919532",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -491,7 +516,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-099",
     "commit_sha": "313b8e063bad209a60ec35f75987b1ce5ab470f3",
-    "commit_updated_at": "2026-05-27T17:40:13.134191"
+    "commit_updated_at": "2026-05-27T17:40:13.134191",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -510,7 +536,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-099",
     "commit_sha": "98988702208d63efe97ca9940c011b28a1ad2188",
-    "commit_updated_at": "2026-05-27T17:40:13.368855"
+    "commit_updated_at": "2026-05-27T17:40:13.368855",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -529,7 +556,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-099",
     "commit_sha": "5b46e9231b78ad7a021b9be8818d5171aace76f2",
-    "commit_updated_at": "2026-05-27T17:40:13.598387"
+    "commit_updated_at": "2026-05-27T17:40:13.598387",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -548,7 +576,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-099",
     "commit_sha": "f5dfda597b5e7cc0003dfecfc9b7d3ad8d95015f",
-    "commit_updated_at": "2026-05-27T17:40:13.782383"
+    "commit_updated_at": "2026-05-27T17:40:13.782383",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -567,7 +596,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-100",
     "commit_sha": "bf5ed0ed6800a12b55d54f226e3c3d493ef974c9",
-    "commit_updated_at": "2026-05-27T17:59:59.853430"
+    "commit_updated_at": "2026-05-27T17:59:59.853430",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -586,7 +616,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-101",
     "commit_sha": "3adb959e6bf8d4f7867a81709fef1065445fcf9d",
-    "commit_updated_at": "2026-05-27T18:10:17.435907"
+    "commit_updated_at": "2026-05-27T18:10:17.435907",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -605,7 +636,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-103",
     "commit_sha": "cac3909ef2050da123a697fc1b3e797d63cbb6e3",
-    "commit_updated_at": "2026-05-27T18:31:18.195060"
+    "commit_updated_at": "2026-05-27T18:31:18.195060",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -624,7 +656,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-103",
     "commit_sha": "bd55db011b4e0d9ef7d326f89f86424238a52a8f",
-    "commit_updated_at": "2026-05-27T18:31:18.454347"
+    "commit_updated_at": "2026-05-27T18:31:18.454347",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -643,7 +676,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-103",
     "commit_sha": "07fa7b207e4f22681dfec20adf2a9f0cb9973ab7",
-    "commit_updated_at": "2026-05-27T18:31:18.665686"
+    "commit_updated_at": "2026-05-27T18:31:18.665686",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -662,7 +696,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-103",
     "commit_sha": "2903f77c7d902d3998a059314c9fbe35f285dab5",
-    "commit_updated_at": "2026-05-27T18:31:18.911391"
+    "commit_updated_at": "2026-05-27T18:31:18.911391",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -681,7 +716,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-103",
     "commit_sha": "5333f46f21ff98eb25e6d80e5ecb8df7c7f41e04",
-    "commit_updated_at": "2026-05-27T18:31:19.164532"
+    "commit_updated_at": "2026-05-27T18:31:19.164532",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -700,7 +736,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-105",
     "commit_sha": "122a9ac2b5632e216dc8469db7d4e7858f0021e0",
-    "commit_updated_at": "2026-05-27T23:11:54.486931"
+    "commit_updated_at": "2026-05-27T23:11:54.486931",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -719,7 +756,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-107",
     "commit_sha": "9f042666e7434b267c112f2607cd660f55d4ce62",
-    "commit_updated_at": "2026-05-28T02:22:09.189166"
+    "commit_updated_at": "2026-05-28T02:22:09.189166",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -738,7 +776,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-109",
     "commit_sha": "2ca6e6f70d868f6dec22ac1bfd63eff13cbe7891",
-    "commit_updated_at": "2026-05-28T03:02:18.840479"
+    "commit_updated_at": "2026-05-28T03:02:18.840479",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -757,7 +796,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-112",
     "commit_sha": "5b098bc995ce5d8e3eca65c8e3c8c869382dfee5",
-    "commit_updated_at": "2026-05-28T05:07:33.228112"
+    "commit_updated_at": "2026-05-28T05:07:33.228112",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -776,7 +816,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-113",
     "commit_sha": "c07901fabc75cd5d8b4d193129270cddc864fb6b",
-    "commit_updated_at": "2026-05-29T02:08:42.678073"
+    "commit_updated_at": "2026-05-29T02:08:42.678073",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -795,7 +836,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-113",
     "commit_sha": "e80ee7f2527df516ca512d6ef2050dfc85e7f9ff",
-    "commit_updated_at": "2026-05-29T02:08:42.963220"
+    "commit_updated_at": "2026-05-29T02:08:42.963220",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -814,7 +856,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-113",
     "commit_sha": "5ddc6e73dcb5514020967b7a7cae32641bd67a6d",
-    "commit_updated_at": "2026-05-29T02:08:43.257373"
+    "commit_updated_at": "2026-05-29T02:08:43.257373",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -833,7 +876,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-115",
     "commit_sha": "73e4f08142704be001da2aa979b9ecb940ade913",
-    "commit_updated_at": "2026-05-29T17:56:48.343077"
+    "commit_updated_at": "2026-05-29T17:56:48.343077",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -852,7 +896,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-116",
     "commit_sha": "290c37f471020d705ad224cb84cde312b754ddea",
-    "commit_updated_at": "2026-05-29T18:28:59.758188"
+    "commit_updated_at": "2026-05-29T18:28:59.758188",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -871,7 +916,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-116",
     "commit_sha": "61cc6e98e8b8a556db5ec10e0fca246c31eaf69f",
-    "commit_updated_at": "2026-05-29T18:29:00.003827"
+    "commit_updated_at": "2026-05-29T18:29:00.003827",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -890,7 +936,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-116",
     "commit_sha": "743c935d2506a8c5e3a89471898e1cd1f5eb40ce",
-    "commit_updated_at": "2026-05-29T18:29:00.289196"
+    "commit_updated_at": "2026-05-29T18:29:00.289196",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -909,7 +956,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-116",
     "commit_sha": "268e4a7f6030dfc7ca301058f669043a465609e1",
-    "commit_updated_at": "2026-05-29T18:29:00.575432"
+    "commit_updated_at": "2026-05-29T18:29:00.575432",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -928,7 +976,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-116",
     "commit_sha": "fbf08f31696872d9563e7c1cc25e0ae512c95422",
-    "commit_updated_at": "2026-05-29T18:29:00.879213"
+    "commit_updated_at": "2026-05-29T18:29:00.879213",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -947,7 +996,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-116",
     "commit_sha": "1866f72adf67e3959170b511559494a5238ef706",
-    "commit_updated_at": "2026-05-29T18:29:01.190076"
+    "commit_updated_at": "2026-05-29T18:29:01.190076",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -966,7 +1016,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-116",
     "commit_sha": "f99d9ac60e2bba92f727db926ee89f8459419702",
-    "commit_updated_at": "2026-05-29T18:29:01.493128"
+    "commit_updated_at": "2026-05-29T18:29:01.493128",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -985,7 +1036,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-118",
     "commit_sha": "f690bde4f48cf9073279751daa3080b315be3b1b",
-    "commit_updated_at": "2026-05-30T03:05:45.747375"
+    "commit_updated_at": "2026-05-30T03:05:45.747375",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1004,7 +1056,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-119",
     "commit_sha": "9a98167f3e53b88337ce006e3cb0793b1b04aa65",
-    "commit_updated_at": "2026-05-30T03:27:48.418264"
+    "commit_updated_at": "2026-05-30T03:27:48.418264",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1023,7 +1076,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-120",
     "commit_sha": "f5381966c202f6182c5f2f478bdfb726e9d4d0ea",
-    "commit_updated_at": "2026-05-30T03:45:28.105276"
+    "commit_updated_at": "2026-05-30T03:45:28.105276",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1042,7 +1096,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-122",
     "commit_sha": "947da63f7cd9ba37bd1fec4d82a5f1f6fd8b3316",
-    "commit_updated_at": "2026-05-30T04:00:49.969148"
+    "commit_updated_at": "2026-05-30T04:00:49.969148",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1061,7 +1116,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-125",
     "commit_sha": "9f8ec27ca0c9883701c7ee96662ce169b552e566",
-    "commit_updated_at": "2026-05-30T05:12:08.665424"
+    "commit_updated_at": "2026-05-30T05:12:08.665424",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1080,7 +1136,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-126",
     "commit_sha": "2c9759d526f89ccc3b9a1a940c667c1545a32e77",
-    "commit_updated_at": "2026-05-30T05:32:56.552160"
+    "commit_updated_at": "2026-05-30T05:32:56.552160",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1099,7 +1156,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-126",
     "commit_sha": "1d6aedfae7070baf4b5d3d045c0cc36bf65f4eaf",
-    "commit_updated_at": "2026-05-30T05:32:56.877316"
+    "commit_updated_at": "2026-05-30T05:32:56.877316",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1118,7 +1176,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-126",
     "commit_sha": "e4246e26e9e8d22f43a1cebdc3027be2d5dc2583",
-    "commit_updated_at": "2026-05-30T05:32:57.222852"
+    "commit_updated_at": "2026-05-30T05:32:57.222852",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1137,7 +1196,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-127",
     "commit_sha": "550e10e5fcf18e3d84ee5c5fd5cbb2d7fa8eebb3",
-    "commit_updated_at": "2026-05-30T14:30:58.247556"
+    "commit_updated_at": "2026-05-30T14:30:58.247556",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1156,7 +1216,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-127",
     "commit_sha": "2915393f997d7e6104bda0ab93796b6715d7e765",
-    "commit_updated_at": "2026-05-30T14:30:58.540826"
+    "commit_updated_at": "2026-05-30T14:30:58.540826",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1175,7 +1236,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-128",
     "commit_sha": "74d4195746756f33507b3df6104f8a6d47358d9a",
-    "commit_updated_at": "2026-05-30T14:53:06.582593"
+    "commit_updated_at": "2026-05-30T14:53:06.582593",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1194,7 +1256,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-129",
     "commit_sha": "8293a06cf7e0354cd95dad4fc79e45f76b64dc98",
-    "commit_updated_at": "2026-05-30T15:04:48.505012"
+    "commit_updated_at": "2026-05-30T15:04:48.505012",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1213,7 +1276,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-130",
     "commit_sha": "01c948d8037bc7a63337c1001f5344d12331d86a",
-    "commit_updated_at": "2026-05-30T15:31:03.735414"
+    "commit_updated_at": "2026-05-30T15:31:03.735414",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1232,7 +1296,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-130",
     "commit_sha": "9fd649c933f2b33ab94c291bad5e435ad62110f5",
-    "commit_updated_at": "2026-05-30T15:31:04.057132"
+    "commit_updated_at": "2026-05-30T15:31:04.057132",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1251,7 +1316,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-131",
     "commit_sha": "800e329c5ad97e39162f7e4e53d44dd67a5e8f3d",
-    "commit_updated_at": "2026-05-30T19:42:55.544100"
+    "commit_updated_at": "2026-05-30T19:42:55.544100",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1270,7 +1336,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-131",
     "commit_sha": "3ba187568adfb6cec822ae5e81c96ddd8e864982",
-    "commit_updated_at": "2026-05-30T19:42:55.862004"
+    "commit_updated_at": "2026-05-30T19:42:55.862004",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1289,7 +1356,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "76fe4c603b5c68b13c67519eb3050370e4368213",
-    "commit_updated_at": "2026-05-31T03:34:13.786511"
+    "commit_updated_at": "2026-05-31T03:34:13.786511",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1308,7 +1376,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "a0977a97208b413b5a817e58093e7c89dcb3db4d",
-    "commit_updated_at": "2026-05-31T03:34:14.089203"
+    "commit_updated_at": "2026-05-31T03:34:14.089203",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1327,7 +1396,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "c8816ac352dee3eb70094e4b5ed2a31be3d656e0",
-    "commit_updated_at": "2026-05-31T03:34:14.434284"
+    "commit_updated_at": "2026-05-31T03:34:14.434284",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1346,7 +1416,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "53e290dbaad5d383c6240ec2831fca0125c553b0",
-    "commit_updated_at": "2026-05-31T03:34:14.740325"
+    "commit_updated_at": "2026-05-31T03:34:14.740325",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1365,7 +1436,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "57e1480dded872d267dbb2d8eb71cc27622069d1",
-    "commit_updated_at": "2026-05-31T03:34:15.002673"
+    "commit_updated_at": "2026-05-31T03:34:15.002673",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1384,7 +1456,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "aee14a2c90a9ec483a417575bd5ac2f3b1301c50",
-    "commit_updated_at": "2026-05-31T03:34:15.305444"
+    "commit_updated_at": "2026-05-31T03:34:15.305444",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1403,7 +1476,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "45d1654f861c48478212b2f2bb74ce5d17e12a30",
-    "commit_updated_at": "2026-05-31T03:34:15.641777"
+    "commit_updated_at": "2026-05-31T03:34:15.641777",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1422,7 +1496,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "8421345df644fcee8a8f0a2910b9bd1af3fc13d4",
-    "commit_updated_at": "2026-05-31T03:34:15.917967"
+    "commit_updated_at": "2026-05-31T03:34:15.917967",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1441,7 +1516,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "7bd0f74b0e6c35548c2914329eb33743e7782c4f",
-    "commit_updated_at": "2026-05-31T03:34:16.228564"
+    "commit_updated_at": "2026-05-31T03:34:16.228564",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1460,7 +1536,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "628360a1b8798bdcd13fe62264d2a4b9ef4ec746",
-    "commit_updated_at": "2026-05-31T03:34:16.570583"
+    "commit_updated_at": "2026-05-31T03:34:16.570583",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1479,7 +1556,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "a8199d2643bd91bbdae45dd08dc2de1154a1fe7c",
-    "commit_updated_at": "2026-05-31T03:34:16.887729"
+    "commit_updated_at": "2026-05-31T03:34:16.887729",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1498,7 +1576,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-134",
     "commit_sha": "4b14a1c5ddd9e21249061b8ea700acd0d021c2aa",
-    "commit_updated_at": "2026-05-31T03:34:17.160673"
+    "commit_updated_at": "2026-05-31T03:34:17.160673",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1517,7 +1596,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-136",
     "commit_sha": "544a40f437d550760998d4e82cb3e64ab60e52e8",
-    "commit_updated_at": "2026-05-31T04:24:06.175004"
+    "commit_updated_at": "2026-05-31T04:24:06.175004",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1536,7 +1616,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-137",
     "commit_sha": "b0b213b889ae5e670ed754f06d9c9e617801144e",
-    "commit_updated_at": "2026-05-31T06:04:09.508687"
+    "commit_updated_at": "2026-05-31T06:04:09.508687",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1555,7 +1636,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-137",
     "commit_sha": "520c46089817a0980e29bbf9d4dbd8a9e68d241a",
-    "commit_updated_at": "2026-05-31T06:04:09.842805"
+    "commit_updated_at": "2026-05-31T06:04:09.842805",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1574,7 +1656,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-137",
     "commit_sha": "11a18189298d3f8d974c77db057c47b78f79ff73",
-    "commit_updated_at": "2026-05-31T06:04:10.154087"
+    "commit_updated_at": "2026-05-31T06:04:10.154087",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1593,7 +1676,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-138",
     "commit_sha": "b7e4a17d7ab3e87bdc6bc1cab0832f4e14d66d6b",
-    "commit_updated_at": "2026-05-31T14:43:21.611546"
+    "commit_updated_at": "2026-05-31T14:43:21.611546",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1612,7 +1696,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-138",
     "commit_sha": "3a2f43246c266e70d365323f76ca14833f8034c1",
-    "commit_updated_at": "2026-05-31T14:43:21.906846"
+    "commit_updated_at": "2026-05-31T14:43:21.906846",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1631,7 +1716,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-139",
     "commit_sha": "4915f5fe34690087a4f4d8986abd104b77e3b0b6",
-    "commit_updated_at": "2026-05-31T15:51:47.725467"
+    "commit_updated_at": "2026-05-31T15:51:47.725467",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1650,7 +1736,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-140",
     "commit_sha": "8f70e3e2a4e58a5a044c0943aeee73351ad73b76",
-    "commit_updated_at": "2026-05-31T19:23:01.160616"
+    "commit_updated_at": "2026-05-31T19:23:01.160616",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1669,7 +1756,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-141",
     "commit_sha": "c1881fe9db85f7c2483ce6bc3f5ad5d38407852f",
-    "commit_updated_at": "2026-05-31T19:40:29.231778"
+    "commit_updated_at": "2026-05-31T19:40:29.231778",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1688,7 +1776,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-142",
     "commit_sha": "0b1a386bd2ee84ada1b51e864b81523803f383fa",
-    "commit_updated_at": "2026-05-31T20:40:02.856071"
+    "commit_updated_at": "2026-05-31T20:40:02.856071",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1707,7 +1796,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-143",
     "commit_sha": "6014e338bc6802f9170c5cde9021772495d2bffe",
-    "commit_updated_at": "2026-05-31T20:40:10.960635"
+    "commit_updated_at": "2026-05-31T20:40:10.960635",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1726,7 +1816,8 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-144",
     "commit_sha": "6e0683ef8105e26c0acf1edebb209f33ed3afd08",
-    "commit_updated_at": "2026-05-31T20:54:42.308426"
+    "commit_updated_at": "2026-05-31T20:54:42.308426",
+    "engagement_id": "ENG-001"
   },
   {
     "commit_author_email": "doug@dougbower.com",
@@ -1745,6 +1836,187 @@
     "commit_repository": "crmbuilder",
     "commit_session_id": "SES-151",
     "commit_sha": "8082535579c787db30912d29b53fd3583183548b",
-    "commit_updated_at": "2026-06-02T01:52:00.537808"
+    "commit_updated_at": "2026-06-02T01:52:00.537808",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-01T22:27:09-04:00",
+    "commit_created_at": "2026-06-02T16:34:51.032583",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 4,
+    "commit_identifier": "CM-0093",
+    "commit_message_first_line": "v2: PI-123 Slice 1 — fold the engagements registry into the unified DB schema (migration 0037)",
+    "commit_message_full": "v2: PI-123 Slice 1 — fold the engagements registry into the unified DB schema (migration 0037)\n\nWTK-026 / Development phase Slice 1 of the unified multi-engagement-DB\nmigration (pi-123-unified-db-architecture.md §8 / D1). Additive, non-breaking\nfirst step: defines the engagements tenant table on the main `Base` and adds\nmigration 0037 to the main chain to create it, so the unified DB holds the\nengagement registry the separate meta DB held before.\n\n- access/models.py: add `EngagementRow` to the main `Base` (column-for-column\n  identical to access/meta_models.py's `EngagementRow`); import `text` for the\n  LOWER() expression indexes.\n- migrations/versions/0037: create the engagements table (10 cols, 2 CHECKs,\n  2 unique LOWER() indexes, 3 plain indexes); idempotent (skips if present),\n  reversible (downgrade drops it). Safe on live per-engagement DBs — adds an\n  empty, unused table; the legacy runtime keeps serving /engagements from the\n  meta DB until the Deployment cutover.\n- tests: `test_engagements_model_parity` pins the two definitions equal so the\n  transitional duplication cannot drift; `test_0037_creates_and_drops_*` runs\n  0037 in isolation (stamp 0036 -> upgrade -> downgrade), sidestepping the\n  decommissioned catalog YAMLs the full-chain tests need.\n- Updated `test_meta_db_separate_from_engagement_db`: the per-engagement DB now\n  carries the folded-in (empty) engagements table; the invariant becomes data\n  isolation between the two physical DBs, not table absence.\n\nBuild-discovered refinement: the design's Slice 1 \"retire the meta engine,\nserve /engagements from the one engine\" is staged to the Deployment cutover —\nin the per-engagement-file world the registry must stay shared, so Slice 1 is\nschema-prep only. Captured here for the build-closure design-doc update on main.\n\nFull v2 suite: 2279 passed; the 18 apply_close_out failures in a branch run are\nthe apply-on-main branch guard, not regressions.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "3af417a6c218c0a2ee0e94e2bab9e2ccec654782"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-153",
+    "commit_sha": "502a9b68214fb651939404ad7c3add213ea33836",
+    "commit_updated_at": "2026-06-02T16:34:51.032585",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-01T22:55:37-04:00",
+    "commit_created_at": "2026-06-02T16:34:51.401070",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 17,
+    "commit_identifier": "CM-0094",
+    "commit_message_first_line": "v2: PI-123 Slice 2a — add the nullable engagement_id discriminator to scoped tables (migration 0038)",
+    "commit_message_full": "v2: PI-123 Slice 2a — add the nullable engagement_id discriminator to scoped tables (migration 0038)\n\nWTK-027 (part 1 of Slice 2). Additive, non-breaking schema step toward the\nunified multi-engagement DB (pi-123-unified-db-architecture.md §6 / D2): every\nengagement-scoped table gains a nullable `engagement_id`. NULL on every existing\nrow, so nothing changes in the current single-engagement-per-file runtime.\n\n- access/models.py: `EngagementScopedMixin` (engagement_id VARCHAR(32), nullable)\n  applied to all 30 scoped models; catalog_* (system/shared) and engagements\n  (tenant table) deliberately excluded.\n- migrations/0038: add the column to the 30 scoped tables; idempotent + reversible.\n- Discriminator decision (refines DEC-375's \"integer surrogate\" sub-point): the\n  column holds the engagement's stable identifier (engagements.engagement_identifier,\n  ENG-NNN) — never renamed, so it serves the durable-key role without a separate\n  integer surrogate, and stays consistent with v2's identifier-keyed model. The\n  FK + NOT NULL + composite (engagement_id, identifier) uniqueness + indexes land\n  in Slice 3's batch rebuild, keeping model and migration aligned at each step.\n- The central read-filter / write-stamp that key on this column are Slice 2b;\n  they stay dormant until the Data Migration backfill.\n\nTests: test_0038 (model presence; migration-list-vs-models parity guard;\ncreate_all->drop->stamp->upgrade exercise of the real ALTER). Updated 13 entity\nshape tests (+engagement_id) and test_pools_isolated (folded-in table now present\nbut empty — data isolation, not absence).\n\nFull v2 suite: 2282 passed; the 18 apply_close_out failures are the apply-on-main\nbranch guard, not regressions.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "502a9b68214fb651939404ad7c3add213ea33836"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-153",
+    "commit_sha": "01d4a5332626e99ceb4aa5c69d8577b162d6a569",
+    "commit_updated_at": "2026-06-02T16:34:51.401073",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-01T23:01:38-04:00",
+    "commit_created_at": "2026-06-02T16:34:51.781438",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0095",
+    "commit_message_first_line": "v2: PI-123 Slice 2b — central engagement-scope mechanism (ContextVar + filter + stamp)",
+    "commit_message_full": "v2: PI-123 Slice 2b — central engagement-scope mechanism (ContextVar + filter + stamp)\n\nWTK-027 (part 2 of Slice 2). The dormant runtime machinery that makes one\nmulti-tenant DB behave per-engagement by filtering rows instead of selecting a\nfile (pi-123-unified-db-architecture.md / D5). New self-contained module\naccess/engagement_scope.py:\n\n- active-engagement ContextVar (holds the ENG-NNN identifier) + set/get/reset +\n  an active_engagement() context manager.\n- read filter: a do_orm_execute listener injecting\n  with_loader_criteria(EngagementScopedMixin, engagement_id == active) into every\n  ORM SELECT — including bare column selects (select(Model.identifier)), so the\n  per-engagement identifier-assignment helpers stay correct with zero\n  per-repository change.\n- write stamp: a before_flush listener stamping engagement_id on new scoped rows\n  from the active context (explicit values win, e.g. the data-migration backfill).\n- unset guard: optional process-wide enforcement that raises on a scoped\n  read/write with no active engagement; off by default.\n- install_engagement_scope(session_factory) registers both handlers (idempotent);\n  uninstall for tests.\n\nDormant by default: with no active engagement set, the filter and stamp no-op,\nso this changes nothing in the current single-engagement-per-file runtime. It is\nimported by nothing in the live app yet — Slice 2c wires the X-Engagement\nmiddleware that sets the ContextVar per request, and the cutover turns on\nenforcement.\n\n12 unit tests: stamp, read filter, dormancy, A/B isolation (no cache bleed),\ncolumn-select filtering, explicit-value precedence, enforcement on read/write,\nnon-scoped-entity pass-through, idempotent install, context nesting. De-risked\nthat with_loader_criteria matches via the non-mapped mixin base.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "01d4a5332626e99ceb4aa5c69d8577b162d6a569"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-153",
+    "commit_sha": "222f4826de5896b26bee80d83078f84b6c51cf45",
+    "commit_updated_at": "2026-06-02T16:34:51.781440",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-01T23:29:38-04:00",
+    "commit_created_at": "2026-06-02T16:34:52.168223",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 5,
+    "commit_identifier": "CM-0096",
+    "commit_message_first_line": "v2: PI-123 Slice 2c — per-request engagement-scope wiring (X-Engagement middleware + flag)",
+    "commit_message_full": "v2: PI-123 Slice 2c — per-request engagement-scope wiring (X-Engagement middleware + flag)\n\nWTK-027 (part 3, completing Slice 2). Wires the dormant scope mechanism (2b)\ninto the live API behind a default-off flag (pi-123-unified-db-architecture.md\n/ D6).\n\n- config: Settings.engagement_scoping_enabled (default False). Default keeps the\n  machinery dormant until the unified-DB cutover — turning it on against the\n  current NULL-discriminator rows would filter every row out.\n- access/db.py: install the scope filter/stamp on the session factory when the\n  flag is on (gated, so the default runtime gets no extra session events).\n- api/scope_middleware.py: a pure-ASGI middleware (not BaseHTTPMiddleware, whose\n  child task drops ContextVar propagation) that resolves the active engagement\n  per request — X-Engagement header (identifier ENG-NNN or code), marker-file\n  fallback — and sets it on the engagement-scope ContextVar for the request.\n  Pass-through when the flag is off.\n- api/main.py: register the middleware after the marker guard.\n\nEnforcement (the unset fail-loud guard) is intentionally NOT enabled here — it\nis a cutover-hardening step, so 2c needs no new exception handler.\n\n8 tests: resolver (code/identifier/marker/unknown), middleware ContextVar\nset+reset (flag on) and pass-through (flag off), and end-to-end — GET /references\nwith X-Engagement returns only that engagement's rows; no header → dormant (all\nrows). api+access+integration suites: 1273 passed, no regressions.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "222f4826de5896b26bee80d83078f84b6c51cf45"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-153",
+    "commit_sha": "3165a7a248f55a3de12776a80c4235d399c99904",
+    "commit_updated_at": "2026-06-02T16:34:52.168228",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-01T23:57:13-04:00",
+    "commit_created_at": "2026-06-02T16:34:52.546774",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0097",
+    "commit_message_first_line": "v2: PI-123 Slice 3 — enforce plan (constraint-landscape analysis) + collision-coexistence proof",
+    "commit_message_full": "v2: PI-123 Slice 3 — enforce plan (constraint-landscape analysis) + collision-coexistence proof\n\nWTK-028. Slice 3's deliverable is the design half (the non-obvious work) plus an\nempirical proof of the PI's headline crux — not a live migration, because the\nanalysis shows the enforce is consolidation-coupled, not an independently\nmergeable chain head.\n\n- pi-123-slice3-enforce-plan.md: maps the 30 scoped tables into three constraint\n  classes (19 identifier-as-PK needing composite-PK rebuilds; 9 surrogate-PK\n  UNIQUE-swaps incl. refs' two uniques + charter/status version series;\n  2 no-identifier NOT-NULL+FK-only). Finding: a NOT-NULL/composite enforce\n  cannot lazy-apply to the live NULL-discriminator DBs (would break activation),\n  and the backfill is engagement-aware — so the target schema is reached by the\n  consolidation building the unified DB fresh at the strict schema and copying\n  rows in with engagement_id (D9), which sidesteps the 19 in-place PK rebuilds.\n  The model-strictness flip + fixture-stamping + consolidation + enforcement are\n  one coherent cutover, not separable pre-cutover slices.\n- test_engagement_id_collision_coexistence.py: builds a target-schema DB\n  (representative of each class) and proves CBM SES-001 and CRMBUILDER SES-001\n  coexist while intra-engagement duplicates, NULL engagement_id, and unknown-FK\n  inserts are all rejected. 8 tests green.\n\nLive ORM models stay nullable (dormant suite unaffected); the strict-schema flip\nlands with the cutover unit. The refs same-engagement assertion (D4) is bundled\nthere too (a no-op while scoping is dormant).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "3165a7a248f55a3de12776a80c4235d399c99904"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-153",
+    "commit_sha": "0f1838a5f861650b2f32a0eb4437cd6140f28ff8",
+    "commit_updated_at": "2026-06-02T16:34:52.546777",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T00:21:37-04:00",
+    "commit_created_at": "2026-06-02T16:34:52.928252",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 21,
+    "commit_identifier": "CM-0098",
+    "commit_message_first_line": "v2: PI-123 cutover Stage 1 — get_by_identifier helper; convert 64 identifier-as-PK session.get sites",
+    "commit_message_full": "v2: PI-123 cutover Stage 1 — get_by_identifier helper; convert 64 identifier-as-PK session.get sites\n\nBehaviour-preserving prep for the composite-(engagement_id, identifier) keying.\nThe 19 identifier-as-PK governance/methodology tables can't keep the identifier\nas the sole primary key once two engagements must both hold e.g. SES-001, so\nevery session.get(Model, identifier) — a positional primary-key load — must\nbecome a get-by-identifier-column query that the engagement-scope read filter\nisolates per engagement.\n\n- access/_helpers.py: get_by_identifier(session, model, id_column, identifier)\n  — select(model).where(id_column == identifier).scalar_one_or_none(). Equivalent\n  to session.get() today (identifier is still the PK); survives the composite-PK\n  change because it keys on the column, not PK position, and the scope filter\n  returns the row in the active engagement (or None).\n- 64 call sites across 20 repositories converted from\n  session.get(<IdentifierPKModel>, identifier) to get_by_identifier(...). The\n  surrogate-id PK gets (decisions/topics by numeric id, etc.) are correctly left\n  as session.get.\n\nNo schema change, no behaviour change: access+api suites 1267 passed, zero\nregressions. This removes the blast radius from the upcoming strict-schema flip\n(Stage 2). Pre-existing C408 dict()-literal lints in the touched repos are left\nas-is (not introduced here).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "0f1838a5f861650b2f32a0eb4437cd6140f28ff8"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-153",
+    "commit_sha": "29a2ad4db7958b13179a51682308ec32b57e74bf",
+    "commit_updated_at": "2026-06-02T16:34:52.928258",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T00:26:31-04:00",
+    "commit_created_at": "2026-06-02T16:34:53.371446",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0099",
+    "commit_message_first_line": "v2: PI-123 cutover kickoff — handoff doc for Stages 2-4 + build-closure",
+    "commit_message_full": "v2: PI-123 cutover kickoff — handoff doc for Stages 2-4 + build-closure\n\nSelf-contained session kickoff so a fresh Claude Code session can continue\nPI-123's cutover. Captures: orientation + what's done (Slices 1-3 + cutover\nStage 1, all dormant/pushed); the build-discovered refinements (string-identifier\ndiscriminator, consolidation-coupled enforce); the detailed Stage 2 (strict-schema\nflip + central fixture stamp + the constraint-class changes + expected fallout),\nStage 3 (consolidation script + leak-test against copies), and Stage 4 (live\ndestructive cutover, Doug-in-the-loop); the build-closure on main (complete\nWTK-026/027/028 + WSK-009, resolve PI-123, unblock PI-122, author the refinement\nDEC); and the working-rule gotchas (branch protocol, meta_export_dir test\npollution, pure-ASGI middleware).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "29a2ad4db7958b13179a51682308ec32b57e74bf"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-153",
+    "commit_sha": "d7b538dc50ad1733434d26a7acf51cf2c57ee1e2",
+    "commit_updated_at": "2026-06-02T16:34:53.371449",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T03:10:15-04:00",
+    "commit_created_at": "2026-06-02T16:34:53.749247",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 34,
+    "commit_identifier": "CM-0100",
+    "commit_message_first_line": "v2: PI-123 cutover Stage 2 (strict-schema flip) + Stage 3 (consolidation + leak-test)",
+    "commit_message_full": "v2: PI-123 cutover Stage 2 (strict-schema flip) + Stage 3 (consolidation + leak-test)\n\nStage 2 — strict (target) schema in the ORM, built by create_all:\n- EngagementScopedMixin: engagement_id NOT NULL + FK to\n  engagements.engagement_identifier. New EngagementScopedPKMixin makes\n  engagement_id a composite-PK member for the 19 identifier-as-PK tables\n  (+ engagement_areas). Class B tables swap UNIQUE(identifier) for\n  UNIQUE(engagement_id, identifier) (decisions, risks, planning_items, topics,\n  charter/status versions, reference_book_versions, refs' two uniques,\n  commits' sha); reference_book_versions gains a composite FK; change_log /\n  identifier_reservations get NOT NULL + FK + engagement_id-leading index.\n- Scope mechanism made robust: install_engagement_scope now registers the\n  read-filter / write-stamp on the base ORM Session class (process-wide), not\n  per-sessionmaker. Per-factory registration left some sessions un-stamped\n  (NULL engagement_id under the strict schema) — the root cause of an\n  intermittent, high-rate test flaky. get_engine also builds the factory under\n  a lock and installs scope before publishing it.\n- Resolver reads the unified engagements table (engagement.list_engagements_unified,\n  wired into scope_middleware); the scope middleware is now the outermost\n  middleware so the ContextVar is set before the marker-guard BaseHTTPMiddleware.\n- engagement_areas repo: session.get(name) -> scoped select (composite PK).\n- Test fixtures run under active scoping: conftest.v2_env seeds ENG-001 (FK\n  target) + sets active engagement + enforcement; api client carries an\n  X-Engagement header. Fixed the resulting fallout across access/api/migration\n  (shape PK assertions, concurrent-worker active-engagement, raw-SQL inserts,\n  the obsolete dormant-write test, the meta-DB separation tests, the 0038\n  model-strictness assertion).\n\nStage 3 — consolidation + the cross-engagement leak-test:\n- migration/unify_engagement_dbs.py: build a fresh unified DB at the strict\n  schema, seed engagements from the meta DB, copy each source's scoped rows with\n  engagement_id stamped (surrogate-id tables offset per engagement; decisions/\n  topics self-FKs offset with them), copy catalog once, validate count +\n  identifier parity, no NULL engagement_id, and PRAGMA foreign_key_check.\n- migration/test_engagement_leak_isolation.py (§7 acceptance backbone) and\n  migration/test_unify_engagement_dbs.py (consolidation harness over synthetic\n  colliding-identifier sources).\n\nStage 4 runbook: PRDs/product/crmbuilder-v2/pi-123-stage4-cutover-runbook.md —\ndocuments the destructive cutover + the pre-flight finding that the live sources\n(CRMBUILDER@0036, CBM@0010) lack engagement_id and must be chain-migrated to head\nbefore consolidation (catalog-YAML gap to resolve).\n\nTests: 1291 passed; the lone failure (test_0037_creates_and_drops_engagements_table)\nis pre-existing on the branch (alembic stamp-then-upgrade vs the gitignored\ncatalog YAMLs), confirmed to fail on HEAD models too.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "d7b538dc50ad1733434d26a7acf51cf2c57ee1e2"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-153",
+    "commit_sha": "517161c94334cd1c8e92d2744a3d7edf7f448908",
+    "commit_updated_at": "2026-06-02T16:34:53.749249",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T10:30:54-04:00",
+    "commit_created_at": "2026-06-02T16:34:54.149366",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 7,
+    "commit_identifier": "CM-0101",
+    "commit_message_first_line": "v2: PI-123 cutover Stage 4 — runtime routes to the unified DB (row-level scoping)",
+    "commit_message_full": "v2: PI-123 cutover Stage 4 — runtime routes to the unified DB (row-level scoping)\n\nThe runtime now binds to the single unified multi-engagement DB instead of a\nper-engagement file; engagement selection is row-level (the scope middleware\nresolves the active engagement per request and the central filter/stamp scope\nevery query).\n\n- runtime/engagement_routing.route_settings_to_engagement: point\n  CRMBUILDER_V2_DB_PATH at data/v2-unified.db (not engagement_db_path(code)) and\n  enable scoping; the engagement's export dir stays per-engagement (D7). This is\n  the single chokepoint both the API (cli.run_api) and the desktop activation\n  call, so both inherit the unified binding.\n- config.db_path default → data/v2-unified.db (the ancient v2.db default is\n  retired; tests override via env).\n- conftest.v2_env writes the current_engagement.json marker so the resolver's\n  no-header fallback resolves the default engagement — covering API-backed tests\n  including the UI panels' StorageClient-over-TestClient fixtures (no header),\n  mirroring how the desktop marker drives it in production.\n- Test updates for the new model: routing/launcher tests assert the unified DB\n  + scoping (not per-engagement files); test_app_engagement_routing rewritten to\n  assert row-level isolation (both engagements share one DB, scoped by\n  engagement_id); two active-engagement-context tests clear the seeded marker to\n  exercise their no-marker paths.\n\nThe live unified DB was built + validated offline via\nmigration/unify_engagement_dbs.py: CRMBUILDER (ENG-001) consolidated with exact\nper-table count/identifier parity (8931 scoped rows, FK-check clean, no NULL\nengagement_id); CBM (ENG-002) re-created fresh as an empty engagement (its 16\nstale chain-0010 rows discarded, per decision). Smoke-tested end to end: reads\nscope per engagement (CRMBUILDER 121 sessions / CBM 0), writes stamp + assign\nidentifiers per engagement, zero errors.\n\nTests green: api 413, ui 854, runtime+integration 20, access/migration per prior\ncommit. DEFERRED to follow-up (per the Stage 4 runbook): retire the meta engine /\nits chain + serve /engagements from the unified table, remove the now-unused\nper-engagement files + meta DB after a rollback window, the full per-request D7\nexport, and the __version__ bump. The meta DB + per-engagement files remain on\ndisk as the rollback set.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "517161c94334cd1c8e92d2744a3d7edf7f448908"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-153",
+    "commit_sha": "ae5535c8934bd39395966d50a5b067857d622541",
+    "commit_updated_at": "2026-06-02T16:34:54.149368",
+    "engagement_id": "ENG-001"
   }
 ]

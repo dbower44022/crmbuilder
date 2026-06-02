@@ -2,15 +2,19 @@
   "label": "Surface UI requirement: all message/error dialogs must be selectable + copyable (PI-124)",
   "session": {
     "session_identifier": "SES-152",
-    "session_title": "Post-cutover follow-up — surface UI message-copyability requirement (PI-124)",
+    "session_title": "Post-cutover follow-up \u2014 surface UI message-copyability requirement (PI-124)",
     "session_medium": "chat",
     "session_medium_metadata": {
       "runner": "claude-code",
       "kind": "requirement-capture"
     },
-    "session_participants": ["Doug Bower", "Claude"],
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
     "session_status": "complete",
-    "session_executive_summary": "During PI-123 cutover testing Doug switched the desktop app to the CBM engagement and hit a 'Switching failed at step 3' dialog whose text was not selectable, so the error could not be copied. This session captures the resulting requirement as PI-124 (PRJ-015, UI usability): every UI message surface — QMessageBox error/info/warning dialogs, the activation-overlay failure message, notification/reconnect banners, and any other popup — must render selectable text with a Select-All + Copy affordance so operators can paste diagnostics verbatim. The switch failure itself is a separate concern (the engagement-switch activation worker still migrates and binds the per-engagement DB rather than the unified DB — PI-123 cutover-completion work)."
+    "session_executive_summary": "During PI-123 cutover testing Doug switched the desktop app to the CBM engagement and hit a 'Switching failed at step 3' dialog whose text was not selectable, so the error could not be copied. This session captures the resulting requirement as PI-124 (PRJ-015, UI usability): every UI message surface \u2014 QMessageBox error/info/warning dialogs, the activation-overlay failure message, notification/reconnect banners, and any other popup \u2014 must render selectable text with a Select-All + Copy affordance so operators can paste diagnostics verbatim. The switch failure itself is a separate concern (the engagement-switch activation worker still migrates and binds the per-engagement DB rather than the unified DB \u2014 PI-123 cutover-completion work).",
+    "session_description": "Captured, as PI-124 under PRJ-015, the requirement that every UI message/error dialog (QMessageBox, the engagement activation-overlay failure message, the auto-reconnect/connection-loss banners, error_dialog, notification popups) render selectable text with a Select-All + Copy affordance. Surfaced 06-02-26 when a 'Switching failed at step 3' dialog during PI-123 cutover testing could not be copied. No code change in this session."
   },
   "conversation": {
     "conversation_identifier": "CNV-054",
@@ -18,7 +22,16 @@
     "conversation_purpose": "Record, as a planning item, the requirement that all UI message/error dialogs support select-all and copy, surfaced when a non-selectable engagement-switch error dialog blocked copying the error text.",
     "conversation_description": "Surfaced 06-02-26 from a non-selectable 'Switching failed at step 3' dialog during PI-123 cutover testing. Creates PI-124 under PRJ-015 (UI usability improvements). No code change in this conversation; the fix is scoped by PI-124.",
     "conversation_status": "complete",
-    "conversation_summary": "Created PI-124 (all UI message/error dialogs selectable + copyable) under PRJ-015."
+    "conversation_summary": "Created PI-124 (all UI message/error dialogs selectable + copyable) under PRJ-015.",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-054",
+        "target_type": "session",
+        "target_id": "SES-152",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
   },
   "work_tickets": [],
   "planning_items": [
@@ -27,8 +40,8 @@
       "title": "All UI message/error dialogs must support select-all and copy",
       "item_type": "pending_work",
       "status": "Draft",
-      "executive_summary": "Every message surface in the V2 desktop UI must present selectable, copyable text. Today several popups — notably QMessageBox error/info/warning dialogs and the engagement activation-overlay failure message ('Switching failed at step N') — render their body as non-selectable labels, so an operator who hits an error cannot copy the text into a bug report. Surfaced 06-02-26 when a CBM engagement-switch failure dialog could not be copied. Requirement: audit all UI message surfaces (QMessageBox, the activation overlay, the auto-reconnect/connection-loss banners, error_dialog, notification popups) and make each body text-selectable plus offer an explicit Copy/Select-All affordance. Acceptance: from every popup an operator can select the full message and copy it.",
-      "description": "UI usability item under PRJ-015. Scope: (1) QMessageBox usages across espo/crmbuilder_v2 UI — set text-interaction flags so the message + detailed text are selectable; (2) ui/widgets/activation_overlay.py — the 'Switching failed at step {step}' title + detail message must be selectable/copyable (this is the exact case that surfaced the requirement); (3) ui/error_dialog.py and the auto-reconnect / connection-loss banners (ui MainWindow) — selectable + a Copy button; (4) any other notification popups. Prefer a shared helper (e.g. a make_selectable(widget) util or a CopyableMessageBox subclass) so the behavior is uniform and future dialogs inherit it. Surfaced 06-02-26 during PI-123 cutover testing (a non-copyable engagement-switch error). Status Draft; awaits decomposition. NOTE: the switch failure that surfaced this is a distinct concern — the desktop engagement-switch activation worker (Step 3 pre-flight Alembic + Step 8 launch) still targets the per-engagement DB instead of the unified DB post-cutover; that is PI-123 cutover-completion work, not part of this item."
+      "executive_summary": "Every message surface in the V2 desktop UI must present selectable, copyable text. Today several popups \u2014 notably QMessageBox error/info/warning dialogs and the engagement activation-overlay failure message ('Switching failed at step N') \u2014 render their body as non-selectable labels, so an operator who hits an error cannot copy the text into a bug report. Surfaced 06-02-26 when a CBM engagement-switch failure dialog could not be copied. Requirement: audit all UI message surfaces (QMessageBox, the activation overlay, the auto-reconnect/connection-loss banners, error_dialog, notification popups) and make each body text-selectable plus offer an explicit Copy/Select-All affordance. Acceptance: from every popup an operator can select the full message and copy it.",
+      "description": "UI usability item under PRJ-015. Scope: (1) QMessageBox usages across espo/crmbuilder_v2 UI \u2014 set text-interaction flags so the message + detailed text are selectable; (2) ui/widgets/activation_overlay.py \u2014 the 'Switching failed at step {step}' title + detail message must be selectable/copyable (this is the exact case that surfaced the requirement); (3) ui/error_dialog.py and the auto-reconnect / connection-loss banners (ui MainWindow) \u2014 selectable + a Copy button; (4) any other notification popups. Prefer a shared helper (e.g. a make_selectable(widget) util or a CopyableMessageBox subclass) so the behavior is uniform and future dialogs inherit it. Surfaced 06-02-26 during PI-123 cutover testing (a non-copyable engagement-switch error). Status Draft; awaits decomposition. NOTE: the switch failure that surfaced this is a distinct concern \u2014 the desktop engagement-switch activation worker (Step 3 pre-flight Alembic + Step 8 launch) still targets the per-engagement DB instead of the unified DB post-cutover; that is PI-123 cutover-completion work, not part of this item."
     }
   ],
   "commits": [],

@@ -2,7 +2,8 @@
   {
     "created_at": "2026-05-18T23:05:48.713278",
     "description": "",
-    "id": 1,
+    "engagement_id": "ENG-001",
+    "id": 1000000001,
     "identifier": "TOP-002",
     "name": "User Interface Design",
     "parent_topic_id": null
@@ -10,15 +11,17 @@
   {
     "created_at": "2026-05-18T23:14:10.820378",
     "description": "",
-    "id": 2,
+    "engagement_id": "ENG-001",
+    "id": 1000000002,
     "identifier": "TOP-003",
     "name": "Grid User Interface",
-    "parent_topic_id": 1
+    "parent_topic_id": 1000000001
   },
   {
     "created_at": "2026-05-29T05:13:20.321276",
     "description": "",
-    "id": 3,
+    "engagement_id": "ENG-001",
+    "id": 1000000003,
     "identifier": "TOP-004",
     "name": "AI Chat integration",
     "parent_topic_id": null

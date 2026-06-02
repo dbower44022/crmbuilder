@@ -1,0 +1,36 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_153.json
+Label:  PI-123 build-closure — unified multi-engagement DB cutover (Stages 1-4); refinements DEC; resolves PI-123
+Deposit event: DEP-148
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-055 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (9 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-376 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  CNV-055 conversation_belongs_to_project PRJ-019 (HTTP 201)
+  ✓ POST references  SES-153 session_follows_from SES-152 (HTTP 201)
+  ✓ POST references  DEC-376 decided_in CNV-055 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-123 (HTTP 201)
+
+✓ All 16 operations complete.
+
+✓ Recorded apply as deposit_event DEP-148 (HTTP 201).

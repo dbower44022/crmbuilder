@@ -1,5 +1,6 @@
 [
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-26T04:05:35.679402",
     "entity_deleted_at": "2026-05-26T04:06:51.072984",
     "entity_description": "created for the field-build smoke verification",
@@ -11,6 +12,7 @@
     "entity_updated_at": "2026-05-26T04:06:51.073303"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-26T04:06:20.105133",
     "entity_deleted_at": "2026-05-26T04:06:51.214606",
     "entity_description": "second target",
@@ -22,6 +24,7 @@
     "entity_updated_at": "2026-05-26T04:06:51.214723"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:32.835461",
     "entity_deleted_at": null,
     "entity_description": "Singleton document, versioned. ``is_current=True`` flags the latest row.",
@@ -33,6 +36,7 @@
     "entity_updated_at": "2026-05-27T01:50:32.835463"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:33.990247",
     "entity_deleted_at": null,
     "entity_description": "Singleton document, versioned. Same shape as ``Charter``.",
@@ -44,6 +48,7 @@
     "entity_updated_at": "2026-05-27T01:50:33.990250"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:35.155895",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``decisions``.",
@@ -55,6 +60,7 @@
     "entity_updated_at": "2026-05-27T01:50:35.155897"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:38.100285",
     "entity_deleted_at": null,
     "entity_description": "Append-only session record.",
@@ -66,6 +72,7 @@
     "entity_updated_at": "2026-05-27T01:50:38.100288"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:40.297355",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``risks``.",
@@ -77,6 +84,7 @@
     "entity_updated_at": "2026-05-27T01:50:40.297358"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:42.389273",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``planning_items``.",
@@ -88,6 +96,7 @@
     "entity_updated_at": "2026-05-27T01:50:42.389275"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:44.296213",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``topics``.",
@@ -99,6 +108,7 @@
     "entity_updated_at": "2026-05-27T01:50:44.296216"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:45.628727",
     "entity_deleted_at": null,
     "entity_description": "Methodology entity — one Phase 1 Domain Inventory member.",
@@ -110,6 +120,7 @@
     "entity_updated_at": "2026-05-27T01:50:45.628730"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:47.575662",
     "entity_deleted_at": null,
     "entity_description": "Methodology entity — one CRM-modeled noun the client uses.",
@@ -121,6 +132,7 @@
     "entity_updated_at": "2026-05-27T01:50:47.575665"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:49.451013",
     "entity_deleted_at": null,
     "entity_description": "Methodology entity — one attribute on one CRM-modeled entity.",
@@ -132,6 +144,7 @@
     "entity_updated_at": "2026-05-27T01:50:49.451016"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:51.663140",
     "entity_deleted_at": null,
     "entity_description": "Methodology entity — one testable statement of what the CRM must do.",
@@ -143,6 +156,7 @@
     "entity_updated_at": "2026-05-27T01:50:51.663143"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:53.745892",
     "entity_deleted_at": null,
     "entity_description": "Methodology entity — one human role or actor in the client's organization.",
@@ -154,6 +168,7 @@
     "entity_updated_at": "2026-05-27T01:50:53.745894"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:55.686003",
     "entity_deleted_at": null,
     "entity_description": "Methodology entity — one Phase 1 Prioritized Backbone member.",
@@ -165,6 +180,7 @@
     "entity_updated_at": "2026-05-27T01:50:55.686005"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:50:58.870278",
     "entity_deleted_at": null,
     "entity_description": "Methodology entity — one discrete CRM-config item the deploy cannot apply.",
@@ -176,6 +192,7 @@
     "entity_updated_at": "2026-05-27T01:50:58.870280"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:01.336542",
     "entity_deleted_at": null,
     "entity_description": "Methodology entity — one verification specification (test).",
@@ -187,6 +204,7 @@
     "entity_updated_at": "2026-05-27T01:51:01.336545"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:04.159682",
     "entity_deleted_at": null,
     "entity_description": "Methodology entity — one Phase 1 Initial CRM Candidate Set member.",
@@ -198,6 +216,7 @@
     "entity_updated_at": "2026-05-27T01:51:04.159684"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:05.875090",
     "entity_deleted_at": null,
     "entity_description": "Governance entity — one coherent line of related conversations.",
@@ -209,6 +228,7 @@
     "entity_updated_at": "2026-05-27T01:51:05.875093"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:08.692879",
     "entity_deleted_at": null,
     "entity_description": "Governance entity — one unit of conversational work through its lifecycle.",
@@ -220,6 +240,7 @@
     "entity_updated_at": "2026-05-27T01:51:08.692882"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:11.794465",
     "entity_deleted_at": null,
     "entity_description": "Governance entity — one long-lived versioned reference document.",
@@ -231,6 +252,7 @@
     "entity_updated_at": "2026-05-27T01:51:11.794468"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:14.344844",
     "entity_deleted_at": null,
     "entity_description": "Child of ``reference_books`` — one known version of a reference book.",
@@ -242,6 +264,7 @@
     "entity_updated_at": "2026-05-27T01:51:14.344847"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:15.700067",
     "entity_deleted_at": null,
     "entity_description": "Governance entity — one single-use seed document (kickoff/prompt).",
@@ -253,6 +276,7 @@
     "entity_updated_at": "2026-05-27T01:51:15.700070"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:18.679021",
     "entity_deleted_at": null,
     "entity_description": "Governance entity — one single-use state-write package.",
@@ -264,6 +288,7 @@
     "entity_updated_at": "2026-05-27T01:51:18.679023"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:21.452746",
     "entity_deleted_at": null,
     "entity_description": "Governance entity — one durable record of a close_out_payload apply.",
@@ -275,6 +300,7 @@
     "entity_updated_at": "2026-05-27T01:51:21.452749"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:23.564208",
     "entity_deleted_at": null,
     "entity_description": "Governance entity — one git-commit-as-governance-record (v0.8, PI-029).",
@@ -286,6 +312,7 @@
     "entity_updated_at": "2026-05-27T01:51:23.564211"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:26.786355",
     "entity_deleted_at": null,
     "entity_description": "Universal polymorphic reference between two records (DEC-006).",
@@ -297,6 +324,7 @@
     "entity_updated_at": "2026-05-27T01:51:26.786359"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:28.624945",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_entity``.",
@@ -308,6 +336,7 @@
     "entity_updated_at": "2026-05-27T01:51:28.624948"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:32.071893",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_entity_synonym``.",
@@ -319,6 +348,7 @@
     "entity_updated_at": "2026-05-27T01:51:32.071895"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:33.064019",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_entity_system``.",
@@ -330,6 +360,7 @@
     "entity_updated_at": "2026-05-27T01:51:33.064022"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:35.075300",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_source``.",
@@ -341,6 +372,7 @@
     "entity_updated_at": "2026-05-27T01:51:35.075305"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:36.305432",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_attribute``.",
@@ -352,6 +384,7 @@
     "entity_updated_at": "2026-05-27T01:51:36.305435"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:39.660008",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_attribute_enum_value``.",
@@ -363,6 +396,7 @@
     "entity_updated_at": "2026-05-27T01:51:39.660011"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:40.664086",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_attribute_synonym``.",
@@ -374,6 +408,7 @@
     "entity_updated_at": "2026-05-27T01:51:40.664090"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:41.730119",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_attribute_presence``.",
@@ -385,6 +420,7 @@
     "entity_updated_at": "2026-05-27T01:51:41.730122"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:42.966898",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_relationship``.",
@@ -396,6 +432,7 @@
     "entity_updated_at": "2026-05-27T01:51:42.966901"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:44.458981",
     "entity_deleted_at": null,
     "entity_description": "V2 storage-system table ``catalog_relationship_presence``.",
@@ -407,6 +444,7 @@
     "entity_updated_at": "2026-05-27T01:51:44.458984"
   },
   {
+    "engagement_id": "ENG-001",
     "entity_created_at": "2026-05-27T01:51:45.488307",
     "entity_deleted_at": null,
     "entity_description": "Append-only change log emitted by every mutating access-layer call.",

@@ -1,5 +1,6 @@
 [
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.139169",
     "reference_book_current_version_date": "2026-05-20T00:00:00",
     "reference_book_current_version_label": "1.0",
@@ -14,6 +15,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.141834"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.206156",
     "reference_book_current_version_date": "2026-05-20T00:00:00",
     "reference_book_current_version_label": "1.0",
@@ -28,6 +30,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.207291"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.274879",
     "reference_book_current_version_date": "2026-05-20T23:30:00",
     "reference_book_current_version_label": "1.0",
@@ -42,6 +45,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.275919"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.340803",
     "reference_book_current_version_date": "2026-05-21T06:00:00",
     "reference_book_current_version_label": "1.0",
@@ -56,6 +60,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.341959"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.403852",
     "reference_book_current_version_date": "2026-05-21T15:30:00",
     "reference_book_current_version_label": "1.1",
@@ -70,6 +75,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.405904"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.507449",
     "reference_book_current_version_date": "2026-05-21T18:00:00",
     "reference_book_current_version_label": "1.0",
@@ -84,6 +90,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.508554"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.570978",
     "reference_book_current_version_date": "2026-05-22T17:30:00",
     "reference_book_current_version_label": "1.1",
@@ -98,6 +105,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.572963"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.635499",
     "reference_book_current_version_date": "2026-05-22T17:00:00",
     "reference_book_current_version_label": "1.0",
@@ -112,6 +120,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.636529"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.701643",
     "reference_book_current_version_date": "2026-05-22T17:30:00",
     "reference_book_current_version_label": "0.1",
@@ -126,6 +135,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.702627"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-22T23:56:18.763892",
     "reference_book_current_version_date": "2026-05-22T17:30:00",
     "reference_book_current_version_label": "0.1",
@@ -140,6 +150,7 @@
     "reference_book_updated_at": "2026-05-22T23:56:18.764879"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-23T16:06:17.232762",
     "reference_book_current_version_date": "2026-05-11T16:00:00",
     "reference_book_current_version_label": "1.0",
@@ -154,6 +165,7 @@
     "reference_book_updated_at": "2026-05-23T16:06:17.267686"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-23T16:06:17.345808",
     "reference_book_current_version_date": "2026-05-16T14:00:00",
     "reference_book_current_version_label": "1.0",
@@ -168,6 +180,7 @@
     "reference_book_updated_at": "2026-05-23T16:06:17.346932"
   },
   {
+    "engagement_id": "ENG-001",
     "reference_book_created_at": "2026-05-23T16:06:17.423780",
     "reference_book_current_version_date": "2026-05-16T14:00:00",
     "reference_book_current_version_label": "1.0",

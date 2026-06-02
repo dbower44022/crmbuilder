@@ -1,5 +1,6 @@
 [
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": "2026-06-01T02:19:06.237281",
     "workstream_created_at": "2026-05-31T14:56:11.023414",
     "workstream_deleted_at": null,
@@ -15,6 +16,7 @@
     "workstream_updated_at": "2026-06-01T02:19:06.237565"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-01T00:05:24.103609",
     "workstream_deleted_at": null,
@@ -30,6 +32,7 @@
     "workstream_updated_at": "2026-06-01T00:07:06.710499"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-01T00:05:24.108854",
     "workstream_deleted_at": null,
@@ -45,6 +48,7 @@
     "workstream_updated_at": "2026-06-01T00:08:28.627668"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-01T00:05:24.116902",
     "workstream_deleted_at": null,
@@ -60,6 +64,7 @@
     "workstream_updated_at": "2026-06-01T00:09:45.800809"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-01T00:05:24.124898",
     "workstream_deleted_at": null,
@@ -75,6 +80,7 @@
     "workstream_updated_at": "2026-06-01T00:11:04.120424"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-01T00:05:24.133165",
     "workstream_deleted_at": null,
@@ -90,6 +96,7 @@
     "workstream_updated_at": "2026-06-01T00:11:56.936655"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-01T00:05:24.140249",
     "workstream_deleted_at": null,
@@ -105,6 +112,7 @@
     "workstream_updated_at": "2026-06-01T00:12:41.731119"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": "2026-06-02T01:47:31.564801",
     "workstream_created_at": "2026-06-02T01:46:16.947265",
     "workstream_deleted_at": null,
@@ -120,6 +128,7 @@
     "workstream_updated_at": "2026-06-02T01:47:31.564909"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-02T01:46:16.952200",
     "workstream_deleted_at": null,
@@ -135,6 +144,7 @@
     "workstream_updated_at": "2026-06-02T02:10:03.205579"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-02T01:46:16.960666",
     "workstream_deleted_at": null,
@@ -150,6 +160,7 @@
     "workstream_updated_at": "2026-06-02T01:46:16.960667"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-02T01:46:16.969206",
     "workstream_deleted_at": null,
@@ -165,6 +176,7 @@
     "workstream_updated_at": "2026-06-02T01:46:16.969208"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-02T01:46:17.013292",
     "workstream_deleted_at": null,
@@ -180,6 +192,7 @@
     "workstream_updated_at": "2026-06-02T01:46:17.013293"
   },
   {
+    "engagement_id": "ENG-001",
     "workstream_completed_at": null,
     "workstream_created_at": "2026-06-02T01:46:17.021003",
     "workstream_deleted_at": null,

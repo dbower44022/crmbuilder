@@ -13,7 +13,8 @@
       "Claude"
     ],
     "session_status": "complete",
-    "session_executive_summary": "PI-123 build + cutover execution (Stages 1-4, 06-02-26): landed the unified multi-engagement DB. Made the ORM express the strict schema (composite (engagement_id, identifier) keys, NOT NULL FK), flipped the test suite to active row-level scoping, built + validated the consolidation, and cut the runtime over to data/v2-unified.db with per-request scoping. Built + validated the live unified DB (CRMBUILDER folded in with exact parity; CBM re-created fresh empty). Surfaced and fixed a real correctness bug \u2014 per-sessionmaker scope registration left some sessions writing NULL engagement_id \u2014 by registering the filter/stamp on the base ORM Session class. Records the build-discovered refinements as DEC-376 and resolves PI-123, which unblocks PI-122."
+    "session_executive_summary": "PI-123 build + cutover execution (Stages 1-4, 06-02-26): landed the unified multi-engagement DB. Made the ORM express the strict schema (composite (engagement_id, identifier) keys, NOT NULL FK), flipped the test suite to active row-level scoping, built + validated the consolidation, and cut the runtime over to data/v2-unified.db with per-request scoping. Built + validated the live unified DB (CRMBUILDER folded in with exact parity; CBM re-created fresh empty). Surfaced and fixed a real correctness bug \u2014 per-sessionmaker scope registration left some sessions writing NULL engagement_id \u2014 by registering the filter/stamp on the base ORM Session class. Records the build-discovered refinements as DEC-376 and resolves PI-123, which unblocks PI-122.",
+    "session_description": "PI-123 build-closure: ingested the 9 slice + cutover commits (Slice 1 through Stage 4) as CM records, recorded the build-discovered refinements as DEC-376 (string-identifier discriminator; consolidation-coupled enforce; Session-class scope registration fixing the per-sessionmaker un-stamped-write bug; get_engine lock + install-before-publish; CBM re-created fresh; deferred activation-worker de-file), and resolved PI-123 \u2014 which unblocks PI-122. Built + validated the live unified DB and cut the runtime over to v2-unified.db with per-request row-level scoping."
   },
   "conversation": {
     "conversation_identifier": "CNV-055",
@@ -21,7 +22,16 @@
     "conversation_purpose": "Close out PI-123: ingest the slice + cutover commits, record the build-discovered refinements as a decision, and resolve PI-123.",
     "conversation_description": "Executed PI-123 Stages 2-4 (strict-schema flip, consolidation + leak-test, runtime cutover to v2-unified.db), built + validated the live unified DB (CRMBUILDER folded in, CBM fresh), fixed the Session-class scope-registration bug, and authored this build-closure.",
     "conversation_status": "complete",
-    "conversation_summary": "Resolved PI-123; recorded refinements as DEC-376; unblocked PI-122."
+    "conversation_summary": "Resolved PI-123; recorded refinements as DEC-376; unblocked PI-122.",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-055",
+        "target_type": "session",
+        "target_id": "SES-153",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
   },
   "work_tickets": [],
   "planning_items": [],
