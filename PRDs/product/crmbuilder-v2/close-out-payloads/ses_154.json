@@ -1,0 +1,241 @@
+{
+ "label": "ses_154",
+ "session": {
+  "session_identifier": "SES-154",
+  "session_title": "PI-alpha build-closure — Postgres foundation (Production Multi-Tenant API)",
+  "session_medium": "chat",
+  "session_medium_metadata": {
+   "runner": "claude-code",
+   "kind": "build-closure"
+  },
+  "session_participants": [
+   "Doug Bower",
+   "Claude"
+  ],
+  "session_status": "complete",
+  "session_executive_summary": "PI-alpha (Postgres foundation, PRJ-019) built + closed on branch pi-alpha-postgres (06-02-26). Ported the unified row-level engagement_id schema to Postgres behind one switch (CRMBUILDER_V2_DATABASE_URL; SQLite stays default): JSON->JSONB variants, four dialect-aware CHECK constructs that emit byte-identical SQLite, a dialect-conditional engine (QueuePool on PG), a separate migrations/pg/ Alembic baseline, and the one-shot sqlite_to_postgres migration validated against the real v2-unified.db (ENG-001=9025 rows, isolation OK). The suite runs on Postgres via a CRMBUILDER_V2_TEST_PG_URL gate (access 844, api 412 green) + a CI workflow. Six VARCHAR-overflow bugs SQLite masked were fixed. Records DEC-377 and resolves PI-alpha; creates PI-beta and PI-gamma under PRJ-019.",
+  "session_description": "PI-alpha build-closure: ingests the 7 branch commits (Architecture -> Development -> Data-Migration -> Testing -> PG baseline + CI -> build notes -> documentation), records the build as DEC-377, creates the three PRJ-019 planning items (PI-alpha Postgres foundation, PI-beta de-file + kill snapshots, PI-gamma identity/RBAC), and resolves PI-alpha. Applied on main after the fast-forward merge of pi-alpha-postgres; re-key identifiers to main's heads if anything advanced in parallel."
+ },
+ "conversation": {
+  "conversation_identifier": "CNV-056",
+  "conversation_title": "PI-alpha build-closure — Postgres foundation",
+  "conversation_purpose": "Close out PI-alpha: ingest the build commits, record the build decision, create PI-beta/PI-gamma, and resolve PI-alpha.",
+  "conversation_description": "Built the Postgres foundation (schema port, JSONB, dialect-aware CHECKs, data migration, suite green on PG, PG Alembic baseline, CI, docs) and authored this build-closure.",
+  "conversation_status": "complete",
+  "conversation_summary": "Resolved PI-alpha; recorded DEC-377; created PI-beta and PI-gamma under PRJ-019.",
+  "references": [
+   {
+    "source_type": "conversation",
+    "source_id": "CNV-056",
+    "target_type": "session",
+    "target_id": "SES-154",
+    "relationship": "conversation_belongs_to_session"
+   }
+  ]
+ },
+ "work_tickets": [],
+ "planning_items": [
+  {
+   "identifier": "PI-125",
+   "title": "PI-alpha — Postgres foundation (Production Multi-Tenant API)",
+   "item_type": "pending_work",
+   "status": "Draft",
+   "executive_summary": "Make Postgres the store for the v2 unified multi-engagement DB (PRJ-019, D1/D9/D10/D11). Port the strict row-level engagement_id schema to Postgres behind CRMBUILDER_V2_DATABASE_URL (SQLite stays the default): JSON->JSONB, dialect-aware CHECK constructs, a connection pool, a separate PG Alembic baseline, the one-shot v2-unified.db->Postgres migration (validated incl. the leak-test on PG), and the suite green on Postgres in CI. Foundation for PI-gamma (RBAC) and PI-beta (de-file). Built 06-02-26 on branch pi-alpha-postgres; this build-closure resolves it.",
+   "description": "See pi-alpha-postgres-foundation-architecture.md (+ §8.5 build notes) and pi-alpha-postgres-migration-runbook.md. Delivered: psycopg3 + CRMBUILDER_V2_DATABASE_URL + dialect-conditional engine/JSONB/CHECK constructs (models.py, db.py); migration/sqlite_to_postgres.py; migrations/pg/ baseline; CRMBUILDER_V2_TEST_PG_URL test gate; .github/workflows/postgres-tests.yml; docker-compose.dev.yml; six VARCHAR widenings + Alembic 0039. Remaining (separate): PI-100 scale check + the Deployment phase (prod topology, managed PG, flip-the-default)."
+  },
+  {
+   "identifier": "PI-126",
+   "title": "PI-beta — De-file the runtime + kill snapshots + API/MCP-only",
+   "item_type": "pending_work",
+   "status": "Draft",
+   "executive_summary": "Finish the runtime transition the Postgres foundation enables (PRJ-019, D5-partial/D6/D7/D8). Remove the per-engagement-file apparatus (the meta DB layer, file routing, the activation-worker subprocess swap, the single-active marker) and the db-export snapshot process; engagement is selected per request, the DB is the source of truth, and clients reach it only via API or MCP (retire the static-JSON orientation tier). Absorbs the broken engagement-switch fix. Largely DB-agnostic — can run in parallel with the rest. Draft; awaits decomposition.",
+   "description": "Successor to PI-alpha under PRJ-019; see production-multitenant-api-architecture.md D5/D6/D7/D8. Removes access/meta_db.py + meta_models.py + migrations/meta/ + meta_exporter + the two-database wiring + dogfood_v0_5 + lazy_migration + ui/activation_worker subprocess swap; removes build_snapshot/write_staging/promote/force_export + the db-export tree + the export hook in session_scope; rewrites CLAUDE.md + governance-recording-rules.md + the orientation/conduct docs for API/MCP-only."
+  },
+  {
+   "identifier": "PI-127",
+   "title": "PI-gamma — Identity, authentication & RBAC",
+   "item_type": "pending_work",
+   "status": "Draft",
+   "executive_summary": "Make the API multi-user (PRJ-019, D2/D3/D4/D5-final). Add principals (human users + AI service agents), hashed api_tokens, roles, and per-engagement role_assignments; a single resolve_principal chokepoint turns each request into an authenticated principal whose roles gate which engagements it may touch and read-vs-write rights, composed with the PI-123 row-level scope. Bearer tokens first (OIDC/SSO a deferred additive issuer); ADO agents are scoped service principals. Best on Postgres; needs the multi-user request model. Feeds PI-122 (Agent Profile Registry). Draft; awaits decomposition.",
+   "description": "Successor to PI-alpha under PRJ-019; see production-multitenant-api-architecture.md D2/D3/D4/D5. principals/api_tokens/roles/role_assignments tables; resolve_principal + bearer-token middleware; per-engagement permission enforcement at the access/repository layer composed with the scope; agents as scoped service principals (orchestrator mints/assigns tokens at spawn); finalize per-request engagement selection + retire the single-active marker. The shelved Cloudflare Managed-OAuth setup plugs in here as the OIDC issuer when Anthropic's connector bug is fixed."
+  }
+ ],
+ "commits": [
+  {
+   "commit_sha": "588aec3fdd44abef83bda60ad73b511d4ac44002",
+   "commit_message_first_line": "v2: PI-alpha Architecture/scoping pass — Postgres foundation design",
+   "commit_message_full": "v2: PI-alpha Architecture/scoping pass — Postgres foundation design\n\nPI-alpha's own Architecture phase deliverable (refines program design\nproduction-multitenant-api-architecture.md D1/D9/D10/D11). Build-ready\nplan for the Postgres store swap only; PI-beta (de-file/snapshots) and\nPI-gamma (RBAC) land on it.\n\nResolves PI-alpha scoping decisions: psycopg3 sync + QueuePool (async\ndeferred); JSON->JSONB via dialect-variant aliases (none_as_null\npreserved); dialect-conditional engine build (SQLite hacks no-op on PG);\nfresh PG Alembic baseline (batch chain 0001-0038 not replayed);\nstraight v2-unified.db->PG copy + sequence reset + leak-test on PG;\nDocker PG for dev/CI, DO Managed PG for prod. Enumerates the five-point\nSQLite-specific surface and the 12 JSONB target columns.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 1,
+   "commit_committed_at": "2026-06-02T14:35:29-04:00",
+   "commit_parent_shas": [
+    "5b790bb97c8f201b628eed31bb662a8ae399fb2a"
+   ]
+  },
+  {
+   "commit_sha": "3f0805499fe40cc7d4f02b8e4a6799f763cdd65d",
+   "commit_message_first_line": "v2: PI-alpha Dev — port the schema to Postgres (dialect-conditional engine, JSONB, dialect-aware CHECKs)",
+   "commit_message_full": "v2: PI-alpha Dev — port the schema to Postgres (dialect-conditional engine, JSONB, dialect-aware CHECKs)\n\nPI-alpha Development phase, increment 1 (D1/D10). The strict unified schema\nnow materializes on Postgres; SQLite remains the default and is byte-identical.\n\n- pyproject: add psycopg[binary]>=3.1 (sync PG driver).\n- config: CRMBUILDER_V2_DATABASE_URL setting + dialect-aware db_url (falls\n  back to sqlite:///{db_path} when unset); db_pool_size/max_overflow/recycle.\n- db.py: dialect-conditional _build_engine — SQLite pragmas + BEGIN IMMEDIATE\n  only on SQLite; PG gets QueuePool (pre_ping + recycle) and standard txns.\n- models.py: JSONColumn / JSONColumnNoneAsNull dialect-variant aliases\n  (JSON on SQLite, JSONB on PG; none_as_null preserved) across all 12 JSON\n  columns. Dialect-aware CHECK constructs replace SQLite-only SQL: GLOB->~ regex\n  (identifier formats incl. compound + 4-digit + nullable REF), json_* ->\n  jsonb_* (non-empty-array), 0/1 -> true/false (boolean domain), hex SHA guard.\n  SQLite rendering is byte-identical, so the SQLite suite and existing DBs are\n  unchanged.\n- migrations/env.py: render_as_batch + sqlite pragmas + BEGIN IMMEDIATE only\n  on SQLite; PG runs standard in-place migrations.\n- docker-compose.dev.yml: local dev/CI Postgres (port 55432).\n\nValidated: create_all on PG 16 (41 tables, 403 CHECKs, 12 jsonb cols, 45 FKs);\nJSONB round-trip + engagement-scope stamp + scope filter isolation on live PG;\nSQLite suite green (860 access+migration tests pass, byte-identical CHECK SQL).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 7,
+   "commit_committed_at": "2026-06-02T17:01:00-04:00",
+   "commit_parent_shas": [
+    "588aec3fdd44abef83bda60ad73b511d4ac44002"
+   ]
+  },
+  {
+   "commit_sha": "19fc9c480b97a5f505a4ed2e1cceb365cce63fe7",
+   "commit_message_first_line": "v2: PI-alpha Dev/Data-Migration — unified-SQLite -> Postgres migration + column widenings",
+   "commit_message_full": "v2: PI-alpha Dev/Data-Migration — unified-SQLite -> Postgres migration + column widenings\n\nPI-alpha increment 2 (D9). The just-built v2-unified.db migrates into Postgres,\nvalidated end-to-end against the real DB.\n\n- migration/sqlite_to_postgres.py: one-shot migrate(sqlite, pg_url). Copies every\n  table through SQLAlchemy Core bound to Base.metadata (type round-trip handles\n  JSON-text->JSONB, 0/1->bool, ISO->timestamptz); inserts in sorted_tables FK\n  order with FK enforcement ON (no superuser/replication-role needed); two-passes\n  the decisions/topics self-FKs; resets PG SERIAL sequences to MAX(id) so the next\n  ORM insert can't collide. Validates per-engagement count + identifier parity,\n  no NULL engagement_id, and re-runs the cross-engagement isolation (leak-test)\n  through the scoped ORM on Postgres. CLI module entry point. PG schema is stood\n  up via create_all (the v0.1 baseline posture).\n\n- models.py: widen six columns whose real data overran the declared VARCHAR\n  (SQLite ignored the cap; PG enforces it) — found by migrating the real DB:\n  decisions/planning_items/risks.title + conversations.conversation_title +\n  change_log.entity_identifier -> Text; refs.relationship_kind String(32)->(64)\n  (longest vocab kind is 42 chars). meta_models.py: share _IdentifierFormatCheck\n  so the meta engagements table stays in parity (test_engagements_model_parity).\n\n- migrations/0039: SQLite-chain hygiene mirroring the widenings so\n  `alembic upgrade head` matches the models (no-op on SQLite in practice).\n\n- tests/migration/test_sqlite_to_postgres.py: gated on CRMBUILDER_V2_TEST_PG_URL\n  (skips without a PG; default SQLite suite untouched). Synthetic 2-engagement\n  source with colliding identifiers + self-FKs; asserts parity, coexistence,\n  self-FK integrity, sequence reset, JSONB round-trip, isolation, empty-target\n  refusal.\n\nValidated on PG16: real v2-unified.db -> 9025 ENG-001 rows + empty ENG-002, 10\nsequences reset, isolation OK; both pytest cases pass; SQLite suite green\n(877 passed, parity restored; only the pre-existing catalog-chain 0037 fails).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 5,
+   "commit_committed_at": "2026-06-02T17:44:55-04:00",
+   "commit_parent_shas": [
+    "3f0805499fe40cc7d4f02b8e4a6799f763cdd65d"
+   ]
+  },
+  {
+   "commit_sha": "f1f5c099e403bcf99f094ce772ed91ab7c977e15",
+   "commit_message_first_line": "v2: PI-alpha Testing — run the suite on Postgres (PG-mode conftest + portability fixes)",
+   "commit_message_full": "v2: PI-alpha Testing — run the suite on Postgres (PG-mode conftest + portability fixes)\n\nPI-alpha Testing phase. The shared v2_env fixture is now Postgres-aware, gated on\nCRMBUILDER_V2_TEST_PG_URL; unset, every test stays on per-test SQLite exactly as\nbefore. Access (844 passed / 10 skipped) and API (412 / 1) suites are green on PG.\n\nconftest:\n- PG mode routes the engine at CRMBUILDER_V2_DATABASE_URL; db_path still resolves\n  data_dir/marker/export. Schema built once per session, engine/pool reused.\n- Per-test reset is a reverse-FK DELETE + a one-pass PL/pgSQL sequence reset\n  (~5ms), NOT TRUNCATE CASCADE RESTART IDENTITY (~2.8s) — that alone made PG-mode\n  as fast as SQLite. Sequences restart at 1 so id-derived identifiers (REF-0001)\n  match the fresh-SQLite baseline.\n- Re-install the engagement-scope listeners every test: SQLite masks an\n  uninstalling test (test_engagement_scope) via its per-test engine rebuild; PG\n  reuses the engine, so without this the write-stamp stayed uninstalled and 121\n  later tests wrote NULL engagement_id.\n- pytest_collection_modifyitems skips intrinsically-SQLite tests on PG (type-\n  affinity reflection asserts; sqlite_master / two-file-routing topology).\n\ntest portability (run on both dialects now):\n- test_commit_model: datetime('now') -> CURRENT_TIMESTAMP; wrap expected-CHECK-\n  rejection inserts in a SAVEPOINT (PG aborts the txn on a failed statement,\n  SQLite does not) — this gives the GLOB->regex CHECKs real PG reject coverage.\n- test_process refs-check: same SAVEPOINT wrap.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 3,
+   "commit_committed_at": "2026-06-02T18:24:34-04:00",
+   "commit_parent_shas": [
+    "19fc9c480b97a5f505a4ed2e1cceb365cce63fe7"
+   ]
+  },
+  {
+   "commit_sha": "8b123dfb1d13b1acaa0a9b40d185372d96c7a01c",
+   "commit_message_first_line": "v2: PI-alpha — Postgres Alembic baseline tree + Postgres CI workflow",
+   "commit_message_full": "v2: PI-alpha — Postgres Alembic baseline tree + Postgres CI workflow\n\nPI-alpha Development (PG schema management) + Testing (CI).\n\n- migrations/pg/: a separate Alembic chain for Postgres (mirrors migrations/meta/),\n  resolving the architecture doc's open §5 decision in favour of a separate tree\n  over dialect-branching the SQLite chain. Single baseline 0001_pg_baseline\n  materialises the full strict schema from Base.metadata (create_all) — the\n  SQLite batch chain 0001-0039 is not replayed on PG; PG grows its own chain.\n  Validated: `alembic -c migrations/pg/alembic.ini upgrade head` -> 0001_pg_baseline\n  (head), 41 tables on PG16. Composes with sqlite_to_postgres.migrate(...,\n  create_schema=False) for a production deploy.\n- .github/workflows/postgres-tests.yml: spins up Postgres 16 and runs the DB\n  suites (access, api, integration, mcp_server, bootstrap, runtime + the\n  sqlite->pg migration test) with CRMBUILDER_V2_TEST_PG_URL set. UI (needs a\n  display, dialect-agnostic) and the main-branch-guarded apply_close_out tests\n  are excluded.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 5,
+   "commit_committed_at": "2026-06-02T18:27:54-04:00",
+   "commit_parent_shas": [
+    "f1f5c099e403bcf99f094ce772ed91ab7c977e15"
+   ]
+  },
+  {
+   "commit_sha": "78ee297c2f46946bd350a95e4548041d550cac01",
+   "commit_message_first_line": "v2: PI-alpha — record build notes (as executed) in the architecture doc",
+   "commit_message_full": "v2: PI-alpha — record build notes (as executed) in the architecture doc\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 1,
+   "commit_committed_at": "2026-06-02T18:28:54-04:00",
+   "commit_parent_shas": [
+    "8b123dfb1d13b1acaa0a9b40d185372d96c7a01c"
+   ]
+  },
+  {
+   "commit_sha": "7352d1a9ac4fad5f472cd811617a44ed1c4b8962",
+   "commit_message_first_line": "v2: PI-alpha Documentation — CLAUDE.md Postgres store note + migration runbook",
+   "commit_message_full": "v2: PI-alpha Documentation — CLAUDE.md Postgres store note + migration runbook\n\nPI-alpha Documentation phase. CLAUDE.md gains a Production Multi-Tenant API /\nPI-alpha note under PRJ-019: Postgres-when-DATABASE_URL-set (SQLite still\ndefault), JSONB + dialect-aware CHECK constructs, the dual-head Alembic posture\n(migrations/pg/ separate from the SQLite chain), the data-migration script, the\nPG test gate + CI, and the six VARCHAR widenings. New runbook\npi-alpha-postgres-migration-runbook.md covers the Docker dev quickstart, the PG\nbaseline, running the migration, validation, the PG test run, and the managed-PG\nproduction outline.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 2,
+   "commit_committed_at": "2026-06-02T18:35:04-04:00",
+   "commit_parent_shas": [
+    "78ee297c2f46946bd350a95e4548041d550cac01"
+   ]
+  }
+ ],
+ "decisions": [
+  {
+   "identifier": "DEC-377",
+   "title": "PI-alpha Postgres foundation — build decisions and port-discovered findings",
+   "decision_date": "2026-06-02",
+   "status": "Active",
+   "context": "PRJ-019's Production Multi-Tenant API program (successor to PI-123) decomposes into PI-alpha (Postgres foundation), PI-beta (de-file + kill snapshots), PI-gamma (RBAC). PI-alpha was designed in pi-alpha-postgres-foundation-architecture.md and built on branch pi-alpha-postgres. This DEC records the decisions taken and the findings running the build against a live Postgres 16 surfaced, so the design doc and successors reflect reality.",
+   "decision": "(1) Postgres is enabled by a single switch CRMBUILDER_V2_DATABASE_URL (db_url returns it verbatim; falls back to sqlite:///db_path when unset); SQLite stays the DEFAULT until the prod migration is rehearsed. (2) psycopg3 sync + QueuePool (pre_ping + recycle); async is deferred. (3) JSON columns use JSON().with_variant(JSONB(),'postgresql') aliases (none_as_null preserved). (4) The four SQLite-only CHECK idioms (GLOB identifier formats, json_valid/json_type/json_array_length, IN (0,1) boolean domain, the hex-SHA NOT GLOB guard) become dialect-rendering ColumnElement constructs whose SQLite output is byte-identical and whose Postgres output is ~ regex / jsonb_* / boolean. (5) Dual-head Alembic: the SQLite batch chain (0001-0039) is NOT replayed on Postgres; PG gets a SEPARATE tree at migrations/pg/ with a single create_all baseline and grows its own chain (resolving the architecture doc's open §5 decision). (6) The data migration is a straight Core copy preserving engagement_id, FK-ordered with FK enforcement on, self-FK two-pass, plus a PG SERIAL sequence reset; validated with count/identifier parity + the leak-test on PG. (7) The suite runs on Postgres via a CRMBUILDER_V2_TEST_PG_URL-gated v2_env using a reverse-FK DELETE + one-pass sequence reset for per-test isolation (not TRUNCATE CASCADE, ~560x slower) and re-installing the scope listeners every test.",
+   "rationale": "The unified schema was designed without SQLite-only tricks, so the port is mechanical EXCEPT where SQLite silently tolerated what Postgres enforces. Running create_all + the real data migration against a live PG is what surfaced the genuine gaps; the byte-identical-on-SQLite constructs keep the default path and existing DBs unchanged. A separate PG Alembic tree avoids the multiple-heads tangle of dialect-branching one chain. DELETE-based reset made PG-mode as fast as SQLite, making a full PG test run practical.",
+   "alternatives_considered": "Hard-cut to Postgres (rejected: SQLite default de-risks rollout); async asyncpg (deferred: sync + MVCC already gives concurrent readers/writers); dialect-branching one Alembic chain (rejected: multiple-heads tangle, SQLite batch ops with no clean PG analogue); TRUNCATE CASCADE for per-test reset (rejected: ~2.8s/test vs ~5ms for DELETE).",
+   "consequences": "Postgres is a validated, tested target for the v2 store; v2-unified.db is the blessed migration source. PI-gamma (RBAC) and PI-beta (de-file) land on this foundation. Two latent classes of bug were fixed for free: six VARCHAR-overflow columns (widened to Text / String(64), Alembic 0039) and a test-harness scope-uninstall leak. The Deployment phase (prod topology, managed PG, flip-the-default timing) and a PI-100 concurrent-writer scale check remain.",
+   "executive_summary": "Records PI-alpha's build: Postgres behind CRMBUILDER_V2_DATABASE_URL (SQLite default), psycopg3 sync + QueuePool, JSON->JSONB variants, four byte-identical-on-SQLite dialect-aware CHECK constructs, a separate migrations/pg/ Alembic baseline (dual-head), the validated sqlite_to_postgres migration, and a CRMBUILDER_V2_TEST_PG_URL-gated suite green on PG + CI. Port-discovered findings: six VARCHAR-overflow columns SQLite masked (widened, Alembic 0039) and a scope-listener test-harness leak. Resolves PI-alpha; PI-beta/PI-gamma created under PRJ-019."
+  }
+ ],
+ "references": [
+  {
+   "source_type": "session",
+   "source_id": "SES-154",
+   "target_type": "project",
+   "target_id": "PRJ-019",
+   "relationship": "session_belongs_to_project"
+  },
+  {
+   "source_type": "conversation",
+   "source_id": "CNV-056",
+   "target_type": "project",
+   "target_id": "PRJ-019",
+   "relationship": "conversation_belongs_to_project"
+  },
+  {
+   "source_type": "session",
+   "source_id": "SES-154",
+   "target_type": "session",
+   "target_id": "SES-153",
+   "relationship": "session_follows_from"
+  },
+  {
+   "source_type": "planning_item",
+   "source_id": "PI-125",
+   "target_type": "project",
+   "target_id": "PRJ-019",
+   "relationship": "planning_item_belongs_to_project"
+  },
+  {
+   "source_type": "planning_item",
+   "source_id": "PI-126",
+   "target_type": "project",
+   "target_id": "PRJ-019",
+   "relationship": "planning_item_belongs_to_project"
+  },
+  {
+   "source_type": "planning_item",
+   "source_id": "PI-127",
+   "target_type": "project",
+   "target_id": "PRJ-019",
+   "relationship": "planning_item_belongs_to_project"
+  },
+  {
+   "source_type": "planning_item",
+   "source_id": "PI-127",
+   "target_type": "planning_item",
+   "target_id": "PI-125",
+   "relationship": "blocked_by"
+  },
+  {
+   "source_type": "decision",
+   "source_id": "DEC-377",
+   "target_type": "conversation",
+   "target_id": "CNV-056",
+   "relationship": "decided_in"
+  }
+ ],
+ "resolves_planning_items": [
+  {
+   "planning_item_identifier": "PI-125"
+  }
+ ],
+ "addresses_planning_items": []
+}
