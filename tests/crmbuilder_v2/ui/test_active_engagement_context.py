@@ -6,8 +6,6 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-from PySide6.QtCore import QCoreApplication
-
 from crmbuilder_v2.access.engagement_models import (
     Engagement,
     EngagementStatus,
@@ -16,6 +14,7 @@ from crmbuilder_v2.ui.active_engagement_context import (
     ActiveEngagementContext,
     current_engagement_path,
 )
+from PySide6.QtCore import QCoreApplication
 
 
 @pytest.fixture
@@ -76,6 +75,9 @@ def test_clear_emits_none(qapp, v2_env):
 
 
 def test_load_from_disk_missing_file(qapp, v2_env):
+    # PI-123: v2_env seeds a default marker; this test exercises the
+    # no-marker path, so remove it first.
+    current_engagement_path().unlink(missing_ok=True)
     ctx = ActiveEngagementContext()
     received: list = []
     ctx.active_engagement_changed.connect(received.append)
@@ -184,6 +186,8 @@ def test_persist_to_disk_round_trip(qapp, v2_env):
 
 
 def test_persist_to_disk_noop_when_no_engagement(qapp, v2_env):
+    # PI-123: v2_env seeds a default marker; clear it to test the no-op path.
+    current_engagement_path().unlink(missing_ok=True)
     ctx = ActiveEngagementContext()
     ctx.persist_to_disk()
     assert not current_engagement_path().exists()

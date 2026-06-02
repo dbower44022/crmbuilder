@@ -17,7 +17,6 @@ from crmbuilder_v2.access.meta_db import (
 )
 from crmbuilder_v2.access.meta_models import EngagementRow
 from crmbuilder_v2.config import get_settings
-from crmbuilder_v2.migration.lazy_migration import engagement_db_path
 from crmbuilder_v2.runtime.engagement_routing import (
     UNCONFIGURED_SENTINEL,
     resolve_active_engagement,
@@ -118,8 +117,12 @@ def test_route_unknown_code_raises_UnknownEngagementError(routing_env):
 
 
 def test_route_valid_code_sets_db_path_env_var(routing_env):
+    # PI-123 cutover: routing binds to the single unified DB (not a
+    # per-engagement file) and turns scoping on; the engagement is selected
+    # row-level via the marker/header at request time.
     route_settings_to_engagement("CBM")
-    assert os.environ["CRMBUILDER_V2_DB_PATH"] == str(engagement_db_path("CBM"))
+    assert os.environ["CRMBUILDER_V2_DB_PATH"] == str(data_dir() / "v2-unified.db")
+    assert os.environ["CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED"] == "true"
 
 
 def test_route_engagement_with_export_dir_sets_export_dir_env_var(routing_env):
@@ -163,17 +166,19 @@ def test_route_resets_settings_cache_so_subsequent_get_settings_reflects_change(
     cbm_export = routing_env
     route_settings_to_engagement("CBM")
     s = get_settings()
-    assert s.db_path == engagement_db_path("CBM")
+    assert s.db_path == data_dir() / "v2-unified.db"  # PI-123: unified DB
     assert s.export_dir == cbm_export
 
 
 def test_route_twice_to_different_engagement_reflects_second_engagement_after_caches_reset(
     routing_env,
 ):
+    # PI-123 cutover: both engagements route to the same unified DB; only the
+    # export dir (and the row-level scope) differs between them.
     route_settings_to_engagement("CBM")
-    assert get_settings().db_path == engagement_db_path("CBM")
+    assert get_settings().db_path == data_dir() / "v2-unified.db"
 
     route_settings_to_engagement("CRMBUILDER")
     s = get_settings()
-    assert s.db_path == engagement_db_path("CRMBUILDER")
+    assert s.db_path == data_dir() / "v2-unified.db"
     assert str(s.export_dir) == UNCONFIGURED_SENTINEL

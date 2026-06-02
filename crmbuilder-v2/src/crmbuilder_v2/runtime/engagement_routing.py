@@ -25,7 +25,6 @@ from ..access import db as access_db
 from ..access import engagement as engagement_repo
 from ..access import meta_db
 from ..config import Settings, reset_settings_cache
-from ..migration.lazy_migration import engagement_db_path
 from .exceptions import (
     EngagementExportDirMissing,
     EngagementExportDirNotConfigured,
@@ -112,8 +111,15 @@ def route_settings_to_engagement(code: str) -> None:
     canonical_code = match.engagement_code
     prev_data_dir = meta_db.data_dir()
 
-    db_path = engagement_db_path(canonical_code)
+    # PI-123 cutover (D6): the runtime binds to the **single unified DB**, not a
+    # per-engagement file. Engagement selection is now row-level — the request
+    # middleware resolves the active engagement (marker / X-Engagement) and the
+    # central filter/stamp scope every query. So we point at ``v2-unified.db``
+    # and turn scoping on; the engagement's export dir is still per-engagement
+    # (D7). (The legacy ``engagement_db_path`` per-file routing is retired.)
+    db_path = meta_db.data_dir() / "v2-unified.db"
     os.environ["CRMBUILDER_V2_DB_PATH"] = str(db_path)
+    os.environ["CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED"] = "true"
 
     export_dir = (match.engagement_export_dir or "").strip()
     os.environ["CRMBUILDER_V2_EXPORT_DIR"] = export_dir or UNCONFIGURED_SENTINEL
@@ -125,7 +131,8 @@ def route_settings_to_engagement(code: str) -> None:
     meta_db.init_meta_db_pool()
 
     _log.info(
-        "routed Settings at engagement %s (db_path=%s, export_dir=%s)",
+        "routed Settings at engagement %s on the unified DB "
+        "(db_path=%s, export_dir=%s, scoping=on)",
         canonical_code,
         db_path,
         os.environ["CRMBUILDER_V2_EXPORT_DIR"],

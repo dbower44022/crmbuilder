@@ -209,8 +209,11 @@ def test_route_api_at_active_engagement_sets_env(
 
     _route_api_at_active_engagement(active, log)
 
-    expected = data / "engagements" / "CRMBUILDER.db"
+    # PI-123 cutover: routing binds to the single unified DB (engagement is
+    # row-level), not the per-engagement file.
+    expected = data / "v2-unified.db"
     assert os.environ["CRMBUILDER_V2_DB_PATH"] == str(expected)
+    assert os.environ["CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED"] == "true"
 
     # Settings cache reset means subsequent get_settings sees the new
     # value, and the canonical data dir still resolves correctly.

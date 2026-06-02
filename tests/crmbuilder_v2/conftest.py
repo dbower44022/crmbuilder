@@ -28,6 +28,7 @@ engagement themselves with ``engagement_scope.active_engagement(...)``.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -58,9 +59,12 @@ def _seed_default_engagement(export_dir: Path) -> None:
     refresh writes the git-tracked ``db-export/meta/`` file at the hardcoded
     repo path; see ``test_engagement_scope_middleware``).
 
-    The *meta* DB registry (the request-scope middleware's resolver source
-    until the cutover) is seeded only where it is needed — the API ``client``
-    fixture — so engagement-registry repo tests keep a clean meta DB.
+    Also writes the ``current_engagement.json`` marker so the request-scope
+    middleware's no-header fallback resolves this engagement (the scope resolver
+    reads the unified ``engagements`` table seeded here). This makes every
+    API-backed test — including the UI panels' ``StorageClient``-over-TestClient
+    fixtures, which send no ``X-Engagement`` header — resolve the default
+    engagement, mirroring how the desktop app's marker drives it in production.
     """
     now = datetime.now(UTC)
     factory = get_session_factory()
@@ -79,6 +83,19 @@ def _seed_default_engagement(export_dir: Path) -> None:
     )
     session.commit()
     session.close()
+
+    # Marker: data_dir() resolves to db_path.parent in tests; the resolver reads
+    # ``<data_dir>/current_engagement.json`` as the no-header fallback.
+    marker = get_settings().db_path.parent / "current_engagement.json"
+    marker.write_text(
+        json.dumps(
+            {
+                "engagement_code": DEFAULT_ENGAGEMENT_CODE,
+                "engagement_identifier": DEFAULT_ENGAGEMENT_ID,
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 @pytest.fixture

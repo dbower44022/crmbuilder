@@ -17,7 +17,11 @@ from types import SimpleNamespace
 
 import pytest
 from crmbuilder_v2.access import meta_exporter
-from crmbuilder_v2.access.db import bootstrap_database, session_scope
+from crmbuilder_v2.access.db import (
+    bootstrap_database,
+    reset_engine_cache,
+    session_scope,
+)
 from crmbuilder_v2.access.engagement_models import (
     Engagement,
     EngagementStatus,
@@ -30,7 +34,7 @@ from crmbuilder_v2.access.meta_db import (
 from crmbuilder_v2.access.meta_models import EngagementRow
 from crmbuilder_v2.access.repositories import decisions
 from crmbuilder_v2.api.main import create_app
-from crmbuilder_v2.migration.lazy_migration import engagement_db_path
+from crmbuilder_v2.config import reset_settings_cache
 from crmbuilder_v2.runtime.engagement_routing import (
     route_settings_to_engagement,
 )
@@ -68,8 +72,35 @@ def _seed_meta(identifier: str, code: str, export_dir: str) -> None:
         session.close()
 
 
-def _make_decision(identifier: str, title: str) -> None:
-    with session_scope() as s:
+def _seed_unified(identifier: str, code: str, export_dir: str) -> None:
+    from crmbuilder_v2.access.db import get_session_factory
+    from crmbuilder_v2.access.models import EngagementRow as UnifiedEngagementRow
+
+    factory = get_session_factory()
+    s = factory()
+    now = datetime.now(UTC)
+    s.add(
+        UnifiedEngagementRow(
+            engagement_identifier=identifier,
+            engagement_code=code,
+            engagement_name=f"Engagement {code}",
+            engagement_purpose="routing test",
+            engagement_status="active",
+            engagement_export_dir=export_dir,
+            engagement_created_at=now,
+            engagement_updated_at=now,
+        )
+    )
+    s.commit()
+    s.close()
+
+
+def _make_decision(identifier: str, title: str, engagement: str) -> None:
+    # PI-123 cutover: writes are row-scoped by the active engagement. The real
+    # app sets it per request via the scope middleware; here we set it directly.
+    from crmbuilder_v2.access import engagement_scope
+
+    with engagement_scope.active_engagement(engagement), session_scope() as s:
         decisions.create(
             s,
             identifier=identifier,
@@ -81,8 +112,18 @@ def _make_decision(identifier: str, title: str) -> None:
 
 
 @pytest.fixture
-def two_engagements(v2_env, tmp_path: Path) -> SimpleNamespace:
+def two_engagements(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
+    # PI-123 cutover: one unified DB, engagements row-scoped. Seed CRMBUILDER +
+    # CBM into both the unified engagements table (FK target / resolver) and the
+    # meta DB (route_settings_to_engagement still validates against it).
+    monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(tmp_path / "v2-unified.db"))
+    monkeypatch.setenv("CRMBUILDER_V2_EXPORT_DIR", str(tmp_path / "exp"))
+    (tmp_path / "exp").mkdir()
+    monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "true")
+    reset_settings_cache()
+    reset_engine_cache()
     reset_meta_engine_cache()
+    bootstrap_database()
     bootstrap_meta_db()
     crm_export = tmp_path / "crm_export"
     cbm_export = tmp_path / "cbm_export"
@@ -90,47 +131,45 @@ def two_engagements(v2_env, tmp_path: Path) -> SimpleNamespace:
     cbm_export.mkdir()
     _seed_meta("ENG-001", "CRMBUILDER", str(crm_export))
     _seed_meta("ENG-002", "CBM", str(cbm_export))
+    _seed_unified("ENG-001", "CRMBUILDER", str(crm_export))
+    _seed_unified("ENG-002", "CBM", str(cbm_export))
     yield SimpleNamespace(crm_export=crm_export, cbm_export=cbm_export)
     reset_meta_engine_cache()
+    reset_engine_cache()
+    reset_settings_cache()
 
 
 def test_switch_engagements_routes_to_correct_db(two_engagements):
-    # Activate CRMBUILDER and write a record.
+    # PI-123 cutover: both engagements share the one unified DB; isolation is
+    # row-level (engagement_id), not per-file. Write a record under each.
+    from crmbuilder_v2.access import engagement_scope
+
     route_settings_to_engagement("CRMBUILDER")
-    bootstrap_database()
-    _make_decision("DEC-001", "crm decision")
-    crm_db = engagement_db_path("CRMBUILDER")
-    assert crm_db.exists()
-
-    # Activate CBM and write a different record.
+    _make_decision("DEC-001", "crm decision", "ENG-001")
     route_settings_to_engagement("CBM")
-    bootstrap_database()
-    _make_decision("DEC-002", "cbm decision")
-    cbm_db = engagement_db_path("CBM")
-    assert cbm_db != crm_db
+    _make_decision("DEC-002", "cbm decision", "ENG-002")
 
-    # CBM's DB holds only DEC-002 (no cross-contamination).
-    with session_scope(export=False) as s:
+    # Under CBM's scope, only DEC-002 is visible (no cross-contamination).
+    with engagement_scope.active_engagement("ENG-002"), session_scope(export=False) as s:
         assert [d["identifier"] for d in decisions.list_all(s)] == ["DEC-002"]
 
-    # Switching back to CRMBUILDER shows only DEC-001.
-    route_settings_to_engagement("CRMBUILDER")
-    with session_scope(export=False) as s:
+    # Under CRMBUILDER's scope, only DEC-001 is visible.
+    with engagement_scope.active_engagement("ENG-001"), session_scope(export=False) as s:
         assert [d["identifier"] for d in decisions.list_all(s)] == ["DEC-001"]
 
 
 def test_switch_engagements_routes_to_correct_export_dir(two_engagements):
+    # Each engagement's snapshot still lands in its own export dir (D7), driven
+    # by route_settings_to_engagement setting CRMBUILDER_V2_EXPORT_DIR.
     route_settings_to_engagement("CRMBUILDER")
-    bootstrap_database()
-    _make_decision("DEC-001", "crm decision")
+    _make_decision("DEC-001", "crm decision", "ENG-001")
     crm_snapshot = json.loads(
         (two_engagements.crm_export / "decisions.json").read_text()
     )
     assert [d["identifier"] for d in crm_snapshot] == ["DEC-001"]
 
     route_settings_to_engagement("CBM")
-    bootstrap_database()
-    _make_decision("DEC-002", "cbm decision")
+    _make_decision("DEC-002", "cbm decision", "ENG-002")
     cbm_snapshot = json.loads(
         (two_engagements.cbm_export / "decisions.json").read_text()
     )

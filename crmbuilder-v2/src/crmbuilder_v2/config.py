@@ -51,8 +51,11 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
+    # PI-123 cutover: the canonical DB is the single unified multi-engagement
+    # store. Tests override via ``CRMBUILDER_V2_DB_PATH``; the runtime entry
+    # points route here through ``route_settings_to_engagement``.
     db_path: Path = Field(
-        default_factory=lambda: _repo_root() / "crmbuilder-v2" / "data" / "v2.db"
+        default_factory=lambda: _repo_root() / "crmbuilder-v2" / "data" / "v2-unified.db"
     )
     export_dir: Path = Field(default_factory=_default_export_dir)
 
