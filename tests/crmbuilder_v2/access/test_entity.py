@@ -41,6 +41,7 @@ _EXPECTED_COLUMNS = {
     "entity_created_at": "DATETIME",
     "entity_updated_at": "DATETIME",
     "entity_deleted_at": "DATETIME",
+    "engagement_id": "VARCHAR",
 }
 
 

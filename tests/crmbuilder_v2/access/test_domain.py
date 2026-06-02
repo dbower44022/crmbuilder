@@ -34,6 +34,7 @@ _EXPECTED_COLUMNS = {
     "domain_created_at": "DATETIME",
     "domain_updated_at": "DATETIME",
     "domain_deleted_at": "DATETIME",
+    "engagement_id": "VARCHAR",
 }
 
 

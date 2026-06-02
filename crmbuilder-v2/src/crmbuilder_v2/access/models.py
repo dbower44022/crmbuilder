@@ -88,7 +88,29 @@ class Base(DeclarativeBase):
     pass
 
 
-class Charter(Base):
+class EngagementScopedMixin:
+    """Row-level tenant discriminator for the unified multi-engagement DB.
+
+    PI-123 Slice 2 (DEC-375 / D2, D5). ``engagement_id`` holds the owning
+    engagement's **stable identifier** (``engagements.engagement_identifier``,
+    ``ENG-NNN``) — the durable key (never renamed, unlike ``engagement_code``),
+    so no separate integer surrogate is needed and the discriminator stays
+    consistent with v2's identifier-keyed model (refs, etc.).
+
+    Nullable here in Slice 2 — additive, NULL on every existing row, no
+    behaviour change. Slice 3's batch rebuild tightens this to a FK to
+    ``engagements`` + ``NOT NULL`` and installs the composite
+    ``(engagement_id, identifier)`` uniqueness. The central read-filter
+    (``do_orm_execute`` → ``with_loader_criteria``) and the write-stamp
+    (``before_flush``) key on this column; both stay dormant until the data is
+    backfilled (Data Migration phase), so adding the column changes nothing in
+    the current single-engagement-per-file runtime.
+    """
+
+    engagement_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+
+class Charter(EngagementScopedMixin, Base):
     """Singleton document, versioned. ``is_current=True`` flags the latest row."""
 
     __tablename__ = "charter"
@@ -107,7 +129,7 @@ class Charter(Base):
     )
 
 
-class Status(Base):
+class Status(EngagementScopedMixin, Base):
     """Singleton document, versioned. Same shape as ``Charter``."""
 
     __tablename__ = "status"
@@ -126,7 +148,7 @@ class Status(Base):
     )
 
 
-class Decision(Base):
+class Decision(EngagementScopedMixin, Base):
     __tablename__ = "decisions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -176,7 +198,7 @@ class Decision(Base):
     )
 
 
-class Session(Base):
+class Session(EngagementScopedMixin, Base):
     """Governance entity — one discrete unit of communication in any medium.
 
     Redesigned in PI-073 / DEC-314 (supersedes DEC-013's append-only rule).
@@ -281,7 +303,7 @@ class Session(Base):
     )
 
 
-class Risk(Base):
+class Risk(EngagementScopedMixin, Base):
     __tablename__ = "risks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -308,7 +330,7 @@ class Risk(Base):
     )
 
 
-class PlanningItem(Base):
+class PlanningItem(EngagementScopedMixin, Base):
     __tablename__ = "planning_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -375,7 +397,7 @@ class PlanningItem(Base):
     )
 
 
-class EngagementArea(Base):
+class EngagementArea(EngagementScopedMixin, Base):
     """Per-engagement, user-defined work area (PI-112; DEC-342, DEC-348).
 
     The Engagement tier of the two-tier area model. Each engagement
@@ -398,7 +420,7 @@ class EngagementArea(Base):
     )
 
 
-class Topic(Base):
+class Topic(EngagementScopedMixin, Base):
     __tablename__ = "topics"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -417,7 +439,7 @@ class Topic(Base):
     )
 
 
-class Domain(Base):
+class Domain(EngagementScopedMixin, Base):
     """Methodology entity — one Phase 1 Domain Inventory member.
 
     First of the four methodology entity types (UI v0.4). Per
@@ -467,7 +489,7 @@ class Domain(Base):
     )
 
 
-class Entity(Base):
+class Entity(EngagementScopedMixin, Base):
     """Methodology entity — one CRM-modeled noun the client uses.
 
     Second of the four methodology entity types (UI v0.4 slice C). Per
@@ -531,7 +553,7 @@ class Entity(Base):
     )
 
 
-class Field(Base):
+class Field(EngagementScopedMixin, Base):
     """Methodology entity — one attribute on one CRM-modeled entity.
 
     Sixth methodology entity type (v0.5+, PI-004 first slice). Per
@@ -607,7 +629,7 @@ class Field(Base):
     )
 
 
-class Requirement(Base):
+class Requirement(EngagementScopedMixin, Base):
     """Methodology entity — one testable statement of what the CRM must do.
 
     PI-004 cohort deliverable per ``requirement.md`` v1.0. Parent-prefix
@@ -680,7 +702,7 @@ class Requirement(Base):
     )
 
 
-class Persona(Base):
+class Persona(EngagementScopedMixin, Base):
     """Methodology entity — one human role or actor in the client's organization.
 
     Fifth methodology entity type (v0.5+, PI-003). Per ``persona.md``
@@ -733,7 +755,7 @@ class Persona(Base):
     )
 
 
-class Process(Base):
+class Process(EngagementScopedMixin, Base):
     """Methodology entity — one Phase 1 Prioritized Backbone member.
 
     Third of the four methodology entity types (UI v0.4 slice D). Per
@@ -824,7 +846,7 @@ class Process(Base):
     )
 
 
-class ManualConfig(Base):
+class ManualConfig(EngagementScopedMixin, Base):
     """Methodology entity — one discrete CRM-config item the deploy cannot apply.
 
     Eighth methodology entity type (v0.5+, PI-004 cohort) per
@@ -922,7 +944,7 @@ class ManualConfig(Base):
     )
 
 
-class TestSpec(Base):
+class TestSpec(EngagementScopedMixin, Base):
     """Methodology entity — one verification specification (test).
 
     Ninth methodology entity type (v0.5+, PI-004 cohort closer) per
@@ -1035,7 +1057,7 @@ class TestSpec(Base):
     )
 
 
-class CrmCandidate(Base):
+class CrmCandidate(EngagementScopedMixin, Base):
     """Methodology entity — one Phase 1 Initial CRM Candidate Set member.
 
     Fourth and final of the four methodology entity types (UI v0.4
@@ -1106,7 +1128,7 @@ class CrmCandidate(Base):
 # ---------------------------------------------------------------------------
 
 
-class Project(Base):
+class Project(EngagementScopedMixin, Base):
     """Governance entity — one coherent line of related conversations.
 
     First of six governance entity types (UI v0.7). Five-status workflow
@@ -1161,7 +1183,7 @@ class Project(Base):
     )
 
 
-class Workstream(Base):
+class Workstream(EngagementScopedMixin, Base):
     """Governance entity — a single delivery phase of one Planning Item.
 
     PI-112 Phase 4 (DEC-343/DEC-349). The NEW meaning of "Workstream" (the
@@ -1227,7 +1249,7 @@ class Workstream(Base):
     )
 
 
-class WorkTask(Base):
+class WorkTask(EngagementScopedMixin, Base):
     """Governance entity — a single-area unit of execution within a Workstream.
 
     PI-112 Phase 4b (DEC-342). Carries exactly one ``area`` (the field
@@ -1290,7 +1312,7 @@ class WorkTask(Base):
     )
 
 
-class Conversation(Base):
+class Conversation(EngagementScopedMixin, Base):
     """Governance entity — one focused topical discussion within a session.
 
     Redesigned in PI-073 / DEC-314. A conversation is a topical sub-unit
@@ -1376,7 +1398,7 @@ class Conversation(Base):
     )
 
 
-class ReferenceBook(Base):
+class ReferenceBook(EngagementScopedMixin, Base):
     """Governance entity — one long-lived versioned reference document.
 
     Third of six governance entity types (UI v0.7). Documentary-shaped
@@ -1445,7 +1467,7 @@ class ReferenceBook(Base):
     )
 
 
-class ReferenceBookVersion(Base):
+class ReferenceBookVersion(EngagementScopedMixin, Base):
     """Child of ``reference_books`` — one known version of a reference book.
 
     Per ``reference_book.md`` section 3.2.7. Version rows are addressed by
@@ -1493,7 +1515,7 @@ class ReferenceBookVersion(Base):
     )
 
 
-class WorkTicket(Base):
+class WorkTicket(EngagementScopedMixin, Base):
     """Governance entity — one single-use seed document (kickoff/prompt).
 
     Fourth of six governance entity types (UI v0.7). Five-status workflow
@@ -1558,7 +1580,7 @@ class WorkTicket(Base):
     )
 
 
-class CloseOutPayload(Base):
+class CloseOutPayload(EngagementScopedMixin, Base):
     """Governance entity — one single-use state-write package.
 
     Fifth of six governance entity types (UI v0.7). Five-status workflow
@@ -1629,7 +1651,7 @@ class CloseOutPayload(Base):
     )
 
 
-class DepositEvent(Base):
+class DepositEvent(EngagementScopedMixin, Base):
     """Governance entity — one durable record of a close_out_payload apply.
 
     Sixth of six governance entity types (UI v0.7). Born-terminal
@@ -1676,7 +1698,7 @@ class DepositEvent(Base):
     )
 
 
-class Commit(Base):
+class Commit(EngagementScopedMixin, Base):
     """Governance entity — one git-commit-as-governance-record (v0.8, PI-029).
 
     Seventh governance entity type, the first under the Code Change Lifecycle
@@ -1763,7 +1785,7 @@ class Commit(Base):
     )
 
 
-class Reference(Base):
+class Reference(EngagementScopedMixin, Base):
     """Universal polymorphic reference between two records (DEC-006)."""
 
     __tablename__ = "refs"  # avoid SQL reserved word "references"
@@ -2112,7 +2134,7 @@ class CatalogRelationshipPresence(Base):
     )
 
 
-class ChangeLog(Base):
+class ChangeLog(EngagementScopedMixin, Base):
     """Append-only change log emitted by every mutating access-layer call."""
 
     __tablename__ = "change_log"
@@ -2142,7 +2164,7 @@ class ChangeLog(Base):
     )
 
 
-class IdentifierReservation(Base):
+class IdentifierReservation(EngagementScopedMixin, Base):
     """A server-side hold on a block of prefixed identifiers (PI-078).
 
     The parallel-agent orchestrator reserves a block of identifiers (e.g.

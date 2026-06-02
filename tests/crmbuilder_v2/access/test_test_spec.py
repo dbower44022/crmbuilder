@@ -64,6 +64,7 @@ def test_test_specs_table_has_fifteen_columns_with_correct_types(v2_env):
         "test_spec_created_at": "DATETIME",
         "test_spec_updated_at": "DATETIME",
         "test_spec_deleted_at": "DATETIME",
+        "engagement_id": "VARCHAR",
     }
     assert set(columns) == set(expected)
     for name, affinity in expected.items():

@@ -8,13 +8,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import text
-
 from crmbuilder_v2.access.meta_db import (
     get_meta_session_factory,
-    reset_meta_engine_cache,
 )
 from crmbuilder_v2.access.meta_models import EngagementRow
+from sqlalchemy import text
 
 
 def _seed_engagement(identifier: str = "ENG-001", code: str = "TESTENG"):
@@ -69,18 +67,25 @@ def test_sessions_hits_engagement_db(client):
 
 
 def test_pools_isolated(client):
-    """Writing to the meta DB does not affect the engagement DB."""
+    """Writing to the meta DB does not affect the engagement DB.
+
+    PI-123 Slice 1 folded the ``engagements`` table into the main ``Base``, so
+    the per-engagement DB now carries an (empty) ``engagements`` table too. The
+    pools are still distinct physical DBs, so the meta DB's seeded row does not
+    appear in the per-engagement DB's table.
+    """
     _seed_engagement("ENG-001", "ALPHA")
 
-    # The engagement DB's sqlite_master should not contain an
-    # ``engagements`` table — that lives in the meta DB only.
     from crmbuilder_v2.access import db as engagement_db
 
     with engagement_db.session_scope(export=False) as eng_session:
-        row = eng_session.execute(
+        table = eng_session.execute(
             text(
-                "SELECT name FROM sqlite_master "
-                "WHERE name='engagements'"
+                "SELECT name FROM sqlite_master WHERE name='engagements'"
             )
         ).fetchone()
-        assert row is None
+        assert table is not None  # folded-in table present (PI-123 Slice 1)
+        count = eng_session.execute(
+            text("SELECT COUNT(*) FROM engagements")
+        ).scalar_one()
+        assert count == 0  # but the meta DB's row did not leak in

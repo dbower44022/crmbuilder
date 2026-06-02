@@ -50,6 +50,7 @@ _EXPECTED_COLUMNS = {
     "process_created_at": "DATETIME",
     "process_updated_at": "DATETIME",
     "process_deleted_at": "DATETIME",
+    "engagement_id": "VARCHAR",
 }
 
 # v0.8 (PI-005) Phase 3 content fields — names used by parametrized tests.
@@ -996,6 +997,8 @@ def test_process_touches_field_roundtrip(v2_env):
 
     from crmbuilder_v2.access.repositories import (
         entity as entity_repo,
+    )
+    from crmbuilder_v2.access.repositories import (
         field as field_repo,
     )
 

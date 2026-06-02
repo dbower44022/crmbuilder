@@ -10,8 +10,8 @@ from crmbuilder_v2.access.exceptions import (
 )
 from crmbuilder_v2.access.repositories import close_out_payloads as cop
 from crmbuilder_v2.access.repositories import conversations as cr
-from crmbuilder_v2.access.repositories import sessions as sr
 from crmbuilder_v2.access.repositories import projects as ws
+from crmbuilder_v2.access.repositories import sessions as sr
 from sqlalchemy import inspect
 
 # A 200-800 character audience-facing summary required by the PI-073/PI-074
@@ -72,8 +72,9 @@ def _make(s, identifier="COP-001", status="drafted", conv=None):
 
 def test_table_has_thirteen_columns(v2_env):
     cols = {c["name"] for c in inspect(get_engine()).get_columns("close_out_payloads")}
-    assert len(cols) == 13
+    assert len(cols) == 14
     assert "close_out_payload_applied_at" in cols
+    assert "engagement_id" in cols  # PI-123 tenant discriminator
 
 
 def test_production_edge_required(v2_env):

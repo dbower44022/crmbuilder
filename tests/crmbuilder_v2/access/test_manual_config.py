@@ -65,6 +65,7 @@ def test_manual_configs_table_has_twelve_columns_with_correct_types(v2_env):
         "manual_config_created_at": "DATETIME",
         "manual_config_updated_at": "DATETIME",
         "manual_config_deleted_at": "DATETIME",
+        "engagement_id": "VARCHAR",
     }
     assert set(columns) == set(expected)
     for name, affinity in expected.items():

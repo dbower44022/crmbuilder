@@ -13,9 +13,9 @@ from crmbuilder_v2.access.exceptions import UnprocessableError
 from crmbuilder_v2.access.repositories import close_out_payloads as cop
 from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import deposit_events as dep
+from crmbuilder_v2.access.repositories import projects as ws
 from crmbuilder_v2.access.repositories import references as refs
 from crmbuilder_v2.access.repositories import sessions as sess
-from crmbuilder_v2.access.repositories import projects as ws
 from sqlalchemy import inspect
 
 _EXEC_SUMMARY = (
@@ -74,7 +74,8 @@ def test_table_omits_updated_and_deleted(v2_env):
     assert "deposit_event_updated_at" not in cols
     assert "deposit_event_deleted_at" not in cols
     assert "deposit_event_created_at" in cols
-    assert len(cols) == 9
+    assert "engagement_id" in cols  # PI-123 tenant discriminator
+    assert len(cols) == 10
 
 
 def test_success_drives_first_transition_and_back_references(v2_env):

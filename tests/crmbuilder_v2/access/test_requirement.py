@@ -36,6 +36,7 @@ _EXPECTED_COLUMNS = {
     "requirement_created_at": "DATETIME",
     "requirement_updated_at": "DATETIME",
     "requirement_deleted_at": "DATETIME",
+    "engagement_id": "VARCHAR",
 }
 
 

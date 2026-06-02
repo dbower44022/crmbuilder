@@ -40,6 +40,7 @@ _EXPECTED_COLUMNS = {
     "field_created_at": "DATETIME",
     "field_updated_at": "DATETIME",
     "field_deleted_at": "DATETIME",
+    "engagement_id": "VARCHAR",
 }
 
 

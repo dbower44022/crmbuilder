@@ -36,6 +36,7 @@ _EXPECTED_COLUMNS = {
     "crm_candidate_created_at": "DATETIME",
     "crm_candidate_updated_at": "DATETIME",
     "crm_candidate_deleted_at": "DATETIME",
+    "engagement_id": "VARCHAR",
 }
 
 

@@ -52,8 +52,9 @@ def _conv(s, ws_id, title="Conv A", identifier="CNV-001", status="planned", refs
 
 def test_table_has_sixteen_columns(v2_env):
     cols = {c["name"] for c in inspect(get_engine()).get_columns("conversations")}
-    assert len(cols) == 16
+    assert len(cols) == 17
     assert "conversation_executive_summary" in cols
+    assert "engagement_id" in cols  # PI-123 tenant discriminator
 
 
 def test_membership_required(v2_env):
