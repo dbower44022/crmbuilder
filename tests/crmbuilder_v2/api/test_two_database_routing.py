@@ -70,11 +70,13 @@ def test_pools_isolated(client):
     """Writing to the meta DB does not affect the engagement DB.
 
     PI-123 Slice 1 folded the ``engagements`` table into the main ``Base``, so
-    the per-engagement DB now carries an (empty) ``engagements`` table too. The
-    pools are still distinct physical DBs, so the meta DB's seeded row does not
-    appear in the per-engagement DB's table.
+    the per-engagement DB now carries an ``engagements`` table too — and under
+    Stage 2 the ``v2_env`` fixture seeds the default engagement (``TESTENG``)
+    into it as the FK target. The pools are still distinct physical DBs, so a
+    row written *only* to the meta DB (here ``ALPHA``) does not appear in the
+    per-engagement DB's ``engagements`` table.
     """
-    _seed_engagement("ENG-001", "ALPHA")
+    _seed_engagement("ENG-777", "ALPHA")
 
     from crmbuilder_v2.access import db as engagement_db
 
@@ -85,7 +87,7 @@ def test_pools_isolated(client):
             )
         ).fetchone()
         assert table is not None  # folded-in table present (PI-123 Slice 1)
-        count = eng_session.execute(
-            text("SELECT COUNT(*) FROM engagements")
+        leaked = eng_session.execute(
+            text("SELECT COUNT(*) FROM engagements WHERE engagement_code='ALPHA'")
         ).scalar_one()
-        assert count == 0  # but the meta DB's row did not leak in
+        assert leaked == 0  # the meta DB's ALPHA row did not leak in

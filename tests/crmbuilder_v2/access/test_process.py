@@ -88,7 +88,7 @@ def test_processes_table_has_expected_columns_with_correct_types(v2_env):
     for name, affinity in _EXPECTED_COLUMNS.items():
         assert str(columns[name]["type"]).upper().startswith(affinity), name
     pk = inspector.get_pk_constraint("processes")
-    assert pk["constrained_columns"] == ["process_identifier"]
+    assert pk["constrained_columns"] == ["process_identifier", "engagement_id"]
     assert columns["process_deleted_at"]["nullable"] is True
     assert columns["process_classification_rationale"]["nullable"] is True
     assert columns["process_notes"]["nullable"] is True
@@ -509,6 +509,11 @@ def test_concurrent_creates_assign_distinct_identifiers(v2_env):
     errors: list[Exception] = []
 
     def worker(index: int) -> None:
+        # PI-123: a spawned thread does not inherit the parent ContextVar, so
+        # set the active engagement here (production sets it per request via
+        # the scope middleware).
+        from crmbuilder_v2.access import engagement_scope as _es
+        _es.set_active_engagement("ENG-001")
         try:
             with session_scope() as s:
                 row = process.create_process(
@@ -879,9 +884,9 @@ def test_refs_check_admits_new_process_v2_kinds(v2_env):
             text(
                 "INSERT INTO refs "
                 "(source_type, source_id, target_type, target_id, "
-                "relationship_kind, created_at) "
+                "relationship_kind, created_at, engagement_id) "
                 "VALUES ('process', 'PROC-001', 'entity', 'ENT-001', "
-                "'process_touches_entity', CURRENT_TIMESTAMP)"
+                "'process_touches_entity', CURRENT_TIMESTAMP, 'ENG-001')"
             )
         )
 
@@ -892,10 +897,10 @@ def test_refs_check_admits_new_process_v2_kinds(v2_env):
                 text(
                     "INSERT INTO refs "
                     "(source_type, source_id, target_type, target_id, "
-                    "relationship_kind, created_at) "
+                    "relationship_kind, created_at, engagement_id) "
                     "VALUES ('process', 'PROC-001', 'entity', "
                     "'ENT-002', 'process_eats_entity', "
-                    "CURRENT_TIMESTAMP)"
+                    "CURRENT_TIMESTAMP, 'ENG-001')"
                 )
             )
 

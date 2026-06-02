@@ -37,6 +37,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar, Token
 
 from sqlalchemy import event
+from sqlalchemy.orm import Session as _ORMSession
 from sqlalchemy.orm import with_loader_criteria
 
 from crmbuilder_v2.access.models import EngagementScopedMixin
@@ -177,23 +178,34 @@ def _before_flush(session, flush_context, instances) -> None:
 # --------------------------------------------------------------------------
 # Installation
 # --------------------------------------------------------------------------
-def install_engagement_scope(session_factory) -> None:
-    """Register the read filter + write stamp on ``session_factory``.
+# The read filter + write stamp are registered on the **base ORM Session
+# class**, not on a particular sessionmaker, so *every* session in the process
+# — from any factory, any thread, built at any time — carries the scoping.
+#
+# Per-sessionmaker registration (the original design) was a multi-tenancy
+# hazard under the test harness and any multi-engine runtime: a session created
+# from a factory that hadn't been (re)registered wrote un-stamped rows (NULL
+# ``engagement_id``) under the strict schema. Class-level registration makes the
+# stamp unconditional and factory-independent; the handlers stay dormant (no-op)
+# until a caller sets an active engagement, so this is harmless process-wide.
+def install_engagement_scope(session_factory=None) -> None:
+    """Register the read filter + write stamp on the base ORM Session class.
 
-    Idempotent. ``session_factory`` is a :class:`~sqlalchemy.orm.sessionmaker`
-    (or Session class); sessions it produces inherit the scoping. Registering
-    is harmless while dormant — the handlers no-op until an active engagement is
-    set, so this can be wired into the live runtime ahead of the cutover.
+    Idempotent and process-wide. The ``session_factory`` argument is accepted
+    for backward compatibility (callers pass the per-engine factory) but is
+    ignored — registration is on :class:`~sqlalchemy.orm.Session` so it covers
+    sessions from every factory. Harmless while dormant: the handlers no-op
+    until an active engagement is set.
     """
-    if not event.contains(session_factory, "do_orm_execute", _do_orm_execute):
-        event.listen(session_factory, "do_orm_execute", _do_orm_execute)
-    if not event.contains(session_factory, "before_flush", _before_flush):
-        event.listen(session_factory, "before_flush", _before_flush)
+    if not event.contains(_ORMSession, "do_orm_execute", _do_orm_execute):
+        event.listen(_ORMSession, "do_orm_execute", _do_orm_execute)
+    if not event.contains(_ORMSession, "before_flush", _before_flush):
+        event.listen(_ORMSession, "before_flush", _before_flush)
 
 
-def uninstall_engagement_scope(session_factory) -> None:
-    """Remove the handlers from ``session_factory`` (idempotent; for tests)."""
-    if event.contains(session_factory, "do_orm_execute", _do_orm_execute):
-        event.remove(session_factory, "do_orm_execute", _do_orm_execute)
-    if event.contains(session_factory, "before_flush", _before_flush):
-        event.remove(session_factory, "before_flush", _before_flush)
+def uninstall_engagement_scope(session_factory=None) -> None:
+    """Remove the handlers from the base ORM Session class (idempotent; tests)."""
+    if event.contains(_ORMSession, "do_orm_execute", _do_orm_execute):
+        event.remove(_ORMSession, "do_orm_execute", _do_orm_execute)
+    if event.contains(_ORMSession, "before_flush", _before_flush):
+        event.remove(_ORMSession, "before_flush", _before_flush)

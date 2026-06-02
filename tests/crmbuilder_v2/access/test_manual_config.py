@@ -71,7 +71,7 @@ def test_manual_configs_table_has_twelve_columns_with_correct_types(v2_env):
     for name, affinity in expected.items():
         assert str(columns[name]["type"]).upper().startswith(affinity), name
     pk = inspector.get_pk_constraint("manual_configs")
-    assert pk["constrained_columns"] == ["manual_config_identifier"]
+    assert pk["constrained_columns"] == ["manual_config_identifier", "engagement_id"]
     # Completion fields are nullable at storage; cross-field invariant
     # is enforced at the access layer per §3.5.3.
     assert columns["manual_config_completed_at"]["nullable"] is True
@@ -483,6 +483,11 @@ def test_concurrent_identifier_autoassign(v2_env):
     errors: list[Exception] = []
 
     def worker(index: int) -> None:
+        # PI-123: a spawned thread does not inherit the parent ContextVar, so
+        # set the active engagement here (production sets it per request via
+        # the scope middleware).
+        from crmbuilder_v2.access import engagement_scope as _es
+        _es.set_active_engagement("ENG-001")
         try:
             with session_scope() as s:
                 row = manual_config.create_manual_config(

@@ -60,7 +60,7 @@ def test_table_shape(v2_env):
     cols = {c["name"] for c in inspector.get_columns("projects")}
     assert cols == _EXPECTED_COLUMNS
     pk = inspector.get_pk_constraint("projects")
-    assert pk["constrained_columns"] == ["project_identifier"]
+    assert pk["constrained_columns"] == ["project_identifier", "engagement_id"]
 
 
 def test_identifier_autoassign_and_format(v2_env):

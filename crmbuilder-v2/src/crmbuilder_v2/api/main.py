@@ -79,16 +79,25 @@ def create_app() -> FastAPI:
         ),
     )
 
-    # DEC-205: fail-loud on engagement-marker drift. Registered first so
-    # it sits outermost on the request side and short-circuits exempt
-    # paths cleanly before any route dispatch or other middleware.
-    app.add_middleware(EngagementMarkerGuardMiddleware)
-
     # PI-123 Slice 2c: resolve the active engagement per request (X-Engagement
     # header, marker fallback) and set it on the engagement-scope ContextVar.
     # Gated internally by Settings.engagement_scoping_enabled — a pass-through
     # while disabled, so the current runtime is unchanged.
+    #
+    # Registered FIRST so it sits OUTERMOST: the ContextVar must be set in the
+    # top-level request task, *before* the marker guard (a BaseHTTPMiddleware)
+    # runs ``call_next`` in a child anyio task. A ContextVar set *inside* a
+    # BaseHTTPMiddleware's child task does not reliably reach the sync route
+    # handler (run in a threadpool that copies the context) — the cause of an
+    # intermittent ``engagement_id`` NULL-stamp under PI-123 Stage 2. Setting it
+    # outermost means the child task (and the handler's threadpool copy) inherit
+    # the active engagement deterministically.
     app.add_middleware(EngagementScopeMiddleware)
+
+    # DEC-205: fail-loud on engagement-marker drift. Sits just inside the
+    # scope middleware; still short-circuits exempt paths and marker-drift
+    # 409s before route dispatch.
+    app.add_middleware(EngagementMarkerGuardMiddleware)
 
     # The three dedicated-body access-layer errors must register before
     # the AccessLayerError base so Starlette routes each to its own

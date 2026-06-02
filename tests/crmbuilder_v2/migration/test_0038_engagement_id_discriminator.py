@@ -63,10 +63,14 @@ def test_scoped_models_carry_engagement_id() -> None:
     # The tenant table and the catalog/system tables are excluded.
     assert "engagements" not in scoped
     assert not any(name.startswith("catalog_") for name in scoped)
-    # Column is nullable VARCHAR(32) everywhere.
+    # PI-123 Stage 2 (the strict-schema flip): the model now carries
+    # ``engagement_id`` as a NOT NULL VARCHAR(32) FK on every scoped table —
+    # the cutover target reached by create_all / the consolidation. (Migration
+    # 0038 still adds the column *nullable*; the strict shape is not an in-place
+    # chain migration — see pi-123-slice3-enforce-plan.md.)
     for name in scoped:
         col = Base.metadata.tables[name].c["engagement_id"]
-        assert col.nullable is True, name
+        assert col.nullable is False, name
         assert str(col.type) == "VARCHAR(32)", (name, str(col.type))
 
 

@@ -53,7 +53,7 @@ def test_crm_candidates_table_has_eight_columns_with_correct_types(v2_env):
     for name, affinity in _EXPECTED_COLUMNS.items():
         assert str(columns[name]["type"]).upper().startswith(affinity), name
     pk = inspector.get_pk_constraint("crm_candidates")
-    assert pk["constrained_columns"] == ["crm_candidate_identifier"]
+    assert pk["constrained_columns"] == ["crm_candidate_identifier", "engagement_id"]
     assert columns["crm_candidate_deleted_at"]["nullable"] is True
     assert columns["crm_candidate_notes"]["nullable"] is True
     assert columns["crm_candidate_name"]["nullable"] is False
@@ -467,6 +467,11 @@ def test_concurrent_creates_assign_distinct_identifiers(v2_env):
     errors: list[Exception] = []
 
     def worker(index: int) -> None:
+        # PI-123: a spawned thread does not inherit the parent ContextVar, so
+        # set the active engagement here (production sets it per request via
+        # the scope middleware).
+        from crmbuilder_v2.access import engagement_scope as _es
+        _es.set_active_engagement("ENG-001")
         try:
             with session_scope() as s:
                 row = crm_candidate.create_crm_candidate(

@@ -7,6 +7,7 @@ on a fresh database file.
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -20,6 +21,9 @@ from crmbuilder_v2.config import Settings, get_settings
 _engine: Engine | None = None
 _SessionFactory: sessionmaker[Session] | None = None
 _engine_url: str | None = None
+# Serialises engine/factory (re)builds so a concurrent reader never sees a
+# factory published before its engagement-scope listeners are installed.
+_engine_lock = threading.RLock()
 
 
 def _enable_sqlite_pragmas(dbapi_conn, _conn_record) -> None:
@@ -61,21 +65,35 @@ def get_engine(settings: Settings | None = None) -> Engine:
     global _engine, _SessionFactory, _engine_url
     s = settings or get_settings()
     if _engine is None or _engine_url != s.db_url:
-        _ensure_db_dir(s.db_path)
-        _engine = _build_engine(s.db_url)
-        _SessionFactory = sessionmaker(bind=_engine, expire_on_commit=False, future=True)
-        _engine_url = s.db_url
-        # PI-123 Slice 2c: install the row-level engagement-scope filter/stamp
-        # on the new factory when scoping is enabled. Dormant until a request
-        # sets an active engagement (the scope middleware), so it is harmless
-        # when enabled ahead of the cutover; gated so the default runtime gets
-        # no extra session events at all.
-        if s.engagement_scoping_enabled:
-            from crmbuilder_v2.access.engagement_scope import (
-                install_engagement_scope,
-            )
+        with _engine_lock:
+            # Double-checked: another thread may have built it while we waited.
+            if _engine is None or _engine_url != s.db_url:
+                from crmbuilder_v2.access.engagement_scope import (
+                    install_engagement_scope,
+                )
 
-            install_engagement_scope(_SessionFactory)
+                _ensure_db_dir(s.db_path)
+                engine = _build_engine(s.db_url)
+                factory = sessionmaker(
+                    bind=engine, expire_on_commit=False, future=True
+                )
+                # PI-123: install the row-level engagement-scope filter/stamp
+                # BEFORE publishing the factory to the module globals. The
+                # handlers are dormant until a caller sets an active engagement
+                # (scope middleware / CLI / test fixture), so this is harmless on
+                # the default runtime — but installing *before* publish (and
+                # under the lock) closes the race where a concurrent reader (a
+                # TestClient portal thread, the 8-thread concurrent-POST tests, a
+                # lingering request thread) could grab a published-but-not-yet-
+                # installed factory and write un-stamped (NULL engagement_id)
+                # rows under the strict schema. Always-install (not gated on
+                # engagement_scoping_enabled) also avoids a factory built while
+                # scoping was disabled lacking the stamp permanently; the flag
+                # still gates the request middleware and enforcement.
+                install_engagement_scope(factory)
+                _engine = engine
+                _SessionFactory = factory
+                _engine_url = s.db_url
     return _engine
 
 

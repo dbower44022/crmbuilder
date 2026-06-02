@@ -15,6 +15,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -97,17 +98,51 @@ class EngagementScopedMixin:
     so no separate integer surrogate is needed and the discriminator stays
     consistent with v2's identifier-keyed model (refs, etc.).
 
-    Nullable here in Slice 2 — additive, NULL on every existing row, no
-    behaviour change. Slice 3's batch rebuild tightens this to a FK to
-    ``engagements`` + ``NOT NULL`` and installs the composite
-    ``(engagement_id, identifier)`` uniqueness. The central read-filter
-    (``do_orm_execute`` → ``with_loader_criteria``) and the write-stamp
-    (``before_flush``) key on this column; both stay dormant until the data is
-    backfilled (Data Migration phase), so adding the column changes nothing in
-    the current single-engagement-per-file runtime.
+    **Strict (cutover) schema** — PI-123 Stage 2. ``engagement_id`` is now
+    ``NOT NULL`` with a FK to ``engagements.engagement_identifier``. Every
+    scoped row belongs to exactly one engagement. Identifier uniqueness is
+    composite ``(engagement_id, <identifier>)`` per the three constraint classes
+    in ``pi-123-slice3-enforce-plan.md`` §1: identifier-as-PK tables (Class A)
+    make ``engagement_id`` a PK member (redeclared per-class with
+    ``primary_key=True``); surrogate-PK tables (Class B) swap
+    ``UNIQUE(identifier)`` for ``UNIQUE(engagement_id, identifier)``; the two
+    un-keyed tables (Class C) take only NOT NULL + FK + an index.
+
+    This is the *target* schema that ``Base.metadata.create_all`` materialises
+    for the unified DB (D9 builds fresh + copies rows in). The central
+    read-filter (``do_orm_execute`` → ``with_loader_criteria``) and the
+    write-stamp (``before_flush``) in ``engagement_scope.py`` key on this column
+    and are activated at the cutover (and in the test fixtures, which seed an
+    engagement and set it active so the stamp fills every insert).
     """
 
-    engagement_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    engagement_id: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("engagements.engagement_identifier"),
+        nullable=False,
+    )
+
+
+class EngagementScopedPKMixin(EngagementScopedMixin):
+    """Class A scoping: ``engagement_id`` is also part of the composite PK.
+
+    The 19 identifier-as-PK governance/methodology tables (plus
+    ``engagement_areas``, whose PK is a name) make ``engagement_id`` the leading
+    member of a composite primary key ``(engagement_id, <entity>_identifier)``,
+    so the same prefixed identifier can coexist across engagements while an
+    intra-engagement duplicate is still rejected (DEC-375 / D3). Subclasses keep
+    their existing ``<entity>_identifier`` / name column with
+    ``primary_key=True``; this override supplies the second PK column.
+    ``isinstance(obj, EngagementScopedMixin)`` still holds, so the central
+    read-filter / write-stamp cover these tables unchanged.
+    """
+
+    engagement_id: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("engagements.engagement_identifier"),
+        primary_key=True,
+        nullable=False,
+    )
 
 
 class Charter(EngagementScopedMixin, Base):
@@ -124,7 +159,7 @@ class Charter(EngagementScopedMixin, Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("version", name="uq_charter_version"),
+        UniqueConstraint("engagement_id", "version", name="uq_charter_version"),
         Index("ix_charter_is_current", "is_current"),
     )
 
@@ -143,7 +178,7 @@ class Status(EngagementScopedMixin, Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("version", name="uq_status_version"),
+        UniqueConstraint("engagement_id", "version", name="uq_status_version"),
         Index("ix_status_is_current", "is_current"),
     )
 
@@ -152,7 +187,7 @@ class Decision(EngagementScopedMixin, Base):
     __tablename__ = "decisions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    identifier: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    identifier: Mapped[str] = mapped_column(String(32), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     decision_date: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -194,11 +229,14 @@ class Decision(EngagementScopedMixin, Base):
             "length(executive_summary) >= 200 AND length(executive_summary) <= 800",
             name="ck_decision_executive_summary_length",
         ),
-        Index("ix_decisions_identifier", "identifier"),
+        UniqueConstraint(
+            "engagement_id", "identifier", name="uq_decision_engagement_identifier"
+        ),
+        Index("ix_decisions_identifier", "engagement_id", "identifier"),
     )
 
 
-class Session(EngagementScopedMixin, Base):
+class Session(EngagementScopedPKMixin, Base):
     """Governance entity — one discrete unit of communication in any medium.
 
     Redesigned in PI-073 / DEC-314 (supersedes DEC-013's append-only rule).
@@ -307,7 +345,7 @@ class Risk(EngagementScopedMixin, Base):
     __tablename__ = "risks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    identifier: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    identifier: Mapped[str] = mapped_column(String(32), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     probability: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -327,6 +365,9 @@ class Risk(EngagementScopedMixin, Base):
         ),
         CheckConstraint(_check_in("impact", RISK_IMPACTS), name="ck_risk_impact"),
         CheckConstraint(_check_in("status", RISK_STATUSES), name="ck_risk_status"),
+        UniqueConstraint(
+            "engagement_id", "identifier", name="uq_risk_engagement_identifier"
+        ),
     )
 
 
@@ -334,7 +375,7 @@ class PlanningItem(EngagementScopedMixin, Base):
     __tablename__ = "planning_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    identifier: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    identifier: Mapped[str] = mapped_column(String(32), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     item_type: Mapped[str] = mapped_column(String(32), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -394,10 +435,13 @@ class PlanningItem(EngagementScopedMixin, Base):
             "(claimed_by IS NOT NULL AND claimed_at IS NOT NULL)",
             name="ck_planning_claim_pairing",
         ),
+        UniqueConstraint(
+            "engagement_id", "identifier", name="uq_planning_engagement_identifier"
+        ),
     )
 
 
-class EngagementArea(EngagementScopedMixin, Base):
+class EngagementArea(EngagementScopedPKMixin, Base):
     """Per-engagement, user-defined work area (PI-112; DEC-342, DEC-348).
 
     The Engagement tier of the two-tier area model. Each engagement
@@ -424,7 +468,7 @@ class Topic(EngagementScopedMixin, Base):
     __tablename__ = "topics"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    identifier: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    identifier: Mapped[str] = mapped_column(String(64), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     parent_topic_id: Mapped[int | None] = mapped_column(
@@ -438,8 +482,14 @@ class Topic(EngagementScopedMixin, Base):
         "Topic", remote_side="Topic.id", foreign_keys=[parent_topic_id]
     )
 
+    __table_args__ = (
+        UniqueConstraint(
+            "engagement_id", "identifier", name="uq_topic_engagement_identifier"
+        ),
+    )
 
-class Domain(EngagementScopedMixin, Base):
+
+class Domain(EngagementScopedPKMixin, Base):
     """Methodology entity — one Phase 1 Domain Inventory member.
 
     First of the four methodology entity types (UI v0.4). Per
@@ -489,7 +539,7 @@ class Domain(EngagementScopedMixin, Base):
     )
 
 
-class Entity(EngagementScopedMixin, Base):
+class Entity(EngagementScopedPKMixin, Base):
     """Methodology entity — one CRM-modeled noun the client uses.
 
     Second of the four methodology entity types (UI v0.4 slice C). Per
@@ -553,7 +603,7 @@ class Entity(EngagementScopedMixin, Base):
     )
 
 
-class Field(EngagementScopedMixin, Base):
+class Field(EngagementScopedPKMixin, Base):
     """Methodology entity — one attribute on one CRM-modeled entity.
 
     Sixth methodology entity type (v0.5+, PI-004 first slice). Per
@@ -629,7 +679,7 @@ class Field(EngagementScopedMixin, Base):
     )
 
 
-class Requirement(EngagementScopedMixin, Base):
+class Requirement(EngagementScopedPKMixin, Base):
     """Methodology entity — one testable statement of what the CRM must do.
 
     PI-004 cohort deliverable per ``requirement.md`` v1.0. Parent-prefix
@@ -702,7 +752,7 @@ class Requirement(EngagementScopedMixin, Base):
     )
 
 
-class Persona(EngagementScopedMixin, Base):
+class Persona(EngagementScopedPKMixin, Base):
     """Methodology entity — one human role or actor in the client's organization.
 
     Fifth methodology entity type (v0.5+, PI-003). Per ``persona.md``
@@ -755,7 +805,7 @@ class Persona(EngagementScopedMixin, Base):
     )
 
 
-class Process(EngagementScopedMixin, Base):
+class Process(EngagementScopedPKMixin, Base):
     """Methodology entity — one Phase 1 Prioritized Backbone member.
 
     Third of the four methodology entity types (UI v0.4 slice D). Per
@@ -846,7 +896,7 @@ class Process(EngagementScopedMixin, Base):
     )
 
 
-class ManualConfig(EngagementScopedMixin, Base):
+class ManualConfig(EngagementScopedPKMixin, Base):
     """Methodology entity — one discrete CRM-config item the deploy cannot apply.
 
     Eighth methodology entity type (v0.5+, PI-004 cohort) per
@@ -944,7 +994,7 @@ class ManualConfig(EngagementScopedMixin, Base):
     )
 
 
-class TestSpec(EngagementScopedMixin, Base):
+class TestSpec(EngagementScopedPKMixin, Base):
     """Methodology entity — one verification specification (test).
 
     Ninth methodology entity type (v0.5+, PI-004 cohort closer) per
@@ -1057,7 +1107,7 @@ class TestSpec(EngagementScopedMixin, Base):
     )
 
 
-class CrmCandidate(EngagementScopedMixin, Base):
+class CrmCandidate(EngagementScopedPKMixin, Base):
     """Methodology entity — one Phase 1 Initial CRM Candidate Set member.
 
     Fourth and final of the four methodology entity types (UI v0.4
@@ -1128,7 +1178,7 @@ class CrmCandidate(EngagementScopedMixin, Base):
 # ---------------------------------------------------------------------------
 
 
-class Project(EngagementScopedMixin, Base):
+class Project(EngagementScopedPKMixin, Base):
     """Governance entity — one coherent line of related conversations.
 
     First of six governance entity types (UI v0.7). Five-status workflow
@@ -1183,7 +1233,7 @@ class Project(EngagementScopedMixin, Base):
     )
 
 
-class Workstream(EngagementScopedMixin, Base):
+class Workstream(EngagementScopedPKMixin, Base):
     """Governance entity — a single delivery phase of one Planning Item.
 
     PI-112 Phase 4 (DEC-343/DEC-349). The NEW meaning of "Workstream" (the
@@ -1249,7 +1299,7 @@ class Workstream(EngagementScopedMixin, Base):
     )
 
 
-class WorkTask(EngagementScopedMixin, Base):
+class WorkTask(EngagementScopedPKMixin, Base):
     """Governance entity — a single-area unit of execution within a Workstream.
 
     PI-112 Phase 4b (DEC-342). Carries exactly one ``area`` (the field
@@ -1312,7 +1362,7 @@ class WorkTask(EngagementScopedMixin, Base):
     )
 
 
-class Conversation(EngagementScopedMixin, Base):
+class Conversation(EngagementScopedPKMixin, Base):
     """Governance entity — one focused topical discussion within a session.
 
     Redesigned in PI-073 / DEC-314. A conversation is a topical sub-unit
@@ -1398,7 +1448,7 @@ class Conversation(EngagementScopedMixin, Base):
     )
 
 
-class ReferenceBook(EngagementScopedMixin, Base):
+class ReferenceBook(EngagementScopedPKMixin, Base):
     """Governance entity — one long-lived versioned reference document.
 
     Third of six governance entity types (UI v0.7). Documentary-shaped
@@ -1481,9 +1531,11 @@ class ReferenceBookVersion(EngagementScopedMixin, Base):
     __tablename__ = "reference_book_versions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # FK to the parent's composite PK ``(engagement_id, reference_book_identifier)``
+    # is declared as a ForeignKeyConstraint in __table_args__ (the parent PK is
+    # composite under PI-123); the column itself carries no single-column FK.
     reference_book_identifier: Mapped[str] = mapped_column(
         String(32),
-        ForeignKey("reference_books.reference_book_identifier", ondelete="CASCADE"),
         nullable=False,
     )
     reference_book_version_label: Mapped[str] = mapped_column(
@@ -1504,18 +1556,30 @@ class ReferenceBookVersion(EngagementScopedMixin, Base):
     )
 
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "reference_book_identifier"],
+            [
+                "reference_books.engagement_id",
+                "reference_books.reference_book_identifier",
+            ],
+            ondelete="CASCADE",
+            name="fk_reference_book_versions_parent",
+        ),
         UniqueConstraint(
+            "engagement_id",
             "reference_book_identifier",
             "reference_book_version_label",
             name="uq_reference_book_version",
         ),
         Index(
-            "ix_reference_book_versions_parent", "reference_book_identifier"
+            "ix_reference_book_versions_parent",
+            "engagement_id",
+            "reference_book_identifier",
         ),
     )
 
 
-class WorkTicket(EngagementScopedMixin, Base):
+class WorkTicket(EngagementScopedPKMixin, Base):
     """Governance entity — one single-use seed document (kickoff/prompt).
 
     Fourth of six governance entity types (UI v0.7). Five-status workflow
@@ -1580,7 +1644,7 @@ class WorkTicket(EngagementScopedMixin, Base):
     )
 
 
-class CloseOutPayload(EngagementScopedMixin, Base):
+class CloseOutPayload(EngagementScopedPKMixin, Base):
     """Governance entity — one single-use state-write package.
 
     Fifth of six governance entity types (UI v0.7). Five-status workflow
@@ -1651,7 +1715,7 @@ class CloseOutPayload(EngagementScopedMixin, Base):
     )
 
 
-class DepositEvent(EngagementScopedMixin, Base):
+class DepositEvent(EngagementScopedPKMixin, Base):
     """Governance entity — one durable record of a close_out_payload apply.
 
     Sixth of six governance entity types (UI v0.7). Born-terminal
@@ -1698,7 +1762,7 @@ class DepositEvent(EngagementScopedMixin, Base):
     )
 
 
-class Commit(EngagementScopedMixin, Base):
+class Commit(EngagementScopedPKMixin, Base):
     """Governance entity — one git-commit-as-governance-record (v0.8, PI-029).
 
     Seventh governance entity type, the first under the Code Change Lifecycle
@@ -1724,7 +1788,7 @@ class Commit(EngagementScopedMixin, Base):
         String(32), primary_key=True
     )
     commit_sha: Mapped[str] = mapped_column(
-        String(64), nullable=False, unique=True
+        String(64), nullable=False
     )
     commit_message_first_line: Mapped[str] = mapped_column(Text, nullable=False)
     commit_message_full: Mapped[str] = mapped_column(Text, nullable=False)
@@ -1778,6 +1842,9 @@ class Commit(EngagementScopedMixin, Base):
             "commit_files_changed_count >= 0",
             name="ck_commit_files_changed_count_nonneg",
         ),
+        UniqueConstraint(
+            "engagement_id", "commit_sha", name="uq_commit_engagement_sha"
+        ),
         Index("ix_commits_commit_session_id", "commit_session_id"),
         Index("ix_commits_commit_repository", "commit_repository"),
         Index("ix_commits_commit_committed_at", "commit_committed_at"),
@@ -1797,7 +1864,7 @@ class Reference(EngagementScopedMixin, Base):
     # existing rows (migration 0011). Nullable at the column level because the
     # back-fill runs after the column is added; the access layer always sets it.
     reference_identifier: Mapped[str | None] = mapped_column(
-        String(16), nullable=True, unique=True
+        String(16), nullable=True
     )
     source_type: Mapped[str] = mapped_column(String(32), nullable=False)
     source_id: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -1824,7 +1891,15 @@ class Reference(EngagementScopedMixin, Base):
             "reference_identifier GLOB 'REF-[0-9][0-9][0-9][0-9]'",
             name="ck_ref_reference_identifier_format",
         ),
+        # REF-NNNN is server-assigned per engagement → composite unique (D3).
         UniqueConstraint(
+            "engagement_id",
+            "reference_identifier",
+            name="uq_ref_reference_identifier",
+        ),
+        # The same edge may exist independently in two engagements (D4).
+        UniqueConstraint(
+            "engagement_id",
             "source_type",
             "source_id",
             "target_type",
@@ -1832,8 +1907,8 @@ class Reference(EngagementScopedMixin, Base):
             "relationship_kind",
             name="uq_ref_full",
         ),
-        Index("ix_refs_source", "source_type", "source_id"),
-        Index("ix_refs_target", "target_type", "target_id"),
+        Index("ix_refs_source", "engagement_id", "source_type", "source_id"),
+        Index("ix_refs_target", "engagement_id", "target_type", "target_id"),
     )
 
 
@@ -2161,6 +2236,7 @@ class ChangeLog(EngagementScopedMixin, Base):
         CheckConstraint(_check_in("actor", CHANGE_LOG_ACTORS), name="ck_changelog_actor"),
         Index("ix_changelog_timestamp", "timestamp"),
         Index("ix_changelog_entity", "entity_type", "entity_identifier"),
+        Index("ix_changelog_engagement", "engagement_id"),
     )
 
 
@@ -2194,7 +2270,12 @@ class IdentifierReservation(EngagementScopedMixin, Base):
     )
 
     __table_args__ = (
-        Index("ix_identifier_reservations_lookup", "entity_type", "expires_at"),
+        Index(
+            "ix_identifier_reservations_lookup",
+            "engagement_id",
+            "entity_type",
+            "expires_at",
+        ),
     )
 
 

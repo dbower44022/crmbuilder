@@ -626,6 +626,33 @@ def list_engagements_in_meta(
         return list_engagements(s, include_deleted=include_deleted)
 
 
+def list_engagements_unified(
+    *, include_deleted: bool = False
+) -> list[Engagement]:
+    """List engagements from the **unified** DB's ``engagements`` table (PI-123).
+
+    The per-request scope resolver reads the registry from the one unified
+    engine — the cutover target — so an engagement is resolvable without the
+    separate meta DB. (The ``/engagements`` REST API still serves the meta DB
+    until the Stage 4 cutover collapses the two; the resolver intentionally
+    reads the unified table that ``engagement_id`` FKs point at.) The
+    ``engagements`` table is un-scoped, so this query is never engagement-
+    filtered and is safe to run with no active engagement.
+    """
+    from crmbuilder_v2.access.db import get_session_factory
+    from crmbuilder_v2.access.models import EngagementRow as UnifiedEngagementRow
+
+    factory = get_session_factory()
+    session = factory()
+    try:
+        stmt = select(UnifiedEngagementRow)
+        if not include_deleted:
+            stmt = stmt.where(UnifiedEngagementRow.engagement_deleted_at.is_(None))
+        return [Engagement.from_row(r) for r in session.scalars(stmt).all()]
+    finally:
+        session.close()
+
+
 def get_engagement_in_meta(identifier: str) -> Engagement | None:
     with meta_session_scope() as s:
         return get_engagement(s, identifier)

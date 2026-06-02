@@ -50,7 +50,9 @@ def resolve_engagement_identifier(header_value: str | None) -> str | None:
         return None
     candidate_upper = candidate.upper()
     try:
-        engagements = engagement_repo.list_engagements_in_meta(include_deleted=False)
+        # PI-123: resolve against the unified DB's engagements table (the
+        # cutover registry the engagement_id FKs point at), not the meta DB.
+        engagements = engagement_repo.list_engagements_unified(include_deleted=False)
     except Exception:  # pragma: no cover - registry unavailable
         _log.warning("scope_middleware: engagement registry lookup failed")
         return None

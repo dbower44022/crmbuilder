@@ -297,6 +297,7 @@ def test_post_omitted_identifier_auto_assigns(client):
 def test_concurrent_posts_get_distinct_identifiers(v2_env):
     """Eight simultaneous POSTs never share an identifier (criterion 8)."""
     setup_client = TestClient(create_app())
+    setup_client.headers.update({"X-Engagement": "ENG-001"})
     dom = _make_domain(setup_client)
 
     identifiers: list[str] = []
@@ -304,6 +305,7 @@ def test_concurrent_posts_get_distinct_identifiers(v2_env):
 
     def worker(index: int) -> None:
         thread_client = TestClient(create_app())
+        thread_client.headers.update({"X-Engagement": "ENG-001"})
         response = thread_client.post(
             "/processes",
             json={

@@ -70,7 +70,7 @@ def test_test_specs_table_has_fifteen_columns_with_correct_types(v2_env):
     for name, affinity in expected.items():
         assert str(columns[name]["type"]).upper().startswith(affinity), name
     pk = inspector.get_pk_constraint("test_specs")
-    assert pk["constrained_columns"] == ["test_spec_identifier"]
+    assert pk["constrained_columns"] == ["test_spec_identifier", "engagement_id"]
     # Setup / notes / last_run_at / last_run_notes nullable; the rest
     # required.
     assert columns["test_spec_setup"]["nullable"] is True

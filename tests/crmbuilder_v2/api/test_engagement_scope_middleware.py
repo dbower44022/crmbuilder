@@ -9,13 +9,17 @@ rows of the engagement named by ``X-Engagement``.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
-from crmbuilder_v2.access import meta_db
-from crmbuilder_v2.access.db import get_session_factory, reset_engine_cache
+from crmbuilder_v2.access import engagement_scope
+from crmbuilder_v2.access.db import (
+    bootstrap_database,
+    get_session_factory,
+    reset_engine_cache,
+)
 from crmbuilder_v2.access.engagement_scope import get_active_engagement
-from crmbuilder_v2.access.meta_models import EngagementRow
-from crmbuilder_v2.access.models import Reference
+from crmbuilder_v2.access.models import EngagementRow, Reference
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.api.scope_middleware import (
     EngagementScopeMiddleware,
@@ -26,13 +30,10 @@ from fastapi.testclient import TestClient
 
 
 def _seed_two_engagements() -> None:
-    # Insert directly via the meta session — NOT engagement_repo.create_engagement,
-    # whose snapshot refresh (write_engagements_snapshot) writes to the real
-    # repo db-export/meta/ path (meta_export_dir is hardcoded, not the test
-    # export dir), polluting a git-tracked file. Mirrors test_two_database_routing.
-    meta_db.reset_meta_engine_cache()
-    meta_db.bootstrap_meta_db()
-    factory = meta_db.get_meta_session_factory()
+    # PI-123: seed the unified DB's engagements table (the resolver's registry
+    # source), inserting EngagementRow directly — NOT engagement_repo, whose
+    # snapshot refresh writes the git-tracked db-export/meta/ path.
+    factory = get_session_factory()
     s = factory()
     now = datetime.now(UTC)
     for ident, code, name in [
@@ -55,15 +56,33 @@ def _seed_two_engagements() -> None:
 
 
 @pytest.fixture
-def scoped_env(v2_env, monkeypatch):
-    """v2_env + scoping enabled + two engagements seeded in the meta DB."""
+def scoped_env(tmp_path: Path, monkeypatch):
+    """A unified DB with scoping enabled and ALPHA/BETA seeded in the registry.
+
+    Self-contained (not built on ``v2_env``) so it controls its own
+    active-engagement/enforcement state: these middleware tests exercise the
+    *resolution* path from a clean slate (no active engagement set, enforcement
+    off, so the no-header dormant case still returns all rows)."""
+    monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(tmp_path / "v2.db"))
+    export = tmp_path / "db-export"
+    export.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("CRMBUILDER_V2_EXPORT_DIR", str(export))
     monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "true")
     reset_settings_cache()
     reset_engine_cache()
+    bootstrap_database()
     _seed_two_engagements()
-    yield v2_env
-    reset_engine_cache()
-    reset_settings_cache()
+    # No active engagement and enforcement off: these tests drive resolution
+    # explicitly and rely on the dormant (no-active) behaviour for the
+    # no-header case.
+    engagement_scope.set_active_engagement(None)
+    prev_enforce = engagement_scope.set_enforcement(False)
+    try:
+        yield tmp_path
+    finally:
+        engagement_scope.set_enforcement(prev_enforce)
+        reset_engine_cache()
+        reset_settings_cache()
 
 
 def _ref(source_id, target_id, engagement_id):
@@ -134,7 +153,7 @@ async def test_middleware_sets_and_resets_contextvar(scoped_env):
     assert get_active_engagement() is None  # reset after
 
 
-async def test_middleware_passthrough_when_disabled(v2_env, monkeypatch):
+async def test_middleware_passthrough_when_disabled(scoped_env, monkeypatch):
     monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "false")
     reset_settings_cache()
     seen = await _run_middleware("ALPHA")

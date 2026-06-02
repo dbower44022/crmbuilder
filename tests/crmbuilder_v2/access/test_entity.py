@@ -59,7 +59,7 @@ def test_entities_table_has_nine_columns_with_correct_types(v2_env):
         assert str(columns[name]["type"]).upper().startswith(affinity), name
     # Primary key is the prefixed-string identifier; no surrogate ``id``.
     pk = inspector.get_pk_constraint("entities")
-    assert pk["constrained_columns"] == ["entity_identifier"]
+    assert pk["constrained_columns"] == ["entity_identifier", "engagement_id"]
     # Soft-delete and timestamp nullability per the spec.
     assert columns["entity_deleted_at"]["nullable"] is True
     assert columns["entity_notes"]["nullable"] is True
@@ -321,6 +321,11 @@ def test_concurrent_creates_assign_distinct_identifiers(v2_env):
     errors: list[Exception] = []
 
     def worker(index: int) -> None:
+        # PI-123: a spawned thread does not inherit the parent ContextVar, so
+        # set the active engagement here (production sets it per request via
+        # the scope middleware).
+        from crmbuilder_v2.access import engagement_scope as _es
+        _es.set_active_engagement("ENG-001")
         try:
             with session_scope() as s:
                 row = entity.create_entity(

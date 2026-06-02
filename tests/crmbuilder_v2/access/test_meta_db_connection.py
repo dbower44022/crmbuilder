@@ -58,19 +58,22 @@ def test_meta_db_separate_from_engagement_db(v2_env):
     """A write to the meta DB does not appear in the per-engagement DB.
 
     PI-123 Slice 1 folded the ``engagements`` table into the main ``Base``,
-    so a per-engagement DB built from that schema now *has* an (empty)
-    ``engagements`` table too. The invariant under test is no longer
-    "the engagement DB lacks the table" but the stronger, still-true point:
-    the two are separate physical DBs, so the meta DB's engagement row does
-    not appear in the per-engagement DB's ``engagements`` table. (At the
-    Deployment cutover the two collapse into one; until then they are
-    distinct files and this isolation holds.)
+    so a per-engagement DB built from that schema now *has* an
+    ``engagements`` table too (and, under PI-123 Stage 2, the test fixture
+    seeds the default engagement ``ENG-001`` into it as the FK target). The
+    invariant under test is no longer "the engagement DB lacks the table" but
+    the stronger, still-true point: the two are separate physical DBs, so a
+    row written *only* to the meta DB does not appear in the per-engagement
+    DB's ``engagements`` table. (At the Deployment cutover the two collapse
+    into one; until then they are distinct files and this isolation holds.)
     """
-    _seed_meta_schema_and_row()
+    # Seed a distinct identifier into the meta DB so it is unambiguously the
+    # meta row (the fixture's ENG-001 lives in the per-engagement DB).
+    _seed_meta_schema_and_row(identifier="ENG-777")
 
-    # The per-engagement DB now carries the folded-in engagements table
-    # (PI-123 Slice 1), but it is a distinct physical DB: the meta DB's
-    # row must not be visible here. The table is present but empty.
+    # The per-engagement DB carries the folded-in engagements table (PI-123
+    # Slice 1) seeded with the fixture's default engagement, but it is a
+    # distinct physical DB: the meta-only row must not be visible here.
     with engagement_db.session_scope(export=False) as eng_session:
         table = eng_session.execute(
             text("SELECT name FROM sqlite_master WHERE name='engagements'")
@@ -79,11 +82,11 @@ def test_meta_db_separate_from_engagement_db(v2_env):
             "per-engagement DB should carry the folded-in engagements table "
             "(PI-123 Slice 1)"
         )
-        count = eng_session.execute(
-            text("SELECT COUNT(*) FROM engagements")
+        meta_only = eng_session.execute(
+            text("SELECT COUNT(*) FROM engagements WHERE engagement_identifier='ENG-777'")
         ).scalar_one()
         # The meta DB's row did not bleed into the per-engagement DB.
-        assert count == 0
+        assert meta_only == 0
 
     # Meta DB has exactly the row we inserted.
     factory = get_meta_session_factory()

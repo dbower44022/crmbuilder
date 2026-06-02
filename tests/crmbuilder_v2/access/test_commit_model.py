@@ -56,7 +56,7 @@ def test_commits_unique_constraint_on_sha(v2_env):
     """``commit_sha`` is UNIQUE across rows."""
     with session_scope() as s:
         uqs = inspect(s.get_bind()).get_unique_constraints("commits")
-    sha_uqs = [u for u in uqs if u["column_names"] == ["commit_sha"]]
+    sha_uqs = [u for u in uqs if u["column_names"] == ["engagement_id", "commit_sha"]]
     assert len(sha_uqs) == 1, f"expected unique on commit_sha; got {uqs}"
 
 
@@ -73,14 +73,14 @@ def test_commits_identifier_format_check_rejects_wrong_width(v2_env):
                     "commit_committed_at, commit_repository, commit_branch, "
                     "commit_parent_shas, commit_files_changed_count, "
                     "commit_session_id, commit_created_at, "
-                    "commit_updated_at) "
+                    "commit_updated_at, engagement_id) "
                     "VALUES "
                     "('CM-001', "
                     "'0123456789abcdef0123456789abcdef01234567', "
                     "'test', 'test', 'doug', 'doug@x.com', "
                     "'2026-05-23T20:00:00-04:00', 'crmbuilder', 'main', "
                     "'[]', 1, 'CONV-001', "
-                    "datetime('now'), datetime('now'))"
+                    "datetime('now'), datetime('now'), 'ENG-001')"
                 )
             )
 
@@ -98,13 +98,13 @@ def test_commits_sha_format_check_rejects_wrong_length(v2_env):
                     "commit_committed_at, commit_repository, commit_branch, "
                     "commit_parent_shas, commit_files_changed_count, "
                     "commit_session_id, commit_created_at, "
-                    "commit_updated_at) "
+                    "commit_updated_at, engagement_id) "
                     "VALUES "
                     "('CM-0001', 'TOO_SHORT', "
                     "'test', 'test', 'doug', 'doug@x.com', "
                     "'2026-05-23T20:00:00-04:00', 'crmbuilder', 'main', "
                     "'[]', 1, 'CONV-001', "
-                    "datetime('now'), datetime('now'))"
+                    "datetime('now'), datetime('now'), 'ENG-001')"
                 )
             )
 
@@ -122,14 +122,14 @@ def test_commits_sha_format_check_rejects_uppercase(v2_env):
                     "commit_committed_at, commit_repository, commit_branch, "
                     "commit_parent_shas, commit_files_changed_count, "
                     "commit_session_id, commit_created_at, "
-                    "commit_updated_at) "
+                    "commit_updated_at, engagement_id) "
                     "VALUES "
                     "('CM-0001', "
                     "'ABCDEF0123456789ABCDEF0123456789ABCDEF01', "
                     "'test', 'test', 'doug', 'doug@x.com', "
                     "'2026-05-23T20:00:00-04:00', 'crmbuilder', 'main', "
                     "'[]', 1, 'CONV-001', "
-                    "datetime('now'), datetime('now'))"
+                    "datetime('now'), datetime('now'), 'ENG-001')"
                 )
             )
 
@@ -147,14 +147,14 @@ def test_commits_files_changed_count_check_rejects_negative(v2_env):
                     "commit_committed_at, commit_repository, commit_branch, "
                     "commit_parent_shas, commit_files_changed_count, "
                     "commit_session_id, commit_created_at, "
-                    "commit_updated_at) "
+                    "commit_updated_at, engagement_id) "
                     "VALUES "
                     "('CM-0001', "
                     "'0123456789abcdef0123456789abcdef01234567', "
                     "'test', 'test', 'doug', 'doug@x.com', "
                     "'2026-05-23T20:00:00-04:00', 'crmbuilder', 'main', "
                     "'[]', -1, 'CONV-001', "
-                    "datetime('now'), datetime('now'))"
+                    "datetime('now'), datetime('now'), 'ENG-001')"
                 )
             )
 
@@ -171,14 +171,14 @@ def test_commits_well_formed_insert_round_trips(v2_env):
                 "commit_committed_at, commit_repository, commit_branch, "
                 "commit_parent_shas, commit_files_changed_count, "
                 "commit_session_id, commit_created_at, "
-                "commit_updated_at) "
+                "commit_updated_at, engagement_id) "
                 "VALUES "
                 "('CM-0001', "
                 "'0123456789abcdef0123456789abcdef01234567', "
                 "'subject', 'subject\\n\\nbody', 'Doug Bower', "
                 "'doug@dougbower.com', '2026-05-23T20:00:00-04:00', "
                 "'crmbuilder', 'main', '[]', 3, 'CONV-001', "
-                "datetime('now'), datetime('now'))"
+                "datetime('now'), datetime('now'), 'ENG-001')"
             )
         )
     with session_scope() as s:
@@ -196,10 +196,10 @@ def test_refs_check_admits_blocked_by_via_create_all(v2_env):
             text(
                 "INSERT INTO refs "
                 "(reference_identifier, source_type, source_id, "
-                "target_type, target_id, relationship_kind, created_at) "
+                "target_type, target_id, relationship_kind, created_at, engagement_id) "
                 "VALUES "
                 "('REF-9001', 'planning_item', 'PI-001', "
-                "'planning_item', 'PI-002', 'blocked_by', datetime('now'))"
+                "'planning_item', 'PI-002', 'blocked_by', datetime('now'), 'ENG-001')"
             )
         )
     with session_scope() as s:
@@ -217,10 +217,10 @@ def test_refs_check_rejects_legacy_blocks(v2_env):
                 text(
                     "INSERT INTO refs "
                     "(reference_identifier, source_type, source_id, "
-                    "target_type, target_id, relationship_kind, created_at) "
+                    "target_type, target_id, relationship_kind, created_at, engagement_id) "
                     "VALUES "
                     "('REF-9002', 'planning_item', 'PI-003', "
-                    "'planning_item', 'PI-004', 'blocks', datetime('now'))"
+                    "'planning_item', 'PI-004', 'blocks', datetime('now'), 'ENG-001')"
                 )
             )
 
@@ -232,20 +232,20 @@ def test_refs_check_admits_commit_as_source_and_target(v2_env):
             text(
                 "INSERT INTO refs "
                 "(reference_identifier, source_type, source_id, "
-                "target_type, target_id, relationship_kind, created_at) "
+                "target_type, target_id, relationship_kind, created_at, engagement_id) "
                 "VALUES "
                 "('REF-9003', 'commit', 'CM-0001', "
-                "'session', 'SES-001', 'is_about', datetime('now'))"
+                "'session', 'SES-001', 'is_about', datetime('now'), 'ENG-001')"
             )
         )
         s.execute(
             text(
                 "INSERT INTO refs "
                 "(reference_identifier, source_type, source_id, "
-                "target_type, target_id, relationship_kind, created_at) "
+                "target_type, target_id, relationship_kind, created_at, engagement_id) "
                 "VALUES "
                 "('REF-9004', 'decision', 'DEC-001', "
-                "'commit', 'CM-0001', 'references', datetime('now'))"
+                "'commit', 'CM-0001', 'references', datetime('now'), 'ENG-001')"
             )
         )
     with session_scope() as s:

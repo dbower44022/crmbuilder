@@ -279,6 +279,7 @@ def test_concurrent_posts_get_distinct_identifiers(v2_env):
 
     def worker(index: int) -> None:
         thread_client = TestClient(create_app())
+        thread_client.headers.update({"X-Engagement": "ENG-001"})
         response = thread_client.post(
             "/crm_candidates",
             json={

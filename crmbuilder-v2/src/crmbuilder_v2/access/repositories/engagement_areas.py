@@ -84,8 +84,19 @@ def list_engagement_areas(session: Session) -> list[dict]:
     return [to_dict(r) for r in rows]
 
 
+def _get_row(session: Session, name: str) -> EngagementArea | None:
+    # PI-123: the PK is composite ``(engagement_area_name, engagement_id)``, so
+    # a single-value ``session.get`` no longer addresses a row. A filtered
+    # select lets the central read-filter supply the active ``engagement_id``.
+    return session.scalars(
+        select(EngagementArea).where(
+            EngagementArea.engagement_area_name == name
+        )
+    ).first()
+
+
 def get_engagement_area(session: Session, name: str) -> dict:
-    row = session.get(EngagementArea, name)
+    row = _get_row(session, name)
     if row is None:
         raise NotFoundError("engagement_area", name)
     return to_dict(row)
@@ -111,7 +122,7 @@ def create_engagement_area(
 
 
 def delete_engagement_area(session: Session, name: str) -> None:
-    row = session.get(EngagementArea, name)
+    row = _get_row(session, name)
     if row is None:
         raise NotFoundError("engagement_area", name)
     session.delete(row)

@@ -62,7 +62,7 @@ def test_fields_table_has_expected_columns_with_correct_types(v2_env):
     for name, affinity in _EXPECTED_COLUMNS.items():
         assert str(columns[name]["type"]).upper().startswith(affinity), name
     pk = inspector.get_pk_constraint("fields")
-    assert pk["constrained_columns"] == ["field_identifier"]
+    assert pk["constrained_columns"] == ["field_identifier", "engagement_id"]
     # Optional-content nullability per the spec.
     assert columns["field_deleted_at"]["nullable"] is True
     assert columns["field_notes"]["nullable"] is True

@@ -110,12 +110,22 @@ def test_dormant_without_active_engagement_returns_all(factory):
     assert _count(factory, None) == 2
 
 
-def test_dormant_write_leaves_engagement_id_null(factory):
+def test_unscoped_write_rejected_by_strict_schema(factory):
+    """PI-123 Stage 2: ``engagement_id`` is now NOT NULL.
+
+    With no active engagement the write-stamp leaves ``engagement_id`` unset,
+    and the strict (cutover) schema rejects the row — superseding the Slice-2b
+    dormant behaviour where the column was nullable and a no-active-engagement
+    write simply left it ``NULL``.
+    """
+    from sqlalchemy.exc import IntegrityError
+
     s = factory()
     r = _ref("SES-001", "SES-002")  # no active engagement
     s.add(r)
-    s.commit()
-    assert r.engagement_id is None
+    with pytest.raises(IntegrityError):
+        s.commit()
+    s.rollback()
     s.close()
 
 
