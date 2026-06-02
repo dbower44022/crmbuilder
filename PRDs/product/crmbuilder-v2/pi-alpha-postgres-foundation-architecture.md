@@ -305,6 +305,60 @@ Architecture phase output.
 
 ---
 
+## 8.5 Build notes (as executed — 06-02-26)
+
+Architecture → Development → Data-Migration → Testing executed on branch
+`pi-alpha-postgres` (commits `588aec3`, `3f08054`, `19fc9c4`, `f1f5c09`,
+`8b123df`). What the plan got right, and what running it against a live
+Postgres 16 surfaced:
+
+- **SQLite-isms beyond JSON/transactions (found by `create_all` on live PG).**
+  The plan named `JSON→JSONB` and the transaction hacks; the schema also carried
+  four SQLite-only *CHECK* idioms that PG rejects. All four became dialect-
+  rendering `ColumnElement` constructs in `models.py` whose **SQLite output is
+  byte-identical** (so the SQLite suite + existing DBs are untouched): `GLOB`
+  identifier-format → POSIX `~` regex (`_IdentifierFormatCheck`, incl. compound
+  `SES|CONV`, 4-digit `CM`/`REF`, nullable `REF`); `json_valid`/`json_type`/
+  `json_array_length` → `jsonb_typeof`/`jsonb_array_length` (`_NonEmptyJsonArrayCheck`);
+  `col IN (0, 1)` boolean domain → `IN (true, false)` (`_BooleanDomainCheck`);
+  the hex-SHA `NOT GLOB '*[^0-9a-f]*'` guard → `~ '^[0-9a-f]*$'` (`_LowerHexCheck`).
+- **Six latent VARCHAR-overflow bugs (found by migrating the real DB).** SQLite
+  never enforced `VARCHAR(n)` length; PG does. Real data overran six columns —
+  widened in the models (`decisions`/`planning_items`/`risks.title`,
+  `conversations.conversation_title`, `change_log.entity_identifier` → `Text`;
+  `refs.relationship_kind` `String(32)→(64)`, its own vocab's longest kind being
+  42 chars). Alembic `0039` mirrors this on the SQLite chain (no-op there);
+  `meta_models` shares `_IdentifierFormatCheck` to keep the engagements-table
+  parity test green.
+- **Data migration = straight copy + sequence reset.** `migration/sqlite_to_postgres.py`
+  copies through SQLAlchemy Core bound to `Base.metadata` (type round-trip handles
+  JSON→JSONB / 0-1→bool / ISO→timestamptz), inserts in `sorted_tables` FK order
+  with FK enforcement **on** (no superuser), two-passes the `decisions`/`topics`
+  self-FKs, and resets PG `SERIAL` sequences. Validated against the real
+  `v2-unified.db`: ENG-001 = 9025 rows, ENG-002 empty, parity + isolation OK.
+- **§5 step 4 resolved → a separate PG Alembic tree** (`migrations/pg/`, mirrors
+  `migrations/meta/`), single `0001_pg_baseline` = `create_all`. Dialect-branching
+  one chain would mean multiple Alembic heads; a separate tree is cleaner.
+- **§9 async resolved → stay sync** for PI-α (`QueuePool` + `pre_ping`/`recycle`).
+- **Testing harness (the real work).** The suite runs on PG via a
+  `CRMBUILDER_V2_TEST_PG_URL`-gated `v2_env` (SQLite path unchanged when unset).
+  Three things mattered: (1) per-test reset is a reverse-FK **DELETE + one-pass
+  sequence reset** (~5 ms), not `TRUNCATE … CASCADE RESTART IDENTITY` (~2.8 s) —
+  that one change made PG-mode as fast as SQLite; (2) **re-install the scope
+  listeners every test** — SQLite masks a test that uninstalls them via its
+  per-test engine rebuild, PG reuses the engine, so without this 121 later tests
+  wrote `NULL engagement_id`; (3) a skip-list for intrinsically-SQLite tests
+  (type-affinity reflection, `sqlite_master`/two-file routing) + portability
+  fixes (`datetime('now')`→`CURRENT_TIMESTAMP`, SAVEPOINT-wrap expected-CHECK-
+  rejections since PG aborts the txn on a failed statement). **Result: access
+  844✓/10‑skip, api 412✓/1‑skip, integration/mcp/bootstrap/runtime green on PG.**
+- **CI.** `.github/workflows/postgres-tests.yml` runs the DB suites against a
+  Postgres 16 service. **Remaining (not done):** the orientation/Documentation
+  pass (CLAUDE.md store description + dual-head note), the PI-100 concurrent-
+  writer scale check against the pool, and the Deployment phase (§7).
+
+---
+
 ## 9. Open questions & explicitly deferred
 
 - **Async API?** — **Deferred (decided: stay sync for PI-α).** Moving FastAPI to
