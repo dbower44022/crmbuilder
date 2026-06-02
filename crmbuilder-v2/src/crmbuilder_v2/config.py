@@ -57,7 +57,40 @@ class Settings(BaseSettings):
     db_path: Path = Field(
         default_factory=lambda: _repo_root() / "crmbuilder-v2" / "data" / "v2-unified.db"
     )
+    # PI-alpha (D1): a full SQLAlchemy URL for the primary engagement store.
+    # When set (e.g. ``postgresql+psycopg://user:pw@host:5432/crmbuilder_v2``),
+    # it is the engine URL verbatim and the dialect is Postgres; when unset
+    # (the default), ``db_url`` falls back to ``sqlite:///{db_path}`` so a fresh
+    # checkout, the still-SQLite meta DB, and existing SQLite installs keep
+    # working unchanged. This is the single dialect switch the access layer
+    # reads (``access/db.py`` builds the engine SQLite- vs PG-conditionally on
+    # it). Binds from ``CRMBUILDER_V2_DATABASE_URL``.
+    database_url: str = ""
+    # PI-alpha (D10): Postgres connection-pool sizing. Ignored on SQLite (which
+    # keeps SQLAlchemy's default pool). Conservative defaults; pinned against
+    # the prod topology + PI-100 concurrent-writer scale testing at Deployment.
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    db_pool_recycle: int = 1800  # seconds; recycle connections before PG idle timeout
     export_dir: Path = Field(default_factory=_default_export_dir)
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _validate_database_url(cls, value: object) -> object:
+        # Empty/whitespace => unset (SQLite fallback in ``db_url``).
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return ""
+        if not isinstance(value, str):
+            raise ValueError("CRMBUILDER_V2_DATABASE_URL must be a string")
+        url = value.strip()
+        # Accept any SQLAlchemy URL with a scheme; guard the common typo of a
+        # bare host or path with no ``dialect[+driver]://``.
+        if "://" not in url:
+            raise ValueError(
+                "CRMBUILDER_V2_DATABASE_URL must be a full SQLAlchemy URL "
+                "(e.g. postgresql+psycopg://user:pw@host:5432/dbname)"
+            )
+        return url
 
     @field_validator("export_dir", mode="before")
     @classmethod
@@ -104,6 +137,10 @@ class Settings(BaseSettings):
 
     @property
     def db_url(self) -> str:
+        # PI-alpha (D1): a configured DATABASE_URL is the engine URL verbatim
+        # (Postgres in production); otherwise fall back to the SQLite file.
+        if self.database_url:
+            return self.database_url
         return f"sqlite:///{self.db_path}"
 
     @property

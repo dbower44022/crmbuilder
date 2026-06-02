@@ -1,0 +1,31 @@
+# PI-alpha (D11): local dev/test Postgres for crmbuilder-v2.
+#
+# Ephemeral, per-developer — NOT a production deployment (prod is DigitalOcean
+# Managed Postgres; see pi-alpha-postgres-foundation-architecture.md §7). CI
+# stands up the same image as a service.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#   export CRMBUILDER_V2_DATABASE_URL='postgresql+psycopg://crmb:crmb@localhost:55432/crmbuilder_v2'
+#   # then bootstrap / migrate / run the suite against it
+#   docker compose -f docker-compose.dev.yml down -v   # tear down + wipe
+#
+# Port 55432 (not 5432) avoids clashing with a system Postgres on the host.
+services:
+  postgres:
+    image: postgres:16
+    container_name: crmb_pg_dev
+    environment:
+      POSTGRES_USER: crmb
+      POSTGRES_PASSWORD: crmb
+      POSTGRES_DB: crmbuilder_v2
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crmb -d crmbuilder_v2"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    # Ephemeral by default: no named volume, so `down` (without -v even) leaves
+    # nothing behind a container removal. Add a volume here if you want the dev
+    # data to survive container recreation.

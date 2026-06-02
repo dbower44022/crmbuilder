@@ -23,12 +23,15 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
     mapped_column,
     relationship,
 )
+from sqlalchemy.sql.expression import ColumnElement
 
 from crmbuilder_v2.access.vocab import (
     CATALOG_ATTRIBUTE_TYPES,
@@ -79,6 +82,167 @@ from crmbuilder_v2.access.vocab import (
     WORKSTREAM_STATUSES,
     _check_in,
 )
+
+# PI-alpha (D1): JSON columns use JSONB on Postgres and plain JSON everywhere
+# else (the still-SQLite meta DB, legacy SQLite installs, and the unified-DB
+# migration source). A single shared ``TypeEngine`` instance per variant is
+# safe — SQLAlchemy type objects are immutable descriptors reused across
+# columns. ``none_as_null`` is load-bearing on the work-area-labels column (a
+# Python ``None`` must persist as SQL NULL, not the JSON text ``'null'``); it is
+# preserved on both sides of the variant.
+JSONColumn = JSON().with_variant(JSONB(), "postgresql")
+JSONColumnNoneAsNull = JSON(none_as_null=True).with_variant(
+    JSONB(none_as_null=True), "postgresql"
+)
+
+
+# --- PI-alpha (D1): dialect-aware identifier-format CHECK constraints ---
+#
+# The identifier-format CHECKs were hand-written as SQLite ``GLOB`` predicates
+# (e.g. ``session_identifier GLOB 'SES-[0-9][0-9][0-9]'``). ``GLOB`` is a
+# SQLite-only operator — Postgres has no GLOB, so ``create_all`` against PG
+# fails. These two custom constructs render the **byte-identical GLOB form on
+# SQLite** (so create_all on SQLite is unchanged and existing SQLite DBs, whose
+# CHECK text is already baked in, are untouched) and the equivalent **POSIX
+# regex (``~``) form on Postgres**.
+
+
+class _IdentifierFormatCheck(ColumnElement):
+    """An identifier-format CHECK predicate, dialect-rendered.
+
+    ``prefixes`` are OR'd together (the session/conversation rows admit two);
+    ``digits`` is the trailing digit count (3 for most, 4 for ``CM-``/``REF-``).
+    """
+
+    inherit_cache = True
+    type = Boolean()
+
+    def __init__(
+        self, column_name: str, prefixes, digits: int = 3, allow_null: bool = False
+    ) -> None:
+        self.column_name = column_name
+        self.prefixes = tuple(prefixes)
+        self.digits = digits
+        # ``allow_null`` prepends ``<col> IS NULL OR`` (e.g. server-assigned
+        # REF-NNNN, NULL before assignment). Folded into the rendered predicate
+        # — rather than wrapping the element in ``sql.or_`` — because nesting a
+        # boolean custom element inside ``and_``/``or_`` makes SQLAlchemy's
+        # SQLite compiler append a spurious ``= 1`` boolean coercion.
+        self.allow_null = allow_null
+
+
+@compiles(_IdentifierFormatCheck, "sqlite")
+def _render_ident_sqlite(element, compiler, **kw) -> str:
+    cls = "[0-9]" * element.digits
+    pred = " OR ".join(
+        f"{element.column_name} GLOB '{p}-{cls}'" for p in element.prefixes
+    )
+    if element.allow_null:
+        pred = f"{element.column_name} IS NULL OR {pred}"
+    return pred
+
+
+@compiles(_IdentifierFormatCheck)
+def _render_ident_default(element, compiler, **kw) -> str:
+    # POSIX regex (Postgres ``~``): anchored, exact trailing digit count.
+    pred = " OR ".join(
+        f"{element.column_name} ~ '^{p}-[0-9]{{{element.digits}}}$'"
+        for p in element.prefixes
+    )
+    if element.allow_null:
+        pred = f"{element.column_name} IS NULL OR {pred}"
+    return pred
+
+
+class _LowerHexCheck(ColumnElement):
+    """A "value is all lowercase hex (or empty)" CHECK, dialect-rendered.
+
+    The git-commit-SHA guard: SQLite ``col NOT GLOB '*[^0-9a-f]*'`` (no char
+    outside ``0-9a-f``) ⇔ Postgres ``col ~ '^[0-9a-f]*$'``. ``length`` prepends
+    an exact-length predicate (``LENGTH`` is portable across both dialects).
+    """
+
+    inherit_cache = True
+    type = Boolean()
+
+    def __init__(self, column_name: str, length: int | None = None) -> None:
+        self.column_name = column_name
+        self.length = length
+
+
+@compiles(_LowerHexCheck, "sqlite")
+def _render_hex_sqlite(element, compiler, **kw) -> str:
+    pred = f"{element.column_name} NOT GLOB '*[^0-9a-f]*'"
+    if element.length is not None:
+        pred = f"LENGTH({element.column_name}) = {element.length} AND {pred}"
+    return pred
+
+
+@compiles(_LowerHexCheck)
+def _render_hex_default(element, compiler, **kw) -> str:
+    pred = f"{element.column_name} ~ '^[0-9a-f]*$'"
+    if element.length is not None:
+        pred = f"LENGTH({element.column_name}) = {element.length} AND {pred}"
+    return pred
+
+
+class _NonEmptyJsonArrayCheck(ColumnElement):
+    """A "column is NULL or a non-empty JSON array" CHECK, dialect-rendered.
+
+    SQLite uses ``json_valid``/``json_type``/``json_array_length``; Postgres
+    JSONB uses ``jsonb_typeof``/``jsonb_array_length`` (and is always valid
+    JSON, so no validity guard is needed).
+    """
+
+    inherit_cache = True
+    type = Boolean()
+
+    def __init__(self, column_name: str) -> None:
+        self.column_name = column_name
+
+
+@compiles(_NonEmptyJsonArrayCheck, "sqlite")
+def _render_jsonarr_sqlite(element, compiler, **kw) -> str:
+    c = element.column_name
+    return (
+        f"{c} IS NULL OR (json_valid({c}) AND json_type({c}) = 'array' "
+        f"AND json_array_length({c}) >= 1)"
+    )
+
+
+@compiles(_NonEmptyJsonArrayCheck)
+def _render_jsonarr_default(element, compiler, **kw) -> str:
+    c = element.column_name
+    return (
+        f"{c} IS NULL OR (jsonb_typeof({c}) = 'array' "
+        f"AND jsonb_array_length({c}) >= 1)"
+    )
+
+
+class _BooleanDomainCheck(ColumnElement):
+    """A boolean-domain CHECK, dialect-rendered.
+
+    SQLite stores Boolean as the integers ``0``/``1`` (``IN (0, 1)``); Postgres
+    has a native boolean type, so the literals are ``true``/``false``. NULL
+    satisfies the CHECK on both (``NULL IN (...)`` is unknown ⇒ passes).
+    """
+
+    inherit_cache = True
+    type = Boolean()
+
+    def __init__(self, column_name: str) -> None:
+        self.column_name = column_name
+
+
+@compiles(_BooleanDomainCheck, "sqlite")
+def _render_booldomain_sqlite(element, compiler, **kw) -> str:
+    return f"{element.column_name} IN (0, 1)"
+
+
+@compiles(_BooleanDomainCheck)
+def _render_booldomain_default(element, compiler, **kw) -> str:
+    return f"{element.column_name} IN (true, false)"
+
 
 
 def _utcnow() -> datetime:
@@ -153,7 +317,7 @@ class Charter(EngagementScopedMixin, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -172,7 +336,7 @@ class Status(EngagementScopedMixin, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -279,10 +443,10 @@ class Session(EngagementScopedPKMixin, Base):
         DateTime(timezone=True), nullable=True
     )
     session_participants: Mapped[list] = mapped_column(
-        JSON, nullable=False, default=list
+        JSONColumn, nullable=False, default=list
     )
     session_medium_metadata: Mapped[dict] = mapped_column(
-        JSON, nullable=False, default=dict
+        JSONColumn, nullable=False, default=dict
     )
     session_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
@@ -315,8 +479,7 @@ class Session(EngagementScopedPKMixin, Base):
         # CONV-NNN rows migrate INTO this table (becoming sessions);
         # new sessions use SES-NNN. Both prefixes admitted.
         CheckConstraint(
-            "session_identifier GLOB 'SES-[0-9][0-9][0-9]' "
-            "OR session_identifier GLOB 'CONV-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("session_identifier", ["SES", "CONV"]),
             name="ck_session_identifier_format",
         ),
         CheckConstraint(
@@ -395,7 +558,7 @@ class PlanningItem(EngagementScopedMixin, Base):
     # SQL NULL, which fails the ``area IS NULL`` arm of the CHECK
     # (``json_type('null')`` is ``'null'``, not ``'array'``).
     area: Mapped[list | None] = mapped_column(
-        JSON(none_as_null=True), nullable=True
+        JSONColumnNoneAsNull, nullable=True
     )
     # PI-077: orchestrator claim. ``claimed_by`` holds the conversation
     # identifier (CONV-NNN) of the agent working the item; both columns
@@ -424,10 +587,7 @@ class PlanningItem(EngagementScopedMixin, Base):
             name="ck_planning_executive_summary_length",
         ),
         CheckConstraint(
-            "area IS NULL OR ("
-            "json_valid(area) AND json_type(area) = 'array' "
-            "AND json_array_length(area) >= 1"
-            ")",
+            _NonEmptyJsonArrayCheck("area"),
             name="ck_planning_area_nonempty_array",
         ),
         CheckConstraint(
@@ -527,7 +687,7 @@ class Domain(EngagementScopedPKMixin, Base):
         # anchors the whole string, so this admits exactly ``DOM-`` plus
         # three digits.
         CheckConstraint(
-            "domain_identifier GLOB 'DOM-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("domain_identifier", ["DOM"]),
             name="ck_domain_identifier_format",
         ),
         CheckConstraint(
@@ -585,7 +745,7 @@ class Entity(EngagementScopedPKMixin, Base):
         # anchors the whole string, so this admits exactly ``ENT-`` plus
         # three digits.
         CheckConstraint(
-            "entity_identifier GLOB 'ENT-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("entity_identifier", ["ENT"]),
             name="ck_entity_identifier_format",
         ),
         CheckConstraint(
@@ -658,7 +818,7 @@ class Field(EngagementScopedPKMixin, Base):
     __table_args__ = (
         # ``^FLD-\d{3}$`` expressed as a SQLite GLOB pattern.
         CheckConstraint(
-            "field_identifier GLOB 'FLD-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("field_identifier", ["FLD"]),
             name="ck_field_identifier_format",
         ),
         CheckConstraint(
@@ -670,7 +830,7 @@ class Field(EngagementScopedPKMixin, Base):
             name="ck_field_type",
         ),
         CheckConstraint(
-            "field_required IN (0, 1)",
+            _BooleanDomainCheck("field_required"),
             name="ck_field_required_boolean",
         ),
         Index("ix_fields_field_status", "field_status"),
@@ -728,7 +888,7 @@ class Requirement(EngagementScopedPKMixin, Base):
     __table_args__ = (
         # ``^REQ-\d{3}$`` expressed as a SQLite GLOB pattern.
         CheckConstraint(
-            "requirement_identifier GLOB 'REQ-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("requirement_identifier", ["REQ"]),
             name="ck_requirement_identifier_format",
         ),
         CheckConstraint(
@@ -793,7 +953,7 @@ class Persona(EngagementScopedPKMixin, Base):
     __table_args__ = (
         # ``^PER-\d{3}$`` expressed as a SQLite GLOB pattern.
         CheckConstraint(
-            "persona_identifier GLOB 'PER-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("persona_identifier", ["PER"]),
             name="ck_persona_identifier_format",
         ),
         CheckConstraint(
@@ -876,11 +1036,11 @@ class Process(EngagementScopedPKMixin, Base):
         # ``^PROC-\d{3}$`` and ``^DOM-\d{3}$`` expressed as SQLite GLOB
         # patterns — GLOB anchors the whole string.
         CheckConstraint(
-            "process_identifier GLOB 'PROC-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("process_identifier", ["PROC"]),
             name="ck_process_identifier_format",
         ),
         CheckConstraint(
-            "process_domain_identifier GLOB 'DOM-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("process_domain_identifier", ["DOM"]),
             name="ck_process_domain_identifier_format",
         ),
         CheckConstraint(
@@ -968,7 +1128,7 @@ class ManualConfig(EngagementScopedPKMixin, Base):
     __table_args__ = (
         # ``^MCF-\d{3}$`` expressed as a SQLite GLOB pattern.
         CheckConstraint(
-            "manual_config_identifier GLOB 'MCF-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("manual_config_identifier", ["MCF"]),
             name="ck_manual_config_identifier_format",
         ),
         CheckConstraint(
@@ -1079,7 +1239,7 @@ class TestSpec(EngagementScopedPKMixin, Base):
     __table_args__ = (
         # ``^TST-\d{3}$`` expressed as a SQLite GLOB pattern.
         CheckConstraint(
-            "test_spec_identifier GLOB 'TST-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("test_spec_identifier", ["TST"]),
             name="ck_test_spec_identifier_format",
         ),
         CheckConstraint(
@@ -1150,7 +1310,7 @@ class CrmCandidate(EngagementScopedPKMixin, Base):
         # anchors the whole string, so this admits exactly ``CRM-`` plus
         # three digits.
         CheckConstraint(
-            "crm_candidate_identifier GLOB 'CRM-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("crm_candidate_identifier", ["CRM"]),
             name="ck_crm_candidate_identifier_format",
         ),
         CheckConstraint(
@@ -1221,7 +1381,7 @@ class Project(EngagementScopedPKMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "project_identifier GLOB 'PRJ-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("project_identifier", ["PRJ"]),
             name="ck_project_identifier_format",
         ),
         CheckConstraint(
@@ -1283,7 +1443,7 @@ class Workstream(EngagementScopedPKMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "workstream_identifier GLOB 'WSK-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("workstream_identifier", ["WSK"]),
             name="ck_workstream_identifier_format",
         ),
         CheckConstraint(
@@ -1344,7 +1504,7 @@ class WorkTask(EngagementScopedPKMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "work_task_identifier GLOB 'WTK-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("work_task_identifier", ["WTK"]),
             name="ck_work_task_identifier_format",
         ),
         CheckConstraint(
@@ -1425,8 +1585,7 @@ class Conversation(EngagementScopedPKMixin, Base):
         # legacy SES-NNN rows migrate INTO this table as conversations,
         # retaining their identifier; new conversations use CNV-NNN.
         CheckConstraint(
-            "conversation_identifier GLOB 'CNV-[0-9][0-9][0-9]' "
-            "OR conversation_identifier GLOB 'SES-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("conversation_identifier", ["CNV", "SES"]),
             name="ck_conversation_identifier_format",
         ),
         CheckConstraint(
@@ -1495,7 +1654,7 @@ class ReferenceBook(EngagementScopedPKMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "reference_book_identifier GLOB 'RB-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("reference_book_identifier", ["RB"]),
             name="ck_reference_book_identifier_format",
         ),
         CheckConstraint(
@@ -1625,7 +1784,7 @@ class WorkTicket(EngagementScopedPKMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "work_ticket_identifier GLOB 'WT-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("work_ticket_identifier", ["WT"]),
             name="ck_work_ticket_identifier_format",
         ),
         CheckConstraint(
@@ -1697,7 +1856,7 @@ class CloseOutPayload(EngagementScopedPKMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "close_out_payload_identifier GLOB 'COP-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("close_out_payload_identifier", ["COP"]),
             name="ck_close_out_payload_identifier_format",
         ),
         CheckConstraint(
@@ -1734,12 +1893,12 @@ class DepositEvent(EngagementScopedPKMixin, Base):
     deposit_event_description: Mapped[str] = mapped_column(Text, nullable=False)
     deposit_event_outcome: Mapped[str] = mapped_column(String(16), nullable=False)
     deposit_event_records_summary: Mapped[dict] = mapped_column(
-        JSON, nullable=False
+        JSONColumn, nullable=False
     )
     deposit_event_error_info: Mapped[dict | None] = mapped_column(
-        JSON, nullable=True
+        JSONColumn, nullable=True
     )
-    deposit_event_apply_context: Mapped[dict] = mapped_column(JSON, nullable=False)
+    deposit_event_apply_context: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
     deposit_event_log_file_path: Mapped[str] = mapped_column(Text, nullable=False)
     deposit_event_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
@@ -1747,7 +1906,7 @@ class DepositEvent(EngagementScopedPKMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "deposit_event_identifier GLOB 'DEP-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("deposit_event_identifier", ["DEP"]),
             name="ck_deposit_event_identifier_format",
         ),
         CheckConstraint(
@@ -1804,7 +1963,7 @@ class Commit(EngagementScopedPKMixin, Base):
     # JSON array of 0/1/2 SHA strings — empty for initial commit, single
     # for normal commit, two for merge commit. Per commit.md §3.2.4.
     commit_parent_shas: Mapped[list] = mapped_column(
-        JSON, nullable=False, default=list
+        JSONColumn, nullable=False, default=list
     )
     commit_files_changed_count: Mapped[int] = mapped_column(
         Integer, nullable=False
@@ -1828,14 +1987,13 @@ class Commit(EngagementScopedPKMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            "commit_identifier GLOB 'CM-[0-9][0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("commit_identifier", ["CM"], 4),
             name="ck_commit_identifier_format",
         ),
         # Lowercase 40-char hex SHA-1. SHA-256 widening anticipated in
         # commit.md §3.8.2.
         CheckConstraint(
-            "LENGTH(commit_sha) = 40 AND "
-            "commit_sha NOT GLOB '*[^0-9a-f]*'",
+            _LowerHexCheck("commit_sha", length=40),
             name="ck_commit_sha_format",
         ),
         CheckConstraint(
@@ -1887,8 +2045,10 @@ class Reference(EngagementScopedMixin, Base):
             name="ck_ref_relationship",
         ),
         CheckConstraint(
-            "reference_identifier IS NULL OR "
-            "reference_identifier GLOB 'REF-[0-9][0-9][0-9][0-9]'",
+            # REF-NNNN is nullable before server assignment.
+            _IdentifierFormatCheck(
+                "reference_identifier", ["REF"], 4, allow_null=True
+            ),
             name="ck_ref_reference_identifier_format",
         ),
         # REF-NNNN is server-assigned per engagement → composite unique (D3).
@@ -2222,8 +2382,8 @@ class ChangeLog(EngagementScopedMixin, Base):
     entity_identifier: Mapped[str] = mapped_column(String(64), nullable=False)
     operation: Mapped[str] = mapped_column(String(8), nullable=False)
     actor: Mapped[str] = mapped_column(String(32), nullable=False)
-    before_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    after_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    before_payload: Mapped[dict | None] = mapped_column(JSONColumn, nullable=True)
+    after_payload: Mapped[dict | None] = mapped_column(JSONColumn, nullable=True)
 
     __table_args__ = (
         CheckConstraint(
@@ -2259,7 +2419,7 @@ class IdentifierReservation(EngagementScopedMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    reserved_identifiers: Mapped[list] = mapped_column(JSON, nullable=False)
+    reserved_identifiers: Mapped[list] = mapped_column(JSONColumn, nullable=False)
     max_number: Mapped[int] = mapped_column(Integer, nullable=False)
     reserved_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     reserved_at: Mapped[datetime] = mapped_column(
@@ -2340,7 +2500,7 @@ class EngagementRow(Base):
 
     __table_args__ = (
         CheckConstraint(
-            "engagement_identifier GLOB 'ENG-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("engagement_identifier", ["ENG"]),
             name="ck_engagement_identifier_format",
         ),
         CheckConstraint(

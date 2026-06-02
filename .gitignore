@@ -44,6 +44,10 @@ PRDs/generated/
 
 *.db
 
+# Pre-migration DB backups (recovery points; renamed past the .db suffix so
+# the *.db rule above misses them) — e.g. engagements.db.pre-pi123-backup-*.
+*.pre-*backup*
+
 # v0.5 multi-engagement: per-engagement DBs and active-state files
 # (`*.db` above already gitignores engagements.db and the dogfood backup
 # and the per-engagement files; these lines document the v0.5 paths.)

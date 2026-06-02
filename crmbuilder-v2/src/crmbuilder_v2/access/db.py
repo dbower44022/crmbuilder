@@ -12,7 +12,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import Engine, create_engine, event, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from crmbuilder_v2.access.models import Base
@@ -54,10 +54,44 @@ def _sqlite_emit_begin(conn) -> None:
     conn.exec_driver_sql("BEGIN IMMEDIATE")
 
 
+def _is_sqlite(url: str) -> bool:
+    return make_url(url).get_backend_name() == "sqlite"
+
+
+def _pool_kwargs(url: str) -> dict:
+    """Engine pool args, dialect-conditional (PI-alpha D10).
+
+    SQLite keeps SQLAlchemy's default (no explicit pool) — single local file,
+    serialized writers. Postgres gets a real ``QueuePool`` with ``pre_ping``
+    (defends against managed-PG idle-connection drops) and ``recycle``
+    (defends against server-side connection timeouts). Sizes are
+    env-overridable via ``CRMBUILDER_V2_*``; the defaults are conservative and
+    pinned against the prod topology + PI-100 scale testing at the Deployment
+    phase.
+    """
+    if _is_sqlite(url):
+        return {}
+    s = get_settings()
+    return {
+        "pool_size": s.db_pool_size,
+        "max_overflow": s.db_max_overflow,
+        "pool_pre_ping": True,
+        "pool_recycle": s.db_pool_recycle,
+    }
+
+
 def _build_engine(url: str) -> Engine:
-    engine = create_engine(url, future=True)
-    event.listen(engine, "connect", _enable_sqlite_pragmas)
-    event.listen(engine, "begin", _sqlite_emit_begin)
+    engine = create_engine(url, future=True, **_pool_kwargs(url))
+    # The SQLite transaction hacks (foreign-keys/busy-timeout pragmas,
+    # isolation_level=None, BEGIN IMMEDIATE) exist solely to make SQLite behave
+    # under concurrent writers and to fix pysqlite's autocommit-emulation
+    # SAVEPOINT bug. None apply to Postgres — PG has MVCC, real transactions,
+    # and correct SAVEPOINT semantics out of the box — so install them only on
+    # SQLite. The engagement-scope ORM event listeners (installed in
+    # ``get_engine``) are dialect-agnostic and apply on both.
+    if _is_sqlite(url):
+        event.listen(engine, "connect", _enable_sqlite_pragmas)
+        event.listen(engine, "begin", _sqlite_emit_begin)
     return engine
 
 

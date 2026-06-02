@@ -10,10 +10,9 @@ from __future__ import annotations
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import create_engine, event
-
 from crmbuilder_v2.access.models import Base
 from crmbuilder_v2.config import get_settings
+from sqlalchemy import create_engine, event, make_url
 
 config = context.config
 if config.config_file_name is not None:
@@ -23,6 +22,11 @@ settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.db_url)
 
 target_metadata = Base.metadata
+
+# PI-alpha (D1): the SQLite chain (0001-0038) uses batch mode + connect-time
+# pragmas; Postgres gets in-place ALTERs, standard transactions, and a fresh
+# baseline. Everything below branches on the configured dialect.
+_IS_SQLITE = make_url(settings.db_url).get_backend_name() == "sqlite"
 
 
 def _migration_connect_pragmas(dbapi_conn, _conn_record) -> None:
@@ -45,14 +49,16 @@ def _migration_connect_pragmas(dbapi_conn, _conn_record) -> None:
 
 def _build_migration_engine(url: str):
     engine = create_engine(url, future=True)
-    event.listen(engine, "connect", _migration_connect_pragmas)
-    # Mirror the runtime BEGIN IMMEDIATE behavior so concurrent writers
-    # queue cleanly while the migration is in flight.
-    event.listen(
-        engine,
-        "begin",
-        lambda conn: conn.exec_driver_sql("BEGIN IMMEDIATE"),
-    )
+    # SQLite-only: connect-time pragmas (FK off during batch table copy/drop)
+    # and BEGIN IMMEDIATE so concurrent writers queue cleanly. Postgres runs
+    # migrations as standard transactions with no special handling.
+    if _IS_SQLITE:
+        event.listen(engine, "connect", _migration_connect_pragmas)
+        event.listen(
+            engine,
+            "begin",
+            lambda conn: conn.exec_driver_sql("BEGIN IMMEDIATE"),
+        )
     return engine
 
 
@@ -63,7 +69,9 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        render_as_batch=True,
+        # Batch mode is a SQLite necessity (no in-place ALTER); Postgres does
+        # in-place ALTERs and must not use it.
+        render_as_batch=_IS_SQLITE,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -75,7 +83,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True,
+            render_as_batch=_IS_SQLITE,
         )
         with context.begin_transaction():
             context.run_migrations()
