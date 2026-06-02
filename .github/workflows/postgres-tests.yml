@@ -1,0 +1,63 @@
+# PI-alpha (D11) — run the crmbuilder-v2 suite against Postgres.
+#
+# The unified row-level schema is dialect-agnostic, so the same tests run on
+# both SQLite (the default, fast, per-test file) and Postgres. This workflow
+# spins up a throwaway Postgres and points the suite at it via
+# CRMBUILDER_V2_TEST_PG_URL (the gate in tests/crmbuilder_v2/conftest.py).
+#
+# Scope: the DB-relevant suites. The UI suite needs a display (PySide6) and is
+# not dialect-sensitive; test_apply_close_out is branch-guarded to `main`. Both
+# are intentionally excluded here.
+name: postgres-tests
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "crmbuilder-v2/**"
+      - "tests/crmbuilder_v2/**"
+      - "pyproject.toml"
+      - ".github/workflows/postgres-tests.yml"
+  pull_request:
+    paths:
+      - "crmbuilder-v2/**"
+      - "tests/crmbuilder_v2/**"
+      - "pyproject.toml"
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: crmb
+          POSTGRES_PASSWORD: crmb
+          POSTGRES_DB: crmbuilder_v2
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crmb -d crmbuilder_v2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CRMBUILDER_V2_TEST_PG_URL: postgresql+psycopg://crmb:crmb@localhost:5432/crmbuilder_v2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Sync dependencies
+        run: uv sync
+      - name: Run the DB suites on Postgres
+        working-directory: crmbuilder-v2
+        run: >-
+          uv run pytest
+          ../tests/crmbuilder_v2/access
+          ../tests/crmbuilder_v2/api
+          ../tests/crmbuilder_v2/integration
+          ../tests/crmbuilder_v2/mcp_server
+          ../tests/crmbuilder_v2/bootstrap
+          ../tests/crmbuilder_v2/runtime
+          ../tests/crmbuilder_v2/migration/test_sqlite_to_postgres.py
+          -q -p no:cacheprovider
