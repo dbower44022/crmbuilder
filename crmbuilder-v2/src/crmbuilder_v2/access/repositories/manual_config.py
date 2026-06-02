@@ -45,7 +45,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     CompletedStatusRequiresCompletionFieldsError,
@@ -246,7 +250,7 @@ def _reject_duplicate_name(
 
 def _get_row(session: Session, identifier: str) -> ManualConfig:
     """Return the ORM row (including soft-deleted) or raise NotFoundError."""
-    row = session.get(ManualConfig, identifier)
+    row = get_by_identifier(session, ManualConfig, ManualConfig.manual_config_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -284,7 +288,7 @@ def get_manual_config(
     A soft-deleted row reads as ``None`` unless ``include_deleted`` is
     True — the REST layer translates ``None`` to HTTP 404.
     """
-    row = session.get(ManualConfig, identifier)
+    row = get_by_identifier(session, ManualConfig, ManualConfig.manual_config_identifier, identifier)
     if row is None:
         return None
     if row.manual_config_deleted_at is not None and not include_deleted:
@@ -449,7 +453,7 @@ def create_manual_config(
         )
     else:
         _require_identifier_format(identifier)
-        if session.get(ManualConfig, identifier) is not None:
+        if get_by_identifier(session, ManualConfig, ManualConfig.manual_config_identifier, identifier) is not None:
             raise ConflictError(
                 f"manual_config {identifier!r} already exists"
             )

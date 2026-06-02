@@ -27,7 +27,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -90,7 +94,7 @@ def _reject_duplicate_title(
 
 
 def _get_row(session: Session, identifier: str) -> CloseOutPayload:
-    row = session.get(CloseOutPayload, identifier)
+    row = get_by_identifier(session, CloseOutPayload, CloseOutPayload.close_out_payload_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -109,7 +113,7 @@ def _has_successful_apply_edge(session: Session, identifier: str) -> bool:
         relationship=_APPLY_KIND,
     )
     for edge in edges:
-        dep = session.get(DepositEvent, edge.source_id)
+        dep = get_by_identifier(session, DepositEvent, DepositEvent.deposit_event_identifier, edge.source_id)
         if dep is not None and dep.deposit_event_outcome == "success":
             return True
     return False
@@ -182,7 +186,7 @@ def list_close_out_payloads(
 def get_close_out_payload(
     session: Session, identifier: str, *, include_deleted: bool = False
 ) -> dict | None:
-    row = session.get(CloseOutPayload, identifier)
+    row = get_by_identifier(session, CloseOutPayload, CloseOutPayload.close_out_payload_identifier, identifier)
     if row is None:
         return None
     if row.close_out_payload_deleted_at is not None and not include_deleted:
@@ -268,7 +272,7 @@ def create_close_out_payload(
             identifier, regex=_IDENTIFIER_RE,
             field="close_out_payload_identifier", example="COP-001",
         )
-        if session.get(CloseOutPayload, identifier) is not None:
+        if get_by_identifier(session, CloseOutPayload, CloseOutPayload.close_out_payload_identifier, identifier) is not None:
             raise ConflictError(
                 f"close_out_payload {identifier!r} already exists"
             )

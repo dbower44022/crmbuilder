@@ -16,7 +16,11 @@ from sqlalchemy import asc, desc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -140,7 +144,7 @@ def _require_repository(value: object) -> str:
 
 
 def _require_session_exists(session: Session, session_id: str) -> None:
-    if session.get(SessionModel, session_id) is None:
+    if get_by_identifier(session, SessionModel, SessionModel.session_identifier, session_id) is None:
         raise UnprocessableError([
             FieldError("commit_session_id",
                        "commit_session_id_not_found",
@@ -164,7 +168,7 @@ def _require_files_changed_count(value: object) -> int:
 
 
 def _get_row(session: Session, identifier: str) -> Commit:
-    row = session.get(Commit, identifier)
+    row = get_by_identifier(session, Commit, Commit.commit_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -226,7 +230,7 @@ def list_commits(
 def get_commit(
     session: Session, identifier: str, *, include_deleted: bool = False
 ) -> dict | None:
-    row = session.get(Commit, identifier)
+    row = get_by_identifier(session, Commit, Commit.commit_identifier, identifier)
     if row is None:
         return None
     if row.commit_deleted_at is not None and not include_deleted:
@@ -411,7 +415,7 @@ def create_commit(
             identifier, regex=_IDENTIFIER_RE,
             field="commit_identifier", example="CM-0001",
         )
-        if session.get(Commit, identifier) is not None:
+        if get_by_identifier(session, Commit, Commit.commit_identifier, identifier) is not None:
             raise ConflictError(f"commit {identifier!r} already exists")
         row = _new_row(identifier=identifier, **row_kwargs)
         session.add(row)

@@ -17,7 +17,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -68,7 +72,7 @@ def _require_area(session: Session, area: object) -> str:
 
 
 def _get_row(session: Session, identifier: str) -> WorkTask:
-    row = session.get(WorkTask, identifier)
+    row = get_by_identifier(session, WorkTask, WorkTask.work_task_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -102,7 +106,7 @@ def list_work_tasks(
 def get_work_task(
     session: Session, identifier: str, *, include_deleted: bool = False
 ) -> dict | None:
-    row = session.get(WorkTask, identifier)
+    row = get_by_identifier(session, WorkTask, WorkTask.work_task_identifier, identifier)
     if row is None:
         return None
     if row.work_task_deleted_at is not None and not include_deleted:
@@ -184,7 +188,7 @@ def create_work_task(
             identifier, regex=_IDENTIFIER_RE, field="work_task_identifier",
             example="WTK-001",
         )
-        if session.get(WorkTask, identifier) is not None:
+        if get_by_identifier(session, WorkTask, WorkTask.work_task_identifier, identifier) is not None:
             raise ConflictError(f"work_task {identifier!r} already exists")
         row = _new_row(identifier, title, description, area, notes, status)
         session.add(row)

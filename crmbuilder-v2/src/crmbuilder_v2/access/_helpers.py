@@ -7,9 +7,32 @@ from collections.abc import Iterable
 from datetime import date, datetime
 from typing import Any
 
+from sqlalchemy import select
+
 from crmbuilder_v2.access.exceptions import FieldError, ValidationError
 
 _PREFIXED_IDENTIFIER_RE = re.compile(r"^(?P<prefix>[A-Z]+)-(?P<num>\d+)$")
+
+
+def get_by_identifier(session, model, id_column, identifier):
+    """Fetch one row by its identifier column (engagement-scope aware).
+
+    Behaviour-preserving replacement for ``session.get(model, identifier)`` on
+    the identifier-as-PK governance/methodology tables (PI-123 cutover Stage 1).
+    Equivalent today, while the ``<entity>_identifier`` column is the sole
+    primary key; but it survives PI-123's composite-PK change because it queries
+    by the identifier *column* rather than positionally by primary key, and the
+    engagement-scope read filter (``access.engagement_scope``) isolates the
+    active engagement — returning the row that belongs to it, or ``None``.
+
+    ``id_column`` is the model's identifier column (e.g.
+    ``SessionModel.session_identifier``). Returns the row or ``None``; raises
+    ``MultipleResultsFound`` only if the identifier is non-unique within the
+    active scope (impossible while the column is unique / the filter is active).
+    """
+    return session.execute(
+        select(model).where(id_column == identifier)
+    ).scalar_one_or_none()
 
 
 def next_prefixed_identifier(

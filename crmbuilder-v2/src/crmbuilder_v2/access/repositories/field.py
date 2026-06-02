@@ -54,7 +54,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -174,7 +178,7 @@ def _require_live_entity(session: Session, entity_identifier: str) -> Entity:
                 )
             ]
         )
-    parent = session.get(Entity, entity_identifier)
+    parent = get_by_identifier(session, Entity, Entity.entity_identifier, entity_identifier)
     if parent is None:
         raise UnprocessableError(
             [
@@ -262,7 +266,7 @@ def _reject_duplicate_name_within_entity(
 
 def _get_row(session: Session, identifier: str) -> Field:
     """Return the ORM row (including soft-deleted) or raise NotFoundError."""
-    row = session.get(Field, identifier)
+    row = get_by_identifier(session, Field, Field.field_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -322,7 +326,7 @@ def get_field(
     A soft-deleted row reads as ``None`` unless ``include_deleted`` is
     True — the REST layer translates ``None`` to HTTP 404.
     """
-    row = session.get(Field, identifier)
+    row = get_by_identifier(session, Field, Field.field_identifier, identifier)
     if row is None:
         return None
     if row.field_deleted_at is not None and not include_deleted:
@@ -459,7 +463,7 @@ def create_field(
         )
     else:
         _require_identifier_format(identifier)
-        if session.get(Field, identifier) is not None:
+        if get_by_identifier(session, Field, Field.field_identifier, identifier) is not None:
             raise ConflictError(f"field {identifier!r} already exists")
         row = _new_field_row(
             identifier, name, description, field_type, required, notes, status
@@ -697,7 +701,7 @@ def restore_field(session: Session, identifier: str) -> dict:
 
     previous_parent = row.field_previous_parent_entity_identifier
     if previous_parent is not None:
-        parent = session.get(Entity, previous_parent)
+        parent = get_by_identifier(session, Entity, Entity.entity_identifier, previous_parent)
         if parent is None:
             raise UnprocessableError(
                 [

@@ -13,7 +13,12 @@ from __future__ import annotations
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import require_in, require_string, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    require_in,
+    require_string,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.entity_summary import summarize
 from crmbuilder_v2.access.exceptions import (
@@ -48,7 +53,7 @@ def _guard_field_belongs_to_entity_delete(
     # Imported locally to avoid a module-load cycle.
     from crmbuilder_v2.access.models import Field
 
-    source = session.get(Field, row.source_id)
+    source = get_by_identifier(session, Field, Field.field_identifier, row.source_id)
     if source is None or source.field_deleted_at is not None:
         # Source already gone or soft-deleted; permit the orphan-edge
         # cleanup (this is the path delete_field would take if it

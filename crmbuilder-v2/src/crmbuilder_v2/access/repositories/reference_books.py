@@ -18,7 +18,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -90,7 +94,7 @@ def _reject_duplicate_title(
 
 
 def _get_row(session: Session, identifier: str) -> ReferenceBook:
-    row = session.get(ReferenceBook, identifier)
+    row = get_by_identifier(session, ReferenceBook, ReferenceBook.reference_book_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -103,7 +107,7 @@ def _increment_identifier(identifier: str) -> str:
 
 def _recompute_current_version(session: Session, identifier: str) -> None:
     """Set the parent's denormalized current-version pointers (newest wins)."""
-    row = session.get(ReferenceBook, identifier)
+    row = get_by_identifier(session, ReferenceBook, ReferenceBook.reference_book_identifier, identifier)
     if row is None:
         return
     newest = session.scalars(
@@ -159,7 +163,7 @@ def list_reference_books(
 def get_reference_book(
     session: Session, identifier: str, *, include_deleted: bool = False
 ) -> dict | None:
-    row = session.get(ReferenceBook, identifier)
+    row = get_by_identifier(session, ReferenceBook, ReferenceBook.reference_book_identifier, identifier)
     if row is None:
         return None
     if row.reference_book_deleted_at is not None and not include_deleted:
@@ -326,7 +330,7 @@ def create_reference_book(
             identifier, regex=_IDENTIFIER_RE,
             field="reference_book_identifier", example="RB-001",
         )
-        if session.get(ReferenceBook, identifier) is not None:
+        if get_by_identifier(session, ReferenceBook, ReferenceBook.reference_book_identifier, identifier) is not None:
             raise ConflictError(f"reference_book {identifier!r} already exists")
         row = _new_row(
             identifier, title, description, notes, kind, status, file_path

@@ -40,6 +40,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
     next_prefixed_identifier,
     to_dict,
     validate_optional_length,
@@ -106,7 +107,7 @@ def _reject_duplicate_title(
 
 
 def _get_row(session: Session, identifier: str) -> Conversation:
-    row = session.get(Conversation, identifier)
+    row = get_by_identifier(session, Conversation, Conversation.conversation_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -199,7 +200,7 @@ def list_conversations(
 def get_conversation(
     session: Session, identifier: str, *, include_deleted: bool = False
 ) -> dict | None:
-    row = session.get(Conversation, identifier)
+    row = get_by_identifier(session, Conversation, Conversation.conversation_identifier, identifier)
     if row is None:
         return None
     if row.conversation_deleted_at is not None and not include_deleted:
@@ -314,7 +315,7 @@ def create_conversation(
             field="conversation_identifier",
             example="CNV-001",
         )
-        if session.get(Conversation, identifier) is not None:
+        if get_by_identifier(session, Conversation, Conversation.conversation_identifier, identifier) is not None:
             raise ConflictError(f"conversation {identifier!r} already exists")
 
     _reject_duplicate_title(session, title)

@@ -19,7 +19,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -77,7 +81,7 @@ def _reject_duplicate_name(
 
 
 def _get_row(session: Session, identifier: str) -> Project:
-    row = session.get(Project, identifier)
+    row = get_by_identifier(session, Project, Project.project_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -115,7 +119,7 @@ def list_projects(
 def get_project(
     session: Session, identifier: str, *, include_deleted: bool = False
 ) -> dict | None:
-    row = session.get(Project, identifier)
+    row = get_by_identifier(session, Project, Project.project_identifier, identifier)
     if row is None:
         return None
     if row.project_deleted_at is not None and not include_deleted:
@@ -205,7 +209,7 @@ def create_project(
             identifier, regex=_IDENTIFIER_RE, field="project_identifier",
             example="PRJ-001",
         )
-        if session.get(Project, identifier) is not None:
+        if get_by_identifier(session, Project, Project.project_identifier, identifier) is not None:
             raise ConflictError(f"workstream {identifier!r} already exists")
         row = _new_row(identifier, name, purpose, description, notes, status)
         session.add(row)

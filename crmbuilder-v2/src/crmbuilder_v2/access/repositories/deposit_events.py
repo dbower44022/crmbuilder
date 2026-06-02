@@ -22,7 +22,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -70,7 +74,7 @@ def list_deposit_events(
 
 
 def get_deposit_event(session: Session, identifier: str) -> dict | None:
-    row = session.get(DepositEvent, identifier)
+    row = get_by_identifier(session, DepositEvent, DepositEvent.deposit_event_identifier, identifier)
     return to_dict(row) if row is not None else None
 
 
@@ -119,7 +123,7 @@ def _lazy_get_or_create_payload(
     block the bootstrap/backfill apply path; the payload is a minimal
     stand-in awaiting its full record.
     """
-    row = session.get(CloseOutPayload, cop_identifier)
+    row = get_by_identifier(session, CloseOutPayload, CloseOutPayload.close_out_payload_identifier, cop_identifier)
     if row is not None:
         return row
     file_path = target_file_path or (
@@ -266,7 +270,7 @@ def create_deposit_event(
             identifier, regex=_IDENTIFIER_RE,
             field="deposit_event_identifier", example="DEP-001",
         )
-        if session.get(DepositEvent, identifier) is not None:
+        if get_by_identifier(session, DepositEvent, DepositEvent.deposit_event_identifier, identifier) is not None:
             raise ConflictError(f"deposit_event {identifier!r} already exists")
         candidate = identifier
 

@@ -46,7 +46,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -163,7 +167,7 @@ def _reject_duplicate_name(
 
 def _get_row(session: Session, identifier: str) -> Persona:
     """Return the ORM row (including soft-deleted) or raise NotFoundError."""
-    row = session.get(Persona, identifier)
+    row = get_by_identifier(session, Persona, Persona.persona_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -201,7 +205,7 @@ def get_persona(
     A soft-deleted row reads as ``None`` unless ``include_deleted`` is
     True — the REST layer translates ``None`` to HTTP 404.
     """
-    row = session.get(Persona, identifier)
+    row = get_by_identifier(session, Persona, Persona.persona_identifier, identifier)
     if row is None:
         return None
     if row.persona_deleted_at is not None and not include_deleted:
@@ -313,7 +317,7 @@ def create_persona(
         )
     else:
         _require_identifier_format(identifier)
-        if session.get(Persona, identifier) is not None:
+        if get_by_identifier(session, Persona, Persona.persona_identifier, identifier) is not None:
             raise ConflictError(f"persona {identifier!r} already exists")
         row = _new_persona_row(
             identifier, name, role_summary, responsibilities, notes, status

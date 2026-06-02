@@ -51,7 +51,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -195,7 +199,7 @@ def _reject_duplicate_name(
 
 def _get_row(session: Session, identifier: str) -> Requirement:
     """Return the ORM row (including soft-deleted) or raise NotFoundError."""
-    row = session.get(Requirement, identifier)
+    row = get_by_identifier(session, Requirement, Requirement.requirement_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -233,7 +237,7 @@ def get_requirement(
     A soft-deleted row reads as ``None`` unless ``include_deleted`` is
     True — the REST layer translates ``None`` to HTTP 404.
     """
-    row = session.get(Requirement, identifier)
+    row = get_by_identifier(session, Requirement, Requirement.requirement_identifier, identifier)
     if row is None:
         return None
     if row.requirement_deleted_at is not None and not include_deleted:
@@ -365,7 +369,7 @@ def create_requirement(
         )
     else:
         _require_identifier_format(identifier)
-        if session.get(Requirement, identifier) is not None:
+        if get_by_identifier(session, Requirement, Requirement.requirement_identifier, identifier) is not None:
             raise ConflictError(f"requirement {identifier!r} already exists")
         row = _new_requirement_row(
             identifier, name, description, acceptance_summary, priority,

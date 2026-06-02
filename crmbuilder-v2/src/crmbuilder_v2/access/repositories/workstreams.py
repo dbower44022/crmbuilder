@@ -22,7 +22,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    get_by_identifier,
+    next_prefixed_identifier,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
@@ -70,7 +74,7 @@ def _require_phase_type(phase_type: object) -> str:
 
 
 def _get_row(session: Session, identifier: str) -> Workstream:
-    row = session.get(Workstream, identifier)
+    row = get_by_identifier(session, Workstream, Workstream.workstream_identifier, identifier)
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
     return row
@@ -98,7 +102,7 @@ def list_workstreams(
 def get_workstream(
     session: Session, identifier: str, *, include_deleted: bool = False
 ) -> dict | None:
-    row = session.get(Workstream, identifier)
+    row = get_by_identifier(session, Workstream, Workstream.workstream_identifier, identifier)
     if row is None:
         return None
     if row.workstream_deleted_at is not None and not include_deleted:
@@ -220,7 +224,7 @@ def create_workstream(
             identifier, regex=_IDENTIFIER_RE, field="workstream_identifier",
             example="WSK-001",
         )
-        if session.get(Workstream, identifier) is not None:
+        if get_by_identifier(session, Workstream, Workstream.workstream_identifier, identifier) is not None:
             raise ConflictError(f"workstream {identifier!r} already exists")
         row = _new_row(
             identifier,
