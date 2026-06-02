@@ -1,0 +1,29 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_151.json
+Label:  SES-151 / CNV-053 close-out — PI-123 Architecture phase: the unified multi-engagement DB migration design + decomposition. Produced pi-123-unified-db-architecture.md (D1-D11) and dogfooded the ADO substrate: dispatched PI-123 (Draft -> In Progress), decomposed it into the six phase Workstreams (WSK-008..013), scoped + executed + completed the Architecture Workstream (WSK-008) via Work Task WTK-025. Records the architecture's defining strategic choices as DEC-375. Addresses (does NOT resolve) PI-123 — resolution comes at Deployment. APPLY GATE: re-verify heads (SES-151/CNV-053/DEC-375 next-free at authoring) and apply in a clean window. Follows from SES-150.
+Deposit event: DEP-146
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-053 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (1 record) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-375 (HTTP 201)
+
+=== references (4 records) ===
+  ✓ POST references  CNV-053 conversation_belongs_to_project PRJ-019 (HTTP 201)
+  ✓ POST references  SES-151 session_follows_from SES-150 (HTTP 201)
+  ✓ POST references  SES-151 session_works_work_task WTK-025 (HTTP 201)
+  ✓ POST references  DEC-375 decided_in CNV-053 (HTTP 201)
+
+=== addresses_planning_items (1 record) ===
+  ✓ POST addresses_planning_items  → PI-123 (HTTP 201)
+
+✓ All 9 operations complete.
+
+✓ Recorded apply as deposit_event DEP-146 (HTTP 201).

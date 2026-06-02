@@ -3117,5 +3117,33 @@
     "session_superseded_at": null,
     "session_title": "Scope the unified multi-engagement-DB migration (PI-123) under a new Production Architecture project (PRJ-019)",
     "session_updated_at": "2026-06-01T21:55:56.982920"
+  },
+  {
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-06-02T01:52:00.187616",
+    "session_created_at": "2026-06-02T01:52:00.187295",
+    "session_deleted_at": null,
+    "session_description": "Architecture/design pass for PI-123 (Unified multi-engagement DB migration, PRJ-019). Deliverable: pi-123-unified-db-architecture.md (committed 8082535), the Architecture-phase design + decomposition that the build phases consume, grounded in the live code (access/db.py, config.py, runtime/engagement_routing.py, access/meta_db.py, _helpers.py, the refs/identifier_reservations models). It settles D1-D11 (see executive summary) — most consequentially the identifier-collision fix (composite (engagement_id, identifier) keying, both live engagements' sequences preserved untouched) and the access-layer routing rewrite (a central ContextVar + do_orm_execute read-filter + before_flush stamp, with a cross-engagement leak-test as the regression net, chosen over threading an engagement_id parameter through every repository to confine the blast radius and make the default-correct rather than default-dangerous). It realizes what the v0.5 multi-engagement architecture parked as PI-017/DEC-081 (its committed prototype-to-production migration). This session ALSO dogfooded the ADO substrate (PI-114) to model itself: POST /planning-items/PI-123/dispatch (Draft -> In Progress); POST /planning-items/PI-123/decompose (six phase Workstreams WSK-008 Architecture .. WSK-013 Deployment, serial blocked_by); POST /workstreams/WSK-008/scope (one storage-area Work Task WTK-025 representing the design, Planned -> Scoping -> Ready); start-execution (Ready -> In Progress, WTK-025 readied); claim + WTK-025 Ready -> Claimed -> In Progress -> Complete; complete-phase (WSK-008 -> Complete). Net governance: SES-151, CNV-053, DEC-375, the design-doc commit, the session/conversation membership + works-work-task + follows-from edges, and an addresses edge to PI-123 (non-resolving — only the Architecture phase is done). Follows from SES-150.",
+    "session_ended_at": null,
+    "session_executive_summary": "PI-123 Architecture/design pass (06-01-26) for the unified multi-engagement-DB migration (PRJ-019), which PI-122 is blocked_by. Produced pi-123-unified-db-architecture.md settling D1-D11 — most consequentially the identifier-collision fix (composite (engagement_id, identifier) keying, no history renumbered) and the central ContextVar + do_orm_execute + before_flush access-layer rewrite chosen over threaded params — plus the six-phase decomposition. Also dogfooded the ADO substrate end-to-end: dispatched PI-123 (Draft -> In Progress), decomposed it (WSK-008..013), and scoped/executed/completed the Architecture Workstream (WSK-008) via Work Task WTK-025, unblocking Development. Defining choices recorded as DEC-375; addresses (not resolves) PI-123. Follows from SES-150.",
+    "session_identifier": "SES-151",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "architecture-design-and-ado-dogfood",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "PI-123 Architecture phase — unified multi-engagement DB migration design + decomposition",
+    "session_updated_at": "2026-06-02T01:52:00.187739"
   }
 ]

@@ -358,5 +358,20 @@
     "work_task_status": "Planned",
     "work_task_title": "Write a how-to for resolving a profile into a contract and seeding profiles",
     "work_task_updated_at": "2026-06-01T00:11:04.116085"
+  },
+  {
+    "work_task_area": "storage",
+    "work_task_claimed_at": "2026-06-02T01:46:43.203249",
+    "work_task_claimed_by": "claude-code (PI-123 Architecture pass)",
+    "work_task_completed_at": "2026-06-02T01:47:31.190063",
+    "work_task_created_at": "2026-06-02T01:46:30.179563",
+    "work_task_deleted_at": null,
+    "work_task_description": "Architecture-phase deliverable: pi-123-unified-db-architecture.md — D1-D11 design decisions (meta-fold, engagement_id discriminator, composite-identifier collision fix, central ContextVar routing rewrite, snapshot scoping, single Alembic chain, one-shot consolidation) and the six-phase decomposition.",
+    "work_task_identifier": "WTK-025",
+    "work_task_notes": null,
+    "work_task_started_at": "2026-06-02T01:47:30.839015",
+    "work_task_status": "Complete",
+    "work_task_title": "Produce unified multi-engagement DB migration design + decomposition",
+    "work_task_updated_at": "2026-06-02T01:47:31.190392"
   }
 ]

@@ -1842,8 +1842,8 @@
     "identifier": "PI-123",
     "item_type": "pending_work",
     "resolution_reference": null,
-    "status": "Draft",
+    "status": "In Progress",
     "title": "Unified multi-engagement DB — migrate from per-engagement-DB files to a single multi-tenant database",
-    "updated_at": "2026-06-01T21:55:57.332727"
+    "updated_at": "2026-06-02T01:46:16.595421"
   }
 ]
