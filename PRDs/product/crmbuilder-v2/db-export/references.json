@@ -23998,5 +23998,55 @@
     "source_type": "deposit_event",
     "target_id": "DEC-375",
     "target_type": "decision"
+  },
+  {
+    "created_at": "2026-06-02T02:09:44.331731",
+    "id": 2409,
+    "reference_identifier": "REF-2405",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-026",
+    "source_type": "work_task",
+    "target_id": "WSK-009",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-02T02:09:44.336573",
+    "id": 2410,
+    "reference_identifier": "REF-2406",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-027",
+    "source_type": "work_task",
+    "target_id": "WSK-009",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-02T02:09:44.341084",
+    "id": 2411,
+    "reference_identifier": "REF-2407",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-028",
+    "source_type": "work_task",
+    "target_id": "WSK-009",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-02T02:09:44.345717",
+    "id": 2412,
+    "reference_identifier": "REF-2408",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-029",
+    "source_type": "work_task",
+    "target_id": "WSK-009",
+    "target_type": "workstream"
+  },
+  {
+    "created_at": "2026-06-02T02:09:44.350340",
+    "id": 2413,
+    "reference_identifier": "REF-2409",
+    "relationship_kind": "work_task_belongs_to_workstream",
+    "source_id": "WTK-030",
+    "source_type": "work_task",
+    "target_id": "WSK-009",
+    "target_type": "workstream"
   }
 ]
