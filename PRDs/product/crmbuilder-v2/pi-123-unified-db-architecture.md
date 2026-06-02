@@ -1,6 +1,6 @@
 # PI-123 — Unified Multi-Engagement DB: Architecture & Decomposition
 
-**Status:** v0.1 — Architecture/design pass deliverable (produced by the PI-123 Architecture phase, 06-01-26)
+**Status:** v0.1 — Architecture/design pass deliverable (produced by the PI-123 Architecture phase, 06-01-26); **annotated 06-02-26 with build-closure refinements (DEC-376)** — see the `Build note (DEC-376)` callouts under D1, D3, D5, D8, D9. The build (Slices 1–3) + cutover (Stages 1–4) shipped on the `pi-123` branch; the build-closure (`close-out-payloads/ses_153.json`) records DEC-376 and resolves PI-123 on `main`.
 **Planning item:** PI-123 (Draft → this doc is its Architecture-phase output)
 **Project:** PRJ-019 — Production Database Architecture
 **Blocks:** PI-122 (Agent Profile Registry) — `PI-122 blocked_by PI-123` (DEC-374)
@@ -86,6 +86,8 @@ The separate meta DB existed to "separate routing metadata from methodology cont
 - `access/meta_db.py`'s separate engine/pool is removed; engagement-registry queries run on the one engine (and are the queries that are **not** engagement-filtered — see D5).
 - `engagement_id` is the surrogate `engagements.id` (stable integer PK), **not** `engagement_code` — codes are user-facing and (in principle) renameable; the integer FK is the durable key.
 
+> **Build note (DEC-376):** the discriminator that shipped is the stable **string** identifier `engagements.engagement_identifier` (`ENG-NNN`), **not** an integer surrogate. The identifier is never renamed either, so it *is* the durable key — with less churn and consistency with v2's identifier-keyed model (refs, etc.). The `EngagementScopedMixin.engagement_id` column is `String(32)` FK → `engagements.engagement_identifier`. (`engagement_code` remains user-facing/renameable, as above.)
+
 ### D2 — `engagement_id` discriminator on every engagement-scoped table
 
 Every table holding engagement-specific content gets `engagement_id INTEGER NOT NULL REFERENCES engagements(id)`. Three-bucket classification:
@@ -107,6 +109,8 @@ This resolves the §3 crux. For every scoped table that carries a prefixed ident
 - The identifier-assignment helper is unchanged in logic but its **input set narrows to the active engagement**: each repo's `select(Model.identifier)` must carry `WHERE engagement_id = :active`. Under D5's central filter this happens automatically (the select references a mapped class), so per-repo edits are near-zero — but every assignment site is on the **audit list** (§7) because a leak here silently mints a colliding identifier.
 - `identifier_reservations` gains `engagement_id` and its lookup index becomes `(engagement_id, entity_type, expires_at)` so concurrent reservations don't cross engagements.
 - `refs.reference_identifier` (`REF-NNNN`) similarly becomes `UNIQUE(engagement_id, reference_identifier)`.
+
+> **Build note (DEC-376):** implemented in three constraint classes (see `pi-123-slice3-enforce-plan.md`): **Class A** (19 identifier-as-PK tables + `engagement_areas`) make `engagement_id` part of a **composite PK** `(<identifier>, engagement_id)` via an `EngagementScopedPKMixin`; **Class B** (decisions, planning_items, risks, topics, charter/status versions, reference_book_versions, refs) swap `UNIQUE(identifier)` → `UNIQUE(engagement_id, identifier)` (refs also gets the composite `uq_ref_full` + composite `reference_identifier` unique; `commits` also `UNIQUE(engagement_id, commit_sha)`; `reference_book_versions` gains a composite FK to its parent's composite PK); **Class C** (change_log, identifier_reservations) take NOT NULL + FK + an `engagement_id`-leading index. Coexistence + intra-engagement rejection are pinned by `test_engagement_id_collision_coexistence` and `test_engagement_leak_isolation`.
 
 ### D4 — References (`refs`) gain `engagement_id`; edges stay intra-engagement
 
@@ -130,6 +134,8 @@ This is the largest and riskiest piece. The choice is between threading an `enga
 
 **The audit list (raw SQL and bypass paths).** `with_loader_criteria` only covers ORM-entity statements. Anything that bypasses the ORM must be hand-scoped and is enumerated for the Development phase: raw `text()`/`exec_driver_sql` queries, `Core`-level `select(table.c.…)` not bound to a mapper, bulk operations, the exporter's snapshot reads (D7), the change-log emitter, and any `session.get()`/`session.merge()` by numeric PK (PK lookups must additionally assert the loaded row's `engagement_id` matches active, since a PK get is not filtered by loader criteria).
 
+> **Build note (DEC-376):** the ContextVar holds the **string** identifier (`str | None`), matching D1's build-note. Crucially, the read-filter + write-stamp listeners are registered on the **base ORM `Session` class** (process-wide), **not per-sessionmaker** as Slice 2b first did: a session created from a factory that hadn't been (re)registered wrote un-stamped (NULL `engagement_id`) rows under the strict schema — an intermittent, high-rate correctness bug. `get_engine` also builds the factory **under a lock and installs scope before publishing it**. Audit-list outcomes: `engagement_areas`' single-value `session.get` was converted to a scoped `select`; the remaining `session.get` sites are Class B integer-`id` PKs (globally unique post-consolidation → safe), with the user-facing `references.py` id-gets flagged for an `engagement_id`-match guard in the leak-test pass.
+
 ### D6 — Request → engagement resolution; the marker-file default preserved
 
 The unified DB *can* serve every engagement concurrently, so a request must say which one it targets. Resolution order, in middleware:
@@ -139,6 +145,8 @@ The unified DB *can* serve every engagement concurrently, so a request must say 
 3. **Engagement-registry endpoints** (`/engagements/*`) and health/admin run **without** an active engagement (they query the un-scoped `engagements` table).
 
 `route_settings_to_engagement` / `CRMBUILDER_V2_DB_PATH` / the two-database API server are removed. `current_engagement.json` survives as the default-engagement marker (not as a file-routing pointer). Backward-compat: an unset `X-Engagement` + a present marker behaves like today; the multi-tenant capability is purely additive (set the header to address any engagement without switching the marker).
+
+> **Build note (DEC-376):** as shipped at cutover — the resolver reads the **unified `engagements` table** (`engagement.list_engagements_unified`), not the meta DB; the scope middleware is the **outermost** middleware so the ContextVar is set in the top-level request task before the marker-guard `BaseHTTPMiddleware` spawns its child task; `route_settings_to_engagement` was **repointed** (not yet removed) to bind the unified DB + enable scoping (the single chokepoint both `cli.run_api` and the desktop activation call). Two items are **deferred to the successor program** (`production-multitenant-api-architecture.md`): the `current_engagement.json` single-active **marker is retired** in favor of a per-request authenticated engagement (D5 there), and the **desktop activation worker is de-filed** — it still pre-flight-migrates + binds the per-engagement file (Steps 3/8), so switching to CBM currently fails at Step 3. `route_settings_to_engagement` / `engagement_db_path` / the meta layer are removed there too.
 
 ### D7 — Snapshot/export model: scope the snapshot, keep per-engagement export dirs
 
@@ -158,6 +166,8 @@ Collapse to a single chain on the unified DB:
 - **Ordering vs. data:** the schema migration adds `engagement_id` as nullable first, the **data migration (D9) backfills it**, then a follow-up migration tightens it to `NOT NULL` and installs the composite constraints. Standard add-nullable → backfill → enforce three-step, so the enforce step can't fail on un-backfilled rows.
 - The meta chain is retired; the unified DB's `alembic_version` is the single source of schema truth.
 
+> **Build note (DEC-376):** the **enforce step is NOT an independently-mergeable chain head.** A `0039`-style head setting `NOT NULL` / composite uniqueness would fail on the live per-engagement DBs (whose `engagement_id` is NULL until the engagement-aware backfill, and which the desktop lazy-runs `upgrade head` against). So the strict (enforced) schema is reached by **building the unified DB fresh at the strict schema** (`Base.metadata.create_all` from the current models, which already express the composite keys + NOT NULL + FK) **and copying rows in** (D9) — not by ALTER-ing live tables. The chain ships only through `0038` (nullable `engagement_id`); `create_all` materialises the strict shape. See `pi-123-slice3-enforce-plan.md`.
+
 ### D9 — Data migration: consolidate per-engagement files, preserve identifiers
 
 A one-shot, idempotent, **explicit** consolidation (mirrors the v0.5 dogfood migration's posture, §3.7 of the predecessor doc), run once at cutover:
@@ -173,6 +183,8 @@ A one-shot, idempotent, **explicit** consolidation (mirrors the v0.5 dogfood mig
 9. **Cutover.** Point the API default at the unified DB; leave source files + backups in place for a rollback window; remove them in a later cleanup commit once validated in use.
 
 Idempotent: a re-run detects the unified DB already populated (engagements seeded + row counts match) and exits cleanly.
+
+> **Build note (DEC-376):** implemented as `migration/unify_engagement_dbs.py` (`consolidate(...)`) and run at the live cutover. Differences from the plan above: (1) the consolidation builds the unified DB **fresh at the strict schema** (per D8's build-note) rather than nullable-then-enforce; (2) surrogate-`id` tables are reassigned by a **per-engagement offset** (with the only intra-scoped integer self-FKs — `decisions.supersedes_id/superseded_by_id`, `topics.parent_topic_id` — offset with them), not autoincrement-with-remap-map; (3) the source DBs **lacked `engagement_id`** and were behind head (CRMBUILDER@0036, CBM@0010), so the copy always stamps `engagement_id` from the source columns rather than reading it; (4) **CRMBUILDER (ENG-001) folded in with exact per-table count/identifier parity + FK-check clean**, but **CBM (ENG-002) was re-created fresh as an empty engagement** — its 16 stale chain-0010 rows predated the schema's NOT-NULL backfills (`executive_summary` etc.) and could not migrate cleanly, so they were discarded by decision; (5) validation = per-engagement count + identifier parity + no-NULL + `PRAGMA foreign_key_check`, plus the cross-engagement leak-test; (6) the byte-equivalence re-export diff (step 8) was satisfied by count/identifier parity since `db-export` itself is on the chopping block in the successor program. Pre-flight migrating stale sources to head is genuinely blocked by the gitignored catalog YAMLs (see `pi-123-stage4-cutover-runbook.md`).
 
 ### D10 — Ops: one file to operate
 
