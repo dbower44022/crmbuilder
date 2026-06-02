@@ -29,6 +29,7 @@ engagement themselves with ``engagement_scope.active_engagement(...)``.
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -38,17 +39,97 @@ from crmbuilder_v2.access import engagement_scope
 from crmbuilder_v2.access.db import (
     bootstrap_database,
     force_export,
+    get_engine,
     get_session_factory,
     reset_engine_cache,
 )
-from crmbuilder_v2.access.models import EngagementRow
+from crmbuilder_v2.access.models import Base, EngagementRow
 from crmbuilder_v2.config import get_settings, reset_settings_cache
+from sqlalchemy import text
 
 # The default engagement every test runs under unless it overrides the
 # active-engagement context itself.
 DEFAULT_ENGAGEMENT_ID = "ENG-001"
 DEFAULT_ENGAGEMENT_CODE = "TESTENG"
 DEFAULT_ENGAGEMENT_NAME = "Test Engagement"
+
+
+# Tests that are intrinsically SQLite-specific and skipped when the suite runs
+# on Postgres (D-level CI). They assert SQLite type *affinities* via reflection
+# (``DATETIME``/``VARCHAR`` strings that Postgres reflects as ``TIMESTAMP`` etc.)
+# or compare the meta-DB file path — schema-shape facts the SQLite run already
+# covers; the app *behaviour* they touch is exercised by the rest of the suite
+# on Postgres. Matched by substring against the test function name.
+_SQLITE_ONLY_NAME_SUBSTRINGS: tuple[str, ...] = (
+    "_columns_with_correct_types",  # reflection asserts SQLite type affinities
+)
+_SQLITE_ONLY_NAMES: frozenset[str] = frozenset(
+    {
+        "test_meta_db_separate_from_engagement_db",  # asserts two distinct DB files
+        "test_pools_isolated",  # queries sqlite_master; two-file routing topology
+    }
+)
+
+
+def pytest_collection_modifyitems(config, items) -> None:  # noqa: ARG001
+    """In Postgres mode, skip the intrinsically-SQLite-specific tests."""
+    if not _pg_test_url():
+        return
+    skip = pytest.mark.skip(
+        reason="SQLite-specific (schema affinity / meta-DB file); covered by the "
+        "SQLite run"
+    )
+    for item in items:
+        name = item.name.split("[")[0]
+        if name in _SQLITE_ONLY_NAMES or any(
+            sub in name for sub in _SQLITE_ONLY_NAME_SUBSTRINGS
+        ):
+            item.add_marker(skip)
+
+
+def _pg_test_url() -> str | None:
+    """PI-alpha: when set, run the suite against Postgres instead of SQLite.
+
+    CI exports ``CRMBUILDER_V2_TEST_PG_URL`` pointing at a throwaway Postgres;
+    unset (the default) keeps every test on a per-test SQLite file exactly as
+    before. The unified row-level schema is identical across dialects, so the
+    same fixtures drive both — only the per-test reset differs (a fresh SQLite
+    file vs a TRUNCATE on the shared PG).
+    """
+    return os.environ.get("CRMBUILDER_V2_TEST_PG_URL")
+
+
+# In PG mode the schema is built once per session and the engine/pool is reused
+# across tests (the URL never changes) — per-test isolation is a fast per-table
+# DELETE, not a fresh database. Rebuilding the pool + reflecting 41 tables every
+# test would dominate runtime.
+_PG_SCHEMA_READY = False
+
+
+def _reset_tables_pg() -> None:
+    """Clear every table + reset every sequence on the shared Postgres test DB.
+
+    ``DELETE`` in reverse-FK order, **not** ``TRUNCATE`` — on empty/tiny tables
+    DELETE is ~5 ms whereas ``TRUNCATE ... CASCADE RESTART IDENTITY`` across the
+    41 FK-linked tables takes ~2.8 s (ACCESS EXCLUSIVE locks + cascade walk),
+    which would dominate the whole suite. Sequences are then reset in one
+    PL/pgSQL pass so surrogate ids restart at 1 each test, matching the
+    fresh-SQLite-file baseline (a few tests assert exact id-derived identifiers,
+    e.g. ``REF-0001``/``next == 2``).
+    """
+    engine = get_engine()
+    with engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(text(f"DELETE FROM {table.name}"))
+        conn.execute(
+            text(
+                "DO $$ DECLARE r RECORD; BEGIN "
+                "FOR r IN SELECT sequence_name FROM information_schema.sequences "
+                "WHERE sequence_schema = 'public' LOOP "
+                "EXECUTE format('SELECT setval(%L, 1, false)', r.sequence_name); "
+                "END LOOP; END $$;"
+            )
+        )
 
 
 def _seed_default_engagement(export_dir: Path) -> None:
@@ -108,9 +189,34 @@ def v2_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(db))
     monkeypatch.setenv("CRMBUILDER_V2_EXPORT_DIR", str(export))
     monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "true")
-    reset_settings_cache()
-    reset_engine_cache()
-    bootstrap_database()
+    # PI-alpha: when a test Postgres is configured, route the engine at it
+    # (``database_url`` takes precedence over ``db_path`` in ``Settings``);
+    # ``db_path`` still resolves ``data_dir()``/the marker/the export tree. The
+    # schema is created once and each test starts from a per-table DELETE rather
+    # than a fresh file.
+    pg_url = _pg_test_url()
+    if pg_url:
+        global _PG_SCHEMA_READY
+        monkeypatch.setenv("CRMBUILDER_V2_DATABASE_URL", pg_url)
+        reset_settings_cache()
+        # Keep the cached engine/pool across tests (URL is constant); only
+        # build the schema once, then DELETE-reset between tests.
+        if not _PG_SCHEMA_READY:
+            reset_engine_cache()
+            bootstrap_database()
+            _PG_SCHEMA_READY = True
+        # SQLite mode rebuilds the engine every test, so get_engine re-installs
+        # the scope listeners each time — which masks any test that uninstalls
+        # them (e.g. test_engagement_scope's fixture teardown). PG mode reuses
+        # the engine and skips that rebuild, so re-install explicitly here
+        # (idempotent) to guarantee the write-stamp/read-filter are present
+        # regardless of what a prior test did to the base Session class.
+        engagement_scope.install_engagement_scope()
+        _reset_tables_pg()
+    else:
+        reset_settings_cache()
+        reset_engine_cache()
+        bootstrap_database()
     _seed_default_engagement(export)
     # Activate scoping for the test body: the write-stamp fills engagement_id
     # on every insert; enforcement fails loud on an unscoped scoped op.
@@ -122,7 +228,10 @@ def v2_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     finally:
         engagement_scope.set_enforcement(prev_enforce)
         engagement_scope.reset_active_engagement(token)
-        reset_engine_cache()
+        # In PG mode keep the engine/pool alive across tests (URL is constant);
+        # disposing + rebuilding it per test would dominate runtime.
+        if not pg_url:
+            reset_engine_cache()
         reset_settings_cache()
 
 

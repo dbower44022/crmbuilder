@@ -890,19 +890,23 @@ def test_refs_check_admits_new_process_v2_kinds(v2_env):
             )
         )
 
-    # Direct INSERT with an invented kind — the CHECK rejects it.
+    # Direct INSERT with an invented kind — the CHECK rejects it. Wrap the
+    # failing statement in a SAVEPOINT so the rejection rolls back cleanly: on
+    # Postgres a failed statement aborts the whole transaction (SQLite does not),
+    # and session_scope's exit commit would otherwise hit InFailedSqlTransaction.
     with session_scope() as s:
         with pytest.raises(IntegrityError):
-            s.execute(
-                text(
-                    "INSERT INTO refs "
-                    "(source_type, source_id, target_type, target_id, "
-                    "relationship_kind, created_at, engagement_id) "
-                    "VALUES ('process', 'PROC-001', 'entity', "
-                    "'ENT-002', 'process_eats_entity', "
-                    "CURRENT_TIMESTAMP, 'ENG-001')"
+            with s.begin_nested():
+                s.execute(
+                    text(
+                        "INSERT INTO refs "
+                        "(source_type, source_id, target_type, target_id, "
+                        "relationship_kind, created_at, engagement_id) "
+                        "VALUES ('process', 'PROC-001', 'entity', "
+                        "'ENT-002', 'process_eats_entity', "
+                        "CURRENT_TIMESTAMP, 'ENG-001')"
+                    )
                 )
-            )
 
 
 def test_process_touches_entity_roundtrip(v2_env):

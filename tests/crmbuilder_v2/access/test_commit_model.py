@@ -12,10 +12,9 @@ The full Alembic chain (including the data migration moving ``blocks`` to
 from __future__ import annotations
 
 import pytest
+from crmbuilder_v2.access.db import session_scope
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
-
-from crmbuilder_v2.access.db import session_scope
 
 
 def test_commits_table_exists_after_create_all(v2_env):
@@ -63,6 +62,10 @@ def test_commits_unique_constraint_on_sha(v2_env):
 def test_commits_identifier_format_check_rejects_wrong_width(v2_env):
     """CM identifier must be four digits, not three."""
     with session_scope() as s:
+        # SAVEPOINT so the expected CHECK rejection rolls back cleanly: Postgres
+        # aborts the whole transaction on a failed statement (SQLite does not),
+        # which would otherwise break session_scope's exit commit.
+        sp = s.begin_nested()
         with pytest.raises(IntegrityError):
             s.execute(
                 text(
@@ -80,14 +83,19 @@ def test_commits_identifier_format_check_rejects_wrong_width(v2_env):
                     "'test', 'test', 'doug', 'doug@x.com', "
                     "'2026-05-23T20:00:00-04:00', 'crmbuilder', 'main', "
                     "'[]', 1, 'CONV-001', "
-                    "datetime('now'), datetime('now'), 'ENG-001')"
+                    "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'ENG-001')"
                 )
             )
+        sp.rollback()
 
 
 def test_commits_sha_format_check_rejects_wrong_length(v2_env):
     """SHA must be exactly 40 lowercase hex chars."""
     with session_scope() as s:
+        # SAVEPOINT so the expected CHECK rejection rolls back cleanly: Postgres
+        # aborts the whole transaction on a failed statement (SQLite does not),
+        # which would otherwise break session_scope's exit commit.
+        sp = s.begin_nested()
         with pytest.raises(IntegrityError):
             s.execute(
                 text(
@@ -104,14 +112,19 @@ def test_commits_sha_format_check_rejects_wrong_length(v2_env):
                     "'test', 'test', 'doug', 'doug@x.com', "
                     "'2026-05-23T20:00:00-04:00', 'crmbuilder', 'main', "
                     "'[]', 1, 'CONV-001', "
-                    "datetime('now'), datetime('now'), 'ENG-001')"
+                    "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'ENG-001')"
                 )
             )
+        sp.rollback()
 
 
 def test_commits_sha_format_check_rejects_uppercase(v2_env):
     """SHA must be lowercase hex; uppercase characters are rejected."""
     with session_scope() as s:
+        # SAVEPOINT so the expected CHECK rejection rolls back cleanly: Postgres
+        # aborts the whole transaction on a failed statement (SQLite does not),
+        # which would otherwise break session_scope's exit commit.
+        sp = s.begin_nested()
         with pytest.raises(IntegrityError):
             s.execute(
                 text(
@@ -129,14 +142,19 @@ def test_commits_sha_format_check_rejects_uppercase(v2_env):
                     "'test', 'test', 'doug', 'doug@x.com', "
                     "'2026-05-23T20:00:00-04:00', 'crmbuilder', 'main', "
                     "'[]', 1, 'CONV-001', "
-                    "datetime('now'), datetime('now'), 'ENG-001')"
+                    "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'ENG-001')"
                 )
             )
+        sp.rollback()
 
 
 def test_commits_files_changed_count_check_rejects_negative(v2_env):
     """File-change count must be non-negative."""
     with session_scope() as s:
+        # SAVEPOINT so the expected CHECK rejection rolls back cleanly: Postgres
+        # aborts the whole transaction on a failed statement (SQLite does not),
+        # which would otherwise break session_scope's exit commit.
+        sp = s.begin_nested()
         with pytest.raises(IntegrityError):
             s.execute(
                 text(
@@ -154,9 +172,10 @@ def test_commits_files_changed_count_check_rejects_negative(v2_env):
                     "'test', 'test', 'doug', 'doug@x.com', "
                     "'2026-05-23T20:00:00-04:00', 'crmbuilder', 'main', "
                     "'[]', -1, 'CONV-001', "
-                    "datetime('now'), datetime('now'), 'ENG-001')"
+                    "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'ENG-001')"
                 )
             )
+        sp.rollback()
 
 
 def test_commits_well_formed_insert_round_trips(v2_env):
@@ -178,7 +197,7 @@ def test_commits_well_formed_insert_round_trips(v2_env):
                 "'subject', 'subject\\n\\nbody', 'Doug Bower', "
                 "'doug@dougbower.com', '2026-05-23T20:00:00-04:00', "
                 "'crmbuilder', 'main', '[]', 3, 'CONV-001', "
-                "datetime('now'), datetime('now'), 'ENG-001')"
+                "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'ENG-001')"
             )
         )
     with session_scope() as s:
@@ -199,7 +218,7 @@ def test_refs_check_admits_blocked_by_via_create_all(v2_env):
                 "target_type, target_id, relationship_kind, created_at, engagement_id) "
                 "VALUES "
                 "('REF-9001', 'planning_item', 'PI-001', "
-                "'planning_item', 'PI-002', 'blocked_by', datetime('now'), 'ENG-001')"
+                "'planning_item', 'PI-002', 'blocked_by', CURRENT_TIMESTAMP, 'ENG-001')"
             )
         )
     with session_scope() as s:
@@ -212,6 +231,10 @@ def test_refs_check_admits_blocked_by_via_create_all(v2_env):
 def test_refs_check_rejects_legacy_blocks(v2_env):
     """The legacy ``blocks`` kind must be rejected by the final CHECK."""
     with session_scope() as s:
+        # SAVEPOINT so the expected CHECK rejection rolls back cleanly: Postgres
+        # aborts the whole transaction on a failed statement (SQLite does not),
+        # which would otherwise break session_scope's exit commit.
+        sp = s.begin_nested()
         with pytest.raises(IntegrityError):
             s.execute(
                 text(
@@ -220,9 +243,10 @@ def test_refs_check_rejects_legacy_blocks(v2_env):
                     "target_type, target_id, relationship_kind, created_at, engagement_id) "
                     "VALUES "
                     "('REF-9002', 'planning_item', 'PI-003', "
-                    "'planning_item', 'PI-004', 'blocks', datetime('now'), 'ENG-001')"
+                    "'planning_item', 'PI-004', 'blocks', CURRENT_TIMESTAMP, 'ENG-001')"
                 )
             )
+        sp.rollback()
 
 
 def test_refs_check_admits_commit_as_source_and_target(v2_env):
@@ -235,7 +259,7 @@ def test_refs_check_admits_commit_as_source_and_target(v2_env):
                 "target_type, target_id, relationship_kind, created_at, engagement_id) "
                 "VALUES "
                 "('REF-9003', 'commit', 'CM-0001', "
-                "'session', 'SES-001', 'is_about', datetime('now'), 'ENG-001')"
+                "'session', 'SES-001', 'is_about', CURRENT_TIMESTAMP, 'ENG-001')"
             )
         )
         s.execute(
@@ -245,7 +269,7 @@ def test_refs_check_admits_commit_as_source_and_target(v2_env):
                 "target_type, target_id, relationship_kind, created_at, engagement_id) "
                 "VALUES "
                 "('REF-9004', 'decision', 'DEC-001', "
-                "'commit', 'CM-0001', 'references', datetime('now'), 'ENG-001')"
+                "'commit', 'CM-0001', 'references', CURRENT_TIMESTAMP, 'ENG-001')"
             )
         )
     with session_scope() as s:
