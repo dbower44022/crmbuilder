@@ -20,6 +20,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -57,6 +58,7 @@ from crmbuilder_v2.access.vocab import (
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
     PROCESS_CLASSIFICATIONS,
+    PROJECT_STATUSES,
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
@@ -69,10 +71,9 @@ from crmbuilder_v2.access.vocab import (
     SESSION_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
+    WORK_TASK_STATUSES,
     WORK_TICKET_KINDS,
     WORK_TICKET_STATUSES,
-    PROJECT_STATUSES,
-    WORK_TASK_STATUSES,
     WORKSTREAM_PHASE_TYPES,
     WORKSTREAM_STATUSES,
     _check_in,
@@ -2172,4 +2173,88 @@ class IdentifierReservation(Base):
 
     __table_args__ = (
         Index("ix_identifier_reservations_lookup", "entity_type", "expires_at"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Engagement registry — the tenant table (PI-123 Slice 1, DEC-375 / D1).
+#
+# The unified multi-engagement DB folds the former separate "meta DB"
+# (``data/engagements.db``, its own ``MetaBase`` + Alembic chain) into this
+# one ``Base`` so the engagements registry becomes an in-DB table and
+# ``engagement_id`` (a future column on the scoped tables, Slice 2) can FK to
+# it. This shape mirrors ``access/meta_models.py``'s ``EngagementRow`` exactly
+# — column-for-column, constraint-for-constraint — and a parity test
+# (``test_engagements_model_parity``) pins them equal so the two definitions
+# cannot drift during the transition.
+#
+# TRANSITIONAL DUPLICATION (intentional): the legacy per-engagement-file
+# runtime still serves ``/engagements/*`` from the separate meta DB via
+# ``meta_models.EngagementRow`` / ``meta_db`` — unchanged by this slice. This
+# class is the unified-DB definition: it is what ``Base.metadata.create_all``
+# and the main Alembic chain (migration ``0037``) materialise. The runtime
+# flip (serve the registry from the one engine, retire the meta DB + its
+# chain) is sequenced with the Deployment cutover, not this slice, because in
+# the per-engagement-file world the registry must stay shared across engagement
+# DBs. At cutover ``meta_models.EngagementRow`` is deleted and this remains.
+# ---------------------------------------------------------------------------
+
+
+class EngagementRow(Base):
+    """Row in the unified DB's ``engagements`` tenant table.
+
+    Named ``EngagementRow`` (mirroring ``meta_models``) to stay distinct from
+    the access-layer dataclass ``Engagement`` in ``engagement_models.py``.
+    """
+
+    __tablename__ = "engagements"
+
+    engagement_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    engagement_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    engagement_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    engagement_purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    engagement_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    engagement_last_opened_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    engagement_export_dir: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    engagement_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    engagement_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    engagement_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "engagement_identifier GLOB 'ENG-[0-9][0-9][0-9]'",
+            name="ck_engagement_identifier_format",
+        ),
+        CheckConstraint(
+            "engagement_status IN ('active', 'paused', 'archived')",
+            name="ck_engagement_status",
+        ),
+        Index(
+            "ux_engagements_code_lower",
+            text("LOWER(engagement_code)"),
+            unique=True,
+        ),
+        Index(
+            "ux_engagements_name_lower",
+            text("LOWER(engagement_name)"),
+            unique=True,
+        ),
+        Index("ix_engagements_status", "engagement_status"),
+        Index("ix_engagements_last_opened_at", "engagement_last_opened_at"),
+        Index("ix_engagements_deleted_at", "engagement_deleted_at"),
     )
