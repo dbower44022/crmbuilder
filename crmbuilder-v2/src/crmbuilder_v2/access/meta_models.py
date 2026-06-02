@@ -16,6 +16,14 @@ from datetime import UTC, datetime
 from sqlalchemy import CheckConstraint, DateTime, Index, String, Text, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+# PI-alpha: share the dialect-aware identifier-format CHECK so the meta DB's
+# ``engagements`` table stays byte-identical (and in parity, per
+# test_engagements_model_parity) with the main one. The meta DB itself stays
+# SQLite through PI-alpha — this construct still renders GLOB there — but the
+# parity check compiles both with the default dialect, so both must use the same
+# construct. (Temporary coupling: PI-beta deletes the meta layer entirely.)
+from crmbuilder_v2.access.models import _IdentifierFormatCheck
+
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
@@ -68,7 +76,7 @@ class EngagementRow(MetaBase):
 
     __table_args__ = (
         CheckConstraint(
-            "engagement_identifier GLOB 'ENG-[0-9][0-9][0-9]'",
+            _IdentifierFormatCheck("engagement_identifier", ["ENG"]),
             name="ck_engagement_identifier_format",
         ),
         CheckConstraint(

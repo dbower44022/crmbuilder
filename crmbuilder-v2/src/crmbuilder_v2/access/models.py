@@ -352,7 +352,10 @@ class Decision(EngagementScopedMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     identifier: Mapped[str] = mapped_column(String(32), nullable=False)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # PI-alpha: Text, not VARCHAR(255) — governance titles run long in practice
+    # (decisions/PIs exceed 255), and SQLite never enforced the cap while
+    # Postgres does. Free text, no length limit.
+    title: Mapped[str] = mapped_column(Text, nullable=False)
     decision_date: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     context: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -509,7 +512,10 @@ class Risk(EngagementScopedMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     identifier: Mapped[str] = mapped_column(String(32), nullable=False)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # PI-alpha: Text, not VARCHAR(255) — governance titles run long in practice
+    # (decisions/PIs exceed 255), and SQLite never enforced the cap while
+    # Postgres does. Free text, no length limit.
+    title: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     probability: Mapped[str] = mapped_column(String(16), nullable=False)
     impact: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -539,7 +545,10 @@ class PlanningItem(EngagementScopedMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     identifier: Mapped[str] = mapped_column(String(32), nullable=False)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # PI-alpha: Text, not VARCHAR(255) — governance titles run long in practice
+    # (decisions/PIs exceed 255), and SQLite never enforced the cap while
+    # Postgres does. Free text, no length limit.
+    title: Mapped[str] = mapped_column(Text, nullable=False)
     item_type: Mapped[str] = mapped_column(String(32), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -1540,7 +1549,8 @@ class Conversation(EngagementScopedPKMixin, Base):
     conversation_identifier: Mapped[str] = mapped_column(
         String(32), primary_key=True
     )
-    conversation_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    # PI-alpha: Text (conversation titles reach ~1.2k chars in real data).
+    conversation_title: Mapped[str] = mapped_column(Text, nullable=False)
     conversation_purpose: Mapped[str] = mapped_column(Text, nullable=False)
     conversation_description: Mapped[str] = mapped_column(Text, nullable=False)
     conversation_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -2028,7 +2038,9 @@ class Reference(EngagementScopedMixin, Base):
     source_id: Mapped[str] = mapped_column(String(64), nullable=False)
     target_type: Mapped[str] = mapped_column(String(32), nullable=False)
     target_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    relationship_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    # PI-alpha: String(64) — the longest vocab kind is 42 chars
+    # (close_out_payload_produced_by_conversation); String(32) under-sized it.
+    relationship_kind: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -2379,7 +2391,10 @@ class ChangeLog(EngagementScopedMixin, Base):
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
     entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    entity_identifier: Mapped[str] = mapped_column(String(64), nullable=False)
+    # PI-alpha: Text — for reference rows this holds the long composite edge
+    # descriptor (e.g. "deposit_event:DEP-148 -[...]-> decision:DEC-376"), which
+    # exceeds 64 chars; SQLite ignored the cap, Postgres enforces it.
+    entity_identifier: Mapped[str] = mapped_column(Text, nullable=False)
     operation: Mapped[str] = mapped_column(String(8), nullable=False)
     actor: Mapped[str] = mapped_column(String(32), nullable=False)
     before_payload: Mapped[dict | None] = mapped_column(JSONColumn, nullable=True)
