@@ -49,6 +49,7 @@ from crmbuilder_v2.api.routers import (
     persona,
     planning_items,
     processes,
+    projects,
     reference_books,
     references,
     requirements,
@@ -57,11 +58,11 @@ from crmbuilder_v2.api.routers import (
     status,
     test_specs,
     topics,
-    work_tickets,
-    projects,
-    workstreams,
     work_tasks,
+    work_tickets,
+    workstreams,
 )
+from crmbuilder_v2.api.scope_middleware import EngagementScopeMiddleware
 from crmbuilder_v2.migration.meta_alembic import run_meta_migrations
 from crmbuilder_v2.runtime.exceptions import EngagementExportDirError
 
@@ -82,6 +83,12 @@ def create_app() -> FastAPI:
     # it sits outermost on the request side and short-circuits exempt
     # paths cleanly before any route dispatch or other middleware.
     app.add_middleware(EngagementMarkerGuardMiddleware)
+
+    # PI-123 Slice 2c: resolve the active engagement per request (X-Engagement
+    # header, marker fallback) and set it on the engagement-scope ContextVar.
+    # Gated internally by Settings.engagement_scoping_enabled — a pass-through
+    # while disabled, so the current runtime is unchanged.
+    app.add_middleware(EngagementScopeMiddleware)
 
     # The three dedicated-body access-layer errors must register before
     # the AccessLayerError base so Starlette routes each to its own

@@ -65,6 +65,17 @@ def get_engine(settings: Settings | None = None) -> Engine:
         _engine = _build_engine(s.db_url)
         _SessionFactory = sessionmaker(bind=_engine, expire_on_commit=False, future=True)
         _engine_url = s.db_url
+        # PI-123 Slice 2c: install the row-level engagement-scope filter/stamp
+        # on the new factory when scoping is enabled. Dormant until a request
+        # sets an active engagement (the scope middleware), so it is harmless
+        # when enabled ahead of the cutover; gated so the default runtime gets
+        # no extra session events at all.
+        if s.engagement_scoping_enabled:
+            from crmbuilder_v2.access.engagement_scope import (
+                install_engagement_scope,
+            )
+
+            install_engagement_scope(_SessionFactory)
     return _engine
 
 

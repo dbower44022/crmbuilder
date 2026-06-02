@@ -64,6 +64,15 @@ class Settings(BaseSettings):
         return value
     api_host: str = "127.0.0.1"
     api_port: int = 8765
+
+    # PI-123 Slice 2c (DEC-375 / D5, D6). When True, the API installs the
+    # row-level engagement-scope filter/stamp on the access session factory
+    # and resolves an active engagement per request (X-Engagement header,
+    # falling back to the current_engagement.json marker). Default False:
+    # the scoping machinery stays dormant until the unified-DB cutover, after
+    # the data-migration backfill populates engagement_id — turning it on
+    # against NULL-discriminator rows would filter every existing row out.
+    engagement_scoping_enabled: bool = False
     api_base_url: str = "http://127.0.0.1:8765"
     mcp_http_port: int = 8810
 
