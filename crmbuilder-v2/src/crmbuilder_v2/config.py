@@ -92,6 +92,15 @@ class Settings(BaseSettings):
     api_base_url: str = "http://127.0.0.1:8765"
     mcp_http_port: int = 8810
 
+    # PI-β follow-on A1: the MCP server names the active engagement on its
+    # REST calls via the ``X-Engagement`` header, mirroring the desktop. When
+    # set (to an ``ENG-NNN`` identifier or an engagement code such as
+    # ``CRMBUILDER``), every MCP tool call is scoped to that engagement;
+    # tools may also override it per-session via the ``select_engagement``
+    # tool. Empty (the default) sends no header — unscoped, which is correct
+    # for the single-engagement dogfood while prod scoping enforcement is off.
+    mcp_engagement: str = ""
+
     # --- MCP OAuth 2.1 authorization server (streamable-http only) ---
     # We run our own OAuth AS (mcp SDK's OAuthAuthorizationServerProvider)
     # instead of Cloudflare Managed OAuth, which drops the per-request

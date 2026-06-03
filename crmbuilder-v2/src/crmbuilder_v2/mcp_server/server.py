@@ -101,7 +101,24 @@ def build_server(
         auth_server_provider=provider,
         auth=auth_settings,
     )
-    client = http or httpx.AsyncClient(base_url=settings.api_base_url, timeout=30.0)
+    if http is not None:
+        client = http
+    else:
+        # PI-β follow-on A1: name the active engagement on every REST call
+        # via the ``X-Engagement`` header (mirrors the desktop). Configured
+        # by ``CRMBUILDER_V2_MCP_ENGAGEMENT``; empty => unscoped (correct for
+        # the single-engagement dogfood while prod scoping enforcement is
+        # off). The ``select_engagement`` tool overrides it per session.
+        default_headers = (
+            {"X-Engagement": settings.mcp_engagement}
+            if settings.mcp_engagement
+            else None
+        )
+        client = httpx.AsyncClient(
+            base_url=settings.api_base_url,
+            timeout=30.0,
+            headers=default_headers,
+        )
     register_tools(server, client)
     if provider is not None:
         from crmbuilder_v2.mcp_server.auth import register_oauth_routes

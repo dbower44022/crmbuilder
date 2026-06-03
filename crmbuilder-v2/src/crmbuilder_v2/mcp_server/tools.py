@@ -763,10 +763,38 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         }
         return await _unwrap(await http.post("/catalog/gap-check", json=body))
 
+    # ---------- Engagement selection (PI-β follow-on A1) ----------
+
+    async def select_engagement(engagement: str) -> Any:
+        """Scope all subsequent tool calls to an engagement.
+
+        ``engagement`` is an engagement identifier (``ENG-NNN``) or code
+        (e.g. ``CRMBUILDER``). It is sent as the ``X-Engagement`` header on
+        every following REST call until changed, mirroring the desktop's
+        active-engagement context. Pass an empty string to clear it (leaving
+        subsequent calls unscoped). The default comes from
+        ``CRMBUILDER_V2_MCP_ENGAGEMENT``.
+        """
+        if engagement:
+            http.headers["X-Engagement"] = engagement
+        else:
+            http.headers.pop("X-Engagement", None)
+        return {"active_engagement": engagement or None}
+
+    async def get_active_engagement() -> Any:
+        """Return the engagement currently scoping tool calls.
+
+        The value of the ``X-Engagement`` header sent on every REST call,
+        or ``None`` when unscoped.
+        """
+        return {"active_engagement": http.headers.get("X-Engagement")}
+
     # Declaration-ordered surface. Adding a tool = define it above and
     # append it here; both the MCP server and the chat dispatcher pick it
     # up automatically.
     funcs: list[Callable[..., Any]] = [
+        select_engagement,
+        get_active_engagement,
         get_current_charter,
         get_charter_version,
         list_charter_versions,
