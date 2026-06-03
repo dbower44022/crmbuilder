@@ -15,6 +15,7 @@ from crmbuilder_v2.access.repositories import (
     agent_profiles,
     governance_rules,
     learnings,
+    registry_lifecycle,
     registry_resolver,
     skills,
 )
@@ -23,11 +24,14 @@ from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     AgentProfileCreateIn,
     AgentProfileUpdateIn,
+    CurateAreaIn,
     GovernanceRuleCreateIn,
     GovernanceRuleUpdateIn,
     LearningCaptureIn,
     LearningCreateIn,
     LearningEvidenceIn,
+    LearningPromoteRuleIn,
+    LearningPromoteSkillIn,
     LearningUpdateIn,
     SkillCreateIn,
     SkillUpdateIn,
@@ -223,6 +227,12 @@ def capture_learning(body: LearningCaptureIn):
         return ok(learnings.capture(s, **body.model_dump()))
 
 
+@learnings_router.post("/curate")
+def curate_learnings(body: CurateAreaIn):
+    with writable_session() as s:
+        return ok(registry_lifecycle.curate_area(s, area=body.area, scope=body.scope))
+
+
 @learnings_router.get("/{identifier}")
 def get_learning(identifier: str):
     with readonly_session() as s:
@@ -233,6 +243,18 @@ def get_learning(identifier: str):
 def add_learning_evidence(identifier: str, body: LearningEvidenceIn):
     with writable_session() as s:
         return ok(learnings.add_evidence(s, identifier, **body.model_dump()))
+
+
+@learnings_router.post("/{identifier}/promote-to-skill", status_code=201)
+def promote_learning_to_skill(identifier: str, body: LearningPromoteSkillIn):
+    with writable_session() as s:
+        return ok(registry_lifecycle.promote_to_skill(s, identifier, **body.model_dump()))
+
+
+@learnings_router.post("/{identifier}/promote-to-rule", status_code=201)
+def promote_learning_to_rule(identifier: str, body: LearningPromoteRuleIn):
+    with writable_session() as s:
+        return ok(registry_lifecycle.promote_to_rule(s, identifier, **body.model_dump()))
 
 
 @learnings_router.patch("/{identifier}")

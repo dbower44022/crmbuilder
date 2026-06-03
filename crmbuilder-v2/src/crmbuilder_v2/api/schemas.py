@@ -330,6 +330,31 @@ class LearningEvidenceIn(_Base):
     contradicts: bool = False
 
 
+class LearningPromoteSkillIn(_Base):
+    """POST /learnings/{id}/promote-to-skill."""
+
+    name: str
+    kind: str
+    description: str | None = None
+
+
+class LearningPromoteRuleIn(_Base):
+    """POST /learnings/{id}/promote-to-rule. Enforced rules require human_approved."""
+
+    enforcement: str
+    body: str | None = None
+    severity: str | None = None
+    rule_type: str | None = None
+    human_approved: bool = False
+
+
+class CurateAreaIn(_Base):
+    """POST /learnings/curate — per-(release, area) curate sweep."""
+
+    area: str
+    scope: str | None = None
+
+
 # ---------- Domains (methodology entity, UI v0.4 slice B) ----------
 
 
