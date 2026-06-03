@@ -23,6 +23,7 @@ from crmbuilder_v2.api.errors import (
     selected_candidate_conflict_handler,
     status_transition_handler,
 )
+from crmbuilder_v2.api.principal_middleware import PrincipalMiddleware
 from crmbuilder_v2.api.routers import (
     admin,
     catalog,
@@ -80,6 +81,15 @@ def create_app() -> FastAPI:
     # so the ContextVar set here reaches the sync route handler's threadpool
     # copy deterministically.
     app.add_middleware(EngagementScopeMiddleware)
+
+    # PI-γ: resolve the authenticated principal per request from the
+    # ``Authorization: Bearer`` header and set it on the principal-scope
+    # ContextVar. Added AFTER the engagement middleware so it wraps it (the
+    # last-added middleware is outermost), making the principal available when
+    # the engagement selection is validated against it. Gated internally by
+    # Settings.principal_auth_enabled — off ⇒ a synthetic default-owner, so the
+    # localhost flow is unchanged.
+    app.add_middleware(PrincipalMiddleware)
 
     # The three dedicated-body access-layer errors must register before
     # the AccessLayerError base so Starlette routes each to its own
