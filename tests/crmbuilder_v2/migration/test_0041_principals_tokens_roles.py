@@ -29,6 +29,7 @@ from sqlalchemy import create_engine, inspect, text
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ALEMBIC_DIR = _REPO_ROOT / "crmbuilder-v2"
 _MIGRATION_0040 = "0040_pi_beta_drop_engagement_export_dir"
+_MIGRATION_0041 = "0041_pi_gamma_principals_tokens_roles"
 _RBAC_TABLES = ("role_assignments", "api_tokens", "principals")
 
 
@@ -71,7 +72,9 @@ def test_0041_creates_and_drops_rbac_tables(tmp_path: Path) -> None:
 
     stamp = _alembic(["stamp", _MIGRATION_0040], db)
     assert stamp.returncode == 0, f"stamp failed:\n{stamp.stdout}\n{stamp.stderr}"
-    up = _alembic(["upgrade", "head"], db)
+    # Upgrade to exactly 0041 (not head) so later revisions don't interfere
+    # with the single-step downgrade assertion below.
+    up = _alembic(["upgrade", _MIGRATION_0041], db)
     assert up.returncode == 0, f"upgrade failed:\n{up.stdout}\n{up.stderr}"
 
     insp = inspect(create_engine(f"sqlite:///{db}"))
@@ -84,7 +87,7 @@ def test_0041_creates_and_drops_rbac_tables(tmp_path: Path) -> None:
     token_cols = {c["name"] for c in insp.get_columns("api_tokens")}
     assert {"token_id", "principal_id", "token_hash"} <= token_cols
 
-    down = _alembic(["downgrade", "-1"], db)
+    down = _alembic(["downgrade", _MIGRATION_0040], db)
     assert down.returncode == 0, f"downgrade failed:\n{down.stdout}\n{down.stderr}"
     insp2 = inspect(create_engine(f"sqlite:///{db}"))
     have2 = set(insp2.get_table_names())

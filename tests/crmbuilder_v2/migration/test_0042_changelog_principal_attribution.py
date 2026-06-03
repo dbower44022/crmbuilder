@@ -19,6 +19,7 @@ from sqlalchemy import create_engine, inspect, text
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ALEMBIC_DIR = _REPO_ROOT / "crmbuilder-v2"
 _MIGRATION_0041 = "0041_pi_gamma_principals_tokens_roles"
+_MIGRATION_0042 = "0042_pi_gamma_changelog_principal_attribution"
 
 
 def _alembic(args: list[str], db_path: Path) -> subprocess.CompletedProcess:
@@ -45,7 +46,7 @@ def test_0042_adds_principal_id_and_widens_actor_check(tmp_path: Path) -> None:
 
     stamp = _alembic(["stamp", _MIGRATION_0041], db)
     assert stamp.returncode == 0, f"stamp failed:\n{stamp.stdout}\n{stamp.stderr}"
-    up = _alembic(["upgrade", "head"], db)
+    up = _alembic(["upgrade", _MIGRATION_0042], db)
     assert up.returncode == 0, f"upgrade failed:\n{up.stdout}\n{up.stderr}"
 
     eng = create_engine(f"sqlite:///{db}")
@@ -65,7 +66,7 @@ def test_0042_adds_principal_id_and_widens_actor_check(tmp_path: Path) -> None:
         )
     eng.dispose()
 
-    down = _alembic(["downgrade", "-1"], db)
+    down = _alembic(["downgrade", _MIGRATION_0041], db)
     assert down.returncode == 0, f"downgrade failed:\n{down.stdout}\n{down.stderr}"
     insp2 = inspect(create_engine(f"sqlite:///{db}"))
     cols2 = {c["name"] for c in insp2.get_columns("change_log")}
