@@ -53,7 +53,6 @@ def test_create_happy_path(meta_db):
     assert eng.engagement_identifier == "ENG-001"
     assert eng.engagement_code == "ALPHA"
     assert eng.engagement_status == EngagementStatus.ACTIVE
-    assert eng.engagement_export_dir is None
 
 
 def test_create_assigns_identifier_when_omitted(meta_db):
@@ -157,46 +156,6 @@ def test_create_rejects_missing_purpose(meta_db):
             engagement_name="X",
             engagement_purpose="",
         )
-
-
-def test_create_accepts_nonexistent_export_dir(meta_db):
-    # Relaxed in multi-tenancy-routing-fix slice B: existence is no longer
-    # required at create time. The write-time gate (DEC-114) fails loud
-    # with EngagementExportDirMissing if the dir is absent when an export
-    # runs. An absolute path that does not yet exist is accepted here.
-    with meta_session_scope() as s:
-        eng = create_engagement(
-            s,
-            engagement_code="XY",
-            engagement_name="X",
-            engagement_purpose="p",
-            engagement_export_dir="/nonexistent/path/zzz",
-        )
-    assert eng.engagement_export_dir == "/nonexistent/path/zzz"
-
-
-def test_create_rejects_relative_export_dir(meta_db, tmp_path):
-    with meta_session_scope() as s, pytest.raises(UnprocessableError) as exc:
-        create_engagement(
-            s,
-            engagement_code="XY",
-            engagement_name="X",
-            engagement_purpose="p",
-            engagement_export_dir="relative/path",
-        )
-    assert any(e.code == "not_absolute_path" for e in exc.value.errors)
-
-
-def test_create_accepts_valid_export_dir(meta_db, tmp_path):
-    with meta_session_scope() as s:
-        eng = create_engagement(
-            s,
-            engagement_code="XY",
-            engagement_name="X",
-            engagement_purpose="p",
-            engagement_export_dir=str(tmp_path),
-        )
-    assert eng.engagement_export_dir == str(tmp_path)
 
 
 def test_create_explicit_identifier_collision(meta_db):

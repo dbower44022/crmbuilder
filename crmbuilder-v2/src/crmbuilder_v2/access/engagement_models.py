@@ -36,7 +36,8 @@ def _maybe_iso(dt: datetime | None) -> str | None:
 class Engagement:
     """In-memory shape of a meta DB ``engagements`` row.
 
-    All ten fields from the schema's §3.2 are represented.
+    The schema's §3.2 fields are represented (the vestigial
+    ``engagement_export_dir`` was dropped in the PI-β follow-on pass).
     Timestamps are timezone-aware ``datetime`` objects. ``Engagement``
     is the access-layer's canonical shape; the REST API serialises it
     via ``to_dict()`` and hydrates it via ``from_row()``.
@@ -48,7 +49,6 @@ class Engagement:
     engagement_purpose: str
     engagement_status: EngagementStatus
     engagement_last_opened_at: datetime | None
-    engagement_export_dir: str | None
     engagement_created_at: datetime
     engagement_updated_at: datetime
     engagement_deleted_at: datetime | None
@@ -72,7 +72,6 @@ class Engagement:
             "engagement_last_opened_at": _maybe_iso(
                 self.engagement_last_opened_at
             ),
-            "engagement_export_dir": self.engagement_export_dir,
             "engagement_created_at": _maybe_iso(self.engagement_created_at),
             "engagement_updated_at": _maybe_iso(self.engagement_updated_at),
             "engagement_deleted_at": _maybe_iso(
@@ -95,7 +94,6 @@ class Engagement:
             engagement_purpose=row.engagement_purpose,
             engagement_status=status,
             engagement_last_opened_at=row.engagement_last_opened_at,
-            engagement_export_dir=row.engagement_export_dir,
             engagement_created_at=row.engagement_created_at,
             engagement_updated_at=row.engagement_updated_at,
             engagement_deleted_at=row.engagement_deleted_at,

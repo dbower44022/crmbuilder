@@ -29,7 +29,7 @@ from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
 from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
 
-_MONO_LABELS = frozenset({"API base URL", "Database path", "Export directory"})
+_MONO_LABELS = frozenset({"API base URL", "Database path"})
 
 
 def _px(token_key: str) -> int:
@@ -89,7 +89,6 @@ class ConnectionInfoDialog(QDialog):
         "Database exists",
         "Database size",
         "Database schema",
-        "Export directory",
     )
 
     def __init__(
@@ -175,7 +174,7 @@ class ConnectionInfoDialog(QDialog):
         )
 
         if info is None:
-            for key in ("Database path", "Database size", "Export directory"):
+            for key in ("Database path", "Database size"):
                 self._set(key, "—")
             self._set("Database exists", "—")
             return
@@ -185,7 +184,6 @@ class ConnectionInfoDialog(QDialog):
             "Database exists", "Yes" if info.get("db_exists") else "No"
         )
         self._set("Database size", _human_size(info.get("db_size_bytes")))
-        self._set("Export directory", self._export_display())
 
     def _set(self, label: str, value: str) -> None:
         widget = self._value_labels.get(label)
@@ -217,23 +215,6 @@ class ConnectionInfoDialog(QDialog):
             return f"{current} (up to date)"
         head = block.get("head") or "?"
         return f"{current} → head {head} (migration pending)"
-
-    def _export_display(self) -> str:
-        # PI-β: the export dir is a property of the active engagement record,
-        # not the API connection. Read it from the active-engagement context.
-        eng = (
-            self._active_context.engagement()
-            if self._active_context is not None
-            else None
-        )
-        path = eng.engagement_export_dir if eng is not None else None
-        if not path:
-            return "(not configured)"
-        import os
-
-        if not os.path.isdir(path):
-            return f"(missing — {path})"
-        return path
 
     # Modal backdrop hooks (consistent with AboutDialog).
     def showEvent(self, event):  # noqa: N802 — Qt naming

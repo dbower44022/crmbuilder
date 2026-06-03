@@ -18,6 +18,7 @@ Covers PRD §5.1 / §5.6 acceptance criteria for the three dialogs:
 from __future__ import annotations
 
 from datetime import UTC, datetime
+
 import pytest
 from crmbuilder_v2.access.engagement_models import (
     Engagement,
@@ -36,7 +37,7 @@ from crmbuilder_v2.ui.dialogs.engagement_delete import (
     EngagementDeleteDialog,
 )
 from fastapi.testclient import TestClient
-from PySide6.QtWidgets import QDialog, QLineEdit
+from PySide6.QtWidgets import QDialog
 
 
 @pytest.fixture
@@ -80,7 +81,6 @@ def _make_active(identifier: str = "ENG-001", code: str = "ALPHA") -> ActiveEnga
             engagement_purpose="",
             engagement_status=EngagementStatus.ACTIVE,
             engagement_last_opened_at=None,
-            engagement_export_dir=None,
             engagement_created_at=now,
             engagement_updated_at=now,
             engagement_deleted_at=None,
@@ -148,13 +148,6 @@ def test_create_dialog_rejects_missing_name(qtbot, engagement_client):
         lambda: dialog._error_labels["engagement_name"].text() != "",
         timeout=3000,
     )
-
-
-def test_create_dialog_has_export_dir_browse_button(qtbot, engagement_client):
-    dialog = EngagementCreateDialog(engagement_client)
-    qtbot.addWidget(dialog)
-    browse = dialog.findChild(object, "engagement_export_dir_browse")
-    assert browse is not None
 
 
 # ---------------------------------------------------------------------------
@@ -333,59 +326,3 @@ def test_delete_slice_d_create_todo_marker_string_present():
     assert _SLICE_D_TODO_SWITCH.startswith("[TODO slice D]")
 
 
-# ---------------------------------------------------------------------------
-# Misc — Edit dialog also has the directory browser
-# ---------------------------------------------------------------------------
-
-
-def test_edit_dialog_has_export_dir_browse_button(qtbot, engagement_client):
-    _seed(engagement_client, "ALPHA", "Alpha")
-    record = engagement_client.get_engagement("ENG-001")
-    dialog = EngagementEditDialog(engagement_client, record)
-    qtbot.addWidget(dialog)
-    browse = dialog.findChild(object, "engagement_export_dir_browse")
-    assert browse is not None
-
-
-def test_edit_dialog_export_dir_value_widget_is_line_edit(
-    qtbot, engagement_client
-):
-    _seed(engagement_client, "ALPHA", "Alpha")
-    record = engagement_client.get_engagement("ENG-001")
-    dialog = EngagementEditDialog(engagement_client, record)
-    qtbot.addWidget(dialog)
-    line = dialog._widgets["engagement_export_dir"]
-    assert isinstance(line, QLineEdit)
-
-
-def test_edit_dialog_emphasises_empty_export_dir(qtbot, engagement_client):
-    """Slice B (B6): the export-dir field is emphasised while empty."""
-    _seed(engagement_client, "ALPHA", "Alpha")
-    record = engagement_client.get_engagement("ENG-001")
-    dialog = EngagementEditDialog(engagement_client, record)
-    qtbot.addWidget(dialog)
-    line = dialog._widgets["engagement_export_dir"]
-    # Empty on open → amber border emphasis.
-    assert line.text() == ""
-    assert "border" in line.styleSheet()
-    # Typing a value clears the emphasis.
-    line.setText("/some/path")
-    assert line.styleSheet() == ""
-
-
-def test_edit_dialog_focus_export_dir_field(qtbot, engagement_client):
-    """Slice B (B6): focus_export_dir_field() targets the export-dir field.
-
-    Asserted via a setFocus spy rather than ``hasFocus()`` because the
-    offscreen Qt platform used in CI has no active window, so real focus
-    state is unreliable.
-    """
-    _seed(engagement_client, "ALPHA", "Alpha")
-    record = engagement_client.get_engagement("ENG-001")
-    dialog = EngagementEditDialog(engagement_client, record)
-    qtbot.addWidget(dialog)
-    line = dialog._widgets["engagement_export_dir"]
-    calls: dict = {"n": 0}
-    line.setFocus = lambda *a, **k: calls.__setitem__("n", calls["n"] + 1)
-    dialog.focus_export_dir_field()
-    assert calls["n"] == 1

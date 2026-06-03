@@ -35,7 +35,6 @@ def _make_engagement(identifier: str = "ENG-001", code: str = "CRMBUILDER"):
         engagement_purpose="test purpose",
         engagement_status=EngagementStatus.ACTIVE,
         engagement_last_opened_at=None,
-        engagement_export_dir=None,
         engagement_created_at=now,
         engagement_updated_at=now,
         engagement_deleted_at=None,

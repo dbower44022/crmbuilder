@@ -1976,8 +1976,8 @@ class StorageClient:
 
         Body uses the parent-prefixed field names
         (``engagement_code``, ``engagement_name``, ``engagement_purpose``,
-        optional ``engagement_status`` / ``engagement_export_dir`` /
-        ``engagement_identifier``). Raises ``RequestShapeError`` on 422
+        optional ``engagement_status`` / ``engagement_identifier``).
+        Raises ``RequestShapeError`` on 422
         (code/name/format validation), ``ConflictError`` on 409
         (explicit-identifier collision).
         """

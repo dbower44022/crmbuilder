@@ -17,18 +17,12 @@ Validation posture:
 * ``engagement_purpose`` non-empty trimmed.
 * ``engagement_status`` enum: ``active`` | ``paused`` | ``archived``;
   free transitions (no map needed).
-* ``engagement_export_dir`` optional; when set, must be an absolute
-  path (must be writable if it already exists). Existence is NOT
-  required at create/update time — it is enforced at write-time by the
-  export gate (DEC-114); see ``_validate_export_dir``. (Relaxed from the
-  original "existing-writable" rule in multi-tenancy-routing-fix slice B.)
 * ``engagement_code`` is immutable post-creation.
 * Soft-delete sets ``engagement_deleted_at``; restore clears it.
 """
 
 from __future__ import annotations
 
-import os
 import re
 from datetime import UTC, datetime
 
@@ -64,7 +58,6 @@ _PATCHABLE_FIELDS = frozenset(
         "engagement_purpose",
         "engagement_status",
         "engagement_last_opened_at",
-        "engagement_export_dir",
     }
 )
 
@@ -130,56 +123,6 @@ def _normalise_status(value: object) -> EngagementStatus:
             )
         ]
     )
-
-
-def _validate_export_dir(value: object) -> str | None:
-    if value is None:
-        return None
-    if not isinstance(value, str) or not value.strip():
-        raise UnprocessableError(
-            [
-                FieldError(
-                    "engagement_export_dir",
-                    "missing_or_empty",
-                    "must be a non-empty string when provided",
-                )
-            ]
-        )
-    path = value.strip()
-    if not os.path.isabs(path):
-        raise UnprocessableError(
-            [
-                FieldError(
-                    "engagement_export_dir",
-                    "not_absolute_path",
-                    "must be an absolute filesystem path",
-                )
-            ]
-        )
-    # Existence is intentionally NOT required at create/update time. The
-    # write-time gate (``runtime.engagement_routing.assert_export_dir_ready``,
-    # DEC-114) fails loud with ``EngagementExportDirMissing`` if the
-    # configured directory does not exist when an export actually runs.
-    # Relaxing here lets the desktop Edit Engagement dialog persist a
-    # not-yet-created path ("Save anyway — create the directory later",
-    # multi-tenancy-routing-fix slice B / B6) and makes a nonexistent
-    # export_dir reachable through a normal create→activate→write flow.
-    #
-    # Writability is still enforced *when the directory already exists*:
-    # the write-time gate only checks ``is_dir()``, not writability, so a
-    # non-writable existing directory would otherwise slip through and
-    # crash in ``write_staging`` with a raw ``OSError``.
-    if os.path.isdir(path) and not os.access(path, os.W_OK):
-        raise UnprocessableError(
-            [
-                FieldError(
-                    "engagement_export_dir",
-                    "directory_not_writable",
-                    f"directory is not writable: {path}",
-                )
-            ]
-        )
-    return path
 
 
 def _reject_duplicate_code(
@@ -294,7 +237,6 @@ def _new_row(
     name: str,
     purpose: str,
     status: str,
-    export_dir: str | None,
     now: datetime,
 ) -> EngagementRow:
     return EngagementRow(
@@ -304,7 +246,6 @@ def _new_row(
         engagement_purpose=purpose,
         engagement_status=status,
         engagement_last_opened_at=None,
-        engagement_export_dir=export_dir,
         engagement_created_at=now,
         engagement_updated_at=now,
         engagement_deleted_at=None,
@@ -318,7 +259,6 @@ def _insert_with_autoassign(
     name: str,
     purpose: str,
     status: str,
-    export_dir: str | None,
     now: datetime,
 ) -> EngagementRow:
     """Insert with a server-assigned identifier, collision-safe.
@@ -336,7 +276,6 @@ def _insert_with_autoassign(
             name=name,
             purpose=purpose,
             status=status,
-            export_dir=export_dir,
             now=now,
         )
         session.add(row)
@@ -362,7 +301,6 @@ def create_engagement(
     engagement_name: str,
     engagement_purpose: str,
     engagement_status: str | EngagementStatus = EngagementStatus.ACTIVE,
-    engagement_export_dir: str | None = None,
     engagement_identifier: str | None = None,
 ) -> Engagement:
     code = _require_code_format(engagement_code)
@@ -371,7 +309,6 @@ def create_engagement(
         engagement_purpose, field="engagement_purpose"
     )
     status = _normalise_status(engagement_status)
-    export_dir = _validate_export_dir(engagement_export_dir)
 
     _reject_duplicate_code(session, code)
     _reject_duplicate_name(session, name)
@@ -385,7 +322,6 @@ def create_engagement(
             name=name,
             purpose=purpose,
             status=status.value,
-            export_dir=export_dir,
             now=now,
         )
     else:
@@ -400,7 +336,6 @@ def create_engagement(
             name=name,
             purpose=purpose,
             status=status.value,
-            export_dir=export_dir,
             now=now,
         )
         session.add(row)
@@ -418,7 +353,6 @@ def update_engagement(
     engagement_name: str | None = None,
     engagement_purpose: str | None = None,
     engagement_status: str | EngagementStatus | None = None,
-    engagement_export_dir: str | None = None,
     engagement_last_opened_at: object = ...,
 ) -> Engagement:
     """Full-replace PUT.
@@ -462,7 +396,6 @@ def update_engagement(
     status = _normalise_status(
         engagement_status if engagement_status is not None else row.engagement_status
     )
-    export_dir = _validate_export_dir(engagement_export_dir)
 
     if name.lower() != row.engagement_name.lower():
         _reject_duplicate_name(
@@ -472,7 +405,6 @@ def update_engagement(
     row.engagement_name = name
     row.engagement_purpose = purpose
     row.engagement_status = status.value
-    row.engagement_export_dir = export_dir
     if engagement_last_opened_at is not ...:
         row.engagement_last_opened_at = engagement_last_opened_at  # type: ignore[assignment]
     session.flush()
@@ -548,10 +480,6 @@ def patch_engagement(
     if "engagement_status" in fields:
         status = _normalise_status(fields["engagement_status"])
         row.engagement_status = status.value
-    if "engagement_export_dir" in fields:
-        row.engagement_export_dir = _validate_export_dir(
-            fields["engagement_export_dir"]
-        )
     if "engagement_last_opened_at" in fields:
         value = fields["engagement_last_opened_at"]
         if isinstance(value, str):

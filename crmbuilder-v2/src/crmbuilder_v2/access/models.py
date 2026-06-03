@@ -2485,9 +2485,6 @@ class EngagementRow(Base):
     engagement_last_opened_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    engagement_export_dir: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
     engagement_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )

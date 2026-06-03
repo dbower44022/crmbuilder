@@ -85,7 +85,6 @@ def _engagement_from_dict(payload: dict[str, Any]) -> Engagement | None:
             engagement_purpose=payload.get("engagement_purpose") or "",
             engagement_status=status,
             engagement_last_opened_at=None,
-            engagement_export_dir=payload.get("engagement_export_dir"),
             engagement_created_at=_parse_dt(payload.get("engagement_created_at")),
             engagement_updated_at=_parse_dt(payload.get("engagement_updated_at")),
             engagement_deleted_at=None,

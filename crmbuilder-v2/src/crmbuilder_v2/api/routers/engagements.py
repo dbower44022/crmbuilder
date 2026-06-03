@@ -80,7 +80,6 @@ def create(body: EngagementCreateIn):
                 if body.engagement_status is not None
                 else "active"
             ),
-            engagement_export_dir=body.engagement_export_dir,
             engagement_identifier=body.engagement_identifier,
         )
     return ok(engagement.to_dict())
@@ -97,7 +96,6 @@ def replace(identifier: str, body: EngagementReplaceIn):
             engagement_name=body.engagement_name,
             engagement_purpose=body.engagement_purpose,
             engagement_status=body.engagement_status,
-            engagement_export_dir=body.engagement_export_dir,
         )
     return ok(engagement.to_dict())
 

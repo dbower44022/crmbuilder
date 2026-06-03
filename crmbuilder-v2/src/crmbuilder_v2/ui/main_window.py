@@ -646,7 +646,6 @@ class MainWindow(QMainWindow):
             engagement_last_opened_at=_maybe_dt(
                 payload.get("engagement_last_opened_at")
             ),
-            engagement_export_dir=payload.get("engagement_export_dir"),
             engagement_created_at=_maybe_dt(payload.get("engagement_created_at"))
             or datetime.now(UTC),
             engagement_updated_at=_maybe_dt(payload.get("engagement_updated_at"))

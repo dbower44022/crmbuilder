@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import pytest
 from crmbuilder_v2.access.engagement_models import Engagement, EngagementStatus
 from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
 from crmbuilder_v2.ui.widgets.engagement_top_strip import EngagementTopStrip
@@ -25,7 +24,6 @@ def _eng(identifier="ENG-001", code="ALPHA", name="Alpha") -> Engagement:
         engagement_purpose="",
         engagement_status=EngagementStatus.ACTIVE,
         engagement_last_opened_at=None,
-        engagement_export_dir=None,
         engagement_created_at=now,
         engagement_updated_at=now,
         engagement_deleted_at=None,

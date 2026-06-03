@@ -74,16 +74,6 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         vocab=_VALID_STATUSES,
         default="active",
     ),
-    FieldSchema(
-        key="engagement_export_dir",
-        label="Export dir",
-        widget="line",
-        placeholder="Optional — leave blank to disable auto-export.",
-        # Empty strings are rejected by the access layer
-        # (``_validate_export_dir``); the field is optional, so the
-        # create body omits it entirely when blank.
-        omit_when_empty_in_create=True,
-    ),
 ]
 
 
