@@ -110,6 +110,11 @@ class Settings(BaseSettings):
     # for the single-engagement dogfood while prod scoping enforcement is off.
     mcp_engagement: str = ""
 
+    # PI-γ: bearer token the MCP server forwards as ``Authorization: Bearer`` on
+    # its REST calls when principal auth is on. Empty (default) sends no header —
+    # fine for the localhost flow where auth is off.
+    mcp_token: str = ""
+
     # --- MCP OAuth 2.1 authorization server (streamable-http only) ---
     # We run our own OAuth AS (mcp SDK's OAuthAuthorizationServerProvider)
     # instead of Cloudflare Managed OAuth, which drops the per-request

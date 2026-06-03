@@ -109,15 +109,17 @@ def build_server(
         # by ``CRMBUILDER_V2_MCP_ENGAGEMENT``; empty => unscoped (correct for
         # the single-engagement dogfood while prod scoping enforcement is
         # off). The ``select_engagement`` tool overrides it per session.
-        default_headers = (
-            {"X-Engagement": settings.mcp_engagement}
-            if settings.mcp_engagement
-            else None
-        )
+        default_headers: dict[str, str] = {}
+        if settings.mcp_engagement:
+            default_headers["X-Engagement"] = settings.mcp_engagement
+        # PI-γ: forward a bearer token when configured so MCP calls authenticate
+        # once principal auth is on (no-op for the auth-off localhost flow).
+        if settings.mcp_token:
+            default_headers["Authorization"] = f"Bearer {settings.mcp_token}"
         client = httpx.AsyncClient(
             base_url=settings.api_base_url,
             timeout=30.0,
-            headers=default_headers,
+            headers=default_headers or None,
         )
     register_tools(server, client)
     if provider is not None:

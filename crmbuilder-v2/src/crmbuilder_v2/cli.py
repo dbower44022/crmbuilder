@@ -182,3 +182,94 @@ def run_ui() -> int:
     from crmbuilder_v2.ui.app import main as ui_main
 
     return ui_main(sys.argv)
+
+
+def run_token_admin() -> int:
+    """``crmbuilder-v2-token`` — provision principals + bearer tokens (PI-γ).
+
+    A thin local admin CLI over the access layer (it opens the unified DB
+    directly, not the REST API, so it works before any token exists). The
+    minted token plaintext is printed once.
+
+    Subcommands::
+
+        crmbuilder-v2-token bootstrap-owner --identity doug@x.com [--engagement ENG-001]
+        crmbuilder-v2-token mint --principal PRN-001 [--label cli]
+        crmbuilder-v2-token list [--principal PRN-001]
+        crmbuilder-v2-token revoke --token TOK-0001
+    """
+    import argparse
+
+    from crmbuilder_v2.access import principal as P
+    from crmbuilder_v2.access.db import session_scope
+
+    parser = argparse.ArgumentParser(prog="crmbuilder-v2-token")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_boot = sub.add_parser(
+        "bootstrap-owner",
+        help="Create (or reuse) an owner principal and mint its first token.",
+    )
+    p_boot.add_argument("--identity", required=True, help="Owner email/identity.")
+    p_boot.add_argument("--display-name", default=None)
+    p_boot.add_argument(
+        "--engagement",
+        default=None,
+        help="If set, assign the owner role on this engagement (ENG-NNN).",
+    )
+
+    p_mint = sub.add_parser("mint", help="Mint a token for an existing principal.")
+    p_mint.add_argument("--principal", required=True)
+    p_mint.add_argument("--label", default="")
+
+    p_list = sub.add_parser("list", help="List tokens (optionally by principal).")
+    p_list.add_argument("--principal", default=None)
+
+    p_revoke = sub.add_parser("revoke", help="Revoke a token by id.")
+    p_revoke.add_argument("--token", required=True)
+
+    args = parser.parse_args()
+
+    if args.cmd == "bootstrap-owner":
+        with session_scope() as s:
+            owner = P.get_or_create_owner(
+                s, identity=args.identity, display_name=args.display_name
+            )
+            if args.engagement:
+                P.assign_role(
+                    s,
+                    principal_id=owner.principal_id,
+                    engagement_id=args.engagement,
+                    role="owner",
+                )
+            minted = P.mint_token(
+                s, principal_id=owner.principal_id, label="bootstrap"
+            )
+            print(f"owner principal: {owner.principal_id} ({owner.identity})")
+            print(f"token id:        {minted.token_id}")
+            print(f"token (once):    {minted.plaintext}")
+        return 0
+
+    if args.cmd == "mint":
+        with session_scope() as s:
+            minted = P.mint_token(
+                s, principal_id=args.principal, label=args.label
+            )
+            print(f"token id:     {minted.token_id}")
+            print(f"token (once): {minted.plaintext}")
+        return 0
+
+    if args.cmd == "list":
+        with session_scope() as s:
+            for t in P.list_tokens(s, principal_id=args.principal):
+                state = "revoked" if t.revoked_at else "active"
+                print(f"{t.token_id}  {t.principal_id}  [{state}]  {t.label}")
+        return 0
+
+    if args.cmd == "revoke":
+        with session_scope() as s:
+            P.revoke_token(s, args.token)
+            print(f"revoked {args.token}")
+        return 0
+
+    return 2
