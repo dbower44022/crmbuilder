@@ -160,6 +160,7 @@ def create_app() -> FastAPI:
     app.include_router(registry.agent_profiles_router)
     app.include_router(registry.skills_router)
     app.include_router(registry.governance_rules_router)
+    app.include_router(registry.learnings_router)
 
     @app.get("/", tags=["meta"], include_in_schema=False)
     def root():

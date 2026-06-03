@@ -27,9 +27,11 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.repositories import (
     agent_profiles,
     governance_rules,
+    learnings,
     references,
     skills,
 )
+from crmbuilder_v2.access.vocab import LEARNING_TIERS
 
 _HAS_SKILL = "agent_profile_has_skill"
 _GOVERNED_BY = "agent_profile_governed_by_rule"
@@ -119,11 +121,34 @@ def resolve_contract(
             {"identifier": r["identifier"], "body": r["body"]} for r in advisory_rules
         ],
         "enforced_ruleset": enforced_ruleset,
-        # Injected from slice 4 (the write-back lifecycle); empty until then.
-        "active_learnings": [],
+        "active_learnings": _active_learnings(session, profile, engagement_id),
     }
     contract["version_stamp"] = _version_stamp(profile, visible_skills, visible_rules)
     return contract
+
+
+def _active_learnings(session: Session, profile: dict, engagement_id: str | None) -> list[dict]:
+    """Inject the active (area, tier) learnings in scope (PRD §13.2 / D-δ4).
+
+    Matched by the profile's area + tier (when the tier is a learning tier —
+    orchestrator/pi_lead profiles carry none). "All active" today; a relevance-
+    retrieval step at scale is an open question (PRD §10.6).
+    """
+    if profile["tier"] not in LEARNING_TIERS:
+        return []
+    candidates = learnings.list_all(
+        session, area=profile["area"], tier=profile["tier"], status="active"
+    )
+    return [
+        {
+            "identifier": lrn["identifier"],
+            "category": lrn["category"],
+            "content": lrn["content"],
+            "confidence": lrn["confidence"],
+        }
+        for lrn in candidates
+        if lrn.get("engagement_id") is None or lrn.get("engagement_id") == engagement_id
+    ]
 
 
 def _version_stamp(profile: dict, skill_records: list[dict], rule_records: list[dict]) -> str:

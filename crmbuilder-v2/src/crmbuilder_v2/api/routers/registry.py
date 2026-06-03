@@ -14,6 +14,7 @@ from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.repositories import (
     agent_profiles,
     governance_rules,
+    learnings,
     registry_resolver,
     skills,
 )
@@ -24,6 +25,10 @@ from crmbuilder_v2.api.schemas import (
     AgentProfileUpdateIn,
     GovernanceRuleCreateIn,
     GovernanceRuleUpdateIn,
+    LearningCaptureIn,
+    LearningCreateIn,
+    LearningEvidenceIn,
+    LearningUpdateIn,
     SkillCreateIn,
     SkillUpdateIn,
 )
@@ -178,3 +183,67 @@ def update_governance_rule(identifier: str, body: GovernanceRuleUpdateIn):
 def delete_governance_rule(identifier: str):
     with writable_session() as s:
         return ok(governance_rules.delete(s, identifier))
+
+
+# --------------------------------------------------------------------------
+# learnings (PI-122 slice 3)
+# --------------------------------------------------------------------------
+learnings_router = APIRouter(prefix="/learnings", tags=["learnings"])
+
+
+@learnings_router.get("")
+def list_learnings(
+    area: str | None = None,
+    tier: str | None = None,
+    category: str | None = None,
+    status: str | None = None,
+    scope: str | None = None,
+):
+    with readonly_session() as s:
+        return ok(learnings.list_all(
+            s, area=area, tier=tier, category=category, status=status, scope=scope
+        ))
+
+
+@learnings_router.get("/next-identifier")
+def learning_next_identifier():
+    with readonly_session() as s:
+        return ok({"next": learnings.compute_next_identifier(s)})
+
+
+@learnings_router.post("", status_code=201)
+def create_learning(body: LearningCreateIn):
+    with writable_session() as s:
+        return ok(learnings.create(s, **body.model_dump()))
+
+
+@learnings_router.post("/capture", status_code=201)
+def capture_learning(body: LearningCaptureIn):
+    with writable_session() as s:
+        return ok(learnings.capture(s, **body.model_dump()))
+
+
+@learnings_router.get("/{identifier}")
+def get_learning(identifier: str):
+    with readonly_session() as s:
+        return ok(learnings.get(s, identifier))
+
+
+@learnings_router.post("/{identifier}/evidence")
+def add_learning_evidence(identifier: str, body: LearningEvidenceIn):
+    with writable_session() as s:
+        return ok(learnings.add_evidence(s, identifier, **body.model_dump()))
+
+
+@learnings_router.patch("/{identifier}")
+def update_learning(identifier: str, body: LearningUpdateIn):
+    provided = body.model_dump(exclude_unset=True)
+    scope = provided.pop("scope", None)
+    with writable_session() as s:
+        return ok(learnings.update(s, identifier, scope=scope, **provided))
+
+
+@learnings_router.delete("/{identifier}")
+def delete_learning(identifier: str):
+    with writable_session() as s:
+        return ok(learnings.delete(s, identifier))

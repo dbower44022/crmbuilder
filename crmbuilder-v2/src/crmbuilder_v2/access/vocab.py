@@ -997,12 +997,25 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         # conversation→conversation kinds; the same-type ``supersedes``
         # clause earlier already admits supersession for this pair too.
         kinds.add("conversation_orchestrates_conversation")
-    # PI-122 Agent Profile Registry binding edges (slice 2). The learning
-    # edges' clauses are added with the learning repo (slice 3).
+    # PI-122 Agent Profile Registry binding edges (slice 2).
     if source_type == "agent_profile" and target_type == "skill":
         kinds.add("agent_profile_has_skill")
     if source_type == "agent_profile" and target_type == "governance_rule":
         kinds.add("agent_profile_governed_by_rule")
+    # PI-122 learning edges (slice 3; PRD §13.2). Evidence currently spans
+    # work_task / decision / test_spec; the ``learning_derived_from → finding``
+    # pair (D-δ6) is added when the finding entity lands. ``learning_promoted_to``
+    # links a promoted learning to the skill/rule it became.
+    if source_type == "learning" and target_type in (
+        "work_task",
+        "decision",
+        "test_spec",
+    ):
+        kinds.add("learning_derived_from")
+    if source_type == "learning" and target_type == "work_task":
+        kinds.add("learning_contradicted_by")
+    if source_type == "learning" and target_type in ("skill", "governance_rule"):
+        kinds.add("learning_promoted_to")
     return frozenset(kinds)
 
 

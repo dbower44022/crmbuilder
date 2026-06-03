@@ -289,6 +289,47 @@ class GovernanceRuleUpdateIn(_Base):
     scope: str | None = None
 
 
+class LearningCreateIn(_Base):
+    identifier: str | None = None
+    area: str
+    tier: str
+    category: str
+    content: str
+    status: str = "active"
+    confidence: int = 0
+    scope: str | None = None
+
+
+class LearningUpdateIn(_Base):
+    area: str | None = None
+    tier: str | None = None
+    category: str | None = None
+    content: str | None = None
+    status: str | None = None
+    confidence: int | None = None
+    scope: str | None = None
+
+
+class LearningCaptureIn(_Base):
+    """POST /learnings/capture — capture at Work-Task close, optional evidence."""
+
+    area: str
+    tier: str
+    category: str
+    content: str
+    evidence_type: str | None = None
+    evidence_id: str | None = None
+    scope: str | None = None
+
+
+class LearningEvidenceIn(_Base):
+    """POST /learnings/{id}/evidence — accumulate (or contradict) evidence."""
+
+    target_type: str
+    target_id: str
+    contradicts: bool = False
+
+
 # ---------- Domains (methodology entity, UI v0.4 slice B) ----------
 
 
