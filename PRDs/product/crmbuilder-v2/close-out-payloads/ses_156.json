@@ -1,0 +1,244 @@
+{
+ "label": "PI-gamma build-closure \u2014 identity/auth/RBAC + PI-beta follow-ons (PRJ-019)",
+ "session": {
+  "session_identifier": "SES-156",
+  "session_title": "PI-gamma build-closure \u2014 identity, authentication & RBAC (Production Multi-Tenant API)",
+  "session_medium": "chat",
+  "session_medium_metadata": {
+   "runner": "claude-code",
+   "kind": "build-closure"
+  },
+  "session_participants": [
+   "Doug Bower",
+   "Claude"
+  ],
+  "session_status": "complete",
+  "session_executive_summary": "PI-gamma (identity / authentication / RBAC, PRJ-019) built + closed on pi-gamma-rbac, merged FF to main, with the three PI-beta follow-ons. Every request now carries an authenticated principal (human or AI service agent) whose per-engagement roles compose with the row-level engagement scope. New principals/api_tokens/role_assignments tables; a resolve_principal bearer chokepoint + outermost middleware; an RBAC guard + engagement-selection gate; change_log principal attribution; agents as scoped service principals; an owner-gated /admin surface + a crmbuilder-v2-token CLI. Gated by principal_auth_enabled (default OFF -> a synthetic default-owner), so the localhost flow is unchanged. Part A cleared the three follow-ons. Records DEC-379 and resolves PI-127.",
+  "session_description": "PI-gamma build-closure: ingests the eleven commits since the PI-beta closure (the kickoff prompt, the three PI-beta follow-ons A1/A2/A3, the PI-gamma Architecture pass, and the six-slice RBAC build plus a migration-test fixup), records the build as DEC-379, and resolves PI-127. PI-gamma was built directly (no ADO phase decomposition), so there is no workstream-completion step. Merged FF to main at 059d046."
+ },
+ "conversation": {
+  "conversation_identifier": "CNV-058",
+  "conversation_title": "PI-gamma build-closure \u2014 identity, authentication & RBAC",
+  "conversation_purpose": "Close out PI-gamma: ingest the build commits, record the build decision, and resolve PI-127.",
+  "conversation_description": "Built the PI-beta follow-ons + the six-slice RBAC substrate (principals/tokens/roles, resolve_principal middleware, RBAC enforcement, change_log attribution, agent service principals, admin surface + MCP token) and authored this build-closure.",
+  "conversation_status": "complete",
+  "conversation_summary": "Resolved PI-127; recorded DEC-379; ingested the eleven commits since the PI-beta closure.",
+  "references": [
+   {
+    "source_type": "conversation",
+    "source_id": "CNV-058",
+    "target_type": "session",
+    "target_id": "SES-156",
+    "relationship": "conversation_belongs_to_session"
+   }
+  ]
+ },
+ "work_tickets": [],
+ "planning_items": [],
+ "commits": [
+  {
+   "commit_sha": "3d1e15c8603415ea056819a4344efea65cdef700",
+   "commit_message_first_line": "v2: kickoff prompt \u2014 PI-beta follow-ons (MCP engagement / drop export_dir column / enumerate_commits) then PI-gamma RBAC",
+   "commit_message_full": "v2: kickoff prompt \u2014 PI-beta follow-ons (MCP engagement / drop export_dir column / enumerate_commits) then PI-gamma RBAC\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T00:54:34-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "14bedeb0d5580678881b80dbb3aacbcf0d9fee03"
+   ],
+   "commit_files_changed_count": 1
+  },
+  {
+   "commit_sha": "16440dcf49bd0d8290cbac351833a70a73dfea90",
+   "commit_message_first_line": "v2: PI-beta follow-on A3 \u2014 repoint enumerate_commits off deleted db-export snapshot",
+   "commit_message_full": "v2: PI-beta follow-on A3 \u2014 repoint enumerate_commits off deleted db-export snapshot\n\nThe last-ingested-SHA source defaults to the live REST API\n(GET /commits?commit_repository=...&sort=commit_committed_at&order=desc,\nX-Engagement header) instead of the deleted db-export/commits.json tree.\n--engagement-db-export remains an offline opt-in; an unreachable API warns\nand degrades to full history rather than erroring. Adds --api-base /\n--engagement flags.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T01:08:42-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "3d1e15c8603415ea056819a4344efea65cdef700"
+   ],
+   "commit_files_changed_count": 2
+  },
+  {
+   "commit_sha": "af4d807ff9ed681401500de323049e9f3c0a26dd",
+   "commit_message_first_line": "v2: PI-beta follow-on A1 \u2014 MCP per-engagement selection",
+   "commit_message_full": "v2: PI-beta follow-on A1 \u2014 MCP per-engagement selection\n\nThe MCP server names the active engagement on its REST calls via the\nX-Engagement header, mirroring the desktop. New CRMBUILDER_V2_MCP_ENGAGEMENT\nconfig default is sent on every call when set (empty => unscoped, correct\nfor the single-engagement dogfood). New select_engagement / get_active_engagement\ntools override/read it per session.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T01:11:13-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "16440dcf49bd0d8290cbac351833a70a73dfea90"
+   ],
+   "commit_files_changed_count": 4
+  },
+  {
+   "commit_sha": "4d7c1a98e96bf88dc21bbf48b1864e5739ad2906",
+   "commit_message_first_line": "v2: PI-beta follow-on A2 \u2014 drop vestigial engagement_export_dir column + UI",
+   "commit_message_full": "v2: PI-beta follow-on A2 \u2014 drop vestigial engagement_export_dir column + UI\n\nPI-beta removed the snapshot/export machinery and the write-time export gate,\nleaving engagement_export_dir a dead column nothing reads. This is the\ndeferred schema-change pass: drop the column, model field, _validate_export_dir,\nand all UI for it.\n\n- access: drop the ORM column (models.py), the Engagement dataclass field\n  (engagement_models.py), _validate_export_dir + create/update/patch plumbing\n  (engagement.py).\n- api: drop the field from the three engagement schemas + the create/replace\n  router calls.\n- migrations: SQLite chain 0040 (batch drop_column) + PG chain\n  0002_drop_engagement_export_dir (inspector-guarded, no-op on a fresh baseline).\n- ui: drop the export-dir CRUD field + directory-browser/emphasis/confirm\n  affordances (engagement_crud, _engagement_schema), the ExportDirWarningBand\n  + panel wiring + detail row (panels/engagements), the dead export-dir\n  write-gate error path (base/crud_dialog), the connection-info Export\n  directory row, and the field from the engagement hydration constructors\n  (main_window, new_engagement_dialog).\n- tests: drop the export-dir-specific dialog/panel tests and the kwarg from\n  Engagement constructors.\n\nSuite green (2183 passed); the only failures are the documented pre-existing\n18 (test_0037 catalog-chain-from-scratch + 17 apply_close_out branch-guard,\nexpected off main).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T01:34:22-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "af4d807ff9ed681401500de323049e9f3c0a26dd"
+   ],
+   "commit_files_changed_count": 20
+  },
+  {
+   "commit_sha": "ffff4a694618c13b925f0a7657cbaba92c65a775",
+   "commit_message_first_line": "v2: PI-gamma Architecture/scoping pass \u2014 identity, authentication & RBAC",
+   "commit_message_full": "v2: PI-gamma Architecture/scoping pass \u2014 identity, authentication & RBAC\n\nPI-gamma's Architecture phase (refines program design D2/D3/D4/D5-final) for\nPRJ-019, grounded in a survey of the current auth/middleware/access surface (the\nREST API is unauthenticated today; scope_middleware is the chokepoint pattern;\nchange_log.actor + claimed_by half-implement agent identity; the MCP OAuth AS is\nseparate).\n\nDecisions: principals + hashed api_tokens (system/shared tables, both migration\nchains); a resolve_principal chokepoint + bearer middleware mirroring the\nengagement-scope ContextVar, outermost so the engagement selection validates\nagainst the principal's allowed_engagements; roles + per-engagement\nrole_assignments with a thin require(permission) guard composed with the scope;\nADO agents as scoped service principals (orchestrator mints tokens at spawn,\nclaimed_by/change_log become real principal references); per-request engagement\nvalidated against the principal. Auth gated behind principal_auth_enabled\n(default off -> default owner principal) so the single-operator localhost flow is\nunbroken; OIDC/SSO deferred as an additive issuer (the shelved MCP OAuth AS /\nCloudflare setup plugs in later). 6-slice build order. Sequencing: depends on\nPI-alpha, composes with PI-beta -> land alpha -> beta -> gamma.\n\nBranch pi-gamma-rbac off main.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-02T19:02:57-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "4d7c1a98e96bf88dc21bbf48b1864e5739ad2906"
+   ],
+   "commit_files_changed_count": 1
+  },
+  {
+   "commit_sha": "6bc12888bb0fcaa3c9cc7b5dc2ccd3ed790bd99f",
+   "commit_message_first_line": "v2: PI-gamma slice 1 \u2014 principals/api_tokens/role_assignments schema + access layer",
+   "commit_message_full": "v2: PI-gamma slice 1 \u2014 principals/api_tokens/role_assignments schema + access layer\n\nSystem/shared identity+RBAC substrate (PI-127, auth off by default):\n- models: PrincipalRow / ApiTokenRow / RoleAssignmentRow (plain Base, no\n  engagement_id discriminator; role_assignments carries an engagement FK).\n- vocab: PRINCIPAL_KINDS/STATUSES, RBAC_ROLES/PERMISSIONS, ROLE_PERMISSIONS map.\n- access/principal.py: create_principal, mint/validate/revoke token (SHA-256\n  hashed, plaintext shown once), assign_role, _build_principal, get_or_create_owner,\n  mint_agent_principal (D-gamma4 orchestrator helper).\n- access/principal_scope.py: Principal dataclass + _active_principal ContextVar\n  + DEFAULT_OWNER synthetic principal (auth-off path).\n- access/rbac.py: principal_permissions / has_permission / check() guard, no-op\n  when principal_auth_enabled off.\n- config: principal_auth_enabled (default False).\n- migrations: SQLite 0041 + PG 0003 (both inspector-guarded for the\n  create_all-then-upgrade-head test path).\n\nTests: access/test_principal.py (13) + migration/test_0041 (2), all green.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T01:45:20-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "ffff4a694618c13b925f0a7657cbaba92c65a775"
+   ],
+   "commit_files_changed_count": 11
+  },
+  {
+   "commit_sha": "d4f333e1372d304bb145fbf50109ea7e87815d60",
+   "commit_message_first_line": "v2: PI-gamma slice 2 \u2014 resolve_principal + bearer middleware (auth off by default)",
+   "commit_message_full": "v2: PI-gamma slice 2 \u2014 resolve_principal + bearer middleware (auth off by default)\n\n- api/principal_middleware.py: pure-ASGI PrincipalMiddleware + resolve_principal\n  chokepoint. Reads Authorization: Bearer, validates via the access layer, sets\n  the _active_principal ContextVar. Auth off => synthetic DEFAULT_OWNER (zero\n  tokens, unchanged behavior). Auth on => 401 envelope on missing/invalid token\n  (except the health/docs/root allowlist).\n- main.py: add PrincipalMiddleware AFTER EngagementScopeMiddleware so it is\n  outermost (principal set before engagement resolution).\n- tests: api/test_principal_middleware.py (5). API+MCP suites green (auth-off\n  transparent).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T01:50:02-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "6bc12888bb0fcaa3c9cc7b5dc2ccd3ed790bd99f"
+   ],
+   "commit_files_changed_count": 3
+  },
+  {
+   "commit_sha": "147b5ad697173567605bc489add962ecd55109ea",
+   "commit_message_first_line": "v2: PI-gamma slice 3 \u2014 RBAC enforcement (engagement-selection gate + require guard)",
+   "commit_message_full": "v2: PI-gamma slice 3 \u2014 RBAC enforcement (engagement-selection gate + require guard)\n\n- scope_middleware: when auth on, validate the selected X-Engagement against\n  the active principal's allowed_engagements (403 engagement_forbidden);\n  skipped for a None principal (public/allowlisted paths) and unscoped requests.\n- api/principal_deps.py: require_permission(perm) FastAPI dependency composing\n  rbac.check with the active engagement + principal (no-op when auth off).\n- errors.py + main.py: PermissionDenied -> 403 envelope handler.\n- test_0038: identify scoped tables by EngagementScopedMixin membership, not by\n  the presence of an engagement_id column (role_assignments legitimately carries\n  an engagement FK without being a row-scoped tenant table).\n- tests: engagement-selection 403 + require_permission, all green.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T01:54:11-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "d4f333e1372d304bb145fbf50109ea7e87815d60"
+   ],
+   "commit_files_changed_count": 6
+  },
+  {
+   "commit_sha": "9dae028462daed23bfe8f343e14261fd0b0dd541",
+   "commit_message_first_line": "v2: PI-gamma slice 4 \u2014 change_log principal attribution + claim-identity guard",
+   "commit_message_full": "v2: PI-gamma slice 4 \u2014 change_log principal attribution + claim-identity guard\n\n- change_log: principal_id soft-reference column (plain string, not a FK, so the\n  append-only audit log outlives a deleted principal); emit() now stamps actor\n  (user/service_agent) + principal_id from the active principal. Default-owner\n  (auth off) and no-principal callers keep actor=claude_session / principal_id\n  NULL, so existing attribution is unchanged.\n- vocab: CHANGE_LOG_ACTORS gains service_agent + user.\n- work_tasks claim/release: enforce_claim_identity \u2014 an agent may only claim as\n  itself when auth is on (owner bypass); no-op when auth off.\n- migrations: SQLite 0042 + PG 0004 (add column + rebuild actor CHECK, guarded).\n- tests: attribution (6) + migration round-trip (2), all green.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T01:59:10-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "147b5ad697173567605bc489add962ecd55109ea"
+   ],
+   "commit_files_changed_count": 9
+  },
+  {
+   "commit_sha": "3d889e42a18bc08643c0979a3a6f3c00e0ee0889",
+   "commit_message_first_line": "v2: PI-gamma slices 5-6 \u2014 agent service principals + admin surface + MCP token",
+   "commit_message_full": "v2: PI-gamma slices 5-6 \u2014 agent service principals + admin surface + MCP token\n\n- api/routers/principals.py: owner-gated /admin surface \u2014 create principals,\n  assign roles, mint/list/revoke tokens (plaintext returned once), disable\n  principals, and POST /admin/agents (the ADO orchestrator's D-gamma4 agent-mint:\n  engagement-scoped service principal + token in one call). require_permission(\n  'admin') gates all routes (no-op auth-off so the localhost flow can provision\n  the first owner).\n- mcp_server: forward Authorization: Bearer from CRMBUILDER_V2_MCP_TOKEN (no-op\n  auth-off); config.mcp_token added.\n- cli: crmbuilder-v2-token (bootstrap-owner / mint / list / revoke) over the\n  access layer directly (works before any token exists); registered in pyproject.\n- tests: admin endpoints + owner-gating + MCP forwarding (4), all green.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T02:02:17-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "9dae028462daed23bfe8f343e14261fd0b0dd541"
+   ],
+   "commit_files_changed_count": 7
+  },
+  {
+   "commit_sha": "059d04627ded1efa627731b0743f229a0afbc308",
+   "commit_message_first_line": "v2: PI-gamma \u2014 pin migration 0041/0042 tests to explicit revisions",
+   "commit_message_full": "v2: PI-gamma \u2014 pin migration 0041/0042 tests to explicit revisions\n\nupgrade head + downgrade -1 broke once 0042 became head (0041's single-step\ndowngrade then only undid 0042). Target explicit revisions so the per-migration\nround-trip tests stay isolated from later chain growth.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T02:08:57-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "3d889e42a18bc08643c0979a3a6f3c00e0ee0889"
+   ],
+   "commit_files_changed_count": 2
+  }
+ ],
+ "decisions": [
+  {
+   "identifier": "DEC-379",
+   "title": "PI-gamma identity/auth/RBAC + PI-beta follow-ons \u2014 build decisions and findings",
+   "decision_date": "2026-06-03",
+   "status": "Active",
+   "context": "PRJ-019's Production Multi-Tenant API program: PI-alpha (Postgres, Resolved), PI-beta (de-file + kill snapshots, Resolved/PI-126), and PI-gamma (RBAC, PI-127). PI-123 made the data multi-tenant and PI-beta made it a file-free Postgres-capable service; PI-gamma makes it multi-user. This closure also clears the three follow-ons PI-beta intentionally deferred.",
+   "decision": "(1) Roles are a fixed vocabulary (RBAC_ROLES + ROLE_PERMISSIONS) rather than a table; role_assignments(principal_id, engagement_id, role) carries the per-engagement grant with a CHECK on role. (2) principals + api_tokens are system/shared tables (no engagement_id discriminator); api_tokens stores only a SHA-256 hash of the high-entropy bearer (plaintext shown once), keeping validation an O(1) indexed lookup. (3) resolve_principal is the single auth chokepoint; PrincipalMiddleware is pure-ASGI and OUTERMOST (added after the engagement middleware) so the principal is set before engagement resolution. (4) RBAC composes in two places: the scope middleware rejects an X-Engagement outside the principal's allowed_engagements (403), and require_permission()/rbac.check() guards operations. (5) change_log gains a principal_id SOFT reference (plain string, not a FK, so the append-only log outlives a deleted principal) + actor kinds user/service_agent; claim/release enforce that an agent claims only as itself. (6) Agents are engagement-scoped service principals: mint_agent_principal + POST /admin/agents mint a principal + token in one call. (7) All gated by principal_auth_enabled (default OFF -> DEFAULT_OWNER). Part A: a CRMBUILDER_V2_MCP_ENGAGEMENT default + select_engagement tool send X-Engagement from MCP; the vestigial engagement_export_dir column + its UI were dropped (SQLite 0040 + PG 0002, inspector-guarded); enumerate_commits reads the last-ingested SHA from the live API by default.",
+   "rationale": "PI-123 made the data multi-tenant and PI-alpha/PI-beta made it a Postgres service with no file apparatus; PI-gamma makes it multi-USER along the same query path. Mirroring the engagement-scope ContextVar/middleware pattern keeps the principal layer a thin, familiar composition. Default-OFF auth preserves the single-operator localhost flow and keeps the whole suite green, while the substrate is ready to turn on in the deployed managed-PG service. A future OIDC/SSO issuer is a second implementation feeding the same Principal \u2014 the abstraction is the point. PI-122 (Agent Profile Registry) consumes this principal model + the system|engagement scope.",
+   "alternatives_considered": "A roles table (rejected for now: the role set is small and fixed; a vocabulary + CHECK is simpler and the registry/UI can drive from RBAC_ROLES). A hard FK from change_log to principals (rejected: an append-only audit log must outlive a deleted principal; SET NULL erases attribution and CASCADE erases history, so a soft string reference is correct). A stretched KDF for tokens (rejected: tokens are 256-bit random secrets, so SHA-256 is the standard hash and preserves O(1) lookup). Rejecting unauthenticated requests inside every router (rejected: the middleware 401 with a public allowlist is the single honest gate; fine-grained per-entity permissions are deferred per 'start coarse').",
+   "consequences": "Multi-user auth is in place but inert until principal_auth_enabled is turned on (deployed managed-PG). Build finding load-bearing for the closure: the live unified DB is create_all-managed (no alembic_version row), so the PI-gamma schema delta was applied to it directly via create_all (the three RBAC tables) + ALTER change_log ADD COLUMN principal_id, rather than alembic upgrade; the actor-CHECK widening and the engagement_export_dir drop are deferred on the live DB (harmless with auth off and the access layer no longer referencing the column). Both Alembic chains (SQLite 0040-0042, PG 0002-0004) carry the full schema for fresh builds. Deferred: the ADO orchestrator runtime that mints/spawns agents (PI-122), OIDC/SSO, and finer-grained permissions.",
+   "executive_summary": "Records PI-gamma's build: principals + hashed api_tokens + per-engagement role_assignments (roles as a fixed vocabulary, not a table); a resolve_principal bearer chokepoint with an outermost pure-ASGI middleware mirroring the engagement scope; RBAC enforced as an engagement-selection gate plus a require_permission guard; change_log principal attribution via a soft principal_id reference; agents as engagement-scoped service principals (mint_agent_principal + /admin/agents); an owner-gated /admin surface and a crmbuilder-v2-token CLI. Gated by principal_auth_enabled (default OFF -> a synthetic default-owner). Also clears the three PI-beta follow-ons. Build finding: the live DB is create_all-managed, so its schema delta was applied directly."
+  }
+ ],
+ "references": [
+  {
+   "source_type": "session",
+   "source_id": "SES-156",
+   "target_type": "project",
+   "target_id": "PRJ-019",
+   "relationship": "session_belongs_to_project"
+  },
+  {
+   "source_type": "conversation",
+   "source_id": "CNV-058",
+   "target_type": "project",
+   "target_id": "PRJ-019",
+   "relationship": "conversation_belongs_to_project"
+  },
+  {
+   "source_type": "session",
+   "source_id": "SES-156",
+   "target_type": "session",
+   "target_id": "SES-155",
+   "relationship": "session_follows_from"
+  },
+  {
+   "source_type": "decision",
+   "source_id": "DEC-379",
+   "target_type": "conversation",
+   "target_id": "CNV-058",
+   "relationship": "decided_in"
+  }
+ ],
+ "resolves_planning_items": [
+  {
+   "planning_item_identifier": "PI-127"
+  }
+ ],
+ "addresses_planning_items": []
+}
