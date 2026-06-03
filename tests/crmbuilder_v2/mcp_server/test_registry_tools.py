@@ -75,11 +75,42 @@ async def test_create_profile_and_capture_learning_over_mcp(mcp):
     assert lrn["confidence"] == 0
 
 
-def test_seed_system_profiles_is_idempotent(v2_env):
+def test_seed_decomposes_proven_prompts_into_resolvable_contracts(v2_env):
+    """The seed ingests the proven prompts as REAL content — resolving a seeded
+    profile reconstructs the proven contract (prompt + tools + ruleset), not a
+    placeholder pointer."""
+    from crmbuilder_v2.access.repositories import agent_profiles, registry_resolver
+
     with session_scope() as s:
         created = seed_system_profiles(s)
         assert len(created) == 2
         assert all(p["scope"] == "system" for p in created)
+
+        archs = agent_profiles.list_all(s, area="storage", tier="architect")
+        arch_contract = registry_resolver.resolve_contract(s, archs[0]["identifier"])
+        # The real proven Architect prompt body — not a one-line pointer.
+        assert "your one job" in arch_contract["system_prompt"].lower()
+        assert "feed-forward" in arch_contract["system_prompt"].lower()
+        # Its tool-skills are the substrate endpoints it drives.
+        callables = {t["backing_callable"] for t in arch_contract["tools"]}
+        assert any("/scope" in c for c in callables)
+        assert any("prior-phase-outputs" in c for c in callables)
+        # Advisory rules composed in; no enforced rule for the scoper.
+        assert "layer rank" in arch_contract["system_prompt"].lower()
+        assert arch_contract["enforced_ruleset"] == []
+
+        devs = agent_profiles.list_all(s, area="storage", tier="developer")
+        dev_contract = registry_resolver.resolve_contract(s, devs[0]["identifier"])
+        assert "self-verify" in dev_contract["system_prompt"].lower() or any(
+            "self-verify" in r["body"].lower() for r in dev_contract["enforced_ruleset"]
+        )
+        # The Developer's self-verify gate is an ENFORCED rule.
+        assert any(
+            "ruff" in r["body"].lower() and "pytest" in r["body"].lower()
+            for r in dev_contract["enforced_ruleset"]
+        )
+        assert any("/claim" in t["backing_callable"] for t in dev_contract["tools"])
+
+    # Idempotent on re-run.
     with session_scope() as s:
-        again = seed_system_profiles(s)
-        assert again == []  # nothing new on re-run
+        assert seed_system_profiles(s) == []
