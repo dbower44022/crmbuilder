@@ -1,0 +1,34 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_157.json
+Label:  PI-122 build-closure — Agent Profile Registry (ADO §10 follow-on)
+Deposit event: DEP-152
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-059 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (7 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-380 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  CNV-059 conversation_belongs_to_project PRJ-018 (HTTP 201)
+  ✓ POST references  SES-157 session_follows_from SES-156 (HTTP 201)
+  ✓ POST references  DEC-380 decided_in CNV-059 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-122 (HTTP 201)
+
+✓ All 14 operations complete.
+
+✓ Recorded apply as deposit_event DEP-152 (HTTP 201).

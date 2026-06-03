@@ -1,0 +1,188 @@
+{
+ "label": "PI-122 build-closure \u2014 Agent Profile Registry (ADO \u00a710 follow-on)",
+ "session": {
+  "session_identifier": "SES-157",
+  "session_title": "PI-122 build-closure \u2014 Agent Profile Registry",
+  "session_medium": "chat",
+  "session_medium_metadata": {
+   "runner": "claude-code",
+   "kind": "build-closure"
+  },
+  "session_participants": [
+   "Doug Bower",
+   "Claude"
+  ],
+  "session_status": "complete",
+  "session_executive_summary": "PI-122 (Agent Profile Registry, the ADO \u00a710 follow-on, PRJ-018) built + closed on pi-122-registry, merged FF to main. A REST/access/MCP substrate on the landed PI-123 unified DB + PI-\u03b3 principals: four system/shared entities with a nullable engagement_id scope (NULL=system, set=overlay) \u2014 agent_profile, skill, governance_rule, learning. A resolver composes a profile into an effective contract (prompt + tools + enforced ruleset + active learnings + version stamp) via the System \u222a overlay merge; a write-back lifecycle captures -> accumulates -> promotes (enforced rules always human-reviewed) -> curates, with cross-engagement promotion (DEC-373). MCP tools + two proven prompts seeded; agent_profile=template, PI-\u03b3 principal=instance. Records DEC-380, resolves PI-122.",
+  "session_description": "PI-122 build-closure: ingests the seven commits (Architecture pass + six Development slices), records the build as DEC-380, and resolves PI-122. Built scope-aware against the unified DB directly (its blocked_by PI-123 is Resolved). Merged FF to main at 6fe3a98."
+ },
+ "conversation": {
+  "conversation_identifier": "CNV-059",
+  "conversation_title": "PI-122 build-closure \u2014 Agent Profile Registry",
+  "conversation_purpose": "Close out PI-122: ingest the build commits, record the build decision, and resolve PI-122.",
+  "conversation_description": "Built the Agent Profile Registry substrate (4 entities, resolver, write-back lifecycle, cross-engagement learning, MCP tools, seed) across an Architecture pass + six slices and authored this build-closure.",
+  "conversation_status": "complete",
+  "conversation_summary": "Resolved PI-122; recorded DEC-380; ingested the seven PI-122 commits.",
+  "references": [
+   {
+    "source_type": "conversation",
+    "source_id": "CNV-059",
+    "target_type": "session",
+    "target_id": "SES-157",
+    "relationship": "conversation_belongs_to_session"
+   }
+  ]
+ },
+ "work_tickets": [],
+ "planning_items": [],
+ "commits": [
+  {
+   "commit_sha": "8d7cd0304a39c3471691c8590c06723e50824db2",
+   "commit_message_first_line": "v2: PI-122 Architecture/scoping pass \u2014 Agent Profile Registry",
+   "commit_message_full": "v2: PI-122 Architecture/scoping pass \u2014 Agent Profile Registry\n\nBuild-ready design for PI-122 (the ADO \u00a710 agent-profile registry), turning\nregistry PRD v0.3 into a plan against the now-landed foundation (PI-123 unified\nDB + PI-beta header-per-request + PI-gamma principals). Key decisions:\n\n- D-\u03b41: four governance entities \u2014 agent_profile (AGP-), skill (SKL-),\n  governance_rule (GVR-), learning (LRN-).\n- D-\u03b42 (load-bearing): scope-awareness = a NULLABLE engagement_id on plain Base\n  tables (NULL=system, set=engagement overlay), mirroring PI-gamma's\n  role_assignments \u2014 NOT EngagementScopedMixin (which would force NOT NULL +\n  hide system rows). Cross-engagement learning becomes a GROUP BY across\n  engagement_id, the unified-DB payoff the PRD predicted.\n- D-\u03b43: roster per (area \u00d7 tier); seed the two proven prompts as system profiles.\n- D-\u03b44: resolver returns a runtime-ready effective contract = System \u222a\n  engagement-overlay (+ active learnings).\n- D-\u03b45: agent_profile=template, PI-gamma service_agent principal=instance; the\n  runtime joins them via mint_agent_principal(agent_tier/agent_area) \u2014 the\n  columns PI-gamma added anticipating this. No PI-gamma change needed.\n- D-\u03b46: learning_derived_from\u2192finding edge lands with the reconciliation build;\n  PI-122 ships learning + edges to today's targets, decoupled.\n- D-\u03b47: promotion gate reuses hybrid governance (enforced rules always human).\n\n6-slice build order + maps onto the existing WSK-002..007 phase workstreams.\nRuntime scheduler stays the separate \u00a710 follow-on. No build code.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T13:07:09-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "50918652e97c4f25b0f0762fd030ba91354c587e"
+   ],
+   "commit_files_changed_count": 1
+  },
+  {
+   "commit_sha": "74c6e150ed8d87d4a8fb8ec5c81417897c7ac3bf",
+   "commit_message_first_line": "v2: PI-122 slice 1 \u2014 Agent Profile Registry catalog entities (scope-aware)",
+   "commit_message_full": "v2: PI-122 slice 1 \u2014 Agent Profile Registry catalog entities (scope-aware)\n\nThree catalog governance entities (D-\u03b41) + the learning table (built in slice 3):\n- models: AgentProfileRow (AGP-), SkillRow (SKL-), GovernanceRuleRow (GVR-),\n  LearningRow (LRN-) \u2014 plain Base with a NULLABLE engagement_id (D-\u03b42: NULL=system,\n  set=engagement overlay), identifier-format + vocab + status CHECKs.\n- vocab: 4 entity types + AGENT_PROFILE_TIERS / SKILL_KINDS / RULE_ENFORCEMENT_MODES\n  / REGISTRY_STATUSES / LEARNING_* enums.\n- access: agent_profiles / skills / governance_rules repos (CRUD + change_log +\n  server-assigned identifiers) + shared _registry scope helper (scope<->engagement_id).\n- api: registry router (agent-profiles / skills / governance-rules) + Create/Update\n  schemas; entity_summary specs for the 4 new types (coverage guard).\n- migrations: SQLite 0043 + PG 0005 \u2014 create the 4 tables (from ORM __table__) +\n  rebuild change_log/refs entity-type CHECKs from current vocab (the add-ENTITY_TYPE\n  gotcha), guarded for the create_all-then-upgrade-head path.\n- tests: access (7) + API (4) + migration round-trip (2).\n\nFull SQLite suite green (2228 passed; only the documented pre-existing 18 fail:\ntest_0037 + 17 apply_close_out branch-guard off main). MCP tools, bindings,\nresolver, learning lifecycle, panels: later slices.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T13:39:15-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "8d7cd0304a39c3471691c8590c06723e50824db2"
+   ],
+   "commit_files_changed_count": 16
+  },
+  {
+   "commit_sha": "ec824175aa16ed993ea46c9c49cd2e2258591374",
+   "commit_message_first_line": "v2: PI-122 slice 2 \u2014 binding edges + contract resolver (D-\u03b44)",
+   "commit_message_full": "v2: PI-122 slice 2 \u2014 binding edges + contract resolver (D-\u03b44)\n\n- vocab: 5 registry edge kinds in REFERENCE_RELATIONSHIPS (agent_profile_has_skill,\n  agent_profile_governed_by_rule + the 3 learning edges, admitted now so the\n  learning slice needs no further CHECK migration); _kinds_for_pair clauses for\n  the 2 binding pairs (learning clauses land with the learning repo).\n- access/repositories/registry_resolver.py: resolve_contract(profile_id, engagement_id)\n  composes the effective contract \u2014 system_prompt (description + instruction skills +\n  advisory rules), tools (tool-skill io_contracts), enforced_ruleset, version_stamp\n  (deterministic hash; changes when the profile or any bound item changes), and the\n  scope merge (system rows \u222a active-engagement overlay; active_learnings empty until\n  slice 4).\n- api: GET /agent-profiles/{id}/contract (engagement from ?engagement or the\n  X-Engagement header).\n- migrations: SQLite 0044 + PG 0006 rebuild the refs relationship_kind CHECK.\n- tests: binding + resolution + scope-merge + version-stamp change (3).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T13:44:38-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "74c6e150ed8d87d4a8fb8ec5c81417897c7ac3bf"
+   ],
+   "commit_files_changed_count": 6
+  },
+  {
+   "commit_sha": "0462241c38118ac2f76796357e3e94c726f3184e",
+   "commit_message_first_line": "v2: PI-122 slice 3 \u2014 learning entity + capture/evidence + resolver injection",
+   "commit_message_full": "v2: PI-122 slice 3 \u2014 learning entity + capture/evidence + resolver injection\n\n- vocab: _kinds_for_pair clauses for the learning edges (learning_derived_from \u2192\n  work_task/decision/test_spec; learning_contradicted_by \u2192 work_task;\n  learning_promoted_to \u2192 skill/governance_rule). finding target deferred (D-\u03b46).\n- access/repositories/learnings.py: CRUD + capture (at Work-Task close, optional\n  evidence edge, confidence 1) + add_evidence (supporting raises confidence,\n  contradicting lowers it \u2014 the curation trigger; PRD \u00a713.2).\n- registry_resolver: inject active (area, tier) learnings in scope into the\n  contract (matched to the profile's area+tier; orchestrator/pi_lead profiles get\n  none; all-active today, relevance retrieval is the scale follow-on).\n- api: learnings router (CRUD + /capture + /{id}/evidence) + schemas.\n- tests: capture/hunch, accumulate/contradict, resolver injection + area/tier\n  scoping (6).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T13:48:05-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "ec824175aa16ed993ea46c9c49cd2e2258591374"
+   ],
+   "commit_files_changed_count": 7
+  },
+  {
+   "commit_sha": "7ffb9c7883a7adf3d794bd6188ab57d2c4404726",
+   "commit_message_first_line": "v2: PI-122 slice 4 \u2014 write-back lifecycle (promote + curate, D-\u03b47)",
+   "commit_message_full": "v2: PI-122 slice 4 \u2014 write-back lifecycle (promote + curate, D-\u03b47)\n\naccess/repositories/registry_lifecycle.py + endpoints:\n- promote_to_skill / promote_to_rule: link the learning via learning_promoted_to,\n  flip it to status=promoted, and inherit its scope. Promoting to an ENFORCED\n  rule requires human_approved=True (the permanent Needs-Attention hard line \u2014\n  an agent never self-grants a blocking constraint); advisory + skill promotion\n  is free.\n- curate_area: the per-(release, area) sweep mechanism \u2014 flips contradicted,\n  zero-confidence active learnings to stale (the per-release cadence/Release\n  entity is the runtime follow-on).\n- tests: promote-to-skill linkage, advisory-free, enforced-gate (blocked then\n  human-approved), curate retires-vs-survives (4).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T13:50:33-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "0462241c38118ac2f76796357e3e94c726f3184e"
+   ],
+   "commit_files_changed_count": 4
+  },
+  {
+   "commit_sha": "89b321ca3b6ada37525de05851af4eebc150433c",
+   "commit_message_first_line": "v2: PI-122 slice 5 \u2014 cross-engagement learning (DEC-373 multiplier)",
+   "commit_message_full": "v2: PI-122 slice 5 \u2014 cross-engagement learning (DEC-373 multiplier)\n\nregistry_lifecycle:\n- cross_engagement_candidates: groups active engagement-scoped learnings by\n  (area, tier, content) and surfaces those recurring across >= N engagements \u2014\n  evidence a learning is universal. The cheap GROUP-BY-content-across-engagement_id\n  the unified DB enables (PRD \u00a713.3/\u00a713.5).\n- promote_to_system: flips an engagement-scoped learning to system scope so every\n  engagement inherits it (a system enforced rule is then the top gate via\n  promote_to_rule + human review).\n- endpoints: GET /learnings/cross-engagement-candidates, POST\n  /learnings/{id}/promote-to-system.\n- tests: candidate detection across two engagements + promotion + single-engagement\n  exclusion (2).\n\nScope override/disable of a system rule by an engagement overlay is the remaining\nresolver-merge piece (deferred follow-on).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T13:51:52-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "7ffb9c7883a7adf3d794bd6188ab57d2c4404726"
+   ],
+   "commit_files_changed_count": 3
+  },
+  {
+   "commit_sha": "6fe3a98a86f87a389c83a49da12e7d9ed7c359f2",
+   "commit_message_first_line": "v2: PI-122 slice 6 \u2014 MCP tools + system-profile seed + CLAUDE.md note",
+   "commit_message_full": "v2: PI-122 slice 6 \u2014 MCP tools + system-profile seed + CLAUDE.md note\n\n- mcp_server/tools.py: registry tools \u2014 resolve_agent_profile_contract (an agent\n  boots its contract), list/create_agent_profile, list_skills, list_governance_rules,\n  list_learnings, capture_learning (agents write learnings back).\n- access/repositories/registry_seed.py: seed_system_profiles \u2014 the two proven ADO\n  prompts (development-phase-specialist -> storage Architect; area-specialist ->\n  storage Developer) as system-scoped agent_profiles, idempotent.\n- CLAUDE.md: PI-122 Agent Profile Registry substrate note (4 entities, scope model,\n  resolver, write-back lifecycle, cross-engagement, template<->principal seam,\n  migrations, deferred follow-ons).\n- tests: MCP tools registered + create/resolve/capture over MCP + idempotent seed (4).\n\nFull SQLite suite green (2245 passed; only the documented pre-existing 18 fail).\nDeferred follow-ons: read-only Qt monitoring panels for the 4 entities; resolver\noverride/disable of a system rule by an engagement overlay; the runtime scheduler.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_committed_at": "2026-06-03T14:01:24-04:00",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_parent_shas": [
+    "89b321ca3b6ada37525de05851af4eebc150433c"
+   ],
+   "commit_files_changed_count": 4
+  }
+ ],
+ "decisions": [
+  {
+   "identifier": "DEC-380",
+   "title": "PI-122 Agent Profile Registry \u2014 build decisions and findings",
+   "decision_date": "2026-06-03",
+   "status": "Active",
+   "context": "PI-122 (the ADO \u00a710 agent-profile registry, PRJ-018) was unblocked once its blocked_by PI-123 resolved; PI-\u03b1/\u03b2/\u03b3 further provided the unified DB + principal foundation. The registry PRD v0.3 + the Architecture pass (pi-122-agent-profile-registry-architecture.md) define the build against that landed foundation.",
+   "decision": "(1) Four governance entities \u2014 agent_profile (AGP-, keyed to an (area \u00d7 tier) cell), skill (SKL-, instruction|tool + io_contract), governance_rule (GVR-, hybrid advisory|enforced|enforced_with_override), learning (LRN-, evidence-tagged + confidence). (2) Scope-awareness = a NULLABLE engagement_id on plain Base tables (NULL=system, set=engagement overlay) \u2014 NOT EngagementScopedMixin (which would force NOT NULL + hide system rows); the resolver does the scope merge explicitly. Mirrors PI-\u03b3's role_assignments. (3) Binding/learning edges in the reference vocab (agent_profile_has_skill, agent_profile_governed_by_rule, learning_derived_from/_contradicted_by/_promoted_to); the learning\u2192finding target waits on the finding entity (an ADO-reconciliation concern). (4) resolve_contract composes prompt + tools + enforced_ruleset + active (area,tier) learnings + a deterministic version_stamp, scope-merged System \u222a active-engagement overlay. (5) Write-back lifecycle: capture-at-Work-Task-close -> accumulate (evidence raises / contradiction lowers confidence) -> promote (to skill = float/pin; to an enforced rule = human review ALWAYS, the Needs-Attention hard line) -> per-(release,area) curate sweep; cross-engagement promotion (engagement->system) is the DEC-373 multiplier. (6) MCP tools (resolve-contract/list/create/capture) + the two proven prompts seeded as system profiles. (7) agent_profile=template, PI-\u03b3 service_agent principal (agent_tier/agent_area)=runtime instance.",
+   "rationale": "The registry is the ADO \u00a710 follow-on that makes agents thin: they hold an identity and resolve their skills/rules/learnings + a version stamp from the DB. Building it scope-aware against the now-landed unified DB realizes the PRD's prediction \u2014 scope is row scope, cross-engagement learning is a GROUP BY across engagement_id \u2014 with no special machinery. Reusing the hybrid-governance split for the promotion gate avoids a second safety system; the enforced-rule human-review line is permanent. PI-\u03b3 already added agent_tier/agent_area to principals anticipating the template<->instance seam, so no PI-\u03b3 rework.",
+   "alternatives_considered": "EngagementScopedMixin for the registry tables (rejected: forces engagement_id NOT NULL and applies the read-filter, making system rows impossible / invisible to a scoped query \u2014 the explicit resolver merge is correct, consistent with principals/role_assignments). A roles-style separate versioned-catalog table for point-in-time pinning (deferred: pinning stays a drift assertion per PRD \u00a77.4). Pulling the finding entity forward for learning evidence (rejected: it is an ADO-reconciliation build concern \u2014 the learning loop runs on work_task/decision/test_spec evidence now and gains finding evidence when that entity lands). Building the Qt panels + runtime scheduler now (deferred: panels are read-only monitoring; the runtime is the separate \u00a710 follow-on).",
+   "consequences": "The registry substrate is complete + tested (4 entities + resolver + write-back lifecycle + cross-engagement + MCP + seed). SQLite migrations 0043/0044, PG 0005/0006 (create the 4 tables + rebuild change_log/refs entity-type + relationship_kind CHECKs from current vocab, guarded for the create_all path). Live-DB note: the create_all-managed v2-unified.db got the 4 registry tables added directly (reads work); enabling registry WRITES on the live DB needs the change_log/refs CHECK rebuild (deferred \u2014 nothing writes registry records on the live DB until the runtime). Deferred follow-ons: read-only Qt monitoring panels for the 4 entities; the resolver's engagement override/disable of a system rule; and the runtime scheduler (the separate \u00a710 follow-on that resolves a contract + mint_agent_principals the ephemeral agent).",
+   "executive_summary": "Records PI-122's build: the Agent Profile Registry as a REST/access/MCP substrate \u2014 agent_profile/skill/governance_rule/learning as system/shared rows with a nullable engagement_id scope (the resolver does the System \u222a overlay merge, not EngagementScopedMixin); a contract resolver; a capture->accumulate->promote->curate write-back lifecycle with enforced-rule human review and cross-engagement promotion (DEC-373); MCP tools; and the two proven prompts seeded. agent_profile=template, PI-\u03b3 service_agent principal=runtime instance. Deferred: Qt panels, resolver override/disable, the runtime scheduler."
+  }
+ ],
+ "references": [
+  {
+   "source_type": "session",
+   "source_id": "SES-157",
+   "target_type": "project",
+   "target_id": "PRJ-018",
+   "relationship": "session_belongs_to_project"
+  },
+  {
+   "source_type": "conversation",
+   "source_id": "CNV-059",
+   "target_type": "project",
+   "target_id": "PRJ-018",
+   "relationship": "conversation_belongs_to_project"
+  },
+  {
+   "source_type": "session",
+   "source_id": "SES-157",
+   "target_type": "session",
+   "target_id": "SES-156",
+   "relationship": "session_follows_from"
+  },
+  {
+   "source_type": "decision",
+   "source_id": "DEC-380",
+   "target_type": "conversation",
+   "target_id": "CNV-059",
+   "relationship": "decided_in"
+  }
+ ],
+ "resolves_planning_items": [
+  {
+   "planning_item_identifier": "PI-122"
+  }
+ ],
+ "addresses_planning_items": []
+}
