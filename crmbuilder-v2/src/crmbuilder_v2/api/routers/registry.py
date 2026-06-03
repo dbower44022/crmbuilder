@@ -233,6 +233,16 @@ def curate_learnings(body: CurateAreaIn):
         return ok(registry_lifecycle.curate_area(s, area=body.area, scope=body.scope))
 
 
+@learnings_router.get("/cross-engagement-candidates")
+def cross_engagement_candidates(
+    area: str | None = None, tier: str | None = None, min_engagements: int = 2
+):
+    with readonly_session() as s:
+        return ok(registry_lifecycle.cross_engagement_candidates(
+            s, area=area, tier=tier, min_engagements=min_engagements
+        ))
+
+
 @learnings_router.get("/{identifier}")
 def get_learning(identifier: str):
     with readonly_session() as s:
@@ -255,6 +265,12 @@ def promote_learning_to_skill(identifier: str, body: LearningPromoteSkillIn):
 def promote_learning_to_rule(identifier: str, body: LearningPromoteRuleIn):
     with writable_session() as s:
         return ok(registry_lifecycle.promote_to_rule(s, identifier, **body.model_dump()))
+
+
+@learnings_router.post("/{identifier}/promote-to-system")
+def promote_learning_to_system(identifier: str):
+    with writable_session() as s:
+        return ok(registry_lifecycle.promote_to_system(s, identifier))
 
 
 @learnings_router.patch("/{identifier}")

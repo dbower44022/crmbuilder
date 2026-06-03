@@ -113,6 +113,64 @@ def promote_to_rule(
     return {"learning": learning_id, "governance_rule": rule}
 
 
+def cross_engagement_candidates(
+    session: Session,
+    *,
+    area: str | None = None,
+    tier: str | None = None,
+    min_engagements: int = 2,
+) -> list[dict]:
+    """Engagement-scoped learnings seen across multiple engagements (DEC-373).
+
+    The cross-engagement multiplier: a learning that recurs *independently across
+    engagements* is evidence it is universal → a candidate for promotion from
+    engagement scope to system scope. Groups active, engagement-scoped learnings
+    by (area, tier, content) and returns groups spanning ``min_engagements`` or
+    more distinct engagements. In the unified DB this is the cheap
+    ``GROUP BY content across engagement_id`` the PRD predicted (§13.3/§13.5).
+    """
+    rows = learnings.list_all(session, area=area, tier=tier, status="active")
+    groups: dict[tuple[str, str, str], dict] = {}
+    for lrn in rows:
+        if lrn.get("engagement_id") is None:
+            continue  # already system-scoped
+        key = (lrn["area"], lrn["tier"], lrn["content"])
+        g = groups.setdefault(
+            key,
+            {"area": lrn["area"], "tier": lrn["tier"], "content": lrn["content"],
+             "engagements": set(), "learning_ids": []},
+        )
+        g["engagements"].add(lrn["engagement_id"])
+        g["learning_ids"].append(lrn["identifier"])
+    return [
+        {**g, "engagements": sorted(g["engagements"])}
+        for g in groups.values()
+        if len(g["engagements"]) >= min_engagements
+    ]
+
+
+def promote_to_system(session: Session, learning_id: str) -> dict:
+    """Promote an engagement-scoped learning to system scope (DEC-373).
+
+    The cross-engagement promotion path: an engagement learning evidenced as
+    universal becomes a system learning (engagement_id → NULL), so every
+    engagement's experts inherit it. (A system *enforced rule* — the top gate —
+    is reached by then promoting via ``promote_to_rule`` with human review.)
+    """
+    lrn = learnings.get(session, learning_id)
+    if lrn.get("engagement_id") is None:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "scope",
+                    "already_system",
+                    f"learning {learning_id} is already system-scoped",
+                )
+            ]
+        )
+    return learnings.update(session, learning_id, scope="system")
+
+
 def curate_area(session: Session, *, area: str, scope: str | None = None) -> dict:
     """Sweep an area's active learnings, retiring contradicted, zero-confidence ones.
 
