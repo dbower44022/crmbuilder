@@ -1,0 +1,165 @@
+"""Agent Profile Registry endpoints (PI-122 — the ADO §10 follow-on).
+
+Three catalog entities (slice 1): agent_profile / skill / governance_rule. Each
+gets the standard list / next-identifier / get / create (POST) / update (PATCH) /
+delete set under the ``{data, meta, errors}`` envelope. The ``learning`` entity +
+the binding edges + the resolver land in later slices.
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter
+
+from crmbuilder_v2.access.repositories import (
+    agent_profiles,
+    governance_rules,
+    skills,
+)
+from crmbuilder_v2.api.deps import readonly_session, writable_session
+from crmbuilder_v2.api.envelope import ok
+from crmbuilder_v2.api.schemas import (
+    AgentProfileCreateIn,
+    AgentProfileUpdateIn,
+    GovernanceRuleCreateIn,
+    GovernanceRuleUpdateIn,
+    SkillCreateIn,
+    SkillUpdateIn,
+)
+
+# --------------------------------------------------------------------------
+# agent_profiles
+# --------------------------------------------------------------------------
+agent_profiles_router = APIRouter(prefix="/agent-profiles", tags=["agent_profiles"])
+
+
+@agent_profiles_router.get("")
+def list_agent_profiles(
+    area: str | None = None,
+    tier: str | None = None,
+    status: str | None = None,
+    scope: str | None = None,
+):
+    with readonly_session() as s:
+        return ok(agent_profiles.list_all(s, area=area, tier=tier, status=status, scope=scope))
+
+
+@agent_profiles_router.get("/next-identifier")
+def agent_profile_next_identifier():
+    with readonly_session() as s:
+        return ok({"next": agent_profiles.compute_next_identifier(s)})
+
+
+@agent_profiles_router.get("/{identifier}")
+def get_agent_profile(identifier: str):
+    with readonly_session() as s:
+        return ok(agent_profiles.get(s, identifier))
+
+
+@agent_profiles_router.post("", status_code=201)
+def create_agent_profile(body: AgentProfileCreateIn):
+    with writable_session() as s:
+        return ok(agent_profiles.create(s, **body.model_dump()))
+
+
+@agent_profiles_router.patch("/{identifier}")
+def update_agent_profile(identifier: str, body: AgentProfileUpdateIn):
+    provided = body.model_dump(exclude_unset=True)
+    scope = provided.pop("scope", None)
+    with writable_session() as s:
+        return ok(agent_profiles.update(s, identifier, scope=scope, **provided))
+
+
+@agent_profiles_router.delete("/{identifier}")
+def delete_agent_profile(identifier: str):
+    with writable_session() as s:
+        return ok(agent_profiles.delete(s, identifier))
+
+
+# --------------------------------------------------------------------------
+# skills
+# --------------------------------------------------------------------------
+skills_router = APIRouter(prefix="/skills", tags=["skills"])
+
+
+@skills_router.get("")
+def list_skills(kind: str | None = None, status: str | None = None, scope: str | None = None):
+    with readonly_session() as s:
+        return ok(skills.list_all(s, kind=kind, status=status, scope=scope))
+
+
+@skills_router.get("/next-identifier")
+def skill_next_identifier():
+    with readonly_session() as s:
+        return ok({"next": skills.compute_next_identifier(s)})
+
+
+@skills_router.get("/{identifier}")
+def get_skill(identifier: str):
+    with readonly_session() as s:
+        return ok(skills.get(s, identifier))
+
+
+@skills_router.post("", status_code=201)
+def create_skill(body: SkillCreateIn):
+    with writable_session() as s:
+        return ok(skills.create(s, **body.model_dump()))
+
+
+@skills_router.patch("/{identifier}")
+def update_skill(identifier: str, body: SkillUpdateIn):
+    provided = body.model_dump(exclude_unset=True)
+    scope = provided.pop("scope", None)
+    with writable_session() as s:
+        return ok(skills.update(s, identifier, scope=scope, **provided))
+
+
+@skills_router.delete("/{identifier}")
+def delete_skill(identifier: str):
+    with writable_session() as s:
+        return ok(skills.delete(s, identifier))
+
+
+# --------------------------------------------------------------------------
+# governance_rules
+# --------------------------------------------------------------------------
+governance_rules_router = APIRouter(prefix="/governance-rules", tags=["governance_rules"])
+
+
+@governance_rules_router.get("")
+def list_governance_rules(
+    enforcement: str | None = None, status: str | None = None, scope: str | None = None
+):
+    with readonly_session() as s:
+        return ok(governance_rules.list_all(s, enforcement=enforcement, status=status, scope=scope))
+
+
+@governance_rules_router.get("/next-identifier")
+def governance_rule_next_identifier():
+    with readonly_session() as s:
+        return ok({"next": governance_rules.compute_next_identifier(s)})
+
+
+@governance_rules_router.get("/{identifier}")
+def get_governance_rule(identifier: str):
+    with readonly_session() as s:
+        return ok(governance_rules.get(s, identifier))
+
+
+@governance_rules_router.post("", status_code=201)
+def create_governance_rule(body: GovernanceRuleCreateIn):
+    with writable_session() as s:
+        return ok(governance_rules.create(s, **body.model_dump()))
+
+
+@governance_rules_router.patch("/{identifier}")
+def update_governance_rule(identifier: str, body: GovernanceRuleUpdateIn):
+    provided = body.model_dump(exclude_unset=True)
+    scope = provided.pop("scope", None)
+    with writable_session() as s:
+        return ok(governance_rules.update(s, identifier, scope=scope, **provided))
+
+
+@governance_rules_router.delete("/{identifier}")
+def delete_governance_rule(identifier: str):
+    with writable_session() as s:
+        return ok(governance_rules.delete(s, identifier))

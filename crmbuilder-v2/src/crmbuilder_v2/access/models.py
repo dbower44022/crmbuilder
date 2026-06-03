@@ -34,6 +34,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.sql.expression import ColumnElement
 
 from crmbuilder_v2.access.vocab import (
+    AGENT_PROFILE_TIERS,
     CATALOG_ATTRIBUTE_TYPES,
     CATALOG_DATA_MODEL_ROLES,
     CATALOG_ENTRY_KINDS,
@@ -56,6 +57,9 @@ from crmbuilder_v2.access.vocab import (
     ENTITY_TYPES,
     FIELD_STATUSES,
     FIELD_TYPES,
+    LEARNING_CATEGORIES,
+    LEARNING_STATUSES,
+    LEARNING_TIERS,
     MANUAL_CONFIG_CATEGORIES,
     MANUAL_CONFIG_STATUSES,
     PERSONA_STATUSES,
@@ -66,16 +70,19 @@ from crmbuilder_v2.access.vocab import (
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
+    REGISTRY_STATUSES,
     REQUIREMENT_PRIORITIES,
     REQUIREMENT_STATUSES,
     RISK_IMPACTS,
     RISK_PROBABILITIES,
     RISK_STATUSES,
+    RULE_ENFORCEMENT_MODES,
     SESSION_MEDIUMS,
     SESSION_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
     WORK_TASK_STATUSES,
+    SKILL_KINDS,
     WORK_TICKET_KINDS,
     WORK_TICKET_STATUSES,
     WORKSTREAM_PHASE_TYPES,
@@ -2668,4 +2675,173 @@ class RoleAssignmentRow(Base):
         ),
         Index("ix_role_assignments_principal", "principal_id"),
         Index("ix_role_assignments_engagement", "engagement_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Agent Profile Registry (PI-122 — the ADO §10 follow-on).
+#
+# System/shared tables with a NULLABLE engagement_id (D-δ2): NULL = a system
+# (universal) row, set = an engagement overlay. Plain Base, NOT
+# EngagementScopedMixin — the resolver does the scope merge explicitly, so
+# system rows stay visible and the engagement_id discriminator is not
+# overloaded (mirrors PI-γ's role_assignments).
+# ---------------------------------------------------------------------------
+
+
+class AgentProfileRow(Base):
+    """An ADO agent profile, keyed to an (area × tier) cell (PI-122 D-δ1/D-δ3)."""
+
+    __tablename__ = "agent_profiles"
+
+    identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    area: Mapped[str] = mapped_column(String(64), nullable=False)
+    tier: Mapped[str] = mapped_column(String(16), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("identifier", ["AGP"]),
+            name="ck_agent_profile_identifier_format",
+        ),
+        CheckConstraint(_check_in("tier", AGENT_PROFILE_TIERS), name="ck_agent_profile_tier"),
+        CheckConstraint(_check_in("status", REGISTRY_STATUSES), name="ck_agent_profile_status"),
+        Index("ix_agent_profiles_engagement", "engagement_id"),
+        Index("ix_agent_profiles_area_tier", "area", "tier"),
+    )
+
+
+class SkillRow(Base):
+    """A shared, reusable capability definition (PI-122 D-δ1; PRD §4/§7.2)."""
+
+    __tablename__ = "skills"
+
+    identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    # I/O contract (JSON schema) for tool-backed skills; backing callable pointer.
+    io_contract: Mapped[dict | None] = mapped_column(JSONColumn, nullable=True)
+    backing_callable: Mapped[str | None] = mapped_column(Text, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("identifier", ["SKL"]),
+            name="ck_skill_identifier_format",
+        ),
+        CheckConstraint(_check_in("kind", SKILL_KINDS), name="ck_skill_kind"),
+        CheckConstraint(_check_in("status", REGISTRY_STATUSES), name="ck_skill_status"),
+        Index("ix_skills_engagement", "engagement_id"),
+    )
+
+
+class GovernanceRuleRow(Base):
+    """A shared, reusable governance rule (PI-122 D-δ1; PRD §4/§5)."""
+
+    __tablename__ = "governance_rules"
+
+    identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    rule_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    enforcement: Mapped[str] = mapped_column(String(24), nullable=False)
+    severity: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    # Structured predicate for enforced rules (the access layer largely enforces).
+    predicate: Mapped[dict | None] = mapped_column(JSONColumn, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("identifier", ["GVR"]),
+            name="ck_governance_rule_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("enforcement", RULE_ENFORCEMENT_MODES),
+            name="ck_governance_rule_enforcement",
+        ),
+        CheckConstraint(_check_in("status", REGISTRY_STATUSES), name="ck_governance_rule_status"),
+        Index("ix_governance_rules_engagement", "engagement_id"),
+    )
+
+
+class LearningRow(Base):
+    """An accumulated, evidence-tagged learning (PI-122 slice 3; PRD §13.2).
+
+    The table lands with the catalog migration so the change_log/refs CHECK
+    rebuild happens once; its repository, edges, and write-back lifecycle are
+    built in PI-122 slice 3.
+    """
+
+    __tablename__ = "learnings"
+
+    identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    area: Mapped[str] = mapped_column(String(64), nullable=False)
+    tier: Mapped[str] = mapped_column(String(16), nullable=False)
+    category: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    # Derived from evidence count/spread (PRD §13.2); 0 until evidence links.
+    confidence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("identifier", ["LRN"]),
+            name="ck_learning_identifier_format",
+        ),
+        CheckConstraint(_check_in("tier", LEARNING_TIERS), name="ck_learning_tier"),
+        CheckConstraint(_check_in("category", LEARNING_CATEGORIES), name="ck_learning_category"),
+        CheckConstraint(_check_in("status", LEARNING_STATUSES), name="ck_learning_status"),
+        Index("ix_learnings_engagement", "engagement_id"),
+        Index("ix_learnings_area_tier", "area", "tier"),
     )

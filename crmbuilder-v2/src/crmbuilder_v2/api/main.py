@@ -52,6 +52,7 @@ from crmbuilder_v2.api.routers import (
     projects,
     reference_books,
     references,
+    registry,
     requirements,
     risks,
     sessions,
@@ -155,6 +156,10 @@ def create_app() -> FastAPI:
     app.include_router(close_out_payloads.router)
     app.include_router(deposit_events.router)
     app.include_router(commits.router)
+    # Agent Profile Registry (PI-122).
+    app.include_router(registry.agent_profiles_router)
+    app.include_router(registry.skills_router)
+    app.include_router(registry.governance_rules_router)
 
     @app.get("/", tags=["meta"], include_in_schema=False)
     def root():

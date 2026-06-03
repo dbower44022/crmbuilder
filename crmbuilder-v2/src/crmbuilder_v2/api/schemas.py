@@ -221,6 +221,74 @@ class TopicUpdateIn(_Base):
     parent_topic: str | None = None
 
 
+# ---------- Agent Profile Registry (PI-122) ----------
+
+
+class AgentProfileCreateIn(_Base):
+    """POST /agent-profiles body. ``scope`` is 'system' or an engagement id."""
+
+    identifier: str | None = None
+    area: str
+    tier: str
+    description: str
+    status: str = "active"
+    scope: str | None = None
+
+
+class AgentProfileUpdateIn(_Base):
+    area: str | None = None
+    tier: str | None = None
+    description: str | None = None
+    status: str | None = None
+    scope: str | None = None
+
+
+class SkillCreateIn(_Base):
+    identifier: str | None = None
+    name: str
+    kind: str
+    description: str
+    io_contract: dict | None = None
+    backing_callable: str | None = None
+    version: int = 1
+    status: str = "active"
+    scope: str | None = None
+
+
+class SkillUpdateIn(_Base):
+    name: str | None = None
+    kind: str | None = None
+    description: str | None = None
+    io_contract: dict | None = None
+    backing_callable: str | None = None
+    version: int | None = None
+    status: str | None = None
+    scope: str | None = None
+
+
+class GovernanceRuleCreateIn(_Base):
+    identifier: str | None = None
+    body: str
+    enforcement: str
+    rule_type: str | None = None
+    severity: str | None = None
+    predicate: dict | None = None
+    version: int = 1
+    status: str = "active"
+    scope: str | None = None
+
+
+class GovernanceRuleUpdateIn(_Base):
+    body: str | None = None
+    enforcement: str | None = None
+    rule_type: str | None = None
+    severity: str | None = None
+    predicate: dict | None = None
+    version: int | None = None
+    status: str | None = None
+    scope: str | None = None
+
+
 # ---------- Domains (methodology entity, UI v0.4 slice B) ----------
 
 

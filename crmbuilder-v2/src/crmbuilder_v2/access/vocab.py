@@ -728,6 +728,15 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # v0.5+ methodology entity (PI-004 cohort closer; resolves
         # PI-004). See test_spec.md.
         "test_spec",
+        # PI-122 Agent Profile Registry (the ADO §10 follow-on). Four
+        # system/shared registry entities (nullable engagement_id = scope).
+        # See pi-122-agent-profile-registry-architecture.md. ``learning``
+        # lands in PI-122 slice 3; its type is registered with the catalog
+        # slice so the CHECK is rebuilt once.
+        "agent_profile",
+        "skill",
+        "governance_rule",
+        "learning",
     }
 )
 
@@ -1089,6 +1098,41 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         {"read", "create", "update", "delete", "claim"}
     ),
 }
+
+
+# ---------------------------------------------------------------------------
+# Agent Profile Registry (PI-122 — the ADO §10 follow-on).
+# See pi-122-agent-profile-registry-architecture.md.
+# ---------------------------------------------------------------------------
+
+# A profile is keyed to an (area × tier) cell. Build areas get
+# Architect/Developer/Tester; the PM + PI Lead are single orchestration tiers.
+AGENT_PROFILE_TIERS: frozenset[str] = frozenset(
+    {"architect", "developer", "tester", "orchestrator", "pi_lead"}
+)
+
+# Two skill kinds (PRD §7.2): a tool is "code-backed" when it carries a backing
+# callable, instruction otherwise.
+SKILL_KINDS: frozenset[str] = frozenset({"instruction", "tool"})
+
+# Hybrid governance (PRD §5): advisory guidance, machine-enforced, or enforced
+# pending a logged human override (the Needs Attention path).
+RULE_ENFORCEMENT_MODES: frozenset[str] = frozenset(
+    {"advisory", "enforced", "enforced_with_override"}
+)
+
+# Lifecycle status shared by agent_profile / skill / governance_rule.
+REGISTRY_STATUSES: frozenset[str] = frozenset({"active", "retired"})
+
+# learning (LRN-) lifecycle (PI-122 slice 3 / PRD §13.2) + its categories.
+LEARNING_STATUSES: frozenset[str] = frozenset(
+    {"active", "stale", "retired", "promoted"}
+)
+LEARNING_CATEGORIES: frozenset[str] = frozenset(
+    {"gotcha", "pattern", "constraint", "preference"}
+)
+# Learnings are written by the standing design tier and the per-task executors.
+LEARNING_TIERS: frozenset[str] = frozenset({"architect", "developer", "tester"})
 
 
 # Base entity catalog vocabularies (catalog-ingestion-PRD-v0.1.md section 4).

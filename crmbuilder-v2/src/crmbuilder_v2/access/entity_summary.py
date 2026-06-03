@@ -80,6 +80,12 @@ _SPECS: dict[str, _Spec] = {
     "close_out_payload": _Spec(models.CloseOutPayload, "close_out_payload_identifier", "close_out_payload_title", "close_out_payload_status", "close_out_payload_created_at", "close_out_payload_updated_at"),
     "deposit_event": _Spec(models.DepositEvent, "deposit_event_identifier", "deposit_event_title", "deposit_event_outcome", "deposit_event_created_at", None),
     "commit": _Spec(models.Commit, "commit_identifier", "commit_message_first_line", None, "commit_created_at", "commit_updated_at"),
+    # Agent Profile Registry (PI-122). Unprefixed ``identifier``; title is the
+    # most human-readable field (description / name / body / content).
+    "agent_profile": _Spec(models.AgentProfileRow, "identifier", "description", "status", "created_at", "updated_at"),
+    "skill": _Spec(models.SkillRow, "identifier", "name", "status", "created_at", "updated_at"),
+    "governance_rule": _Spec(models.GovernanceRuleRow, "identifier", "body", "status", "created_at", "updated_at"),
+    "learning": _Spec(models.LearningRow, "identifier", "content", "status", "created_at", "updated_at"),
 }
 
 # Members of ENTITY_TYPES that intentionally carry no inline summary:
