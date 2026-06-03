@@ -89,6 +89,15 @@ class Settings(BaseSettings):
     # the unified-DB runtime defaults it on. Override to False only for the
     # legacy single-file shape, which no longer exists in production.)
     engagement_scoping_enabled: bool = True
+
+    # PI-γ (RBAC): gate bearer-token authentication + RBAC enforcement. Default
+    # OFF for the single-operator localhost flow — the principal resolver then
+    # yields a synthetic default-owner principal (zero tokens, every engagement
+    # allowed), preserving today's behavior. Turn ON only in the deployed
+    # multi-user service, where a valid bearer token is then required and the
+    # engagement selection is validated against the principal's assignments.
+    principal_auth_enabled: bool = False
+
     api_base_url: str = "http://127.0.0.1:8765"
     mcp_http_port: int = 8810
 

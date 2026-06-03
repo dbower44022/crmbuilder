@@ -1037,6 +1037,57 @@ CHANGE_LOG_ACTORS: frozenset[str] = frozenset(
 )
 
 
+# ---------------------------------------------------------------------------
+# Identity / authentication / RBAC (PI-γ — PRJ-019 / PI-127).
+# ---------------------------------------------------------------------------
+
+# A principal is an authenticated actor — a human user or an AI service agent.
+PRINCIPAL_KINDS: frozenset[str] = frozenset({"human", "service_agent"})
+
+PRINCIPAL_STATUSES: frozenset[str] = frozenset({"active", "disabled"})
+
+# Roles are a small fixed set rather than a table (PI-γ D-γ3): three
+# human-facing roles plus four agent-tier roles aligned to the ADO tiers. A
+# ``role_assignment`` row's ``role`` is CHECK-constrained to this set.
+RBAC_ROLES: frozenset[str] = frozenset(
+    {
+        "owner",
+        "editor",
+        "viewer",
+        "orchestrator",
+        "pi_lead",
+        "phase_specialist",
+        "area_specialist",
+    }
+)
+
+# Coarse permission verbs (PI-γ §5: start coarse; finer per-entity perms only
+# if a real need appears). ``claim`` is the ADO claim/release action perm.
+RBAC_PERMISSIONS: frozenset[str] = frozenset(
+    {"read", "create", "update", "delete", "admin", "claim"}
+)
+
+# Role → permitted operations. ``owner`` is total (includes ``admin``, the
+# system/shared-table + token-minting gate). ``editor`` writes content but not
+# admin; ``viewer`` reads only. The agent-tier roles can read, write, and claim
+# work within their assigned engagement, but never ``admin``.
+ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
+    "owner": RBAC_PERMISSIONS,
+    "editor": frozenset({"read", "create", "update", "delete", "claim"}),
+    "viewer": frozenset({"read"}),
+    "orchestrator": frozenset(
+        {"read", "create", "update", "delete", "claim"}
+    ),
+    "pi_lead": frozenset({"read", "create", "update", "delete", "claim"}),
+    "phase_specialist": frozenset(
+        {"read", "create", "update", "delete", "claim"}
+    ),
+    "area_specialist": frozenset(
+        {"read", "create", "update", "delete", "claim"}
+    ),
+}
+
+
 # Base entity catalog vocabularies (catalog-ingestion-PRD-v0.1.md section 4).
 #
 # The seven systems surveyed in the catalog. Catalog rows in

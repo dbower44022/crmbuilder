@@ -21,13 +21,23 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _has_column(table: str, column: str) -> bool:
+    inspector = sa.inspect(op.get_bind())
+    return column in {c["name"] for c in inspector.get_columns(table)}
+
+
 def upgrade() -> None:
-    with op.batch_alter_table("engagements") as batch:
-        batch.drop_column("engagement_export_dir")
+    # Guarded so this is a clean no-op when the schema was materialised from
+    # the current ORM models (which no longer declare the column) — the path
+    # the migration-from-create_all tests exercise via ``upgrade head``.
+    if _has_column("engagements", "engagement_export_dir"):
+        with op.batch_alter_table("engagements") as batch:
+            batch.drop_column("engagement_export_dir")
 
 
 def downgrade() -> None:
-    with op.batch_alter_table("engagements") as batch:
-        batch.add_column(
-            sa.Column("engagement_export_dir", sa.Text(), nullable=True)
-        )
+    if not _has_column("engagements", "engagement_export_dir"):
+        with op.batch_alter_table("engagements") as batch:
+            batch.add_column(
+                sa.Column("engagement_export_dir", sa.Text(), nullable=True)
+            )

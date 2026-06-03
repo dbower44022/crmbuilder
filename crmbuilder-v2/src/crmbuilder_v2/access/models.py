@@ -2521,3 +2521,147 @@ class EngagementRow(Base):
         Index("ix_engagements_last_opened_at", "engagement_last_opened_at"),
         Index("ix_engagements_deleted_at", "engagement_deleted_at"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Identity / authentication / RBAC (PI-γ — PRJ-019 / PI-127).
+#
+# System/shared tables (NOT engagement-scoped): a principal spans engagements,
+# and its per-engagement rights live in ``role_assignments``. These plain
+# ``Base`` tables carry no ``engagement_id`` discriminator, so the row-level
+# scope filter/stamp never touches them.
+# ---------------------------------------------------------------------------
+
+
+class PrincipalRow(Base):
+    """An authenticated actor — a human user or an AI service agent (PI-γ D-γ1)."""
+
+    __tablename__ = "principals"
+
+    principal_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    # Email for humans / agent label for service agents.
+    identity: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    # Service agents note their ADO tier/area for the registry (PI-122).
+    agent_tier: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    agent_area: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    disabled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("principal_id", ["PRN"]),
+            name="ck_principal_identifier_format",
+        ),
+        CheckConstraint(
+            "kind IN ('human', 'service_agent')",
+            name="ck_principal_kind",
+        ),
+        CheckConstraint(
+            "status IN ('active', 'disabled')",
+            name="ck_principal_status",
+        ),
+        Index("ix_principals_status", "status"),
+        Index("ix_principals_kind", "kind"),
+    )
+
+
+class ApiTokenRow(Base):
+    """A hashed bearer token for a principal (PI-γ D-γ1).
+
+    Only the SHA-256 hash of the high-entropy token is stored; the plaintext is
+    shown once at mint time. Lookup hashes the presented bearer and matches on
+    ``token_hash`` (deterministic, O(1) — appropriate for high-entropy machine
+    tokens; KDF stretching would break the lookup and buys nothing here).
+    """
+
+    __tablename__ = "api_tokens"
+
+    token_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    label: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("token_id", ["TOK"], digits=4),
+            name="ck_api_token_identifier_format",
+        ),
+        CheckConstraint(
+            _LowerHexCheck("token_hash", length=64),
+            name="ck_api_token_hash_hex",
+        ),
+        UniqueConstraint("token_hash", name="ux_api_tokens_hash"),
+        Index("ix_api_tokens_principal", "principal_id"),
+    )
+
+
+class RoleAssignmentRow(Base):
+    """A principal's role on one engagement (PI-γ D-γ3).
+
+    Rights are per-engagement: ``(principal_id, engagement_id, role)`` is unique.
+    ``role`` is CHECK-constrained to ``RBAC_ROLES``.
+    """
+
+    __tablename__ = "role_assignments"
+
+    role_assignment_id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True
+    )
+    principal_id: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    engagement_id: Mapped[str] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('owner', 'editor', 'viewer', 'orchestrator', "
+            "'pi_lead', 'phase_specialist', 'area_specialist')",
+            name="ck_role_assignment_role",
+        ),
+        UniqueConstraint(
+            "principal_id",
+            "engagement_id",
+            "role",
+            name="ux_role_assignments_principal_engagement_role",
+        ),
+        Index("ix_role_assignments_principal", "principal_id"),
+        Index("ix_role_assignments_engagement", "engagement_id"),
+    )
