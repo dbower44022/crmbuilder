@@ -14,11 +14,13 @@ from crmbuilder_v2.access.exceptions import (
     SelectedCandidateConflictError,
     StatusTransitionError,
 )
+from crmbuilder_v2.access.rbac import PermissionDenied
 from crmbuilder_v2.api.errors import (
     access_layer_handler,
     classification_transition_handler,
     completed_status_requires_completion_fields_handler,
     invalid_domain_reference_handler,
+    permission_denied_handler,
     request_validation_handler,
     selected_candidate_conflict_handler,
     status_transition_handler,
@@ -113,6 +115,7 @@ def create_app() -> FastAPI:
         completed_status_requires_completion_fields_handler,
     )
     app.add_exception_handler(AccessLayerError, access_layer_handler)
+    app.add_exception_handler(PermissionDenied, permission_denied_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
 
     app.include_router(health.router)

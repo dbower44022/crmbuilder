@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from crmbuilder_v2.access.models import Base
+from crmbuilder_v2.access.models import Base, EngagementScopedMixin
 from sqlalchemy import create_engine, inspect, text
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -50,10 +50,14 @@ def _load_migration_module():
 
 
 def _model_scoped_tables() -> set[str]:
+    # Scoped tables are the EngagementScopedMixin subclasses — NOT merely any
+    # table with an ``engagement_id`` column. A system/shared table may carry
+    # an ``engagement_id`` FK to engagements without being a row-scoped tenant
+    # table (e.g. role_assignments, PI-γ), so key on the mixin, not the column.
     return {
-        t.name
-        for t in Base.metadata.tables.values()
-        if "engagement_id" in t.c
+        mapper.class_.__tablename__
+        for mapper in Base.registry.mappers
+        if issubclass(mapper.class_, EngagementScopedMixin)
     }
 
 

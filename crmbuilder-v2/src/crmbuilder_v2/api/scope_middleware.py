@@ -25,6 +25,7 @@ current runtime is unchanged.
 
 from __future__ import annotations
 
+import json
 import logging
 
 from crmbuilder_v2.access import engagement as engagement_repo
@@ -32,6 +33,7 @@ from crmbuilder_v2.access.engagement_scope import (
     reset_active_engagement,
     set_active_engagement,
 )
+from crmbuilder_v2.access.principal_scope import get_active_principal
 from crmbuilder_v2.config import get_settings
 
 _log = logging.getLogger("crmbuilder_v2.api.scope_middleware")
@@ -66,6 +68,32 @@ def resolve_engagement_identifier(header_value: str | None) -> str | None:
     return None
 
 
+async def _send_403(send, engagement: str | None) -> None:
+    body = json.dumps(
+        {
+            "data": None,
+            "meta": {},
+            "errors": [
+                {
+                    "code": "engagement_forbidden",
+                    "message": (
+                        "The authenticated principal is not assigned to "
+                        f"engagement {engagement or '<none>'}."
+                    ),
+                }
+            ],
+        }
+    ).encode("utf-8")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 403,
+            "headers": [(b"content-type", b"application/json")],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
+
 class EngagementScopeMiddleware:
     """Pure-ASGI middleware that sets the active engagement per request."""
 
@@ -84,6 +112,22 @@ class EngagementScopeMiddleware:
                 break
 
         identifier = resolve_engagement_identifier(header_value)
+
+        # PI-γ (D5-final): when auth is on, validate the selected engagement
+        # against the authenticated principal's assignments. The principal was
+        # set by the outer PrincipalMiddleware. Only enforced when a principal
+        # is present — a ``None`` principal here means a public/allowlisted path
+        # the principal middleware let through unauthenticated, which carries no
+        # engagement claim. An owner / all-engagements principal passes; an
+        # unscoped request (identifier None) is allowed.
+        if get_settings().principal_auth_enabled:
+            principal = get_active_principal()
+            if principal is not None and not principal.is_engagement_allowed(
+                identifier
+            ):
+                await _send_403(send, identifier)
+                return
+
         token = set_active_engagement(identifier)
         try:
             await self.app(scope, receive, send)

@@ -30,6 +30,16 @@ def _status_for(exc: AccessLayerError) -> int:
     return exc.http_status
 
 
+def permission_denied_handler(_request: Request, exc) -> JSONResponse:
+    """Render an RBAC :class:`PermissionDenied` as a 403 envelope (PI-γ)."""
+    return JSONResponse(
+        status_code=403,
+        content=err(
+            [{"code": exc.code, "message": str(exc)}]
+        ),
+    )
+
+
 def access_layer_handler(_request: Request, exc: AccessLayerError) -> JSONResponse:
     status = _status_for(exc)
     if isinstance(exc, ValidationError):
