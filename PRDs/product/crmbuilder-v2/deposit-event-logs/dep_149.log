@@ -1,0 +1,43 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_154.json
+Label:  ses_154
+Deposit event: DEP-149
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-056 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (3 records) ===
+  ✓ POST planning_items  PI-125 (HTTP 201)
+  ✓ POST planning_items  PI-126 (HTTP 201)
+  ✓ POST planning_items  PI-127 (HTTP 201)
+
+=== commits (7 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-377 (HTTP 201)
+
+=== references (7 records) ===
+  ✓ POST references  CNV-056 conversation_belongs_to_project PRJ-019 (HTTP 201)
+  ✓ POST references  SES-154 session_follows_from SES-153 (HTTP 201)
+  ✓ POST references  PI-125 planning_item_belongs_to_project PRJ-019 (HTTP 201)
+  ✓ POST references  PI-126 planning_item_belongs_to_project PRJ-019 (HTTP 201)
+  ✓ POST references  PI-127 planning_item_belongs_to_project PRJ-019 (HTTP 201)
+  ✓ POST references  PI-127 blocked_by PI-125 (HTTP 201)
+  ✓ POST references  DEC-377 decided_in CNV-056 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-125 (HTTP 201)
+
+✓ All 21 operations complete.
+
+✓ Recorded apply as deposit_event DEP-149 (HTTP 201).

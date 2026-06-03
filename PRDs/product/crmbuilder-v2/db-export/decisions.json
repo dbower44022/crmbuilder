@@ -6514,5 +6514,23 @@
     "supersedes_id": null,
     "title": "PI-123 build-discovered refinements — string-identifier discriminator, consolidation-coupled enforce, Session-class scope registration, CBM re-created fresh",
     "updated_at": "2026-06-02T16:34:54.517841"
+  },
+  {
+    "alternatives_considered": "Hard-cut to Postgres (rejected: SQLite default de-risks rollout); async asyncpg (deferred: sync + MVCC already gives concurrent readers/writers); dialect-branching one Alembic chain (rejected: multiple-heads tangle, SQLite batch ops with no clean PG analogue); TRUNCATE CASCADE for per-test reset (rejected: ~2.8s/test vs ~5ms for DELETE).",
+    "consequences": "Postgres is a validated, tested target for the v2 store; v2-unified.db is the blessed migration source. PI-gamma (RBAC) and PI-beta (de-file) land on this foundation. Two latent classes of bug were fixed for free: six VARCHAR-overflow columns (widened to Text / String(64), Alembic 0039) and a test-harness scope-uninstall leak. The Deployment phase (prod topology, managed PG, flip-the-default timing) and a PI-100 concurrent-writer scale check remain.",
+    "context": "PRJ-019's Production Multi-Tenant API program (successor to PI-123) decomposes into PI-alpha (Postgres foundation), PI-beta (de-file + kill snapshots), PI-gamma (RBAC). PI-alpha was designed in pi-alpha-postgres-foundation-architecture.md and built on branch pi-alpha-postgres. This DEC records the decisions taken and the findings running the build against a live Postgres 16 surfaced, so the design doc and successors reflect reality.",
+    "created_at": "2026-06-03T01:20:50.310860",
+    "decision": "(1) Postgres is enabled by a single switch CRMBUILDER_V2_DATABASE_URL (db_url returns it verbatim; falls back to sqlite:///db_path when unset); SQLite stays the DEFAULT until the prod migration is rehearsed. (2) psycopg3 sync + QueuePool (pre_ping + recycle); async is deferred. (3) JSON columns use JSON().with_variant(JSONB(),'postgresql') aliases (none_as_null preserved). (4) The four SQLite-only CHECK idioms (GLOB identifier formats, json_valid/json_type/json_array_length, IN (0,1) boolean domain, the hex-SHA NOT GLOB guard) become dialect-rendering ColumnElement constructs whose SQLite output is byte-identical and whose Postgres output is ~ regex / jsonb_* / boolean. (5) Dual-head Alembic: the SQLite batch chain (0001-0039) is NOT replayed on Postgres; PG gets a SEPARATE tree at migrations/pg/ with a single create_all baseline and grows its own chain (resolving the architecture doc's open §5 decision). (6) The data migration is a straight Core copy preserving engagement_id, FK-ordered with FK enforcement on, self-FK two-pass, plus a PG SERIAL sequence reset; validated with count/identifier parity + the leak-test on PG. (7) The suite runs on Postgres via a CRMBUILDER_V2_TEST_PG_URL-gated v2_env using a reverse-FK DELETE + one-pass sequence reset for per-test isolation (not TRUNCATE CASCADE, ~560x slower) and re-installing the scope listeners every test.",
+    "decision_date": "2026-06-02",
+    "engagement_id": "ENG-001",
+    "executive_summary": "Records PI-alpha's build: Postgres behind CRMBUILDER_V2_DATABASE_URL (SQLite default), psycopg3 sync + QueuePool, JSON->JSONB variants, four byte-identical-on-SQLite dialect-aware CHECK constructs, a separate migrations/pg/ Alembic baseline (dual-head), the validated sqlite_to_postgres migration, and a CRMBUILDER_V2_TEST_PG_URL-gated suite green on PG + CI. Port-discovered findings: six VARCHAR-overflow columns SQLite masked (widened, Alembic 0039) and a scope-listener test-harness leak. Resolves PI-alpha; PI-beta/PI-gamma created under PRJ-019.",
+    "id": 1000000364,
+    "identifier": "DEC-377",
+    "rationale": "The unified schema was designed without SQLite-only tricks, so the port is mechanical EXCEPT where SQLite silently tolerated what Postgres enforces. Running create_all + the real data migration against a live PG is what surfaced the genuine gaps; the byte-identical-on-SQLite constructs keep the default path and existing DBs unchanged. A separate PG Alembic tree avoids the multiple-heads tangle of dialect-branching one chain. DELETE-based reset made PG-mode as fast as SQLite, making a full PG test run practical.",
+    "status": "Active",
+    "superseded_by_id": null,
+    "supersedes_id": null,
+    "title": "PI-alpha Postgres foundation — build decisions and port-discovered findings",
+    "updated_at": "2026-06-03T01:20:50.310862"
   }
 ]

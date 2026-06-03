@@ -3324,5 +3324,34 @@
     "session_superseded_at": null,
     "session_title": "PI-123 build-closure — unified multi-engagement DB cutover (Stages 1-4)",
     "session_updated_at": "2026-06-02T16:34:50.622200"
+  },
+  {
+    "engagement_id": "ENG-001",
+    "session_cancelled_at": null,
+    "session_completed_at": "2026-06-03T01:20:46.330053",
+    "session_created_at": "2026-06-03T01:20:46.329785",
+    "session_deleted_at": null,
+    "session_description": "PI-alpha build-closure: ingests the 7 branch commits (Architecture -> Development -> Data-Migration -> Testing -> PG baseline + CI -> build notes -> documentation), records the build as DEC-377, creates the three PRJ-019 planning items (PI-alpha Postgres foundation, PI-beta de-file + kill snapshots, PI-gamma identity/RBAC), and resolves PI-alpha. Applied on main after the fast-forward merge of pi-alpha-postgres; re-key identifiers to main's heads if anything advanced in parallel.",
+    "session_ended_at": null,
+    "session_executive_summary": "PI-alpha (Postgres foundation, PRJ-019) built + closed on branch pi-alpha-postgres (06-02-26). Ported the unified row-level engagement_id schema to Postgres behind one switch (CRMBUILDER_V2_DATABASE_URL; SQLite stays default): JSON->JSONB variants, four dialect-aware CHECK constructs that emit byte-identical SQLite, a dialect-conditional engine (QueuePool on PG), a separate migrations/pg/ Alembic baseline, and the one-shot sqlite_to_postgres migration validated against the real v2-unified.db (ENG-001=9025 rows, isolation OK). The suite runs on Postgres via a CRMBUILDER_V2_TEST_PG_URL gate (access 844, api 412 green) + a CI workflow. Six VARCHAR-overflow bugs SQLite masked were fixed. Records DEC-377 and resolves PI-alpha; creates PI-beta and PI-gamma under PRJ-019.",
+    "session_identifier": "SES-154",
+    "session_in_flight_at": null,
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "kind": "build-closure",
+      "runner": "claude-code"
+    },
+    "session_not_started_at": null,
+    "session_notes": null,
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_scheduled_for": null,
+    "session_started_at": null,
+    "session_status": "complete",
+    "session_superseded_at": null,
+    "session_title": "PI-alpha build-closure — Postgres foundation (Production Multi-Tenant API)",
+    "session_updated_at": "2026-06-03T01:20:46.330139"
   }
 ]

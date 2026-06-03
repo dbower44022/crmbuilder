@@ -1984,5 +1984,53 @@
     "status": "Draft",
     "title": "All UI message/error dialogs must support select-all and copy",
     "updated_at": "2026-06-02T16:34:35.534288"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-06-03T01:20:46.672152",
+    "description": "See pi-alpha-postgres-foundation-architecture.md (+ §8.5 build notes) and pi-alpha-postgres-migration-runbook.md. Delivered: psycopg3 + CRMBUILDER_V2_DATABASE_URL + dialect-conditional engine/JSONB/CHECK constructs (models.py, db.py); migration/sqlite_to_postgres.py; migrations/pg/ baseline; CRMBUILDER_V2_TEST_PG_URL test gate; .github/workflows/postgres-tests.yml; docker-compose.dev.yml; six VARCHAR widenings + Alembic 0039. Remaining (separate): PI-100 scale check + the Deployment phase (prod topology, managed PG, flip-the-default).",
+    "engagement_id": "ENG-001",
+    "executive_summary": "Make Postgres the store for the v2 unified multi-engagement DB (PRJ-019, D1/D9/D10/D11). Port the strict row-level engagement_id schema to Postgres behind CRMBUILDER_V2_DATABASE_URL (SQLite stays the default): JSON->JSONB, dialect-aware CHECK constructs, a connection pool, a separate PG Alembic baseline, the one-shot v2-unified.db->Postgres migration (validated incl. the leak-test on PG), and the suite green on Postgres in CI. Foundation for PI-gamma (RBAC) and PI-beta (de-file). Built 06-02-26 on branch pi-alpha-postgres; this build-closure resolves it.",
+    "id": 1000000125,
+    "identifier": "PI-125",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Resolved",
+    "title": "PI-alpha — Postgres foundation (Production Multi-Tenant API)",
+    "updated_at": "2026-06-03T01:20:53.163057"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-06-03T01:20:47.015530",
+    "description": "Successor to PI-alpha under PRJ-019; see production-multitenant-api-architecture.md D5/D6/D7/D8. Removes access/meta_db.py + meta_models.py + migrations/meta/ + meta_exporter + the two-database wiring + dogfood_v0_5 + lazy_migration + ui/activation_worker subprocess swap; removes build_snapshot/write_staging/promote/force_export + the db-export tree + the export hook in session_scope; rewrites CLAUDE.md + governance-recording-rules.md + the orientation/conduct docs for API/MCP-only.",
+    "engagement_id": "ENG-001",
+    "executive_summary": "Finish the runtime transition the Postgres foundation enables (PRJ-019, D5-partial/D6/D7/D8). Remove the per-engagement-file apparatus (the meta DB layer, file routing, the activation-worker subprocess swap, the single-active marker) and the db-export snapshot process; engagement is selected per request, the DB is the source of truth, and clients reach it only via API or MCP (retire the static-JSON orientation tier). Absorbs the broken engagement-switch fix. Largely DB-agnostic — can run in parallel with the rest. Draft; awaits decomposition.",
+    "id": 1000000126,
+    "identifier": "PI-126",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Draft",
+    "title": "PI-beta — De-file the runtime + kill snapshots + API/MCP-only",
+    "updated_at": "2026-06-03T01:20:47.015532"
+  },
+  {
+    "area": null,
+    "claimed_at": null,
+    "claimed_by": null,
+    "created_at": "2026-06-03T01:20:47.352111",
+    "description": "Successor to PI-alpha under PRJ-019; see production-multitenant-api-architecture.md D2/D3/D4/D5. principals/api_tokens/roles/role_assignments tables; resolve_principal + bearer-token middleware; per-engagement permission enforcement at the access/repository layer composed with the scope; agents as scoped service principals (orchestrator mints/assigns tokens at spawn); finalize per-request engagement selection + retire the single-active marker. The shelved Cloudflare Managed-OAuth setup plugs in here as the OIDC issuer when Anthropic's connector bug is fixed.",
+    "engagement_id": "ENG-001",
+    "executive_summary": "Make the API multi-user (PRJ-019, D2/D3/D4/D5-final). Add principals (human users + AI service agents), hashed api_tokens, roles, and per-engagement role_assignments; a single resolve_principal chokepoint turns each request into an authenticated principal whose roles gate which engagements it may touch and read-vs-write rights, composed with the PI-123 row-level scope. Bearer tokens first (OIDC/SSO a deferred additive issuer); ADO agents are scoped service principals. Best on Postgres; needs the multi-user request model. Feeds PI-122 (Agent Profile Registry). Draft; awaits decomposition.",
+    "id": 1000000127,
+    "identifier": "PI-127",
+    "item_type": "pending_work",
+    "resolution_reference": null,
+    "status": "Draft",
+    "title": "PI-gamma — Identity, authentication & RBAC",
+    "updated_at": "2026-06-03T01:20:47.352113"
   }
 ]

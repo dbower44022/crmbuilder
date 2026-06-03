@@ -2018,5 +2018,145 @@
     "commit_sha": "ae5535c8934bd39395966d50a5b067857d622541",
     "commit_updated_at": "2026-06-02T16:34:54.149368",
     "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T14:35:29-04:00",
+    "commit_created_at": "2026-06-03T01:20:47.733166",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0102",
+    "commit_message_first_line": "v2: PI-alpha Architecture/scoping pass — Postgres foundation design",
+    "commit_message_full": "v2: PI-alpha Architecture/scoping pass — Postgres foundation design\n\nPI-alpha's own Architecture phase deliverable (refines program design\nproduction-multitenant-api-architecture.md D1/D9/D10/D11). Build-ready\nplan for the Postgres store swap only; PI-beta (de-file/snapshots) and\nPI-gamma (RBAC) land on it.\n\nResolves PI-alpha scoping decisions: psycopg3 sync + QueuePool (async\ndeferred); JSON->JSONB via dialect-variant aliases (none_as_null\npreserved); dialect-conditional engine build (SQLite hacks no-op on PG);\nfresh PG Alembic baseline (batch chain 0001-0038 not replayed);\nstraight v2-unified.db->PG copy + sequence reset + leak-test on PG;\nDocker PG for dev/CI, DO Managed PG for prod. Enumerates the five-point\nSQLite-specific surface and the 12 JSONB target columns.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "5b790bb97c8f201b628eed31bb662a8ae399fb2a"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-154",
+    "commit_sha": "588aec3fdd44abef83bda60ad73b511d4ac44002",
+    "commit_updated_at": "2026-06-03T01:20:47.733168",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T17:01:00-04:00",
+    "commit_created_at": "2026-06-03T01:20:48.113513",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 7,
+    "commit_identifier": "CM-0103",
+    "commit_message_first_line": "v2: PI-alpha Dev — port the schema to Postgres (dialect-conditional engine, JSONB, dialect-aware CHECKs)",
+    "commit_message_full": "v2: PI-alpha Dev — port the schema to Postgres (dialect-conditional engine, JSONB, dialect-aware CHECKs)\n\nPI-alpha Development phase, increment 1 (D1/D10). The strict unified schema\nnow materializes on Postgres; SQLite remains the default and is byte-identical.\n\n- pyproject: add psycopg[binary]>=3.1 (sync PG driver).\n- config: CRMBUILDER_V2_DATABASE_URL setting + dialect-aware db_url (falls\n  back to sqlite:///{db_path} when unset); db_pool_size/max_overflow/recycle.\n- db.py: dialect-conditional _build_engine — SQLite pragmas + BEGIN IMMEDIATE\n  only on SQLite; PG gets QueuePool (pre_ping + recycle) and standard txns.\n- models.py: JSONColumn / JSONColumnNoneAsNull dialect-variant aliases\n  (JSON on SQLite, JSONB on PG; none_as_null preserved) across all 12 JSON\n  columns. Dialect-aware CHECK constructs replace SQLite-only SQL: GLOB->~ regex\n  (identifier formats incl. compound + 4-digit + nullable REF), json_* ->\n  jsonb_* (non-empty-array), 0/1 -> true/false (boolean domain), hex SHA guard.\n  SQLite rendering is byte-identical, so the SQLite suite and existing DBs are\n  unchanged.\n- migrations/env.py: render_as_batch + sqlite pragmas + BEGIN IMMEDIATE only\n  on SQLite; PG runs standard in-place migrations.\n- docker-compose.dev.yml: local dev/CI Postgres (port 55432).\n\nValidated: create_all on PG 16 (41 tables, 403 CHECKs, 12 jsonb cols, 45 FKs);\nJSONB round-trip + engagement-scope stamp + scope filter isolation on live PG;\nSQLite suite green (860 access+migration tests pass, byte-identical CHECK SQL).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "588aec3fdd44abef83bda60ad73b511d4ac44002"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-154",
+    "commit_sha": "3f0805499fe40cc7d4f02b8e4a6799f763cdd65d",
+    "commit_updated_at": "2026-06-03T01:20:48.113515",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T17:44:55-04:00",
+    "commit_created_at": "2026-06-03T01:20:48.460460",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 5,
+    "commit_identifier": "CM-0104",
+    "commit_message_first_line": "v2: PI-alpha Dev/Data-Migration — unified-SQLite -> Postgres migration + column widenings",
+    "commit_message_full": "v2: PI-alpha Dev/Data-Migration — unified-SQLite -> Postgres migration + column widenings\n\nPI-alpha increment 2 (D9). The just-built v2-unified.db migrates into Postgres,\nvalidated end-to-end against the real DB.\n\n- migration/sqlite_to_postgres.py: one-shot migrate(sqlite, pg_url). Copies every\n  table through SQLAlchemy Core bound to Base.metadata (type round-trip handles\n  JSON-text->JSONB, 0/1->bool, ISO->timestamptz); inserts in sorted_tables FK\n  order with FK enforcement ON (no superuser/replication-role needed); two-passes\n  the decisions/topics self-FKs; resets PG SERIAL sequences to MAX(id) so the next\n  ORM insert can't collide. Validates per-engagement count + identifier parity,\n  no NULL engagement_id, and re-runs the cross-engagement isolation (leak-test)\n  through the scoped ORM on Postgres. CLI module entry point. PG schema is stood\n  up via create_all (the v0.1 baseline posture).\n\n- models.py: widen six columns whose real data overran the declared VARCHAR\n  (SQLite ignored the cap; PG enforces it) — found by migrating the real DB:\n  decisions/planning_items/risks.title + conversations.conversation_title +\n  change_log.entity_identifier -> Text; refs.relationship_kind String(32)->(64)\n  (longest vocab kind is 42 chars). meta_models.py: share _IdentifierFormatCheck\n  so the meta engagements table stays in parity (test_engagements_model_parity).\n\n- migrations/0039: SQLite-chain hygiene mirroring the widenings so\n  `alembic upgrade head` matches the models (no-op on SQLite in practice).\n\n- tests/migration/test_sqlite_to_postgres.py: gated on CRMBUILDER_V2_TEST_PG_URL\n  (skips without a PG; default SQLite suite untouched). Synthetic 2-engagement\n  source with colliding identifiers + self-FKs; asserts parity, coexistence,\n  self-FK integrity, sequence reset, JSONB round-trip, isolation, empty-target\n  refusal.\n\nValidated on PG16: real v2-unified.db -> 9025 ENG-001 rows + empty ENG-002, 10\nsequences reset, isolation OK; both pytest cases pass; SQLite suite green\n(877 passed, parity restored; only the pre-existing catalog-chain 0037 fails).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "3f0805499fe40cc7d4f02b8e4a6799f763cdd65d"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-154",
+    "commit_sha": "19fc9c480b97a5f505a4ed2e1cceb365cce63fe7",
+    "commit_updated_at": "2026-06-03T01:20:48.460462",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T18:24:34-04:00",
+    "commit_created_at": "2026-06-03T01:20:48.804298",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 3,
+    "commit_identifier": "CM-0105",
+    "commit_message_first_line": "v2: PI-alpha Testing — run the suite on Postgres (PG-mode conftest + portability fixes)",
+    "commit_message_full": "v2: PI-alpha Testing — run the suite on Postgres (PG-mode conftest + portability fixes)\n\nPI-alpha Testing phase. The shared v2_env fixture is now Postgres-aware, gated on\nCRMBUILDER_V2_TEST_PG_URL; unset, every test stays on per-test SQLite exactly as\nbefore. Access (844 passed / 10 skipped) and API (412 / 1) suites are green on PG.\n\nconftest:\n- PG mode routes the engine at CRMBUILDER_V2_DATABASE_URL; db_path still resolves\n  data_dir/marker/export. Schema built once per session, engine/pool reused.\n- Per-test reset is a reverse-FK DELETE + a one-pass PL/pgSQL sequence reset\n  (~5ms), NOT TRUNCATE CASCADE RESTART IDENTITY (~2.8s) — that alone made PG-mode\n  as fast as SQLite. Sequences restart at 1 so id-derived identifiers (REF-0001)\n  match the fresh-SQLite baseline.\n- Re-install the engagement-scope listeners every test: SQLite masks an\n  uninstalling test (test_engagement_scope) via its per-test engine rebuild; PG\n  reuses the engine, so without this the write-stamp stayed uninstalled and 121\n  later tests wrote NULL engagement_id.\n- pytest_collection_modifyitems skips intrinsically-SQLite tests on PG (type-\n  affinity reflection asserts; sqlite_master / two-file-routing topology).\n\ntest portability (run on both dialects now):\n- test_commit_model: datetime('now') -> CURRENT_TIMESTAMP; wrap expected-CHECK-\n  rejection inserts in a SAVEPOINT (PG aborts the txn on a failed statement,\n  SQLite does not) — this gives the GLOB->regex CHECKs real PG reject coverage.\n- test_process refs-check: same SAVEPOINT wrap.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "19fc9c480b97a5f505a4ed2e1cceb365cce63fe7"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-154",
+    "commit_sha": "f1f5c099e403bcf99f094ce772ed91ab7c977e15",
+    "commit_updated_at": "2026-06-03T01:20:48.804301",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T18:27:54-04:00",
+    "commit_created_at": "2026-06-03T01:20:49.232601",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 5,
+    "commit_identifier": "CM-0106",
+    "commit_message_first_line": "v2: PI-alpha — Postgres Alembic baseline tree + Postgres CI workflow",
+    "commit_message_full": "v2: PI-alpha — Postgres Alembic baseline tree + Postgres CI workflow\n\nPI-alpha Development (PG schema management) + Testing (CI).\n\n- migrations/pg/: a separate Alembic chain for Postgres (mirrors migrations/meta/),\n  resolving the architecture doc's open §5 decision in favour of a separate tree\n  over dialect-branching the SQLite chain. Single baseline 0001_pg_baseline\n  materialises the full strict schema from Base.metadata (create_all) — the\n  SQLite batch chain 0001-0039 is not replayed on PG; PG grows its own chain.\n  Validated: `alembic -c migrations/pg/alembic.ini upgrade head` -> 0001_pg_baseline\n  (head), 41 tables on PG16. Composes with sqlite_to_postgres.migrate(...,\n  create_schema=False) for a production deploy.\n- .github/workflows/postgres-tests.yml: spins up Postgres 16 and runs the DB\n  suites (access, api, integration, mcp_server, bootstrap, runtime + the\n  sqlite->pg migration test) with CRMBUILDER_V2_TEST_PG_URL set. UI (needs a\n  display, dialect-agnostic) and the main-branch-guarded apply_close_out tests\n  are excluded.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "f1f5c099e403bcf99f094ce772ed91ab7c977e15"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-154",
+    "commit_sha": "8b123dfb1d13b1acaa0a9b40d185372d96c7a01c",
+    "commit_updated_at": "2026-06-03T01:20:49.232603",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T18:28:54-04:00",
+    "commit_created_at": "2026-06-03T01:20:49.571549",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 1,
+    "commit_identifier": "CM-0107",
+    "commit_message_first_line": "v2: PI-alpha — record build notes (as executed) in the architecture doc",
+    "commit_message_full": "v2: PI-alpha — record build notes (as executed) in the architecture doc\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "8b123dfb1d13b1acaa0a9b40d185372d96c7a01c"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-154",
+    "commit_sha": "78ee297c2f46946bd350a95e4548041d550cac01",
+    "commit_updated_at": "2026-06-03T01:20:49.571551",
+    "engagement_id": "ENG-001"
+  },
+  {
+    "commit_author_email": "doug@dougbower.com",
+    "commit_author_name": "Doug Bower",
+    "commit_branch": "main",
+    "commit_committed_at": "2026-06-02T18:35:04-04:00",
+    "commit_created_at": "2026-06-03T01:20:49.936614",
+    "commit_deleted_at": null,
+    "commit_files_changed_count": 2,
+    "commit_identifier": "CM-0108",
+    "commit_message_first_line": "v2: PI-alpha Documentation — CLAUDE.md Postgres store note + migration runbook",
+    "commit_message_full": "v2: PI-alpha Documentation — CLAUDE.md Postgres store note + migration runbook\n\nPI-alpha Documentation phase. CLAUDE.md gains a Production Multi-Tenant API /\nPI-alpha note under PRJ-019: Postgres-when-DATABASE_URL-set (SQLite still\ndefault), JSONB + dialect-aware CHECK constructs, the dual-head Alembic posture\n(migrations/pg/ separate from the SQLite chain), the data-migration script, the\nPG test gate + CI, and the six VARCHAR widenings. New runbook\npi-alpha-postgres-migration-runbook.md covers the Docker dev quickstart, the PG\nbaseline, running the migration, validation, the PG test run, and the managed-PG\nproduction outline.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+    "commit_parent_shas": [
+      "78ee297c2f46946bd350a95e4548041d550cac01"
+    ],
+    "commit_repository": "crmbuilder",
+    "commit_session_id": "SES-154",
+    "commit_sha": "7352d1a9ac4fad5f472cd811617a44ed1c4b8962",
+    "commit_updated_at": "2026-06-03T01:20:49.936617",
+    "engagement_id": "ENG-001"
   }
 ]
