@@ -669,6 +669,17 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # conversation→conversation kinds (`conversation_follows_from`,
         # `conversation_relates_to`) in _kinds_for_pair below.
         "conversation_orchestrates_conversation",
+        # PI-122 Agent Profile Registry binding + learning edges. The two
+        # binding kinds activate in _kinds_for_pair at the catalog slice; the
+        # three learning kinds are admitted in the CHECK now (one migration)
+        # and their _kinds_for_pair clauses activate with the learning repo
+        # (slice 3). learning_derived_from → finding waits on the finding
+        # entity (D-δ6); it targets work_task/decision/test_spec meanwhile.
+        "agent_profile_has_skill",
+        "agent_profile_governed_by_rule",
+        "learning_derived_from",
+        "learning_contradicted_by",
+        "learning_promoted_to",
     }
 )
 
@@ -986,6 +997,12 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         # conversation→conversation kinds; the same-type ``supersedes``
         # clause earlier already admits supersession for this pair too.
         kinds.add("conversation_orchestrates_conversation")
+    # PI-122 Agent Profile Registry binding edges (slice 2). The learning
+    # edges' clauses are added with the learning repo (slice 3).
+    if source_type == "agent_profile" and target_type == "skill":
+        kinds.add("agent_profile_has_skill")
+    if source_type == "agent_profile" and target_type == "governance_rule":
+        kinds.add("agent_profile_governed_by_rule")
     return frozenset(kinds)
 
 

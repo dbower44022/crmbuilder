@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.repositories import (
     agent_profiles,
     governance_rules,
+    registry_resolver,
     skills,
 )
 from crmbuilder_v2.api.deps import readonly_session, writable_session
@@ -47,6 +49,19 @@ def list_agent_profiles(
 def agent_profile_next_identifier():
     with readonly_session() as s:
         return ok({"next": agent_profiles.compute_next_identifier(s)})
+
+
+@agent_profiles_router.get("/{identifier}/contract")
+def resolve_agent_profile_contract(identifier: str, engagement: str | None = None):
+    """Resolve the profile into an effective contract (D-δ4).
+
+    The scope merge uses ``engagement`` when given, else the request's active
+    engagement (the ``X-Engagement`` header); ``system`` rows are always
+    included, engagement-overlay rows only for that engagement.
+    """
+    active = engagement if engagement is not None else get_active_engagement()
+    with readonly_session() as s:
+        return ok(registry_resolver.resolve_contract(s, identifier, engagement_id=active))
 
 
 @agent_profiles_router.get("/{identifier}")
