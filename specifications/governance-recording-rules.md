@@ -238,8 +238,8 @@ Empty sections are present as empty arrays, never omitted. The session block bun
 2. **Pre-flight** — working-directory check, clean-status check, git identity, `git pull --rebase`, payload-exists check, API health check, pre-apply identifier-head capture against the target engagement's database.
 3. **Apply** — single `apply_close_out.py` invocation against the target engagement with expected-OK record counts.
 4. **Post-apply verification** — identifier-head advancement, reference count delta, spot-check the session and one decision, spot-check `decided_in` reference resolution.
-5. **Commit snapshot regeneration** — the apply script transactionally regenerates the engagement's `db-export/` JSON snapshots via the `_refresh_snapshot` hook (no standalone exporter is invoked); commit the snapshot files and `change_log.json` together with the standard message format.
-6. **Done block** — reply with heads-before-and-after, record counts, snapshot-commit SHA, next-conversation kickoff path.
+5. **Commit the deposit-event log + deliverables** — PI-β removed the `db-export/` JSON snapshot regeneration (the database is the source of truth; nothing is regenerated to commit). The apply script tees its run to `deposit-event-logs/dep_NNN.log`; commit that log together with the content deliverable, the close-out payload, and the apply prompt in one commit with the standard message format.
+6. **Done block** — reply with heads-before-and-after, record counts, the commit SHA, next-conversation kickoff path.
 
 **Sandbox commit convention.** In Claude.ai sandbox conversations, the close-out payload and the apply prompt are **committed and pushed together in the same turn**. The sandbox container is ephemeral; a held commit is a lost commit. In Claude Code at Doug's terminal, Doug pushes after review.
 
@@ -265,7 +265,7 @@ A short catalog of patterns that produce broken governance records and how to av
 
 **Off-the-record session.** A Claude.ai chat thread operates against a V2 engagement, produces material content, and ends without any session record being authored. The governance record is silent on a session that actually happened. Mitigation: per the Mandatory Logging principle in §0, every session against a V2 engagement is logged. Even content-free sessions get a session record stating the absence of further content.
 
-**Snapshot lag between sandbox commits and post-apply commits.** A sandbox conversation pushes its close-out payload and apply prompt to GitHub; Doug runs the apply locally, regenerating snapshots in his local clone; if Doug has not yet pushed the snapshot-regen commit, the GitHub snapshot lags the live API. A subsequent sandbox conversation that reads only GitHub will see stale heads. Mitigation: every sandbox session re-captures live identifier heads at session start via the curl block, regardless of what the GitHub snapshot says.
+**Reading committed files instead of the live DB.** PI-β removed the `db-export/` JSON snapshot tree, so there is no committed copy of governance state to read — and there never was an authoritative one (it always lagged the live API between apply and push). A session must capture identifier heads and read records from the **live API/MCP** (`X-Engagement` header naming the engagement), never from committed JSON. Mitigation: every session re-captures live identifier heads at session start via the curl/MCP block against the running API.
 
 **Heterogeneous date formats.** `session.session_date` in the CRMBUILDER engagement stores `MM-DD-YY` for older sessions and `YYYY-MM-DD` for newer; any script substituting `session_date` into an ISO datetime must normalize on read (PI-025 Stage D precedent). Author new sessions with `YYYY-MM-DD`.
 

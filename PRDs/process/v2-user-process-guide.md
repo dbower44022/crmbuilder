@@ -26,7 +26,7 @@
 
 ## 1. Purpose and Audience
 
-This guide tells a consultant how to run a CRM Builder client engagement using the v2 governance stack. It assumes the v2 storage system is in place and that the engagement will be conducted through some combination of Claude.ai sessions (MCP-connected or file-fallback) and the v2 desktop application.
+This guide tells a consultant how to run a CRM Builder client engagement using the v2 governance stack. It assumes the v2 storage system is in place and that the engagement will be conducted through some combination of Claude.ai sessions (MCP-connected, or reading the REST API directly) and the v2 desktop application.
 
 The reader of this guide is the consultant — the person organizing the engagement, conducting interviews, capturing decisions, producing artifacts, and ultimately delivering a configured CRM to the client. The client's stakeholders are not the audience for this document; they interact with the engagement through the conduct framework, not through this playbook.
 
@@ -72,17 +72,17 @@ The v2 storage stack is layered, and you will interact with it through more than
 
 **The desktop application** is the PySide6 GUI. You use it for human-driven operations: reviewing the current Charter and Status, browsing decisions and sessions, building references, running CRM deployments, and the like.
 
-**File-fallback mode** is for sessions where the MCP server is not available. JSON snapshots of the governance objects live at `PRDs/product/crmbuilder-v2/db-export/` and are git-tracked. A session in file-fallback mode reads the snapshots from there directly. The snapshots are written when the access layer exports them; they are not edited by hand.
+**REST API mode** is for sessions where the MCP server is not available. The AI reads (and writes) the governance objects by calling the REST API directly — `curl http://127.0.0.1:8765/<entity>`, naming the engagement with the `X-Engagement` header and unwrapping the `{data, meta, errors}` envelope. The database is the single source of truth; you read it live, never from committed files. (PI-β removed the former git-tracked `db-export/` JSON snapshots.)
 
 Three operating modes you will actually be in:
 
 | Mode | When | What you read | What you write |
 |------|------|--------------|----------------|
 | MCP-connected Claude.ai session | Substantive AI-led work (interviews, drafting, decision capture) when MCP is running | Live database via MCP tool calls | Live database via MCP tool calls |
-| File-fallback Claude.ai session | Same kind of work when MCP is not running | The JSON snapshots in `db-export/` | Nothing during the session; updates happen later through MCP or the desktop UI |
+| REST-API Claude.ai session | Same kind of work when MCP is not running | Live database via the REST API (`X-Engagement` header) | Live database via the REST API |
 | Desktop application | Human-driven review, governance maintenance, deployment operations | Live database via REST | Live database via REST |
 
-A useful default: prefer MCP-connected sessions for any session where governance objects will change during the conversation. Use file-fallback mode when you only need to read context to ground a discussion. Use the desktop application for maintenance, browsing, and deployment.
+A useful default: prefer MCP-connected sessions for any session where governance objects will change during the conversation. Use the REST API directly when MCP is not running. Use the desktop application for maintenance, browsing, and deployment.
 
 ---
 
@@ -155,7 +155,7 @@ Every session that engages v2 work begins with a tiered orientation, per the pro
 - `list_recent_sessions(limit=3)` — to know what's recent context.
 - `get_decision(<id>)` — for any decision referenced by name in the upcoming work.
 
-**Tier 2, file-fallback mode.** Read the JSON snapshots in `PRDs/product/crmbuilder-v2/db-export/`: `charter.json`, `status.json`, `sessions.json`, `decisions.json`, `references.json`. Same content as the MCP would return; just static.
+**Tier 2, REST API.** When MCP is not connected, read the same context live from the REST API: `GET /charter`, `/status`, `/sessions`, `/decisions/<id>`, `/references?...` against `http://127.0.0.1:8765` with the `X-Engagement` header, unwrapping `.data` from the `{data, meta, errors}` envelope.
 
 **Tier 3, on-demand.** Targeted queries during the session as specific topics arise. "What did we decide about X?" prompts a `get_decision` or `list_decisions_for_session` call mid-conversation, not a pre-loaded read.
 
@@ -501,7 +501,7 @@ An engagement ends when its in-scope deliverables are complete, accepted, and th
 - **Final Status.** A closeout Status records the final phase, any unresolved items intentionally left open (typically as a deferred-work register for a future engagement), and reading-order guidance for anyone who picks the engagement up later.
 - **Open planning items, resolved or deferred.** Every open planning item is either resolved (with a referencing Decision) or explicitly deferred to a future engagement (with rationale).
 - **Final session.** A closeout Session captures the closeout meeting and any final decisions.
-- **Database snapshot.** The current JSON export under `db-export/` is committed as part of the closeout. The database itself remains under `crmbuilder-v2/data/v2.db` (gitignored) and is archived separately per the engagement's data retention policy.
+- **Database archive.** The engagement database is the system of record; it is archived per the engagement's data retention policy. (PI-β removed the former `db-export/` JSON snapshot tree — there is no JSON export to commit at closeout; the git-tracked governance trail is the close-out payloads and deposit-event logs.)
 - **Deliverables inventory.** A list of every artifact produced during the engagement — Word documents, YAML files, the deployed CRM instance — with their final locations. This becomes the handover document.
 
 The Charter and Status final versions, combined with the deliverables inventory, are sufficient to bring a future consultant up to speed on what was done, what was decided, and where to find everything.
@@ -530,19 +530,18 @@ Domains, cross-domain services, entities, fields, processes, process steps, pers
 - Governance entities with prefixed identifiers (`DEC-NNN`, `SES-NNN`, etc.) require the identifier to be computed client-side before a direct-API write. Helpers like `compute_next_session_identifier(client.list_sessions())` handle this in the desktop UI. Direct REST or MCP writes must compute the identifier and supply it in the POST body.
 - Methodology entities use the human-readable-first format everywhere: *Client Intake (MN-INTAKE)*, never *MN-INTAKE: Client Intake*.
 
-### File-fallback paths
+### Reading without MCP (REST API)
 
-When MCP is unavailable, the governance object snapshots live at `PRDs/product/crmbuilder-v2/db-export/`:
+When MCP is unavailable, read the governance objects live from the REST API at `http://127.0.0.1:8765` (name the engagement with the `X-Engagement` header; unwrap `.data` from the `{data, meta, errors}` envelope). (PI-β removed the former `db-export/` JSON snapshots; there is no committed file copy to read.)
 
-- `charter.json` — Charter versions.
-- `status.json` — Status versions.
-- `decisions.json` — All decisions.
-- `sessions.json` — All sessions.
-- `planning_items.json` — Open and closed planning items.
-- `topics.json` — All topics.
-- `risks.json` — All risks.
-- `references.json` — All references.
-- `change_log.json` — Aggregate change log.
+- `GET /charter`, `/charter/versions` — Charter and its versions.
+- `GET /status`, `/status/versions` — Status and its versions.
+- `GET /decisions`, `/decisions/<id>` — decisions.
+- `GET /sessions`, `/sessions/<id>` — sessions.
+- `GET /planning-items` — open and closed planning items.
+- `GET /topics` — topics.
+- `GET /risks` — risks.
+- `GET /references?...`, `/references/touching/<type>/<id>` — references.
 
 ### Phase-to-conduct mapping
 
