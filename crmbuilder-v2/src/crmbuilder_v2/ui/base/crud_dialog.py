@@ -1329,20 +1329,18 @@ class EntityCrudDialog(QDialog):
     def _open_active_engagement_edit(self) -> None:
         """Open Edit Engagement for the active engagement.
 
-        Resolves the active engagement from the marker file, looks its
-        record up by code, and opens the edit dialog so the operator can
-        fix the export directory. Imports are local to avoid a base→
-        engagement-dialog import cycle (engagement_crud imports this base).
+        Resolves the active engagement from the client's ``X-Engagement``
+        header (identifier or code), looks its record up, and opens the edit
+        dialog so the operator can fix the export directory. Imports are local
+        to avoid a base→engagement-dialog import cycle (engagement_crud
+        imports this base).
         """
-        from crmbuilder_v2.runtime.engagement_routing import (
-            resolve_active_engagement,
-        )
         from crmbuilder_v2.ui.dialogs.engagement_crud import (
             EngagementEditDialog,
         )
 
-        code = resolve_active_engagement()
-        if not code:
+        active = self._client.active_engagement()
+        if not active:
             return
         try:
             engagements = self._client.list_engagements()
@@ -1352,7 +1350,12 @@ class EntityCrudDialog(QDialog):
             )
             return
         record = next(
-            (e for e in engagements if e.get("engagement_code") == code),
+            (
+                e
+                for e in engagements
+                if e.get("engagement_identifier") == active
+                or e.get("engagement_code") == active
+            ),
             None,
         )
         if record is None:

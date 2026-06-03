@@ -1,38 +1,23 @@
-"""ActiveEngagementContext — in-memory + cross-restart active state.
+"""ActiveEngagementContext — the desktop's in-memory active engagement.
 
-Mirrors v1's ``automation/ui/active_client_context.py`` pattern.
-``crmbuilder-v2/data/current_engagement.json`` holds the
-cross-restart state; the in-memory ``Engagement`` is the live runtime
-state. Panels subscribe to ``active_engagement_changed`` for both
-initial load and runtime switching (slice D).
-
-Per ``multi-engagement-architecture.md`` §3.3.
+PI-β removed the cross-restart ``current_engagement.json`` marker: the
+active engagement is now purely client-side desktop state. Panels
+subscribe to ``active_engagement_changed`` for both initial selection and
+runtime switching; the desktop also mirrors the active engagement onto the
+``StorageClient`` so it is sent as the ``X-Engagement`` header on every
+request. Switching engagements is a context change (set the engagement,
+refresh the panels) — no API restart, no marker file.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import os
-import tempfile
-from datetime import UTC, datetime
-from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
 
-from crmbuilder_v2.access.engagement_models import (
-    Engagement,
-    EngagementStatus,
-)
-from crmbuilder_v2.config import get_settings
-from crmbuilder_v2.runtime.engagement_routing import resolve_active_engagement
+from crmbuilder_v2.access.engagement_models import Engagement
 
 _log = logging.getLogger("crmbuilder_v2.ui.active_engagement_context")
-
-
-def current_engagement_path() -> Path:
-    """Return the absolute path to ``current_engagement.json``."""
-    return get_settings().db_path.parent / "current_engagement.json"
 
 
 class ActiveEngagementContext(QObject):
@@ -75,126 +60,3 @@ class ActiveEngagementContext(QObject):
     def clear(self) -> None:
         """Clear the active engagement; emits ``None``."""
         self.set_engagement(None)
-
-    # ------------------------------------------------------------------
-    # Cross-restart persistence
-    # ------------------------------------------------------------------
-
-    def load_from_disk(
-        self, resolver=None
-    ) -> Engagement | None:
-        """Populate ``_engagement`` from ``current_engagement.json``.
-
-        ``resolver`` is an optional callable that, given the
-        engagement_identifier from the file, returns a hydrated
-        ``Engagement`` from the meta DB (or ``None`` if the engagement
-        does not exist / is soft-deleted / its DB file is missing).
-        Slice D wires the resolver to a real engagement lookup; slice
-        A's smoke uses a stub that returns ``None``.
-
-        If the file is missing or malformed, or the resolver returns
-        ``None``, state is cleared and ``None`` is emitted. Returns the
-        loaded engagement (or ``None``).
-
-        The active-engagement *code* and the missing/corrupt-marker
-        handling are delegated to
-        :func:`crmbuilder_v2.runtime.engagement_routing.resolve_active_engagement`
-        (the slice-A helper the CLI and API also use), so the marker
-        resolution logic lives in one place. The *identifier* — which
-        that helper does not return but the resolver and stub both need
-        — is read from the same marker file.
-        """
-        code = resolve_active_engagement()
-        if not code:
-            # Missing marker, unreadable/corrupt marker, or no
-            # engagement_code: no active engagement. resolve_active_engagement
-            # logs the corrupt/key-missing cases.
-            self.set_engagement(None)
-            return None
-        identifier = self._marker_identifier()
-        if not identifier:
-            _log.warning(
-                "current_engagement.json has engagement_code but no "
-                "engagement_identifier; clearing state"
-            )
-            self.set_engagement(None)
-            return None
-        engagement: Engagement | None
-        if resolver is not None:
-            engagement = resolver(identifier)
-        else:
-            # Best-effort stub for slice A: synthesise a minimal
-            # Engagement so callers can read identifier/code immediately
-            # without slice B's repository. Slice D replaces with a
-            # real resolver against the meta DB.
-            now = datetime.now(UTC)
-            engagement = Engagement(
-                engagement_identifier=identifier,
-                engagement_code=code,
-                engagement_name=code,
-                engagement_purpose="",
-                engagement_status=EngagementStatus.ACTIVE,
-                engagement_last_opened_at=None,
-                engagement_export_dir=None,
-                engagement_created_at=now,
-                engagement_updated_at=now,
-                engagement_deleted_at=None,
-            )
-        self.set_engagement(engagement)
-        return engagement
-
-    def _marker_identifier(self) -> str | None:
-        """Return ``engagement_identifier`` from the marker file, or ``None``.
-
-        Companion to :func:`resolve_active_engagement` (which returns the
-        code): reads the same ``current_engagement.json`` for the
-        identifier the code-only helper does not expose. Returns ``None``
-        on any read/parse failure — the caller treats that as "no active
-        engagement".
-        """
-        path = current_engagement_path()
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return None
-        identifier = payload.get("engagement_identifier")
-        return identifier if identifier else None
-
-    def persist_to_disk(self) -> None:
-        """Atomically write ``current_engagement.json`` from current state.
-
-        Writes nothing if the engagement is ``None`` — slice D's
-        deactivation flow uses an explicit ``clear_disk()`` to remove
-        the file.
-        """
-        if self._engagement is None:
-            return
-        path = current_engagement_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "engagement_identifier": self._engagement.engagement_identifier,
-            "engagement_code": self._engagement.engagement_code,
-            "set_at": datetime.now(UTC).isoformat(),
-        }
-        fd, tmp = tempfile.mkstemp(
-            suffix=".tmp", prefix=path.name, dir=str(path.parent)
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                json.dump(payload, fh, indent=2, sort_keys=True)
-                fh.write("\n")
-            os.replace(tmp, path)
-        except Exception:
-            try:
-                os.unlink(tmp)
-            except FileNotFoundError:
-                pass
-            raise
-
-    def clear_disk(self) -> None:
-        """Remove ``current_engagement.json`` if present."""
-        path = current_engagement_path()
-        try:
-            path.unlink()
-        except FileNotFoundError:
-            pass

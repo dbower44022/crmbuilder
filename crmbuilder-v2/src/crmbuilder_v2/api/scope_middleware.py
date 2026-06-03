@@ -5,12 +5,13 @@ Resolves the active engagement for each request and sets it on the
 row-level read filter / write stamp (Slice 2b) scope every query and insert to
 that engagement.
 
-Resolution order (D6):
-
-1. The ``X-Engagement`` request header — its value may be either the engagement
-   **identifier** (``ENG-NNN``) or the user-facing **code** (e.g. ``CRMBUILDER``).
-2. Otherwise the ``current_engagement.json`` marker (the existing single-active
-   default), so a bare request keeps working exactly as today.
+Resolution (PI-β D5): the active engagement is named per request by the
+``X-Engagement`` request header — its value may be either the engagement
+**identifier** (``ENG-NNN``) or the user-facing **code** (e.g. ``CRMBUILDER``).
+There is no marker fallback: a request that names no engagement and hits a
+scoped table is unscoped (and fails loud once enforcement is on). The desktop
+sends the header on every request; switching engagements is a client-side
+context change.
 
 A pure **ASGI** middleware (not ``BaseHTTPMiddleware``): ``BaseHTTPMiddleware``
 runs the endpoint in a child task where a ``ContextVar`` set in ``dispatch`` does
@@ -32,20 +33,19 @@ from crmbuilder_v2.access.engagement_scope import (
     set_active_engagement,
 )
 from crmbuilder_v2.config import get_settings
-from crmbuilder_v2.runtime.engagement_routing import resolve_active_engagement
 
 _log = logging.getLogger("crmbuilder_v2.api.scope_middleware")
 
 
 def resolve_engagement_identifier(header_value: str | None) -> str | None:
-    """Resolve a header value (identifier *or* code) or the marker to ``ENG-NNN``.
+    """Resolve an ``X-Engagement`` header value (identifier *or* code) to ``ENG-NNN``.
 
     Returns the canonical engagement identifier, or ``None`` when nothing
-    resolves (no header, no marker, or an unknown value). A ``None`` result
-    leaves the request unscoped — the filter stays dormant (and, once
-    enforcement is enabled at cutover, an unscoped scoped-query fails loud).
+    resolves (no header or an unknown value). A ``None`` result leaves the
+    request unscoped — the filter stays dormant (and, when enforcement is on,
+    an unscoped scoped-query fails loud).
     """
-    candidate = (header_value or "").strip() or resolve_active_engagement()
+    candidate = (header_value or "").strip()
     if not candidate:
         return None
     candidate_upper = candidate.upper()

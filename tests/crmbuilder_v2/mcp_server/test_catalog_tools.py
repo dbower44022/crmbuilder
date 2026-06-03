@@ -30,7 +30,12 @@ async def mcp_server(v2_env):
     app = create_app()
     transport = httpx.ASGITransport(app=app)
     http = httpx.AsyncClient(
-        transport=transport, base_url="http://testserver", timeout=10.0
+        transport=transport,
+        base_url="http://testserver",
+        timeout=10.0,
+        # PI-β: name the engagement per request (the marker fallback is gone);
+        # v2_env seeds ENG-001 as the default engagement.
+        headers={"X-Engagement": "ENG-001"},
     )
     server = build_server(http=http)
     yield server

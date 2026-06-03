@@ -32,7 +32,12 @@ _spec.loader.exec_module(apply_close_out)
 
 @pytest.fixture
 def api_client(v2_env):
-    return TestClient(create_app())
+    # PI-β: the engagement is named per request by the X-Engagement header (the
+    # marker fallback is gone); v2_env seeds ENG-001 as the default engagement,
+    # so the apply script's scoped writes stamp/resolve against it.
+    tc = TestClient(create_app())
+    tc.headers.update({"X-Engagement": "ENG-001"})
+    return tc
 
 
 @pytest.fixture

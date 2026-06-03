@@ -1,22 +1,31 @@
-"""v0.5 slice B — engagement REST endpoint tests."""
+"""Engagement REST endpoint tests (the ``/engagements`` registry).
+
+PI-β folded the registry into the unified DB's ``engagements`` table (the
+separate meta DB is gone). ``v2_env`` seeds ``ENG-001`` for row scoping, so
+clear the registry to an empty table for these tests, which assert identifier
+assignment from empty. The endpoints operate on the *unscoped* engagements
+table; with the registry cleared a headerless/unknown-engagement request has
+no active engagement, so disable scope-enforcement (production runs scoping on,
+enforcement off) to keep the writable-session export snapshot's scoped reads
+from tripping.
+"""
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-
-from crmbuilder_v2.access.meta_exporter import meta_export_dir as _real_meta_export_dir
 
 
 @pytest.fixture(autouse=True)
-def _redirect_meta_export(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Send the meta-DB snapshot to a per-test temp dir."""
-    from crmbuilder_v2.access import meta_exporter
+def _empty_engagement_registry(v2_env):
+    from crmbuilder_v2.access import engagement_scope
+    from crmbuilder_v2.access.db import session_scope
+    from crmbuilder_v2.access.models import EngagementRow
 
-    monkeypatch.setattr(
-        meta_exporter, "meta_export_dir", lambda: tmp_path / "meta-export"
-    )
+    with session_scope() as s:
+        s.query(EngagementRow).delete()
+    prev = engagement_scope.set_enforcement(False)
+    yield
+    engagement_scope.set_enforcement(prev)
 
 
 def _envelope_ok(body: dict) -> dict:

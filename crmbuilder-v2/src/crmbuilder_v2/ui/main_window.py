@@ -142,7 +142,6 @@ class MainWindow(QMainWindow):
         client: StorageClient,
         snapshot_dir: Path | None = None,
         active_context=None,
-        managers=None,
     ):
         super().__init__()
         self.setWindowTitle("CRMBuilder v2")
@@ -151,7 +150,6 @@ class MainWindow(QMainWindow):
         self._lifecycle = lifecycle
         self._client = client
         self._active_context = active_context
-        self._managers = managers
         self._sidebar = Sidebar()
         self._top_strip = None
         self._picker = None
@@ -243,7 +241,6 @@ class MainWindow(QMainWindow):
                 page = EngagementsPanel(
                     self._client,
                     active_context=self._active_context,
-                    managers=self._managers,
                 )
             # v0.7 governance entities — six new panels appended to the
             # Governance group in workstream order.
@@ -626,17 +623,29 @@ class MainWindow(QMainWindow):
         self._picker = picker
 
     def _on_picker_activation_requested(self, identifier: str) -> None:
-        """Picker row clicked: kick off the activation worker."""
-        if self._active_context is None or self._managers is None:
-            _log.warning(
-                "Picker requested activation but no managers wired; ignoring"
-            )
-            return
+        """Picker row clicked: switch the active engagement (client-side).
+
+        PI-β: switching is a context change, not a subprocess swap. We set
+        the active engagement on the context (which mirrors onto the
+        ``StorageClient``'s ``X-Engagement`` header) and refresh the panels;
+        every subsequent request is scoped to the new engagement.
+        """
+        self.switch_engagement(identifier)
+
+    def switch_engagement(self, identifier: str) -> bool:
+        """Make ``identifier`` the active engagement and refresh the panels.
+
+        Returns ``True`` on success. Best-effort: a fetch failure is logged
+        and leaves the previous engagement active.
+        """
+        if self._active_context is None:
+            _log.warning("switch_engagement called with no active_context; ignoring")
+            return False
         try:
             payload = self._client.get_engagement(identifier)
         except Exception:
-            _log.exception("Failed to fetch engagement %s for activation", identifier)
-            return
+            _log.exception("Failed to fetch engagement %s for switch", identifier)
+            return False
         from datetime import UTC, datetime
 
         from crmbuilder_v2.access.engagement_models import (
@@ -675,37 +684,15 @@ class MainWindow(QMainWindow):
             or datetime.now(UTC),
             engagement_deleted_at=_maybe_dt(payload.get("engagement_deleted_at")),
         )
-        previous = self._active_context.engagement()
-        from crmbuilder_v2.ui.activation_worker import (
-            ActivationWorker,
-            run_activation_in_thread,
-        )
-        from crmbuilder_v2.ui.widgets.activation_overlay import ActivationOverlay
+        # Mirror onto the client header directly (belt-and-braces: app.py also
+        # wires active_engagement_changed → client.set_active_engagement).
+        self._client.set_active_engagement(target.engagement_identifier)
+        self._active_context.set_engagement(target)
+        self._refresh_after_engagement_switch()
+        return True
 
-        worker = ActivationWorker(
-            target_engagement=target,
-            previous_engagement=previous,
-            client=self._client,
-            active_context=self._active_context,
-            managers=self._managers,
-        )
-        overlay = ActivationOverlay(target, previous, worker, parent=self)
-        overlay.setFixedSize(self.size())
-        overlay.move(0, 0)
-        overlay.retry_requested.connect(
-            lambda i=identifier: self._on_picker_activation_requested(i)
-        )
-        overlay.stay_requested.connect(overlay.close)
-        overlay.show()
-        worker.completed.connect(self._on_activation_completed)
-        self._activation_overlay = overlay
-        self._activation_thread = run_activation_in_thread(worker, parent=self)
-        self._activation_worker = worker
-
-    def _on_activation_completed(self, _engagement) -> None:
-        """Engagement switch finished: the live API is now bound to the new
-        engagement's DB. Refresh the visible panel and mark the rest stale
-        so they re-fetch from the new DB when next navigated to."""
+    def _refresh_after_engagement_switch(self) -> None:
+        """Refresh the visible panel and mark the rest stale after a switch."""
         current = self._sidebar.current_text()
         for entry, index in self._pages_by_entry.items():
             page = self._stack.widget(index)

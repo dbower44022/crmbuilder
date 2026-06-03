@@ -54,9 +54,9 @@ def _snapshot_dir_display(settings: Settings) -> str:
 
     Multi-tenancy routing fix slice B (B3): the active engagement's
     export directory can be unconfigured (the ``__UNCONFIGURED__``
-    sentinel set by ``route_settings_to_engagement``) or configured at a
-    path that does not exist on disk. Surface both to the operator
-    instead of leaking the raw sentinel string or an unverified path.
+    sentinel) or configured at a path that does not exist on disk.
+    Surface both to the operator instead of leaking the raw sentinel
+    string or an unverified path.
     """
     if str(settings.export_dir) == UNCONFIGURED_SENTINEL:
         return "(not configured)"

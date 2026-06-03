@@ -2457,32 +2457,20 @@ class IdentifierReservation(EngagementScopedMixin, Base):
 # ---------------------------------------------------------------------------
 # Engagement registry — the tenant table (PI-123 Slice 1, DEC-375 / D1).
 #
-# The unified multi-engagement DB folds the former separate "meta DB"
-# (``data/engagements.db``, its own ``MetaBase`` + Alembic chain) into this
-# one ``Base`` so the engagements registry becomes an in-DB table and
-# ``engagement_id`` (a future column on the scoped tables, Slice 2) can FK to
-# it. This shape mirrors ``access/meta_models.py``'s ``EngagementRow`` exactly
-# — column-for-column, constraint-for-constraint — and a parity test
-# (``test_engagements_model_parity``) pins them equal so the two definitions
-# cannot drift during the transition.
-#
-# TRANSITIONAL DUPLICATION (intentional): the legacy per-engagement-file
-# runtime still serves ``/engagements/*`` from the separate meta DB via
-# ``meta_models.EngagementRow`` / ``meta_db`` — unchanged by this slice. This
-# class is the unified-DB definition: it is what ``Base.metadata.create_all``
-# and the main Alembic chain (migration ``0037``) materialise. The runtime
-# flip (serve the registry from the one engine, retire the meta DB + its
-# chain) is sequenced with the Deployment cutover, not this slice, because in
-# the per-engagement-file world the registry must stay shared across engagement
-# DBs. At cutover ``meta_models.EngagementRow`` is deleted and this remains.
+# The unified multi-engagement DB holds the engagements registry as an in-DB
+# table on this one ``Base`` so the scoped tables' ``engagement_id`` columns
+# can FK to it. The ``/engagements`` REST API serves this table directly (PI-β
+# removed the former separate "meta DB" and its parallel ``EngagementRow`` /
+# Alembic chain). It is what ``Base.metadata.create_all`` and the main Alembic
+# chain (migration ``0037``) materialise.
 # ---------------------------------------------------------------------------
 
 
 class EngagementRow(Base):
     """Row in the unified DB's ``engagements`` tenant table.
 
-    Named ``EngagementRow`` (mirroring ``meta_models``) to stay distinct from
-    the access-layer dataclass ``Engagement`` in ``engagement_models.py``.
+    Named ``EngagementRow`` to stay distinct from the access-layer dataclass
+    ``Engagement`` in ``engagement_models.py``.
     """
 
     __tablename__ = "engagements"

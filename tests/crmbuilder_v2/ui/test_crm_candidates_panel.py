@@ -50,9 +50,16 @@ from PySide6.QtWidgets import (
 @pytest.fixture
 def candidate_client(v2_env) -> StorageClient:
     """A StorageClient over a real TestClient bound to the per-test DB."""
-    return StorageClient(
+    sc = StorageClient(
         base_url="http://testserver", client=TestClient(create_app())
     )
+    # PI-β: mirror the desktop, which sends the active engagement as the
+    # X-Engagement header on every request, so scoped reads/writes resolve
+    # v2_env's seeded ENG-001 through the per-request scope middleware
+    # (the TestClient runs the app in a portal thread that does not inherit
+    # the test thread's active-engagement ContextVar).
+    sc.set_active_engagement("ENG-001")
+    return sc
 
 
 def _seed(client: StorageClient, name: str, **overrides) -> dict:
@@ -558,6 +565,7 @@ def test_phase_5_selection_round_trip_with_singleton_block_and_restart(
     restarted = StorageClient(
         base_url="http://testserver", client=TestClient(create_app())
     )
+    restarted.set_active_engagement("ENG-001")  # PI-β: send X-Engagement
     records = {
         r["crm_candidate_identifier"]: r["crm_candidate_status"]
         for r in restarted.list_crm_candidates()

@@ -1,8 +1,10 @@
-"""Engagement-registry REST endpoints (v0.5 slice B).
+"""Engagement-registry REST endpoints (v0.5 slice B; PI-β: unified DB).
 
 Eight standard endpoints per ``methodology-schema-specs/engagement.md``
-§3.5.1 plus a slice-A-compatible healthcheck. All endpoints route to
-the meta DB via the ``meta_session`` dependency.
+§3.5.1 plus a slice-A-compatible healthcheck. PI-β: the endpoints now read/write
+the **unified** DB's ``engagements`` table (the single registry the scope
+resolver reads) via the normal ``readonly_session`` / ``writable_session``
+dependencies — the separate meta DB is gone.
 
 The router preserves the slice-A ``/engagements/healthcheck`` URL so
 external monitors that started watching it under slice A do not break;
@@ -17,7 +19,7 @@ from fastapi import APIRouter
 
 from crmbuilder_v2.access import engagement as engagement_repo
 from crmbuilder_v2.access.exceptions import NotFoundError
-from crmbuilder_v2.api.deps import meta_session
+from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     EngagementCreateIn,
@@ -30,8 +32,8 @@ router = APIRouter(prefix="/engagements", tags=["engagements"])
 
 @router.get("/healthcheck")
 def healthcheck() -> dict:
-    """Verify the meta-DB connection is alive; return engagement count."""
-    with meta_session() as s:
+    """Verify the registry is reachable; return engagement count."""
+    with readonly_session() as s:
         engagements = engagement_repo.list_engagements(
             s, include_deleted=True
         )
@@ -41,7 +43,7 @@ def healthcheck() -> dict:
 @router.get("")
 def list_all(include_deleted: bool = False):
     """List engagements (default excludes soft-deleted)."""
-    with meta_session() as s:
+    with readonly_session() as s:
         engagements = engagement_repo.list_engagements(
             s, include_deleted=include_deleted
         )
@@ -51,14 +53,14 @@ def list_all(include_deleted: bool = False):
 @router.get("/next-identifier")
 def next_identifier():
     """Return the next available ``ENG-NNN`` identifier."""
-    with meta_session() as s:
+    with readonly_session() as s:
         return ok({"next": engagement_repo.next_engagement_identifier(s)})
 
 
 @router.get("/{identifier}")
 def get(identifier: str):
     """Single engagement fetch (includes soft-deleted records)."""
-    with meta_session() as s:
+    with readonly_session() as s:
         engagement = engagement_repo.get_engagement(s, identifier)
         if engagement is None:
             raise NotFoundError("engagement", identifier)
@@ -67,7 +69,7 @@ def get(identifier: str):
 
 @router.post("", status_code=201)
 def create(body: EngagementCreateIn):
-    with meta_session() as s:
+    with writable_session() as s:
         engagement = engagement_repo.create_engagement(
             s,
             engagement_code=body.engagement_code,
@@ -86,7 +88,7 @@ def create(body: EngagementCreateIn):
 
 @router.put("/{identifier}")
 def replace(identifier: str, body: EngagementReplaceIn):
-    with meta_session() as s:
+    with writable_session() as s:
         engagement = engagement_repo.update_engagement(
             s,
             identifier,
@@ -104,7 +106,7 @@ def replace(identifier: str, body: EngagementReplaceIn):
 def patch(identifier: str, body: EngagementPatchIn):
     """Partial update. ``exclude_unset`` distinguishes omitted from null."""
     provided: dict[str, Any] = body.model_dump(exclude_unset=True)
-    with meta_session() as s:
+    with writable_session() as s:
         engagement = engagement_repo.patch_engagement(
             s, identifier, **provided
         )
@@ -114,7 +116,7 @@ def patch(identifier: str, body: EngagementPatchIn):
 @router.delete("/{identifier}")
 def delete(identifier: str):
     """Soft-delete; idempotent."""
-    with meta_session() as s:
+    with writable_session() as s:
         engagement = engagement_repo.delete_engagement(s, identifier)
     return ok(engagement.to_dict())
 
@@ -122,6 +124,6 @@ def delete(identifier: str):
 @router.post("/{identifier}/restore")
 def restore(identifier: str):
     """Clear soft-delete; 422 if not soft-deleted."""
-    with meta_session() as s:
+    with writable_session() as s:
         engagement = engagement_repo.restore_engagement(s, identifier)
     return ok(engagement.to_dict())

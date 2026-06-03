@@ -1,18 +1,12 @@
 """PI-123 Slice 1 — migration 0037 folds the engagements table into the unified DB.
 
-Two tests, neither needing the (decommissioned) catalog YAMLs:
-
-- ``test_engagements_model_parity`` — pure-metadata proof that the new
-  unified-DB model ``access/models.py::EngagementRow`` is column-for-column,
-  constraint-for-constraint, index-for-index identical to the legacy meta-DB
-  model ``access/meta_models.py::EngagementRow``. This pins the transitional
-  duplication (two definitions of one table, one on ``Base`` and one on
-  ``MetaBase``) so they cannot drift before the meta DB is retired at cutover.
-
 - ``test_0037_creates_and_drops_engagements_table`` — runs migration 0037 in
   isolation by stamping the DB at 0036 (its down_revision) and upgrading one
   step, so the catalog-seed migration (0004) never runs. Asserts the table and
   its five indexes appear, then downgrades and asserts they are gone.
+
+(PI-β removed the separate meta DB; the former ``test_engagements_model_parity``
+pinned the unified ``EngagementRow`` against the now-deleted meta model.)
 """
 
 from __future__ import annotations
@@ -22,41 +16,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from crmbuilder_v2.access.meta_models import EngagementRow as MetaEngagementRow
-from crmbuilder_v2.access.models import EngagementRow as MainEngagementRow
-from sqlalchemy import CheckConstraint, create_engine, text
+from sqlalchemy import create_engine, text
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ALEMBIC_DIR = _REPO_ROOT / "crmbuilder-v2"
 _DOWN_REVISION = "0036_ado_workstream_state_model_substrate"
-
-
-def _table_fingerprint(table) -> tuple[dict, dict, dict]:
-    """A comparable shape: columns, check constraints, indexes."""
-    cols = {
-        c.name: (str(c.type), bool(c.nullable), bool(c.primary_key))
-        for c in table.columns
-    }
-    checks = {
-        con.name: str(con.sqltext)
-        for con in table.constraints
-        if isinstance(con, CheckConstraint)
-    }
-    indexes = {
-        ix.name: (bool(ix.unique), tuple(str(e) for e in ix.expressions))
-        for ix in table.indexes
-    }
-    return cols, checks, indexes
-
-
-def test_engagements_model_parity() -> None:
-    main = _table_fingerprint(MainEngagementRow.__table__)
-    meta = _table_fingerprint(MetaEngagementRow.__table__)
-    assert MainEngagementRow.__tablename__ == "engagements"
-    assert MetaEngagementRow.__tablename__ == "engagements"
-    assert main[0] == meta[0], f"column mismatch: {main[0]} != {meta[0]}"
-    assert main[1] == meta[1], f"check-constraint mismatch: {main[1]} != {meta[1]}"
-    assert main[2] == meta[2], f"index mismatch: {main[2]} != {meta[2]}"
 
 
 def _alembic(args: list[str], db_path: Path) -> subprocess.CompletedProcess:

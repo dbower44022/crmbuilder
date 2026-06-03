@@ -13,14 +13,8 @@ exercises the genuine access → REST → DB path.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 import pytest
-from crmbuilder_v2.access import meta_exporter
-from crmbuilder_v2.access.meta_db import (
-    bootstrap_meta_db,
-    reset_meta_engine_cache,
-)
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
 from crmbuilder_v2.ui.client import StorageClient
@@ -44,21 +38,32 @@ from PySide6.QtWidgets import QDialog, QLineEdit
 
 
 @pytest.fixture
-def _redirect_meta_export(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(
-        meta_exporter, "meta_export_dir", lambda: tmp_path / "meta-export"
-    )
-    yield
+def engagement_client(v2_env) -> StorageClient:
+    """A StorageClient over a real TestClient bound to the unified DB.
 
+    PI-β: the engagement registry lives in the unified ``engagements`` table
+    (the separate meta DB is gone). ``v2_env`` seeds the default ``ENG-001``
+    for row scoping; these panel tests assert against engagements they seed
+    themselves, so clear the registry to an empty table first.
 
-@pytest.fixture
-def engagement_client(v2_env, _redirect_meta_export) -> StorageClient:
-    """A StorageClient over a real TestClient bound to the per-test meta DB."""
-    reset_meta_engine_cache()
-    bootstrap_meta_db()
-    return StorageClient(
-        base_url="http://testserver", client=TestClient(create_app())
-    )
+    The panel's headerless client hits the **unscoped** engagements table;
+    disable scope-enforcement (production runs scoping on, enforcement off) so
+    the writable-session export snapshot's scoped reads don't trip on the
+    no-active-engagement request. See ``test_engagement_crud_dialogs``.
+    """
+    from crmbuilder_v2.access import engagement_scope
+    from crmbuilder_v2.access.db import session_scope
+    from crmbuilder_v2.access.models import EngagementRow
+
+    with session_scope() as s:
+        s.query(EngagementRow).delete()
+    prev = engagement_scope.set_enforcement(False)
+    try:
+        yield StorageClient(
+            base_url="http://testserver", client=TestClient(create_app())
+        )
+    finally:
+        engagement_scope.set_enforcement(prev)
 
 
 def _seed(client: StorageClient, code: str, name: str, **overrides) -> dict:

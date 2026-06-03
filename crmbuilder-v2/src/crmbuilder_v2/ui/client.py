@@ -67,6 +67,22 @@ class StorageClient:
         else:
             self._client = client
             self._owns_client = False
+        # PI-β: the active engagement is selected per request by the
+        # ``X-Engagement`` header. The desktop sets it from its active-
+        # engagement context; switching engagements is a client-side context
+        # change (set the header, refresh the panels) — no API restart.
+        self._engagement: str | None = None
+
+    def set_active_engagement(self, engagement: str | None) -> None:
+        """Set the engagement (identifier ``ENG-NNN`` or code) sent on every request.
+
+        ``None`` clears it, leaving subsequent requests unscoped.
+        """
+        self._engagement = engagement or None
+
+    def active_engagement(self) -> str | None:
+        """Return the engagement currently sent as the ``X-Engagement`` header."""
+        return self._engagement
 
     def close(self) -> None:
         """Close the owned httpx.Client (no-op if caller owns the client)."""
@@ -2071,26 +2087,6 @@ class StorageClient:
             )
         return result
 
-    def route_active_engagement(self, engagement_code: str) -> dict[str, Any]:
-        """POST /admin/active-engagement. Re-route the live API in-process.
-
-        Returns the post-switch connection info. Raises ``NotFoundError``
-        if the code is unknown to the meta DB, ``StorageConnectionError``
-        if the API is unreachable.
-        """
-        result = self._request(
-            "POST",
-            "/admin/active-engagement",
-            json_body={"engagement_code": engagement_code},
-        )
-        if not isinstance(result, dict):
-            raise ServerError(
-                status_code=200,
-                errors=[],
-                message="Expected dict body for route_active_engagement",
-            )
-        return result
-
     # ------------------------------------------------------------------
     # References (full list)
     # ------------------------------------------------------------------
@@ -2166,8 +2162,13 @@ class StorageClient:
         json_body: dict[str, Any] | None = None,
     ) -> Any:
         _log.debug("%s %s", method, path)
+        headers = (
+            {"X-Engagement": self._engagement} if self._engagement else None
+        )
         try:
-            resp = self._client.request(method, path, json=json_body)
+            resp = self._client.request(
+                method, path, json=json_body, headers=headers
+            )
         except (
             httpx.ConnectError,
             httpx.ConnectTimeout,

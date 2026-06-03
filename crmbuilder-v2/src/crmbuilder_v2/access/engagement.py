@@ -1,6 +1,10 @@
-"""Engagement repository (v0.5 slice B).
+"""Engagement repository (v0.5 slice B; PI-β: now over the unified DB).
 
-Sits over the meta DB at ``crmbuilder-v2/data/engagements.db``.
+Operates on the **unified** DB's ``engagements`` table — the single registry the
+per-request scope resolver already reads — via a normal access-layer session.
+(PI-β collapsed the redundant second copy that lived in a separate meta DB at
+``crmbuilder-v2/data/engagements.db``; writes now go through the unified
+``session_scope``, so there is no separate meta-snapshot hook.)
 Eight standard methods with validation per
 ``methodology-schema-specs/engagement.md`` §3.5.
 
@@ -20,9 +24,6 @@ Validation posture:
   original "existing-writable" rule in multi-tenancy-routing-fix slice B.)
 * ``engagement_code`` is immutable post-creation.
 * Soft-delete sets ``engagement_deleted_at``; restore clears it.
-
-Each successful write triggers the meta-snapshot regeneration hook
-to ``PRDs/product/crmbuilder-v2/db-export/meta/engagements.json``.
 """
 
 from __future__ import annotations
@@ -46,8 +47,7 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.meta_db import meta_session_scope
-from crmbuilder_v2.access.meta_models import EngagementRow
+from crmbuilder_v2.access.models import EngagementRow
 
 _ENTITY_TYPE = "engagement"
 _IDENTIFIER_PREFIX = "ENG"
@@ -239,27 +239,6 @@ def _increment_identifier(identifier: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Snapshot regeneration hook
-# ---------------------------------------------------------------------------
-
-
-def _refresh_snapshot(session: Session) -> None:
-    """Regenerate ``db-export/meta/engagements.json`` after every write.
-
-    Imported lazily so the import graph stays clean (the exporter
-    helper lives outside the access layer's hot path).
-    """
-    from crmbuilder_v2.access.meta_exporter import write_engagements_snapshot
-
-    rows = (
-        session.query(EngagementRow)
-        .order_by(EngagementRow.engagement_identifier)
-        .all()
-    )
-    write_engagements_snapshot([Engagement.from_row(r) for r in rows])
-
-
-# ---------------------------------------------------------------------------
 # Reads
 # ---------------------------------------------------------------------------
 
@@ -427,7 +406,6 @@ def create_engagement(
         session.add(row)
         session.flush()
 
-    _refresh_snapshot(session)
     return Engagement.from_row(row)
 
 
@@ -498,7 +476,6 @@ def update_engagement(
     if engagement_last_opened_at is not ...:
         row.engagement_last_opened_at = engagement_last_opened_at  # type: ignore[assignment]
     session.flush()
-    _refresh_snapshot(session)
     return Engagement.from_row(row)
 
 
@@ -582,7 +559,6 @@ def patch_engagement(
         row.engagement_last_opened_at = value
 
     session.flush()
-    _refresh_snapshot(session)
     return Engagement.from_row(row)
 
 
@@ -592,7 +568,6 @@ def delete_engagement(session: Session, identifier: str) -> Engagement:
     if row.engagement_deleted_at is None:
         row.engagement_deleted_at = datetime.now(UTC)
         session.flush()
-        _refresh_snapshot(session)
     return Engagement.from_row(row)
 
 
@@ -611,48 +586,56 @@ def restore_engagement(session: Session, identifier: str) -> Engagement:
         )
     row.engagement_deleted_at = None
     session.flush()
-    _refresh_snapshot(session)
     return Engagement.from_row(row)
 
 
-# Module-level convenience wrappers that open a meta session internally.
-# Useful for scripts and slice A's lazy callers.
+# Module-level convenience wrappers that open a unified-DB session internally.
+# Useful for scripts and the per-request scope resolver. (PI-β: the registry now
+# lives only in the unified ``engagements`` table — the separate meta DB is gone —
+# so ``EngagementRow`` above is the unified model and these open a normal session.)
+
+
+def _open_unified_session():
+    from crmbuilder_v2.access.db import get_session_factory
+
+    return get_session_factory()()
 
 
 def list_engagements_in_meta(
     *, include_deleted: bool = False
 ) -> list[Engagement]:
-    with meta_session_scope() as s:
-        return list_engagements(s, include_deleted=include_deleted)
+    """Back-compat alias — reads the unified ``engagements`` table.
+
+    The historical name is retained for callers (scripts, routing) that have
+    not been renamed; it no longer touches a meta DB.
+    """
+    session = _open_unified_session()
+    try:
+        return list_engagements(session, include_deleted=include_deleted)
+    finally:
+        session.close()
 
 
+# Canonical name for reading the unified registry (the per-request scope resolver
+# uses this); ``list_engagements_in_meta`` is the back-compat alias above.
 def list_engagements_unified(
     *, include_deleted: bool = False
 ) -> list[Engagement]:
-    """List engagements from the **unified** DB's ``engagements`` table (PI-123).
+    """List engagements from the unified DB's ``engagements`` table.
 
-    The per-request scope resolver reads the registry from the one unified
-    engine — the cutover target — so an engagement is resolvable without the
-    separate meta DB. (The ``/engagements`` REST API still serves the meta DB
-    until the Stage 4 cutover collapses the two; the resolver intentionally
-    reads the unified table that ``engagement_id`` FKs point at.) The
-    ``engagements`` table is un-scoped, so this query is never engagement-
+    The ``engagements`` table is un-scoped, so this query is never engagement-
     filtered and is safe to run with no active engagement.
     """
-    from crmbuilder_v2.access.db import get_session_factory
-    from crmbuilder_v2.access.models import EngagementRow as UnifiedEngagementRow
-
-    factory = get_session_factory()
-    session = factory()
+    session = _open_unified_session()
     try:
-        stmt = select(UnifiedEngagementRow)
-        if not include_deleted:
-            stmt = stmt.where(UnifiedEngagementRow.engagement_deleted_at.is_(None))
-        return [Engagement.from_row(r) for r in session.scalars(stmt).all()]
+        return list_engagements(session, include_deleted=include_deleted)
     finally:
         session.close()
 
 
 def get_engagement_in_meta(identifier: str) -> Engagement | None:
-    with meta_session_scope() as s:
-        return get_engagement(s, identifier)
+    session = _open_unified_session()
+    try:
+        return get_engagement(session, identifier)
+    finally:
+        session.close()

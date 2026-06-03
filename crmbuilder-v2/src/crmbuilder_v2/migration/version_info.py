@@ -1,23 +1,20 @@
-"""Schema-version introspection for the v2 databases.
+"""Schema-version introspection for the unified v2 database.
 
 The migration system *is* the database version system: each Alembic
-revision (``0001_…`` … ``0010_…``) is a schema version, and the chain
-head is the latest. This module reports, for a DB, the revision it is
-currently stamped at (read from its ``alembic_version`` table) versus the
-head its migration chain defines, plus whether the two agree.
+revision is a schema version, and the chain head is the latest. This
+module reports, for the unified DB, the revision it is currently stamped
+at (read from its ``alembic_version`` table) versus the head its
+migration chain defines, plus whether the two agree.
 
-Two chains exist (``multi-engagement-architecture.md`` §3.6):
-
-* the per-engagement chain at ``crmbuilder-v2/migrations/`` — one DB per
-  engagement; :func:`engagement_schema_version` reports the *active*
-  engagement's DB (whatever ``Settings.db_path`` currently points at).
-* the meta chain at ``crmbuilder-v2/migrations/meta/`` — the engagement
-  registry; :func:`meta_schema_version`.
+PI-β collapsed the per-engagement + meta two-chain world into one: there
+is a single unified DB at ``Settings.db_url`` migrated by the chain at
+``crmbuilder-v2/migrations/``. :func:`schema_version` reports it.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
@@ -25,8 +22,6 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine
 
 from crmbuilder_v2.config import get_settings
-from crmbuilder_v2.migration.lazy_migration import make_engagement_alembic_config
-from crmbuilder_v2.migration.meta_alembic import make_meta_alembic_config
 
 
 @dataclass(frozen=True)
@@ -48,6 +43,20 @@ class SchemaVersion:
         }
 
 
+def _migrations_dir() -> Path:
+    # version_info.py is at <repo>/crmbuilder-v2/src/crmbuilder_v2/migration/
+    return Path(__file__).resolve().parents[3] / "migrations"
+
+
+def make_alembic_config() -> Config:
+    """Build an Alembic Config pointed at the unified DB."""
+    alembic_dir = _migrations_dir()
+    cfg = Config(str(alembic_dir.parent / "alembic.ini"))
+    cfg.set_main_option("script_location", str(alembic_dir))
+    cfg.set_main_option("sqlalchemy.url", get_settings().db_url)
+    return cfg
+
+
 def _head_revision(cfg: Config) -> str | None:
     return ScriptDirectory.from_config(cfg).get_current_head()
 
@@ -66,29 +75,11 @@ def _current_revision(url: str) -> str | None:
         engine.dispose()
 
 
-def engagement_schema_version() -> SchemaVersion:
-    """Schema version of the engagement DB ``Settings`` currently points at.
-
-    The head is read from the per-engagement migration chain (independent
-    of which engagement is active); the current revision is read from the
-    actual bound DB at ``Settings.db_url``.
-    """
+def schema_version() -> SchemaVersion:
+    """Schema version of the unified DB ``Settings`` currently points at."""
     settings = get_settings()
-    # The engagement code only sets the (here-unused) URL option on the
-    # config; head resolution depends solely on the script location. The
-    # current revision is read from the authoritative bound DB URL.
-    cfg = make_engagement_alembic_config(settings.db_path.stem)
+    cfg = make_alembic_config()
     return SchemaVersion(
         current=_current_revision(settings.db_url),
-        head=_head_revision(cfg),
-    )
-
-
-def meta_schema_version() -> SchemaVersion:
-    """Schema version of the engagement-registry meta DB."""
-    cfg = make_meta_alembic_config()
-    url = cfg.get_main_option("sqlalchemy.url")
-    return SchemaVersion(
-        current=_current_revision(url),
         head=_head_revision(cfg),
     )

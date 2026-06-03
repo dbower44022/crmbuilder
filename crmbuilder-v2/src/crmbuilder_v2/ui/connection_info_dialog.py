@@ -88,8 +88,7 @@ class ConnectionInfoDialog(QDialog):
         "Database path",
         "Database exists",
         "Database size",
-        "Engagement DB schema",
-        "Meta DB schema",
+        "Database schema",
         "Export directory",
     )
 
@@ -171,12 +170,8 @@ class ConnectionInfoDialog(QDialog):
         self._set("API reachable", "Yes" if reachable else f"No ({error_text})")
         self._set("API version", (versions or {}).get("api_version") or "—")
         self._set(
-            "Engagement DB schema",
-            self._schema_display((versions or {}).get("engagement_schema")),
-        )
-        self._set(
-            "Meta DB schema",
-            self._schema_display((versions or {}).get("meta_schema")),
+            "Database schema",
+            self._schema_display((versions or {}).get("schema")),
         )
 
         if info is None:
@@ -190,7 +185,7 @@ class ConnectionInfoDialog(QDialog):
             "Database exists", "Yes" if info.get("db_exists") else "No"
         )
         self._set("Database size", _human_size(info.get("db_size_bytes")))
-        self._set("Export directory", self._export_display(info))
+        self._set("Export directory", self._export_display())
 
     def _set(self, label: str, value: str) -> None:
         widget = self._value_labels.get(label)
@@ -198,23 +193,19 @@ class ConnectionInfoDialog(QDialog):
             widget.setText(value)
 
     def _engagement_display(self, info: dict[str, Any] | None) -> str:
-        code = (info or {}).get("engagement_code")
-        name = None
-        identifier = None
-        if self._active_context is not None:
-            eng = self._active_context.engagement()
-            if eng is not None:
-                name = eng.engagement_name
-                identifier = eng.engagement_identifier
-                if code is None:
-                    code = eng.engagement_code
-        if code is None:
+        # PI-β: the active engagement is client-side desktop state (sent as the
+        # per-request X-Engagement header), not a property of the API process.
+        eng = (
+            self._active_context.engagement()
+            if self._active_context is not None
+            else None
+        )
+        if eng is None:
             return "(none active)"
-        parts = [code]
-        if name:
-            parts.append(f"— {name}")
-        if identifier:
-            parts.append(f"({identifier})")
+        parts = [eng.engagement_code]
+        if eng.engagement_name:
+            parts.append(f"— {eng.engagement_name}")
+        parts.append(f"({eng.engagement_identifier})")
         return " ".join(parts)
 
     @staticmethod
@@ -227,12 +218,20 @@ class ConnectionInfoDialog(QDialog):
         head = block.get("head") or "?"
         return f"{current} → head {head} (migration pending)"
 
-    @staticmethod
-    def _export_display(info: dict[str, Any]) -> str:
-        if not info.get("export_dir_configured"):
+    def _export_display(self) -> str:
+        # PI-β: the export dir is a property of the active engagement record,
+        # not the API connection. Read it from the active-engagement context.
+        eng = (
+            self._active_context.engagement()
+            if self._active_context is not None
+            else None
+        )
+        path = eng.engagement_export_dir if eng is not None else None
+        if not path:
             return "(not configured)"
-        path = info.get("export_dir") or ""
-        if not info.get("export_dir_exists"):
+        import os
+
+        if not os.path.isdir(path):
             return f"(missing — {path})"
         return path
 

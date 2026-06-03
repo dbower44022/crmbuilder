@@ -18,17 +18,10 @@ Covers PRD §5.1 / §5.6 acceptance criteria for the three dialogs:
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from pathlib import Path
-
 import pytest
-from crmbuilder_v2.access import meta_exporter
 from crmbuilder_v2.access.engagement_models import (
     Engagement,
     EngagementStatus,
-)
-from crmbuilder_v2.access.meta_db import (
-    bootstrap_meta_db,
-    reset_meta_engine_cache,
 )
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
@@ -47,23 +40,33 @@ from PySide6.QtWidgets import QDialog, QLineEdit
 
 
 @pytest.fixture
-def _redirect_meta_export(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    target = tmp_path / "meta-export"
+def engagement_client(v2_env) -> StorageClient:
+    """A StorageClient over a TestClient bound to the unified DB (PI-β).
 
-    def _resolve() -> Path:
-        return target
+    The engagement registry is the unified ``engagements`` table; ``v2_env``
+    seeds ``ENG-001`` for scoping, so clear it to an empty registry for these
+    dialog tests, which seed their own engagements.
 
-    monkeypatch.setattr(meta_exporter, "meta_export_dir", _resolve)
-    yield
+    These tests drive a *headerless* client against the **unscoped**
+    engagements table. ``v2_env`` turns scope-enforcement on (to catch
+    un-stamped scoped writes); with no ``X-Engagement`` header the per-request
+    active engagement is ``None``, so the writable-session export snapshot's
+    scoped reads would trip enforcement. Production runs scoping on but
+    enforcement *off*, so disable enforcement here to match.
+    """
+    from crmbuilder_v2.access import engagement_scope
+    from crmbuilder_v2.access.db import session_scope
+    from crmbuilder_v2.access.models import EngagementRow
 
-
-@pytest.fixture
-def engagement_client(v2_env, _redirect_meta_export) -> StorageClient:
-    reset_meta_engine_cache()
-    bootstrap_meta_db()
-    return StorageClient(
-        base_url="http://testserver", client=TestClient(create_app())
-    )
+    with session_scope() as s:
+        s.query(EngagementRow).delete()
+    prev = engagement_scope.set_enforcement(False)
+    try:
+        yield StorageClient(
+            base_url="http://testserver", client=TestClient(create_app())
+        )
+    finally:
+        engagement_scope.set_enforcement(prev)
 
 
 def _make_active(identifier: str = "ENG-001", code: str = "ALPHA") -> ActiveEngagementContext:

@@ -191,29 +191,22 @@ class EngagementDeleteDialog(EntityCrudDeleteDialog):
             main_window._on_top_strip_clicked()
 
     def _default_create_handler(self) -> None:
-        # Slice D rewires this to open the single-gesture
-        # NewEngagementDialog. When the slice D infrastructure is
-        # available on the parent (managers + active_context wired into
-        # the panel), use it; otherwise fall back to the slice-C meta-
-        # only EngagementCreateDialog.
+        # Opens the create-and-select NewEngagementDialog when the parent
+        # exposes an active-engagement context; otherwise falls back to the
+        # plain EngagementCreateDialog.
         print(_SLICE_D_TODO_CREATE)
         main_window = _find_main_window(self)
-        managers = (
-            getattr(main_window, "_managers", None) if main_window is not None else None
-        )
         active_ctx = (
             getattr(main_window, "_active_context", None)
             if main_window is not None
             else None
         )
-        if managers is not None and active_ctx is not None:
+        if active_ctx is not None:
             from crmbuilder_v2.ui.dialogs.new_engagement_dialog import (
                 NewEngagementDialog,
             )
 
-            dialog = NewEngagementDialog(
-                self._client, active_ctx, managers, self
-            )
+            dialog = NewEngagementDialog(self._client, active_ctx, self)
         else:
             from crmbuilder_v2.ui.dialogs.engagement_crud import (
                 EngagementCreateDialog,

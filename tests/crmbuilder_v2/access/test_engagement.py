@@ -17,33 +17,29 @@ from crmbuilder_v2.access.engagement import (
     restore_engagement,
     update_engagement,
 )
+from crmbuilder_v2.access.db import session_scope as meta_session_scope
 from crmbuilder_v2.access.engagement_models import EngagementStatus
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
     NotFoundError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.meta_db import (
-    bootstrap_meta_db,
-    meta_session_scope,
-    reset_meta_engine_cache,
-)
-from crmbuilder_v2.access.meta_exporter import meta_export_dir
+from crmbuilder_v2.access.models import EngagementRow
 
 
 @pytest.fixture
-def meta_db(v2_env, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Materialise the meta DB schema for the test."""
-    # Redirect meta_export_dir() to the temp path so tests don't write
-    # to the real PRDs/db-export/meta/ dir.
-    from crmbuilder_v2.access import meta_exporter
+def meta_db(v2_env, tmp_path: Path):
+    """Engagement registry over the unified DB, cleared to an empty table.
 
-    test_export = tmp_path / "test-meta-export"
-    monkeypatch.setattr(meta_exporter, "meta_export_dir", lambda: test_export)
-
-    reset_meta_engine_cache()
-    bootstrap_meta_db()
-    yield test_export
+    PI-β folded the engagement registry into the unified DB's
+    ``engagements`` table (the separate meta DB is gone), so the repository
+    now operates on a normal ``session_scope`` session. ``v2_env`` seeds the
+    default ``ENG-001`` for scoping; these repo tests assert identifier
+    assignment from an empty registry, so we clear it first.
+    """
+    with meta_session_scope() as s:
+        s.query(EngagementRow).delete()
+    yield tmp_path
 
 
 def test_create_happy_path(meta_db):
@@ -446,22 +442,5 @@ def test_list_orders_by_last_opened_desc_nulls_last(meta_db):
     assert codes == ["BB", "AA", "CC"]
 
 
-def test_snapshot_regenerated_on_write(meta_db):
-    with meta_session_scope() as s:
-        create_engagement(
-            s, engagement_code="AA", engagement_name="A", engagement_purpose="p"
-        )
-
-    snapshot = meta_db / "engagements.json"
-    # meta_db fixture redirected meta_export_dir() to the temp path.
-    from crmbuilder_v2.access.meta_exporter import meta_export_dir
-
-    snapshot_path = meta_export_dir() / "engagements.json"
-    assert snapshot_path.exists()
-
-    import json
-
-    payload = json.loads(snapshot_path.read_text())
-    assert len(payload) == 1
-    assert payload[0]["engagement_code"] == "AA"
-    assert payload[0]["engagement_status"] == "active"
+# (PI-β removed the separate meta-DB snapshot; the former
+# ``test_snapshot_regenerated_on_write`` exercised that retired hook.)

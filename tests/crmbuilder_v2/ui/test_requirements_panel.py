@@ -20,9 +20,16 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def requirement_client(v2_env) -> StorageClient:
-    return StorageClient(
+    sc = StorageClient(
         base_url="http://testserver", client=TestClient(create_app())
     )
+    # PI-β: mirror the desktop, which sends the active engagement as the
+    # X-Engagement header on every request, so scoped reads/writes resolve
+    # v2_env's seeded ENG-001 through the per-request scope middleware
+    # (the TestClient runs the app in a portal thread that does not inherit
+    # the test thread's active-engagement ContextVar).
+    sc.set_active_engagement("ENG-001")
+    return sc
 
 
 def _seed_requirement(c: StorageClient, name: str = "Capture mentor slots") -> dict:

@@ -28,7 +28,6 @@ engagement themselves with ``engagement_scope.active_engagement(...)``.
 
 from __future__ import annotations
 
-import json
 import os
 from collections.abc import Iterator
 from datetime import UTC, datetime
@@ -57,18 +56,13 @@ DEFAULT_ENGAGEMENT_NAME = "Test Engagement"
 # Tests that are intrinsically SQLite-specific and skipped when the suite runs
 # on Postgres (D-level CI). They assert SQLite type *affinities* via reflection
 # (``DATETIME``/``VARCHAR`` strings that Postgres reflects as ``TIMESTAMP`` etc.)
-# or compare the meta-DB file path — schema-shape facts the SQLite run already
-# covers; the app *behaviour* they touch is exercised by the rest of the suite
-# on Postgres. Matched by substring against the test function name.
+# — schema-shape facts the SQLite run already covers; the app *behaviour* they
+# touch is exercised by the rest of the suite on Postgres. Matched by substring
+# against the test function name.
 _SQLITE_ONLY_NAME_SUBSTRINGS: tuple[str, ...] = (
     "_columns_with_correct_types",  # reflection asserts SQLite type affinities
 )
-_SQLITE_ONLY_NAMES: frozenset[str] = frozenset(
-    {
-        "test_meta_db_separate_from_engagement_db",  # asserts two distinct DB files
-        "test_pools_isolated",  # queries sqlite_master; two-file routing topology
-    }
-)
+_SQLITE_ONLY_NAMES: frozenset[str] = frozenset()
 
 
 def pytest_collection_modifyitems(config, items) -> None:  # noqa: ARG001
@@ -137,15 +131,13 @@ def _seed_default_engagement(export_dir: Path) -> None:
 
     This is the FK target every scoped row's ``engagement_id`` points at. The
     row is inserted directly (never ``engagement_repo`` — whose snapshot
-    refresh writes the git-tracked ``db-export/meta/`` file at the hardcoded
-    repo path; see ``test_engagement_scope_middleware``).
+    refresh writes the git-tracked ``db-export`` files at the hardcoded repo
+    path; see ``test_engagement_scope_middleware``).
 
-    Also writes the ``current_engagement.json`` marker so the request-scope
-    middleware's no-header fallback resolves this engagement (the scope resolver
-    reads the unified ``engagements`` table seeded here). This makes every
-    API-backed test — including the UI panels' ``StorageClient``-over-TestClient
-    fixtures, which send no ``X-Engagement`` header — resolve the default
-    engagement, mirroring how the desktop app's marker drives it in production.
+    PI-β removed the ``current_engagement.json`` marker: API-backed tests
+    resolve the engagement from the ``X-Engagement`` header (the ``client``
+    fixture sends ``ENG-001``); the test body sets the scope ContextVar
+    directly via ``v2_env``.
     """
     now = datetime.now(UTC)
     factory = get_session_factory()
@@ -164,19 +156,6 @@ def _seed_default_engagement(export_dir: Path) -> None:
     )
     session.commit()
     session.close()
-
-    # Marker: data_dir() resolves to db_path.parent in tests; the resolver reads
-    # ``<data_dir>/current_engagement.json`` as the no-header fallback.
-    marker = get_settings().db_path.parent / "current_engagement.json"
-    marker.write_text(
-        json.dumps(
-            {
-                "engagement_code": DEFAULT_ENGAGEMENT_CODE,
-                "engagement_identifier": DEFAULT_ENGAGEMENT_ID,
-            }
-        ),
-        encoding="utf-8",
-    )
 
 
 @pytest.fixture

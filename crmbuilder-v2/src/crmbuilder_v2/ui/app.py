@@ -25,19 +25,11 @@ from PySide6.QtGui import QColor, QFont, QFontDatabase, QPalette
 from PySide6.QtWidgets import (
     QApplication,
     QMessageBox,
-    QProgressDialog,
 )
 
 from crmbuilder_v2.config import get_settings
-from crmbuilder_v2.migration.dogfood_v0_5 import (
-    needs_migration,
-    run_dogfood_migration,
-)
-from crmbuilder_v2.runtime.engagement_routing import route_settings_to_engagement
-from crmbuilder_v2.runtime.exceptions import UnknownEngagementError
 from crmbuilder_v2.ui.active_engagement_context import ActiveEngagementContext
 from crmbuilder_v2.ui.client import StorageClient
-from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.main_window import MainWindow
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.splash import Splash
@@ -49,7 +41,6 @@ _LOG_FILE = _LOG_DIR / "ui.log"
 _LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
 _LOG_BACKUPS = 3
 _SPAWN_FAILED_EXIT_CODE = 1
-_MIGRATION_FAILED_EXIT_CODE = 1
 
 _FONT_ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "fonts"
 _BUNDLED_FONTS = (
@@ -224,109 +215,32 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv[1:])
 
 
-def _route_api_at_active_engagement(
-    active: ActiveEngagementContext, log: logging.Logger
-) -> None:
-    """Point ``Settings`` at the active engagement's DB and export dir.
+def _preselect_engagement(window: MainWindow, log: logging.Logger) -> None:
+    """Best-effort: select the most-recently-opened engagement at startup.
 
-    No-op when ``current_engagement.json`` did not resolve to an
-    engagement (fresh install with no prior CRMBUILDER row, or empty
-    after a deactivation flow). Otherwise delegates to the slice-A
-    helper :func:`route_settings_to_engagement`, which sets
-    ``CRMBUILDER_V2_DB_PATH`` + ``CRMBUILDER_V2_EXPORT_DIR`` and resets
-    the Settings / engine / meta-pool caches. The env vars feed the
-    spawned API process, which reads them at startup.
-
-    An :class:`UnknownEngagementError` (marker points at a code absent
-    from the meta DB) is logged and surfaced in an error dialog; the
-    spawn proceeds and the API itself fails loud against the same
-    marker, so the operator gets a clear message either way.
+    The API serves the unified DB and resolves the engagement per request
+    from the ``X-Engagement`` header; on launch the desktop picks the first
+    engagement the registry returns (ordered most-recently-opened first) and
+    sets it active via :meth:`MainWindow.switch_engagement` (which mirrors
+    onto the client header and refreshes the panels), so panels show one
+    engagement's data instead of an unscoped span. The user can switch via
+    the picker. A failure or empty registry leaves no active engagement.
     """
-    code = active.engagement_code()
-    if not code:
-        log.debug(
-            "no active engagement on load; leaving Settings at the default route"
-        )
-        return
     try:
-        route_settings_to_engagement(code)
-    except UnknownEngagementError as exc:
-        log.error("could not route API at engagement %s: %s", code, exc)
-        ErrorDialog(
-            title="Active engagement not found",
-            message=str(exc),
-            detail=(
-                "current_engagement.json points at an engagement that is "
-                "not in the meta database. Activate a valid engagement via "
-                "the Engagements panel."
-            ),
-        ).exec()
+        engagements = window._client.list_engagements()
+    except Exception:  # noqa: BLE001 — best-effort preselection
+        log.debug("could not list engagements for preselection; leaving unset")
         return
-    log.info("routing API at engagement %s", code)
-
-
-def _run_dogfood_migration_if_needed(log: logging.Logger) -> bool:
-    """Run the v0.5 dogfood migration if the engine is on a v0.4 state.
-
-    Returns ``True`` if no migration was needed or the migration
-    succeeded; ``False`` if the migration failed (caller exits the
-    process). Wraps the synchronous migration call in an indeterminate
-    :class:`QProgressDialog` per PRD §5.4 so the user sees an
-    "Upgrading to v0.5: migrating engagement..." indicator. No cancel
-    affordance: the migration is atomic and must complete or fail.
-    """
-    if not needs_migration():
-        return True
-
-    log.info("v0.5 dogfood migration required; starting")
-    progress = QProgressDialog(
-        "Upgrading to v0.5: migrating engagement...",
-        None,
-        0,
-        0,
+    record = next(
+        (e for e in engagements if not e.get("engagement_deleted_at")),
         None,
     )
-    progress.setWindowTitle("CRMBuilder v2 — Upgrading")
-    progress.setMinimumDuration(0)
-    progress.setCancelButton(None)
-    progress.show()
-    QApplication.processEvents()
-
-    try:
-        result = run_dogfood_migration()
-    finally:
-        progress.close()
-
-    if not result.success:
-        failed_step = (
-            result.steps_completed[-1]
-            if result.steps_completed
-            else "pre-flight"
-        )
-        log.error(
-            "v0.5 dogfood migration failed at step %s: %s",
-            failed_step,
-            result.error,
-        )
-        box = QMessageBox(None)
-        box.setIcon(QMessageBox.Icon.Critical)
-        box.setWindowTitle("Migration failed")
-        box.setText(
-            f"v0.5 migration failed at step: {failed_step}\n\n"
-            f"Error: {result.error}\n\n"
-            "Your v0.4 data is preserved at "
-            "crmbuilder-v2/data/v2.db.pre-v0.5-backup. "
-            "Please revert to the prior v2 release and contact support."
-        )
-        box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        box.exec()
-        return False
-
-    log.info(
-        "v0.5 dogfood migration completed (%d steps)",
-        len(result.steps_completed),
-    )
-    return True
+    identifier = record.get("engagement_identifier") if record else None
+    if not identifier:
+        log.debug("no engagement to preselect")
+        return
+    log.info("preselecting engagement %s", identifier)
+    window.switch_engagement(identifier)
 
 
 def _show_spawn_failure_dialog(
@@ -360,14 +274,6 @@ def main(argv: list[str] | None = None) -> int:
 
     app = build_application(argv)
 
-    # v0.5 slice A follow-up: if the engine boots from a v0.4-state
-    # ``v2.db`` (no meta DB yet), run the one-shot dogfood migration
-    # before the splash and lifecycle start. Hard-fail UX per PRD §5.4:
-    # on migration failure show a critical dialog naming the recovery
-    # path and exit non-zero — the app must not continue half-migrated.
-    if not _run_dogfood_migration_if_needed(log):
-        return _MIGRATION_FAILED_EXIT_CODE
-
     splash = Splash()
     splash.show()
     app.processEvents()
@@ -375,39 +281,26 @@ def main(argv: list[str] | None = None) -> int:
     settings = get_settings()
     lifecycle = ServerLifecycle(base_url=settings.api_base_url)
     client = StorageClient(base_url=settings.api_base_url)
-    # v0.5 slice A: ActiveEngagementContext loads from
-    # ``current_engagement.json`` after the QApplication is built.
-    # Slice D wires a resolver against the meta DB; slice A uses the
-    # synthesised stub so panels can read identifier/code immediately.
+    # PI-β: the active engagement is purely client-side desktop state. It is
+    # mirrored onto the client's ``X-Engagement`` header on every change, so
+    # switching engagements is a context change (no API restart, no marker).
     active_engagement = ActiveEngagementContext()
-    active_engagement.load_from_disk()
-    # v0.5 slice D follow-up: route the API spawn at the active
-    # engagement's per-engagement DB before lifecycle.start(). The
-    # activation worker handles env-var injection on every subsequent
-    # engagement switch (activation_worker.build_lifecycle_managers
-    # ._launch_api); on first launch there is no activation, so we set
-    # it here. ``load_from_disk`` runs first because
-    # ``current_engagement.json`` lives next to ``v2.db`` and we read
-    # it before mutating the path. Settings + engine caches are reset
-    # so any get_settings() in this process picks up the new value;
-    # the QProcess spawn in ServerLifecycle inherits the env directly.
-    _route_api_at_active_engagement(active_engagement, log)
-    # v0.5 slice D: build the subprocess managers bundle from the
-    # lifecycle so the engagement-switching activation worker can drive
-    # kill/relaunch through the same lifecycle the rest of the UI uses.
-    from crmbuilder_v2.ui.activation_worker import build_lifecycle_managers
-
-    managers = build_lifecycle_managers(lifecycle, client)
+    active_engagement.active_engagement_changed.connect(
+        lambda e: client.set_active_engagement(
+            e.engagement_identifier if e is not None else None
+        )
+    )
     window = MainWindow(
         lifecycle=lifecycle,
         client=client,
         active_context=active_engagement,
-        managers=managers,
     )
     window.active_engagement = active_engagement
 
     def on_ready() -> None:
         if not window.isVisible():
+            # First ready: pick an engagement so panels are scoped, then show.
+            _preselect_engagement(window, log)
             window.show()
             splash.finish(window)
 

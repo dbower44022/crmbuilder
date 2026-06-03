@@ -55,9 +55,16 @@ from sqlalchemy.exc import IntegrityError
 @pytest.fixture
 def entity_client(v2_env) -> StorageClient:
     """A StorageClient over a real TestClient bound to the per-test DB."""
-    return StorageClient(
+    sc = StorageClient(
         base_url="http://testserver", client=TestClient(create_app())
     )
+    # PI-β: mirror the desktop, which sends the active engagement as the
+    # X-Engagement header on every request, so scoped reads/writes resolve
+    # v2_env's seeded ENG-001 through the per-request scope middleware
+    # (the TestClient runs the app in a portal thread that does not inherit
+    # the test thread's active-engagement ContextVar).
+    sc.set_active_engagement("ENG-001")
+    return sc
 
 
 def _seed_entity(client: StorageClient, name: str, **overrides) -> dict:
@@ -578,6 +585,7 @@ def test_sample_cbm_redo_records_persist_across_restart(qtbot, entity_client):
     restarted = StorageClient(
         base_url="http://testserver", client=TestClient(create_app())
     )
+    restarted.set_active_engagement("ENG-001")  # PI-β: send X-Engagement
     panel = EntitiesPanel(restarted)
     qtbot.addWidget(panel)
     _wait_rows(qtbot, panel, len(entity_names))

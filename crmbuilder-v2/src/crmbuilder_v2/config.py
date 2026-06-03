@@ -38,11 +38,10 @@ def api_log_path() -> Path:
 class Settings(BaseSettings):
     # ``export_dir`` binds from ``CRMBUILDER_V2_EXPORT_DIR`` (sibling of
     # ``CRMBUILDER_V2_DB_PATH``) via the ``env_prefix`` mechanism below.
-    # The literal string ``__UNCONFIGURED__`` is a reserved value: the
-    # routing helper sets the env var to it when the active engagement
-    # has no ``engagement_export_dir`` in the meta DB, so the export-write
-    # gate (``runtime.engagement_routing.assert_export_dir_ready``) can
-    # fail loud rather than silently fall back to the engine default.
+    # The literal string ``__UNCONFIGURED__`` is a reserved value meaning the
+    # active engagement has no ``engagement_export_dir``, so the export-write
+    # gate (``runtime.engagement_routing.assert_export_dir_ready``) can fail
+    # loud rather than silently fall back to the engine default.
     # An empty/whitespace env var value is treated as unset (falls back
     # to the default); the sentinel is non-empty and passes through.
     model_config = SettingsConfigDict(
@@ -101,14 +100,14 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8765
 
-    # PI-123 Slice 2c (DEC-375 / D5, D6). When True, the API installs the
-    # row-level engagement-scope filter/stamp on the access session factory
-    # and resolves an active engagement per request (X-Engagement header,
-    # falling back to the current_engagement.json marker). Default False:
-    # the scoping machinery stays dormant until the unified-DB cutover, after
-    # the data-migration backfill populates engagement_id — turning it on
-    # against NULL-discriminator rows would filter every existing row out.
-    engagement_scoping_enabled: bool = False
+    # PI-123 Slice 2c (DEC-375 / D5, D6); PI-β: now the runtime default. The
+    # API resolves an active engagement per request from the ``X-Engagement``
+    # header and the central read-filter/write-stamp scope every query/insert.
+    # (Pre-PI-β this was turned on by the per-engagement routing helper that
+    # set ``CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED``; that helper is gone, so
+    # the unified-DB runtime defaults it on. Override to False only for the
+    # legacy single-file shape, which no longer exists in production.)
+    engagement_scoping_enabled: bool = True
     api_base_url: str = "http://127.0.0.1:8765"
     mcp_http_port: int = 8810
 

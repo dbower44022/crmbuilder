@@ -293,15 +293,10 @@ class EngagementsPanel(ListDetailPanel):
         self,
         client,
         active_context: ActiveEngagementContext | None = None,
-        managers=None,
         parent=None,
     ):
         self._include_deleted = False
         self._active_context = active_context
-        # ``managers`` is a SubprocessManagers bundle; supplied by the
-        # main window in slice D+. When None, the panel falls back to
-        # the slice-C meta-only Create dialog.
-        self._managers = managers
         self._now_provider = lambda: datetime.now(UTC)
         super().__init__(client, parent)
 
@@ -777,10 +772,10 @@ class EngagementsPanel(ListDetailPanel):
     # ------------------------------------------------------------------
 
     def _on_new_engagement_clicked(self) -> None:
-        # Slice D: prefer the single-gesture NewEngagementDialog when the
-        # panel has the activation managers wired. Fall back to the
-        # slice-C meta-only dialog otherwise (scripted / fixture paths).
-        if self._managers is not None and self._active_context is not None:
+        # PI-β: prefer the create-and-select NewEngagementDialog when the panel
+        # has an active-engagement context (the desktop). Fall back to the
+        # plain Create dialog for scripted / fixture paths without a context.
+        if self._active_context is not None:
             from crmbuilder_v2.ui.dialogs.new_engagement_dialog import (
                 NewEngagementDialog,
             )
@@ -788,7 +783,6 @@ class EngagementsPanel(ListDetailPanel):
             dialog = NewEngagementDialog(
                 self._client,
                 self._active_context,
-                self._managers,
                 self,
             )
         else:
