@@ -2397,6 +2397,10 @@ class ChangeLog(EngagementScopedMixin, Base):
     entity_identifier: Mapped[str] = mapped_column(Text, nullable=False)
     operation: Mapped[str] = mapped_column(String(8), nullable=False)
     actor: Mapped[str] = mapped_column(String(32), nullable=False)
+    # PI-γ: which principal made the change (soft reference — a plain string,
+    # not a FK, so the append-only audit log outlives a deleted principal row).
+    # NULL for pre-PI-γ rows and for changes made with no active principal.
+    principal_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     before_payload: Mapped[dict | None] = mapped_column(JSONColumn, nullable=True)
     after_payload: Mapped[dict | None] = mapped_column(JSONColumn, nullable=True)
 

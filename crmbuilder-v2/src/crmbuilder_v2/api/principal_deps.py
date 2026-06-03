@@ -23,6 +23,8 @@ from crmbuilder_v2.access.principal_scope import (
     Principal,
     get_active_principal,
 )
+from crmbuilder_v2.access.rbac import PermissionDenied
+from crmbuilder_v2.config import get_settings
 
 
 def require_permission(permission: str) -> Callable[[], None]:
@@ -37,3 +39,27 @@ def require_permission(permission: str) -> Callable[[], None]:
 def active_principal_dep() -> Principal | None:
     """Dependency that returns the request's active principal (or ``None``)."""
     return get_active_principal()
+
+
+def enforce_claim_identity(claimed_by: str) -> None:
+    """Reject a claim/release made under a different identity (PI-γ D-γ4).
+
+    When auth is on, an agent may only claim/release as *itself*: the request's
+    ``claimed_by`` must equal the active principal's id. An ``owner`` may act on
+    any agent's behalf (admin). A no-op when auth is off.
+    """
+    if not get_settings().principal_auth_enabled:
+        return
+    principal = get_active_principal()
+    if principal is None:
+        raise PermissionDenied("claim", "no authenticated principal")
+    if principal.is_owner:
+        return
+    if claimed_by != principal.principal_id:
+        raise PermissionDenied(
+            "claim",
+            detail=(
+                f"cannot claim as {claimed_by!r}; the authenticated principal "
+                f"is {principal.principal_id}"
+            ),
+        )

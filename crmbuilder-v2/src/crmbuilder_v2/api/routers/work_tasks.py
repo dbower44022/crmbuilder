@@ -14,6 +14,7 @@ from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import work_tasks
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
+from crmbuilder_v2.api.principal_deps import enforce_claim_identity
 from crmbuilder_v2.api.schemas import (
     WorkTaskClaimIn,
     WorkTaskCreateIn,
@@ -109,6 +110,8 @@ def patch(identifier: str, body: WorkTaskPatchIn):
 
 @router.post("/{identifier}/claim")
 def claim(identifier: str, body: WorkTaskClaimIn):
+    # PI-γ: an agent may only claim as itself (no-op when auth is off).
+    enforce_claim_identity(body.claimed_by)
     with writable_session() as s:
         return ok(
             work_tasks.claim_work_task(s, identifier, claimed_by=body.claimed_by)
@@ -117,6 +120,7 @@ def claim(identifier: str, body: WorkTaskClaimIn):
 
 @router.post("/{identifier}/release")
 def release(identifier: str, body: WorkTaskClaimIn):
+    enforce_claim_identity(body.claimed_by)
     with writable_session() as s:
         return ok(
             work_tasks.release_work_task(s, identifier, claimed_by=body.claimed_by)

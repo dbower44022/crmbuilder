@@ -35,6 +35,33 @@ def current_actor() -> str:
     return _actor.get()
 
 
+# PI-γ: map an authenticated principal's kind to the change_log actor *kind*.
+_KIND_TO_ACTOR = {"human": "user", "service_agent": "service_agent"}
+
+
+def _resolve_actor_and_principal() -> tuple[str, str | None]:
+    """Return ``(actor, principal_id)`` for the current context.
+
+    When an authenticated principal is active (PI-γ), the actor reflects its
+    kind (``user`` / ``service_agent``) and ``principal_id`` records *which*
+    principal. With no active principal (auth off / non-request callers), falls
+    back to the explicit actor ContextVar (default ``claude_session``) and a
+    ``None`` principal. The synthetic default-owner (``PRN-000``, auth-off) is
+    treated as "no real principal" so attribution stays ``claude_session`` and
+    the audit log is unchanged when auth is disabled.
+    """
+    # Imported lazily to avoid an access-layer import cycle at module load.
+    from crmbuilder_v2.access.principal_scope import (
+        DEFAULT_OWNER,
+        get_active_principal,
+    )
+
+    principal = get_active_principal()
+    if principal is None or principal.principal_id == DEFAULT_OWNER.principal_id:
+        return current_actor(), None
+    return _KIND_TO_ACTOR.get(principal.kind, "user"), principal.principal_id
+
+
 def emit(
     session: Session,
     *,
@@ -48,11 +75,13 @@ def emit(
         raise ValueError(f"unknown entity_type {entity_type!r}")
     if operation not in CHANGE_LOG_OPERATIONS:
         raise ValueError(f"unknown operation {operation!r}")
+    actor, principal_id = _resolve_actor_and_principal()
     entry = ChangeLog(
         entity_type=entity_type,
         entity_identifier=entity_identifier,
         operation=operation,
-        actor=current_actor(),
+        actor=actor,
+        principal_id=principal_id,
         before_payload=before,
         after_payload=after,
     )

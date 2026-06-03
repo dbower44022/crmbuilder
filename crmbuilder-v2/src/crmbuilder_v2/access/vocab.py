@@ -1033,7 +1033,10 @@ def source_types_with_relationships() -> frozenset[str]:
 CHANGE_LOG_OPERATIONS: frozenset[str] = frozenset({"insert", "update", "delete"})
 
 CHANGE_LOG_ACTORS: frozenset[str] = frozenset(
-    {"claude_session", "migration", "manual"}
+    # PI-γ added ``service_agent`` and ``user`` so an authenticated principal's
+    # kind is recorded as the actor *kind* alongside the ``change_log.principal_id``
+    # soft reference to *which* principal.
+    {"claude_session", "migration", "manual", "service_agent", "user"}
 )
 
 
