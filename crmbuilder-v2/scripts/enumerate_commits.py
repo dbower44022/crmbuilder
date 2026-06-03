@@ -4,18 +4,25 @@
 Per methodology §5.5: at close-out authoring time, the helper walks
 `<last-ingested-sha-per-repo>..<current-HEAD-per-repo>` for each repo
 the conversation touched. The "last-ingested SHA" is the
-highest-`commit_committed_at` row in the engagement's db-export
-`commits.json` snapshot for that repository.
+highest-`commit_committed_at` row already recorded for that repository.
+
+PI-β removed the git-tracked `db-export/` JSON snapshot tree (the DB is
+the source of truth), so the default source for the last-ingested SHA is
+now the **live REST API** (`GET /commits?commit_repository=...` sorted by
+`commit_committed_at desc`), not a `commits.json` file. The legacy
+file-based source remains available via ``--engagement-db-export`` for
+offline use, but it is no longer the default and is no longer required.
 
 Output is a JSON array suitable to paste into the close-out payload's
 `commits` section. Each entry conforms to the schema in
 `governance-schema-specs/commit.md` §3.2.
 
-Invocation (from the sandbox, at close-out authoring time):
+Invocation (at close-out authoring time, with the API running):
 
     uv run python scripts/enumerate_commits.py \\
         --repos crmbuilder \\
-        --engagement-db-export PRDs/product/crmbuilder-v2/db-export \\
+        --api-base http://127.0.0.1:8765 \\
+        --engagement CRMBUILDER \\
         --repo-root . \\
         --branch main
 
@@ -23,10 +30,14 @@ Or for a multi-repo conversation:
 
     uv run python scripts/enumerate_commits.py \\
         --repos crmbuilder,ClevelandBusinessMentoring \\
-        --engagement-db-export PRDs/product/crmbuilder-v2/db-export \\
+        --api-base http://127.0.0.1:8765 \\
+        --engagement CRMBUILDER \\
         --repo-root . \\
         --repo-root-override ClevelandBusinessMentoring=~/Dropbox/Projects/ClevelandBusinessMentors \\
         --branch main
+
+In practice most close-outs use ``--commits <sha,sha,...>`` (explicit-list
+mode), which bypasses the last-ingested-SHA lookup entirely.
 
 The helper writes JSON to stdout by default; use ``--output <path>`` to
 write to a file. Exit code 0 on success; 1 on any git failure or
@@ -38,6 +49,9 @@ import argparse
 import json
 import subprocess
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 # ASCII control-character separators. US (\x1f) separates fields; RS
@@ -71,6 +85,52 @@ def _run(cmd: list[str], cwd: Path) -> str:
             f"(exit {result.returncode}): {result.stderr.strip()}"
         )
     return result.stdout
+
+
+class _ApiUnreachable(RuntimeError):
+    """The REST API could not be reached or returned an unparseable body.
+
+    Raised by :func:`_last_ingested_sha_from_api` so the caller can decide
+    to degrade gracefully (warn + fall back to full history) rather than
+    abort the whole enumeration."""
+
+
+def _last_ingested_sha_from_api(
+    api_base: str, repository: str, engagement: str
+) -> str | None:
+    """Return the SHA of the most recently committed commit row recorded
+    for ``repository``, read from the live REST API.
+
+    Queries ``GET {api_base}/commits?commit_repository=<repo>
+    &sort=commit_committed_at&order=desc`` (the post-PI-β replacement for
+    the deleted ``db-export/commits.json`` snapshot), unwraps the
+    ``{data, meta, errors}`` envelope, and returns the first row's
+    ``commit_sha``. Returns ``None`` when no commit has been ingested for
+    the repository yet (first-ingestion case). Raises
+    :class:`_ApiUnreachable` on a network/parse failure so the caller can
+    fall back to full history."""
+    query = urllib.parse.urlencode(
+        {
+            "commit_repository": repository,
+            "sort": "commit_committed_at",
+            "order": "desc",
+        }
+    )
+    url = f"{api_base.rstrip('/')}/commits?{query}"
+    request = urllib.request.Request(url, headers={"X-Engagement": engagement})
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        raise _ApiUnreachable(
+            f"could not read commits from {url}: {exc}"
+        ) from exc
+    rows = payload.get("data") or []
+    if not rows:
+        return None
+    # The API already sorted descending by commit_committed_at, so the
+    # first row is the most recent.
+    return rows[0].get("commit_sha")
 
 
 def _last_ingested_sha(
@@ -149,15 +209,16 @@ def _parse_log_output(
     return records
 
 
-def _enumerate_repo(
+def _enumerate_repo_with_since(
     repo_name: str,
     repo_root: Path,
     branch: str,
-    db_export_dir: Path,
+    since: str | None,
     skip_pull: bool,
 ) -> list[dict]:
-    """Enumerate commits for one repository. Returns a list of commit
-    record dicts in the methodology §4.1 shape."""
+    """Enumerate commits for one repository given an already-resolved
+    ``since`` SHA (or ``None`` for all of history). Shared by both the
+    API-backed and file-backed range modes."""
     if not (repo_root / ".git").exists():
         raise RuntimeError(
             f"repo_root {repo_root} is not a git repository "
@@ -171,7 +232,6 @@ def _enumerate_repo(
         _run(["git", "fetch", "origin"], repo_root)
         _run(["git", "pull", "--ff-only", "origin", branch], repo_root)
 
-    since = _last_ingested_sha(db_export_dir, repo_name)
     if since is None:
         log_range = "HEAD"  # All of history (first ingestion)
     else:
@@ -189,6 +249,58 @@ def _enumerate_repo(
     )
 
     return _parse_log_output(log_output, repo_name, repo_root, branch)
+
+
+def _enumerate_repo(
+    repo_name: str,
+    repo_root: Path,
+    branch: str,
+    db_export_dir: Path,
+    skip_pull: bool,
+) -> list[dict]:
+    """Enumerate commits for one repository using the legacy file-based
+    ``db-export/commits.json`` snapshot as the last-ingested-SHA source.
+    Retained for offline use and back-compat; the default path is now
+    :func:`_enumerate_repo_via_api`."""
+    since = _last_ingested_sha(db_export_dir, repo_name)
+    return _enumerate_repo_with_since(
+        repo_name=repo_name,
+        repo_root=repo_root,
+        branch=branch,
+        since=since,
+        skip_pull=skip_pull,
+    )
+
+
+def _enumerate_repo_via_api(
+    repo_name: str,
+    repo_root: Path,
+    branch: str,
+    api_base: str,
+    engagement: str,
+    skip_pull: bool,
+) -> list[dict]:
+    """Enumerate commits for one repository using the live REST API as the
+    last-ingested-SHA source. On an unreachable/unparseable API, warns and
+    degrades to full history (over-inclusion produces 409s at apply time,
+    not data corruption)."""
+    try:
+        since = _last_ingested_sha_from_api(api_base, repo_name, engagement)
+    except _ApiUnreachable as exc:
+        print(
+            f"warning: {exc}; falling back to full history for {repo_name!r} "
+            f"(pass --engagement-db-export for an offline source, or verify "
+            f"the API is running at {api_base})",
+            file=sys.stderr,
+        )
+        since = None
+    return _enumerate_repo_with_since(
+        repo_name=repo_name,
+        repo_root=repo_root,
+        branch=branch,
+        since=since,
+        skip_pull=skip_pull,
+    )
 
 
 def _enumerate_explicit_commits(
@@ -282,11 +394,32 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         required=False,
         default=None,
         help=(
-            "Path to the engagement's db-export directory containing "
-            "`commits.json`. For the CRMBUILDER dogfood engagement: "
-            "PRDs/product/crmbuilder-v2/db-export/. Required in range "
-            "mode; ignored when --commits is provided (explicit-list "
-            "mode bypasses the snapshot-derived since..HEAD range)."
+            "Path to a legacy db-export directory containing "
+            "`commits.json`, used as the last-ingested-SHA source instead "
+            "of the live API. PI-β deleted the tracked db-export tree, so "
+            "this is now an offline opt-in, not the default. Ignored when "
+            "--commits is provided (explicit-list mode bypasses the "
+            "since..HEAD range)."
+        ),
+    )
+    parser.add_argument(
+        "--api-base",
+        default="http://127.0.0.1:8765",
+        help=(
+            "Base URL of the live REST API used to read the last-ingested "
+            "SHA per repository (GET /commits?commit_repository=...&sort="
+            "commit_committed_at&order=desc). The post-PI-β default source. "
+            "Ignored when --engagement-db-export or --commits is provided. "
+            "Default: http://127.0.0.1:8765."
+        ),
+    )
+    parser.add_argument(
+        "--engagement",
+        default="CRMBUILDER",
+        help=(
+            "Engagement identifier/code sent as the X-Engagement header on "
+            "API queries (default: CRMBUILDER). Ignored unless the API is "
+            "the last-ingested-SHA source."
         ),
     )
     parser.add_argument(
@@ -354,18 +487,18 @@ def main(argv: list[str] | None = None) -> int:
 
     explicit_mode = args.commits is not None
 
-    # In range mode, --repos and --engagement-db-export are both
-    # required (mirroring the historical contract). In explicit-list
-    # mode, both are optional: --repos defaults to "crmbuilder" and
-    # --engagement-db-export is unused entirely. Surface a warning
-    # when the operator supplied --engagement-db-export alongside
+    # In range mode, --repos is required. The last-ingested-SHA source is
+    # the live API by default (post-PI-β); --engagement-db-export selects
+    # the legacy file source instead. In explicit-list mode, --repos
+    # defaults to "crmbuilder" and neither source is consulted. Surface a
+    # warning when the operator supplied --engagement-db-export alongside
     # --commits so the misuse is visible.
     if explicit_mode:
         if args.engagement_db_export is not None:
             print(
                 "warning: --engagement-db-export is ignored when --commits "
-                "is provided (explicit-list mode bypasses the snapshot-"
-                "derived since..HEAD range)",
+                "is provided (explicit-list mode bypasses the "
+                "since..HEAD range)",
                 file=sys.stderr,
             )
         repos_raw = args.repos if args.repos is not None else "crmbuilder"
@@ -374,12 +507,6 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 "error: --repos is required in range mode (omit --commits "
                 "to use range mode, or pass --repos REPONAME explicitly)",
-                file=sys.stderr,
-            )
-            return 2
-        if args.engagement_db_export is None:
-            print(
-                "error: --engagement-db-export is required in range mode",
                 file=sys.stderr,
             )
             return 2
@@ -431,16 +558,27 @@ def main(argv: list[str] | None = None) -> int:
             return 1
     else:
         all_records = []
+        use_file_source = args.engagement_db_export is not None
         for repo in repos:
             repo_root = overrides.get(repo, args.repo_root).expanduser()
             try:
-                records = _enumerate_repo(
-                    repo_name=repo,
-                    repo_root=repo_root,
-                    branch=args.branch,
-                    db_export_dir=args.engagement_db_export,
-                    skip_pull=args.skip_pull,
-                )
+                if use_file_source:
+                    records = _enumerate_repo(
+                        repo_name=repo,
+                        repo_root=repo_root,
+                        branch=args.branch,
+                        db_export_dir=args.engagement_db_export,
+                        skip_pull=args.skip_pull,
+                    )
+                else:
+                    records = _enumerate_repo_via_api(
+                        repo_name=repo,
+                        repo_root=repo_root,
+                        branch=args.branch,
+                        api_base=args.api_base,
+                        engagement=args.engagement,
+                        skip_pull=args.skip_pull,
+                    )
             except RuntimeError as exc:
                 print(f"error enumerating {repo!r}: {exc}", file=sys.stderr)
                 return 1

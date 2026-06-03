@@ -394,18 +394,88 @@ def test_default_range_mode_behavior_unchanged(tmp_path, capsys):
     assert "warning" not in captured.err.lower()
 
 
-def test_range_mode_requires_engagement_db_export(tmp_path, capsys):
-    """Omitting --engagement-db-export in range mode is an arg error."""
+def test_range_mode_without_db_export_uses_api_and_degrades(tmp_path, capsys):
+    """Post-PI-β: omitting --engagement-db-export in range mode reads the
+    last-ingested SHA from the live API. When the API is unreachable, the
+    helper warns and degrades to full history (rc 0) rather than erroring."""
     repo = tmp_path / "repo"
-    _init_git_repo(repo, ("first commit", ""))
+    shas = _init_git_repo(repo,
+        ("first commit", ""),
+        ("second commit", ""),
+    )
     rc = enumerate_commits.main([
         "--repos", "testrepo",
         "--repo-root", str(repo),
+        # Point at an unreachable port so the API lookup deterministically
+        # fails and the HEAD fallback engages without a live server.
+        "--api-base", "http://127.0.0.1:1",
         "--skip-pull",
     ])
-    assert rc == 2
+    assert rc == 0
     captured = capsys.readouterr()
-    assert "--engagement-db-export" in captured.err
+    assert "warning" in captured.err.lower()
+    assert "full history" in captured.err.lower()
+    parsed = json.loads(captured.out)
+    assert [r["commit_sha"] for r in parsed] == shas
+
+
+def test_last_ingested_sha_from_api_unwraps_envelope(monkeypatch):
+    """_last_ingested_sha_from_api unwraps the {data,...} envelope and
+    returns the first row's commit_sha (the API sorts desc)."""
+    import io
+
+    class _FakeResponse(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    captured = {}
+
+    def _fake_urlopen(request, timeout=None):
+        captured["url"] = request.full_url
+        captured["headers"] = request.headers
+        body = json.dumps(
+            {"data": [{"commit_sha": "abc123"}, {"commit_sha": "old"}],
+             "meta": {}, "errors": None}
+        ).encode()
+        return _FakeResponse(body)
+
+    monkeypatch.setattr(
+        enumerate_commits.urllib.request, "urlopen", _fake_urlopen
+    )
+    sha = enumerate_commits._last_ingested_sha_from_api(
+        "http://127.0.0.1:8765", "crmbuilder", "CRMBUILDER"
+    )
+    assert sha == "abc123"
+    assert "commit_repository=crmbuilder" in captured["url"]
+    assert captured["headers"].get("X-engagement") == "CRMBUILDER"
+
+
+def test_last_ingested_sha_from_api_empty_data_returns_none(monkeypatch):
+    """No ingested commits → None (first-ingestion case)."""
+    import io
+
+    class _FakeResponse(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def _fake_urlopen(request, timeout=None):
+        return _FakeResponse(
+            json.dumps({"data": [], "meta": {}, "errors": None}).encode()
+        )
+
+    monkeypatch.setattr(
+        enumerate_commits.urllib.request, "urlopen", _fake_urlopen
+    )
+    sha = enumerate_commits._last_ingested_sha_from_api(
+        "http://127.0.0.1:8765", "crmbuilder", "CRMBUILDER"
+    )
+    assert sha is None
 
 
 def test_explicit_commits_repo_root_not_git_raises(tmp_path):
