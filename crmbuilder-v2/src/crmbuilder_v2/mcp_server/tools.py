@@ -789,12 +789,95 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         return {"active_engagement": http.headers.get("X-Engagement")}
 
+    # ---------- Agent Profile Registry (PI-122) ----------
+
+    async def resolve_agent_profile_contract(
+        identifier: str, engagement: str | None = None
+    ) -> Any:
+        """Resolve an agent_profile into its effective contract.
+
+        Returns the composed system prompt, tool set, enforced ruleset, active
+        (area, tier) learnings, and a version stamp — the runtime-ready contract
+        an ADO agent boots from. ``engagement`` overrides the active engagement
+        for the scope merge (system rows ∪ that engagement's overlay).
+        """
+        params = {"engagement": engagement} if engagement else None
+        return await _unwrap(
+            await http.get(f"/agent-profiles/{identifier}/contract", params=params)
+        )
+
+    async def list_agent_profiles(
+        area: str | None = None, tier: str | None = None, scope: str | None = None
+    ) -> Any:
+        """List agent profiles, optionally filtered by area / tier / scope."""
+        params = {k: v for k, v in {"area": area, "tier": tier, "scope": scope}.items() if v}
+        return await _unwrap(await http.get("/agent-profiles", params=params or None))
+
+    async def create_agent_profile(
+        area: str, tier: str, description: str, scope: str | None = None
+    ) -> Any:
+        """Create an agent profile for an (area × tier) cell."""
+        body = {"area": area, "tier": tier, "description": description}
+        if scope:
+            body["scope"] = scope
+        return await _unwrap(await http.post("/agent-profiles", json=body))
+
+    async def list_skills(kind: str | None = None, scope: str | None = None) -> Any:
+        """List registry skills, optionally filtered by kind / scope."""
+        params = {k: v for k, v in {"kind": kind, "scope": scope}.items() if v}
+        return await _unwrap(await http.get("/skills", params=params or None))
+
+    async def list_governance_rules(
+        enforcement: str | None = None, scope: str | None = None
+    ) -> Any:
+        """List governance rules, optionally filtered by enforcement / scope."""
+        params = {k: v for k, v in {"enforcement": enforcement, "scope": scope}.items() if v}
+        return await _unwrap(await http.get("/governance-rules", params=params or None))
+
+    async def list_learnings(
+        area: str | None = None, tier: str | None = None, status: str | None = None
+    ) -> Any:
+        """List learnings, optionally filtered by area / tier / status."""
+        params = {k: v for k, v in {"area": area, "tier": tier, "status": status}.items() if v}
+        return await _unwrap(await http.get("/learnings", params=params or None))
+
+    async def capture_learning(
+        area: str,
+        tier: str,
+        category: str,
+        content: str,
+        evidence_type: str | None = None,
+        evidence_id: str | None = None,
+        scope: str | None = None,
+    ) -> Any:
+        """Capture a learning (at Work-Task close), optionally linking evidence.
+
+        ``category`` is one of gotcha / pattern / constraint / preference;
+        ``tier`` one of architect / developer / tester. With ``evidence_type`` +
+        ``evidence_id`` (a work_task / decision / test_spec) the learning starts
+        at confidence 1 and gets a derived-from edge.
+        """
+        body = {"area": area, "tier": tier, "category": category, "content": content}
+        if evidence_type and evidence_id:
+            body["evidence_type"] = evidence_type
+            body["evidence_id"] = evidence_id
+        if scope:
+            body["scope"] = scope
+        return await _unwrap(await http.post("/learnings/capture", json=body))
+
     # Declaration-ordered surface. Adding a tool = define it above and
     # append it here; both the MCP server and the chat dispatcher pick it
     # up automatically.
     funcs: list[Callable[..., Any]] = [
         select_engagement,
         get_active_engagement,
+        resolve_agent_profile_contract,
+        list_agent_profiles,
+        create_agent_profile,
+        list_skills,
+        list_governance_rules,
+        list_learnings,
+        capture_learning,
         get_current_charter,
         get_charter_version,
         list_charter_versions,
