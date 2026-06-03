@@ -20,13 +20,18 @@ from crmbuilder_v2.access.db import session_scope
 
 @contextmanager
 def writable_session() -> Iterator[Session]:
-    """Open a unified-DB session that runs the JSON export hook on commit."""
-    with session_scope(export=True) as s:
+    """Open a unified-DB session (commits on clean exit)."""
+    with session_scope() as s:
         yield s
 
 
 @contextmanager
 def readonly_session() -> Iterator[Session]:
-    """Open a unified-DB read-only session (skips the JSON export hook)."""
-    with session_scope(export=False) as s:
+    """Open a unified-DB read-only session.
+
+    Distinct from ``writable_session`` by intent only — read endpoints use it
+    to signal they perform no writes. (PI-β slice 4 collapsed the former
+    export-vs-no-export distinction when the JSON-snapshot hook was removed.)
+    """
+    with session_scope() as s:
         yield s

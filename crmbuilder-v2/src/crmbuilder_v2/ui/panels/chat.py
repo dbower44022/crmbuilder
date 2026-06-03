@@ -53,7 +53,6 @@ from crmbuilder_v2.ui.chat.widgets import (
     TranscriptView,
     UserMessageItem,
 )
-from crmbuilder_v2.ui.refresh import RefreshService
 from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.widgets.form_helpers import primary_button
 
@@ -78,7 +77,6 @@ class ChatPanel(QWidget):
     def __init__(
         self,
         base_url: str,
-        refresh_service: RefreshService | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -98,12 +96,10 @@ class ChatPanel(QWidget):
 
         self._connect_controller()
 
-        # PI-106: subscribe to the existing file-watch service for
-        # cross-tab "entity changed" hints. Informational only — the chat
-        # tab never re-calls a tool in response, it just flags that an
-        # earlier read may now be stale.
-        if refresh_service is not None:
-            refresh_service.data_changed.connect(self._on_external_data_changed)
+        # (PI-β slice 4 removed the JSON-snapshot file-watch RefreshService, so
+        # the cross-tab "entity changed elsewhere" staleness hint no longer
+        # fires. ``_on_external_data_changed`` is retained but unwired; the
+        # manual Refresh on each panel remains the fallback.)
 
         app = QApplication.instance()
         if app is not None:

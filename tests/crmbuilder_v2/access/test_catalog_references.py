@@ -112,7 +112,7 @@ def test_inbound_references_surface_on_entity(v2_env):
             target_id="account",
             relationship="is_about",
         )
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         entity = catalog.get_entity(s, "account")
     inbound = entity["inbound_references"]
     assert len(inbound) == 2
@@ -139,7 +139,7 @@ def test_inbound_references_surface_on_attribute(v2_env):
             target_id="account.accountName",
             relationship="is_about",
         )
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         attr = catalog.get_attribute(s, "account", "accountName")
     inbound = attr["inbound_references"]
     assert any(

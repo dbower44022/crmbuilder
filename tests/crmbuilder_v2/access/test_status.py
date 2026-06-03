@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import NotFoundError
@@ -15,7 +13,7 @@ def test_no_current_status(v2_env):
         status.get_current(s)
 
 
-def test_status_versioning(v2_env, export_dir):
+def test_status_versioning(v2_env):
     with session_scope() as s:
         status.replace(s, payload={"phase": "Planning"})
     with session_scope() as s:
@@ -25,9 +23,6 @@ def test_status_versioning(v2_env, export_dir):
         versions = status.list_versions(s)
     assert cur["payload"]["phase"] == "Build"
     assert [v["version"] for v in versions] == [2, 1]
-
-    rows = json.loads((export_dir / "status.json").read_text())
-    assert len(rows) == 2
 
 
 def test_make_status_version_current_flips_flag_back(v2_env):

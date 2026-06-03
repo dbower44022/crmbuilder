@@ -104,27 +104,6 @@ def test_migration_creates_decided_in_references(v2_env, source_dir: Path):
     assert all(r["relationship"] == "decided_in" for r in refs)
 
 
-def test_export_round_trip(v2_env, source_dir: Path, export_dir: Path):
-    """JSON export reflects the post-migration database state."""
-    from crmbuilder_v2.bootstrap.migrate import migrate
-
-    migrate(source_dir)
-    decisions_export = json.loads((export_dir / "decisions.json").read_text())
-    assert {row["identifier"] for row in decisions_export} == {"DEC-001", "DEC-002"}
-
-    sessions_export = json.loads((export_dir / "sessions.json").read_text())
-    assert {row["identifier"] for row in sessions_export} == {"SES-001"}
-
-    refs_export = json.loads((export_dir / "references.json").read_text())
-    assert len(refs_export) == 2
-    assert all(r["relationship_kind"] == "decided_in" for r in refs_export)
-
-    charter_export = json.loads((export_dir / "charter.json").read_text())
-    assert len(charter_export) == 2
-    current = [r for r in charter_export if r["is_current"]]
-    assert len(current) == 1
-
-
 def test_change_log_marked_actor_migration(v2_env, source_dir: Path):
     """All change-log entries from the migration are tagged ``actor=migration``."""
     from crmbuilder_v2.access.db import session_scope
@@ -133,7 +112,7 @@ def test_change_log_marked_actor_migration(v2_env, source_dir: Path):
     from sqlalchemy import select
 
     migrate(source_dir)
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         rows = s.scalars(select(ChangeLog)).all()
     assert all(r.actor == "migration" for r in rows)
     assert len(rows) > 0

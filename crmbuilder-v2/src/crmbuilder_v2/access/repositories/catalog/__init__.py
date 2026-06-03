@@ -1,14 +1,15 @@
 """Catalog access layer (catalog-ingestion-PRD-v0.1.md sections 5 and 6).
 
-Split into ``read``, ``write``, and ``exports`` modules; the package's
-``__init__`` re-exports the public symbols so importing
-``catalog.list_entities`` works without callers having to know which
-sub-module the function lives in.
+Split into ``read`` and ``write`` modules; the package's ``__init__``
+re-exports the public symbols so importing ``catalog.list_entities`` works
+without callers having to know which sub-module the function lives in.
+(PI-β slice 4 removed the per-entity JSON ``exports`` module with the rest
+of the snapshot machinery.)
 """
 
 from __future__ import annotations
 
-from crmbuilder_v2.access.repositories.catalog import exports, read, write
+from crmbuilder_v2.access.repositories.catalog import read, write
 
 # read
 list_entities = read.list_entities
@@ -28,11 +29,6 @@ update_attribute = write.update_attribute
 patch_attribute = write.patch_attribute
 delete_attribute = write.delete_attribute
 
-# exports
-export_entity = exports.export_entity
-regenerate_all_catalog_exports = exports.regenerate_all_catalog_exports
-suppression = exports.suppression
-
 __all__ = [
     "list_entities",
     "get_entity",
@@ -48,7 +44,4 @@ __all__ = [
     "update_attribute",
     "patch_attribute",
     "delete_attribute",
-    "export_entity",
-    "regenerate_all_catalog_exports",
-    "suppression",
 ]

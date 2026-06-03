@@ -106,9 +106,9 @@ def test_reads_scoped_to_active_engagement(two_engagements):
     _create_decision("ENG-001", "alpha-2", "DEC-002")
     _create_decision("ENG-002", "beta-1", "DEC-001")
 
-    with es.active_engagement("ENG-001"), session_scope(export=False) as s:
+    with es.active_engagement("ENG-001"), session_scope() as s:
         a_titles = {r["title"] for r in dec_repo.list_all(s)}
-    with es.active_engagement("ENG-002"), session_scope(export=False) as s:
+    with es.active_engagement("ENG-002"), session_scope() as s:
         b_titles = {r["title"] for r in dec_repo.list_all(s)}
 
     assert a_titles == {"alpha-1", "alpha-2"}
@@ -120,9 +120,9 @@ def test_get_by_identifier_scoped(two_engagements):
     _create_decision("ENG-001", "alpha decision", "DEC-001")
     _create_decision("ENG-002", "beta decision", "DEC-001")
 
-    with es.active_engagement("ENG-001"), session_scope(export=False) as s:
+    with es.active_engagement("ENG-001"), session_scope() as s:
         a = dec_repo.get(s, "DEC-001")
-    with es.active_engagement("ENG-002"), session_scope(export=False) as s:
+    with es.active_engagement("ENG-002"), session_scope() as s:
         b = dec_repo.get(s, "DEC-001")
     assert a["title"] == "alpha decision"
     assert b["title"] == "beta decision"

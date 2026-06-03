@@ -38,7 +38,6 @@ from crmbuilder_v2.access.models import (
     CatalogRelationshipPresence,
     CatalogSource,
 )
-from crmbuilder_v2.access.repositories.catalog.exports import export_entity
 from crmbuilder_v2.access.repositories.catalog.read import (
     _attribute_full,
     _entity_full,
@@ -102,7 +101,6 @@ def create_entity(session: Session, *, payload: dict) -> dict:
     _replace_entity_attributes(session, row.id, payload.get("attributes") or [])
     _replace_outbound_relationships(session, row.id, payload.get("relationships") or [])
     session.flush()
-    export_entity(session, row.catalog_id)
     return _entity_full(session, row)
 
 
@@ -150,7 +148,6 @@ def update_entity(session: Session, catalog_id: str, *, payload: dict) -> dict:
         session, row.id, payload_with_id.get("relationships") or []
     )
     session.flush()
-    export_entity(session, row.catalog_id)
     return _entity_full(session, row)
 
 
@@ -247,7 +244,6 @@ def patch_entity(session: Session, catalog_id: str, **fields: Any) -> dict:
         setattr(row, key, value)
     row.updated_at = datetime.now(UTC)
     session.flush()
-    export_entity(session, row.catalog_id)
     return _entity_full(session, row)
 
 
@@ -261,7 +257,6 @@ def delete_entity(session: Session, catalog_id: str) -> dict:
     row.is_deleted = True
     row.updated_at = datetime.now(UTC)
     session.flush()
-    export_entity(session, row.catalog_id)  # removes the JSON file
     return _entity_full(session, row)
 
 
@@ -313,7 +308,6 @@ def create_attribute(
     session.flush()
     _replace_attribute_children(session, row.id, payload)
     session.flush()
-    export_entity(session, entity.catalog_id)
     return _attribute_full(session, row)
 
 
@@ -355,7 +349,6 @@ def update_attribute(
     session.flush()
     _replace_attribute_children(session, row.id, payload_with_name)
     session.flush()
-    export_entity(session, entity.catalog_id)
     return _attribute_full(session, row)
 
 
@@ -410,7 +403,6 @@ def patch_attribute(
         setattr(row, key, value)
     row.updated_at = datetime.now(UTC)
     session.flush()
-    export_entity(session, entity.catalog_id)
     return _attribute_full(session, row)
 
 
@@ -429,7 +421,6 @@ def delete_attribute(
     row.is_deleted = True
     row.updated_at = datetime.now(UTC)
     session.flush()
-    export_entity(session, entity.catalog_id)
     return _attribute_full(session, row)
 
 

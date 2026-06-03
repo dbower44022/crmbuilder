@@ -97,55 +97,55 @@ def test_catalog_attribute_columns(v2_env):
 def test_catalog_id_unique(v2_env):
     """catalog_entity.catalog_id is UNIQUE."""
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(_make_entity("account"))
             s.add(_make_entity("account"))
 
 
 def test_attribute_unique_per_entity(v2_env):
     """(catalog_entity_id, name) is UNIQUE on catalog_attribute."""
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         ent = _make_entity("account")
         s.add(ent)
         s.flush()
         ent_id = ent.id
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(_make_attribute(ent_id, "name"))
             s.add(_make_attribute(ent_id, "name"))
 
 
 def test_entry_kind_check_constraint(v2_env):
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(_make_entity("bad", entry_kind="bogus"))
 
 
 def test_data_model_role_check_constraint(v2_env):
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(_make_entity("bad", data_model_role="nope"))
 
 
 def test_tier_check_constraint(v2_env):
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(_make_entity("bad", tier=6))
 
 
 def test_attribute_type_check_constraint(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         ent = _make_entity("account")
         s.add(ent)
         s.flush()
         ent_id = ent.id
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(_make_attribute(ent_id, "name", type="link"))
 
 
 def test_attribute_presence_status_check(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         ent = _make_entity("account")
         s.add(ent)
         s.flush()
@@ -154,7 +154,7 @@ def test_attribute_presence_status_check(v2_env):
         s.flush()
         attr_id = attr.id
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(
                 CatalogAttributePresence(
                     catalog_attribute_id=attr_id,
@@ -165,7 +165,7 @@ def test_attribute_presence_status_check(v2_env):
 
 
 def test_system_check_constraint(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         ent = _make_entity("account")
         s.add(ent)
         s.flush()
@@ -174,7 +174,7 @@ def test_system_check_constraint(v2_env):
         s.flush()
         attr_id = attr.id
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(
                 CatalogAttributePresence(
                     catalog_attribute_id=attr_id,
@@ -185,14 +185,14 @@ def test_system_check_constraint(v2_env):
 
 
 def test_relationship_cardinality_check(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         src = _make_entity("account")
         tgt = _make_entity("contact")
         s.add_all([src, tgt])
         s.flush()
         sid, tid = src.id, tgt.id
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(
                 CatalogRelationship(
                     source_entity_id=sid,
@@ -205,14 +205,14 @@ def test_relationship_cardinality_check(v2_env):
 
 
 def test_relationship_role_check(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         src = _make_entity("account")
         tgt = _make_entity("contact")
         s.add_all([src, tgt])
         s.flush()
         sid, tid = src.id, tgt.id
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(
                 CatalogRelationship(
                     source_entity_id=sid,
@@ -225,7 +225,7 @@ def test_relationship_role_check(v2_env):
 
 
 def test_attribute_presence_unique_per_system(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         ent = _make_entity("account")
         s.add(ent)
         s.flush()
@@ -234,7 +234,7 @@ def test_attribute_presence_unique_per_system(v2_env):
         s.flush()
         attr_id = attr.id
     with pytest.raises(IntegrityError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             s.add(
                 CatalogAttributePresence(
                     catalog_attribute_id=attr_id,
@@ -253,7 +253,7 @@ def test_attribute_presence_unique_per_system(v2_env):
 
 def test_cascade_delete_attribute_children(v2_env):
     """Deleting an attribute cascades to enum_values, synonyms, presence rows."""
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         ent = _make_entity("account")
         s.add(ent)
         s.flush()
@@ -301,7 +301,7 @@ def test_cascade_delete_attribute_children(v2_env):
 
 def test_cascade_delete_entity_children(v2_env):
     """Deleting an entity cascades to all entity-child rows including attributes."""
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         ent = _make_entity("account")
         s.add(ent)
         s.flush()
@@ -363,7 +363,7 @@ def test_cascade_delete_entity_children(v2_env):
 
 def test_is_standard_admits_partial(v2_env):
     """is_standard on catalog_entity_system admits the 'partial' edge case."""
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         ent = _make_entity("account")
         s.add(ent)
         s.flush()
@@ -380,7 +380,7 @@ def test_is_standard_admits_partial(v2_env):
 
 def test_mechanism_admits_null(v2_env):
     """mechanism is NULL for universals; the CHECK admits NULL."""
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         ent = _make_entity("account")
         s.add(ent)
         s.flush()

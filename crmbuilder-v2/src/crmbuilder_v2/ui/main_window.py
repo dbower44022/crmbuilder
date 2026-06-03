@@ -8,9 +8,10 @@ placeholder with a live ``DecisionsPanel``, and wires panel-level
 ``connection_lost`` to the same crash banner the lifecycle uses. Slice
 D added Sessions and Risks. Slice E completes the round-2 read-only
 panels: Charter, Status, Topics, Planning Items, References — every
-sidebar entry now routes to a real panel. Slice F constructs and owns
-a ``RefreshService`` so external storage writes (e.g., MCP, REST) are
-mirrored into the UI without the user clicking Refresh, per DEC-022.
+sidebar entry now routes to a real panel. (PI-β slice 4 removed the
+JSON-snapshot file-watch RefreshService along with the snapshot
+machinery; panels refresh on selection, on lifecycle-ready, and via the
+manual Refresh button.)
 """
 
 from __future__ import annotations
@@ -63,7 +64,6 @@ from crmbuilder_v2.ui.panels.topics import TopicsPanel
 from crmbuilder_v2.ui.panels.work_tasks import WorkTasksPanel
 from crmbuilder_v2.ui.panels.work_tickets import WorkTicketsPanel
 from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
-from crmbuilder_v2.ui.refresh import RefreshService
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 from crmbuilder_v2.ui.workers import run_in_thread
@@ -184,13 +184,10 @@ class MainWindow(QMainWindow):
         self._heartbeat_timer.setInterval(_HEARTBEAT_INTERVAL_MS)
         self._heartbeat_timer.timeout.connect(self._on_heartbeat_tick)
 
-        # Construct the file-watch service before the panel loop so the
-        # chat tab can subscribe to it (PI-106). It is connected and
-        # started at the end of __init__, after the sidebar exists.
-        watched_dir = (
-            snapshot_dir if snapshot_dir is not None else get_settings().export_dir
-        )
-        self._refresh_service = RefreshService(watched_dir, self)
+        # (PI-β slice 4 removed the JSON-snapshot file-watch RefreshService
+        # along with the snapshot machinery it watched; ``snapshot_dir`` is now
+        # an accepted-but-ignored constructor argument. Panels refresh on
+        # selection, on lifecycle-ready, and via the manual Refresh button.)
 
         for entry in SIDEBAR_ENTRIES:
             if entry == "Chat":
@@ -200,9 +197,7 @@ class MainWindow(QMainWindow):
                 # ListDetailPanel, so it is excluded from the
                 # connection_lost / navigate wiring and the on-select
                 # refresh below.
-                page: QWidget = ChatPanel(
-                    get_settings().api_base_url, self._refresh_service
-                )
+                page: QWidget = ChatPanel(get_settings().api_base_url)
             elif entry == "Charter":
                 page = CharterPanel(self._client)
             elif entry == "Status":
@@ -320,10 +315,6 @@ class MainWindow(QMainWindow):
         self._build_menu_bar()
 
         self._sidebar.select_entry(_DEFAULT_ENTRY)
-
-        self._refresh_service.data_changed.connect(self._on_data_changed)
-        self._refresh_service.watch_failed.connect(self._on_watch_failed)
-        self._refresh_service.start()
 
     def had_first_ready(self) -> bool:
         """True once the API has been reachable at least once this session.
@@ -453,10 +444,6 @@ class MainWindow(QMainWindow):
         except Exception:
             _log.exception("Heartbeat timer stop failed during closeEvent")
         try:
-            self._refresh_service.stop()
-        except Exception:
-            _log.exception("RefreshService stop failed during closeEvent")
-        try:
             self._lifecycle.terminate()
         except Exception:
             _log.exception("Lifecycle terminate failed during closeEvent")
@@ -515,24 +502,6 @@ class MainWindow(QMainWindow):
     def _on_panel_connection_lost(self, message: str) -> None:
         _log.warning("Panel reported connection lost: %s", message)
         self._begin_auto_reconnect("panel connection lost")
-
-    def _on_data_changed(self, entity_type: str) -> None:
-        """Route a file-watch event to either a silent refresh or a stale dot."""
-        label = ENTITY_TYPE_TO_SIDEBAR_LABEL.get(entity_type)
-        if label is None or label not in self._pages_by_entry:
-            return
-        index = self._pages_by_entry[label]
-        if label == self._sidebar.current_text():
-            page = self._stack.widget(index)
-            if isinstance(page, ListDetailPanel):
-                page.refresh()
-        else:
-            self._stale_entries.add(label)
-            self._sidebar.set_stale(label, True)
-
-    def _on_watch_failed(self, message: str) -> None:
-        """Watcher couldn't be installed; manual Refresh remains the fallback."""
-        _log.warning("File-watch refresh disabled: %s", message)
 
     def _on_navigate_requested(self, entity_type: str, identifier: str) -> None:
         """Route a panel-emitted link click to the appropriate sidebar entry."""

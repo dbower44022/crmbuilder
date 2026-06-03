@@ -25,7 +25,7 @@ _FIXTURE_CATALOG = (
 
 @pytest.fixture
 async def mcp_server(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         load_catalog(s, _FIXTURE_CATALOG)
     app = create_app()
     transport = httpx.ASGITransport(app=app)

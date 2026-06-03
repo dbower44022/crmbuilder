@@ -11,11 +11,10 @@ child rows (synonyms, systems, sources, enum values, presence, and
 relationships).
 
 The loader does not own a session; the caller passes one in and the
-caller controls commit/rollback semantics. The data-migration callsite
-uses ``session_scope(export=False)`` so the existing JSON-export hook
-is suppressed; the per-entity catalog export (DEC-008) fires from the
-access layer on subsequent writes and is bulk-regenerated once after
-the migration commit.
+caller controls commit/rollback semantics. (PI-β slice 4 removed the
+JSON-snapshot export machinery, including the per-entity catalog export;
+the ``suppress_exports`` parameter below is now a no-op kept for call
+compatibility.)
 """
 
 from __future__ import annotations

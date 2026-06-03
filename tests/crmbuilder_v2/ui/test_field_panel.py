@@ -13,7 +13,6 @@ from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.main_window import ENTITY_TYPE_TO_SIDEBAR_LABEL
 from crmbuilder_v2.ui.panels.field import FieldsPanel
-from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from fastapi.testclient import TestClient
 
@@ -54,12 +53,6 @@ def test_fields_appears_in_methodology_group():
 
 def test_entity_type_map_has_field_entry():
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL.get("field") == "Fields"
-
-
-def test_fields_json_refresh_mapping_present():
-    assert _FILENAME_TO_ENTITY_TYPE.get("fields.json") == "field"
-
-
 def test_panel_renders_with_no_fields(qtbot, field_client):
     panel = FieldsPanel(field_client)
     qtbot.addWidget(panel)

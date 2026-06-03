@@ -31,7 +31,6 @@ from crmbuilder_v2.ui.main_window import (
     MainWindow,
 )
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
-from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from fastapi.testclient import TestClient
@@ -345,7 +344,6 @@ def test_personas_snapshot_filename_is_mapped():
     """Persona's snapshot filename routes to the persona entity type
     and the entity type maps to the 'Personas' sidebar label.
     """
-    assert _FILENAME_TO_ENTITY_TYPE["personas.json"] == "persona"
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL["persona"] == "Personas"
 
 

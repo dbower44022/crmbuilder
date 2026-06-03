@@ -16,11 +16,6 @@ from crmbuilder_v2.access.exceptions import (
     ValidationError,
 )
 from crmbuilder_v2.api.envelope import err
-from crmbuilder_v2.runtime.exceptions import (
-    EngagementExportDirError,
-    EngagementExportDirMissing,
-    EngagementExportDirNotConfigured,
-)
 
 
 def _status_for(exc: AccessLayerError) -> int:
@@ -153,36 +148,6 @@ def selected_candidate_conflict_handler(
             "existing": exc.existing_identifier,
         },
     )
-
-
-#: Stable envelope error codes for the export-dir write-gate failures, so
-#: the desktop UI can recognise them and offer the "Edit engagement…"
-#: remediation rather than rendering a raw server error.
-EXPORT_DIR_NOT_CONFIGURED_CODE = "engagement_export_dir_not_configured"
-EXPORT_DIR_MISSING_CODE = "engagement_export_dir_missing"
-EXPORT_DIR_ERROR_CODE = "engagement_export_dir_error"
-
-
-def engagement_export_dir_handler(
-    _request: Request, exc: EngagementExportDirError
-) -> JSONResponse:
-    """Render an export-dir write-gate failure as a 500 envelope.
-
-    Multi-tenancy routing fix (slice A raises these from ``session_scope``
-    / ``force_export`` / the catalog exporter; slice B registers this
-    handler so the response carries the standard ``{data, meta, errors}``
-    envelope with a stable code instead of FastAPI's bare 500). The DB
-    write has already rolled back inside ``session_scope`` by the time the
-    exception reaches here, and the export directory was not touched.
-    """
-    if isinstance(exc, EngagementExportDirNotConfigured):
-        code = EXPORT_DIR_NOT_CONFIGURED_CODE
-    elif isinstance(exc, EngagementExportDirMissing):
-        code = EXPORT_DIR_MISSING_CODE
-    else:
-        code = EXPORT_DIR_ERROR_CODE
-    body = err([{"code": code, "message": str(exc)}])
-    return JSONResponse(status_code=500, content=body)
 
 
 def request_validation_handler(

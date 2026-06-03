@@ -20,7 +20,6 @@ from crmbuilder_v2.ui.panels.test_spec import (
     _LastRunColorDelegate,
     _resolve_outcome_color,
 )
-from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from fastapi.testclient import TestClient
 
@@ -56,12 +55,6 @@ def test_test_specs_appears_in_methodology_group():
 
 def test_entity_type_map_has_test_spec_entry():
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL.get("test_spec") == "Test Specs"
-
-
-def test_test_specs_json_refresh_mapping_present():
-    assert _FILENAME_TO_ENTITY_TYPE.get("test_specs.json") == "test_spec"
-
-
 def test_panel_lists_five_columns(qtbot, test_spec_client):
     """AC-12: master pane shows Identifier / Name / Status / Last Run / Created."""
     panel = TestSpecsPanel(test_spec_client)

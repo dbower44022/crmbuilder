@@ -26,7 +26,6 @@ from crmbuilder_v2.ui.main_window import (
     MainWindow,
 )
 from crmbuilder_v2.ui.panels.domains import DomainsPanel
-from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from fastapi.testclient import TestClient
@@ -348,37 +347,7 @@ def test_panel_new_button_round_trip(qtbot, domain_client, monkeypatch):
 def test_domains_snapshot_filename_is_mapped():
     # Slice A registered the snapshot filename; slice B's panel consumes
     # the resulting ``data_changed`` events.
-    assert _FILENAME_TO_ENTITY_TYPE["domains.json"] == "domain"
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL["domain"] == "Domains"
-
-
-def test_external_write_refreshes_current_domains_panel(
-    qtbot, lifecycle_stub, domain_client, export_dir
-):
-    window = MainWindow(
-        lifecycle=lifecycle_stub, client=domain_client, snapshot_dir=export_dir
-    )
-    qtbot.addWidget(window)
-    window._sidebar.select_entry("Domains")
-    panel = window._stack.widget(window._pages_by_entry["Domains"])
-    _wait_rows(qtbot, panel, 0)
-
-    # External REST write — the exporter rewrites domains.json.
-    _seed(domain_client, "Mentoring")
-
-    # The file-watch service routes a ``domain`` change to the current
-    # panel's refresh; drive that slot directly (the QFileSystemWatcher
-    # plumbing itself is covered by test_refresh).
-    window._on_data_changed("domain")
-    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=3000)
-    assert panel._model.record_at(0)["domain_name"] == "Mentoring"
-
-
-# ---------------------------------------------------------------------------
-# Criterion 14 — sample CBM-redo Phase 1 records persist across restart
-# ---------------------------------------------------------------------------
-
-
 def test_sample_cbm_redo_records_persist_across_restart(qtbot, domain_client):
     names = [
         "Mentoring",

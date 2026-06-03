@@ -22,7 +22,7 @@ _FIXTURE_CATALOG = (
 @pytest.fixture
 def loaded_client(client):
     """A FastAPI TestClient with the fixture catalog pre-loaded."""
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         load_catalog(s, _FIXTURE_CATALOG)
     return client
 

@@ -19,10 +19,6 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
-def _default_export_dir() -> Path:
-    return _repo_root() / "PRDs" / "product" / "crmbuilder-v2" / "db-export"
-
-
 def api_log_path() -> Path:
     """Return the rotating-log file path for the API process.
 
@@ -36,14 +32,6 @@ def api_log_path() -> Path:
 
 
 class Settings(BaseSettings):
-    # ``export_dir`` binds from ``CRMBUILDER_V2_EXPORT_DIR`` (sibling of
-    # ``CRMBUILDER_V2_DB_PATH``) via the ``env_prefix`` mechanism below.
-    # The literal string ``__UNCONFIGURED__`` is a reserved value meaning the
-    # active engagement has no ``engagement_export_dir``, so the export-write
-    # gate (``runtime.engagement_routing.assert_export_dir_ready``) can fail
-    # loud rather than silently fall back to the engine default.
-    # An empty/whitespace env var value is treated as unset (falls back
-    # to the default); the sentinel is non-empty and passes through.
     model_config = SettingsConfigDict(
         env_prefix="CRMBUILDER_V2_",
         env_file=None,
@@ -71,7 +59,6 @@ class Settings(BaseSettings):
     db_pool_size: int = 5
     db_max_overflow: int = 10
     db_pool_recycle: int = 1800  # seconds; recycle connections before PG idle timeout
-    export_dir: Path = Field(default_factory=_default_export_dir)
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -91,12 +78,6 @@ class Settings(BaseSettings):
             )
         return url
 
-    @field_validator("export_dir", mode="before")
-    @classmethod
-    def _empty_export_dir_is_default(cls, value: object) -> object:
-        if value is None or (isinstance(value, str) and value.strip() == ""):
-            return _default_export_dir()
-        return value
     api_host: str = "127.0.0.1"
     api_port: int = 8765
 

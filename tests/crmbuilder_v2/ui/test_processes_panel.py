@@ -36,7 +36,6 @@ from crmbuilder_v2.ui.main_window import (
     MainWindow,
 )
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
-from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from crmbuilder_v2.ui.widgets.warning_callout import WarningCallout
@@ -448,36 +447,7 @@ def test_panel_new_button_round_trip(qtbot, process_client, monkeypatch):
 
 
 def test_processes_snapshot_filename_is_mapped():
-    assert _FILENAME_TO_ENTITY_TYPE["processes.json"] == "process"
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL["process"] == "Processes"
-
-
-def test_external_write_refreshes_current_processes_panel(
-    qtbot, lifecycle_stub, process_client, export_dir
-):
-    window = MainWindow(
-        lifecycle=lifecycle_stub,
-        client=process_client,
-        snapshot_dir=export_dir,
-    )
-    qtbot.addWidget(window)
-    window._sidebar.select_entry("Processes")
-    panel = window._stack.widget(window._pages_by_entry["Processes"])
-    _wait_rows(qtbot, panel, 0)
-
-    dom = _seed_domain(process_client)
-    _seed_process(process_client, "Mentor Recruit", domain_identifier=dom)
-
-    window._on_data_changed("process")
-    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=3000)
-    assert panel._model.record_at(0)["process_name"] == "Mentor Recruit"
-
-
-# ---------------------------------------------------------------------------
-# Criterion 14 — process_hands_off_to_process registered + round-tripping
-# ---------------------------------------------------------------------------
-
-
 def test_kinds_for_pair_process_process_includes_hands_off():
     kinds = _kinds_for_pair("process", "process")
     assert "process_hands_off_to_process" in kinds

@@ -18,7 +18,6 @@ from crmbuilder_v2.api.errors import (
     access_layer_handler,
     classification_transition_handler,
     completed_status_requires_completion_fields_handler,
-    engagement_export_dir_handler,
     invalid_domain_reference_handler,
     request_validation_handler,
     selected_candidate_conflict_handler,
@@ -60,7 +59,6 @@ from crmbuilder_v2.api.routers import (
     workstreams,
 )
 from crmbuilder_v2.api.scope_middleware import EngagementScopeMiddleware
-from crmbuilder_v2.runtime.exceptions import EngagementExportDirError
 
 
 def create_app() -> FastAPI:
@@ -106,12 +104,6 @@ def create_app() -> FastAPI:
     )
     app.add_exception_handler(AccessLayerError, access_layer_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
-    # Export-dir write-gate failures (multi-tenancy routing fix). Distinct
-    # exception hierarchy from AccessLayerError, so registration order
-    # relative to the handlers above does not matter.
-    app.add_exception_handler(
-        EngagementExportDirError, engagement_export_dir_handler
-    )
 
     app.include_router(health.router)
     app.include_router(admin.router)

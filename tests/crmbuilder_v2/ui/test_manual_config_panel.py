@@ -14,7 +14,6 @@ from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.main_window import ENTITY_TYPE_TO_SIDEBAR_LABEL
 from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
-from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from fastapi.testclient import TestClient
 
@@ -79,15 +78,6 @@ def test_entity_type_map_has_manual_config_entry():
     assert (
         ENTITY_TYPE_TO_SIDEBAR_LABEL.get("manual_config") == "Manual Configs"
     )
-
-
-def test_manual_configs_json_refresh_mapping_present():
-    assert (
-        _FILENAME_TO_ENTITY_TYPE.get("manual_configs.json")
-        == "manual_config"
-    )
-
-
 def test_panel_master_pane_columns(qtbot, manual_config_client):
     """AC-12: master pane shows Identifier / Name / Category / Status / Created."""
     panel = ManualConfigPanel(manual_config_client)

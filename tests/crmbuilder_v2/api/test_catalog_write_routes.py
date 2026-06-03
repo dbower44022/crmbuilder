@@ -360,7 +360,7 @@ def test_get_attribute_after_delete_returns_404(with_widget):
 
 def test_update_with_relationship_to_loaded_entity(client):
     """Create a new entity referencing a fixture entity as relationship target."""
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         load_catalog(s, _FIXTURE_CATALOG)
 
     body = _minimal_entity_body(

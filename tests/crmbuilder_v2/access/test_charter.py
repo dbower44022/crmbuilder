@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import NotFoundError, ValidationError
@@ -73,12 +70,3 @@ def test_make_version_current_idempotent(v2_env):
 def test_make_version_current_unknown_version_raises(v2_env):
     with session_scope() as s, pytest.raises(NotFoundError):
         charter.make_version_current(s, version=99)
-
-
-def test_export_reflects_charter_state(v2_env, export_dir: Path):
-    with session_scope() as s:
-        charter.replace(s, payload={"scope": "demo"})
-    rows = json.loads((export_dir / "charter.json").read_text())
-    assert len(rows) == 1
-    assert rows[0]["payload"] == {"scope": "demo"}
-    assert rows[0]["is_current"] is True

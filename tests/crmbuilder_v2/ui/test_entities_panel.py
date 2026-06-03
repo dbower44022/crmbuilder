@@ -37,7 +37,6 @@ from crmbuilder_v2.ui.main_window import (
     MainWindow,
 )
 from crmbuilder_v2.ui.panels.entities import EntitiesPanel
-from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from fastapi.testclient import TestClient
@@ -378,37 +377,7 @@ def test_panel_new_button_round_trip(qtbot, entity_client, monkeypatch):
 def test_entities_snapshot_filename_is_mapped():
     # Slice A registered the snapshot filename; slice C's panel consumes
     # the resulting ``data_changed`` events.
-    assert _FILENAME_TO_ENTITY_TYPE["entities.json"] == "entity"
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL["entity"] == "Entities"
-
-
-def test_external_write_refreshes_current_entities_panel(
-    qtbot, lifecycle_stub, entity_client, export_dir
-):
-    window = MainWindow(
-        lifecycle=lifecycle_stub, client=entity_client, snapshot_dir=export_dir
-    )
-    qtbot.addWidget(window)
-    window._sidebar.select_entry("Entities")
-    panel = window._stack.widget(window._pages_by_entry["Entities"])
-    _wait_rows(qtbot, panel, 0)
-
-    # External REST write — the exporter rewrites entities.json.
-    _seed_entity(entity_client, "Contact")
-
-    # The file-watch service routes an ``entity`` change to the current
-    # panel's refresh; drive that slot directly (the QFileSystemWatcher
-    # plumbing itself is covered by test_refresh).
-    window._on_data_changed("entity")
-    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=3000)
-    assert panel._model.record_at(0)["entity_name"] == "Contact"
-
-
-# ---------------------------------------------------------------------------
-# Criterion 14 — entity_scopes_to_domain registered + constrained
-# ---------------------------------------------------------------------------
-
-
 def test_kinds_for_pair_entity_domain_includes_scopes_to_domain():
     kinds = _kinds_for_pair("entity", "domain")
     assert "entity_scopes_to_domain" in kinds

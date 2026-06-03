@@ -34,23 +34,23 @@ _FIXTURES = Path(__file__).parent / "fixtures" / "catalog"
 
 
 def test_full_fixture_load(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         report = load_catalog(s, _FIXTURES)
     assert report.entities_inserted == 5
     assert report.entities_updated == 0
     assert report.validation_failures == []
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         assert s.scalar(select(func.count()).select_from(CatalogEntity)) == 5
         # 2 + 1 + 1 + 1 + 1 = 6 attributes total across fixtures
         assert s.scalar(select(func.count()).select_from(CatalogAttribute)) == 6
 
 
 def test_universals_loaded_with_metadata(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         load_catalog(s, _FIXTURES)
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         acct = s.scalar(
             select(CatalogEntity).where(CatalogEntity.catalog_id == "account")
         )
@@ -64,10 +64,10 @@ def test_universals_loaded_with_metadata(v2_env):
 
 
 def test_subclass_parent_resolution(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         load_catalog(s, _FIXTURES)
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         nonprofit = s.scalar(
             select(CatalogEntity).where(
                 CatalogEntity.catalog_id == "account-nonprofit"
@@ -85,10 +85,10 @@ def test_subclass_parent_resolution(v2_env):
 def test_donation_major_gift_discriminator(v2_env):
     """The v0.10 fix: donation-major-gift discriminates on donationType,
     which now exists on donation.yaml as an enum attribute."""
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         load_catalog(s, _FIXTURES)
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         major = s.scalar(
             select(CatalogEntity).where(
                 CatalogEntity.catalog_id == "donation-major-gift"
@@ -120,10 +120,10 @@ def test_donation_major_gift_discriminator(v2_env):
 
 
 def test_attribute_presence_carries_api_name(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         load_catalog(s, _FIXTURES)
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         acct = s.scalar(
             select(CatalogEntity).where(CatalogEntity.catalog_id == "account")
         )
@@ -147,10 +147,10 @@ def test_attribute_presence_carries_api_name(v2_env):
 
 
 def test_relationships_loaded(v2_env):
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         load_catalog(s, _FIXTURES)
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         acct = s.scalar(
             select(CatalogEntity).where(CatalogEntity.catalog_id == "account")
         )
@@ -179,14 +179,14 @@ def test_relationships_loaded(v2_env):
 
 def test_idempotent_rerun(v2_env):
     """Running the loader twice yields the same final state."""
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         r1 = load_catalog(s, _FIXTURES)
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         counts_after_first = _count_all_catalog_rows(s)
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         r2 = load_catalog(s, _FIXTURES)
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         counts_after_second = _count_all_catalog_rows(s)
 
     assert r1.entities_inserted == 5
@@ -203,7 +203,7 @@ def test_yaml_edit_then_reload(v2_env, tmp_path):
     work = tmp_path / "catalog"
     shutil.copytree(_FIXTURES, work)
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         load_catalog(s, work)
 
     # Tweak account.yaml: bump display_name
@@ -213,11 +213,11 @@ def test_yaml_edit_then_reload(v2_env, tmp_path):
         text.replace("display_name: Account", "display_name: Account (Edited)")
     )
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         r = load_catalog(s, work)
     assert r.entities_updated >= 1
 
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         acct = s.scalar(
             select(CatalogEntity).where(CatalogEntity.catalog_id == "account")
         )
@@ -238,11 +238,11 @@ def test_validation_failure_rolls_back(v2_env, tmp_path):
     bad.write_text(bad.read_text().replace("parent_entity: account", "parent_entity: nonexistent"))
 
     with pytest.raises(CatalogLoaderError):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             load_catalog(s, work)
 
     # Database rolled back: no entities loaded.
-    with session_scope(export=False) as s:
+    with session_scope() as s:
         assert s.scalar(select(func.count()).select_from(CatalogEntity)) == 0
 
 
@@ -255,7 +255,7 @@ def test_invalid_attribute_type_rejected(v2_env, tmp_path):
     contact.write_text(contact.read_text().replace("type: string", "type: bogus"))
 
     with pytest.raises(CatalogLoaderError, match="bad type"):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             load_catalog(s, work)
 
 
@@ -270,7 +270,7 @@ def test_invalid_presence_status_rejected(v2_env, tmp_path):
     )
 
     with pytest.raises(CatalogLoaderError, match="bad status"):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             load_catalog(s, work)
 
 
@@ -286,13 +286,13 @@ def test_subclass_without_parent_entity_rejected(v2_env, tmp_path):
     bad.write_text(text)
 
     with pytest.raises(CatalogLoaderError, match="subclass missing parent_entity"):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             load_catalog(s, work)
 
 
 def test_missing_yaml_directory_rejected(v2_env, tmp_path):
     with pytest.raises(CatalogLoaderError, match="catalog directory not found"):
-        with session_scope(export=False) as s:
+        with session_scope() as s:
             load_catalog(s, tmp_path / "does-not-exist")
 
 

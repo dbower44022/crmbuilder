@@ -33,7 +33,6 @@ from crmbuilder_v2.ui.main_window import (
     MainWindow,
 )
 from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
-from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from fastapi.testclient import TestClient
@@ -408,7 +407,6 @@ def test_inbound_reference_renders_on_crm_candidate_detail_pane(
 
 
 def test_crm_candidates_snapshot_filename_is_mapped():
-    assert _FILENAME_TO_ENTITY_TYPE["crm_candidates.json"] == "crm_candidate"
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL["crm_candidate"] == "CRM Candidates"
 
 

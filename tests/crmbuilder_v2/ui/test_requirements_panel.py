@@ -13,7 +13,6 @@ from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.main_window import ENTITY_TYPE_TO_SIDEBAR_LABEL
 from crmbuilder_v2.ui.panels.requirements import RequirementsPanel
-from crmbuilder_v2.ui.refresh import _FILENAME_TO_ENTITY_TYPE
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from fastapi.testclient import TestClient
 
@@ -49,12 +48,6 @@ def test_requirements_appears_in_methodology_group():
 
 def test_entity_type_map_has_requirement_entry():
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL.get("requirement") == "Requirements"
-
-
-def test_requirements_json_refresh_mapping_present():
-    assert _FILENAME_TO_ENTITY_TYPE.get("requirements.json") == "requirement"
-
-
 def test_panel_master_has_five_columns(qtbot, requirement_client):
     """AC-11: master pane shows Identifier / Name / Priority / Status / Created."""
     panel = RequirementsPanel(requirement_client)

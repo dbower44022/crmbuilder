@@ -37,7 +37,6 @@ import pytest
 from crmbuilder_v2.access import engagement_scope
 from crmbuilder_v2.access.db import (
     bootstrap_database,
-    force_export,
     get_engine,
     get_session_factory,
     reset_engine_cache,
@@ -126,13 +125,11 @@ def _reset_tables_pg() -> None:
         )
 
 
-def _seed_default_engagement(export_dir: Path) -> None:
+def _seed_default_engagement() -> None:
     """Seed ``ENG-001`` into the unified ``engagements`` table.
 
     This is the FK target every scoped row's ``engagement_id`` points at. The
-    row is inserted directly (never ``engagement_repo`` — whose snapshot
-    refresh writes the git-tracked ``db-export`` files at the hardcoded repo
-    path; see ``test_engagement_scope_middleware``).
+    row is inserted directly via raw ORM.
 
     PI-β removed the ``current_engagement.json`` marker: API-backed tests
     resolve the engagement from the ``X-Engagement`` header (the ``client``
@@ -149,7 +146,6 @@ def _seed_default_engagement(export_dir: Path) -> None:
             engagement_name=DEFAULT_ENGAGEMENT_NAME,
             engagement_purpose="test",
             engagement_status="active",
-            engagement_export_dir=str(export_dir),
             engagement_created_at=now,
             engagement_updated_at=now,
         )
@@ -161,16 +157,10 @@ def _seed_default_engagement(export_dir: Path) -> None:
 @pytest.fixture
 def v2_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     db = tmp_path / "v2.db"
-    export = tmp_path / "db-export"
-    # The export-write gate (DEC-114) requires the configured root to
-    # exist on disk; create it before any export runs.
-    export.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(db))
-    monkeypatch.setenv("CRMBUILDER_V2_EXPORT_DIR", str(export))
     monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "true")
     # PI-alpha: when a test Postgres is configured, route the engine at it
-    # (``database_url`` takes precedence over ``db_path`` in ``Settings``);
-    # ``db_path`` still resolves ``data_dir()``/the marker/the export tree. The
+    # (``database_url`` takes precedence over ``db_path`` in ``Settings``). The
     # schema is created once and each test starts from a per-table DELETE rather
     # than a fresh file.
     pg_url = _pg_test_url()
@@ -196,12 +186,11 @@ def v2_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
         reset_settings_cache()
         reset_engine_cache()
         bootstrap_database()
-    _seed_default_engagement(export)
+    _seed_default_engagement()
     # Activate scoping for the test body: the write-stamp fills engagement_id
     # on every insert; enforcement fails loud on an unscoped scoped op.
     token = engagement_scope.set_active_engagement(DEFAULT_ENGAGEMENT_ID)
     prev_enforce = engagement_scope.set_enforcement(True)
-    force_export()
     try:
         yield tmp_path
     finally:
@@ -221,4 +210,9 @@ def settings(v2_env):
 
 @pytest.fixture
 def export_dir(v2_env: Path) -> Path:
-    return v2_env / "db-export"
+    # PI-β slice 4 removed the JSON-snapshot exporter; this is now just an
+    # empty per-test directory retained for tests that take it as a scratch
+    # path. (Tests that asserted exported snapshot files were removed.)
+    d = v2_env / "db-export"
+    d.mkdir(parents=True, exist_ok=True)
+    return d

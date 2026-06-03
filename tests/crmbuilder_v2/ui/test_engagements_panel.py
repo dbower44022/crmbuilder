@@ -28,10 +28,6 @@ from crmbuilder_v2.ui.panels.engagements import (
     EngagementsPanel,
     format_relative_date,
 )
-from crmbuilder_v2.ui.refresh import (
-    _FILENAME_TO_ENTITY_TYPE,
-    _SUBDIR_FILENAME_TO_ENTITY_TYPE,
-)
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
 from fastapi.testclient import TestClient
 from PySide6.QtWidgets import QDialog, QLineEdit
@@ -456,46 +452,8 @@ def test_empty_state_create_button_opens_create_dialog(
     assert opened["count"] == 1
 
 
-# ---------------------------------------------------------------------------
-# Refresh registration: file-watch + signal
-# ---------------------------------------------------------------------------
-
-
-def test_engagements_subdir_filename_is_mapped():
-    assert (
-        _SUBDIR_FILENAME_TO_ENTITY_TYPE[("meta", "engagements.json")]
-        == "engagement"
-    )
+def test_engagement_entity_type_maps_to_sidebar_label():
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL["engagement"] == "Engagements"
-    # The bare-filename map does NOT contain ``engagements.json`` (the
-    # meta snapshot lives one level down).
-    assert "engagements.json" not in _FILENAME_TO_ENTITY_TYPE
-
-
-def test_external_write_refreshes_current_engagements_panel(
-    qtbot, lifecycle_stub, engagement_client, export_dir
-):
-    window = MainWindow(
-        lifecycle=lifecycle_stub,
-        client=engagement_client,
-        snapshot_dir=export_dir,
-    )
-    qtbot.addWidget(window)
-    window._sidebar.select_entry("Engagements")
-    panel = window._stack.widget(window._pages_by_entry["Engagements"])
-    _wait_rows(qtbot, panel, 0)
-
-    _seed(engagement_client, "ALPHA", "Alpha")
-    window._on_data_changed("engagement")
-    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=3000)
-    assert (
-        panel._model.record_at(0)["engagement_identifier"] == "ENG-001"
-    )
-
-
-# ---------------------------------------------------------------------------
-# format_relative_date helper
-# ---------------------------------------------------------------------------
 
 
 def test_format_relative_date_handles_null():

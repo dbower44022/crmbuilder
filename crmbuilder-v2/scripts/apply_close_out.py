@@ -580,10 +580,10 @@ def main() -> int:
         )
         print(
             "  Governance applies must run on 'main' so the identifier "
-            "sequence and\n  db-export snapshots advance on a single line "
-            "(Model A). If this is\n  isolated-DB branch work, re-run with "
-            "--allow-branch-local AND ensure\n  CRMBUILDER_V2_DB_PATH points "
-            "at a gitignored branch-local engagement DB.",
+            "sequence advances\n  on a single line (Model A). If this is "
+            "isolated-DB branch work, re-run\n  with --allow-branch-local AND "
+            "ensure CRMBUILDER_V2_DB_PATH points at a\n  gitignored "
+            "branch-local engagement DB.",
             file=sys.stderr,
         )
         return 2
