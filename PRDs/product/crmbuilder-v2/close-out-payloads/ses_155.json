@@ -1,0 +1,146 @@
+{
+ "label": "PI-beta build-closure — de-file + kill snapshots (PRJ-019)",
+ "session": {
+  "session_identifier": "SES-155",
+  "session_title": "PI-beta build-closure — de-file + kill snapshots (Production Multi-Tenant API)",
+  "session_medium": "chat",
+  "session_medium_metadata": {
+   "runner": "claude-code",
+   "kind": "build-closure"
+  },
+  "session_participants": [
+   "Doug Bower",
+   "Claude"
+  ],
+  "session_status": "complete",
+  "session_executive_summary": "PI-beta (de-file + kill-snapshots, PRJ-019) built + closed on pi-beta-defile, merged to main. Finishes the runtime's exit from the per-engagement-file + JSON-snapshot world. Now one unified DB; the active engagement is named per request by the X-Engagement header (no marker). De-filed: registry served from the unified engagements table (meta DB deleted); marker, activation-worker, dogfood/lazy migrators, marker_guard, and the /admin reroute removed; switching is a client-side context change that removes the 'Switching failed at step 3' bug. Killed snapshots: exporter, catalog exporter, export-dir gate, force_export, Settings.export_dir, the db-export/ tree, and the file-watch RefreshService. Docs rewritten to DB-as-source-of-truth. SQLite suite green. Records DEC-378 and resolves PI-126.",
+  "session_description": "PI-beta build-closure: ingests the four branch commits (Architecture/scoping -> slices 1-3 de-file -> slice 4 kill-snapshots -> slices 5-6 doc rewrites), records the build as DEC-378, and resolves PI-126. PI-beta was built directly (no ADO phase decomposition), so there is no workstream-completion step. Merged FF to main at eac4b016."
+ },
+ "conversation": {
+  "conversation_identifier": "CNV-057",
+  "conversation_title": "PI-beta build-closure — de-file + kill snapshots",
+  "conversation_purpose": "Close out PI-beta: ingest the build commits, record the build decision, and resolve PI-126.",
+  "conversation_description": "Built the de-file + kill-snapshots work (registry on unified DB, header-per-request engagement, deleted meta/marker/activation/snapshot machinery, doc rewrites) and authored this build-closure.",
+  "conversation_status": "complete",
+  "conversation_summary": "Resolved PI-126; recorded DEC-378; ingested the four PI-beta commits.",
+  "references": [
+   {
+    "source_type": "conversation",
+    "source_id": "CNV-057",
+    "target_type": "session",
+    "target_id": "SES-155",
+    "relationship": "conversation_belongs_to_session"
+   }
+  ]
+ },
+ "work_tickets": [],
+ "planning_items": [],
+ "commits": [
+  {
+   "commit_sha": "7d6eac59ce1e927cace18fea1bc91c168443392a",
+   "commit_message_first_line": "v2: PI-beta Architecture/scoping pass — de-file + kill snapshots + API/MCP-only",
+   "commit_message_full": "v2: PI-beta Architecture/scoping pass — de-file + kill snapshots + API/MCP-only\n\nPI-beta's Architecture phase (refines program design D5-partial/D6/D7/D8) for\nPRJ-019. Build-ready removal plan grounded in a full dependency survey of the\nmeta-DB layer, the snapshot/export machinery, the per-engagement-file routing +\nactivation worker, and the orientation file-fallback.\n\nDecisions: /engagements serves the unified engagements table (meta DB deleted);\nengagement is per-request via X-Engagement with the current_engagement.json marker\nremoved (switching = client-side context change -> deletes ui/activation_worker\nand the broken \"Switching failed at step 3\"); session_scope collapses to\nflush->commit and db-export/ is deleted (git trail = close-out payloads + deposit\nlogs); one-shot migrators retired; orientation becomes MCP/REST-only. Six-slice\nremoval order each leaving the suite green. Flags the PI-alpha sequencing: the two\nshare db.py/engagement_routing/conftest edits, so land PI-alpha first and build\nPI-beta off the post-PI-alpha main.\n\nBranch pi-beta-defile off main.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 1,
+   "commit_committed_at": "2026-06-02T21:26:02-04:00",
+   "commit_parent_shas": [
+    "ea64a3e2e53e0f0bf1fb96a79416412eda8afdc6"
+   ]
+  },
+  {
+   "commit_sha": "a9d269460829eeb74f0f134075741e5c79d7deec",
+   "commit_message_first_line": "v2: PI-beta slices 1-3 — registry on unified DB, delete meta layer, de-file runtime (SUITE GREEN)",
+   "commit_message_full": "v2: PI-beta slices 1-3 — registry on unified DB, delete meta layer, de-file runtime (SUITE GREEN)\n\nFolds PI-beta Development slices 1+2+3 into one green commit (squashes the\nprior WIP 6d58c5c). The runtime no longer pretends there are many\nper-engagement databases: there is one unified DB, the engagement is named\nper request by the X-Engagement header, and switching engagements is a\nclient-side context change.\n\nSlice 1 — /engagements on the unified DB:\n- access/engagement.py operates on the unified `engagements` table via a\n  normal session (no meta-snapshot hook); api/routers/engagements.py uses\n  readonly/writable_session, not meta_session.\n\nSlice 2 — delete the meta DB layer:\n- removed access/meta_db.py, meta_models.py, meta_exporter.py,\n  migration/meta_alembic.py, migrations/meta/; dropped api/deps.meta_session\n  and the api/main meta bootstrap+migration; version_info reports the unified\n  DB's single schema; /admin drops the meta schema + the in-process reroute.\n\nSlice 3 — de-file the runtime (header-only engagement resolution):\n- deleted ui/activation_worker.py, migration/dogfood_v0_5.py, api/marker_guard.py,\n  migration/lazy_migration.py; gutted runtime/engagement_routing.py to the\n  export-write gate only; engagement_scoping_enabled defaults True; scope\n  middleware resolves the engagement from X-Engagement alone (no marker fallback).\n- StorageClient sends X-Engagement from the active-engagement context;\n  ActiveEngagementContext is in-memory (no current_engagement.json marker);\n  MainWindow.switch_engagement performs a client-side context switch — which\n  removes the broken \"Switching failed at step 3\" subprocess swap by construction;\n  new_engagement_dialog is create-and-select; cli.run_api + ui/app startup\n  simplified; managers plumbing removed.\n\nTests: deleted the per-file/activation/marker/dogfood/two-DB/launcher/v0.5-e2e\nsuites; repointed the engagement-registry, scope-middleware, routing, and\nactive-context tests at the unified DB; API-backed test clients (UI panels,\nMCP, apply_close_out, /engagements) now send X-Engagement since the TestClient\nruns the app in a portal thread that does not inherit the seeded scope ContextVar.\n\nSlice 4 (kill db-export/snapshots) and slices 5-6 (doc rewrites) remain separate.\n\nSQLite suite green: 2246 passed; the only failures are pre-existing and\nenvironmental — apply_close_out's 17 main-branch-guard refusals (expected\noff main) and test_0037's alembic-chain-from-scratch NoSuchTableError:charter\n(the gitignored base-entity-catalog YAMLs).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 66,
+   "commit_committed_at": "2026-06-02T23:14:53-04:00",
+   "commit_parent_shas": [
+    "7d6eac59ce1e927cace18fea1bc91c168443392a"
+   ]
+  },
+  {
+   "commit_sha": "4185bd8d7f3884158bf85f0ca476d29056ee607f",
+   "commit_message_first_line": "v2: PI-beta slice 4 — kill the JSON-snapshot/db-export machinery (SUITE GREEN)",
+   "commit_message_full": "v2: PI-beta slice 4 — kill the JSON-snapshot/db-export machinery (SUITE GREEN)\n\nRemoves the snapshot/export write-path (D-β3). The database is now the sole\nsource of truth; clients read it via the API/MCP, and the git-tracked audit\ntrail is the close-out payloads + deposit-event logs (kept), not regenerated\nJSON snapshots.\n\nWrite-path core:\n- deleted access/exporter.py; session_scope() drops the export hook + the\n  export= parameter (now flush→commit only); force_export removed.\n- deleted runtime/engagement_routing.py (only the export gate remained after\n  slice 3); removed assert_export_dir_ready + UNCONFIGURED_SENTINEL and the\n  EngagementExportDir* exceptions (runtime/exceptions.py); removed the\n  Settings.export_dir field + its default/validator.\n- api/deps writable/readonly_session drop export=; api/errors + api/main drop\n  the engagement_export_dir handler.\n\nCatalog + apply + tree:\n- deleted access/repositories/catalog/exports.py (the per-entity catalog JSON\n  exporter) and its 8 write-path calls + re-exports; migration 0004 no longer\n  imports the deleted suppression(); catalog_loader's suppress_exports is a\n  no-op.\n- apply_close_out.py no longer regenerates snapshots (the removed API hook\n  did); branch-guard help text de-references db-export.\n- deleted the git-tracked PRDs/product/crmbuilder-v2/db-export/ tree (73 files);\n  the pre-commit hook now guards only deposit-event-logs/ (the surviving\n  Model-A trail).\n\nUI:\n- deleted ui/refresh.py (the file-watch RefreshService watched the now-deleted\n  snapshot tree); unwired it from MainWindow (snapshot_dir is an accepted-but-\n  ignored arg) and the chat panel; removed the About dialog's Snapshot\n  directory row. Panels refresh on selection, on lifecycle-ready, and via the\n  manual Refresh button. The engagement_export_dir column + its CRUD field stay\n  (no schema change this slice).\n\nTests: deleted the exporter / export-gate / refresh / catalog-export / chat-\nPI106 / export-dir-handler suites; dropped export= from session_scope test\ncalls; removed snapshot-assertion tests (status/charter/migrate) and the\nfile-watch map/refresh panel tests; conftest v2_env no longer sets\nCRMBUILDER_V2_EXPORT_DIR or calls force_export.\n\nSQLite suite green: 2185 passed; the only failures remain pre-existing and\nenvironmental — apply_close_out's 17 main-branch-guard refusals (off main) and\ntest_0037's alembic-chain-from-scratch NoSuchTableError:charter.\n\nDeferred (separate): slices 5-6 doc rewrites (CLAUDE.md Tier-2 file-fallback,\ngovernance-recording-rules, v2-user-process-guide); full MCP per-engagement\nselection; the now-vestigial engagement_export_dir column + its UI (awaits a\nschema-change pass).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 122,
+   "commit_committed_at": "2026-06-03T00:06:22-04:00",
+   "commit_parent_shas": [
+    "a9d269460829eeb74f0f134075741e5c79d7deec"
+   ]
+  },
+  {
+   "commit_sha": "eac4b016694bc246f067ef3c37615220681f900b",
+   "commit_message_first_line": "v2: PI-beta slices 5-6 — doc rewrites: orientation/recording-rules to DB-as-source-of-truth (D-β5)",
+   "commit_message_full": "v2: PI-beta slices 5-6 — doc rewrites: orientation/recording-rules to DB-as-source-of-truth (D-β5)\n\nBrings the operative docs in line with the de-filed, snapshot-free runtime (the\nlast in-scope PI-β Development work). No code change.\n\n- CLAUDE.md: the Tier-2 orientation protocol is now \"MCP or REST API, the two\n  equal options\" — read the DB live, never from committed files (the\n  file-fallback bullet is gone). The session-lifecycle close-out no longer\n  regenerates/commits db-export snapshots (commits the deposit-event log +\n  deliverables). The branch-work protocol and \"v0.1 landed\" note drop db-export;\n  the pre-commit hook now guards only deposit-event-logs/. Added a PI-β history\n  note that supersedes the multi-engagement-file / marker / meta-DB /\n  activation-worker / db-export descriptions where they conflict.\n- governance-recording-rules.md: the apply-prompt \"snapshot regeneration\" step\n  becomes \"commit the deposit-event log + deliverables\"; the \"snapshot lag\"\n  failure mode becomes \"reading committed files instead of the live DB.\"\n- v2-user-process-guide.md: \"file-fallback mode\" → \"REST API mode\" throughout\n  (operating-modes table, Tier-2 read, closeout database archive, the\n  read-without-MCP path list); read the live API with the X-Engagement header.\n\nCompletes PI-β's Development + Documentation phases. Remaining: merge to main +\nbuild-closure (records PI-β governance, resolves PI-126); deferred follow-ons\n(MCP per-engagement selection, the vestigial engagement_export_dir column,\nenumerate_commits repoint).\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+   "commit_author_name": "Doug Bower",
+   "commit_author_email": "doug@dougbower.com",
+   "commit_repository": "crmbuilder",
+   "commit_branch": "main",
+   "commit_files_changed_count": 3,
+   "commit_committed_at": "2026-06-03T00:24:59-04:00",
+   "commit_parent_shas": [
+    "4185bd8d7f3884158bf85f0ca476d29056ee607f"
+   ]
+  }
+ ],
+ "decisions": [
+  {
+   "identifier": "DEC-378",
+   "title": "PI-beta de-file + kill-snapshots — build decisions and findings",
+   "decision_date": "2026-06-03",
+   "status": "Active",
+   "context": "PRJ-019's Production Multi-Tenant API program decomposes into PI-alpha (Postgres foundation, Resolved), PI-beta (de-file + kill snapshots, PI-126), and PI-gamma (RBAC, PI-127). PI-123 had already made the data a single unified row-scoped DB; PI-beta removes the apparatus that still pretended there were many per-engagement files, plus the JSON-snapshot export process.",
+   "decision": "(1) The engagement registry is served from the unified DB's engagements table; the separate meta DB (models, Alembic chain, meta_session) is deleted. (2) The active engagement is named per request by the X-Engagement header, resolved by scope_middleware; the current_engagement.json marker + fallback are removed and engagement_scoping_enabled defaults True. (3) Switching is a client-side context change (StorageClient header + MainWindow.switch_engagement), so ui/activation_worker, marker_guard, dogfood_v0_5, lazy_migration, and the /admin/active-engagement reroute are deleted — removing the 'Switching failed at step 3' bug by construction. (4) The JSON-snapshot machinery is removed: exporter.py, the catalog exporter, the export-dir gate, force_export, Settings.export_dir, the EngagementExportDir* exceptions, the git-tracked db-export/ tree, and the file-watch RefreshService; session_scope() is flush->commit only. (5) Docs (CLAUDE.md, governance-recording-rules, v2-user-process-guide) rewritten to DB-as-source-of-truth: orientation is MCP or REST, never committed files.",
+   "rationale": "PI-123 made the per-engagement files data-unnecessary; the meta DB, marker, activation-worker, and snapshot exporter were dead apparatus that also carried a live bug. Header-per-request scoping matches the multi-tenant target (PI-gamma constrains the header to the principal later) and makes switching a cheap context change. Removing db-export eliminates a perpetually-lagging committed copy of state; the deposit-event logs + close-out payloads are the git-tracked governance trail.",
+   "alternatives_considered": "Keep the marker as a default-engagement fallback (rejected: reintroduces the single-active process model the header replaces). Keep db-export as a read cache (rejected: it always lagged the live API and nothing should read committed state). Drop the engagement_export_dir column now (deferred: that is a schema change; this slice is pure removal, so the column + CRUD field stay vestigial pending a migration pass).",
+   "consequences": "One unified DB, header-scoped per request, no marker/meta/activation/snapshot apparatus; the broken engagement-switch is gone. Build finding load-bearing for tests: the TestClient portal thread does not inherit the test thread's scope ContextVar, so real-backend test clients must send X-Engagement. Deferred follow-ons: full MCP per-engagement selection (prod MCP sends no header -> unscoped, fine for the single-engagement dogfood since prod enforcement is off), dropping the vestigial engagement_export_dir column, and repointing scripts/enumerate_commits off the now-absent db-export commits.json.",
+   "executive_summary": "Records PI-beta's build: one unified DB with per-request X-Engagement resolution (marker, meta DB, activation-worker, and per-engagement-file routing deleted; engagement_scoping_enabled defaults True); switching is a client-side context change that dissolves the 'Switching failed at step 3' bug. The JSON-snapshot/db-export machinery (exporter, catalog exporter, export-dir gate, force_export, Settings.export_dir, the db-export/ tree, the file-watch RefreshService) is removed; the DB is the source of truth, and the git trail is close-out payloads + deposit-event logs. Build finding: the TestClient runs the app in a portal thread that does not inherit the test scope ContextVar, so real-backend test clients must send X-Engagement."
+  }
+ ],
+ "references": [
+  {
+   "source_type": "session",
+   "source_id": "SES-155",
+   "target_type": "project",
+   "target_id": "PRJ-019",
+   "relationship": "session_belongs_to_project"
+  },
+  {
+   "source_type": "conversation",
+   "source_id": "CNV-057",
+   "target_type": "project",
+   "target_id": "PRJ-019",
+   "relationship": "conversation_belongs_to_project"
+  },
+  {
+   "source_type": "session",
+   "source_id": "SES-155",
+   "target_type": "session",
+   "target_id": "SES-154",
+   "relationship": "session_follows_from"
+  },
+  {
+   "source_type": "decision",
+   "source_id": "DEC-378",
+   "target_type": "conversation",
+   "target_id": "CNV-057",
+   "relationship": "decided_in"
+  }
+ ],
+ "resolves_planning_items": [
+  {
+   "planning_item_identifier": "PI-126"
+  }
+ ],
+ "addresses_planning_items": []
+}

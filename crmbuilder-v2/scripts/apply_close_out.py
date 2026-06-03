@@ -70,6 +70,12 @@ import crmbuilder_v2
 
 BASE = "http://127.0.0.1:8765"
 
+# PI-β: the API resolves the active engagement per request from the
+# ``X-Engagement`` header (the marker fallback is gone), so every request the
+# apply makes must name the target engagement or its scoped writes get no
+# engagement_id. Set from ``--engagement`` (identifier ``ENG-NNN`` or code).
+ENGAGEMENT = "CRMBUILDER"
+
 
 def _load_closeout_validator():
     """Load the sibling ``closeout_validator.py`` module by file-path.
@@ -288,7 +294,7 @@ def _request(method: str, path: str, body: dict | None = None) -> tuple[int, dic
     req = urllib.request.Request(
         f"{BASE}{path}",
         data=data,
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-Engagement": ENGAGEMENT},
         method=method,
     )
     try:
@@ -529,7 +535,7 @@ def _current_git_branch() -> str | None:
 
 
 def main() -> int:
-    global BASE
+    global BASE, ENGAGEMENT
 
     parser = argparse.ArgumentParser(
         description="Apply a close-out JSON payload to the v2 API.",
@@ -570,6 +576,18 @@ def main() -> int:
             "branch-local engagement DB. Default refuses any apply off main."
         ),
     )
+    parser.add_argument(
+        "--engagement",
+        default=ENGAGEMENT,
+        metavar="ENG",
+        help=(
+            "Target engagement (identifier ENG-NNN or code) sent as the "
+            "X-Engagement header on every API request, so the apply's scoped "
+            f"writes land under it. Default: {ENGAGEMENT}. (PI-β: the API "
+            "resolves the engagement per request from this header — there is "
+            "no marker fallback.)"
+        ),
+    )
     args = parser.parse_args()
 
     branch = _current_git_branch()
@@ -589,6 +607,7 @@ def main() -> int:
         return 2
 
     BASE = args.base
+    ENGAGEMENT = args.engagement
 
     if not args.payload_path.exists():
         print(f"✗ Payload file not found: {args.payload_path}", file=sys.stderr)

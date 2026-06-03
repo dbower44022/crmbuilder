@@ -1,0 +1,31 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_155.json
+Label:  PI-beta build-closure — de-file + kill snapshots (PRJ-019)
+Deposit event: DEP-150
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-057 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== commits (4 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+=== decisions (1 record) ===
+  ✓ POST decisions  DEC-378 (HTTP 201)
+
+=== references (3 records) ===
+  ✓ POST references  CNV-057 conversation_belongs_to_project PRJ-019 (HTTP 201)
+  ✓ POST references  SES-155 session_follows_from SES-154 (HTTP 201)
+  ✓ POST references  DEC-378 decided_in CNV-057 (HTTP 201)
+
+=== resolves_planning_items (1 record) ===
+  ✓ POST resolves_planning_items  → PI-126 (HTTP 201)
+
+✓ All 11 operations complete.
+
+✓ Recorded apply as deposit_event DEP-150 (HTTP 201).
