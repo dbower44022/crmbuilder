@@ -123,9 +123,18 @@ def _bound_targets(session: Session, profile_id: str, relationship: str) -> list
 
 
 def resolve_contract(
-    session: Session, profile_id: str, *, engagement_id: str | None = None
+    session: Session,
+    profile_id: str,
+    *,
+    engagement_id: str | None = None,
+    min_confidence: int = 1,
 ) -> dict:
     """Resolve ``profile_id`` → an effective contract for ``engagement_id``.
+
+    Only **evidenced** learnings reach the contract: an active (area, tier)
+    learning is injected iff its ``confidence`` is at least ``min_confidence``
+    (default 1), so confidence-0 hunches — captured without supporting evidence
+    — never pollute a runtime contract.
 
     Raises ``NotFoundError`` if the profile does not exist (via
     :func:`agent_profiles.get`).
@@ -189,18 +198,27 @@ def resolve_contract(
             {"identifier": r["identifier"], "body": r["body"]} for r in advisory_rules
         ],
         "enforced_ruleset": enforced_ruleset,
-        "active_learnings": _active_learnings(session, profile, engagement_id),
+        "active_learnings": _active_learnings(
+            session, profile, engagement_id, min_confidence
+        ),
     }
     contract["version_stamp"] = _version_stamp(profile, visible_skills, visible_rules)
     return contract
 
 
-def _active_learnings(session: Session, profile: dict, engagement_id: str | None) -> list[dict]:
+def _active_learnings(
+    session: Session,
+    profile: dict,
+    engagement_id: str | None,
+    min_confidence: int = 1,
+) -> list[dict]:
     """Inject the active (area, tier) learnings in scope (PRD §13.2 / D-δ4).
 
     Matched by the profile's area + tier (when the tier is a learning tier —
-    orchestrator/pi_lead profiles carry none). "All active" today; a relevance-
-    retrieval step at scale is an open question (PRD §10.6).
+    orchestrator/pi_lead profiles carry none) and gated on evidence: a learning
+    is injected only if its ``confidence >= min_confidence``, so confidence-0
+    hunches are excluded by the default. A relevance-retrieval step at scale is
+    an open question (PRD §10.6).
     """
     if profile["tier"] not in LEARNING_TIERS:
         return []
@@ -215,7 +233,8 @@ def _active_learnings(session: Session, profile: dict, engagement_id: str | None
             "confidence": lrn["confidence"],
         }
         for lrn in candidates
-        if lrn.get("engagement_id") is None or lrn.get("engagement_id") == engagement_id
+        if lrn["confidence"] >= min_confidence
+        and (lrn.get("engagement_id") is None or lrn.get("engagement_id") == engagement_id)
     ]
 
 

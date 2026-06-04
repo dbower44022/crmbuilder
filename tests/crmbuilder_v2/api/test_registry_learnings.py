@@ -63,16 +63,40 @@ def test_resolver_injects_active_area_tier_learnings(client):
         "/agent-profiles",
         json={"area": "storage", "tier": "developer", "description": "Storage dev."},
     ).json()["data"]["identifier"]
+    # Evidenced (confidence >= 1) so it clears the resolver's default gate.
     client.post("/learnings", json={"area": "storage", "tier": "developer",
-                "category": "gotcha", "content": "match me"})
+                "category": "gotcha", "content": "match me", "confidence": 1})
     # Different area/tier — must NOT be injected.
     client.post("/learnings", json={"area": "api", "tier": "developer",
-                "category": "gotcha", "content": "other area"})
+                "category": "gotcha", "content": "other area", "confidence": 1})
     client.post("/learnings", json={"area": "storage", "tier": "architect",
-                "category": "gotcha", "content": "other tier"})
+                "category": "gotcha", "content": "other tier", "confidence": 1})
     contract = client.get(f"/agent-profiles/{prof}/contract").json()["data"]
     contents = [lrn["content"] for lrn in contract["active_learnings"]]
     assert contents == ["match me"]
+
+
+def test_resolver_excludes_confidence_zero_hunch(client):
+    """A confidence-0 hunch is filtered out of the contract by the resolver's
+    default ``min_confidence`` gate, while a confidence>=1 learning in the same
+    area/tier is injected (WTK-002)."""
+    prof = client.post(
+        "/agent-profiles",
+        json={"area": "storage", "tier": "developer", "description": "Storage dev."},
+    ).json()["data"]["identifier"]
+    # A bare hunch (confidence defaults to 0) and an evidenced learning, same
+    # area/tier.
+    client.post("/learnings", json={"area": "storage", "tier": "developer",
+                "category": "gotcha", "content": "unproven hunch"})
+    client.post("/learnings", json={"area": "storage", "tier": "developer",
+                "category": "gotcha", "content": "evidenced", "confidence": 1})
+    contents = [
+        lrn["content"]
+        for lrn in client.get(f"/agent-profiles/{prof}/contract").json()["data"][
+            "active_learnings"
+        ]
+    ]
+    assert contents == ["evidenced"]
 
 
 def test_orchestrator_profile_gets_no_learnings(client):
