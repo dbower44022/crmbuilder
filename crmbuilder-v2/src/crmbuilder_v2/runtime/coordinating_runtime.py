@@ -443,8 +443,20 @@ class CoordinatingRuntime:
             spawn = self.spawn_fn or (
                 lambda p, wp: spawn_claude_agent(p, wp, timeout=cfg.agent_timeout)
             )
-            proc = spawn(assignment.prompt, worktree.path)
-            self.log(f"  agent exited rc={proc.returncode}")
+            # The runtime verifies by *result* (DB state + git), not by the
+            # agent's exit. An agent that finished its work but did not cleanly
+            # self-terminate is killed at the deadline; we still verify, and a
+            # completed-and-committed result merges anyway (DEC: verify-by-result).
+            returncode: int | None = None
+            try:
+                proc = spawn(assignment.prompt, worktree.path)
+                returncode = proc.returncode
+                self.log(f"  agent exited rc={returncode}")
+            except subprocess.TimeoutExpired:
+                self.log(
+                    f"  agent hit the {cfg.agent_timeout}s deadline and was "
+                    "killed — verifying by result anyway"
+                )
 
             # Verify (REQ-057): re-read the task + check the branch.
             refreshed = dispatcher._get(
@@ -458,13 +470,13 @@ class CoordinatingRuntime:
                 self._flag_needs_attention(
                     assignment.work_task_id,
                     f"verification failed: {verdict.value} "
-                    f"(agent rc={proc.returncode})",
+                    f"(agent rc={returncode})",
                 )
                 return IterationReport(
                     result=StepResult.PAUSED,
                     work_task_id=assignment.work_task_id,
                     verify=verdict,
-                    agent_returncode=proc.returncode,
+                    agent_returncode=returncode,
                     branch=assignment.branch,
                     pause_reason=f"verification {verdict.value}",
                 )
@@ -494,7 +506,7 @@ class CoordinatingRuntime:
                 work_task_id=assignment.work_task_id,
                 verify=verdict,
                 merge=merge,
-                agent_returncode=proc.returncode,
+                agent_returncode=returncode,
                 branch=assignment.branch,
             )
         finally:
