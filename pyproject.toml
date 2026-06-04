@@ -38,6 +38,7 @@ crmbuilder-v2-bootstrap-db = "crmbuilder_v2.cli:bootstrap_db"
 crmbuilder-v2-bootstrap = "crmbuilder_v2.cli:bootstrap_content"
 crmbuilder-v2-ui = "crmbuilder_v2.cli:run_ui"
 crmbuilder-v2-token = "crmbuilder_v2.cli:run_token_admin"
+crmbuilder-v2-runtime = "crmbuilder_v2.runtime.coordinating_runtime:main"
 
 [build-system]
 requires = ["hatchling"]
