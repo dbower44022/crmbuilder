@@ -58,6 +58,53 @@ def test_engagement_scope_overlay(client):
     assert all(p["scope"] == "ENG-001" for p in listed)
 
 
+def test_agent_profile_bindings(client):
+    profile = client.post(
+        "/agent-profiles",
+        json={"area": "api", "tier": "developer", "description": "API dev."},
+    )
+    assert profile.status_code == 201, profile.text
+    profile_id = profile.json()["data"]["identifier"]
+
+    skill = client.post(
+        "/skills",
+        json={"name": "diff", "kind": "tool", "description": "compute a diff",
+              "io_contract": {"type": "object"}},
+    )
+    assert skill.status_code == 201, skill.text
+    skill_id = skill.json()["data"]["identifier"]
+
+    rule = client.post(
+        "/governance-rules",
+        json={"body": "prefer additive replanning", "enforcement": "advisory"},
+    )
+    assert rule.status_code == 201, rule.text
+    rule_id = rule.json()["data"]["identifier"]
+
+    assert client.post("/references", json={
+        "source_type": "agent_profile", "source_id": profile_id,
+        "target_type": "skill", "target_id": skill_id,
+        "relationship": "agent_profile_has_skill",
+    }).status_code == 201
+    assert client.post("/references", json={
+        "source_type": "agent_profile", "source_id": profile_id,
+        "target_type": "governance_rule", "target_id": rule_id,
+        "relationship": "agent_profile_governed_by_rule",
+    }).status_code == 201
+
+    resp = client.get(f"/agent-profiles/{profile_id}/bindings")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert [s["identifier"] for s in data["skills"]] == [skill_id]
+    assert data["skills"][0]["relationship"] == "agent_profile_has_skill"
+    assert [r["identifier"] for r in data["governance_rules"]] == [rule_id]
+    assert data["governance_rules"][0]["relationship"] == "agent_profile_governed_by_rule"
+
+
+def test_agent_profile_bindings_unknown_is_404(client):
+    assert client.get("/agent-profiles/AGP-999/bindings").status_code == 404
+
+
 def test_bad_vocab_is_422(client):
     resp = client.post(
         "/skills", json={"name": "x", "kind": "bogus", "description": "y"}

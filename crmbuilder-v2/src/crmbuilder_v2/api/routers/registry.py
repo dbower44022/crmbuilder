@@ -15,6 +15,7 @@ from crmbuilder_v2.access.repositories import (
     agent_profiles,
     governance_rules,
     learnings,
+    references,
     registry_lifecycle,
     registry_resolver,
     skills,
@@ -71,6 +72,45 @@ def resolve_agent_profile_contract(identifier: str, engagement: str | None = Non
     active = engagement if engagement is not None else get_active_engagement()
     with readonly_session() as s:
         return ok(registry_resolver.resolve_contract(s, identifier, engagement_id=active))
+
+
+@agent_profiles_router.get("/{identifier}/bindings")
+def get_agent_profile_bindings(identifier: str):
+    """List the skills and governance_rules bound to this profile (PI-122).
+
+    Bindings are plain reference edges out of the profile:
+    ``agent_profile_has_skill`` → skill, ``agent_profile_governed_by_rule``
+    → governance_rule. Returns the bound target identifiers (with the
+    edge kind) under ``skills`` and ``governance_rules``. 404 if the
+    profile does not exist.
+    """
+    with readonly_session() as s:
+        # Existence check (raises NotFoundError → 404 if absent).
+        agent_profiles.get(s, identifier)
+        skill_edges = references.list_references(
+            s,
+            source_type="agent_profile",
+            source_id=identifier,
+            relationship_kind="agent_profile_has_skill",
+        )
+        rule_edges = references.list_references(
+            s,
+            source_type="agent_profile",
+            source_id=identifier,
+            relationship_kind="agent_profile_governed_by_rule",
+        )
+        return ok(
+            {
+                "skills": [
+                    {"identifier": e["target_id"], "relationship": e["relationship"]}
+                    for e in skill_edges
+                ],
+                "governance_rules": [
+                    {"identifier": e["target_id"], "relationship": e["relationship"]}
+                    for e in rule_edges
+                ],
+            }
+        )
 
 
 @agent_profiles_router.get("/{identifier}")
