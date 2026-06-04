@@ -23,6 +23,20 @@
 > to the new model; the surrounding hierarchy prose still reads against the old
 > container framing and is corrected by this banner + the target-model doc.
 
+> **⚠️ Real-time recording (DEC-383, 06-03-26) — read before authoring.** In
+> **Claude Code** (or any environment where the live V2 API is reachable),
+> governance records are entered **in real time via direct API POST at the moment
+> they occur** — `POST /decisions`, `/planning-items`, `/sessions`,
+> `/conversations`, `/references` — **not** batched into a close-out JSON payload.
+> There is **no API-level block** on direct POSTs (the old "the classifier blocks
+> direct POSTs" belief conflated the Claude Code permission gate with a
+> non-existent API rule). The **close-out payload + `apply_close_out.py` path is
+> the fallback for the claude.ai sandbox**, which cannot reach the API; in Claude
+> Code it retains only the residual role of producing the git-tracked
+> deposit-event log (`deposit-event-logs/dep_NNN.log`) under the Model A
+> branch protocol. The §9 close-out-payload sections below describe that
+> sandbox/residual path, not the default Claude Code flow.
+
 ---
 
 ## 0. Purpose, Scope, and Applicability
