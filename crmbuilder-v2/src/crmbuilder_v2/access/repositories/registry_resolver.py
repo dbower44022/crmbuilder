@@ -10,7 +10,11 @@ Contract = { profile_id, area, tier, scope, system_prompt, tools,
 
 The scope merge (D-δ2/D-δ4) keeps **system rows ∪ the active engagement's
 overlay rows**: a bound skill/rule is included iff it is ``active`` and its scope
-is ``system`` (``engagement_id IS NULL``) or the active engagement. Active
+is ``system`` (``engagement_id IS NULL``) or the active engagement. On top of that
+merge, governance rules pass through an **overlay-resolution** step (WTK-001): an
+engagement rule overrides a system rule of the same ``rule_type``, and an
+engagement ``"disable:<id-or-rule_type>"`` rule suppresses a named system rule —
+see :func:`_resolve_rule_overlay`. Active
 (area, tier) learnings are injected from slice 4; this slice returns an empty
 ``active_learnings`` list. ``version_stamp`` is a deterministic hash that changes
 whenever the profile or any bound item changes, so the runtime can cache and
@@ -36,6 +40,7 @@ from crmbuilder_v2.access.vocab import LEARNING_TIERS
 _HAS_SKILL = "agent_profile_has_skill"
 _GOVERNED_BY = "agent_profile_governed_by_rule"
 _ENFORCED = {"enforced", "enforced_with_override"}
+_DISABLE_PREFIX = "disable:"
 
 
 def _visible(record: dict, engagement_id: str | None) -> bool:
@@ -44,6 +49,67 @@ def _visible(record: dict, engagement_id: str | None) -> bool:
         return False
     row_engagement = record.get("engagement_id")
     return row_engagement is None or row_engagement == engagement_id
+
+
+def _is_engagement_rule(rule: dict) -> bool:
+    """True if a visible governance rule is an engagement overlay (not a system row).
+
+    ``_visible`` has already kept only system rows (``engagement_id IS NULL``) and
+    rows belonging to the active engagement, so any rule with a non-``None``
+    ``engagement_id`` here is the active engagement's overlay.
+    """
+    return rule.get("engagement_id") is not None
+
+
+def _resolve_rule_overlay(visible_rules: list[dict]) -> list[dict]:
+    """Apply engagement override + disable semantics to the in-scope rules (WTK-001).
+
+    Two engagement-overlay mechanisms shape the effective ruleset; both treat a
+    system rule (``engagement_id IS NULL``) as the inheritable baseline and let the
+    active engagement's overlay reshape it:
+
+    - **Override.** An engagement rule with the same non-null ``rule_type`` as a
+      system rule wins: the system rule of that ``rule_type`` is dropped and the
+      engagement rule takes its place. Engagement rules with no ``rule_type`` (or a
+      ``rule_type`` no system rule shares) add to the contract without displacing
+      anything.
+    - **Disable.** An engagement rule whose ``rule_type`` is ``"disable:<target>"``
+      suppresses a matching system rule and is itself never emitted. ``<target>``
+      matches a system rule by its ``identifier`` (e.g. ``"disable:GVR-007"``) or by
+      its ``rule_type`` (e.g. ``"disable:no_force_push"``). A disable directive that
+      matches nothing is simply dropped (no error — overlays are additive-by-intent).
+
+    ``visible_rules`` is already scope-filtered and active-only. Order is preserved
+    for every rule that survives, so downstream prompt/ruleset composition is stable.
+    """
+    # Partition the active engagement's overlay rules into disable directives
+    # (control records, never emitted) and ordinary overlay rules.
+    disable_targets: set[str] = set()
+    overlay_rule_types: set[str] = set()
+    is_disable: dict[int, bool] = {}
+    for rule in visible_rules:
+        if not _is_engagement_rule(rule):
+            continue
+        rule_type = rule.get("rule_type")
+        if isinstance(rule_type, str) and rule_type.startswith(_DISABLE_PREFIX):
+            disable_targets.add(rule_type[len(_DISABLE_PREFIX):].strip())
+            is_disable[id(rule)] = True
+        elif rule_type is not None:
+            overlay_rule_types.add(rule_type)
+
+    def _keep(rule: dict) -> bool:
+        if _is_engagement_rule(rule):
+            # Drop disable directives; keep every other overlay rule.
+            return not is_disable.get(id(rule), False)
+        # System rule: suppressed by a same-rule_type override or a disable target.
+        rule_type = rule.get("rule_type")
+        if rule_type is not None and rule_type in overlay_rule_types:
+            return False
+        if rule["identifier"] in disable_targets:
+            return False
+        return not (rule_type is not None and rule_type in disable_targets)
+
+    return [r for r in visible_rules if _keep(r)]
 
 
 def _bound_targets(session: Session, profile_id: str, relationship: str) -> list[str]:
@@ -75,7 +141,9 @@ def resolve_contract(
         for rid in _bound_targets(session, profile_id, _GOVERNED_BY)
     ]
     visible_skills = [s for s in skill_records if _visible(s, engagement_id)]
-    visible_rules = [r for r in rule_records if _visible(r, engagement_id)]
+    visible_rules = _resolve_rule_overlay(
+        [r for r in rule_records if _visible(r, engagement_id)]
+    )
 
     instruction_skills = [s for s in visible_skills if s["kind"] == "instruction"]
     tool_skills = [s for s in visible_skills if s["kind"] == "tool"]

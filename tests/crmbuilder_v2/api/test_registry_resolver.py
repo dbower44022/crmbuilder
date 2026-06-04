@@ -90,3 +90,102 @@ def test_contract_scope_merge(client):
     eng = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-001").json()["data"]
     assert "system skill" in eng["system_prompt"]
     assert "engagement skill" in eng["system_prompt"]
+
+
+def _enforced_ids(contract) -> list[str]:
+    return [r["identifier"] for r in contract["enforced_ruleset"]]
+
+
+def _rule(client, *, body, enforcement="enforced", rule_type=None, scope=None, severity=None):
+    payload = {"body": body, "enforcement": enforcement}
+    if rule_type is not None:
+        payload["rule_type"] = rule_type
+    if scope is not None:
+        payload["scope"] = scope
+    if severity is not None:
+        payload["severity"] = severity
+    return client.post("/governance-rules", json=payload).json()["data"]["identifier"]
+
+
+def test_engagement_rule_overrides_system_rule_of_same_type(client):
+    """An engagement overlay rule with the same ``rule_type`` as a system rule
+    wins; the system rule of that type is dropped from the contract (WTK-001)."""
+    prof = client.post(
+        "/agent-profiles",
+        json={"area": "access", "tier": "developer", "description": "Access dev."},
+    ).json()["data"]["identifier"]
+
+    sys_rule = _rule(
+        client, body="System: two approvals required.",
+        rule_type="approval_threshold", scope="system",
+    )
+    eng_rule = _rule(
+        client, body="ENG-001: one approval required.",
+        rule_type="approval_threshold", scope="ENG-001",
+    )
+    # A system rule of a *different* type is untouched by the override.
+    other_sys = _rule(
+        client, body="System: no force push.", rule_type="no_force_push", scope="system",
+    )
+
+    for rid in (sys_rule, eng_rule, other_sys):
+        _ref(client, prof, "agent_profile_governed_by_rule", "governance_rule", rid)
+
+    # For ENG-001 the engagement rule replaces the system rule of the same type;
+    # the unrelated system rule survives.
+    eng = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-001").json()["data"]
+    assert sys_rule not in _enforced_ids(eng)
+    assert eng_rule in _enforced_ids(eng)
+    assert other_sys in _enforced_ids(eng)
+
+    # For a different engagement the overlay is out of scope, so the original
+    # system rule stands.
+    other = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-002").json()["data"]
+    assert sys_rule in _enforced_ids(other)
+    assert eng_rule not in _enforced_ids(other)
+    assert other_sys in _enforced_ids(other)
+
+
+def test_engagement_disable_suppresses_named_system_rule(client):
+    """An engagement ``disable:<id-or-rule_type>`` overlay suppresses a system rule
+    for that engagement only, and is itself never emitted (WTK-001)."""
+    prof = client.post(
+        "/agent-profiles",
+        json={"area": "access", "tier": "developer", "description": "Access dev."},
+    ).json()["data"]["identifier"]
+
+    by_id = _rule(client, body="System rule, disabled by id.", scope="system")
+    by_type = _rule(
+        client, body="System rule, disabled by type.",
+        rule_type="long_sessions", scope="system",
+    )
+    kept = _rule(client, body="System rule that survives.", scope="system")
+
+    disable_by_id = _rule(
+        client, body=f"Disable {by_id}.", rule_type=f"disable:{by_id}", scope="ENG-001",
+    )
+    disable_by_type = _rule(
+        client, body="Disable long_sessions.",
+        rule_type="disable:long_sessions", scope="ENG-001",
+    )
+
+    for rid in (by_id, by_type, kept, disable_by_id, disable_by_type):
+        _ref(client, prof, "agent_profile_governed_by_rule", "governance_rule", rid)
+
+    eng = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-001").json()["data"]
+    eng_ids = _enforced_ids(eng)
+    # The two named system rules are suppressed; the disable directives themselves
+    # are never emitted; the unrelated system rule remains.
+    assert by_id not in eng_ids
+    assert by_type not in eng_ids
+    assert disable_by_id not in eng_ids
+    assert disable_by_type not in eng_ids
+    assert kept in eng_ids
+
+    # For a different engagement the disable overlays are out of scope, so every
+    # system rule is present.
+    other = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-002").json()["data"]
+    other_ids = _enforced_ids(other)
+    assert by_id in other_ids
+    assert by_type in other_ids
+    assert kept in other_ids
