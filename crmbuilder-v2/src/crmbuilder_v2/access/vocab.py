@@ -386,6 +386,16 @@ PROJECT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 # Ready/Claimed/In Progress so the Lead gets unambiguous gate signals.
 WORKSTREAM_PHASE_TYPES: frozenset[str] = frozenset(
     {
+        # New work uses the four-step model's three work-step types
+        # (PI-129 / DEC-392). Plan is the decomposition act itself and has no
+        # Workstream; Design, Develop, and Test are the three work-steps the
+        # decomposer creates.
+        "Design",
+        "Develop",
+        "Test",
+        # Retained so records created under the pre-PI-129 six-step model stay
+        # valid and readable (left as history per DEC-392 choice 1A; not
+        # re-labeled). The decomposer no longer creates these.
         "Architecture",
         "Development",
         "Testing",

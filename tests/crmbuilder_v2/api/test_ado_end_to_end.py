@@ -2,10 +2,10 @@
 
 Walks a Planning Item through the Agent Delivery Organization substrate via the
 real REST endpoints, with the test standing in for the (not-yet-built) PI Lead /
-Project Manager judgment: decompose into six phases, let each "phase specialist"
-scope (Architecture/Development/Testing/Deployment produce Work Tasks;
-Documentation/Data Migration assert Not Applicable), feed-forward verified, then
-execute every Work Task and drive every phase to a terminal state.
+Project Manager judgment: decompose into three work-steps (Design, Develop, Test
+— PI-129 / DEC-392), let each "phase specialist" scope (each produces Work Tasks),
+feed-forward verified, then execute every Work Task and drive every step to a
+terminal state.
 """
 
 from __future__ import annotations
@@ -27,45 +27,39 @@ def test_full_pi_lifecycle_through_the_substrate(client):
               "status": "Draft", "executive_summary": _EXEC},
     ).status_code == 201
 
-    # 1. Structural decomposition → six Planned phases + serial blocked_by chain.
+    # 1. Structural decomposition → three Planned work-steps + serial blocked_by chain.
     decomposed = client.post(f"/planning-items/{pid}/decompose")
     assert decomposed.status_code == 201, decomposed.text
     phases = {w["workstream_phase_type"]: w["workstream_identifier"]
               for w in decomposed.json()["data"]}
-    assert set(phases) == {"Architecture", "Development", "Testing",
-                           "Documentation", "Data Migration", "Deployment"}
+    assert set(phases) == {"Design", "Develop", "Test"}
     chain = client.get("/references", params={
         "source_type": "workstream", "target_type": "workstream",
         "relationship_kind": "blocked_by"}).json()["data"]
-    assert len(chain) == 5
+    assert len(chain) == 2
 
     # 2. Phase specialists scope, in canonical feed-forward order.
-    # Architecture: no prior context; produces methodology Work Tasks.
-    assert _get(client, f"/workstreams/{phases['Architecture']}/prior-phase-outputs")[
+    # Design: no prior context; produces the methodology + design Work Tasks.
+    assert _get(client, f"/workstreams/{phases['Design']}/prior-phase-outputs")[
         "prior_phases"] == []
-    arch = client.post(f"/workstreams/{phases['Architecture']}/scope", json={"work_tasks": [
+    design = client.post(f"/workstreams/{phases['Design']}/scope", json={"work_tasks": [
         {"title": "Add entity Match", "area": "methodology-product"}]})
-    assert arch.json()["data"]["workstream"]["workstream_status"] == "Ready"
+    assert design.json()["data"]["workstream"]["workstream_status"] == "Ready"
 
-    # Development scopes against Architecture's output, one Work Task per area.
-    dev_ctx = _get(client, f"/workstreams/{phases['Development']}/prior-phase-outputs")
-    assert [p["phase_type"] for p in dev_ctx["prior_phases"]] == ["Architecture"]
-    dev = client.post(f"/workstreams/{phases['Development']}/scope", json={"work_tasks": [
+    # Develop scopes against Design's output, one Work Task per area.
+    dev_ctx = _get(client, f"/workstreams/{phases['Develop']}/prior-phase-outputs")
+    assert [p["phase_type"] for p in dev_ctx["prior_phases"]] == ["Design"]
+    dev = client.post(f"/workstreams/{phases['Develop']}/scope", json={"work_tasks": [
         {"title": "Match schema", "area": "storage"},
         {"title": "Match repository", "area": "access"},
         {"title": "Match endpoints", "area": "api"}]})
     assert dev.json()["data"]["workstream"]["workstream_status"] == "Ready"
 
-    # Testing produces one task; Documentation + Data Migration are Not Applicable.
-    client.post(f"/workstreams/{phases['Testing']}/scope", json={"work_tasks": [
+    # Test produces one task.
+    client.post(f"/workstreams/{phases['Test']}/scope", json={"work_tasks": [
         {"title": "Match tests", "area": "access"}]})
-    for empty_phase in ("Documentation", "Data Migration"):
-        r = client.post(f"/workstreams/{phases[empty_phase]}/scope", json={"work_tasks": []})
-        assert r.json()["data"]["workstream"]["workstream_status"] == "Not Applicable"
-    client.post(f"/workstreams/{phases['Deployment']}/scope", json={"work_tasks": [
-        {"title": "Release + verify", "area": "infrastructure"}]})
 
-    # 3. Every phase is now terminal-scoped (Ready or Not Applicable).
+    # 3. Every work-step is now Ready-scoped.
     for wsid in phases.values():
         status = _get(client, f"/workstreams/{wsid}")["workstream_status"]
         assert status in ("Ready", "Not Applicable")
@@ -94,8 +88,8 @@ def test_full_pi_lifecycle_through_the_substrate(client):
         assert client.patch(f"/workstreams/{wsid}",
                             json={"workstream_status": "Complete"}).status_code == 200
 
-    # 5. End state: 1 + 3 + 1 + 1 = 6 Work Tasks complete; every phase terminal.
-    assert completed_tasks == 6
+    # 5. End state: 1 (Design) + 3 (Develop) + 1 (Test) = 5 Work Tasks complete.
+    assert completed_tasks == 5
     for wsid in phases.values():
         assert _get(client, f"/workstreams/{wsid}")["workstream_status"] in (
             "Complete", "Not Applicable")

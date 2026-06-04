@@ -49,8 +49,8 @@ def test_scope_with_work_tasks_sets_ready_and_wires_edges(v2_env):
 def test_scope_empty_is_not_applicable(v2_env):
     with session_scope() as s:
         ws = _decomposed_pi(s, ident="PI-821")
-        dm = ws[4]["workstream_identifier"]  # Data Migration — often empty
-        result = scoping.scope_workstream(s, dm, [])
+        test = ws[2]["workstream_identifier"]  # Test — scoped empty here
+        result = scoping.scope_workstream(s, test, [])
         assert result["workstream"]["workstream_status"] == "Not Applicable"
         assert result["work_tasks"] == []
 
@@ -79,14 +79,14 @@ def test_prior_phase_outputs_feeds_forward(v2_env):
         ])
 
     with session_scope() as s:
-        # Architecture (first phase) has no prior output.
+        # Design (first step) has no prior output.
         arch_ctx = scoping.prior_phase_outputs(s, arch)
         assert arch_ctx["prior_phases"] == []
         assert arch_ctx["planning_item"] == "PI-823"
 
-        # Development sees Architecture's Work Task.
+        # Develop sees Design's Work Task.
         dev_ctx = scoping.prior_phase_outputs(s, dev)
-        assert [p["phase_type"] for p in dev_ctx["prior_phases"]] == ["Architecture"]
+        assert [p["phase_type"] for p in dev_ctx["prior_phases"]] == ["Design"]
         arch_tasks = dev_ctx["prior_phases"][0]["work_tasks"]
         assert len(arch_tasks) == 1
         assert arch_tasks[0]["work_task_title"] == "Add entity X"

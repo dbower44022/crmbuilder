@@ -70,8 +70,7 @@ def _drive_pi_through_lead(client, pid):
     for ph, wid in phases.items():
         client.post(f"/workstreams/{wid}/scope",
                     json={"work_tasks": [{"title": f"{ph} task", "area": "access"}]})
-    ordered = ["Architecture", "Development", "Testing", "Documentation",
-               "Data Migration", "Deployment"]
+    ordered = ["Design", "Develop", "Test"]
     for ph in ordered:
         wid = phases[ph]
         started = _data(client.post(f"/workstreams/{wid}/start-execution"))

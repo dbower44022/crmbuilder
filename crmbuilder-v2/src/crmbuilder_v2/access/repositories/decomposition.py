@@ -8,7 +8,7 @@ generalist's *only* job; scope judgment (which phases have work) belongs to the
 phase specialists later, expressed as ``Not Applicable`` on an evaluated-empty
 Workstream (§4.1/§4.3), never as an omitted phase here.
 
-The decomposer is deliberately dumb and total: it always creates all six
+The decomposer is deliberately dumb and total: it always creates all three
 Workstreams in ``Planned`` status, wires each one's
 ``workstream_belongs_to_planning_item`` edge to the PI, and links consecutive
 phases with ``blocked_by`` so the Lead gets serial gate signals (§5, decision 5).
@@ -28,17 +28,17 @@ from crmbuilder_v2.access.repositories import (
     workstreams,
 )
 
-# Canonical phase order (design §4.1, resolved decision 8). The Lead's
-# feed-forward planning loop (§3.2) walks this exact sequence, each phase
-# scoping against the accumulated output of the prior ones — so the
-# ``blocked_by`` chain mirrors it.
+# Canonical work-step order (PI-129 / DEC-392): the four-step model is
+# Plan -> Design -> Develop -> Test, where Plan is this decomposition act
+# itself (no Workstream) and Design/Develop/Test are the three work-step
+# Workstreams created here. The Lead's feed-forward planning loop walks this
+# sequence, each step scoping against the prior ones — so the ``blocked_by``
+# chain mirrors it. (Pre-PI-129 this created six phases; the retired three —
+# Documentation, Data Migration, Deployment — now fold into these per DEC-392.)
 PHASE_SEQUENCE: tuple[str, ...] = (
-    "Architecture",
-    "Development",
-    "Testing",
-    "Documentation",
-    "Data Migration",
-    "Deployment",
+    "Design",
+    "Develop",
+    "Test",
 )
 
 _BELONGS_KIND = "workstream_belongs_to_planning_item"
@@ -58,7 +58,7 @@ def existing_phase_workstreams(session: Session, pi_identifier: str) -> list[str
 def decompose_planning_item(
     session: Session, pi_identifier: str
 ) -> list[dict]:
-    """Create all six phase Workstreams for ``pi_identifier`` and gate them.
+    """Create all three work-step Workstreams for ``pi_identifier`` and gate them.
 
     :param session: open SQLAlchemy session.
     :param pi_identifier: the ``PI-NNN`` to decompose; must exist.

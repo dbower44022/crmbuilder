@@ -34,27 +34,26 @@ def test_phase_overview_gate(client):
     ov = _data(client.get(f"/planning-items/{pid}/phase-overview"))
     assert ov["all_scoped"] is True
     assert ov["all_terminal"] is False
-    assert ov["next_executable"] == phases["Architecture"]
+    assert ov["next_executable"] == phases["Design"]
 
 
 def test_start_execution_blocked_returns_409(client):
     pid, phases = _scoped_pi(client, pid="PI-862")
-    # Development is blocked_by Architecture (not yet terminal).
-    assert client.post(f"/workstreams/{phases['Development']}/start-execution").status_code == 409
+    # Develop is blocked_by Design (not yet terminal).
+    assert client.post(f"/workstreams/{phases['Develop']}/start-execution").status_code == 409
 
 
 def test_complete_phase_requires_tasks_complete(client):
     pid, phases = _scoped_pi(client, pid="PI-863")
-    arch = phases["Architecture"]
-    assert client.post(f"/workstreams/{arch}/start-execution").status_code == 201
+    design = phases["Design"]
+    assert client.post(f"/workstreams/{design}/start-execution").status_code == 201
     # Work Tasks are Ready, not Complete → cannot advance.
-    assert client.post(f"/workstreams/{arch}/complete-phase").status_code == 409
+    assert client.post(f"/workstreams/{design}/complete-phase").status_code == 409
 
 
 def test_lead_driven_end_to_end(client):
     pid, phases = _scoped_pi(client, pid="PI-864")
-    ordered = ["Architecture", "Development", "Testing", "Documentation",
-               "Data Migration", "Deployment"]
+    ordered = ["Design", "Develop", "Test"]
     for phase in ordered:
         wid = phases[phase]
         ov = _data(client.get(f"/planning-items/{pid}/phase-overview"))

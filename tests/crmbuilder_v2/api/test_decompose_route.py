@@ -20,14 +20,13 @@ def _make_pi(client, identifier="PI-810", title="Ship it"):
     return identifier
 
 
-def test_decompose_route_creates_six_workstreams(client):
+def test_decompose_route_creates_three_workstreams(client):
     pid = _make_pi(client)
     r = client.post(f"/planning-items/{pid}/decompose")
     assert r.status_code == 201, r.text
     created = r.json()["data"]
     assert [w["workstream_phase_type"] for w in created] == [
-        "Architecture", "Development", "Testing", "Documentation",
-        "Data Migration", "Deployment",
+        "Design", "Develop", "Test",
     ]
     assert all(w["workstream_status"] == "Planned" for w in created)
 
@@ -37,7 +36,7 @@ def test_decompose_route_creates_six_workstreams(client):
         params={"source_type": "workstream", "target_type": "workstream",
                 "relationship_kind": "blocked_by"},
     ).json()["data"]
-    assert len(refs) == 5
+    assert len(refs) == 2
 
 
 def test_decompose_route_is_once_only(client):

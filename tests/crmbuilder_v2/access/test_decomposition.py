@@ -1,8 +1,9 @@
 """ADO structural decomposer tests — WTK-002 (design §3.2.1 / §4.1).
 
-The decomposer turns a Planning Item into its six phase Workstreams, chained by
-serial ``blocked_by`` gates. These cover the happy path (all phases created in
-order, all edges wired), the once-only guard, and the not-found case.
+The decomposer turns a Planning Item into its three work-step Workstreams
+(Design, Develop, Test — PI-129 / DEC-392), chained by serial ``blocked_by``
+gates. These cover the happy path (all steps created in order, all edges wired),
+the once-only guard, and the not-found case.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ def _pi(s, ident="PI-800", title="Build the thing"):
     return ident
 
 
-def test_decompose_creates_six_phases_in_order(v2_env):
+def test_decompose_creates_three_phases_in_order(v2_env):
     with session_scope() as s:
         pid = _pi(s)
         created = decomposition.decompose_planning_item(s, pid)
@@ -32,7 +33,7 @@ def test_decompose_creates_six_phases_in_order(v2_env):
     )
     assert all(w["workstream_status"] == "Planned" for w in created)
     # Titles carry the phase + the PI title.
-    assert created[0]["workstream_title"] == "Architecture — Build the thing"
+    assert created[0]["workstream_title"] == "Design — Build the thing"
 
 
 def test_decompose_wires_belongs_and_blocked_by_chain(v2_env):

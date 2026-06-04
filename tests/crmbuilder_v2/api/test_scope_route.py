@@ -19,7 +19,7 @@ def _decompose(client, pid="PI-830"):
 def test_scope_route_creates_work_tasks_and_readies(client):
     ids = _decompose(client)
     r = client.post(
-        f"/workstreams/{ids[1]}/scope",  # Development
+        f"/workstreams/{ids[1]}/scope",  # Develop
         json={"work_tasks": [
             {"title": "storage layer", "area": "storage"},
             {"title": "access layer", "area": "access"},
@@ -33,7 +33,7 @@ def test_scope_route_creates_work_tasks_and_readies(client):
 
 def test_scope_route_empty_is_not_applicable(client):
     ids = _decompose(client, pid="PI-831")
-    r = client.post(f"/workstreams/{ids[4]}/scope", json={"work_tasks": []})
+    r = client.post(f"/workstreams/{ids[2]}/scope", json={"work_tasks": []})
     assert r.status_code == 201, r.text
     assert r.json()["data"]["workstream"]["workstream_status"] == "Not Applicable"
 
@@ -57,5 +57,5 @@ def test_prior_phase_outputs_route(client):
         json={"work_tasks": [{"title": "Add entity", "area": "methodology-product"}]},
     )
     ctx = client.get(f"/workstreams/{ids[1]}/prior-phase-outputs").json()["data"]
-    assert [p["phase_type"] for p in ctx["prior_phases"]] == ["Architecture"]
+    assert [p["phase_type"] for p in ctx["prior_phases"]] == ["Design"]
     assert ctx["prior_phases"][0]["work_tasks"][0]["work_task_title"] == "Add entity"

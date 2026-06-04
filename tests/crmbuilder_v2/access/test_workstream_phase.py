@@ -42,14 +42,19 @@ def test_phase_type_and_status_validated(v2_env):
         )
 
 
-def test_architecture_phase_accepted_design_rejected(v2_env):
-    # WTK-001 / design §5: DEC-349's `Design` was renamed `Architecture`.
+def test_phase_types_accept_new_and_legacy_names(v2_env):
+    # PI-129 / DEC-392: the four-step model reintroduces "Design" (and adds
+    # "Develop", "Test") as the work-step names. The legacy six names — including
+    # "Architecture", which DEC-349 had renamed "Design" — stay valid so
+    # historical records remain readable (DEC-392 choice 1A).
     with session_scope() as s:
-        r = workstreams.create_workstream(s, phase_type="Architecture", title="a")
-        assert r["workstream_phase_type"] == "Architecture"
-    # The old `Design` value is no longer admitted.
+        for phase in ("Design", "Develop", "Test",
+                      "Architecture", "Development", "Testing"):
+            r = workstreams.create_workstream(s, phase_type=phase, title=phase)
+            assert r["workstream_phase_type"] == phase
+    # A genuinely unknown phase is still rejected.
     with session_scope() as s, pytest.raises(UnprocessableError):
-        workstreams.create_workstream(s, phase_type="Design", title="d")
+        workstreams.create_workstream(s, phase_type="Nonsense", title="x")
 
 
 def test_full_gate_lifecycle_and_timestamps(v2_env):
