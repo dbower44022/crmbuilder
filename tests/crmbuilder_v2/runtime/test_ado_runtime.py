@@ -125,6 +125,8 @@ class _FakeDriver(AdoRuntime):
     def __init__(self, world, **kw):
         super().__init__(**kw)
         self.world = world
+        if "reconcile_runner" not in kw:
+            self.reconcile_runner = lambda c, w: None  # no real agent under test
 
     def _get(self, path):
         if path.endswith("/phase-overview"):
@@ -181,6 +183,20 @@ def test_drives_all_phases_scope_then_execute():
     # every phase was scoped before it was started.
     for ws in world.phase_ids:
         assert world.calls.index(f"scope:{ws}") < world.calls.index(f"/workstreams/{ws}/start-execution")
+
+
+def test_reconcile_runs_after_design_only():
+    world = _World(3)  # Design, Develop, Test
+    reconciled: list[str] = []
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+        reconcile_runner=lambda c, w: reconciled.append(w),
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    # reconciliation ran exactly once, over the Design phase (WSK-1).
+    assert reconciled == ["WSK-1"]
 
 
 def test_not_applicable_phase_is_skipped():

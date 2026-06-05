@@ -241,6 +241,63 @@ def scope_phase_agent(cfg: AdoRuntimeConfig, workstream_id: str, phase_type: str
 
 
 # --------------------------------------------------------------------------
+# Reconcile-agent seam (item 1) — raises findings over a completed Design phase
+# --------------------------------------------------------------------------
+
+
+def build_reconcile_prompt(cfg: AdoRuntimeConfig, design_workstream_id: str) -> str:
+    """The reconciliation reviewer's operating protocol.
+
+    Runs once the Design phase's per-area specs (Work Tasks) exist. It reviews
+    them *across areas* for coherence and raises a ``finding`` for each problem;
+    a coherent design raises nothing. The findings it raises are what the Develop
+    gate (:func:`develop_gate_open`) then reads — a *blocking* finding holds the
+    build until it is resolved (REQ-027/033). It writes no code and uses no
+    worktree — it only reads specs and records findings.
+    """
+    api = cfg.api_base
+    eng = cfg.engagement
+    h = f"-H 'X-Engagement: {eng}'"
+    return (
+        f"You are the reconciliation reviewer for the Design phase of Planning "
+        f"Item {cfg.planning_item} (Workstream {design_workstream_id}). Your one "
+        f"job: check the per-area design specs against each other for coherence, "
+        f"and record any problems as findings. You write NO code. The live V2 API "
+        f"is at {api}; EVERY request must send X-Engagement: {eng}.\n\n"
+        f"Do exactly this:\n"
+        f"1. Read the Design phase's Work Tasks (the per-area specs) — "
+        f"`curl -s {h} {api}/workstreams/{design_workstream_id}/prior-phase-outputs` "
+        f"and the Work Tasks belonging to {design_workstream_id}.\n"
+        f"2. Compare them across areas. Look for: a conflict (two specs are "
+        f"mutually incompatible), a gap (a spec assumes something no other spec "
+        f"provides), a dependency (one spec relies on another), or an overlap "
+        f"(two specs do the same work).\n"
+        f"3. For each problem, raise a finding:\n"
+        f"   `curl -s -X POST {h} -H 'Content-Type: application/json' "
+        f"{api}/findings -d '{{\"finding_type\": \"conflict|gap|dependency|"
+        f"overlap\", \"finding_severity\": \"blocking|advisory\", "
+        f"\"finding_summary\": \"...\", \"finding_description\": \"...\", "
+        f"\"references\": [{{\"source_type\": \"finding\", \"target_type\": "
+        f"\"workstream\", \"target_id\": \"{design_workstream_id}\", "
+        f"\"relationship\": \"finding_relates_to\"}}]}}'`\n"
+        f"   Use 'blocking' only for a problem that must be fixed before building "
+        f"(a true conflict, or a coherence-breaking gap); use 'advisory' otherwise.\n"
+        f"4. If the specs are coherent, raise NOTHING and exit. Raising zero "
+        f"findings is the correct, common outcome."
+    )
+
+
+def reconcile_phase_agent(cfg: AdoRuntimeConfig, design_workstream_id: str) -> None:
+    """Default reconcile_runner: spawn a reviewer to raise findings over Design.
+
+    Best-effort — a coherent design raises no findings, so there is nothing to
+    verify by result; the Develop gate is what *enforces* any blocking finding.
+    """
+    prompt = build_reconcile_prompt(cfg, design_workstream_id)
+    spawn_scoping_agent(prompt, timeout=cfg.agent_timeout)
+
+
+# --------------------------------------------------------------------------
 # Develop reconciliation-gate seam (slice 2) — proactive, phase-level
 # --------------------------------------------------------------------------
 
@@ -283,6 +340,7 @@ class AdoRuntime:
     pool_runner: Callable[[AdoRuntimeConfig, str], PoolRunReport] = run_pool_for_workstream
     scope_runner: Callable[[AdoRuntimeConfig, str, str], None] = scope_phase_agent
     gate_checker: Callable[[AdoRuntimeConfig, str], GateDecision] = develop_gate_open
+    reconcile_runner: Callable[[AdoRuntimeConfig, str], None] = reconcile_phase_agent
 
     def log(self, msg: str) -> None:
         self.config.log(msg)
@@ -417,6 +475,12 @@ class AdoRuntime:
             self.log(f"✔ {pi}: phase {ws} complete "
                      f"({len(pool_report.merged)} task(s) merged)")
             report.completed_phases.append(ws)
+
+            # A completed Design phase is reconciled across areas: the reviewer
+            # raises findings; the Develop gate (above) then enforces blocking ones.
+            if step.phase_type == "Design":
+                self.log(f"▶ {pi}: reconciling Design ({ws}) — checking coherence")
+                self.reconcile_runner(cfg, ws)
 
         report.status = "blocked"
         report.reason = f"exceeded the phase budget ({cfg.max_phases}) without finishing"
