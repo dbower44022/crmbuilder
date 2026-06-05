@@ -1224,6 +1224,46 @@ class WorkstreamScopeIn(_Base):
     work_tasks: list[WorkTaskSpecIn] | None = None
 
 
+# --- Finding (reconciliation gate, PI-134) ---------------------------------
+class FindingCreateIn(_Base):
+    finding_type: str
+    finding_severity: str
+    finding_summary: str
+    finding_description: str | None = None
+    finding_status: str | None = None
+    finding_resolution: str | None = None
+    finding_resolution_method: str | None = None
+    finding_notes: str | None = None
+    finding_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class FindingReplaceIn(_Base):
+    finding_identifier: str | None = None
+    finding_type: str
+    finding_severity: str
+    finding_summary: str
+    finding_description: str | None = None
+    finding_status: str
+    finding_resolution: str | None = None
+    finding_resolution_method: str | None = None
+    finding_notes: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class FindingPatchIn(_Base):
+    finding_type: str | None = None
+    finding_severity: str | None = None
+    finding_summary: str | None = None
+    finding_description: str | None = None
+    finding_status: str | None = None
+    finding_resolution: str | None = None
+    finding_resolution_method: str | None = None
+    finding_notes: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
 # --- Work Task (single-area unit, PI-112 Phase 4b) -------------------------
 class WorkTaskCreateIn(_Base):
     work_task_title: str

@@ -57,6 +57,7 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     spawn_claude_agent,
     verify_result,
 )
+from crmbuilder_v2.runtime.migration_lock import ExclusiveMigrationLock
 
 # --------------------------------------------------------------------------
 # Pure pool decisions (no I/O — unit-tested directly)
@@ -162,6 +163,9 @@ class PoolRunReport:
     task_reports: list[TaskReport] = field(default_factory=list)
     paused: bool = False
     pause_reason: str | None = None
+    # PI-133: each exclusive migration window held during the run (proof of the
+    # drained, no-concurrent-writer property is ``active_at_run == 0``).
+    migrations: list = field(default_factory=list)
 
     @property
     def merged(self) -> list[TaskReport]:
@@ -298,6 +302,7 @@ class ParallelCoordinatingRuntime:
     log: Callable[[str], None] = print
     reports: list[TaskReport] = field(default_factory=list)
     api: ApiProcess | None = None
+    migration_lock: ExclusiveMigrationLock | None = None
 
     def __post_init__(self) -> None:
         # The Layer-1 runtime provides the proven per-task I/O unit. Its spawn
@@ -314,6 +319,21 @@ class ParallelCoordinatingRuntime:
                 engagement=self.config.engagement,
                 log=self.log,
             )
+        # PI-133: the exclusive-migration coordinator the loop consults each tick.
+        if self.migration_lock is None:
+            self.migration_lock = ExclusiveMigrationLock(log=self.log)
+
+    def request_migration(
+        self, migration_fn: Callable[[], None], *, label: str = "migration"
+    ) -> None:
+        """Request a schema migration as a runtime-owned exclusive step (PI-133).
+
+        Pauses new agent dispatch immediately; the pool then drains its in-flight
+        agents and runs ``migration_fn`` alone (no concurrent writer) before
+        resuming. Thread-safe — may be called from another thread mid-run.
+        """
+        assert self.migration_lock is not None
+        self.migration_lock.request(migration_fn, label=label)
 
     # --- pure-ish reads that feed the pool decisions --------------------
     def _eligible_candidates(self) -> list[str]:
@@ -328,7 +348,11 @@ class ParallelCoordinatingRuntime:
                 blockers = dispatcher._blocker_statuses(
                     cfg.api_base, cfg.engagement, tid
                 )
-                if dispatcher.is_work_task_eligible(wt, blockers):
+                # PI-134: the reconciliation gate withholds a Develop Work Task
+                # whose Design is incomplete or has an open blocking finding.
+                if dispatcher.is_work_task_eligible(
+                    wt, blockers
+                ) and self._l1._reconciliation_gate_open(wt):
                     out.append(tid)
             return out
         eligible = dispatcher.eligible_work_tasks(cfg.api_base, cfg.engagement)
@@ -337,6 +361,9 @@ class ParallelCoordinatingRuntime:
             eligible = [
                 w for w in eligible if w["work_task_identifier"] in members
             ]
+        eligible = [
+            w for w in eligible if self._l1._reconciliation_gate_open(w)
+        ]
         return [w["work_task_identifier"] for w in eligible]
 
     def _blockers_of(self, work_task_id: str) -> set[str]:
@@ -356,6 +383,10 @@ class ParallelCoordinatingRuntime:
     # --- slot filling: start as many eligible agents as the cap allows --
     def _fill_slots(self, executor: ThreadPoolExecutor, active: set[str]) -> None:
         cfg = self.config
+        # PI-133: while a migration is pending/running, dispatch is paused so the
+        # pool can drain to zero in-flight agents and the migration runs alone.
+        if self.migration_lock is not None and not self.migration_lock.dispatch_allowed():
+            return
         if slots_available(cfg.max_concurrent, len(active)) <= 0:
             return
         candidates = self._eligible_candidates()
@@ -519,21 +550,33 @@ class ParallelCoordinatingRuntime:
         agents are then drained and integrated before the run returns).
         """
         cfg = self.config
+        lock = self.migration_lock
         executor = ThreadPoolExecutor(max_workers=cfg.max_concurrent)
         active: set[str] = set()
         report = PoolRunReport()
         paused = False
+
+        def migration_outstanding() -> bool:
+            return lock is not None and lock.pending_or_running()
+
         try:
             if cfg.manage_api and self.api is not None:
                 self.api.ensure_started()
             self._fill_slots(executor, active)
-            while active:
+            # The loop also stays alive while a migration is draining/running, so
+            # an exclusive window that begins after the last agent completes still
+            # gets its drained tick (PI-133).
+            while active or migration_outstanding():
                 if cfg.manage_api and self.api is not None:
                     self.api.ensure_alive()
+                # PI-133: once the pool has drained to zero in-flight agents, run
+                # any pending migration EXCLUSIVELY, then resume dispatch.
+                if lock is not None and lock.maybe_run(len(active)) and not paused:
+                    self._fill_slots(executor, active)
                 try:
                     run = self._completed.get(timeout=cfg.poll_interval)
                 except queue.Empty:
-                    continue  # periodic wake — monitor the API, then re-wait
+                    continue  # periodic wake — monitor the API + migration, re-wait
                 task_report = self._integrate(run)
                 report.task_reports.append(task_report)
                 self.reports.append(task_report)
@@ -556,6 +599,8 @@ class ParallelCoordinatingRuntime:
             executor.shutdown(wait=True)
             if cfg.manage_api and self.api is not None:
                 self.api.stop()
+        if lock is not None and lock.records:
+            report.migrations = list(lock.records)
         return report
 
 

@@ -57,6 +57,10 @@ from crmbuilder_v2.access.vocab import (
     ENTITY_TYPES,
     FIELD_STATUSES,
     FIELD_TYPES,
+    FINDING_RESOLUTION_METHODS,
+    FINDING_SEVERITIES,
+    FINDING_STATUSES,
+    FINDING_TYPES,
     LEARNING_CATEGORIES,
     LEARNING_STATUSES,
     LEARNING_TIERS,
@@ -79,10 +83,10 @@ from crmbuilder_v2.access.vocab import (
     RULE_ENFORCEMENT_MODES,
     SESSION_MEDIUMS,
     SESSION_STATUSES,
+    SKILL_KINDS,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
     WORK_TASK_STATUSES,
-    SKILL_KINDS,
     WORK_TICKET_KINDS,
     WORK_TICKET_STATUSES,
     WORKSTREAM_PHASE_TYPES,
@@ -1535,6 +1539,75 @@ class WorkTask(EngagementScopedPKMixin, Base):
         Index("ix_work_tasks_work_task_status", "work_task_status"),
         Index("ix_work_tasks_work_task_area", "work_task_area"),
         Index("ix_work_tasks_work_task_deleted_at", "work_task_deleted_at"),
+    )
+
+
+class Finding(EngagementScopedPKMixin, Base):
+    """Governance entity — a cross-area coherence finding (PI-134, DEC-400).
+
+    REQ-031..036 / TOP-010: at the end of Design, the area specifications for a
+    Planning Item are checked against each other; each problem found is recorded
+    as a finding naming its kind and the specifications it involves. ``FND-NNN``
+    identifier. Four ``finding_type`` values (REQ-032), two ``finding_severity``
+    values (REQ-033), and a three-state ``finding_status`` lifecycle
+    open → referred → resolved (REQ-034/035) — only ``resolved`` is terminal and
+    opens the Develop gate; ``open`` and ``referred`` both hold it. The
+    specifications a finding involves and what resolved it are ``refs`` edges
+    (``finding_relates_to`` / ``finding_resolved_by``), not FKs.
+    """
+
+    __tablename__ = "findings"
+
+    finding_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    finding_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    finding_severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    finding_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="open"
+    )
+    finding_summary: Mapped[str] = mapped_column(String(255), nullable=False)
+    finding_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # How a blocking finding was settled (REQ-034) — recorded at resolution.
+    finding_resolution: Mapped[str | None] = mapped_column(Text, nullable=True)
+    finding_resolution_method: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )
+    finding_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    finding_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    finding_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    finding_resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finding_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("finding_identifier", ["FND"]),
+            name="ck_finding_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("finding_type", FINDING_TYPES), name="ck_finding_type"
+        ),
+        CheckConstraint(
+            _check_in("finding_severity", FINDING_SEVERITIES),
+            name="ck_finding_severity",
+        ),
+        CheckConstraint(
+            _check_in("finding_status", FINDING_STATUSES), name="ck_finding_status"
+        ),
+        CheckConstraint(
+            "finding_resolution_method IS NULL OR "
+            + _check_in("finding_resolution_method", FINDING_RESOLUTION_METHODS),
+            name="ck_finding_resolution_method",
+        ),
+        Index("ix_findings_finding_status", "finding_status"),
+        Index("ix_findings_finding_severity", "finding_severity"),
+        Index("ix_findings_finding_deleted_at", "finding_deleted_at"),
     )
 
 

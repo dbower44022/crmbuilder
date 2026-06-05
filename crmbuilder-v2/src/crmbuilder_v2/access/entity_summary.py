@@ -74,6 +74,7 @@ _SPECS: dict[str, _Spec] = {
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),
     "work_task": _Spec(models.WorkTask, "work_task_identifier", "work_task_title", "work_task_status", "work_task_created_at", "work_task_updated_at"),
+    "finding": _Spec(models.Finding, "finding_identifier", "finding_summary", "finding_status", "finding_created_at", "finding_updated_at"),
     "conversation": _Spec(models.Conversation, "conversation_identifier", "conversation_title", "conversation_status", "conversation_created_at", "conversation_updated_at"),
     "reference_book": _Spec(models.ReferenceBook, "reference_book_identifier", "reference_book_title", "reference_book_status", "reference_book_created_at", "reference_book_updated_at"),
     "work_ticket": _Spec(models.WorkTicket, "work_ticket_identifier", "work_ticket_title", "work_ticket_status", "work_ticket_created_at", "work_ticket_updated_at"),

@@ -49,6 +49,15 @@ def _load_migration_module():
     return mod
 
 
+# Engagement-scoped tables introduced AFTER migration 0038 and managed by
+# create_all (not back-filled into 0038's frozen ALTER list). 0038 could not
+# have scoped a table that did not yet exist when it ran, so these are excluded
+# from the migration↔model equality below. Their own create migration (or
+# create_all on the live DB) scopes them from birth.
+#   - ``findings`` — PI-134 reconciliation gate (DEC-400).
+_POST_0038_SCOPED_TABLES: frozenset[str] = frozenset({"findings"})
+
+
 def _model_scoped_tables() -> set[str]:
     # Scoped tables are the EngagementScopedMixin subclasses — NOT merely any
     # table with an ``engagement_id`` column. A system/shared table may carry
@@ -63,7 +72,11 @@ def _model_scoped_tables() -> set[str]:
 
 def test_scoped_models_carry_engagement_id() -> None:
     scoped = _model_scoped_tables()
-    assert len(scoped) == 30, f"expected 30 scoped tables, got {len(scoped)}"
+    # 30 scoped at migration 0038 + the create_all-managed tables added since.
+    assert len(scoped) == 30 + len(_POST_0038_SCOPED_TABLES), (
+        f"expected {30 + len(_POST_0038_SCOPED_TABLES)} scoped tables, "
+        f"got {len(scoped)}"
+    )
     # The tenant table and the catalog/system tables are excluded.
     assert "engagements" not in scoped
     assert not any(name.startswith("catalog_") for name in scoped)
@@ -81,10 +94,13 @@ def test_scoped_models_carry_engagement_id() -> None:
 def test_migration_table_list_matches_models() -> None:
     mod = _load_migration_module()
     migration_tables = set(mod.SCOPED_TABLES)
-    assert migration_tables == _model_scoped_tables(), (
+    # Compare against the scoped models that existed at 0038 — i.e. the current
+    # set minus tables added afterward by create_all (see _POST_0038_SCOPED_TABLES).
+    model_tables_at_0038 = _model_scoped_tables() - _POST_0038_SCOPED_TABLES
+    assert migration_tables == model_tables_at_0038, (
         "migration 0038 SCOPED_TABLES drifted from the engagement_id-bearing "
-        f"models:\n  only in migration: {sorted(migration_tables - _model_scoped_tables())}"
-        f"\n  only in models: {sorted(_model_scoped_tables() - migration_tables)}"
+        f"models:\n  only in migration: {sorted(migration_tables - model_tables_at_0038)}"
+        f"\n  only in models: {sorted(model_tables_at_0038 - migration_tables)}"
     )
 
 
