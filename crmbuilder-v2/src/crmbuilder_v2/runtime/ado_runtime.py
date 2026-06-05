@@ -513,6 +513,38 @@ class AdoRuntime:
 # --------------------------------------------------------------------------
 
 
+def build_review_prompt(api_base: str, engagement: str, pi: str) -> str:
+    """The review/closure reviewer's operating protocol for an In-Review PI."""
+    h = f"-H 'X-Engagement: {engagement}'"
+    return (
+        f"You are the closure reviewer for Planning Item {pi}, which has finished "
+        f"execution and is now 'In Review'. Decide whether the delivered work "
+        f"satisfies the PI, and resolve it only if it does. The live V2 API is at "
+        f"{api_base}; EVERY request must send X-Engagement: {engagement}.\n\n"
+        f"Do exactly this:\n"
+        f"1. Read the PI and its requirements — `curl -s {h} {api_base}/"
+        f"planning-items/{pi}` — and review its phases' delivered Work Tasks "
+        f"(`curl -s {h} {api_base}/planning-items/{pi}/phase-overview`).\n"
+        f"2. If the work meets the PI's requirements, resolve it: "
+        f"`curl -s -X PATCH {h} -H 'Content-Type: application/json' {api_base}/"
+        f"planning-items/{pi} -d '{{\"status\": \"Resolved\"}}'`.\n"
+        f"3. If it does NOT, leave it 'In Review' and do not resolve it — a person "
+        f"will look. Then exit."
+    )
+
+
+def review_close_pi(cfg: ProjectRuntimeConfig, pi: str) -> bool:
+    """Default closure_runner: spawn a reviewer that resolves the PI if satisfied.
+
+    Verified by result — returns True iff the PI reached ``Resolved``. A reviewer
+    that declines leaves the PI ``In Review`` (the PM then flags it for a person).
+    """
+    prompt = build_review_prompt(cfg.api_base, cfg.engagement, pi)
+    spawn_scoping_agent(prompt, timeout=cfg.agent_timeout)
+    pi_row = dispatcher._get(cfg.api_base, f"/planning-items/{pi}", cfg.engagement)
+    return isinstance(pi_row, dict) and pi_row.get("status") == "Resolved"
+
+
 @dataclass
 class ProjectRuntimeConfig:
     project: str
@@ -529,6 +561,11 @@ class ProjectRuntimeConfig:
     # the chain flows. OFF by default — In Review awaits the resolves-edge closure
     # act, and the PM only dispatches the already-eligible frontier.
     resolve_on_complete: bool = False
+    # Item 3: spawn a review/closure agent for each completed PI that resolves it
+    # only if the work satisfies the PI (governance-faithful, with judgment). Takes
+    # precedence over the blunt resolve_on_complete; a declined review leaves the PI
+    # In Review and is flagged. This lets chains flow without the blunt lever.
+    review_on_complete: bool = False
     max_pis: int = 50  # backstop against a non-advancing PM loop
     log: Callable[[str], None] = print
 
@@ -566,6 +603,7 @@ class ProjectRuntime:
 
     config: ProjectRuntimeConfig
     pi_driver: Callable[[AdoRuntimeConfig], AdoRunReport] = drive_planning_item
+    closure_runner: Callable[[ProjectRuntimeConfig, str], bool] = review_close_pi
 
     def log(self, msg: str) -> None:
         self.config.log(msg)
@@ -619,7 +657,13 @@ class ProjectRuntime:
                 "planning_item": pid, "status": pi_report.status,
                 "reason": pi_report.reason,
             })
-            if pi_report.status == "complete" and cfg.resolve_on_complete:
+            if pi_report.status == "complete" and cfg.review_on_complete:
+                if self.closure_runner(cfg, pid):
+                    self.log(f"  ✔ {pid} complete → reviewed → Resolved")
+                else:
+                    self.log(f"  ⏸ {pid} complete → review declined → In Review "
+                             f"(needs a person)")
+            elif pi_report.status == "complete" and cfg.resolve_on_complete:
                 self._resolve_pi(pid)
                 self.log(f"  ✔ {pid} complete → Resolved (autonomous)")
             elif pi_report.status == "complete":
@@ -693,6 +737,9 @@ def project_main(argv: list[str] | None = None) -> int:
     p.add_argument("--resolve-on-complete", action="store_true",
                    help="autonomous: mark each completed PI Resolved so dependents "
                    "unblock (default: stop at In Review, awaiting closure)")
+    p.add_argument("--review-on-complete", action="store_true",
+                   help="spawn a closure agent that reviews each completed PI and "
+                   "resolves it only if the work satisfies it (judgment + faithful)")
     args = p.parse_args(argv)
 
     cfg = ProjectRuntimeConfig(
@@ -701,6 +748,7 @@ def project_main(argv: list[str] | None = None) -> int:
         max_concurrent=args.max_concurrent, tier=args.tier,
         agent_timeout=args.agent_timeout, manage_api=args.manage_api,
         resolve_on_complete=args.resolve_on_complete,
+        review_on_complete=args.review_on_complete,
     )
     report = ProjectRuntime(cfg).run()
     print(f"\nPM run complete: {len(report.driven)} PI(s) driven")

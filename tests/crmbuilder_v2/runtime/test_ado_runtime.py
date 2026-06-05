@@ -393,6 +393,35 @@ def test_pm_flows_a_dependency_chain_when_resolve_on_complete():
     assert report.all_resolved is True
 
 
+def test_pm_review_agent_resolves_and_flows_the_chain():
+    # Chain PI-2 blocked_by PI-1; a closure agent that approves resolves each
+    # completed PI, so the chain flows in the default (non-blunt) path.
+    bl = _Backlog({"PI-1": "Ready", "PI-2": "Ready"}, {"PI-2": ["PI-1"]})
+
+    def _approve(cfg, pi):
+        bl.pis[pi] = "Resolved"
+        return True
+
+    pm = _FakePm(bl, config=_pm_cfg(review_on_complete=True),
+                 pi_driver=_pi_driver(bl), closure_runner=_approve)
+    report = pm.run()
+    assert [d["planning_item"] for d in report.driven] == ["PI-1", "PI-2"]
+    assert report.all_resolved is True
+
+
+def test_pm_review_decline_leaves_pi_in_review():
+    bl = _Backlog({"PI-1": "Ready"})
+
+    def _decline(cfg, pi):
+        return False  # reviewer not satisfied; PI stays In Review
+
+    pm = _FakePm(bl, config=_pm_cfg(review_on_complete=True),
+                 pi_driver=_pi_driver(bl), closure_runner=_decline)
+    report = pm.run()
+    assert bl.pis["PI-1"] == "In Review"  # not resolved
+    assert report.driven[0]["status"] == "complete"
+
+
 def test_pm_stops_at_chain_boundary_without_resolve_on_complete():
     # Same chain, default mode: PI-1 reaches In Review (not Resolved), so PI-2
     # stays blocked and the PM stops at the frontier — the governance boundary.
