@@ -84,6 +84,25 @@ def test_claim_and_release(v2_env):
         assert r["work_task_claimed_by"] is None
 
 
+def test_claim_advances_ready_to_claimed(v2_env):
+    # PI-137: claiming a Ready task advances the lifecycle Ready -> Claimed,
+    # not just attaching a claimant to a still-Ready row.
+    with session_scope() as s:
+        work_tasks.create_work_task(s, title="t", area="api", identifier="WTK-035")
+        work_tasks.patch_work_task(s, "WTK-035", status="Ready")
+    with session_scope() as s:
+        r = work_tasks.claim_work_task(s, "WTK-035", claimed_by="CNV-001")
+        assert r["work_task_claimed_by"] == "CNV-001"
+        assert r["work_task_status"] == "Claimed"
+    # Idempotent re-claim by the same agent leaves it Claimed.
+    with session_scope() as s:
+        r = work_tasks.claim_work_task(s, "WTK-035", claimed_by="CNV-001")
+        assert r["work_task_status"] == "Claimed"
+    # A claim by a different agent still conflicts.
+    with session_scope() as s, pytest.raises(ConflictError):
+        work_tasks.claim_work_task(s, "WTK-035", claimed_by="CNV-999")
+
+
 def test_belongs_to_workstream_edge(v2_env):
     with session_scope() as s:
         wid = _wsk(s)
