@@ -1,4 +1,18 @@
-# PI-134 findings-entity live-DB migration runbook (PREPARED — do not auto-apply)
+# PI-134 findings-entity live-DB migration runbook
+
+> **APPLIED 2026-06-04** to `data/v2-unified.db` by PM authorization. Procedure:
+> stopped the desktop UI (which owns + auto-restarts the API) to quiesce all
+> writers → backed up to `data/v2-unified.db.pi134-backup` → `alembic stamp 0044`
+> → `alembic upgrade 0045` → verified (findings table + 3 CHECK rebuilds;
+> `refs` 3449 / `change_log` 6578 row counts preserved; `PRAGMA integrity_check
+> = ok`; governance records intact) → restarted a standalone API on the
+> `pi-133-134` branch code (`/findings` live, next id `FND-001`). **Remaining:**
+> reopen the desktop UI (adopts the external API), merge `pi-133-134` → `main`,
+> resolve PI-133/PI-134. The section below is the original prepared runbook.
+
+---
+
+## (Original) PREPARED runbook — do not auto-apply
 
 Adding the `finding` entity to the live store (`crmbuilder-v2/data/v2-unified.db`)
 is a **destructive schema operation** — it CREATEs the `findings` table and
