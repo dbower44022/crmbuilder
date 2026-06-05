@@ -130,17 +130,19 @@ def _author_commit_record(sha: str) -> None:
         "commit_author_name": author_name,
         "commit_author_email": author_email,
         "commit_committed_at": committed_at,
-        "commit_repository": "dbower44022/crmbuilder",
+        "commit_repository": "crmbuilder",
         "commit_branch": "main",
         "commit_parent_shas": parents,
         "commit_files_changed_count": files_changed,
-        "commit_session_id": CONVERSATION,
+        # commit_session_id validates against the sessions table; the session
+        # container is SES-161 (CNV-063 is a conversation within it).
+        "commit_session_id": SESSION,
     }
     r = _req("POST", "/commits", body)
     if r.get("data"):
         print(
             f"✓ authored commit record {r['data']['commit_identifier']} "
-            f"for {full_sha[:8]} (attributed to {CONVERSATION})"
+            f"for {full_sha[:8]} (attributed to {SESSION})"
         )
     else:
         print(f"⚠ could not author commit record for {full_sha[:8]} (non-fatal): {r}")
