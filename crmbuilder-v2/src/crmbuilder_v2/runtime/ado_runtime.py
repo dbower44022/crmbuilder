@@ -1,4 +1,4 @@
-"""ADO orchestration driver — the PI-level scheduler (PI-143, slice 1).
+"""ADO orchestration driver — the PI-level scheduler (PI-143, slices 1–2).
 
 The L1/L2 runtime (:mod:`coordinating_runtime`, :mod:`parallel_runtime`) drives
 the *bottom* half of the delivery loop: it finds a ``Ready`` Work Task, spawns an
@@ -10,20 +10,23 @@ This module is the deterministic outer loop that closes that gap by *composing*
 the already-built substrate with the already-built execution pool:
 
     dispatch (PM) → decompose → for each phase in serial order:
-        start_phase (Lead) → run the parallel pool over the phase → complete_phase (Lead)
+        scope (Architect) → start_phase (Lead) → run the pool → complete_phase
     → advance the Planning Item to ``In Review``
 
-**Slice 1 (this build) supplies phase scoping** — the Work Tasks of each phase are
-created beforehand (by hand, or by an external step), so the driver only needs the
-phase to be ``Ready``. Spawning Architect/phase-specialist agents that *decide* a
-phase's Work Tasks from the registry contract is slice 2; PM auto-dispatch from the
-project backlog is slice 3.
+**Slice 1** drove a pre-scoped PI (scoping supplied). **Slice 2 (this build) adds
+the judgment**: for each ``Planned`` phase the driver spawns an Architect agent
+that *decides* and creates the phase's Work Tasks (:func:`scope_phase_agent`,
+verified by result — the phase reaching ``Ready`` / ``Not Applicable``), and before
+a ``Develop`` phase it clears the reconciliation gate (:func:`develop_gate_open`,
+reusing :mod:`reconciliation`) so no building begins while an open *blocking*
+finding holds the Design (REQ-027/033). PM auto-dispatch from the project backlog
+is slice 3.
 
 Like the rest of the runtime, the **decision** (:func:`decide_next`) is a pure
-function of the PI's recorded state, separated from the HTTP/pool I/O, so the loop
-is unit-testable without a server, a worktree, or a real agent. The driver is
-DB-backed-stateless: every iteration re-reads ``phase-overview`` and continues from
-wherever the records say things stand, so it is fully resumable (§4.4).
+function of the PI's recorded state, separated from the HTTP / pool / agent I/O, so
+the loop is unit-testable without a server, a worktree, or a real agent. The driver
+is DB-backed-stateless: every iteration re-reads ``phase-overview`` and continues
+from wherever the records say things stand, so it is fully resumable (§4.4).
 """
 
 from __future__ import annotations
@@ -33,12 +36,16 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
-from . import dispatcher
+from . import dispatcher, reconciliation
 from .parallel_runtime import (
     ParallelCoordinatingRuntime,
     ParallelRuntimeConfig,
     PoolRunReport,
 )
+from .reconciliation import GateDecision
+
+_DEVELOP_PHASE = "Develop"
+_TERMINAL_PHASE = frozenset({"Complete", "Not Applicable"})
 
 # A PI in one of these statuses can still be dispatched (handed to a Lead).
 _STARTABLE = frozenset({"Draft", "Decomposed", "Ready"})
@@ -54,40 +61,64 @@ _DONE_STATUS = "In Review"
 
 
 class StepKind(str, Enum):
-    START = "start"        # start + execute this phase Workstream
+    SCOPE = "scope"        # a Planned phase needs scoping (an Architect agent)
+    START = "start"        # start + execute this Ready phase Workstream
     DONE = "done"          # every phase terminal — advance the PI
     PAUSE = "pause"        # a phase needs a human (needs_attention)
-    BLOCKED = "blocked"    # nothing executable and not done (unscoped phase, etc.)
+    BLOCKED = "blocked"    # a phase is in an unexpected state mid-loop
 
 
 @dataclass(frozen=True)
 class AdoStep:
     kind: StepKind
     workstream: str | None = None
+    phase_type: str | None = None
     reason: str | None = None
 
 
 def decide_next(overview: dict) -> AdoStep:
     """Decide the next orchestration step from a ``phase-overview`` payload.
 
-    Precedence: a human-attention flag stops everything; then "all phases
-    terminal" is done; then the next executable phase is started; otherwise the
-    PI is stuck (a phase is not yet ``Ready`` — in slice 1 scoping is supplied,
-    so an unscoped phase is a blocked, human-visible state).
+    Phases are delivered strictly serially, so the decision is the action owed to
+    the *first non-terminal phase* (in canonical order). Precedence: a human
+    ``needs_attention`` flag stops everything; then "all phases terminal" is done.
+    Otherwise the first non-terminal phase drives the step — ``SCOPE`` it if it is
+    still ``Planned`` (slice 2 spawns an Architect to create its Work Tasks),
+    ``START`` it once it is ``Ready``. A phase whose predecessors are not terminal,
+    or one sitting in a transient ``Scoping``/``In Progress`` state between
+    iterations, is an unexpected state and surfaces as ``BLOCKED``.
     """
     attention = overview.get("needs_attention") or []
     if attention:
         return AdoStep(StepKind.PAUSE, reason=f"needs_attention on {attention}")
     if overview.get("all_terminal"):
         return AdoStep(StepKind.DONE)
-    nxt = overview.get("next_executable")
-    if nxt:
-        return AdoStep(StepKind.START, workstream=nxt)
-    return AdoStep(
-        StepKind.BLOCKED,
-        reason="no executable phase — a phase is not Ready (unscoped) or its "
-        "predecessors are not terminal",
-    )
+
+    phases = overview.get("phases") or []
+    if not phases:
+        return AdoStep(StepKind.BLOCKED, reason="planning item is not decomposed")
+
+    for p in phases:
+        if p["status"] in _TERMINAL_PHASE:
+            continue
+        wsid = p["workstream"]["workstream_identifier"]
+        ptype = p.get("phase_type")
+        if not p.get("predecessors_terminal", False):
+            return AdoStep(
+                StepKind.BLOCKED, workstream=wsid, phase_type=ptype,
+                reason=f"phase {wsid} blocked by non-terminal predecessors "
+                f"{p.get('blocked_by')}",
+            )
+        if p["status"] == "Planned":
+            return AdoStep(StepKind.SCOPE, workstream=wsid, phase_type=ptype)
+        if p["status"] == "Ready":
+            return AdoStep(StepKind.START, workstream=wsid, phase_type=ptype)
+        return AdoStep(
+            StepKind.BLOCKED, workstream=wsid, phase_type=ptype,
+            reason=f"phase {wsid} is {p['status']!r} (unexpected between iterations)",
+        )
+
+    return AdoStep(StepKind.DONE)
 
 
 # --------------------------------------------------------------------------
@@ -144,6 +175,101 @@ def run_pool_for_workstream(cfg: AdoRuntimeConfig, workstream_id: str) -> PoolRu
 
 
 # --------------------------------------------------------------------------
+# Scoping-agent seam (slice 2) — patchable; spawns a real Architect under prod
+# --------------------------------------------------------------------------
+
+
+def build_scoping_prompt(cfg: AdoRuntimeConfig, workstream_id: str, phase_type: str) -> str:
+    """The scoping agent's operating protocol.
+
+    Unlike an execution agent it writes no code and needs no worktree — it reads
+    the Planning Item and the prior phases' outputs, *decides* the Work Tasks this
+    phase needs (one per area the phase touches), and records them in a single
+    ``scope`` call (an empty list asserts the phase is Not Applicable, §4.3).
+    """
+    api = cfg.api_base
+    eng = cfg.engagement
+    h = f"-H 'X-Engagement: {eng}'"
+    return (
+        f"You are the {phase_type}-phase Architect for Planning Item "
+        f"{cfg.planning_item}. Your one job: decide the Work Tasks the "
+        f"{phase_type} phase (Workstream {workstream_id}) needs and record them. "
+        f"You write NO code — you only decide and record. The live V2 API is at "
+        f"{api} and EVERY request must send the header X-Engagement: {eng}.\n\n"
+        f"Do exactly this:\n"
+        f"1. Read the Planning Item — `curl -s {h} {api}/planning-items/"
+        f"{cfg.planning_item}` — and its requirements/intent.\n"
+        f"2. Read what earlier phases produced — `curl -s {h} {api}/workstreams/"
+        f"{workstream_id}/prior-phase-outputs` — and build on them.\n"
+        f"3. Decide the Work Tasks: one per area this phase touches, each a clear "
+        f"single-area unit. Each needs a 'title' and an 'area' (a valid System or "
+        f"Engagement area, e.g. storage, access, api, mcp, ui), plus an optional "
+        f"'description'.\n"
+        f"4. Record them in ONE call:\n"
+        f"   `curl -s -X POST {h} -H 'Content-Type: application/json' "
+        f"{api}/workstreams/{workstream_id}/scope "
+        f"-d '{{\"work_tasks\": [{{\"title\": \"...\", \"area\": \"...\", "
+        f"\"description\": \"...\"}}]}}'`\n"
+        f"   If the phase genuinely needs no work, POST an empty list "
+        f"(`{{\"work_tasks\": []}}`) — that asserts Not Applicable.\n"
+        f"5. Confirm the Workstream is now 'Ready' (or 'Not Applicable') and exit."
+    )
+
+
+def spawn_scoping_agent(prompt: str, *, timeout: int = 1800):
+    """Spawn one real Claude agent to scope a phase (no worktree — API writes only)."""
+    import subprocess
+    import tempfile
+
+    workdir = tempfile.mkdtemp(prefix="ado-scope-")
+    return subprocess.run(
+        ["claude", "-p", prompt, "--permission-mode", "bypassPermissions",
+         "--add-dir", workdir],
+        cwd=workdir, capture_output=True, text=True, timeout=timeout,
+    )
+
+
+def scope_phase_agent(cfg: AdoRuntimeConfig, workstream_id: str, phase_type: str) -> None:
+    """Default scope_runner: spawn an Architect to scope ``workstream_id``.
+
+    Success is verified by the caller *by result* (the phase reaching ``Ready`` or
+    ``Not Applicable``), not by this agent's exit — consistent with the runtime's
+    verify-by-result rule (DEC-396).
+    """
+    prompt = build_scoping_prompt(cfg, workstream_id, phase_type)
+    spawn_scoping_agent(prompt, timeout=cfg.agent_timeout)
+
+
+# --------------------------------------------------------------------------
+# Develop reconciliation-gate seam (slice 2) — proactive, phase-level
+# --------------------------------------------------------------------------
+
+
+def develop_gate_open(cfg: AdoRuntimeConfig, workstream_id: str) -> GateDecision:
+    """Phase-level Develop-gate consult, reusing :mod:`reconciliation`.
+
+    The pool already enforces the gate per Work Task at dispatch
+    (``coordinating_runtime`` → ``reconciliation.develop_gate``); this lets the
+    driver check it *before* running a futile pool and pause cleanly with a
+    reconciliation reason. Reads one of the phase's Work Tasks and delegates to
+    the same gate logic; a phase with no Work Tasks yet passes vacuously.
+    """
+    edges = dispatcher._get(
+        cfg.api_base,
+        f"/references?target_id={workstream_id}"
+        "&relationship=work_task_belongs_to_workstream",
+        cfg.engagement,
+    )
+    wt_ids = [e["source_id"] for e in edges] if isinstance(edges, list) else []
+    if not wt_ids:
+        return GateDecision(True, "no Work Tasks scoped yet")
+    work_task = dispatcher._get(
+        cfg.api_base, f"/work-tasks/{wt_ids[0]}", cfg.engagement
+    )
+    return reconciliation.develop_gate(cfg.api_base, cfg.engagement, work_task)
+
+
+# --------------------------------------------------------------------------
 # The driver
 # --------------------------------------------------------------------------
 
@@ -153,11 +279,19 @@ class AdoRuntime:
     """Drives one Planning Item through its phases to ``In Review`` (or a pause)."""
 
     config: AdoRuntimeConfig
-    # Injected for tests; defaults hit the live API / real pool.
+    # Injected for tests; defaults hit the live API / real pool / real agents.
     pool_runner: Callable[[AdoRuntimeConfig, str], PoolRunReport] = run_pool_for_workstream
+    scope_runner: Callable[[AdoRuntimeConfig, str, str], None] = scope_phase_agent
+    gate_checker: Callable[[AdoRuntimeConfig, str], GateDecision] = develop_gate_open
 
     def log(self, msg: str) -> None:
         self.config.log(msg)
+
+    def _phase_status(self, workstream_id: str) -> str | None:
+        for p in self._overview().get("phases", []):
+            if p["workstream"]["workstream_identifier"] == workstream_id:
+                return p["status"]
+        return None
 
     # --- thin HTTP seams over the substrate endpoints -------------------
 
@@ -211,8 +345,9 @@ class AdoRuntime:
             report.reason = step.reason
             return report
 
-        # 3. drive phases serially until done / paused / blocked.
-        for _ in range(cfg.max_phases):
+        # 3. drive phases serially until done / paused / blocked. Each phase can
+        # take two iterations (scope, then execute), so budget accordingly.
+        for _ in range(cfg.max_phases * 2 + 1):
             ov = self._overview()
             step = decide_next(ov)
 
@@ -235,9 +370,39 @@ class AdoRuntime:
                 report.reason = step.reason
                 return report
 
-            # START: open the phase, run the pool over it, then complete it.
             ws = step.workstream
             assert ws is not None
+
+            # SCOPE: spawn an Architect to decide + create the phase's Work Tasks.
+            if step.kind is StepKind.SCOPE:
+                self.log(f"▶ {pi}: scoping phase {ws} ({step.phase_type}) "
+                         f"— spawning Architect")
+                self.scope_runner(cfg, ws, step.phase_type or "")
+                after = self._phase_status(ws)  # verify by result
+                if after not in ("Ready", "Not Applicable"):
+                    report.status = "paused"
+                    report.reason = (
+                        f"scoping did not complete phase {ws} (still {after!r}); "
+                        f"a person needs to scope it"
+                    )
+                    self.log(f"⏸ {pi}: {report.reason}")
+                    return report
+                self.log(f"  {ws} scoped → {after}")
+                continue
+
+            # START: a Develop phase first clears the reconciliation gate.
+            if step.phase_type == _DEVELOP_PHASE:
+                gate = self.gate_checker(cfg, ws)
+                if not gate.allow:
+                    report.status = "paused"
+                    report.reason = (
+                        f"Develop gate held on {ws}: {gate.reason} — reconcile the "
+                        f"Design before building"
+                    )
+                    self.log(f"⏸ {pi}: {report.reason}")
+                    return report
+
+            # open the phase, run the pool over it, then complete it.
             self._post(f"/workstreams/{ws}/start-execution")
             self.log(f"▶ {pi}: started phase {ws} → running pool")
 
@@ -254,7 +419,7 @@ class AdoRuntime:
             report.completed_phases.append(ws)
 
         report.status = "blocked"
-        report.reason = f"exceeded max_phases ({cfg.max_phases}) without finishing"
+        report.reason = f"exceeded the phase budget ({cfg.max_phases}) without finishing"
         self.log(f"⚠ {pi}: {report.reason}")
         return report
 
