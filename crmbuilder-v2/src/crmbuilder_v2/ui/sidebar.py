@@ -107,6 +107,9 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "Personas",
             "Fields",
             "Manual Configs",
+            # PI-061: the glossary — term definitions as records, migrated
+            # out of specifications/glossary.md.
+            "Glossary",
         ),
     ),
 )

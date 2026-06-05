@@ -266,6 +266,39 @@ class SkillUpdateIn(_Base):
     scope: str | None = None
 
 
+# ---------- Terms (glossary, PI-061) ----------
+
+
+class TermCreateIn(_Base):
+    """POST /terms body. ``identifier`` is server-assigned when omitted; ``scope``
+    defaults to ``system`` (a universal term)."""
+
+    identifier: str | None = None
+    name: str
+    definition: str
+    usage_scope: str | None = None
+    examples: str | None = None
+    distinguishing_notes: str | None = None
+    related_terms: str | None = None
+    version: int = 1
+    status: str = "active"
+    scope: str | None = None
+
+
+class TermUpdateIn(_Base):
+    """PATCH /terms/{identifier} body — partial update."""
+
+    name: str | None = None
+    definition: str | None = None
+    usage_scope: str | None = None
+    examples: str | None = None
+    distinguishing_notes: str | None = None
+    related_terms: str | None = None
+    version: int | None = None
+    status: str | None = None
+    scope: str | None = None
+
+
 class GovernanceRuleCreateIn(_Base):
     identifier: str | None = None
     body: str

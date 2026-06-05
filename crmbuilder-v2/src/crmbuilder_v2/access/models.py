@@ -84,6 +84,7 @@ from crmbuilder_v2.access.vocab import (
     SESSION_MEDIUMS,
     SESSION_STATUSES,
     SKILL_KINDS,
+    TERM_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
     WORK_TASK_STATUSES,
@@ -2917,4 +2918,56 @@ class LearningRow(Base):
         CheckConstraint(_check_in("status", LEARNING_STATUSES), name="ck_learning_status"),
         Index("ix_learnings_engagement", "engagement_id"),
         Index("ix_learnings_area_tier", "area", "tier"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Glossary term (PI-061 — DEC-403/DEC-390).
+#
+# One glossary definition. System/shared with a NULLABLE engagement_id: NULL =
+# a system (universal) term visible to every engagement, set = an engagement
+# overlay seen only by that engagement. Plain Base, NOT EngagementScopedMixin —
+# the repository merges the scope explicitly, the same pattern the Agent Profile
+# Registry uses. Definitions live only here. See methodology-schema-specs/term.md.
+# ---------------------------------------------------------------------------
+
+
+class TermRow(Base):
+    """One glossary term definition (PI-061)."""
+
+    __tablename__ = "terms"
+
+    identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    definition: Mapped[str] = mapped_column(Text, nullable=False)
+    # The glossary "Scope" field (where the term applies); named usage_scope so
+    # it does not collide with the system/engagement scope discriminator (DEC-404).
+    usage_scope: Mapped[str | None] = mapped_column(Text, nullable=True)
+    examples: Mapped[str | None] = mapped_column(Text, nullable=True)
+    distinguishing_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Names of related terms, plain text mirroring the markdown glossary (DEC-404).
+    related_terms: Mapped[str | None] = mapped_column(Text, nullable=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("identifier", ["TERM"]),
+            name="ck_term_identifier_format",
+        ),
+        CheckConstraint(_check_in("status", TERM_STATUSES), name="ck_term_status"),
+        Index("ix_terms_engagement", "engagement_id"),
+        Index("ix_terms_name", "name"),
     )

@@ -87,6 +87,7 @@ _SPECS: dict[str, _Spec] = {
     "skill": _Spec(models.SkillRow, "identifier", "name", "status", "created_at", "updated_at"),
     "governance_rule": _Spec(models.GovernanceRuleRow, "identifier", "body", "status", "created_at", "updated_at"),
     "learning": _Spec(models.LearningRow, "identifier", "content", "status", "created_at", "updated_at"),
+    "term": _Spec(models.TermRow, "identifier", "name", "status", "created_at", "updated_at"),
 }
 
 # Members of ENTITY_TYPES that intentionally carry no inline summary:

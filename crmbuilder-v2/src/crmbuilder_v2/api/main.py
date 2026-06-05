@@ -58,6 +58,7 @@ from crmbuilder_v2.api.routers import (
     risks,
     sessions,
     status,
+    terms,
     test_specs,
     topics,
     work_tasks,
@@ -163,6 +164,8 @@ def create_app() -> FastAPI:
     app.include_router(registry.skills_router)
     app.include_router(registry.governance_rules_router)
     app.include_router(registry.learnings_router)
+    # Glossary terms (PI-061).
+    app.include_router(terms.router)
 
     @app.get("/", tags=["meta"], include_in_schema=False)
     def root():

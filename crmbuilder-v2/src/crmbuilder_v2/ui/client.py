@@ -1940,6 +1940,55 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Terms (glossary; PI-061)
+    # ------------------------------------------------------------------
+
+    def list_terms(
+        self, *, status: str | None = None, scope: str | None = None
+    ) -> list[dict[str, Any]]:
+        """GET /terms. Return all glossary terms (optionally filtered)."""
+        params: list[str] = []
+        if status:
+            params.append(f"status={status}")
+        if scope:
+            params.append(f"scope={scope}")
+        path = "/terms" + ("?" + "&".join(params) if params else "")
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_term(self, identifier: str) -> dict[str, Any]:
+        """GET /terms/{identifier}. Raises ``NotFoundError`` if absent."""
+        result = self._request("GET", f"/terms/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[], message="Expected dict body for get_term"
+            )
+        return result
+
+    def create_term(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /terms. ``identifier`` server-assigned when omitted; ``scope``
+        defaults to ``system``."""
+        result = self._request("POST", "/terms", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[], message="Expected dict body for create_term"
+            )
+        return result
+
+    def patch_term(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """PATCH /terms/{identifier} — partial update (only changed fields)."""
+        result = self._request("PATCH", f"/terms/{identifier}", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[], message="Expected dict body for patch_term"
+            )
+        return result
+
+    def delete_term(self, identifier: str) -> Any:
+        """DELETE /terms/{identifier}. Raises ``NotFoundError`` on 404."""
+        return self._request("DELETE", f"/terms/{identifier}")
+
+    # ------------------------------------------------------------------
     # Engagements (meta DB; UI v0.5 slice B)
     # ------------------------------------------------------------------
 

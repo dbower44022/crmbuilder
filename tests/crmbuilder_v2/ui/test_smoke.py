@@ -67,6 +67,8 @@ EXPECTED_ENTRIES = (
     "Personas",
     "Fields",
     "Manual Configs",
+    # PI-061: glossary term entity.
+    "Glossary",
 )
 
 

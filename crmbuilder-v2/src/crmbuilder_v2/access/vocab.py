@@ -793,6 +793,10 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # the Develop gate. Engagement-scoped (belongs to a Planning Item's
         # Design), unlike the four nullable-scope registry entities above.
         "finding",
+        # PI-061 glossary entity (DEC-403/DEC-390). One glossary term
+        # definition (TERM-). System/shared with a nullable engagement_id =
+        # scope, like the registry entities. See methodology-schema-specs/term.md.
+        "term",
     }
 )
 
@@ -1216,6 +1220,10 @@ RULE_ENFORCEMENT_MODES: frozenset[str] = frozenset(
 
 # Lifecycle status shared by agent_profile / skill / governance_rule.
 REGISTRY_STATUSES: frozenset[str] = frozenset({"active", "retired"})
+
+# term (TERM-) lifecycle (PI-061 / DEC-403). A glossary definition is active,
+# still being drafted, or retired.
+TERM_STATUSES: frozenset[str] = frozenset({"active", "draft", "retired"})
 
 # learning (LRN-) lifecycle (PI-122 slice 3 / PRD §13.2) + its categories.
 LEARNING_STATUSES: frozenset[str] = frozenset(

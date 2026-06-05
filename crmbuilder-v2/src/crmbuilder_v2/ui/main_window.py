@@ -48,6 +48,7 @@ from crmbuilder_v2.ui.panels.domains import DomainsPanel
 from crmbuilder_v2.ui.panels.engagements import EngagementsPanel
 from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
+from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
 from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
@@ -130,6 +131,8 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     # WTK-004: ADO delivery-model entities.
     "workstream": "Workstreams",
     "work_task": "Work Tasks",
+    # PI-061: glossary term entity.
+    "term": "Glossary",
 }
 
 
@@ -232,6 +235,8 @@ class MainWindow(QMainWindow):
                 page = FieldsPanel(self._client)
             elif entry == "Manual Configs":
                 page = ManualConfigPanel(self._client)
+            elif entry == "Glossary":
+                page = GlossaryPanel(self._client)
             elif entry == "Engagements":
                 page = EngagementsPanel(
                     self._client,
