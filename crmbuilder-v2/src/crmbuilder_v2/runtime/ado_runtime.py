@@ -32,7 +32,9 @@ from wherever the records say things stand, so it is fully resumable (§4.4).
 from __future__ import annotations
 
 import argparse
+import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -141,6 +143,9 @@ class AdoRuntimeConfig:
     # Safety backstop against a non-advancing loop: at most this many phase
     # starts in one run (a PI has a small fixed number of phases).
     max_phases: int = 12
+    # A shared repo lock, set by the PM when driving PIs in parallel so their
+    # pools serialize git ops across the one repo (None → the pool's own lock).
+    repo_lock: threading.Lock | None = None
     log: Callable[[str], None] = print
 
 
@@ -171,7 +176,7 @@ def run_pool_for_workstream(cfg: AdoRuntimeConfig, workstream_id: str) -> PoolRu
         manage_api=cfg.manage_api,
         log=cfg.log,
     )
-    return ParallelCoordinatingRuntime(config=pool_cfg).run()
+    return ParallelCoordinatingRuntime(config=pool_cfg, repo_lock=cfg.repo_lock).run()
 
 
 # --------------------------------------------------------------------------
@@ -566,6 +571,11 @@ class ProjectRuntimeConfig:
     # precedence over the blunt resolve_on_complete; a declined review leaves the PI
     # In Review and is flagged. This lets chains flow without the blunt lever.
     review_on_complete: bool = False
+    # Item 2: how many *independent* eligible PIs to drive at once. All eligible
+    # PIs are mutually independent (eligible ⇒ every blocked_by is Resolved ⇒ no
+    # eligible PI blocks another), so the eligible set is a safe parallel batch;
+    # their pools share one repo lock so cross-PI git merges serialize. 1 = serial.
+    max_parallel_pis: int = 1
     max_pis: int = 50  # backstop against a non-advancing PM loop
     log: Callable[[str], None] = print
 
@@ -592,6 +602,17 @@ def select_next_pi(backlog: dict, attempted: dict) -> str | None:
     return None
 
 
+def eligible_batch(backlog: dict, attempted: dict, cap: int) -> list[str]:
+    """Pure: up to ``cap`` eligible PIs not yet attempted — the parallel batch.
+
+    Every eligible PI is mutually independent (eligible ⇒ all ``blocked_by``
+    Resolved ⇒ none blocks another), so the whole eligible-not-attempted set is
+    safe to drive concurrently; ``cap`` bounds how many at once.
+    """
+    fresh = [pid for pid in backlog.get("eligible", []) if pid not in attempted]
+    return fresh[: max(1, cap)]
+
+
 def drive_planning_item(ado_cfg: AdoRuntimeConfig) -> AdoRunReport:
     """Default per-PI driver seam: run the slice-1/2 :class:`AdoRuntime`."""
     return AdoRuntime(ado_cfg).run()
@@ -615,13 +636,14 @@ class ProjectRuntime:
             self.config.engagement,
         )  # type: ignore[return-value]
 
-    def _ado_cfg(self, pi: str) -> AdoRuntimeConfig:
+    def _ado_cfg(self, pi: str, repo_lock: threading.Lock | None = None) -> AdoRuntimeConfig:
         c = self.config
         return AdoRuntimeConfig(
             planning_item=pi, api_base=c.api_base, engagement=c.engagement,
             repo_root=c.repo_root, base_branch=c.base_branch,
             max_concurrent=c.max_concurrent, tier=c.tier,
-            agent_timeout=c.agent_timeout, manage_api=c.manage_api, log=c.log,
+            agent_timeout=c.agent_timeout, manage_api=c.manage_api,
+            repo_lock=repo_lock, log=c.log,
         )
 
     def _resolve_pi(self, pi: str) -> None:
@@ -640,36 +662,59 @@ class ProjectRuntime:
         if payload.get("errors"):
             raise RuntimeError(f"PI resolve PATCH failed: {payload['errors']}")
 
+    def _close_out(self, pid: str, pi_report: AdoRunReport) -> None:
+        """Resolve / review / log one completed (or paused) PI's outcome."""
+        cfg = self.config
+        if pi_report.status == "complete" and cfg.review_on_complete:
+            if self.closure_runner(cfg, pid):
+                self.log(f"  ✔ {pid} complete → reviewed → Resolved")
+            else:
+                self.log(f"  ⏸ {pid} complete → review declined → In Review "
+                         f"(needs a person)")
+        elif pi_report.status == "complete" and cfg.resolve_on_complete:
+            self._resolve_pi(pid)
+            self.log(f"  ✔ {pid} complete → Resolved (autonomous)")
+        elif pi_report.status == "complete":
+            self.log(f"  ✔ {pid} complete → In Review (awaiting resolution)")
+        else:
+            self.log(f"  ⏸ {pid} {pi_report.status} — {pi_report.reason}")
+
     def run(self) -> ProjectRunReport:
         cfg = self.config
         report = ProjectRunReport(project=cfg.project)
         attempted: dict[str, str] = {}
+        # One repo lock shared by every PI's pool this run, so when PIs run in
+        # parallel their worktree/merge git ops still serialize across the repo.
+        shared_lock = threading.Lock()
 
         for _ in range(cfg.max_pis):
             backlog = self._backlog()
-            pid = select_next_pi(backlog, attempted)
-            if pid is None:
+            batch = eligible_batch(backlog, attempted, cfg.max_parallel_pis)
+            if not batch:
                 break
-            self.log(f"▶ PM: dispatching {pid}")
-            pi_report = self.pi_driver(self._ado_cfg(pid))
-            attempted[pid] = pi_report.status
-            report.driven.append({
-                "planning_item": pid, "status": pi_report.status,
-                "reason": pi_report.reason,
-            })
-            if pi_report.status == "complete" and cfg.review_on_complete:
-                if self.closure_runner(cfg, pid):
-                    self.log(f"  ✔ {pid} complete → reviewed → Resolved")
-                else:
-                    self.log(f"  ⏸ {pid} complete → review declined → In Review "
-                             f"(needs a person)")
-            elif pi_report.status == "complete" and cfg.resolve_on_complete:
-                self._resolve_pi(pid)
-                self.log(f"  ✔ {pid} complete → Resolved (autonomous)")
-            elif pi_report.status == "complete":
-                self.log(f"  ✔ {pid} complete → In Review (awaiting resolution)")
+            self.log(f"▶ PM: dispatching {batch}")
+
+            if len(batch) == 1:
+                results = {batch[0]: self.pi_driver(self._ado_cfg(batch[0]))}
             else:
-                self.log(f"  ⏸ {pid} {pi_report.status} — {pi_report.reason}")
+                results = {}
+                with ThreadPoolExecutor(max_workers=len(batch)) as ex:
+                    futs = {
+                        ex.submit(self.pi_driver, self._ado_cfg(pid, repo_lock=shared_lock)): pid
+                        for pid in batch
+                    }
+                    for fut in as_completed(futs):
+                        results[futs[fut]] = fut.result()
+
+            # process in stable (batch) order for deterministic close-out.
+            for pid in batch:
+                pi_report = results[pid]
+                attempted[pid] = pi_report.status
+                report.driven.append({
+                    "planning_item": pid, "status": pi_report.status,
+                    "reason": pi_report.reason,
+                })
+                self._close_out(pid, pi_report)
 
         final = self._backlog()
         report.eligible_remaining = final.get("eligible", [])
@@ -740,6 +785,8 @@ def project_main(argv: list[str] | None = None) -> int:
     p.add_argument("--review-on-complete", action="store_true",
                    help="spawn a closure agent that reviews each completed PI and "
                    "resolves it only if the work satisfies it (judgment + faithful)")
+    p.add_argument("--max-parallel-pis", type=int, default=1,
+                   help="drive up to N independent eligible PIs at once (1 = serial)")
     args = p.parse_args(argv)
 
     cfg = ProjectRuntimeConfig(
@@ -749,6 +796,7 @@ def project_main(argv: list[str] | None = None) -> int:
         agent_timeout=args.agent_timeout, manage_api=args.manage_api,
         resolve_on_complete=args.resolve_on_complete,
         review_on_complete=args.review_on_complete,
+        max_parallel_pis=args.max_parallel_pis,
     )
     report = ProjectRuntime(cfg).run()
     print(f"\nPM run complete: {len(report.driven)} PI(s) driven")

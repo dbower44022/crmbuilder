@@ -21,6 +21,7 @@ from crmbuilder_v2.runtime.ado_runtime import (
     ProjectRuntimeConfig,
     StepKind,
     decide_next,
+    eligible_batch,
     select_next_pi,
 )
 from crmbuilder_v2.runtime.parallel_runtime import PoolRunReport
@@ -370,6 +371,37 @@ def test_pm_dispatches_all_independent_eligible_pis():
     assert [d["planning_item"] for d in report.driven] == ["PI-1", "PI-2"]
     assert all(d["status"] == "complete" for d in report.driven)
     assert report.eligible_remaining == []  # both at In Review, none re-eligible
+
+
+def test_eligible_batch_caps_and_skips_attempted():
+    bl = {"eligible": ["PI-1", "PI-2", "PI-3"]}
+    assert eligible_batch(bl, {}, 2) == ["PI-1", "PI-2"]
+    assert eligible_batch(bl, {"PI-1": "x"}, 2) == ["PI-2", "PI-3"]
+    assert eligible_batch(bl, {}, 1) == ["PI-1"]
+
+
+def test_pm_drives_independent_pis_in_parallel():
+    import threading
+    import time
+
+    bl = _Backlog({"PI-1": "Ready", "PI-2": "Ready", "PI-3": "Ready"})
+    starts: list[tuple[str, float]] = []
+    lock = threading.Lock()
+
+    def _slow_driver(ado_cfg):
+        pid = ado_cfg.planning_item
+        with lock:
+            starts.append((pid, time.monotonic()))
+        time.sleep(0.05)  # hold the slot so concurrency is observable
+        bl.pis[pid] = "In Review"
+        return AdoRunReport(planning_item=pid, status="complete")
+
+    pm = _FakePm(bl, config=_pm_cfg(max_parallel_pis=3), pi_driver=_slow_driver)
+    report = pm.run()
+    assert {d["planning_item"] for d in report.driven} == {"PI-1", "PI-2", "PI-3"}
+    # all three started within a small window → they ran concurrently, not serially.
+    span = max(t for _, t in starts) - min(t for _, t in starts)
+    assert span < 0.05, f"starts spread over {span:.3f}s — not parallel"
 
 
 def test_pm_records_a_paused_pi_and_does_not_retry():

@@ -303,6 +303,11 @@ class ParallelCoordinatingRuntime:
     reports: list[TaskReport] = field(default_factory=list)
     api: ApiProcess | None = None
     migration_lock: ExclusiveMigrationLock | None = None
+    # An optional *shared* repo lock. When several pools run concurrently against
+    # one repo (parallel independent PIs, ADO item 2), passing one shared lock
+    # serializes their worktree/merge git ops across pools; left None each pool
+    # gets its own lock (the single-PI case).
+    repo_lock: threading.Lock | None = None
 
     def __post_init__(self) -> None:
         # The Layer-1 runtime provides the proven per-task I/O unit. Its spawn
@@ -311,7 +316,7 @@ class ParallelCoordinatingRuntime:
         self._l1 = CoordinatingRuntime(
             config=self.config, spawn_fn=None, log=self.log
         )
-        self._repo_lock = threading.Lock()
+        self._repo_lock = self.repo_lock or threading.Lock()
         self._completed: queue.Queue[_AgentRun] = queue.Queue()
         if self.config.manage_api and self.api is None:
             self.api = ApiProcess(
