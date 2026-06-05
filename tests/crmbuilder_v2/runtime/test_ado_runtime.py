@@ -14,10 +14,14 @@ Mirrors the module's pure/I-O split:
 from __future__ import annotations
 
 from crmbuilder_v2.runtime.ado_runtime import (
+    AdoRunReport,
     AdoRuntime,
     AdoRuntimeConfig,
+    ProjectRuntime,
+    ProjectRuntimeConfig,
     StepKind,
     decide_next,
+    select_next_pi,
 )
 from crmbuilder_v2.runtime.parallel_runtime import PoolRunReport
 from crmbuilder_v2.runtime.reconciliation import GateDecision
@@ -275,3 +279,110 @@ def test_resume_without_redispatch_and_dry_run():
     assert report.status == "dry_run"
     assert "/planning-items/PI-900/dispatch" not in world.calls
     assert not any("start-execution" in c for c in world.calls)
+
+
+# --------------------------------------------------------------------------
+# slice 3 — PM auto-dispatch over a Project backlog
+# --------------------------------------------------------------------------
+
+_STARTABLE = {"Draft", "Decomposed", "Ready"}
+
+
+def test_select_next_pi_skips_attempted():
+    backlog = {"eligible": ["PI-1", "PI-2"]}
+    assert select_next_pi(backlog, {}) == "PI-1"
+    assert select_next_pi(backlog, {"PI-1": "paused"}) == "PI-2"
+    assert select_next_pi(backlog, {"PI-1": "x", "PI-2": "y"}) is None
+
+
+class _Backlog:
+    """In-memory Project backlog: PI statuses + blocked_by, eligibility derived."""
+
+    def __init__(self, pis, blocked_by=None):
+        self.pis = dict(pis)                       # pid -> status
+        self.blocked_by = blocked_by or {}         # pid -> [blockers]
+
+    def snapshot(self):
+        eligible, blocked = [], []
+        for pid, st in self.pis.items():
+            unresolved = [b for b in self.blocked_by.get(pid, []) if self.pis.get(b) != "Resolved"]
+            if st in _STARTABLE and not unresolved:
+                eligible.append(pid)
+            elif st in _STARTABLE and unresolved:
+                blocked.append(pid)
+        return {
+            "eligible": eligible,
+            "blocked": blocked,
+            "all_resolved": all(s == "Resolved" for s in self.pis.values()),
+        }
+
+
+class _FakePm(ProjectRuntime):
+    def __init__(self, backlog, **kw):
+        super().__init__(**kw)
+        self.backlog = backlog
+
+    def _backlog(self):
+        return self.backlog.snapshot()
+
+    def _resolve_pi(self, pi):
+        self.backlog.pis[pi] = "Resolved"
+
+
+def _pi_driver(backlog, outcomes=None):
+    """Fake per-PI driver: reflects the outcome into the backlog and reports it."""
+    outcomes = outcomes or {}
+
+    def _driver(ado_cfg):
+        pid = ado_cfg.planning_item
+        status, reason = outcomes.get(pid, ("complete", None))
+        backlog.pis[pid] = "In Review" if status == "complete" else "In Progress"
+        return AdoRunReport(planning_item=pid, status=status, reason=reason)
+
+    return _driver
+
+
+def _pm_cfg(**kw):
+    kw.setdefault("log", lambda _m: None)
+    return ProjectRuntimeConfig(project="PRJ-9", **kw)
+
+
+def test_pm_dispatches_all_independent_eligible_pis():
+    bl = _Backlog({"PI-1": "Draft", "PI-2": "Ready"})
+    pm = _FakePm(bl, config=_pm_cfg(), pi_driver=_pi_driver(bl))
+    report = pm.run()
+    assert [d["planning_item"] for d in report.driven] == ["PI-1", "PI-2"]
+    assert all(d["status"] == "complete" for d in report.driven)
+    assert report.eligible_remaining == []  # both at In Review, none re-eligible
+
+
+def test_pm_records_a_paused_pi_and_does_not_retry():
+    bl = _Backlog({"PI-1": "Ready", "PI-2": "Ready"})
+    pm = _FakePm(bl, config=_pm_cfg(),
+                 pi_driver=_pi_driver(bl, {"PI-1": ("paused", "needs a human")}))
+    report = pm.run()
+    statuses = {d["planning_item"]: d["status"] for d in report.driven}
+    assert statuses == {"PI-1": "paused", "PI-2": "complete"}
+    # PI-1 was driven exactly once (In Progress now → not re-eligible).
+    assert [d["planning_item"] for d in report.driven].count("PI-1") == 1
+
+
+def test_pm_flows_a_dependency_chain_when_resolve_on_complete():
+    # PI-2 blocked_by PI-1: only PI-1 is eligible first; resolving it unblocks PI-2.
+    bl = _Backlog({"PI-1": "Ready", "PI-2": "Ready"}, {"PI-2": ["PI-1"]})
+    pm = _FakePm(bl, config=_pm_cfg(resolve_on_complete=True), pi_driver=_pi_driver(bl))
+    report = pm.run()
+    assert [d["planning_item"] for d in report.driven] == ["PI-1", "PI-2"]
+    assert bl.pis == {"PI-1": "Resolved", "PI-2": "Resolved"}
+    assert report.all_resolved is True
+
+
+def test_pm_stops_at_chain_boundary_without_resolve_on_complete():
+    # Same chain, default mode: PI-1 reaches In Review (not Resolved), so PI-2
+    # stays blocked and the PM stops at the frontier — the governance boundary.
+    bl = _Backlog({"PI-1": "Ready", "PI-2": "Ready"}, {"PI-2": ["PI-1"]})
+    pm = _FakePm(bl, config=_pm_cfg(), pi_driver=_pi_driver(bl))
+    report = pm.run()
+    assert [d["planning_item"] for d in report.driven] == ["PI-1"]
+    assert report.blocked_remaining == ["PI-2"]
+    assert report.all_resolved is False

@@ -445,6 +445,132 @@ class AdoRuntime:
 
 
 # --------------------------------------------------------------------------
+# Slice 3 — PM auto-dispatch over a Project's backlog
+# --------------------------------------------------------------------------
+
+
+@dataclass
+class ProjectRuntimeConfig:
+    project: str
+    api_base: str = "http://127.0.0.1:8765"
+    engagement: str = "CRMBUILDER"
+    repo_root: str = "."
+    base_branch: str = "main"
+    max_concurrent: int = 2
+    tier: str = dispatcher._DEFAULT_TIER
+    agent_timeout: int = 1800
+    manage_api: bool = False
+    # Autonomous lever: when a PI's execution completes (all phases verified, the
+    # PI at In Review), treat that as resolution so PIs blocked_by it unblock and
+    # the chain flows. OFF by default — In Review awaits the resolves-edge closure
+    # act, and the PM only dispatches the already-eligible frontier.
+    resolve_on_complete: bool = False
+    max_pis: int = 50  # backstop against a non-advancing PM loop
+    log: Callable[[str], None] = print
+
+
+@dataclass
+class ProjectRunReport:
+    project: str
+    driven: list[dict] = field(default_factory=list)   # [{planning_item, status, reason}]
+    eligible_remaining: list[str] = field(default_factory=list)
+    blocked_remaining: list[str] = field(default_factory=list)
+    all_resolved: bool = False
+
+
+def select_next_pi(backlog: dict, attempted: dict) -> str | None:
+    """Pure: the next eligible PI (in backlog order) not yet attempted this run.
+
+    ``eligible`` already means startable *and* every ``blocked_by`` predecessor
+    Resolved (``pm.project_backlog``), so the frontier the PM dispatches respects
+    dependencies. ``attempted`` guards against re-driving a PI that paused/blocked.
+    """
+    for pid in backlog.get("eligible", []):
+        if pid not in attempted:
+            return pid
+    return None
+
+
+def drive_planning_item(ado_cfg: AdoRuntimeConfig) -> AdoRunReport:
+    """Default per-PI driver seam: run the slice-1/2 :class:`AdoRuntime`."""
+    return AdoRuntime(ado_cfg).run()
+
+
+@dataclass
+class ProjectRuntime:
+    """Dispatches a Project's eligible PIs to the per-PI driver, in priority order."""
+
+    config: ProjectRuntimeConfig
+    pi_driver: Callable[[AdoRuntimeConfig], AdoRunReport] = drive_planning_item
+
+    def log(self, msg: str) -> None:
+        self.config.log(msg)
+
+    def _backlog(self) -> dict:
+        return dispatcher._get(
+            self.config.api_base,
+            f"/projects/{self.config.project}/backlog",
+            self.config.engagement,
+        )  # type: ignore[return-value]
+
+    def _ado_cfg(self, pi: str) -> AdoRuntimeConfig:
+        c = self.config
+        return AdoRuntimeConfig(
+            planning_item=pi, api_base=c.api_base, engagement=c.engagement,
+            repo_root=c.repo_root, base_branch=c.base_branch,
+            max_concurrent=c.max_concurrent, tier=c.tier,
+            agent_timeout=c.agent_timeout, manage_api=c.manage_api, log=c.log,
+        )
+
+    def _resolve_pi(self, pi: str) -> None:
+        import json
+        import urllib.request
+
+        url = f"{self.config.api_base.rstrip('/')}/planning-items/{pi}"
+        data = json.dumps({"status": "Resolved"}).encode("utf-8")
+        req = urllib.request.Request(
+            url, data=data, method="PATCH",
+            headers={"X-Engagement": self.config.engagement,
+                     "Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        if payload.get("errors"):
+            raise RuntimeError(f"PI resolve PATCH failed: {payload['errors']}")
+
+    def run(self) -> ProjectRunReport:
+        cfg = self.config
+        report = ProjectRunReport(project=cfg.project)
+        attempted: dict[str, str] = {}
+
+        for _ in range(cfg.max_pis):
+            backlog = self._backlog()
+            pid = select_next_pi(backlog, attempted)
+            if pid is None:
+                break
+            self.log(f"▶ PM: dispatching {pid}")
+            pi_report = self.pi_driver(self._ado_cfg(pid))
+            attempted[pid] = pi_report.status
+            report.driven.append({
+                "planning_item": pid, "status": pi_report.status,
+                "reason": pi_report.reason,
+            })
+            if pi_report.status == "complete" and cfg.resolve_on_complete:
+                self._resolve_pi(pid)
+                self.log(f"  ✔ {pid} complete → Resolved (autonomous)")
+            elif pi_report.status == "complete":
+                self.log(f"  ✔ {pid} complete → In Review (awaiting resolution)")
+            else:
+                self.log(f"  ⏸ {pid} {pi_report.status} — {pi_report.reason}")
+
+        final = self._backlog()
+        report.eligible_remaining = final.get("eligible", [])
+        report.blocked_remaining = final.get("blocked", [])
+        report.all_resolved = final.get("all_resolved", False)
+        return report
+
+
+# --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
 
@@ -452,7 +578,7 @@ class AdoRuntime:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         description="ADO orchestration driver — drive one Planning Item through "
-        "its phases (slice 1: scoping supplied)."
+        "its phases (scope → start → run → complete → In Review)."
     )
     p.add_argument("planning_item", help="the PI-NNN to drive")
     p.add_argument("--api-base", default="http://127.0.0.1:8765")
@@ -484,6 +610,46 @@ def main(argv: list[str] | None = None) -> int:
           + (f" — {report.reason}" if report.reason else "")
           + f"; phases completed: {report.completed_phases or '[]'}")
     return 0 if report.status in ("complete", "dry_run") else 1
+
+
+def project_main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(
+        description="ADO PM auto-dispatch — drive a Project's eligible Planning "
+        "Items through their phases, in dependency order (slice 3)."
+    )
+    p.add_argument("project", help="the PRJ-NNN whose backlog to dispatch")
+    p.add_argument("--api-base", default="http://127.0.0.1:8765")
+    p.add_argument("--engagement", default="CRMBUILDER")
+    p.add_argument("--repo-root", default=".")
+    p.add_argument("--base-branch", default="main")
+    p.add_argument("--max-concurrent", type=int, default=2)
+    p.add_argument("--tier", default=dispatcher._DEFAULT_TIER)
+    p.add_argument("--agent-timeout", type=int, default=1800)
+    p.add_argument("--manage-api", action="store_true")
+    p.add_argument("--resolve-on-complete", action="store_true",
+                   help="autonomous: mark each completed PI Resolved so dependents "
+                   "unblock (default: stop at In Review, awaiting closure)")
+    args = p.parse_args(argv)
+
+    cfg = ProjectRuntimeConfig(
+        project=args.project, api_base=args.api_base, engagement=args.engagement,
+        repo_root=args.repo_root, base_branch=args.base_branch,
+        max_concurrent=args.max_concurrent, tier=args.tier,
+        agent_timeout=args.agent_timeout, manage_api=args.manage_api,
+        resolve_on_complete=args.resolve_on_complete,
+    )
+    report = ProjectRuntime(cfg).run()
+    print(f"\nPM run complete: {len(report.driven)} PI(s) driven")
+    for d in report.driven:
+        print(f"  {d['planning_item']}: {d['status']}"
+              + (f" — {d['reason']}" if d['reason'] else ""))
+    if report.eligible_remaining:
+        print(f"still eligible (paused/blocked this run): {report.eligible_remaining}")
+    if report.blocked_remaining:
+        print(f"blocked on unresolved dependencies: {report.blocked_remaining}")
+    # success when every driven PI completed and nothing remains eligible.
+    ok = all(d["status"] == "complete" for d in report.driven) and not report.eligible_remaining
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":  # pragma: no cover
