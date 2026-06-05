@@ -122,6 +122,66 @@ def test_workstream_validation_failure_envelope(client):
     assert body["data"] is None and body["errors"]
 
 
+def test_finding_crud_lifecycle_and_filters(client):
+    # Create an open blocking finding with an inline relates-to edge to a PI.
+    r = client.post(
+        "/findings",
+        json={
+            "finding_type": "conflict",
+            "finding_severity": "blocking",
+            "finding_summary": "two specs disagree on the FK direction",
+            "references": [
+                {
+                    "source_type": "finding",
+                    "source_id": "FND-001",
+                    "target_type": "planning_item",
+                    "target_id": "PI-999",
+                    "relationship": "finding_relates_to",
+                }
+            ],
+        },
+    )
+    assert r.status_code == 201
+    body = _envelope(r)
+    assert body["data"]["finding_identifier"] == "FND-001"
+    assert body["data"]["finding_status"] == "open"
+    assert client.get("/findings/next-identifier").json()["data"]["next"] == "FND-002"
+
+    # Filters.
+    client.post(
+        "/findings",
+        json={"finding_type": "overlap", "finding_severity": "advisory",
+              "finding_summary": "two specs do the same work"},
+    )
+    assert len(client.get("/findings?severity=blocking").json()["data"]) == 1
+    assert len(client.get("/findings?status=open").json()["data"]) == 2
+
+    # Resolve the blocking finding → terminal, timestamp set.
+    r = client.patch(
+        "/findings/FND-001",
+        json={"finding_status": "resolved", "finding_resolution": "revised spec A",
+              "finding_resolution_method": "revise"},
+    )
+    assert r.json()["data"]["finding_status"] == "resolved"
+    assert r.json()["data"]["finding_resolved_at"]
+    # resolved is terminal.
+    assert client.patch("/findings/FND-001", json={"finding_status": "open"}).status_code == 422
+    # delete + restore.
+    assert client.delete("/findings/FND-001").status_code == 200
+    assert client.post("/findings/FND-001/restore").status_code == 200
+
+
+def test_finding_validation_failure_envelope(client):
+    r = client.post(
+        "/findings",
+        json={"finding_type": "nope", "finding_severity": "blocking",
+              "finding_summary": "x"},
+    )
+    assert r.status_code == 422
+    body = _envelope(r)
+    assert body["data"] is None and body["errors"]
+
+
 # --- conversations ----------------------------------------------------------
 
 

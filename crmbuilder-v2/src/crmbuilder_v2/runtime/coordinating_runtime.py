@@ -49,7 +49,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
-from crmbuilder_v2.runtime import dispatcher
+from crmbuilder_v2.runtime import dispatcher, reconciliation
 from crmbuilder_v2.runtime.agent_runtime import AgentInvocation, build_agent_prompt
 
 # --------------------------------------------------------------------------
@@ -342,9 +342,37 @@ class CoordinatingRuntime:
         if cfg.target_workstream is not None:
             members = self._workstream_members(cfg.target_workstream)
             eligible = [w for w in eligible if w["work_task_identifier"] in members]
+        # PI-134: withhold any Develop Work Task whose reconciliation gate is
+        # closed (Design not Complete, or an open blocking finding), so the
+        # serial loop moves on to the next genuinely-dispatchable task.
+        eligible = [w for w in eligible if self._reconciliation_gate_open(w)]
         if not eligible:
             return None
         return self._assignment_for(eligible[0]["work_task_identifier"])
+
+    def _reconciliation_gate_open(self, work_task: dict) -> bool:
+        """Whether a Work Task clears the Develop reconciliation gate (PI-134).
+
+        Non-Develop Work Tasks always clear it. A Develop Work Task clears it only
+        when its Planning Item's Design phase is Complete and the PI has no open
+        blocking findings. Best-effort: if the gate read fails, do not silently
+        block — fall back to open and let the normal verify path catch problems.
+        """
+        cfg = self.config
+        try:
+            decision = reconciliation.develop_gate(cfg.api_base, cfg.engagement, work_task)
+        except Exception as exc:  # never wedge dispatch on a gate-read failure
+            self.log(
+                f"  (warning) reconciliation gate read failed for "
+                f"{work_task.get('work_task_identifier')}: {exc}"
+            )
+            return True
+        if not decision.allow:
+            self.log(
+                f"⛔ reconciliation gate holds {work_task.get('work_task_identifier')}: "
+                f"{decision.reason}"
+            )
+        return decision.allow
 
     def _assignment_for(self, work_task_id: str):
         """Resolve a specific Work Task into a ready-to-spawn assignment.

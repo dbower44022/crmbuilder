@@ -451,6 +451,31 @@ WORK_TASK_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "Failed": frozenset({"Ready"}),
 }
 
+# `finding` (FND-) — PI-134 reconciliation gate (DEC-400, REQ-031..036 /
+# TOP-010). A cross-area coherence problem found at the end of Design. Four
+# types (REQ-032), two severities (REQ-033), and a three-state lifecycle: a
+# finding is `open`, may be `referred` to a person when the agents cannot settle
+# it (REQ-035), and is `resolved` once its resolution is recorded (REQ-034).
+# Only `resolved` is terminal and opens the Develop gate; both `open` and
+# `referred` are unresolved and hold the gate.
+FINDING_TYPES: frozenset[str] = frozenset(
+    {"conflict", "gap", "dependency", "overlap"}
+)
+FINDING_SEVERITIES: frozenset[str] = frozenset({"blocking", "advisory"})
+FINDING_STATUSES: frozenset[str] = frozenset({"open", "referred", "resolved"})
+FINDING_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "open": frozenset({"referred", "resolved"}),
+    "referred": frozenset({"open", "resolved"}),
+    "resolved": frozenset(),
+}
+# The unresolved statuses that hold the Develop gate (DEC-400, REQ-033).
+FINDING_OPEN_STATUSES: frozenset[str] = frozenset({"open", "referred"})
+# How a blocking finding was resolved (REQ-034) — optional, recorded with the
+# resolution text. `refer` records that it was escalated to a person.
+FINDING_RESOLUTION_METHODS: frozenset[str] = frozenset(
+    {"revise", "order", "combine", "refer"}
+)
+
 # `conversation` lifecycle (DEC-314, PI-073 redesign — supersedes DEC-131).
 # Six statuses; forward-only (planned → in_flight) with four terminals
 # (complete, cancelled, not_started, superseded). Conversations are now
@@ -690,6 +715,11 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "learning_derived_from",
         "learning_contradicted_by",
         "learning_promoted_to",
+        # PI-134 reconciliation gate (DEC-400, REQ-032/034/036). The finding's
+        # two outbound kinds plus the now-activatable learning_derived_from →
+        # finding pair (the D-δ6 target that PI-122 left waiting on this entity).
+        "finding_relates_to",
+        "finding_resolved_by",
     }
 )
 
@@ -758,6 +788,11 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "skill",
         "governance_rule",
         "learning",
+        # PI-134 reconciliation gate (DEC-400). A cross-area coherence finding
+        # (FND-) recorded at the end of Design; its open blocking instances hold
+        # the Develop gate. Engagement-scoped (belongs to a Planning Item's
+        # Design), unlike the four nullable-scope registry entities above.
+        "finding",
     }
 )
 
@@ -1020,12 +1055,30 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         "work_task",
         "decision",
         "test_spec",
+        # PI-134: now that the finding entity is live, recurring findings can
+        # be the evidence a learning is derived from (REQ-036, the D-δ6 target).
+        "finding",
     ):
         kinds.add("learning_derived_from")
     if source_type == "learning" and target_type == "work_task":
         kinds.add("learning_contradicted_by")
     if source_type == "learning" and target_type in ("skill", "governance_rule"):
         kinds.add("learning_promoted_to")
+    # PI-134 reconciliation gate (DEC-400, REQ-032/034). A finding relates to the
+    # specifications it involves (the Planning Item's Design products) and, once
+    # settled, records what resolved it.
+    if source_type == "finding" and target_type in (
+        "planning_item",
+        "workstream",
+        "work_task",
+    ):
+        kinds.add("finding_relates_to")
+    if source_type == "finding" and target_type in (
+        "decision",
+        "work_task",
+        "workstream",
+    ):
+        kinds.add("finding_resolved_by")
     return frozenset(kinds)
 
 

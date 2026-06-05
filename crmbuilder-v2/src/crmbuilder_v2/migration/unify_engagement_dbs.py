@@ -59,6 +59,8 @@ IDENTIFIER_PK_TABLES: tuple[str, ...] = (
     "reference_books", "crm_candidates", "manual_configs", "test_specs",
     "requirements", "deposit_events", "close_out_payloads", "commits",
     "engagement_areas",
+    # PI-134 reconciliation gate (DEC-400) — identifier-PK scoped table.
+    "findings",
 )
 
 # Class B + C — surrogate autoincrement ``id`` PK. The integer id is reassigned

@@ -348,7 +348,11 @@ class ParallelCoordinatingRuntime:
                 blockers = dispatcher._blocker_statuses(
                     cfg.api_base, cfg.engagement, tid
                 )
-                if dispatcher.is_work_task_eligible(wt, blockers):
+                # PI-134: the reconciliation gate withholds a Develop Work Task
+                # whose Design is incomplete or has an open blocking finding.
+                if dispatcher.is_work_task_eligible(
+                    wt, blockers
+                ) and self._l1._reconciliation_gate_open(wt):
                     out.append(tid)
             return out
         eligible = dispatcher.eligible_work_tasks(cfg.api_base, cfg.engagement)
@@ -357,6 +361,9 @@ class ParallelCoordinatingRuntime:
             eligible = [
                 w for w in eligible if w["work_task_identifier"] in members
             ]
+        eligible = [
+            w for w in eligible if self._l1._reconciliation_gate_open(w)
+        ]
         return [w["work_task_identifier"] for w in eligible]
 
     def _blockers_of(self, work_task_id: str) -> set[str]:
