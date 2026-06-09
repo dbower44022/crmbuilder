@@ -14,6 +14,11 @@ from typing import Any
 from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
 from espo_impl.core.condition_expression import render_condition
 from espo_impl.core.field_manager import _condition_has_role_clauses
+from espo_impl.core.layout_types import (
+    LayoutClass,
+    is_deploy_deferred,
+    structure_class,
+)
 from espo_impl.core.models import (
     EntityDefinition,
     EntityLayoutStatus,
@@ -150,6 +155,25 @@ class LayoutManager:
         """
         prefix = f"{yaml_name}.{layout_type}"
 
+        # Portal layout variants are recognized but deploy-deferred — no
+        # validated write fidelity yet. Surface NOT_SUPPORTED.
+        if is_deploy_deferred(layout_type):
+            reason = (
+                f"Portal layout '{layout_type}' is captured by audit but "
+                f"deploy is deferred. Configure manually in the portal's "
+                f"Layout Manager."
+            )
+            self.output_fn(
+                f"[LAYOUT]  {prefix} ... NOT SUPPORTED — {reason}",
+                "yellow",
+            )
+            return LayoutResult(
+                entity=yaml_name,
+                layout_type=layout_type,
+                status=EntityLayoutStatus.NOT_SUPPORTED,
+                error=reason,
+            )
+
         # Variant-form layouts (§12.5.2) cannot be deployed natively
         # on EspoCRM 9.x (DEC-6 — no per-role layout binding without
         # Layout Sets + Teams). Skip the write and emit
@@ -251,7 +275,7 @@ class LayoutManager:
         custom_field_names: set[str],
         auto_place_name: bool,
         entity_name: str = "",
-    ) -> list[dict[str, Any]] | list[Any]:
+    ) -> list[Any] | dict[str, Any]:
         """Convert a LayoutSpec to the EspoCRM API payload.
 
         :param layout_spec: Layout specification.
@@ -263,12 +287,19 @@ class LayoutManager:
             explicitly in YAML).
         :param entity_name: Owning entity name (used to record
             NOT_SUPPORTED panel-level visibleWhen items per DEC-6).
-        :returns: API payload (list of panels for detail/edit, list of columns for list).
+        :returns: API payload — list of panels (PANELS), list of columns
+            (COLUMNS), list of names (FIELD_LIST), or a name→cfg dict
+            (PANEL_MAP).
         """
-        if layout_spec.layout_type == "list":
-            return self._build_list_payload(
+        cls = structure_class(layout_spec.layout_type)
+        if cls is LayoutClass.COLUMNS:
+            return self._build_list_payload(layout_spec, custom_field_names)
+        if cls is LayoutClass.FIELD_LIST:
+            return self._build_field_list_payload(
                 layout_spec, custom_field_names
             )
+        if cls is LayoutClass.PANEL_MAP:
+            return self._build_panel_map_payload(layout_spec)
         return self._build_detail_payload(
             layout_spec, field_definitions, custom_field_names,
             auto_place_name=auto_place_name,
@@ -280,7 +311,7 @@ class LayoutManager:
         layout_spec: LayoutSpec,
         custom_field_names: set[str],
     ) -> list[dict[str, Any]]:
-        """Build a list layout payload.
+        """Build a COLUMNS-class payload (list / listSmall / kanban).
 
         :param layout_spec: Layout specification with columns.
         :param custom_field_names: Set of custom field names.
@@ -294,8 +325,50 @@ class LayoutManager:
             entry: dict[str, Any] = {"name": api_name}
             if col.width is not None:
                 entry["width"] = col.width
+            # Preserve any other EspoCRM column attributes (link,
+            # notSortable, align, view, …) for lossless round-trip.
+            for key, val in col.attrs.items():
+                if key not in ("name", "width"):
+                    entry[key] = val
             result.append(entry)
         return result
+
+    def _build_field_list_payload(
+        self,
+        layout_spec: LayoutSpec,
+        custom_field_names: set[str],
+    ) -> list[str]:
+        """Build a FIELD_LIST payload (filters / massUpdate / relationships).
+
+        Field names are c-prefix normalized; relationship link names (not in
+        ``custom_field_names``) pass through unchanged.
+
+        :param layout_spec: Layout specification with ``raw`` list of names.
+        :param custom_field_names: Set of custom field names.
+        :returns: Flat list of API name strings.
+        """
+        names = layout_spec.raw if isinstance(layout_spec.raw, list) else []
+        return [
+            self._resolve_field_name(n, custom_field_names)
+            for n in names
+            if isinstance(n, str)
+        ]
+
+    def _build_panel_map_payload(
+        self,
+        layout_spec: LayoutSpec,
+    ) -> dict[str, Any]:
+        """Build a PANEL_MAP payload (side / bottom relationship panels).
+
+        The mapping is emitted verbatim — keys are relationship link names
+        (deterministic from the ``relationships:`` block) plus the
+        ``_delimiter_`` / ``_tabBreak_N`` meta keys, so no normalization is
+        needed for cross-instance portability.
+
+        :param layout_spec: Layout specification with ``raw`` mapping.
+        :returns: The ``{name: cfg}`` mapping.
+        """
+        return dict(layout_spec.raw) if isinstance(layout_spec.raw, dict) else {}
 
     def _build_detail_payload(
         self,
@@ -398,6 +471,16 @@ class LayoutManager:
             "dynamicLogicStyled": None,
             "rows": api_rows,
         }
+        # Pass through any preserved panel attributes (noteText, noteStyle,
+        # dynamicLogicStyled, …) for lossless round-trip — without letting
+        # them clobber the first-class keys computed above.
+        first_class = {
+            "customLabel", "tabBreak", "tabLabel", "style", "hidden",
+            "dynamicLogicVisible", "rows",
+        }
+        for key, val in panel.attrs.items():
+            if key not in first_class:
+                panel_dict[key] = val
         return panel_dict
 
     def _expand_tabs(
@@ -552,7 +635,15 @@ class LayoutManager:
                     )
                     api_row.append({"name": api_name})
                 elif isinstance(cell, dict):
-                    api_row.append(cell)
+                    # Preserve extra cell attributes (fullWidth, noLabel,
+                    # view, …) and c-prefix the embedded field name.
+                    new_cell = dict(cell)
+                    cell_name = new_cell.get("name")
+                    if isinstance(cell_name, str):
+                        new_cell["name"] = self._resolve_field_name(
+                            cell_name, custom_field_names
+                        )
+                    api_row.append(new_cell)
                 else:
                     api_row.append(False)
             api_rows.append(api_row)
@@ -722,6 +813,15 @@ class LayoutManager:
         :param current: Current layout from API.
         :returns: True if they match structurally.
         """
+        # PANEL_MAP (side/bottom panels) payloads are dicts. EspoCRM
+        # auto-includes built-in panels (activities/history/stream) in the
+        # read-back, so match on subset: every key we declare is present and
+        # equal. Keeps re-runs idempotent without fighting platform defaults.
+        if isinstance(desired, dict):
+            if not isinstance(current, dict):
+                return False
+            return all(current.get(k) == v for k, v in desired.items())
+
         if not isinstance(current, list):
             return False
         if len(desired) != len(current):
@@ -740,8 +840,14 @@ class LayoutManager:
                     return False
                 if d_item.get("width") != c_item.get("width"):
                     return False
-                # Compare panel: check customLabel and rows
-                if d_item.get("customLabel") != c_item.get("customLabel"):
+                # Compare panel label and rows. EspoCRM stores the panel
+                # title under `customLabel` (customized layouts) or `label`
+                # (factory defaults), and uses "" / null interchangeably for
+                # "no title" — treat them as equivalent so a redeploy of an
+                # audited default layout is a clean no-op.
+                d_label = d_item.get("customLabel") or d_item.get("label") or ""
+                c_label = c_item.get("customLabel") or c_item.get("label") or ""
+                if d_label != c_label:
                     return False
                 d_rows = d_item.get("rows", [])
                 c_rows = c_item.get("rows", [])
@@ -767,10 +873,13 @@ class LayoutManager:
                         )
                         if d_name != c_name:
                             return False
-                # Check tabBreak/tabLabel
-                if d_item.get("tabBreak") != c_item.get("tabBreak"):
+                # Check tabBreak/tabLabel, treating absent / false / null /
+                # "" as equivalent (factory layouts omit these keys).
+                if bool(d_item.get("tabBreak")) != bool(c_item.get("tabBreak")):
                     return False
-                if d_item.get("tabLabel") != c_item.get("tabLabel"):
+                if (d_item.get("tabLabel") or "") != (
+                    c_item.get("tabLabel") or ""
+                ):
                     return False
             elif d_item != c_item:
                 return False

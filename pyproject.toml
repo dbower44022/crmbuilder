@@ -40,6 +40,8 @@ crmbuilder-v2-ui = "crmbuilder_v2.cli:run_ui"
 crmbuilder-v2-token = "crmbuilder_v2.cli:run_token_admin"
 crmbuilder-v2-runtime = "crmbuilder_v2.runtime.coordinating_runtime:main"
 crmbuilder-v2-runtime-pool = "crmbuilder_v2.runtime.parallel_runtime:main"
+crmbuilder-v2-ado = "crmbuilder_v2.runtime.ado_runtime:main"
+crmbuilder-v2-ado-pm = "crmbuilder_v2.runtime.ado_runtime:project_main"
 
 [build-system]
 requires = ["hatchling"]

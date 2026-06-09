@@ -32,6 +32,11 @@ from espo_impl.core.condition_expression import (
     LeafClause,
     render_condition,
 )
+from espo_impl.core.layout_types import (
+    PANEL_MAP_LAYOUTS,
+    LayoutClass,
+    structure_class,
+)
 from espo_impl.core.models import ScopeAccess, SystemPermissions
 
 logger = logging.getLogger(__name__)
@@ -52,6 +57,19 @@ class AuditOptions:
     :param include_native_custom_fields: Include custom fields on native entities.
     :param include_detail_layouts: Capture detail layouts.
     :param include_list_layouts: Capture list layouts.
+    :param include_edit_layout: Capture the edit layout (when separately
+        defined; EspoCRM derives it from detail otherwise).
+    :param include_small_layouts: Capture detailSmall / listSmall layouts.
+    :param include_detail_convert: Capture the detailConvert (lead-convert)
+        layout.
+    :param include_kanban: Capture the kanban layout.
+    :param include_search_massupdate: Capture the filters (search) and
+        massUpdate layouts.
+    :param include_relationships_layout: Capture the ``relationships`` layout
+        (relationship-panel ordering) — distinct from ``include_relationships``
+        which discovers relationship edges.
+    :param include_side_bottom_panels: Capture the side/bottom relationship
+        panel placement layouts.
     :param include_relationships: Discover relationships.
     :param include_native_fields: Include native fields (normally excluded).
     :param include_security: Discover roles and teams (DEC-180).
@@ -67,6 +85,13 @@ class AuditOptions:
     include_native_custom_fields: bool = True
     include_detail_layouts: bool = True
     include_list_layouts: bool = True
+    include_edit_layout: bool = True
+    include_small_layouts: bool = True
+    include_detail_convert: bool = True
+    include_kanban: bool = True
+    include_search_massupdate: bool = True
+    include_relationships_layout: bool = True
+    include_side_bottom_panels: bool = True
     include_relationships: bool = True
     include_native_fields: bool = False
     include_security: bool = True
@@ -87,10 +112,16 @@ class FieldAuditResult:
 
 @dataclass
 class LayoutAuditResult:
-    """Result of auditing a layout."""
+    """Result of auditing a layout.
+
+    ``data`` is the value emitted under the layout type in YAML: a
+    ``{"panels": [...]}`` / ``{"columns": [...]}`` dict for PANELS/COLUMNS,
+    a bare ``list[str]`` for FIELD_LIST, or the ``{name: cfg}`` dict for
+    PANEL_MAP.
+    """
 
     layout_type: str
-    data: dict[str, Any] = field(default_factory=dict)
+    data: Any = field(default_factory=dict)
 
 
 @dataclass
@@ -433,10 +464,8 @@ class AuditManager:
             )
             self._extract_fields(entity, report)
 
-            if self._options.include_detail_layouts:
-                self._extract_layout(entity, "detail", report)
-            if self._options.include_list_layouts:
-                self._extract_layout(entity, "list", report)
+            for layout_type in self._layout_types_to_extract():
+                self._extract_layout(entity, layout_type, report)
 
         # Step 3: Discover relationships
         relationships: list[RelationshipAuditResult] = []
@@ -705,6 +734,35 @@ class AuditManager:
     # Layout extraction
     # ------------------------------------------------------------------
 
+    def _layout_types_to_extract(self) -> list[str]:
+        """Build the ordered list of layout types to audit per the options.
+
+        :returns: Layout type names, in a stable order.
+        """
+        o = self._options
+        plan: list[str] = []
+        if o.include_detail_layouts:
+            plan.append("detail")
+        if o.include_edit_layout:
+            plan.append("edit")
+        if o.include_detail_convert:
+            plan.append("detailConvert")
+        if o.include_small_layouts:
+            plan.append("detailSmall")
+        if o.include_list_layouts:
+            plan.append("list")
+        if o.include_small_layouts:
+            plan.append("listSmall")
+        if o.include_kanban:
+            plan.append("kanban")
+        if o.include_search_massupdate:
+            plan.extend(("filters", "massUpdate"))
+        if o.include_relationships_layout:
+            plan.append("relationships")
+        if o.include_side_bottom_panels:
+            plan.extend(sorted(PANEL_MAP_LAYOUTS))
+        return plan
+
     def _extract_layout(
         self,
         entity: EntityAuditResult,
@@ -713,32 +771,45 @@ class AuditManager:
     ) -> None:
         """Fetch and reverse-map a layout for an entity.
 
+        Dispatches by the type's structure class. An empty / ``false``
+        response means the layout is not separately defined (e.g. ``edit``
+        derives from ``detail``) and is skipped silently.
+
         :param entity: Entity to extract layout for.
-        :param layout_type: "detail" or "list".
+        :param layout_type: Any recognized EspoCRM layout type.
         :param report: Report to append errors/warnings to.
         """
-        status, layout_data = self._client.get_layout(entity.espo_name, layout_type)
-        if status != 200 or layout_data is None:
-            msg = f"{entity.yaml_name}: failed to fetch {layout_type} layout (HTTP {status})"
+        status, layout_data = self._client.get_layout(
+            entity.espo_name, layout_type
+        )
+        if status != 200:
+            msg = (
+                f"{entity.yaml_name}: failed to fetch {layout_type} "
+                f"layout (HTTP {status})"
+            )
             report.warnings.append(msg)
             self._cb(f"[AUDIT]    WARNING: {msg}", "yellow")
             return
+        # Empty / derived layout (false, [], {}, null) — nothing to capture.
+        if not layout_data:
+            return
 
         custom_names = self._custom_field_names.get(entity.espo_name, set())
+        cls = structure_class(layout_type)
 
-        if layout_type == "list":
+        if cls is LayoutClass.COLUMNS:
             columns = self._reverse_list_layout(layout_data, custom_names)
             if columns:
                 entity.layouts.append(LayoutAuditResult(
-                    layout_type="list",
+                    layout_type=layout_type,
                     data={"columns": columns},
                 ))
                 self._cb(
-                    f"[AUDIT]    {entity.yaml_name} — list layout "
+                    f"[AUDIT]    {entity.yaml_name} — {layout_type} layout "
                     f"({len(columns)} columns)",
                     "white",
                 )
-        else:
+        elif cls is LayoutClass.PANELS:
             panels = self._reverse_detail_layout(layout_data, custom_names)
             if panels:
                 total_rows = sum(len(p.get("rows", [])) for p in panels)
@@ -749,6 +820,30 @@ class AuditManager:
                 self._cb(
                     f"[AUDIT]    {entity.yaml_name} — {layout_type} layout "
                     f"({len(panels)} panels, {total_rows} rows)",
+                    "white",
+                )
+        elif cls is LayoutClass.FIELD_LIST:
+            names = self._reverse_field_list_layout(layout_data, custom_names)
+            if names:
+                entity.layouts.append(LayoutAuditResult(
+                    layout_type=layout_type,
+                    data=names,
+                ))
+                self._cb(
+                    f"[AUDIT]    {entity.yaml_name} — {layout_type} layout "
+                    f"({len(names)} names)",
+                    "white",
+                )
+        elif cls is LayoutClass.PANEL_MAP:
+            mapping = self._reverse_panel_map_layout(layout_data)
+            if mapping:
+                entity.layouts.append(LayoutAuditResult(
+                    layout_type=layout_type,
+                    data=mapping,
+                ))
+                self._cb(
+                    f"[AUDIT]    {entity.yaml_name} — {layout_type} layout "
+                    f"({len(mapping)} panels)",
                     "white",
                 )
 
@@ -809,31 +904,57 @@ class AuditManager:
             # Rows
             raw_rows = panel_data.get("rows", [])
             if isinstance(raw_rows, list):
-                rows: list[list[str | None]] = []
+                rows: list[list[Any]] = []
                 for raw_row in raw_rows:
                     if not isinstance(raw_row, list):
                         continue
-                    row: list[str | None] = []
+                    row: list[Any] = []
                     for cell in raw_row:
-                        if isinstance(cell, dict) and "name" in cell:
-                            row.append(
-                                self._reverse_field_name(cell["name"], custom_names)
-                            )
-                        elif cell is False or cell is None:
-                            row.append(None)
-                        elif isinstance(cell, str):
-                            row.append(
-                                self._reverse_field_name(cell, custom_names)
-                            )
-                        else:
-                            row.append(None)
+                        row.append(
+                            self._reverse_cell(cell, custom_names)
+                        )
                     rows.append(row)
                 if rows:
                     panel["rows"] = rows
 
+            # Preserve any other panel keys (noteText, noteStyle,
+            # dynamicLogicStyled, …) verbatim for lossless round-trip. The
+            # loader stores them in PanelSpec.attrs and the builder re-emits.
+            handled = {
+                "customLabel", "label", "tabBreak", "tabLabel", "style",
+                "hidden", "dynamicLogicVisible", "rows", "tabs",
+            }
+            for key, val in panel_data.items():
+                if key not in handled:
+                    panel[key] = val
+
             panels.append(panel)
 
         return panels
+
+    def _reverse_cell(self, cell: Any, custom_names: set[str]) -> Any:
+        """Reverse one detail-layout cell to YAML form.
+
+        A plain ``{"name": field}`` cell collapses to the bare field-name
+        string; a cell carrying extra attributes (``fullWidth``, ``noLabel``,
+        ``view`` …) is preserved as a dict with the field name reversed.
+
+        :param cell: Raw cell from the API.
+        :param custom_names: Custom field API names for this entity.
+        :returns: ``None``, a field-name string, or an attribute dict.
+        """
+        if cell is False or cell is None:
+            return None
+        if isinstance(cell, str):
+            return self._reverse_field_name(cell, custom_names)
+        if isinstance(cell, dict) and "name" in cell:
+            reversed_name = self._reverse_field_name(cell["name"], custom_names)
+            if len(cell) == 1:
+                return reversed_name
+            new_cell = dict(cell)
+            new_cell["name"] = reversed_name
+            return new_cell
+        return None
 
     def _reverse_list_layout(
         self, layout_data: Any, custom_names: set[str]
@@ -860,9 +981,44 @@ class AuditManager:
             width = col_data.get("width")
             if width is not None:
                 col["width"] = width
+            # Preserve other column attributes (link, notSortable, align,
+            # view, …) verbatim for lossless round-trip.
+            for key, val in col_data.items():
+                if key not in ("name", "width"):
+                    col[key] = val
             columns.append(col)
 
         return columns
+
+    def _reverse_field_list_layout(
+        self, layout_data: Any, custom_names: set[str]
+    ) -> list[str]:
+        """Reverse a FIELD_LIST layout (filters / massUpdate / relationships).
+
+        :param layout_data: Raw list of name strings from the API.
+        :param custom_names: Custom field API names for this entity.
+        :returns: List of YAML names (field names reversed; relationship link
+            names pass through).
+        """
+        if not isinstance(layout_data, list):
+            return []
+        return [
+            self._reverse_field_name(n, custom_names)
+            for n in layout_data
+            if isinstance(n, str)
+        ]
+
+    def _reverse_panel_map_layout(self, layout_data: Any) -> dict[str, Any]:
+        """Reverse a PANEL_MAP layout (side / bottom relationship panels).
+
+        The mapping is preserved verbatim — its keys are relationship link
+        names plus ``_delimiter_`` / ``_tabBreak_N`` meta keys, all
+        deterministic from the configuration.
+
+        :param layout_data: Raw ``{name: cfg}`` mapping from the API.
+        :returns: The mapping (a shallow copy), or ``{}``.
+        """
+        return dict(layout_data) if isinstance(layout_data, dict) else {}
 
     def _reverse_dynamic_logic(
         self, dlv: dict[str, Any], custom_names: set[str]

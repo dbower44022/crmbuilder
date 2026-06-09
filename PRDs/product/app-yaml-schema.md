@@ -1618,20 +1618,58 @@ Layouts are defined under a `layout` key within an entity block. See
 
 ```yaml
 layout:
-  detail:
+  detail:                 # PANELS class
     panels:
       - ...
-  list:
+  list:                   # COLUMNS class
     columns:
       - ...
+  filters:                # FIELD_LIST class — search-panel fields
+    - lastName
+    - account
+  bottomPanelsDetail:     # PANEL_MAP class — relationship-panel placement
+    stream: { index: 8 }
+    activities: { disabled: true }
 ```
 
-| Layout Type | Description |
-|---|---|
-| `detail` | Fields shown when viewing a record. Panel and tab structure |
-| `list` | Columns shown in the entity list view |
+The engine captures (audit) and deploys (configure) **every layout type EspoCRM
+exposes**, so an audit → deploy → re-audit cycle is lossless. Each type belongs
+to one of four **structure classes**, which determines the YAML shape of its
+value:
 
-The value at each `layout.{type}` key may be either:
+| Layout Type | Class | YAML value | Controls |
+|---|---|---|---|
+| `detail` | PANELS | `{panels: [...]}` | Record detail view |
+| `edit` | PANELS | `{panels: [...]}` | Edit form (derives from `detail` if omitted) |
+| `detailSmall` | PANELS | `{panels: [...]}` | Quick-view / modal detail |
+| `detailConvert` | PANELS | `{panels: [...]}` | Lead-convert form |
+| `list` | COLUMNS | `{columns: [...]}` | List-view columns |
+| `listSmall` | COLUMNS | `{columns: [...]}` | Relationship-panel list |
+| `kanban` | COLUMNS | `{columns: [...]}` | Kanban card columns |
+| `filters` | FIELD_LIST | `[name, ...]` | Search-panel fields |
+| `massUpdate` | FIELD_LIST | `[name, ...]` | Mass-update form fields |
+| `relationships` | FIELD_LIST | `[link, ...]` | Relationship-panel ordering |
+| `sidePanels{Detail,Edit,DetailSmall,EditSmall}` | PANEL_MAP | `{name: cfg}` | Side panel placement |
+| `bottomPanels{Detail,Edit,DetailSmall,EditSmall}` | PANEL_MAP | `{name: cfg}` | Bottom panel placement |
+
+**FIELD_LIST** values are a flat list of field names (`filters`/`massUpdate`) or
+relationship link names (`relationships`). **PANEL_MAP** values are a mapping of
+panel name → config object (`{index: N}`, `{disabled: true}`,
+`{index, tabBreak, tabLabel}`, `{index, sticked}`) with optional `_delimiter_`
+and `_tabBreak_N` meta keys. Both are stored and re-emitted verbatim; field
+names get c-prefix normalization, relationship/panel names are deterministic and
+pass through unchanged. PANELS and COLUMNS values preserve any extra EspoCRM
+attributes (panel `noteText`/`noteStyle`/`dynamicLogicStyled`; cell
+`fullWidth`/`noLabel`/`view`; column `link`/`notSortable`/`align`/`view`) for
+lossless round-trip. The canonical structure registry is
+`espo_impl/core/layout_types.py`; reference fixtures captured from a live
+instance are in `tests/fixtures/layouts/`.
+
+**Not yet supported:** portal layout variants (`*Portal`) are recognized and
+deploy-deferred (audit-captured only); per-team/role **Layout Sets** are out of
+scope (see Section 12.5.2 and DEC-6).
+
+The value at a PANELS or COLUMNS `layout.{type}` key may be either:
 
 - **A single layout block** (the form shown above) — applies to all
   roles. This is the only form available in v1.0–v1.2.5 and remains

@@ -321,8 +321,11 @@ def patch_work_task(
 
 
 def claim_work_task(session: Session, identifier: str, *, claimed_by: str) -> dict:
-    """Atomically claim a task for an agent (sets claimed_by/claimed_at).
+    """Atomically claim a task for an agent.
 
+    Sets ``claimed_by``/``claimed_at`` and advances the lifecycle ``Ready →
+    Claimed`` (PI-137) so a claimed task carries the ``Claimed`` status the
+    lifecycle defines, not a still-``Ready`` row with a claimant attached.
     Idempotent for the same claimant; raises ConflictError if already claimed
     by a different agent.
     """
@@ -341,6 +344,8 @@ def claim_work_task(session: Session, identifier: str, *, claimed_by: str) -> di
     before = to_dict(row)
     row.work_task_claimed_by = claimed_by
     row.work_task_claimed_at = datetime.now(UTC)
+    if row.work_task_status == "Ready":
+        _apply_status(row, "Claimed")
     session.flush()
     after = to_dict(row)
     emit(
