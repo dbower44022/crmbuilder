@@ -136,10 +136,20 @@ class TabSpec:
 
 @dataclass
 class ColumnSpec:
-    """A column in a list view layout."""
+    """A column in a list view layout.
+
+    :param field: The (natural, un-prefixed) field name shown in the column.
+    :param width: Optional column width as a percentage.
+    :param attrs: Passthrough of any other EspoCRM column attributes
+        (``link``, ``align``, ``notSortable``, ``view``, ``widthPx``,
+        ``hidden`` …) preserved verbatim for lossless round-trip. Field-name
+        normalization (c-prefix) is applied to ``field`` only; ``attrs`` is
+        emitted/compared as-is.
+    """
 
     field: str
     width: int | None = None
+    attrs: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -157,6 +167,9 @@ class PanelSpec:
     rows: list | None = None
     tabs: list[TabSpec] | None = None
     description: str | None = None
+    attrs: dict = field(default_factory=dict)
+    """Passthrough of other EspoCRM panel keys (``noteText``, ``noteStyle``,
+    ``dynamicLogicStyled`` …) preserved verbatim for lossless round-trip."""
 
 
 @dataclass
@@ -193,24 +206,35 @@ class LayoutVariant:
 
 @dataclass
 class LayoutSpec:
-    """Layout definition for one layout type (detail, edit, or list).
+    """Layout definition for one layout type.
 
-    Carries EITHER ``panels``/``columns`` (single-block form,
-    backward-compatible) OR ``variants`` (variant form, per
-    §12.5.2). Never both — the loader enforces this distinction
-    structurally.
+    The carried payload depends on the type's structure class
+    (``espo_impl.core.layout_types``):
 
-    :param layout_type: ``detail``, ``edit``, or ``list``.
-    :param panels: Panel list for single-block detail/edit layouts.
-    :param columns: Column list for single-block list layouts.
-    :param variants: List of LayoutVariant for variant-form
-        layouts. When present, ``panels`` and ``columns`` are
-        empty / None; the variants carry the per-role payload.
+    - **PANELS** (``detail``/``edit``/``detailSmall``/``detailConvert``) →
+      ``panels``.
+    - **COLUMNS** (``list``/``listSmall``/``kanban``) → ``columns``.
+    - **FIELD_LIST** (``filters``/``massUpdate``/``relationships``) → ``raw``
+      holds a ``list[str]`` of names.
+    - **PANEL_MAP** (``sidePanels*``/``bottomPanels*``) → ``raw`` holds the
+      ``{name: cfg}`` mapping verbatim.
+
+    A PANELS/COLUMNS layout may instead carry ``variants`` (variant form,
+    §12.5.2) — never together with ``panels``/``columns``.
+
+    :param layout_type: Any recognized EspoCRM layout type.
+    :param panels: Panel list for PANELS-class layouts.
+    :param columns: Column list for COLUMNS-class layouts.
+    :param raw: Verbatim structure for FIELD_LIST (list) / PANEL_MAP (dict)
+        layouts — passthrough fidelity with field-name normalization applied
+        at build/reverse time only.
+    :param variants: LayoutVariant list for variant-form layouts.
     """
 
     layout_type: str
     panels: list[PanelSpec] | None = None
     columns: list[ColumnSpec] | None = None
+    raw: Any = None
     variants: list[LayoutVariant] = field(default_factory=list)
 
     def has_variants(self) -> bool:

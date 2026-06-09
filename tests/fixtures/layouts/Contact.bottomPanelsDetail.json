@@ -1,0 +1,45 @@
+{
+  "_delimiter_": {
+    "disabled": true
+  },
+  "_tabBreak_0": {
+    "index": 0,
+    "tabBreak": true,
+    "tabLabel": "Contact Info"
+  },
+  "_tabBreak_1": {
+    "index": 7,
+    "tabBreak": true,
+    "tabLabel": "History"
+  },
+  "_tabBreak_2": {
+    "index": 3,
+    "tabBreak": true,
+    "tabLabel": "Client Info"
+  },
+  "activities": {
+    "disabled": true
+  },
+  "cEngagementsAsContact": {
+    "index": 4
+  },
+  "cEvents": {
+    "index": 1
+  },
+  "cPresenterEvents": {
+    "index": 2
+  },
+  "cPrimaryEngagementsAsContact": {
+    "index": 5
+  },
+  "cSessionsAttended": {
+    "index": 6
+  },
+  "history": {
+    "index": 9
+  },
+  "stream": {
+    "index": 8,
+    "sticked": false
+  }
+}

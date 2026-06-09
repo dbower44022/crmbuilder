@@ -14,6 +14,12 @@ from espo_impl.core.condition_expression import (
     validate_condition,
 )
 from espo_impl.core.formula_parser import extract_field_refs, parse_arithmetic
+from espo_impl.core.layout_types import (
+    KNOWN_LAYOUT_TYPES,
+    LayoutClass,
+    is_deploy_deferred,
+    structure_class,
+)
 from espo_impl.core.models import (
     SCOPE_ACCESS_VALUES,
     SUPPORTED_ENTITY_TYPES,
@@ -79,7 +85,8 @@ FOREIGN_TYPES: set[str] = {"foreign"}
 
 VALID_ACTIONS: set[str] = {"create", "delete", "delete_and_create"}
 
-VALID_LAYOUT_TYPES: set[str] = {"detail", "edit", "list"}
+# All recognized EspoCRM layout types — see espo_impl.core.layout_types.
+VALID_LAYOUT_TYPES: frozenset[str] = KNOWN_LAYOUT_TYPES
 
 VALID_LINK_TYPES: set[str] = {
     "oneToMany",
@@ -599,6 +606,26 @@ class ConfigLoader:
         :param deprecation_warnings: Accumulator for deprecation messages.
         :returns: LayoutSpec instance.
         """
+        cls = structure_class(layout_type)
+
+        # FIELD_LIST (filters/massUpdate/relationships): a bare list of names,
+        # or a {fields: [...]} wrapper. Stored verbatim; normalized at build.
+        if cls is LayoutClass.FIELD_LIST:
+            if isinstance(data, list):
+                raw = list(data)
+            elif isinstance(data, dict):
+                raw = list(data.get("fields", []))
+            else:
+                raw = []
+            return LayoutSpec(layout_type=layout_type, raw=raw)
+
+        # PANEL_MAP (side/bottom panels): a {name: cfg} mapping, stored verbatim.
+        if cls is LayoutClass.PANEL_MAP:
+            raw_map = dict(data) if isinstance(data, dict) else {}
+            return LayoutSpec(layout_type=layout_type, raw=raw_map)
+
+        # PANELS / COLUMNS below. A list value here is the variant form
+        # (§12.5.2), which only applies to those classes.
         if isinstance(data, list):
             return self._parse_layout_variants(
                 layout_type,
@@ -607,7 +634,7 @@ class ConfigLoader:
                 deprecation_warnings=deprecation_warnings,
             )
 
-        if layout_type == "list":
+        if cls is LayoutClass.COLUMNS:
             columns: list[ColumnSpec] = []
             for col_data in data.get("columns", []):
                 columns.append(self._parse_column(col_data))
@@ -615,7 +642,7 @@ class ConfigLoader:
                 layout_type=layout_type, columns=columns
             )
 
-        # detail or edit layout
+        # PANELS class (detail / edit / detailSmall / detailConvert)
         panels: list[PanelSpec] = []
         for panel_data in data.get("panels", []):
             if isinstance(panel_data, dict):
@@ -729,6 +756,12 @@ class ConfigLoader:
             except ValueError:
                 pass  # Validation will catch this
 
+        known_keys = {
+            "label", "tabBreak", "tabLabel", "style", "hidden",
+            "dynamicLogicVisible", "visibleWhen", "rows", "tabs", "description",
+        }
+        attrs = {k: v for k, v in data.items() if k not in known_keys}
+
         return PanelSpec(
             label=data.get("label", ""),
             tabBreak=data.get("tabBreak", False),
@@ -741,6 +774,7 @@ class ConfigLoader:
             rows=data.get("rows"),
             tabs=tabs,
             description=data.get("description"),
+            attrs=attrs,
         )
 
     def _parse_tab(self, data: dict[str, Any]) -> TabSpec:
@@ -763,9 +797,13 @@ class ConfigLoader:
         """
         if isinstance(data, str):
             return ColumnSpec(field=data)
+        attrs = {
+            k: v for k, v in data.items() if k not in ("field", "width")
+        }
         return ColumnSpec(
             field=data.get("field", ""),
             width=data.get("width"),
+            attrs=attrs,
         )
 
     def _validate_layout(
@@ -788,24 +826,58 @@ class ConfigLoader:
             errors.append(f"{prefix}: unsupported layout type '{layout_type}'")
             return errors
 
+        # Portal variants are recognized but deploy-deferred (NOT_SUPPORTED
+        # at deploy); accept the YAML without further checks.
+        if is_deploy_deferred(layout_type):
+            return errors
+
         # Variant-form layouts (§12.5.2) are NOT_SUPPORTED at deploy
         # per DEC-6, but the program-level coverage rule still runs
         # via _validate_layout_variants (called from validate_program).
         if layout_spec.has_variants():
             return errors
 
-        if layout_type == "list":
-            if not layout_spec.columns:
-                errors.append(f"{prefix}: list layout must have 'columns'")
-            if layout_spec.panels:
+        cls = structure_class(layout_type)
+
+        # FIELD_LIST (filters/massUpdate/relationships): a list of name strings.
+        if cls is LayoutClass.FIELD_LIST:
+            if not isinstance(layout_spec.raw, list):
                 errors.append(
-                    f"{prefix}: list layout must not have 'panels'"
+                    f"{prefix}: {layout_type} layout must be a list of "
+                    f"field/relationship names"
+                )
+            elif not all(isinstance(n, str) and n for n in layout_spec.raw):
+                errors.append(
+                    f"{prefix}: every {layout_type} entry must be a "
+                    f"non-empty name string"
                 )
             return errors
 
-        # detail / edit layout
+        # PANEL_MAP (side/bottom panels): a {name: cfg} mapping.
+        if cls is LayoutClass.PANEL_MAP:
+            if not isinstance(layout_spec.raw, dict):
+                errors.append(
+                    f"{prefix}: {layout_type} layout must be a mapping of "
+                    f"panel names to configuration objects"
+                )
+            return errors
+
+        if cls is LayoutClass.COLUMNS:
+            if not layout_spec.columns:
+                errors.append(
+                    f"{prefix}: {layout_type} layout must have 'columns'"
+                )
+            if layout_spec.panels:
+                errors.append(
+                    f"{prefix}: {layout_type} layout must not have 'panels'"
+                )
+            return errors
+
+        # PANELS class (detail / edit / detailSmall / detailConvert)
         if not layout_spec.panels:
-            errors.append(f"{prefix}: detail/edit layout must have 'panels'")
+            errors.append(
+                f"{prefix}: {layout_type} layout must have 'panels'"
+            )
             return errors
 
         field_names = (

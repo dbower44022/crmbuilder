@@ -118,6 +118,7 @@ class AuditWorker(QThread):
             1 for e in report.entities
             for l in e.layouts if l.layout_type == "list"
         )
+        total_layouts = sum(len(e.layouts) for e in report.entities)
 
         self.output_line.emit("", "white")
         self.output_line.emit(
@@ -157,6 +158,9 @@ class AuditWorker(QThread):
         )
         self.output_line.emit(
             f"List layouts captured   : {list_layouts:>3}", "white"
+        )
+        self.output_line.emit(
+            f"All layouts captured    : {total_layouts:>3}", "white"
         )
         self.output_line.emit(
             f"Relationships found     : {len(report.relationships):>3}", "white"

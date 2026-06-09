@@ -1,0 +1,107 @@
+[
+  {
+    "customLabel": "Overview",
+    "dynamicLogicVisible": null,
+    "hidden": false,
+    "noteStyle": "info",
+    "noteText": "",
+    "rows": [
+      [
+        {
+          "name": "name"
+        },
+        {
+          "name": "linkedCompany"
+        }
+      ],
+      [
+        {
+          "name": "description"
+        }
+      ],
+      [
+        {
+          "name": "clientcontact"
+        },
+        {
+          "name": "clientContactEmail"
+        }
+      ]
+    ],
+    "style": "default",
+    "tabBreak": true,
+    "tabLabel": "Overview"
+  },
+  {
+    "customLabel": "Advanced Profile",
+    "dynamicLogicVisible": null,
+    "hidden": false,
+    "noteStyle": "info",
+    "noteText": null,
+    "rows": [
+      [
+        {
+          "name": "clientRace"
+        },
+        {
+          "name": "clientEthnicity"
+        }
+      ],
+      [
+        {
+          "name": "legalEntityType"
+        },
+        {
+          "name": "formationDate"
+        }
+      ],
+      [
+        {
+          "name": "federalEinOnFile"
+        },
+        {
+          "name": "localLicensesAndPermits"
+        }
+      ],
+      [
+        {
+          "name": "ohioVendorsLicenseOnFile"
+        },
+        {
+          "name": "registeredOnSamGov"
+        }
+      ],
+      [
+        {
+          "name": "stateOfFormation"
+        },
+        {
+          "name": "annualRevenueRange"
+        }
+      ]
+    ],
+    "style": "default",
+    "tabBreak": true,
+    "tabLabel": "Adv Profile"
+  },
+  {
+    "customLabel": "Certifications",
+    "dynamicLogicVisible": null,
+    "hidden": false,
+    "noteStyle": "info",
+    "noteText": null,
+    "rows": [
+      [
+        {
+          "name": "certificationsHeld"
+        },
+        {
+          "name": "clientVeteranStatus"
+        }
+      ]
+    ],
+    "style": "default",
+    "tabBreak": true,
+    "tabLabel": "Certifications"
+  }
+]

@@ -1,0 +1,13 @@
+[
+  "lastName",
+  "cPrimaryCompany",
+  "emailAddress",
+  "account",
+  "createdAt",
+  "createdBy",
+  "modifiedAt",
+  "addressCity",
+  "addressPostalCode",
+  "phoneNumber",
+  "accountType"
+]

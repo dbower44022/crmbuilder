@@ -1,0 +1,49 @@
+[
+  {
+    "label": "",
+    "rows": [
+      [
+        {
+          "name": "salutationName"
+        },
+        {
+          "name": "firstName"
+        },
+        {
+          "name": "lastName"
+        },
+        {
+          "name": "cPreferredName"
+        }
+      ],
+      [
+        {
+          "name": "emailAddress"
+        },
+        {
+          "name": "phoneNumber"
+        },
+        {
+          "name": "account"
+        }
+      ],
+      [
+        {
+          "name": "address"
+        },
+        {
+          "name": "cLinkedInProfile"
+        },
+        {
+          "name": "doNotCall"
+        }
+      ],
+      [
+        {
+          "name": "description"
+        }
+      ]
+    ],
+    "style": "default"
+  }
+]
