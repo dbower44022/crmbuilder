@@ -54,3 +54,32 @@ class LayoutLocator:
     panel: str | int | None = None
     row: int | None = None
     col: int | None = None
+
+
+@dataclass(frozen=True)
+class RoleLocator:
+    """A role, or one property within it, in the top-level ``roles:`` list.
+
+    The role is matched by ``role`` (its ``name``). ``part`` selects the section:
+    ``"description"`` (the role-level scalar), ``"scope_access"`` (then ``entity``
+    + ``key`` name the per-entity access dimension, e.g. entity=Contact key=read),
+    or ``"system_permissions"`` (then ``key`` names the permission, e.g. export).
+    ``part is None`` / all-None addresses the whole role (add/remove).
+    """
+
+    role: str
+    part: str | None = None
+    entity: str | None = None
+    key: str | None = None
+
+
+@dataclass(frozen=True)
+class TeamLocator:
+    """A team, or one property of it, in the top-level ``teams:`` list.
+
+    Matched by ``team`` (its ``name``); ``part`` is ``"description"`` or ``None``
+    for the whole team.
+    """
+
+    team: str
+    part: str | None = None
