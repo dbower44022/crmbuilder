@@ -224,16 +224,26 @@ def build_scoping_prompt(cfg: AdoRuntimeConfig, workstream_id: str, phase_type: 
 
 
 def spawn_scoping_agent(prompt: str, *, timeout: int = 1800):
-    """Spawn one real Claude agent to scope a phase (no worktree — API writes only)."""
+    """Spawn one real Claude agent for an API-only step (scope / reconcile / review).
+
+    No worktree — these agents only read and write governance records via the API.
+    Degrades gracefully: an overrun (subprocess kills the agent at the deadline) or
+    a spawn failure returns ``None`` rather than raising, because every caller
+    **verifies by result** (the phase reaching Ready/Not Applicable, the PI reaching
+    Resolved) — a crashed agent must never tear down the driver (DEC-396 in spirit).
+    """
     import subprocess
     import tempfile
 
     workdir = tempfile.mkdtemp(prefix="ado-scope-")
-    return subprocess.run(
-        ["claude", "-p", prompt, "--permission-mode", "bypassPermissions",
-         "--add-dir", workdir],
-        cwd=workdir, capture_output=True, text=True, timeout=timeout,
-    )
+    try:
+        return subprocess.run(
+            ["claude", "-p", prompt, "--permission-mode", "bypassPermissions",
+             "--add-dir", workdir],
+            cwd=workdir, capture_output=True, text=True, timeout=timeout,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
 
 
 def scope_phase_agent(cfg: AdoRuntimeConfig, workstream_id: str, phase_type: str) -> None:
@@ -524,19 +534,20 @@ def build_review_prompt(api_base: str, engagement: str, pi: str) -> str:
     """The review/closure reviewer's operating protocol for an In-Review PI."""
     h = f"-H 'X-Engagement: {engagement}'"
     return (
-        f"You are the closure reviewer for Planning Item {pi}, which has finished "
-        f"execution and is now 'In Review'. Decide whether the delivered work "
-        f"satisfies the PI, and resolve it only if it does. The live V2 API is at "
+        f"You are the closure reviewer for Planning Item {pi} (now 'In Review'). "
+        f"This is a quick close-out check, NOT a deep audit — make exactly the few "
+        f"API calls below, decide, and exit promptly. The live V2 API is at "
         f"{api_base}; EVERY request must send X-Engagement: {engagement}.\n\n"
-        f"Do exactly this:\n"
-        f"1. Read the PI and its requirements — `curl -s {h} {api_base}/"
-        f"planning-items/{pi}` — and review its phases' delivered Work Tasks "
-        f"(`curl -s {h} {api_base}/planning-items/{pi}/phase-overview`).\n"
-        f"2. If the work meets the PI's requirements, resolve it: "
-        f"`curl -s -X PATCH {h} -H 'Content-Type: application/json' {api_base}/"
-        f"planning-items/{pi} -d '{{\"status\": \"Resolved\"}}'`.\n"
-        f"3. If it does NOT, leave it 'In Review' and do not resolve it — a person "
-        f"will look. Then exit."
+        f"Do exactly this and nothing more:\n"
+        f"1. `curl -s {h} {api_base}/planning-items/{pi}/phase-overview` — the PI is "
+        f"satisfied if every phase is 'Complete' or 'Not Applicable' (look at each "
+        f"phase's status and that its Work Tasks are complete).\n"
+        f"2. If satisfied, resolve it and STOP: `curl -s -X PATCH {h} -H "
+        f"'Content-Type: application/json' {api_base}/planning-items/{pi} "
+        f"-d '{{\"status\": \"Resolved\"}}'`.\n"
+        f"3. If NOT satisfied, do nothing (leave it 'In Review' for a person) and "
+        f"exit. Do not read files, inspect git, or analyze further — decide from the "
+        f"phase-overview alone."
     )
 
 

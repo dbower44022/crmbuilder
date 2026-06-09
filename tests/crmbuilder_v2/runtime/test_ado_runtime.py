@@ -198,6 +198,32 @@ def test_run_pool_for_workstream_builds_a_valid_config(monkeypatch):
     assert captured["config"].target_workstream == "WSK-1"
 
 
+def test_spawn_scoping_agent_degrades_on_timeout(monkeypatch):
+    # Regression: an API-only agent (scope/reconcile/review) that overruns or
+    # fails to spawn must return None, not raise — a crashed agent crashed the
+    # whole PM run in rung 5 before this.
+    import subprocess
+
+    def _timeout(*a, **k):
+        raise subprocess.TimeoutExpired(cmd="claude", timeout=1)
+
+    monkeypatch.setattr(subprocess, "run", _timeout)
+    assert ado.spawn_scoping_agent("prompt", timeout=1) is None
+
+
+def test_review_close_pi_verifies_by_result(monkeypatch):
+    # Even when the closure agent fails/overruns (spawn → None), the outcome is
+    # decided by the PI's actual status, not the subprocess.
+    monkeypatch.setattr(ado, "spawn_scoping_agent", lambda *a, **k: None)
+    cfg = ProjectRuntimeConfig(project="PRJ-9", log=lambda _m: None)
+
+    monkeypatch.setattr(ado.dispatcher, "_get", lambda *a, **k: {"status": "Resolved"})
+    assert ado.review_close_pi(cfg, "PI-1") is True
+
+    monkeypatch.setattr(ado.dispatcher, "_get", lambda *a, **k: {"status": "In Review"})
+    assert ado.review_close_pi(cfg, "PI-1") is False
+
+
 def test_drives_all_phases_scope_then_execute():
     world = _World(3)
     driver = _FakeDriver(
