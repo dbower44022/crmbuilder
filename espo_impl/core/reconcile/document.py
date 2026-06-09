@@ -67,6 +67,23 @@ class YamlDocument:
     # -- literal rendering ------------------------------------------------
 
     @staticmethod
+    def _bool_literal(value: bool, old) -> str:
+        """Spell a boolean to match the existing token's family.
+
+        ruamel loads ``yes``/``no`` as the strings "yes"/"no" and ``true``/
+        ``false`` as bools, so the old token's loaded form tells us how the file
+        authored it. Roles in particular author ``create: yes`` / ``export: no``;
+        rendering a Python ``True`` as ``true`` there would be off-house-style.
+        Preserves yes/no, on/off, or true/false; defaults to true/false.
+        """
+        if isinstance(old, str):
+            low = old.lower()
+            for true_word, false_word in (("yes", "no"), ("on", "off"), ("true", "false")):
+                if low in (true_word, false_word):
+                    return true_word if value else false_word
+        return "true" if value else "false"
+
+    @staticmethod
     def _render_literal(value, *, double_quoted: bool, single_quoted: bool) -> str:
         """Render ``value`` as the YAML source literal it should occupy.
 
@@ -122,9 +139,13 @@ class YamlDocument:
             new_dq, new_sq = old_dq, old_sq
         else:
             new_dq, new_sq = (quote == '"'), (quote == "'")
-        new_literal = self._render_literal(
-            new_value, double_quoted=new_dq, single_quoted=new_sq
-        )
+        if isinstance(new_value, bool) and not new_dq and not new_sq:
+            # Preserve the file's yes/no vs true/false spelling for booleans.
+            new_literal = self._bool_literal(new_value, old)
+        else:
+            new_literal = self._render_literal(
+                new_value, double_quoted=new_dq, single_quoted=new_sq
+            )
         self._edits.append(_Edit(start, start + len(old_literal), new_literal))
 
     # -- line / block geometry -------------------------------------------

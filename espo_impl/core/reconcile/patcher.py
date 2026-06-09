@@ -10,6 +10,7 @@ deletions are report-only in v1.
 from __future__ import annotations
 
 from espo_impl.core.reconcile.document import YamlDocument
+from espo_impl.core.reconcile.locators import RoleLocator, TeamLocator
 
 
 def _find_entity(doc: YamlDocument, entity: str):
@@ -76,3 +77,64 @@ def insert_field(
 def _field_exists(entity_node, field_name: str) -> bool:
     fields = entity_node.get("fields") or []
     return any(item.get("name") == field_name for item in fields)
+
+
+def _find_named(doc: YamlDocument, block: str, name: str):
+    items = doc.data.get(block)
+    if not items:
+        raise KeyError(f"no top-level {block!r} block")
+    for item in items:
+        if item.get("name") == name:
+            return item
+    raise KeyError(f"{block[:-1]} {name!r} not found")
+
+
+def _set_existing(owner, key: str, value, doc: YamlDocument, where: str) -> None:
+    if key not in owner:
+        raise KeyError(
+            f"{where} has no {key!r} to change; adding an absent key is not "
+            "supported in this phase"
+        )
+    doc.set_scalar(owner, key, value)
+
+
+def apply_role_change(doc: YamlDocument, locator: RoleLocator, new_value) -> None:
+    """Write an accepted role-property drift back into the YAML.
+
+    Navigates ``roles:`` → role (by name) → the section the locator names, then
+    surgically sets the scalar (booleans keep their yes/no vs true/false spelling
+    via set_scalar). Only existing keys are changed (the changed-in-both case);
+    adding an absent entity scope or permission is deferred.
+    """
+    role = _find_named(doc, "roles", locator.role)
+    if locator.part == "description":
+        _set_existing(role, "description", new_value, doc, f"role {locator.role!r}")
+    elif locator.part == "scope_access":
+        scope = role.get("scope_access")
+        if not scope or locator.entity not in scope:
+            raise KeyError(
+                f"role {locator.role!r} has no scope_access for {locator.entity!r}"
+            )
+        _set_existing(
+            scope[locator.entity], locator.key, new_value, doc,
+            f"role {locator.role!r} scope_access.{locator.entity}",
+        )
+    elif locator.part == "system_permissions":
+        perms = role.get("system_permissions")
+        if not perms:
+            raise KeyError(f"role {locator.role!r} has no system_permissions block")
+        _set_existing(
+            perms, locator.key, new_value, doc,
+            f"role {locator.role!r} system_permissions",
+        )
+    else:
+        raise ValueError(f"unsupported role locator part {locator.part!r}")
+
+
+def apply_team_change(doc: YamlDocument, locator: TeamLocator, new_value) -> None:
+    """Write an accepted team-property drift (description) back into the YAML."""
+    team = _find_named(doc, "teams", locator.team)
+    if locator.part == "description":
+        _set_existing(team, "description", new_value, doc, f"team {locator.team!r}")
+    else:
+        raise ValueError(f"unsupported team locator part {locator.part!r}")
