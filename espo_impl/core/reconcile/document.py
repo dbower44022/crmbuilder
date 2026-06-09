@@ -13,6 +13,7 @@ are deferred to later phases.
 """
 from __future__ import annotations
 
+import io
 from dataclasses import dataclass
 
 from ruamel.yaml import YAML
@@ -125,6 +126,102 @@ class YamlDocument:
             new_value, double_quoted=new_dq, single_quoted=new_sq
         )
         self._edits.append(_Edit(start, start + len(old_literal), new_literal))
+
+    # -- line / block geometry -------------------------------------------
+
+    def _line_text(self, line_idx: int) -> str:
+        """The full source of line ``line_idx`` (including its newline if any)."""
+        start = self._line_starts[line_idx]
+        if line_idx + 1 < len(self._line_starts):
+            return self._text[start : self._line_starts[line_idx + 1]]
+        return self._text[start:]
+
+    def _indent_of(self, line_idx: int) -> int | None:
+        """Leading-space count of a line, or ``None`` if blank/whitespace-only."""
+        line = self._line_text(line_idx)
+        stripped = line.lstrip(" ")
+        if stripped in ("", "\n"):
+            return None
+        return len(line) - len(stripped)
+
+    def _block_last_content_line(self, key_line: int, key_indent: int) -> int:
+        """Last line (inclusive) belonging to a block whose key sits at
+        ``key_indent`` on ``key_line``.
+
+        The block's body is the following run of lines that are blank or indented
+        deeper than the key; the body ends at the first line indented at or below
+        the key (a sibling/dedent) or EOF. Trailing blank lines are excluded.
+        """
+        n = len(self._line_starts)
+        last = key_line
+        i = key_line + 1
+        while i < n:
+            indent = self._indent_of(i)
+            if indent is None:  # blank: provisionally inside the block
+                i += 1
+                continue
+            if indent <= key_indent:  # dedent -> block ended
+                break
+            last = i  # a non-blank deeper line belongs to the block
+            i += 1
+        return last
+
+    def _marker_col_of_sequence(self, key_line: int) -> int:
+        """Column of the ``-`` marker of the first item under a sequence key."""
+        n = len(self._line_starts)
+        i = key_line + 1
+        while i < n:
+            indent = self._indent_of(i)
+            if indent is not None:
+                return indent
+            i += 1
+        # Empty sequence (no items yet): indent one level under the key.
+        return self._indent_of(key_line) or 0
+
+    def _render_sequence_item(
+        self, mapping: dict, marker_col: int, *, blank_line_before: bool
+    ) -> str:
+        """Render ``mapping`` as a block-sequence item indented at ``marker_col``.
+
+        The mapping is emitted with ruamel (a fresh, comment-free block — there is
+        nothing to preserve for new content) and each line is shifted right: the
+        first key gets the ``- `` marker, the rest align under it. A leading blank
+        line matches the common one-blank-between-items file style.
+        """
+        buf = io.StringIO()
+        self._yaml.dump(dict(mapping), buf)
+        lines = buf.getvalue().rstrip("\n").split("\n")
+        pad = " " * marker_col
+        out = []
+        for idx, line in enumerate(lines):
+            prefix = f"{pad}- " if idx == 0 else f"{pad}  "
+            out.append(prefix + line if line else prefix.rstrip())
+        block = "\n".join(out) + "\n"
+        return ("\n" + block) if blank_line_before else block
+
+    def insert_sequence_item(
+        self, owner, seq_key: str, mapping: dict, *, blank_line_before: bool = True
+    ) -> None:
+        """Append ``mapping`` as a new item to the block sequence ``owner[seq_key]``.
+
+        Splices the rendered item after the sequence's last content line; existing
+        items, comments, and following siblings are untouched.
+        """
+        key_line, key_col = owner.lc.key(seq_key)
+        marker_col = self._marker_col_of_sequence(key_line)
+        item_text = self._render_sequence_item(
+            mapping, marker_col, blank_line_before=blank_line_before
+        )
+        last = self._block_last_content_line(key_line, key_col)
+        insert_at = (
+            self._line_starts[last + 1]
+            if last + 1 < len(self._line_starts)
+            else len(self._text)
+        )
+        # Guarantee a newline boundary before the inserted block at EOF.
+        if insert_at > 0 and self._text[insert_at - 1] != "\n":
+            item_text = "\n" + item_text
+        self._edits.append(_Edit(insert_at, insert_at, item_text))
 
     @property
     def dirty(self) -> bool:

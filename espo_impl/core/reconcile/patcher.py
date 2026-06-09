@@ -47,3 +47,32 @@ def set_field_property(
             "adding an absent property is not supported in this phase"
         )
     doc.set_scalar(field_node, prop, new_value)
+
+
+def insert_field(
+    doc: YamlDocument, entity: str, field_block: dict, *, blank_line_before: bool = True
+) -> None:
+    """Append a new field to ``entity``'s ``fields:`` list (the CRM-only case).
+
+    ``field_block`` is a YAML-shaped field mapping (``{name, type, label, ...}``)
+    — the caller reconstructs it from live CRM state via the Audit reverse-mapper,
+    so it already uses YAML field names, not raw API meta. The new block is
+    rendered fresh (no comments to preserve) and spliced at the end of the
+    sequence; everything else in the file is untouched.
+    """
+    entity_node = _find_entity(doc, entity)
+    if "fields" not in entity_node:
+        raise KeyError(f"entity {entity!r} has no 'fields:' block to append to")
+    name = field_block.get("name")
+    if not name:
+        raise ValueError("field_block must include a 'name'")
+    if _field_exists(entity_node, name):
+        raise ValueError(f"field {name!r} already exists on {entity!r}")
+    doc.insert_sequence_item(
+        entity_node, "fields", field_block, blank_line_before=blank_line_before
+    )
+
+
+def _field_exists(entity_node, field_name: str) -> bool:
+    fields = entity_node.get("fields") or []
+    return any(item.get("name") == field_name for item in fields)
