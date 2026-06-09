@@ -186,39 +186,55 @@ def run_pool_for_workstream(cfg: AdoRuntimeConfig, workstream_id: str) -> PoolRu
 # --------------------------------------------------------------------------
 
 
+_PHASE_ROLE = {
+    "Design": "produce the specification(s) — what to build and how it will be "
+    "verified. You write specs/designs, not code or the deliverable itself.",
+    "Develop": "build each Design specification into the working deliverable (code "
+    "or the artifact the PI calls for).",
+    "Test": "verify the built deliverable against the Design specification.",
+}
+
+
 def build_scoping_prompt(cfg: AdoRuntimeConfig, workstream_id: str, phase_type: str) -> str:
     """The scoping agent's operating protocol.
 
     Unlike an execution agent it writes no code and needs no worktree — it reads
     the Planning Item and the prior phases' outputs, *decides* the Work Tasks this
     phase needs (one per area the phase touches), and records them in a single
-    ``scope`` call (an empty list asserts the phase is Not Applicable, §4.3).
+    ``scope`` call. Asserting **Not Applicable** (an empty list, §4.3) is a
+    first-class, expected outcome — a phase only scopes work it genuinely adds.
     """
     api = cfg.api_base
     eng = cfg.engagement
     h = f"-H 'X-Engagement: {eng}'"
+    role = _PHASE_ROLE.get(phase_type, f"do the {phase_type}-phase work")
     return (
         f"You are the {phase_type}-phase Architect for Planning Item "
-        f"{cfg.planning_item}. Your one job: decide the Work Tasks the "
-        f"{phase_type} phase (Workstream {workstream_id}) needs and record them. "
-        f"You write NO code — you only decide and record. The live V2 API is at "
-        f"{api} and EVERY request must send the header X-Engagement: {eng}.\n\n"
+        f"{cfg.planning_item}. The {phase_type} phase's job is to {role} Decide the "
+        f"Work Tasks this phase (Workstream {workstream_id}) genuinely needs and "
+        f"record them. You write NO code — you only decide and record. The live V2 "
+        f"API is at {api}; EVERY request must send the header X-Engagement: {eng}.\n\n"
         f"Do exactly this:\n"
-        f"1. Read the Planning Item — `curl -s {h} {api}/planning-items/"
-        f"{cfg.planning_item}` — and its requirements/intent.\n"
-        f"2. Read what earlier phases produced — `curl -s {h} {api}/workstreams/"
-        f"{workstream_id}/prior-phase-outputs` — and build on them.\n"
-        f"3. Decide the Work Tasks: one per area this phase touches, each a clear "
-        f"single-area unit. Each needs a 'title' and an 'area' (a valid System or "
-        f"Engagement area, e.g. storage, access, api, mcp, ui), plus an optional "
-        f"'description'.\n"
-        f"4. Record them in ONE call:\n"
+        f"1. Read what earlier phases already produced FIRST — `curl -s {h} {api}/"
+        f"workstreams/{workstream_id}/prior-phase-outputs` — then the Planning Item "
+        f"itself — `curl -s {h} {api}/planning-items/{cfg.planning_item}`.\n"
+        f"2. Decide what is genuinely LEFT for the {phase_type} phase to add, given "
+        f"what earlier phases already delivered. Scope only NEW, {phase_type}-"
+        f"appropriate work — do NOT create tasks that merely re-do, duplicate, or "
+        f"re-verify work an earlier phase already completed.\n"
+        f"3. If the {phase_type} phase has nothing genuinely new to add for this "
+        f"Planning Item (its work is already covered, or there is no {phase_type} "
+        f"work for this PI), assert **Not Applicable** by POSTing an EMPTY list — "
+        f"this is the correct, common outcome, not a failure:\n"
+        f"   `curl -s -X POST {h} -H 'Content-Type: application/json' "
+        f"{api}/workstreams/{workstream_id}/scope -d '{{\"work_tasks\": []}}'`\n"
+        f"4. Otherwise record the new Work Tasks (one per area it touches; each a "
+        f"single-area unit with a 'title', an 'area' — a valid System/Engagement "
+        f"area e.g. storage, access, api, mcp, ui — and a 'description') in ONE call:\n"
         f"   `curl -s -X POST {h} -H 'Content-Type: application/json' "
         f"{api}/workstreams/{workstream_id}/scope "
         f"-d '{{\"work_tasks\": [{{\"title\": \"...\", \"area\": \"...\", "
         f"\"description\": \"...\"}}]}}'`\n"
-        f"   If the phase genuinely needs no work, POST an empty list "
-        f"(`{{\"work_tasks\": []}}`) — that asserts Not Applicable.\n"
         f"5. Confirm the Workstream is now 'Ready' (or 'Not Applicable') and exit."
     )
 
