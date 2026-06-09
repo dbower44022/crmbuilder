@@ -43,11 +43,14 @@ class LayoutLocator:
     """A position within a layout. Layouts are positional (list-of-lists), so a
     cell is addressed by panel + row + column rather than by a stable name.
 
-    Phase 3 (deferred until the parallel layout-schema expansion lands).
+    Reconciliation granularity is per-layout-type block (e.g. the whole
+    ``detail`` layout), so ``panel``/``row``/``col`` default to ``None`` and
+    address the layout-type block as a unit; they are reserved for finer
+    targeting if cell-level reconciliation is added later.
     """
 
     entity: str
     layout_type: str
-    panel: str | int
+    panel: str | int | None = None
     row: int | None = None
     col: int | None = None
