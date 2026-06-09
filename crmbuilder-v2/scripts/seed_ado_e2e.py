@@ -115,27 +115,32 @@ def make_project(base: str, eng: str) -> str:
 
 def make_pi(base: str, eng: str, prj: str, marker: str, *,
             start_design: bool = False, blocked_by: list[str] | None = None) -> dict:
-    """Create one trivial storage PI (decomposed, Design scoped) in ``prj``.
+    """Create one trivial storage PI in ``prj``, scoped model-faithfully.
 
-    Its single Work Task creates ``marker`` — distinct per PI so parallel PIs
-    merge cleanly. ``blocked_by`` adds dependency edges so the PM holds it until
-    those PIs are Resolved.
+    The deliverable is the marker file ``marker`` (distinct per PI so parallel PIs
+    merge cleanly). Design is pre-scoped with a *spec* task; Develop (build the
+    marker per the spec) and Test (verify) are left for the phase Architects to
+    scope, so each phase has genuine, non-redundant work and the feed-forward +
+    Not-Applicable paths are exercised. ``blocked_by`` adds dependency edges.
     """
+    spec = f"{marker}.spec.txt"
     pi = api("POST", base, "/planning-items", engagement=eng, body={
-        "title": f"Add the marker file {marker}",
+        "title": f"Deliver the marker file {marker}",
         "item_type": "pending_work",
         "status": "Draft",
         "description": (
-            f"Create a single small marker file `{marker}` in the repo root containing "
-            f"one line, then commit it. No other changes. Proves one PI runs end to end."
+            f"Outcome: the repository root contains a committed file `{marker}` whose "
+            f"entire contents are the single line `ADO end-to-end proof`. Design should "
+            f"specify it, Develop should build it, Test should verify it."
         ),
         "executive_summary": (
             f"A deliberately trivial storage Planning Item that exercises the ADO orchestration "
-            f"driver end to end with real agents. Its only deliverable is the marker file "
-            f"`{marker}` created and committed in the throwaway sandbox repo, so the run is fast, "
-            f"safe, and easy to verify by eye. It validates the scope -> reconcile -> build -> "
-            f"review loop and helps tune the real-agent prompts; it carries no product value and "
-            f"lives in the isolated ADOTEST engagement so it never touches the CRMBUILDER backlog."
+            f"driver end to end with real agents. Its deliverable is the marker file `{marker}` "
+            f"(spec in Design, built in Develop, verified in Test) created and committed in the "
+            f"throwaway sandbox repo, so the run is fast, safe, and easy to verify by eye. It "
+            f"validates the scope -> reconcile -> build -> review loop and helps tune the real-"
+            f"agent prompts; it carries no product value and lives in the isolated ADOTEST "
+            f"engagement so it never touches the CRMBUILDER backlog."
         ),
     })["identifier"]
 
@@ -158,12 +163,13 @@ def make_pi(base: str, eng: str, prj: str, marker: str, *,
 
     scoped = api("POST", base, f"/workstreams/{design}/scope", engagement=eng, body={
         "work_tasks": [{
-            "title": f"Create the marker file {marker}",
+            "title": f"Write the spec for the marker file {marker}",
             "area": AREA,
             "description": (
-                f"In the repository root, create a file named `{marker}` whose entire "
-                f"contents are the single line: `ADO end-to-end proof`. That is the whole "
-                f"task. Commit it. Do not touch anything else."
+                f"In the repo root, create and commit a one-line spec file `{spec}` "
+                f"stating exactly: `Deliverable: file {marker} containing the single line "
+                f"\"ADO end-to-end proof\".` Write ONLY the spec — do not create {marker} "
+                f"itself (that is Develop's job). Do not touch anything else."
             ),
         }],
     })
