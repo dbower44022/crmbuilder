@@ -281,6 +281,36 @@ class YamlDocument:
         )
         self._edits.append(_Edit(body_start, body_end, body_text))
 
+    def bump_content_version(self, part: str = "minor") -> tuple[str, str] | None:
+        """Increment the top-level ``content_version`` (default the minor part).
+
+        Lower parts reset to 0 (a minor bump of ``1.2.3`` → ``1.3.0``). Quote style
+        is preserved (it's set via :meth:`set_scalar`). Returns ``(old, new)``, or
+        ``None`` if the document has no ``content_version`` key. Raises
+        :class:`ValueError` for a non-numeric dotted version.
+        """
+        if "content_version" not in self.data:
+            return None
+        old = str(self.data["content_version"])
+        index = {"major": 0, "minor": 1, "patch": 2}.get(part)
+        if index is None:
+            raise ValueError(f"unknown version part {part!r}")
+        parts = old.split(".")
+        while len(parts) <= index:
+            parts.append("0")
+        try:
+            nums = [int(p) for p in parts]
+        except ValueError as exc:
+            raise ValueError(
+                f"content_version {old!r} is not a numeric dotted version"
+            ) from exc
+        nums[index] += 1
+        for j in range(index + 1, len(nums)):
+            nums[j] = 0
+        new = ".".join(str(n) for n in nums)
+        self.set_scalar(self.data, "content_version", new)
+        return old, new
+
     @property
     def dirty(self) -> bool:
         """Whether any edits are pending."""
