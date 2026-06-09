@@ -223,6 +223,43 @@ class YamlDocument:
             item_text = "\n" + item_text
         self._edits.append(_Edit(insert_at, insert_at, item_text))
 
+    def render_block_body(self, value, indent: int) -> str:
+        """Render a Python value as an indented YAML block body (no key line)."""
+        buf = io.StringIO()
+        self._yaml.dump(value, buf)
+        pad = " " * indent
+        lines = buf.getvalue().rstrip("\n").split("\n")
+        return "\n".join((pad + ln if ln else "") for ln in lines) + "\n"
+
+    def replace_block_body(self, owner, key: str, value) -> None:
+        """Replace the multi-line block body under ``owner[key]`` with ``value``.
+
+        The ``key:`` line stays; everything indented beneath it (its current body)
+        is replaced by ``value`` rendered one level under the key. Used for
+        per-layout-type-block reconciliation: comments *inside* the replaced body
+        are not preserved (the body is regenerated from the accepted live value),
+        but everything outside the block is byte-for-byte untouched.
+
+        Raises :class:`ValueError` for an inline scalar value (use
+        :meth:`set_scalar` instead) — this primitive is for block-style values.
+        """
+        key_line, key_col = owner.lc.key(key)
+        value_line, _ = owner.lc.value(key)
+        if value_line == key_line:
+            raise ValueError(
+                f"{key!r} has an inline value, not a block body; use set_scalar"
+            )
+        body_indent = key_col + 2
+        body_text = self.render_block_body(value, body_indent)
+        last = self._block_last_content_line(key_line, key_col)
+        body_start = self._line_starts[key_line + 1]
+        body_end = (
+            self._line_starts[last + 1]
+            if last + 1 < len(self._line_starts)
+            else len(self._text)
+        )
+        self._edits.append(_Edit(body_start, body_end, body_text))
+
     @property
     def dirty(self) -> bool:
         """Whether any edits are pending."""
