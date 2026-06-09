@@ -174,9 +174,11 @@ def run_pool_for_workstream(cfg: AdoRuntimeConfig, workstream_id: str) -> PoolRu
         agent_timeout=cfg.agent_timeout,
         max_concurrent=cfg.max_concurrent,
         manage_api=cfg.manage_api,
-        log=cfg.log,
     )
-    return ParallelCoordinatingRuntime(config=pool_cfg, repo_lock=cfg.repo_lock).run()
+    # `log` is a field on the runtime, not the config — pass it there.
+    return ParallelCoordinatingRuntime(
+        config=pool_cfg, repo_lock=cfg.repo_lock, log=cfg.log
+    ).run()
 
 
 # --------------------------------------------------------------------------

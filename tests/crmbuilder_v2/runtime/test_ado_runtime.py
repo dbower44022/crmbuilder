@@ -13,6 +13,7 @@ Mirrors the module's pure/I-O split:
 
 from __future__ import annotations
 
+from crmbuilder_v2.runtime import ado_runtime as ado
 from crmbuilder_v2.runtime.ado_runtime import (
     AdoRunReport,
     AdoRuntime,
@@ -169,6 +170,32 @@ def _scopes_to_ready(world):
         world.calls.append(f"scope:{ws}")
         world.phase_status[ws] = "Ready"
     return _runner
+
+
+def test_run_pool_for_workstream_builds_a_valid_config(monkeypatch):
+    # Regression: the default pool seam must construct a real ParallelRuntimeConfig
+    # (no bad kwargs) and pass `log` to the runtime, not the config. Faked tests
+    # inject pool_runner and never exercise this, so a live run was the only path
+    # that caught `log=` being passed to the config.
+    captured = {}
+
+    class _FakePool:
+        def __init__(self, config, repo_lock=None, log=None):
+            captured["config"] = config
+            captured["log"] = log
+            captured["repo_lock"] = repo_lock
+
+        def run(self):
+            return PoolRunReport(paused=False)
+
+    monkeypatch.setattr(ado, "ParallelCoordinatingRuntime", _FakePool)
+    cfg = AdoRuntimeConfig(planning_item="PI-1", log=lambda _m: None)
+    report = ado.run_pool_for_workstream(cfg, "WSK-1")
+    assert report.paused is False
+    # real ParallelRuntimeConfig built (would TypeError on a bad kwarg), and log
+    # routed to the runtime instance, not the config.
+    assert captured["log"] is cfg.log
+    assert captured["config"].target_workstream == "WSK-1"
 
 
 def test_drives_all_phases_scope_then_execute():
