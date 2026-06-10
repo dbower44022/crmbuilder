@@ -140,3 +140,29 @@ def test_patcher_error_recorded_not_raised(tmp_path):
     assert fr.applied == []
     assert "error:" in fr.not_applied[0][1]
     assert f.read_text() == _FIELDS_FILE  # nothing written
+
+
+def test_layout_changed_is_report_only_until_reverse_map(tmp_path):
+    # diff_layouts carries the raw API payload as crm_value; writing it verbatim
+    # would produce structurally-wrong YAML, so layout CHANGED is report-only
+    # (detected, not applied) until reverse-mapping is wired.
+    from espo_impl.core.reconcile.locators import LayoutLocator
+
+    body = (
+        'version: "1.0"\ncontent_version: "1.0.0"\n'
+        "entities:\n  Contact:\n    layout:\n      list:\n        columns:\n"
+        "          - field: name\n"
+    )
+    f = tmp_path / "MN-Contact.yaml"
+    f.write_text(body)
+    layout_changed = Difference(
+        config_type=ConfigType.LAYOUT, category=DiffCategory.CHANGED, entity="Contact",
+        locator=LayoutLocator("Contact", "list"), property="list",
+        crm_value=[{"name": "name", "link": True}], source_file=f,
+    )
+
+    result = apply_reconciliation([layout_changed])
+    fr = result.files[0]
+    assert fr.applied == []
+    assert fr.not_applied and "reverse-mapping" in fr.not_applied[0][1]
+    assert f.read_text() == body  # nothing written, file untouched

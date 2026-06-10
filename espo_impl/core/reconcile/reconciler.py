@@ -35,6 +35,10 @@ from espo_impl.core.reconcile.patcher import (
 )
 
 _REPORT_ONLY = "report-only (not auto-applied in v1)"
+_REPORT_ONLY_LAYOUT = (
+    "report-only: layout write-back needs payload->YAML reverse-mapping "
+    "(not yet wired); detected but not applied"
+)
 
 
 @dataclass
@@ -79,11 +83,14 @@ def _apply_one(doc: YamlDocument, diff: Difference) -> str | None:
         return _REPORT_ONLY  # YAML_ONLY: never auto-delete
 
     if ct is ConfigType.LAYOUT:
-        if cat is DiffCategory.CHANGED:
-            layout_map = doc.data["entities"][diff.entity]["layout"]
-            doc.replace_block_body(layout_map, diff.locator.layout_type, diff.crm_value)
-            return None
-        return _REPORT_ONLY  # CRM-only layout add / YAML_ONLY
+        # diff.crm_value is the raw live API payload (a bare panel/column list with
+        # c-prefixed API field names) — NOT the YAML body shape (panels:/columns:
+        # with natural names, possibly tabs-authored). Writing it verbatim would
+        # produce structurally-wrong YAML, so layout drift is detected and reported
+        # but not auto-applied until the payload->YAML reverse-mapping (audit
+        # reverse-mappers + natural-name reversal) and the tabs-vs-explicit-rows
+        # authoring policy are wired. See _REPORT_ONLY_LAYOUT.
+        return _REPORT_ONLY_LAYOUT
 
     if ct is ConfigType.ROLE:
         if cat is DiffCategory.CHANGED:
