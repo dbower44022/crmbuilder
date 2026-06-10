@@ -39,18 +39,20 @@ from PySide6.QtCore import (
     QAbstractTableModel,
     QModelIndex,
     QPoint,
-    QSortFilterProxyModel,
     Qt,
     Signal,
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QMenu,
+    QStackedWidget,
     QTableView,
+    QTreeView,
     QVBoxLayout,
     QWidget,
 )
@@ -58,7 +60,10 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.widgets.form_helpers import text_link_button
+from crmbuilder_v2.ui.widgets.grouping_tree_model import GroupingTreeModel
 from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
+from crmbuilder_v2.ui.widgets.multi_sort_header import MultiSortHeaderView
+from crmbuilder_v2.ui.widgets.multi_sort_proxy import MultiSortProxyModel
 
 # Longest query echoed verbatim in the no-match empty state before it is
 # elided with an ellipsis (so a pasted blob does not blow out the line).
@@ -106,6 +111,33 @@ _COLUMNS: list[tuple[str, str]] = [
 
 _DASH = "—"
 _ROW_HEIGHT = 26
+
+# Group-by control (PI-117 / WTK-068). Each option maps its label to a
+# row-dict key; the ``_GROUP_NONE`` sentinel restores the flat table. The
+# special ``created`` key buckets on the YYYY-MM-DD date prefix rather than
+# the raw timestamp — handled in :meth:`ReferencesSection._group_value`.
+_GROUP_NONE = "(none)"
+_GROUP_OPTIONS: list[tuple[str, str]] = [
+    (_GROUP_NONE, ""),
+    ("Relationship", "kind_label"),
+    ("Type", "type_label"),
+    ("Status", "status"),
+    ("Direction", "direction_label"),
+    ("Created (by day)", "created"),
+]
+
+
+def _cell_display(row: dict[str, Any], column: int) -> str:
+    """Render a row's cell for ``column`` exactly as the flat grid does.
+
+    Shared by the grouped ``QTreeView`` so child rows match the table. Date
+    columns format via :func:`_fmt_dt`; empties show the dash sentinel.
+    """
+    key = _COLUMNS[column][1]
+    value = row.get(key)
+    if key in ("created", "updated"):
+        return _fmt_dt(value)
+    return value if value not in (None, "") else _DASH
 
 
 def _default_kind_label(direction: str, relationship: str) -> str:
@@ -274,21 +306,26 @@ class ReferencesSection(QWidget):
             self._add_button_row(layout)
             return
 
-        # Debounced filter box (PI-116 / WTK-061). The clear button
+        # Filter + Group-by row (PI-116 filter on the left, PI-117 grouping
+        # controls on the right, reading left-to-right). The clear button
         # restores the full list immediately; typing applies after the
         # 250 ms debounce settles. ``filterChanged`` (not ``textChanged``)
         # drives the apply path so the model is re-filtered once per burst.
         self._filter = LinkFilterInput(object_name="references_section_filter")
-        layout.addWidget(self._filter)
+        self._filter.filterChanged.connect(self._on_filter_changed)
+        layout.addWidget(self._control_row())
 
-        # Model + proxy (sort + filter across all columns).
+        # Model + multi-sort proxy (sort + filter across all columns). The
+        # PI-117 ``MultiSortProxyModel`` is a drop-in for the stock proxy:
+        # same filter contract, plus an ordered sort-key list.
         self._model = _RefsModel(rows)
-        self._proxy = QSortFilterProxyModel(self)
+        self._proxy = MultiSortProxyModel(self)
         self._proxy.setSourceModel(self._model)
         self._proxy.setFilterKeyColumn(-1)  # match against every column
         self._proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self._proxy.setSortRole(Qt.ItemDataRole.UserRole)
-        self._filter.filterChanged.connect(self._on_filter_changed)
+        # Re-sort within groups whenever the sort keys change while grouped.
+        self._proxy.sortKeysChanged.connect(self._on_sort_keys_changed)
 
         # Table view.
         self._table = QTableView(self)
@@ -301,21 +338,53 @@ class ReferencesSection(QWidget):
         )
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
-        self._table.setSortingEnabled(True)
-        self._table.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        # Multi-column header: our own click routing replaces Qt's stock
+        # single-column sort, so disable the built-in sorting toggle.
+        self._table.setSortingEnabled(False)
+        table_header = MultiSortHeaderView(
+            Qt.Orientation.Horizontal, self._table
+        )
+        self._table.setHorizontalHeader(table_header)
+        table_header.attach_proxy(self._proxy)
+        self._proxy.clear_sort()  # deterministic default: column 0, ascending
         self._table.verticalHeader().setVisible(False)
         self._table.verticalHeader().setDefaultSectionSize(_ROW_HEIGHT)
         self._table.setWordWrap(False)
-        header = self._table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        table_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         # Title column takes the slack so long titles are readable.
-        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        table_header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         self._table.doubleClicked.connect(self._on_double_clicked)
         self._table.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu
         )
         self._table.customContextMenuRequested.connect(self._on_context_menu)
-        layout.addWidget(self._table)
+
+        # Grouped tree (PI-117): a sibling presentation shown only while a
+        # group key is active. The table and tree are two views of one row
+        # set; a QStackedWidget keeps exactly one visible.
+        self._tree = QTreeView(self)
+        self._tree.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self._tree.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+        self._tree.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._tree.setAlternatingRowColors(True)
+        self._tree.setUniformRowHeights(True)
+        self._tree.setExpandsOnDoubleClick(True)
+        self._tree.doubleClicked.connect(self._on_double_clicked)
+        self._tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._tree.customContextMenuRequested.connect(self._on_tree_context_menu)
+        self._tree.expanded.connect(self._on_tree_expansion_changed)
+        self._tree.collapsed.connect(self._on_tree_expansion_changed)
+        self._group_model: GroupingTreeModel | None = None
+
+        self._stack = QStackedWidget(self)
+        self._stack.addWidget(self._table)
+        self._stack.addWidget(self._tree)
+        self._stack.setCurrentWidget(self._table)
+        layout.addWidget(self._stack)
 
         # No-match empty state — hidden until a filter excludes every row.
         # Distinct from the "record has no links at all" case above, which
@@ -336,15 +405,49 @@ class ReferencesSection(QWidget):
     # ------------------------------------------------------------------
 
     def _fit_height(self) -> None:
+        """Size the visible presentation (table or grouped tree) to content.
+
+        The table fits its filtered proxy row count; the tree fits its
+        currently-expanded node count (group nodes + visible children) so
+        the detail pane's outer scroll handles overflow with no nested
+        scrollbar. Collapsing a group re-runs this and shrinks the tree.
+        """
         if self._table is None:
             return
+        if self._is_grouped():
+            # sizeHint().height() is layout-state-independent; the live
+            # .height() drifts after the first event-loop pass (the custom
+            # header hides Qt's sort arrow), which would desync repeated
+            # fits. Use the stable hint so the delta on filter/collapse is
+            # exactly the row-count change × row height.
+            header_h = self._tree.header().sizeHint().height()
+            frame = 2 * self._tree.frameWidth()
+            visible = self._visible_tree_rows()
+            self._tree.setFixedHeight(
+                header_h + _ROW_HEIGHT * max(visible, 1) + frame + 2
+            )
+            return
         visible = self._proxy.rowCount()
-        header_h = self._table.horizontalHeader().height()
+        header_h = self._table.horizontalHeader().sizeHint().height()
         frame = 2 * self._table.frameWidth()
         self._table.setFixedHeight(header_h + _ROW_HEIGHT * max(visible, 1) + frame + 2)
 
+    def _visible_tree_rows(self) -> int:
+        """Count group nodes plus the children of currently-expanded groups."""
+        if self._group_model is None:
+            return 0
+        total = 0
+        for g in range(self._group_model.group_count()):
+            total += 1  # the group node itself
+            group_index = self._group_model.index(g, 0, QModelIndex())
+            if self._tree.isExpanded(group_index):
+                total += self._group_model.child_count(g)
+        return total
+
     def _on_filter_changed(self, text: str) -> None:
         self._proxy.setFilterFixedString(text)
+        if self._is_grouped():
+            self._rebuild_tree()
         self._update_empty_state(text)
         self._fit_height()
 
@@ -353,7 +456,8 @@ class ReferencesSection(QWidget):
 
         The empty state appears only when an active (non-empty) query
         excludes every loaded row; clearing the field (``text == ""``)
-        always dismisses it and restores the table.
+        always dismisses it and restores the active presentation. Takes
+        precedence over both the flat table and the grouped tree.
         """
         if self._empty_state is None or self._table is None:
             return
@@ -362,7 +466,117 @@ class ReferencesSection(QWidget):
         if no_match:
             self._empty_state.setText(f'No links match "{_elide(query)}".')
         self._empty_state.setVisible(no_match)
-        self._table.setVisible(not no_match)
+        self._stack.setVisible(not no_match)
+
+    # ------------------------------------------------------------------
+    # Sort + Group controls (PI-117 / WTK-068)
+    # ------------------------------------------------------------------
+
+    def _control_row(self) -> QWidget:
+        """Filter box + Group-by combo + Expand/Collapse-all links."""
+        container = QWidget(self)
+        row = QHBoxLayout(container)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(int(t("space.2").rstrip("px")))
+        row.addWidget(self._filter, stretch=1)
+
+        row.addWidget(QLabel("Group by:"))
+        self._group_combo = QComboBox(container)
+        self._group_combo.setObjectName("references_section_group_combo")
+        for label, _key in _GROUP_OPTIONS:
+            self._group_combo.addItem(label)
+        self._group_combo.currentIndexChanged.connect(self._on_group_changed)
+        row.addWidget(self._group_combo)
+
+        self._expand_all_link = text_link_button("Expand all")
+        self._expand_all_link.setObjectName("references_section_expand_all")
+        self._expand_all_link.clicked.connect(self._on_expand_all)
+        self._collapse_all_link = text_link_button("Collapse all")
+        self._collapse_all_link.setObjectName("references_section_collapse_all")
+        self._collapse_all_link.clicked.connect(self._on_collapse_all)
+        self._expand_all_link.setVisible(False)
+        self._collapse_all_link.setVisible(False)
+        row.addWidget(self._expand_all_link)
+        row.addWidget(self._collapse_all_link)
+        return container
+
+    def _is_grouped(self) -> bool:
+        combo = getattr(self, "_group_combo", None)
+        return combo is not None and combo.currentIndex() > 0
+
+    def _group_field(self) -> str:
+        return _GROUP_OPTIONS[self._group_combo.currentIndex()][1]
+
+    def _ordered_rows(self) -> list[dict[str, Any]]:
+        """Read the proxy's currently visible rows in sorted order."""
+        rows: list[dict[str, Any]] = []
+        for r in range(self._proxy.rowCount()):
+            source = self._proxy.mapToSource(self._proxy.index(r, 0))
+            rows.append(self._model.row_dict(source.row()))
+        return rows
+
+    def _group_value(self, row: dict[str, Any]) -> str:
+        """Group-key value for a row — the display string, by-day for dates."""
+        key = self._group_field()
+        raw = row.get(key)
+        if raw in (None, ""):
+            return _GROUP_NONE
+        if key == "created":
+            # Bucket on the YYYY-MM-DD prefix (reusing _fmt_dt's date part).
+            return str(raw).partition("T")[0] or _GROUP_NONE
+        return str(raw)
+
+    def _on_group_changed(self, _index: int) -> None:
+        # Combo population during _build emits this before the stack/tree
+        # exist; ignore until the views are wired.
+        if getattr(self, "_stack", None) is None:
+            return
+        if self._is_grouped():
+            self._rebuild_tree()
+            self._stack.setCurrentWidget(self._tree)
+            self._expand_all_link.setVisible(True)
+            self._collapse_all_link.setVisible(True)
+        else:
+            self._group_model = None
+            self._stack.setCurrentWidget(self._table)
+            self._expand_all_link.setVisible(False)
+            self._collapse_all_link.setVisible(False)
+        self._fit_height()
+
+    def _on_sort_keys_changed(self) -> None:
+        # While grouped, a sort-key change must re-order rows within groups.
+        if self._is_grouped():
+            self._rebuild_tree()
+            self._fit_height()
+
+    def _rebuild_tree(self) -> None:
+        rows = self._ordered_rows()
+        headers = [col[0] for col in _COLUMNS]
+        if self._group_model is None:
+            self._group_model = GroupingTreeModel(
+                rows, headers, self._group_value, _cell_display, self
+            )
+            self._tree.setModel(self._group_model)
+        else:
+            self._group_model.set_rows(rows)
+        self._tree.expandAll()
+        self._tree.header().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
+        self._tree.header().setSectionResizeMode(
+            4, QHeaderView.ResizeMode.Stretch
+        )
+
+    def _on_expand_all(self) -> None:
+        self._tree.expandAll()
+        self._fit_height()
+
+    def _on_collapse_all(self) -> None:
+        self._tree.collapseAll()
+        self._fit_height()
+
+    def _on_tree_expansion_changed(self, _index: QModelIndex) -> None:
+        self._fit_height()
 
     # ------------------------------------------------------------------
     # Add-reference button row
@@ -391,23 +605,40 @@ class ReferencesSection(QWidget):
     # Row resolution / interaction
     # ------------------------------------------------------------------
 
-    def _row_at(self, proxy_index: QModelIndex) -> dict[str, Any] | None:
-        if not proxy_index.isValid():
+    def _row_at(self, index: QModelIndex) -> dict[str, Any] | None:
+        """Resolve a row dict from an index on whichever view is live.
+
+        Table indices map proxy → source; grouped-tree indices delegate to
+        the grouping model (group-node indices return ``None``). Both paths
+        land on the same underlying edge dict, so navigation/delete behave
+        identically whether the flat table or the grouped tree is showing.
+        """
+        if not index.isValid():
             return None
-        source_index = self._proxy.mapToSource(proxy_index)
+        model = index.model()
+        if self._group_model is not None and model is self._group_model:
+            return self._group_model.row_dict(index)
+        source_index = self._proxy.mapToSource(index)
         return self._model.row_dict(source_index.row())
 
-    def _on_double_clicked(self, proxy_index: QModelIndex) -> None:
-        row = self._row_at(proxy_index)
+    def _on_double_clicked(self, index: QModelIndex) -> None:
+        row = self._row_at(index)
         if row and row["other_type"] and row["other_id"]:
             self.navigate_requested.emit(row["other_type"], row["other_id"])
 
     def _on_context_menu(self, position: QPoint) -> None:
-        proxy_index = self._table.indexAt(position)
-        row = self._row_at(proxy_index)
+        self._show_row_menu(self._table, self._table.indexAt(position), position)
+
+    def _on_tree_context_menu(self, position: QPoint) -> None:
+        self._show_row_menu(self._tree, self._tree.indexAt(position), position)
+
+    def _show_row_menu(
+        self, view: QWidget, index: QModelIndex, position: QPoint
+    ) -> None:
+        row = self._row_at(index)
         if row is None:
             return
-        menu = QMenu(self._table)
+        menu = QMenu(view)
         if self._client is not None:
             delete_action = menu.addAction("Delete reference")
             delete_action.triggered.connect(
@@ -418,7 +649,7 @@ class ReferencesSection(QWidget):
             lambda _checked=False, et=row["other_type"], ident=row["other_id"]:
             self.navigate_requested.emit(et, ident)
         )
-        menu.exec(self._table.viewport().mapToGlobal(position))
+        menu.exec(view.viewport().mapToGlobal(position))
 
     # ------------------------------------------------------------------
     # Add / Delete handlers

@@ -15,13 +15,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QModelIndex
+from PySide6.QtCore import QModelIndex, Qt
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QComboBox,
     QDialog,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QMenu,
+    QTreeView,
     QWidget,
 )
 
@@ -31,10 +34,26 @@ from crmbuilder_v2.ui.dialogs.reference_delete import (
     ReferenceDeleteDialog,
     edge_text,
 )
-from crmbuilder_v2.ui.widgets.form_helpers import primary_button
+from crmbuilder_v2.ui.widgets.form_helpers import (
+    primary_button,
+    text_link_button,
+)
+from crmbuilder_v2.ui.widgets.grouping_tree_model import GroupingTreeModel
 from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
+from crmbuilder_v2.ui.widgets.multi_sort_header import MultiSortHeaderView
+from crmbuilder_v2.ui.widgets.multi_sort_proxy import MultiSortProxyModel
 
 _ALL = "All"
+
+# Group-by control (PI-117 / WTK-068). Label → record key; the first
+# entry restores the flat list. Driven by the columns this panel shows.
+_GROUP_NONE = "(none)"
+_GROUP_OPTIONS: list[tuple[str, str]] = [
+    (_GROUP_NONE, ""),
+    ("Source type", "source_type"),
+    ("Relationship", "relationship"),
+    ("Target type", "target_type"),
+]
 
 # Width cap for the free-text filter so it does not crowd the type combos
 # (mirrors the constrained-input convention in CommitsPanel).
@@ -64,8 +83,35 @@ class ReferencesPanel(ListDetailPanel):
         self._source_filter: QComboBox | None = None
         self._target_filter: QComboBox | None = None
         self._text_filter: LinkFilterInput | None = None
+        self._group_combo: QComboBox | None = None
         self._all_records: list[dict[str, Any]] = []
+        self._proxy: MultiSortProxyModel | None = None
+        self._group_model: GroupingTreeModel | None = None
+        self._tree: QTreeView | None = None
         super().__init__(*args, **kwargs)
+
+        # PI-117 / WTK-068: bring header-click single- AND multi-column sort
+        # to this previously list-only panel. A MultiSortProxyModel sits
+        # between the base _RecordTableModel and the master view; since
+        # _RecordTableModel exposes only DisplayRole, sort case-insensitively
+        # over the Source / Relationship / Target string columns.
+        self._proxy = MultiSortProxyModel(self)
+        self._proxy.setSourceModel(self._model)
+        self._proxy.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self._table.setModel(self._proxy)
+        self._table.setSortingEnabled(False)
+        sort_header = MultiSortHeaderView(Qt.Orientation.Horizontal, self._table)
+        sort_header.setStretchLastSection(True)
+        self._table.setHorizontalHeader(sort_header)
+        sort_header.attach_proxy(self._proxy)
+        self._proxy.sortKeysChanged.connect(self._on_sort_keys_changed)
+
+        # Grouped tree presentation (PI-117): a sibling of the table, shown
+        # only while a group key is active.
+        self._tree = self._build_group_tree()
+        self.layout().addWidget(self._tree, stretch=1)
+        self._tree.setVisible(False)
+
         # Connect single-click navigation now that the table exists.
         self._table.clicked.connect(self._on_cell_clicked)
         # New Reference toolbar button (v0.3 slice C — DEC-033).
@@ -75,6 +121,22 @@ class ReferencesPanel(ListDetailPanel):
             self._on_new_reference_clicked
         )
         self._action_layout.addWidget(self._new_reference_button)
+
+    def _build_group_tree(self) -> QTreeView:
+        tree = QTreeView(self)
+        tree.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        tree.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        tree.setAlternatingRowColors(True)
+        tree.setUniformRowHeights(True)
+        tree.clicked.connect(self._on_cell_clicked)
+        tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        tree.customContextMenuRequested.connect(
+            self._on_tree_context_menu_requested
+        )
+        return tree
 
     def entity_title(self) -> str:
         return "References"
@@ -124,6 +186,28 @@ class ReferencesPanel(ListDetailPanel):
         self._target_filter.addItem(_ALL)
         self._target_filter.currentIndexChanged.connect(self._on_filter_changed)
         layout.addWidget(self._target_filter)
+
+        layout.addSpacing(12)
+
+        # Group-by control (PI-117 / WTK-068), composing with the filters.
+        layout.addWidget(QLabel("Group by:"))
+        self._group_combo = QComboBox()
+        self._group_combo.setObjectName("references_panel_group_combo")
+        for label, _key in _GROUP_OPTIONS:
+            self._group_combo.addItem(label)
+        self._group_combo.currentIndexChanged.connect(self._on_group_changed)
+        layout.addWidget(self._group_combo)
+
+        self._expand_all_link = text_link_button("Expand all")
+        self._expand_all_link.setObjectName("references_panel_expand_all")
+        self._expand_all_link.clicked.connect(self._on_expand_all)
+        self._collapse_all_link = text_link_button("Collapse all")
+        self._collapse_all_link.setObjectName("references_panel_collapse_all")
+        self._collapse_all_link.clicked.connect(self._on_collapse_all)
+        self._expand_all_link.setVisible(False)
+        self._collapse_all_link.setVisible(False)
+        layout.addWidget(self._expand_all_link)
+        layout.addWidget(self._collapse_all_link)
 
         layout.addStretch(1)
         return container
@@ -212,11 +296,15 @@ class ReferencesPanel(ListDetailPanel):
 
         Bypasses the base class's fetch path — no network call needed.
         Shared by the dropdown and free-text filter handlers so the two
-        always compose against the current state of the other.
+        always compose against the current state of the other. When a group
+        key is active the grouped tree is rebuilt from the filtered+sorted
+        rows so sort/group stay composed with the filters (§3.8).
         """
         filtered = self._apply_filter(self._all_records)
         self._records = filtered
         self._model.set_records(filtered)
+        if self._is_grouped():
+            self._rebuild_tree()
         if not filtered and self._has_active_text_filter():
             query = self._text_filter.text().strip()
             self._status_label.setText(f'No links match "{query}"')
@@ -239,7 +327,7 @@ class ReferencesPanel(ListDetailPanel):
     def _on_cell_clicked(self, index: QModelIndex) -> None:
         if not index.isValid():
             return
-        record = self._model.record_at(index.row())
+        record = self._record_at_index(index)
         if record is None:
             return
         # Column 0 = Source, Column 2 = Target. Column 1 is the
@@ -256,6 +344,27 @@ class ReferencesPanel(ListDetailPanel):
         if entity_type not in _NAVIGABLE_TYPES or not identifier:
             return
         self.navigate_requested.emit(entity_type, identifier)
+
+    def _record_at_index(
+        self, index: QModelIndex
+    ) -> dict[str, Any] | None:
+        """Resolve a record from an index on whichever view emitted it.
+
+        Indices arrive from the proxy-backed table, the grouped tree, or
+        (in tests / direct calls) the source ``_RecordTableModel``. Each is
+        mapped back to the underlying record so navigation, context menus,
+        and delete act on the correct edge regardless of presentation.
+        """
+        if not index.isValid():
+            return None
+        model = index.model()
+        if self._group_model is not None and model is self._group_model:
+            return self._group_model.row_dict(index)
+        if self._proxy is not None and model is self._proxy:
+            source = self._proxy.mapToSource(index)
+            return self._model.record_at(source.row())
+        # Source-model index (tests pass these directly).
+        return self._model.record_at(index.row())
 
     # ------------------------------------------------------------------
     # Right-click context menu (v0.3 — DEC-036)
@@ -330,6 +439,93 @@ class ReferencesPanel(ListDetailPanel):
         if entity_type not in _NAVIGABLE_TYPES or not identifier:
             return
         self.navigate_requested.emit(entity_type, identifier)
+
+    # ------------------------------------------------------------------
+    # Sort + Group (PI-117 / WTK-068)
+    # ------------------------------------------------------------------
+
+    def _is_grouped(self) -> bool:
+        return self._group_combo is not None and self._group_combo.currentIndex() > 0
+
+    def _group_field(self) -> str:
+        return _GROUP_OPTIONS[self._group_combo.currentIndex()][1]
+
+    def _group_value(self, record: dict[str, Any]) -> str:
+        value = record.get(self._group_field())
+        return str(value) if value not in (None, "") else _GROUP_NONE
+
+    def _cell_display(self, record: dict[str, Any], column: int) -> str:
+        """Render a record's cell for ``column`` exactly as the flat list."""
+        spec = self.list_columns()[column]
+        value = record.get(spec.field)
+        return "" if value is None else str(value)
+
+    def _ordered_visible_records(self) -> list[dict[str, Any]]:
+        """The proxy's currently-visible records in sorted order."""
+        if self._proxy is None:
+            return list(self._records)
+        rows: list[dict[str, Any]] = []
+        for r in range(self._proxy.rowCount()):
+            source = self._proxy.mapToSource(self._proxy.index(r, 0))
+            record = self._model.record_at(source.row())
+            if record is not None:
+                rows.append(record)
+        return rows
+
+    def _on_group_changed(self, _index: int) -> None:
+        if self._tree is None:
+            return
+        if self._is_grouped():
+            self._rebuild_tree()
+            self._table.setVisible(False)
+            self._tree.setVisible(True)
+            self._expand_all_link.setVisible(True)
+            self._collapse_all_link.setVisible(True)
+        else:
+            self._group_model = None
+            self._tree.setVisible(False)
+            self._table.setVisible(True)
+            self._expand_all_link.setVisible(False)
+            self._collapse_all_link.setVisible(False)
+
+    def _on_sort_keys_changed(self) -> None:
+        # A header sort while grouped must re-order rows within groups.
+        if self._is_grouped():
+            self._rebuild_tree()
+
+    def _rebuild_tree(self) -> None:
+        if self._tree is None:
+            return
+        rows = self._ordered_visible_records()
+        headers = [spec.title for spec in self.list_columns()]
+        if self._group_model is None:
+            self._group_model = GroupingTreeModel(
+                rows, headers, self._group_value, self._cell_display, self
+            )
+            self._tree.setModel(self._group_model)
+        else:
+            self._group_model.set_rows(rows)
+        self._tree.expandAll()
+        self._tree.header().setSectionResizeMode(
+            QHeaderView.ResizeMode.ResizeToContents
+        )
+        self._tree.header().setStretchLastSection(True)
+
+    def _on_expand_all(self) -> None:
+        if self._tree is not None:
+            self._tree.expandAll()
+
+    def _on_collapse_all(self) -> None:
+        if self._tree is not None:
+            self._tree.collapseAll()
+
+    def _on_tree_context_menu_requested(self, position) -> None:
+        if self._tree is None:
+            return
+        index = self._tree.indexAt(position)
+        menu = self._build_context_menu(index)
+        if menu.actions():
+            menu.exec(self._tree.viewport().mapToGlobal(position))
 
     # ------------------------------------------------------------------
     # render_detail must be defined because ``ListDetailPanel`` declares
