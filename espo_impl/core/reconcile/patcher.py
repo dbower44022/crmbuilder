@@ -39,6 +39,13 @@ def set_field_property(
     adding a previously-absent property is a separate key-insertion operation
     handled in a later phase. Raises :class:`KeyError` if the entity, field, or
     property is missing.
+
+    A property authored as a *multi-line block* (an ``options:`` list or a
+    ``style:``/``translatedOptions:`` mapping on its own lines) is replaced via
+    :meth:`YamlDocument.replace_block_body`; a single-line scalar/flow value is
+    replaced surgically via :meth:`YamlDocument.set_scalar`. (A whole-file
+    re-dump is never used, so an inline value stays inline and a block stays a
+    block.)
     """
     entity_node = _find_entity(doc, entity)
     field_node = _find_field(entity_node, field_name)
@@ -47,7 +54,14 @@ def set_field_property(
             f"property {prop!r} is not present on field {field_name!r}; "
             "adding an absent property is not supported in this phase"
         )
-    doc.set_scalar(field_node, prop, new_value)
+    key_line, _ = field_node.lc.key(prop)
+    value_line, _ = field_node.lc.value(prop)
+    if value_line != key_line:
+        # Value lives on its own line(s): a block list/mapping. Regenerate the
+        # block body from the new value rather than splicing a scalar token.
+        doc.replace_block_body(field_node, prop, new_value)
+    else:
+        doc.set_scalar(field_node, prop, new_value)
 
 
 def insert_field(
