@@ -97,6 +97,49 @@ class TestInstancesEntry:
         w.refresh(multi_db)
         assert w._table.rowCount() == 3
 
+    def test_field_edit_auto_saves_on_focus_loss(self, qapp, single_db):
+        """Editing a detail field and firing editingFinished persists it."""
+        from automation.ui.deployment.deployment_logic import (
+            load_instance_detail,
+        )
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)  # select the single instance
+
+        w._detail_url.setText("https://changed.example.com")
+        w._detail_desc.setText("edited note")
+        # editingFinished is what a real focus-out emits.
+        w._detail_url.editingFinished.emit()
+
+        detail = load_instance_detail(single_db, w._selected_id)
+        assert detail.url == "https://changed.example.com"
+        assert detail.description == "edited note"
+
+    def test_blank_name_is_reverted_not_saved(self, qapp, single_db):
+        """A blanked Name is restored to the last good value, never persisted."""
+        from automation.ui.deployment.deployment_logic import (
+            load_instance_detail,
+        )
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+
+        w._detail_name.setText("   ")
+        w._detail_name.editingFinished.emit()
+
+        assert w._detail_name.text() == "Alpha"
+        detail = load_instance_detail(single_db, w._selected_id)
+        assert detail.name == "Alpha"
+
+    def test_no_save_button(self, qapp, single_db):
+        """The explicit Save Changes button is gone — edits auto-save."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        assert not hasattr(w, "_save_btn")
+
 
 class TestDeployEntry:
     def test_renders_no_instances(self, qapp, empty_db):

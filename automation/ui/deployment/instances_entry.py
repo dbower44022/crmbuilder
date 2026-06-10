@@ -6,6 +6,7 @@ connection testing, and instance management actions.
 
 from __future__ import annotations
 
+import dataclasses
 import sqlite3
 
 from PySide6.QtCore import Qt, QThread, QUrl, Signal
@@ -28,6 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from automation.ui.deployment.deployment_logic import (
+    InstanceDetail,
     InstanceRow,
     create_instance,
     delete_instance,
@@ -155,6 +157,9 @@ class InstancesEntry(QWidget):
         self._conn: sqlite3.Connection | None = None
         self._instances: list[InstanceRow] = []
         self._selected_id: int | None = None
+        self._loaded_detail: InstanceDetail | None = None
+        # Guard so programmatic field population doesn't trigger an auto-save.
+        self._loading_detail: bool = False
         self._status_cache: dict[int, str] = {}  # instance_id → status key
         self._test_worker: _ConnectionTestWorker | None = None
         self._master_db_path: str | None = None
@@ -210,6 +215,7 @@ class InstancesEntry(QWidget):
         detail_layout = QFormLayout()
 
         self._detail_name = QLineEdit()
+        self._detail_name.editingFinished.connect(self._auto_save_detail)
         detail_layout.addRow("Name:", self._detail_name)
 
         self._detail_code = QLineEdit()
@@ -223,14 +229,17 @@ class InstancesEntry(QWidget):
         detail_layout.addRow("Environment:", self._detail_env)
 
         self._detail_url = QLineEdit()
+        self._detail_url.editingFinished.connect(self._auto_save_detail)
         detail_layout.addRow("URL:", self._detail_url)
 
         self._detail_username = QLineEdit()
+        self._detail_username.editingFinished.connect(self._auto_save_detail)
         detail_layout.addRow("Username:", self._detail_username)
 
         detail_pw_row = QHBoxLayout()
         self._detail_password = QLineEdit()
         self._detail_password.setEchoMode(QLineEdit.EchoMode.Password)
+        self._detail_password.editingFinished.connect(self._auto_save_detail)
         detail_pw_row.addWidget(self._detail_password)
         self._detail_pw_toggle = QPushButton("\U0001f441")
         self._detail_pw_toggle.setFixedWidth(36)
@@ -241,9 +250,11 @@ class InstancesEntry(QWidget):
         detail_layout.addRow("Password:", detail_pw_row)
 
         self._detail_desc = QLineEdit()
+        self._detail_desc.editingFinished.connect(self._auto_save_detail)
         detail_layout.addRow("Description:", self._detail_desc)
 
         self._detail_default = QCheckBox("Default Instance")
+        self._detail_default.toggled.connect(self._on_default_toggled)
         detail_layout.addRow("", self._detail_default)
 
         # Connection test result label
@@ -276,13 +287,9 @@ class InstancesEntry(QWidget):
         primary_row.addStretch()
         detail_layout.addRow("", primary_row)
 
-        # Management row — save, deploy, delete
+        # Management row — deploy, delete.  (Detail edits auto-save when a
+        # field loses focus, so there is no explicit Save button.)
         mgmt_row = QHBoxLayout()
-
-        self._save_btn = QPushButton("Save Changes")
-        self._save_btn.setStyleSheet(_SECONDARY_STYLE)
-        self._save_btn.clicked.connect(self._on_save)
-        mgmt_row.addWidget(self._save_btn)
 
         self._wizard_btn = QPushButton("Deploy Wizard")
         self._wizard_btn.setStyleSheet(_SECONDARY_STYLE)
@@ -435,7 +442,6 @@ class InstancesEntry(QWidget):
             actions.append(("Configure Instance", self._on_configure))
             actions.append(("Open in Browser", self._on_open_browser))
             actions.append(None)
-            actions.append(("Save Changes", self._on_save))
             actions.append(("Deploy Wizard", self._on_start_wizard))
             actions.append(None)
             actions.append(("Delete Instance", self._on_delete))
@@ -447,6 +453,7 @@ class InstancesEntry(QWidget):
         if not self._conn or row < 0 or row >= len(self._instances):
             self._detail_group.setVisible(False)
             self._selected_id = None
+            self._loaded_detail = None
             return
 
         inst_row = self._instances[row]
@@ -454,18 +461,26 @@ class InstancesEntry(QWidget):
         detail = load_instance_detail(self._conn, inst_row.id)
         if detail is None:
             self._detail_group.setVisible(False)
+            self._loaded_detail = None
             return
 
-        self._detail_group.setVisible(True)
-        self._detail_name.setText(detail.name)
-        self._detail_code.setText(detail.code)
-        self._detail_env.setText(detail.environment)
-        self._detail_url.setText(detail.url or "")
-        self._detail_username.setText(detail.username or "")
-        self._detail_password.setText(detail.password or "")
-        self._detail_desc.setText(detail.description or "")
-        self._detail_default.setChecked(detail.is_default)
-        self._test_result_label.setVisible(False)
+        # Populate the form under the loading guard so the editingFinished /
+        # toggled signals fired by setText/setChecked don't re-trigger a save.
+        self._loading_detail = True
+        try:
+            self._detail_group.setVisible(True)
+            self._detail_name.setText(detail.name)
+            self._detail_code.setText(detail.code)
+            self._detail_env.setText(detail.environment)
+            self._detail_url.setText(detail.url or "")
+            self._detail_username.setText(detail.username or "")
+            self._detail_password.setText(detail.password or "")
+            self._detail_desc.setText(detail.description or "")
+            self._detail_default.setChecked(detail.is_default)
+            self._test_result_label.setVisible(False)
+        finally:
+            self._loading_detail = False
+        self._loaded_detail = detail
 
     # ── Password visibility toggles ──────────────────────────────
 
@@ -482,33 +497,115 @@ class InstancesEntry(QWidget):
     def _toggle_new_password(self) -> None:
         self._toggle_password(self._new_password)
 
-    # ── Save ───────────────────────────────────────────────────────
+    # ── Auto-save (on field focus loss) ────────────────────────────
 
-    def _on_save(self) -> None:
-        if not self._conn or self._selected_id is None:
+    def _auto_save_detail(self) -> None:
+        """Persist the detail-pane text edits when a field loses focus.
+
+        Connected to each editable QLineEdit's ``editingFinished`` signal,
+        which fires on Return/Enter or focus-out.  This replaces the former
+        explicit "Save Changes" button — leaving any text box commits the
+        change.  The write is skipped when nothing changed, and a blank
+        Name is rejected (restored to the last saved value) since Name is
+        required.
+        """
+        if (
+            self._loading_detail
+            or not self._conn
+            or self._selected_id is None
+            or self._loaded_detail is None
+        ):
             return
 
         name = self._detail_name.text().strip()
         if not name:
-            QMessageBox.warning(self, "Validation", "Name is required.")
+            # Name is required — restore the last good value rather than
+            # persisting (or warning on) an empty one during a focus-out.
+            self._loading_detail = True
+            try:
+                self._detail_name.setText(self._loaded_detail.name)
+            finally:
+                self._loading_detail = False
             return
+
+        url = self._detail_url.text().strip() or None
+        username = self._detail_username.text().strip() or None
+        password = self._detail_password.text() or None
+        description = self._detail_desc.text().strip() or None
+
+        prev = self._loaded_detail
+        if (
+            name == prev.name
+            and url == prev.url
+            and username == prev.username
+            and password == prev.password
+            and description == prev.description
+        ):
+            return  # Nothing changed — no write.
 
         update_instance(
             self._conn,
             self._selected_id,
             name=name,
-            url=self._detail_url.text().strip() or None,
-            username=self._detail_username.text().strip() or None,
-            password=self._detail_password.text() or None,
-            description=self._detail_desc.text().strip() or None,
+            url=url,
+            username=username,
+            password=password,
+            description=description,
         )
 
-        # Handle default flag change
-        if self._detail_default.isChecked():
-            set_default_instance(self._conn, self._selected_id)
+        # Update cached snapshot and the visible row in place, without a
+        # full refresh, so the user's focus/selection is left undisturbed.
+        self._loaded_detail = dataclasses.replace(
+            prev,
+            name=name,
+            url=url,
+            username=username,
+            password=password,
+            description=description,
+        )
+        self._sync_row_cells(self._selected_id, name, url)
+        self.instance_created.emit()
 
+    def _on_default_toggled(self, checked: bool) -> None:
+        """Persist a change to the default-instance flag.
+
+        Setting an instance as default clears the flag on its siblings, so
+        this path does a full refresh to keep every row's Default column in
+        sync.  Unchecking is ignored (a default is changed by promoting a
+        different instance, not by clearing the current one) — mirrors the
+        prior Save behaviour.
+        """
+        if (
+            self._loading_detail
+            or not self._conn
+            or self._selected_id is None
+            or not checked
+        ):
+            return
+        if self._loaded_detail is not None and self._loaded_detail.is_default:
+            return  # Already the default — nothing to do.
+
+        set_default_instance(self._conn, self._selected_id)
         self.refresh(self._conn)
         self.instance_created.emit()
+
+    def _sync_row_cells(self, instance_id: int, name: str, url: str | None) -> None:
+        """Reflect saved Name/URL edits in the in-memory row and table cells.
+
+        :param instance_id: The instance whose row should be updated.
+        :param name: The newly saved name.
+        :param url: The newly saved URL (or None).
+        """
+        for row, inst in enumerate(self._instances):
+            if inst.id == instance_id:
+                self._instances[row] = dataclasses.replace(
+                    inst, name=name, url=url
+                )
+                if (item := self._table.item(row, 0)) is not None:
+                    item.setText(name)
+                if (item := self._table.item(row, 3)) is not None:
+                    item.setText(url or "")
+                break
 
     # ── Test Connection ────────────────────────────────────────────
 
