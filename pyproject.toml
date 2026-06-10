@@ -9,6 +9,10 @@ dependencies = [
     "pyside6>=6.10.2",
     "requests>=2.32.5",
     "pyyaml>=6.0.2",
+    # Comment/format-preserving YAML, used only by the drift-reconciliation
+    # write-back layer as a position-aware locator (we splice raw bytes rather
+    # than re-serialize, so the rest of the file stays byte-for-byte intact).
+    "ruamel.yaml>=0.18",
     "python-docx>=1.2.0",
     "paramiko>=3.0",
     "dnspython>=2.0",
