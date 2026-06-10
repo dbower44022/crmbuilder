@@ -40,6 +40,7 @@ def diff_fields(
     live: dict[str, dict[str, dict[str, Any]]],
     *,
     comparator: FieldComparator | None = None,
+    crm_only_custom_only: bool = True,
 ) -> list[Difference]:
     """Compute field-level differences across all entities.
 
@@ -47,6 +48,12 @@ def diff_fields(
     CRM_ONLY differences (a whole field present only in the CRM), and YAML_ONLY
     differences (a whole field present only in the YAML). Ordering is stable:
     entities then fields then properties, as encountered.
+
+    :param crm_only_custom_only: when True (default), a live-only field is flagged
+        CRM_ONLY only if it is a *custom* field (``isCustom`` in its meta). A real
+        UI addition is always custom; native fields the YAML never declared are
+        not a reconciliation concern, so this suppresses large native-field noise
+        on entities like Contact. Set False to flag every live-only field.
     """
     comparator = comparator or FieldComparator()
     diffs: list[Difference] = []
@@ -76,6 +83,9 @@ def diff_fields(
                         )
                     )
             elif in_crm:
+                current = crm_fields[name]
+                if crm_only_custom_only and not current.get("isCustom"):
+                    continue  # native/system field the YAML never managed: not drift
                 diffs.append(
                     Difference(
                         config_type=ConfigType.FIELD,
@@ -83,8 +93,8 @@ def diff_fields(
                         entity=entity,
                         locator=FieldLocator(entity, name, None),
                         property=None,
-                        crm_value=crm_fields[name],
-                        full_crm_block=crm_fields[name],
+                        crm_value=current,
+                        full_crm_block=current,
                         # source_file deliberately None: the user picks it
                         # (ask-per-addition) since entities span multiple files.
                     )

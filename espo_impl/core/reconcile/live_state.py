@@ -30,6 +30,51 @@ from espo_impl.core.audit_utils import (
 LabelResolver = Callable[[str, str, str], str]
 
 
+def build_label_resolver(client) -> LabelResolver:
+    """Build an i18n label resolver from a connected client.
+
+    Fetches the full ``/I18n`` tree once and returns a closure that looks up
+    ``i18n[scope].fields[name]`` then ``i18n.Global.fields[name]`` then the
+    fallback — the same resolution the Audit feature uses. Verified against the
+    live CBM instance (recovers e.g. ``Contact.title`` label drift).
+    """
+    status, i18n = client.get_i18n()
+    i18n = i18n if status == 200 and isinstance(i18n, dict) else {}
+
+    def resolver(scope: str, api_name: str, fallback: str) -> str:
+        scoped = (i18n.get(scope) or {}).get("fields") or {}
+        val = scoped.get(api_name)
+        if isinstance(val, str):
+            return val
+        glob = (i18n.get("Global") or {}).get("fields") or {}
+        gval = glob.get(api_name)
+        return gval if isinstance(gval, str) else fallback
+
+    return resolver
+
+
+def map_entity_specs(
+    desired_entities: Iterable[str], scopes: dict[str, Any]
+) -> tuple[list["EntitySpec"], list[str]]:
+    """Map desired (YAML) entity names to live :class:`EntitySpec`\\ s via scopes.
+
+    A native entity maps to itself; a custom entity ``Session`` maps to ``CSession``.
+    Returns ``(specs, unmapped)`` where ``unmapped`` lists YAML entities not present
+    on the live instance (e.g. a domain not deployed to this instance) — reported,
+    not an error.
+    """
+    specs: list[EntitySpec] = []
+    unmapped: list[str] = []
+    for name in sorted(set(desired_entities)):
+        if name in scopes:
+            specs.append(EntitySpec(name, name, scopes[name].get("type")))
+        elif f"C{name}" in scopes:
+            specs.append(EntitySpec(name, f"C{name}", scopes[f"C{name}"].get("type")))
+        else:
+            unmapped.append(name)
+    return specs, unmapped
+
+
 @dataclass(frozen=True)
 class EntitySpec:
     """An entity to capture, with the names/type needed to reach and classify it.

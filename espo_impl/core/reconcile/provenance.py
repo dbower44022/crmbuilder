@@ -20,7 +20,8 @@ from espo_impl.core.models import FieldDefinition
 FieldProvenance = dict[str, dict[str, tuple[FieldDefinition, Path]]]
 
 # Path fragments that mark a file as not part of the canonical program set.
-_DEFAULT_EXCLUDES = ("/archive/", "-test.", "-draft.", "-revised", "inventory")
+# "audit-" skips generated audit-snapshot directories (programs/audit-YYYYMMDD-.../).
+_DEFAULT_EXCLUDES = ("/archive/", "audit-", "-test.", "-draft.", "-revised", "inventory")
 
 
 @dataclass(frozen=True)

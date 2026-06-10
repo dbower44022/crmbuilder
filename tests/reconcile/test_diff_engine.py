@@ -41,8 +41,9 @@ def test_changed_property_carries_old_and_new():
 
 
 def test_crm_only_field_has_no_source_file_and_carries_block():
+    # A real UI addition is a custom field (isCustom).
     desired = {"Session": {}}
-    live = {"Session": {"linkedinUrl": {"type": "url", "label": "LinkedIn"}}}
+    live = {"Session": {"linkedinUrl": {"type": "url", "label": "LinkedIn", "isCustom": True}}}
 
     diffs = diff_fields(desired, live)
 
@@ -50,8 +51,17 @@ def test_crm_only_field_has_no_source_file_and_carries_block():
     d = diffs[0]
     assert d.category is DiffCategory.CRM_ONLY
     assert d.source_file is None  # ask-per-addition
-    assert d.full_crm_block == {"type": "url", "label": "LinkedIn"}
+    assert d.full_crm_block["type"] == "url"
     assert d.locator == FieldLocator("Session", "linkedinUrl", None)
+
+
+def test_native_live_only_field_not_flagged_crm_only():
+    # A native field the YAML never declared is not a reconciliation concern.
+    desired = {"Contact": {}}
+    live = {"Contact": {"phoneNumber": {"type": "phone", "label": "Phone"}}}  # no isCustom
+    assert diff_fields(desired, live) == []
+    # ...unless the caller opts in.
+    assert len(diff_fields(desired, live, crm_only_custom_only=False)) == 1
 
 
 def test_yaml_only_field_is_reported_with_source():
