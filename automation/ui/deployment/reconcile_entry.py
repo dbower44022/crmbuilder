@@ -94,7 +94,8 @@ def _diff_label(diff) -> str:
         return f"{name}.{diff.property}:  {_short(diff.yaml_value)}  →  {_short(diff.crm_value)}"
     if diff.category is DiffCategory.CRM_ONLY:
         return f"{name}  —  add from CRM"
-    return f"{name}  —  in YAML, absent from CRM (report-only)"
+    src = diff.source_file.name if diff.source_file is not None else "?"
+    return f"{name}  —  in YAML, absent from CRM — {src} (report-only)"
 
 
 class ReconcileEntry(QWidget):

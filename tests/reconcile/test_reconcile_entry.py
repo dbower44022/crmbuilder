@@ -50,6 +50,16 @@ def _crm_only(entity="Contact", name="newField"):
     )
 
 
+def _yaml_only(entity="Contact", name="legacyField", source="FU-Contact.yaml"):
+    return Difference(
+        config_type=ConfigType.FIELD,
+        category=DiffCategory.YAML_ONLY,
+        entity=entity,
+        locator=FieldLocator(entity, name, None),
+        source_file=Path(source),
+    )
+
+
 def test_empty_state_when_no_instances():
     from automation.ui.deployment.reconcile_entry import ReconcileEntry
 
@@ -95,4 +105,8 @@ def test_diff_label_and_helpers_are_compact():
     assert _locator_name(_changed()) == "title"
     assert "title.label" in _diff_label(_changed())
     assert "add from CRM" in _diff_label(_crm_only())
+    # YAML-only rows name the owning file so it can be reviewed.
+    label = _diff_label(_yaml_only())
+    assert "absent from CRM" in label
+    assert "FU-Contact.yaml" in label
     assert len(_short("x" * 500)) <= 70
