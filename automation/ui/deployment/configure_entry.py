@@ -10,8 +10,8 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QColor, QDesktopServices, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -105,6 +105,11 @@ class ConfigureEntry(QWidget):
         self._view_yaml_btn.clicked.connect(self._on_view_yaml)
         header.addWidget(self._view_yaml_btn)
 
+        self._open_editor_btn = QPushButton("Open in Editor")
+        self._open_editor_btn.setStyleSheet(_SECONDARY_STYLE)
+        self._open_editor_btn.clicked.connect(self._on_open_in_editor)
+        header.addWidget(self._open_editor_btn)
+
         header.addStretch()
 
         self._verify_all_btn = QPushButton("Verify All")
@@ -140,11 +145,24 @@ class ConfigureEntry(QWidget):
         self._table.setSelectionMode(
             QAbstractItemView.SelectionMode.ExtendedSelection
         )
+        self._table.itemSelectionChanged.connect(self._on_table_selection_changed)
         enhance_table(
             self._table,
             context_menu_builder=self._context_menu_actions,
         )
         layout.addWidget(self._table, stretch=1)
+
+        # Full file path of the selected row (selectable so it can be copied)
+        self._path_label = QLabel()
+        self._path_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        self._path_label.setWordWrap(True)
+        self._path_label.setStyleSheet(
+            "color: #424242; font-family: Monospace; font-size: 11px; "
+            "padding: 4px 2px;"
+        )
+        layout.addWidget(self._path_label)
 
     # ── Public API ─────────────────────────────────────────────────
 
@@ -172,6 +190,7 @@ class ConfigureEntry(QWidget):
         self._conn = conn
         self._instance = instance
         self._project_folder = project_folder
+        self._path_label.clear()
 
         if not has_instances:
             self._empty_label.setText(_EMPTY_NO_INSTANCES)
@@ -226,6 +245,7 @@ class ConfigureEntry(QWidget):
             actions.append(("Run Selected", self._on_run_selected))
             actions.append(("Verify Selected", self._on_verify_selected))
             actions.append(("View YAML", self._on_view_yaml))
+            actions.append(("Open in Editor", self._on_open_in_editor))
             actions.append(None)
         actions.append(("Run All", self._on_run_all))
         actions.append(("Verify All", self._on_verify_all))
@@ -257,6 +277,28 @@ class ConfigureEntry(QWidget):
             for row in selected_rows
             if 0 <= row < len(self._files)
         ]
+
+    def _on_table_selection_changed(self) -> None:
+        """Show the full path of the selected file beneath the table."""
+        files = self._selected_files()
+        if len(files) == 1:
+            self._path_label.setText(files[0].path)
+        elif len(files) > 1:
+            self._path_label.setText(f"{len(files)} files selected")
+        else:
+            self._path_label.clear()
+
+    def _on_open_in_editor(self) -> None:
+        """Open the selected YAML file(s) in the system's default editor."""
+        files = self._selected_files()
+        if not files:
+            QMessageBox.information(
+                self, "No Selection",
+                "Select one or more YAML files in the table first.",
+            )
+            return
+        for file_info in files:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(file_info.path))
 
     # ── Run / Check logic ──────────────────────────────────────────
 
