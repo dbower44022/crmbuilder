@@ -117,6 +117,30 @@ class LiveStateCapture:
         self._label_resolver = label_resolver or (lambda espo, api, fallback: fallback)
         self._include_native = include_native
 
+    def custom_field_api_names(
+        self, entities: Iterable[EntitySpec]
+    ) -> dict[str, set[str]]:
+        """Return each entity's *custom* field API names (c-prefixed on native
+        entities), keyed by YAML entity name.
+
+        Feeds the layout reverse-mapper, which strips the c-prefix only for fields
+        it knows are custom. A fetch failure yields an empty set for that entity.
+        """
+        out: dict[str, set[str]] = {}
+        for spec in entities:
+            status, fields_meta = self._client.get_entity_field_list(spec.espo_name)
+            names: set[str] = set()
+            if status == 200 and isinstance(fields_meta, dict):
+                for api_name, meta in fields_meta.items():
+                    if (
+                        isinstance(meta, dict)
+                        and classify_field(api_name, meta, spec.entity_type)
+                        is FieldClass.CUSTOM
+                    ):
+                        names.add(api_name)
+            out[spec.yaml_name] = names
+        return out
+
     def capture_fields(
         self, entities: Iterable[EntitySpec]
     ) -> tuple[dict[str, dict[str, dict[str, Any]]], list[str]]:

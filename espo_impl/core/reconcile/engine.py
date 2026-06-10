@@ -26,7 +26,8 @@ from espo_impl.core.reconcile.live_state import (
     build_label_resolver,
     map_entity_specs,
 )
-from espo_impl.core.reconcile.models import Difference
+from espo_impl.core.reconcile.layout_reverse import reverse_layout_payload
+from espo_impl.core.reconcile.models import ConfigType, DiffCategory, Difference
 from espo_impl.core.reconcile.provenance import (
     FieldCollision,
     build_field_provenance,
@@ -120,10 +121,44 @@ def detect_drift(
     # --- diff each type ---
     report.differences += diff_fields(field_prov, live_fields)
     report.differences += diff_relationships(rel_prov, live_rels)
-    report.differences += diff_layouts(
+    layout_diffs = diff_layouts(
         layout_desired, live_layouts, source_files=layout_files
     )
+    _attach_layout_write_bodies(layout_diffs, cap, specs)
+    report.differences += layout_diffs
     report.differences += diff_roles(roles, roles_live, source_files=role_files)
     report.differences += diff_teams(teams, teams_live, source_files=team_files)
 
     return report
+
+
+def _attach_layout_write_bodies(layout_diffs, cap, specs) -> None:
+    """Reverse-map each CHANGED layout's live payload to its YAML body in place.
+
+    A layout CHANGED diff carries the raw API payload as ``crm_value``; the
+    reconciler writes ``full_crm_block``. We populate it with the YAML-shaped body
+    (natural field names, panels:/columns: structure) so layout drift is
+    applicable. CRM_ONLY/YAML_ONLY layout diffs stay report-only. ``Difference``
+    is frozen, so we replace each entry with an updated copy.
+    """
+    from dataclasses import replace
+
+    has_changed = any(
+        d.config_type is ConfigType.LAYOUT and d.category is DiffCategory.CHANGED
+        for d in layout_diffs
+    )
+    if not has_changed:
+        return
+    custom_names = cap.custom_field_api_names(specs)
+    for i, diff in enumerate(layout_diffs):
+        if not (
+            diff.config_type is ConfigType.LAYOUT
+            and diff.category is DiffCategory.CHANGED
+        ):
+            continue
+        body = reverse_layout_payload(
+            diff.locator.layout_type,
+            diff.crm_value,
+            custom_names.get(diff.entity, set()),
+        )
+        layout_diffs[i] = replace(diff, full_crm_block=body)

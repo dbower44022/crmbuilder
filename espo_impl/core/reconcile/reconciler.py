@@ -83,14 +83,20 @@ def _apply_one(doc: YamlDocument, diff: Difference) -> str | None:
         return _REPORT_ONLY  # YAML_ONLY: never auto-delete
 
     if ct is ConfigType.LAYOUT:
-        # diff.crm_value is the raw live API payload (a bare panel/column list with
-        # c-prefixed API field names) — NOT the YAML body shape (panels:/columns:
-        # with natural names, possibly tabs-authored). Writing it verbatim would
-        # produce structurally-wrong YAML, so layout drift is detected and reported
-        # but not auto-applied until the payload->YAML reverse-mapping (audit
-        # reverse-mappers + natural-name reversal) and the tabs-vs-explicit-rows
-        # authoring policy are wired. See _REPORT_ONLY_LAYOUT.
-        return _REPORT_ONLY_LAYOUT
+        if cat is DiffCategory.CHANGED:
+            # full_crm_block is the YAML body shape (panels:/columns: with natural
+            # names), reverse-mapped from the live payload by the engine. crm_value
+            # itself is the raw API payload and must NOT be written. If the body is
+            # absent (engine reverse-map not run), stay report-only rather than
+            # write a wrong shape.
+            if diff.full_crm_block is None:
+                return _REPORT_ONLY_LAYOUT
+            layout_map = doc.data["entities"][diff.entity]["layout"]
+            doc.replace_block_body(
+                layout_map, diff.locator.layout_type, diff.full_crm_block
+            )
+            return None
+        return _REPORT_ONLY  # CRM-only layout add / YAML_ONLY
 
     if ct is ConfigType.ROLE:
         if cat is DiffCategory.CHANGED:
