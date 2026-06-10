@@ -22,7 +22,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMenu,
-    QPushButton,
     QWidget,
 )
 
@@ -33,8 +32,13 @@ from crmbuilder_v2.ui.dialogs.reference_delete import (
     edge_text,
 )
 from crmbuilder_v2.ui.widgets.form_helpers import primary_button
+from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
 
 _ALL = "All"
+
+# Width cap for the free-text filter so it does not crowd the type combos
+# (mirrors the constrained-input convention in CommitsPanel).
+_TEXT_FILTER_WIDTH = 220
 
 # Maps the reference's stored ``source_type`` / ``target_type`` to the
 # ``entity_type`` argument the navigation router expects. The two are
@@ -59,6 +63,7 @@ class ReferencesPanel(ListDetailPanel):
         # initialize here for clarity.
         self._source_filter: QComboBox | None = None
         self._target_filter: QComboBox | None = None
+        self._text_filter: LinkFilterInput | None = None
         self._all_records: list[dict[str, Any]] = []
         super().__init__(*args, **kwargs)
         # Connect single-click navigation now that the table exists.
@@ -93,6 +98,18 @@ class ReferencesPanel(ListDetailPanel):
         layout = QHBoxLayout(container)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
+
+        # Free-text filter first (PI-116 / WTK-061): debounced narrowing
+        # reads before the structured type dropdowns refine. Composes with
+        # the combos via AND in ``_apply_filter``.
+        self._text_filter = LinkFilterInput(
+            object_name="references_panel_filter",
+            max_width=_TEXT_FILTER_WIDTH,
+        )
+        self._text_filter.filterChanged.connect(self._on_text_filter_changed)
+        layout.addWidget(self._text_filter)
+
+        layout.addSpacing(12)
 
         layout.addWidget(QLabel("Source type:"))
         self._source_filter = QComboBox()
@@ -162,23 +179,58 @@ class ReferencesPanel(ListDetailPanel):
     ) -> list[dict[str, Any]]:
         source_value = self._source_filter.currentText() if self._source_filter else _ALL
         target_value = self._target_filter.currentText() if self._target_filter else _ALL
+        # Free text matched case-insensitively against the rendered row
+        # fields (source/target display + relationship), ANDed with the
+        # type dropdowns.
+        text = self._text_filter.text().strip().lower() if self._text_filter else ""
 
         def keep(r: dict[str, Any]) -> bool:
             if source_value != _ALL and (r.get("source_type") or "") != source_value:
                 return False
             if target_value != _ALL and (r.get("target_type") or "") != target_value:
                 return False
+            if text and not self._matches_text(r, text):
+                return False
             return True
 
         return [r for r in records if keep(r)]
 
-    def _on_filter_changed(self, _index: int) -> None:
-        # Re-filter the cached full list and update the model directly.
-        # Bypass the base class's fetch path — no network call needed.
+    @staticmethod
+    def _matches_text(record: dict[str, Any], text: str) -> bool:
+        """True if ``text`` is a substring of any displayed row field."""
+        haystack = " ".join(
+            (
+                record.get("_source_display") or "",
+                record.get("relationship") or "",
+                record.get("_target_display") or "",
+            )
+        ).lower()
+        return text in haystack
+
+    def _reapply_filters(self) -> None:
+        """Re-filter the cached full list and update the model directly.
+
+        Bypasses the base class's fetch path — no network call needed.
+        Shared by the dropdown and free-text filter handlers so the two
+        always compose against the current state of the other.
+        """
         filtered = self._apply_filter(self._all_records)
         self._records = filtered
         self._model.set_records(filtered)
-        self._status_label.setText(f"{len(filtered)} records")
+        if not filtered and self._has_active_text_filter():
+            query = self._text_filter.text().strip()
+            self._status_label.setText(f'No links match "{query}"')
+        else:
+            self._status_label.setText(f"{len(filtered)} records")
+
+    def _has_active_text_filter(self) -> bool:
+        return bool(self._text_filter and self._text_filter.text().strip())
+
+    def _on_filter_changed(self, _index: int) -> None:
+        self._reapply_filters()
+
+    def _on_text_filter_changed(self, _text: str) -> None:
+        self._reapply_filters()
 
     # ------------------------------------------------------------------
     # Click-navigation

@@ -49,7 +49,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
-    QLineEdit,
     QMenu,
     QTableView,
     QVBoxLayout,
@@ -59,6 +58,11 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.widgets.form_helpers import text_link_button
+from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
+
+# Longest query echoed verbatim in the no-match empty state before it is
+# elided with an ellipsis (so a pasted blob does not blow out the line).
+_EMPTY_STATE_QUERY_MAX = 40
 
 # (direction, relationship) → human-readable label. Direction is "inbound"
 # (the record is the target) or "outbound" (the record is the source).
@@ -113,6 +117,11 @@ def _default_kind_label(direction: str, relationship: str) -> str:
 
 def _pretty_entity_type(entity_type: str) -> str:
     return entity_type.replace("_", " ").title()
+
+
+def _elide(text: str, limit: int = _EMPTY_STATE_QUERY_MAX) -> str:
+    """Truncate an echoed query with an ellipsis so a long paste fits."""
+    return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
 def _fmt_dt(value: Any) -> str:
@@ -212,6 +221,7 @@ class ReferencesSection(QWidget):
         self._client = client
         self._add_button = None
         self._table = None
+        self._empty_state = None
         self._build(references_payload or {})
 
     # ------------------------------------------------------------------
@@ -264,11 +274,11 @@ class ReferencesSection(QWidget):
             self._add_button_row(layout)
             return
 
-        # Filter box.
-        self._filter = QLineEdit()
-        self._filter.setObjectName("references_section_filter")
-        self._filter.setPlaceholderText("Filter references…")
-        self._filter.setClearButtonEnabled(True)
+        # Debounced filter box (PI-116 / WTK-061). The clear button
+        # restores the full list immediately; typing applies after the
+        # 250 ms debounce settles. ``filterChanged`` (not ``textChanged``)
+        # drives the apply path so the model is re-filtered once per burst.
+        self._filter = LinkFilterInput(object_name="references_section_filter")
         layout.addWidget(self._filter)
 
         # Model + proxy (sort + filter across all columns).
@@ -278,7 +288,7 @@ class ReferencesSection(QWidget):
         self._proxy.setFilterKeyColumn(-1)  # match against every column
         self._proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self._proxy.setSortRole(Qt.ItemDataRole.UserRole)
-        self._filter.textChanged.connect(self._on_filter_changed)
+        self._filter.filterChanged.connect(self._on_filter_changed)
 
         # Table view.
         self._table = QTableView(self)
@@ -306,6 +316,16 @@ class ReferencesSection(QWidget):
         )
         self._table.customContextMenuRequested.connect(self._on_context_menu)
         layout.addWidget(self._table)
+
+        # No-match empty state — hidden until a filter excludes every row.
+        # Distinct from the "record has no links at all" case above, which
+        # renders "(none)" and never builds the filter box.
+        self._empty_state = self._dim_label("")
+        self._empty_state.setObjectName("references_section_empty_state")
+        self._empty_state.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_state.setVisible(False)
+        layout.addWidget(self._empty_state)
+
         self._fit_height()
 
         self._add_button_row(layout)
@@ -325,7 +345,24 @@ class ReferencesSection(QWidget):
 
     def _on_filter_changed(self, text: str) -> None:
         self._proxy.setFilterFixedString(text)
+        self._update_empty_state(text)
         self._fit_height()
+
+    def _update_empty_state(self, text: str) -> None:
+        """Show/hide the no-match line for the current filter text.
+
+        The empty state appears only when an active (non-empty) query
+        excludes every loaded row; clearing the field (``text == ""``)
+        always dismisses it and restores the table.
+        """
+        if self._empty_state is None or self._table is None:
+            return
+        query = text.strip()
+        no_match = bool(query) and self._proxy.rowCount() == 0
+        if no_match:
+            self._empty_state.setText(f'No links match "{_elide(query)}".')
+        self._empty_state.setVisible(no_match)
+        self._table.setVisible(not no_match)
 
     # ------------------------------------------------------------------
     # Add-reference button row
