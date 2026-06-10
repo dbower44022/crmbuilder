@@ -396,7 +396,7 @@ class ReconcileEntry(QWidget):
         return Path(choice) if ok else None
 
     def _report_result(self, result) -> None:
-        """Log the per-file apply outcome and show a summary dialog."""
+        """Log the per-file apply outcome, write a report, and show a summary."""
         self._on_output_line(
             f"[RECONCILE] Applied {result.applied_count} change(s) across "
             f"{len(result.files)} file(s); {result.not_applied_count} not applied.",
@@ -416,8 +416,33 @@ class ReconcileEntry(QWidget):
                     f"             - skipped {diff.entity}.{_locator_name(diff)}: {reason}",
                     "gray",
                 )
+
+        report_paths = self._write_report(result)
+        if report_paths:
+            for path in report_paths:
+                self._on_output_line(f"[RECONCILE] Report: {path}", "cyan")
+
+        extra = f"\n\nReport written to:\n{report_paths[0].parent}" if report_paths else ""
         QMessageBox.information(
             self, "Reconcile",
             f"Applied {result.applied_count} change(s); "
-            f"{result.not_applied_count} not applied. See the log for detail.",
+            f"{result.not_applied_count} not applied. See the log for detail."
+            f"{extra}",
         )
+
+    def _write_report(self, result) -> tuple[Path, Path] | None:
+        """Write the .log/.json reconcile report under the client's reports/."""
+        if not self._project_folder:
+            return None
+        from espo_impl.core.reconcile.report import write_reconcile_report
+
+        try:
+            return write_reconcile_report(
+                result,
+                Path(self._project_folder) / "reports",
+                instance_name=self._instance.name if self._instance else None,
+                source_url=self._instance.url if self._instance else None,
+            )
+        except OSError as exc:
+            self._on_output_line(f"[RECONCILE] Could not write report: {exc}", "yellow")
+            return None
