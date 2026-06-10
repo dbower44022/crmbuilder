@@ -87,6 +87,66 @@ def test_target_filter_narrows_rows(qapp, qtbot):
         assert r["target_type"] == "decision"
 
 
+def test_text_filter_narrows_rows(qapp, qtbot):
+    # PI-116 / WTK-061: free-text filter matches the rendered display
+    # fields (source/target display + relationship), case-insensitively.
+    panel = _build_panel(qtbot, _refs())
+    _refresh(panel, qtbot, expected_count=3)
+
+    with qtbot.waitSignal(panel._text_filter.filterChanged, timeout=2000):
+        panel._text_filter.setText("SES-004")
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=2000)
+    assert panel._records[0]["source_id"] == "SES-004"
+
+
+def test_text_filter_matches_relationship(qapp, qtbot):
+    panel = _build_panel(qtbot, _refs())
+    _refresh(panel, qtbot, expected_count=3)
+
+    with qtbot.waitSignal(panel._text_filter.filterChanged, timeout=2000):
+        panel._text_filter.setText("supersedes")
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=2000)
+    assert panel._records[0]["relationship"] == "supersedes"
+
+
+def test_text_filter_clear_restores_full_list(qapp, qtbot):
+    panel = _build_panel(qtbot, _refs())
+    _refresh(panel, qtbot, expected_count=3)
+
+    with qtbot.waitSignal(panel._text_filter.filterChanged, timeout=2000):
+        panel._text_filter.setText("TOP-1")
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=2000)
+    # Clearing is immediate (no debounce).
+    panel._text_filter.setText("")
+    assert panel._model.rowCount() == 3
+
+
+def test_text_filter_composes_with_source_dropdown_and(qapp, qtbot):
+    # Free text AND source-type dropdown: only session-source rows whose
+    # display also contains the text survive.
+    panel = _build_panel(qtbot, _refs())
+    _refresh(panel, qtbot, expected_count=3)
+
+    index = panel._source_filter.findText("session")
+    panel._source_filter.setCurrentIndex(index)
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 2, timeout=2000)
+
+    with qtbot.waitSignal(panel._text_filter.filterChanged, timeout=2000):
+        panel._text_filter.setText("SES-005")
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=2000)
+    assert panel._records[0]["source_id"] == "SES-005"
+
+
+def test_text_filter_no_match_sets_status_message(qapp, qtbot):
+    panel = _build_panel(qtbot, _refs())
+    _refresh(panel, qtbot, expected_count=3)
+
+    with qtbot.waitSignal(panel._text_filter.filterChanged, timeout=2000):
+        panel._text_filter.setText("nomatch")
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 0, timeout=2000)
+    assert panel._status_label.text() == 'No links match "nomatch"'
+
+
 def test_source_cell_click_emits_navigate_requested(qapp, qtbot):
     panel = _build_panel(qtbot, _refs())
     _refresh(panel, qtbot, expected_count=3)

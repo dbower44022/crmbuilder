@@ -242,8 +242,8 @@ def test_excluded_relationship_with_no_remaining_renders_none(qapp, qtbot):
     assert any("(none)" in t for t in _label_texts(section))
 
 
-def test_filter_box_narrows_visible_rows(qapp, qtbot):
-    payload = _payload(
+def _two_row_payload() -> dict:
+    return _payload(
         as_target=[
             {
                 "source_type": "session",
@@ -261,14 +261,69 @@ def test_filter_box_narrows_visible_rows(qapp, qtbot):
             },
         ]
     )
-    section = ReferencesSection("decision", "DEC-001", payload)
+
+
+def test_filter_box_narrows_visible_rows(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
     qtbot.addWidget(section)
     assert section._proxy.rowCount() == 2
-    section._filter.setText("TOP-9")
+    # Typing is debounced; wait for the settled filterChanged emission.
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        section._filter.setText("TOP-9")
     assert section._proxy.rowCount() == 1
     assert section._proxy.data(section._proxy.index(0, _COL_IDENTIFIER)) == "TOP-9"
+    # Clearing restores the full list immediately (no debounce).
     section._filter.setText("")
     assert section._proxy.rowCount() == 2
+
+
+def test_filter_debounce_applies_once_after_burst(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
+    qtbot.addWidget(section)
+    applied: list[str] = []
+    section._filter.filterChanged.connect(applied.append)
+    # A burst of keystrokes inside the debounce window.
+    for text in ("T", "TO", "TOP", "TOP-9"):
+        section._filter.setText(text)
+    assert applied == []  # nothing applied yet
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        pass
+    assert applied == ["TOP-9"]
+    assert section._proxy.rowCount() == 1
+
+
+def test_no_match_shows_empty_state_and_hides_table(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
+    qtbot.addWidget(section)
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        section._filter.setText("nomatchwhatsoever")
+    assert section._proxy.rowCount() == 0
+    assert section._empty_state.isVisibleTo(section)
+    assert section._empty_state.text() == 'No links match "nomatchwhatsoever".'
+    assert not section._table.isVisibleTo(section)
+
+
+def test_clearing_dismisses_empty_state_and_restores_table(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
+    qtbot.addWidget(section)
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        section._filter.setText("zzz")
+    assert section._empty_state.isVisibleTo(section)
+    section._filter.setText("")  # immediate restore
+    assert not section._empty_state.isVisibleTo(section)
+    assert section._table.isVisibleTo(section)
+    assert section._proxy.rowCount() == 2
+
+
+def test_long_query_is_elided_in_empty_state(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
+    qtbot.addWidget(section)
+    long_query = "x" * 80
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        section._filter.setText(long_query)
+    text = section._empty_state.text()
+    assert text.endswith('…".')
+    assert long_query not in text  # truncated, not echoed in full
 
 
 def test_sort_by_identifier_column(qapp, qtbot):
