@@ -21,9 +21,33 @@ from typing import Any
 
 from espo_impl.core.comparator import FOREIGN_PROPERTY_MAP, FieldComparator
 from espo_impl.core.layout_manager import LayoutManager
-from espo_impl.core.models import FieldDefinition
-from espo_impl.core.reconcile.locators import FieldLocator, LayoutLocator
+from espo_impl.core.models import FieldDefinition, RelationshipDefinition
+from espo_impl.core.reconcile.locators import (
+    FieldLocator,
+    LayoutLocator,
+    RelationshipLocator,
+)
 from espo_impl.core.reconcile.models import ConfigType, DiffCategory, Difference
+
+# Relationship properties compared between the YAML RelationshipDefinition and the
+# live RelationshipAuditResult-shaped dict. These are exactly the attributes the
+# audit reads back, so the comparison is apples-to-apples; identity keys
+# (``name``/``entity``) are excluded. A property whose YAML value is ``None``
+# (e.g. ``relation_name`` when unset) is skipped — the same forward asymmetry
+# FieldComparator applies (only flag what the YAML actually declares). Authoring-
+# only keys (``description``, ``action``) are intentionally absent: they do not
+# propagate to the live CRM, so they are never drift.
+_REL_COMPARE_PROPS: tuple[str, ...] = (
+    "link_type",
+    "entity_foreign",
+    "link",
+    "link_foreign",
+    "label",
+    "label_foreign",
+    "relation_name",
+    "audited",
+    "audited_foreign",
+)
 
 # A difference's property name is the YAML key (e.g. "field"/"link" for foreign
 # fields). To read the YAML-side value we map that key back to the dataclass
@@ -107,6 +131,88 @@ def diff_fields(
                         category=DiffCategory.YAML_ONLY,
                         entity=entity,
                         locator=FieldLocator(entity, name, None),
+                        property=None,
+                        yaml_value=spec,
+                        source_file=source_file,
+                    )
+                )
+
+    return diffs
+
+
+def diff_relationships(
+    desired: dict[str, dict[str, tuple[RelationshipDefinition, Path]]],
+    live: dict[str, dict[str, dict[str, Any]]],
+) -> list[Difference]:
+    """Compute relationship-level differences across all entities.
+
+    Kept pure and offline-testable like :func:`diff_fields`:
+
+    * ``desired`` — ``{entity: {rel_name: (RelationshipDefinition, source_file)}}``
+      assembled from the program files (with provenance) by the caller.
+    * ``live`` — ``{entity: {rel_name: current_dict}}`` where ``current_dict`` is
+      the audit ``RelationshipAuditResult`` shape (``link_type``,
+      ``entity_foreign``, ``link``, ``label``, ...). The caller is responsible
+      for name normalization (c-prefix) so the two sides compare apples-to-apples,
+      the same contract :func:`diff_fields` has for its ``live`` input.
+
+    Emits CHANGED (per differing property in :data:`_REL_COMPARE_PROPS`, with
+    old/new), CRM_ONLY (a relationship present only in the CRM — reported for
+    ask-per-addition, no ``source_file``), and YAML_ONLY (present only in the
+    YAML — reported, never auto-deleted). Ordering is stable: entities, then
+    relationships, then properties.
+    """
+    diffs: list[Difference] = []
+
+    for entity in sorted(set(desired) | set(live)):
+        yaml_rels = desired.get(entity, {})
+        crm_rels = live.get(entity, {})
+
+        for name in sorted(set(yaml_rels) | set(crm_rels)):
+            in_yaml = name in yaml_rels
+            in_crm = name in crm_rels
+
+            if in_yaml and in_crm:
+                spec, source_file = yaml_rels[name]
+                current = crm_rels[name]
+                for prop in _REL_COMPARE_PROPS:
+                    yaml_value = getattr(spec, prop, None)
+                    if yaml_value is None:
+                        continue  # forward asymmetry: YAML did not declare it
+                    if yaml_value != current.get(prop):
+                        diffs.append(
+                            Difference(
+                                config_type=ConfigType.RELATIONSHIP,
+                                category=DiffCategory.CHANGED,
+                                entity=entity,
+                                locator=RelationshipLocator(entity, name, prop),
+                                property=prop,
+                                yaml_value=yaml_value,
+                                crm_value=current.get(prop),
+                                source_file=source_file,
+                            )
+                        )
+            elif in_crm:
+                diffs.append(
+                    Difference(
+                        config_type=ConfigType.RELATIONSHIP,
+                        category=DiffCategory.CRM_ONLY,
+                        entity=entity,
+                        locator=RelationshipLocator(entity, name, None),
+                        property=None,
+                        crm_value=crm_rels[name],
+                        full_crm_block=crm_rels[name],
+                        # source_file None: ask-per-addition (entities span files).
+                    )
+                )
+            else:
+                spec, source_file = yaml_rels[name]
+                diffs.append(
+                    Difference(
+                        config_type=ConfigType.RELATIONSHIP,
+                        category=DiffCategory.YAML_ONLY,
+                        entity=entity,
+                        locator=RelationshipLocator(entity, name, None),
                         property=None,
                         yaml_value=spec,
                         source_file=source_file,
