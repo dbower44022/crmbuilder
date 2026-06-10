@@ -1,6 +1,6 @@
 """Tests for field comparison logic."""
 
-from espo_impl.core.comparator import FieldComparator
+from espo_impl.core.comparator import FieldComparator, FieldDifference
 from espo_impl.core.models import FieldDefinition
 
 
@@ -70,6 +70,51 @@ def test_enum_options_order_matters():
     result = FieldComparator().compare(spec, current)
     assert result.matches is False
     assert "options" in result.differences
+
+
+def test_detailed_type_conflict_names_both_types():
+    spec = make_spec(type="int")
+    current = {"type": "float", "label": "Test"}
+    result = FieldComparator().compare(spec, current)
+    assert result.type_conflict is True
+    assert len(result.detailed) == 1
+    diff = result.detailed[0]
+    assert isinstance(diff, FieldDifference)
+    assert diff.property == "type"
+    assert diff.expected == "int"
+    assert diff.actual == "float"
+    assert "'int'" in diff.message
+    assert "'float'" in diff.message
+    assert "'int'" in result.detail_text
+
+
+def test_detailed_scalar_diff_names_both_values():
+    spec = make_spec(label="New Label")
+    current = {"type": "varchar", "label": "Old Label"}
+    result = FieldComparator().compare(spec, current)
+    diff = next(d for d in result.detailed if d.property == "label")
+    assert diff.expected == "New Label"
+    assert diff.actual == "Old Label"
+    assert "New Label" in diff.message
+    assert "Old Label" in diff.message
+
+
+def test_detailed_options_reports_missing_and_extra():
+    spec = make_spec(type="enum", options=["A", "B", "C"])
+    current = {"type": "enum", "label": "Test", "options": ["A", "B", "D"]}
+    result = FieldComparator().compare(spec, current)
+    diff = next(d for d in result.detailed if d.property == "options")
+    # C is in YAML but not deployed; D is deployed but not in YAML.
+    assert "missing from deployed: [C]" in diff.message
+    assert "extra in deployed: [D]" in diff.message
+
+
+def test_detailed_options_reports_order_only_difference():
+    spec = make_spec(type="enum", options=["A", "B", "C"])
+    current = {"type": "enum", "label": "Test", "options": ["C", "B", "A"]}
+    result = FieldComparator().compare(spec, current)
+    diff = next(d for d in result.detailed if d.property == "options")
+    assert "different order" in diff.message
 
 
 def test_unspecified_optional_fields_do_not_trigger_diff():

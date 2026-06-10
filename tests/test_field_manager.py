@@ -292,6 +292,50 @@ def test_verify_standalone():
     assert report.results[0].verified is True
 
 
+def test_verify_emits_detailed_difference_lines():
+    """A DIFFERS field spells out each property's expected vs deployed value."""
+    client = MagicMock()
+    client.profile.name = "Test"
+    client.profile.url = "https://test.com"
+    client.get_field.return_value = (
+        200,
+        {"type": "varchar", "label": "Old Label"},
+    )
+
+    fields = [FieldDefinition(name="testField", type="varchar", label="New Label")]
+    manager, output_log = make_manager(client, FieldComparator())
+    report = manager.verify(make_program(fields))
+
+    assert report.results[0].status == FieldStatus.VERIFICATION_FAILED
+    messages = [msg for msg, _ in output_log]
+    # The header line plus a per-property bullet with both values.
+    assert any("DIFFERS" in m for m in messages)
+    assert any(
+        "label differs" in m and "New Label" in m and "Old Label" in m
+        for m in messages
+    )
+    assert "New Label" in (report.results[0].error or "")
+    assert "Old Label" in (report.results[0].error or "")
+
+
+def test_verify_type_conflict_names_both_types():
+    """A TYPE CONFLICT field names the expected and deployed types."""
+    client = MagicMock()
+    client.profile.name = "Test"
+    client.profile.url = "https://test.com"
+    client.get_field.return_value = (200, {"type": "float", "label": "Test"})
+
+    fields = [FieldDefinition(name="testField", type="int", label="Test")]
+    manager, output_log = make_manager(client, FieldComparator())
+    report = manager.verify(make_program(fields))
+
+    assert report.results[0].status == FieldStatus.VERIFICATION_FAILED
+    error = report.results[0].error or ""
+    assert "'int'" in error and "'float'" in error
+    messages = [msg for msg, _ in output_log]
+    assert any("'int'" in m and "'float'" in m for m in messages)
+
+
 def test_verify_field_not_found():
     client = MagicMock()
     client.profile.name = "Test"
@@ -346,6 +390,52 @@ def test_preview_shows_planned_changes():
     assert any("CREATE" in msg for msg in messages)
     assert any("UPDATE" in msg and "label" in msg for msg in messages)
     assert any("no changes" in msg for msg in messages)
+
+
+def test_preview_emits_detailed_update_lines():
+    """A previewed UPDATE spells out each property's expected vs deployed value."""
+    client = MagicMock()
+    client.profile.name = "Test"
+    client.profile.url = "https://test.com"
+    client.get_field.return_value = (
+        200,
+        {"type": "enum", "label": "Test", "options": ["A", "B"]},
+    )
+
+    fields = [
+        FieldDefinition(
+            name="testField", type="enum", label="Test", options=["A", "B", "C"]
+        ),
+    ]
+    manager, output_log = make_manager(client, FieldComparator())
+    report = manager.preview(make_program(fields))
+
+    assert report.results[0].status == FieldStatus.UPDATED
+    messages = [msg for msg, _ in output_log]
+    assert any("UPDATE" in m for m in messages)
+    assert any(
+        "options differ" in m and "missing from deployed: [C]" in m
+        for m in messages
+    )
+    assert "missing from deployed: [C]" in (report.results[0].error or "")
+
+
+def test_preview_type_conflict_names_both_types():
+    """A previewed type conflict names the expected and deployed types."""
+    client = MagicMock()
+    client.profile.name = "Test"
+    client.profile.url = "https://test.com"
+    client.get_field.return_value = (200, {"type": "float", "label": "Test"})
+
+    fields = [FieldDefinition(name="testField", type="int", label="Test")]
+    manager, output_log = make_manager(client, FieldComparator())
+    report = manager.preview(make_program(fields))
+
+    assert report.results[0].status == FieldStatus.SKIPPED_TYPE_CONFLICT
+    error = report.results[0].error or ""
+    assert "'int'" in error and "'float'" in error
+    messages = [msg for msg, _ in output_log]
+    assert any("'int'" in m and "'float'" in m for m in messages)
 
 
 def test_build_payload_includes_only_specified():

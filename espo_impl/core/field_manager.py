@@ -179,14 +179,18 @@ class FieldManager:
                 comparison = self.comparator.compare(field_def, current)
 
                 if comparison.type_conflict:
+                    detail = comparison.detail_text
                     self.output_fn(
                         f"[VERIFY]  {prefix} ... TYPE CONFLICT", "yellow"
                     )
+                    if detail:
+                        self.output_fn(f"            • {detail}", "yellow")
                     results.append(FieldResult(
                         entity=entity_def.name,
                         field=field_def.name,
                         status=FieldStatus.VERIFICATION_FAILED,
-                        error="Type conflict",
+                        error=f"Type conflict — {detail}" if detail
+                        else "Type conflict",
                     ))
                 elif comparison.matches:
                     self.output_fn(
@@ -203,12 +207,16 @@ class FieldManager:
                     self.output_fn(
                         f"[VERIFY]  {prefix} ... DIFFERS ({diff_str})", "red"
                     )
+                    # Spell out exactly why each property differs.
+                    for diff in comparison.detailed:
+                        self.output_fn(f"            • {diff.message}", "red")
+                    error_detail = comparison.detail_text or diff_str
                     results.append(FieldResult(
                         entity=entity_def.name,
                         field=field_def.name,
                         status=FieldStatus.VERIFICATION_FAILED,
                         changes=comparison.differences,
-                        error=f"Differs: {diff_str}",
+                        error=f"Differs: {error_detail}",
                     ))
 
         self._emit_summary(results)
@@ -298,16 +306,21 @@ class FieldManager:
                 comparison = self.comparator.compare(field_def, current)
 
                 if comparison.type_conflict:
+                    detail = comparison.detail_text
                     self.output_fn(
                         f"  {prefix} — SKIP (type conflict: "
                         f"spec={field_def.type}, "
                         f"current={current.get('type')})",
                         "yellow",
                     )
+                    if detail:
+                        self.output_fn(f"      • {detail}", "yellow")
                     results.append(FieldResult(
                         entity=entity_def.name,
                         field=field_def.name,
                         status=FieldStatus.SKIPPED_TYPE_CONFLICT,
+                        error=f"Type conflict — {detail}" if detail
+                        else "Type conflict",
                     ))
                 elif comparison.matches:
                     self.output_fn(
@@ -323,11 +336,15 @@ class FieldManager:
                     self.output_fn(
                         f"  {prefix} — UPDATE ({diff_str})", "yellow"
                     )
+                    # Spell out exactly what each property would change from.
+                    for diff in comparison.detailed:
+                        self.output_fn(f"      • {diff.message}", "yellow")
                     results.append(FieldResult(
                         entity=entity_def.name,
                         field=field_def.name,
                         status=FieldStatus.UPDATED,
                         changes=comparison.differences,
+                        error=comparison.detail_text or None,
                     ))
 
         self.output_fn("===========================================", "white")
