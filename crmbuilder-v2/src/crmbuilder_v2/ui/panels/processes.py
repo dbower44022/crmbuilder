@@ -452,7 +452,7 @@ class ProcessesPanel(ListDetailPanel):
             inbound_label="Receives from",
             outbound_label="Hands off to",
         )
-        references_section.navigate_requested.connect(self.navigate_requested)
+        self._wire_link_section(references_section)
         references_section.references_changed.connect(self.refresh)
         outer.addWidget(references_section)
 

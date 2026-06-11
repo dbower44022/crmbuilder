@@ -235,7 +235,7 @@ class WorkstreamsPanel(ListDetailPanel):
         # Read-only: edges are authored by the decomposer / agents.
         if hasattr(refs, "set_add_enabled"):
             refs.set_add_enabled(False)
-        refs.navigate_requested.connect(self.navigate_requested)
+        self._wire_link_section(refs)
         outer.addWidget(refs)
 
         outer.addStretch(1)
@@ -275,7 +275,7 @@ class WorkstreamsPanel(ListDetailPanel):
             "workstream", identifier, rows, client=self._client
         )
         grid.set_add_enabled(False)
-        grid.navigate_requested.connect(self.navigate_requested)
+        self._wire_link_section(grid)
         return grid
 
     @staticmethod

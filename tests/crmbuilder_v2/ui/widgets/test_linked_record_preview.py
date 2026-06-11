@@ -563,7 +563,8 @@ def test_section_context_menu_unchanged_with_preview(qapp, qtbot):
     index = section._proxy.index(0, _COL_DIRECTION)
     menu = section._build_row_menu(section._table, section._row_at(index))
     labels = [a.text() for a in menu.actions()]
-    assert labels == ["Delete reference", "Go to DEC-007"]
+    # PI-121 / WTK-079: the additive "Open <item type>" entry follows "Go to".
+    assert labels == ["Delete reference", "Go to DEC-007", "Open Decision"]
 
 
 def test_section_right_click_dismisses_open_card(qapp, qtbot, monkeypatch):
