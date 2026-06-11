@@ -534,7 +534,16 @@ def test_panel_context_menu_unchanged_with_preview(qapp, qtbot):
     assert panel._preview is not None  # preview installed
     row_menu = panel._build_context_menu(panel._model.index(0, 0))
     labels = [a.text() for a in row_menu.actions() if not a.isSeparator()]
-    assert labels == ["Go to source", "Go to target", "Delete reference"]
+    # PI-121 added a per-row "Open <type>" action paired with each endpoint's
+    # "Go to". The preview still does not otherwise alter the menu — which is
+    # what this test guards.
+    assert labels == [
+        "Go to source",
+        "Open Session",
+        "Go to target",
+        "Open Decision",
+        "Delete reference",
+    ]
     whitespace = panel._build_context_menu(QModelIndex())
     assert [a.text() for a in whitespace.actions()] == ["New reference"]
 
