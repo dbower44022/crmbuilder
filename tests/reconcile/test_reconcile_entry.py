@@ -110,3 +110,8 @@ def test_diff_label_and_helpers_are_compact():
     assert "absent from CRM" in label
     assert "FU-Contact.yaml" in label
     assert len(_short("x" * 500)) <= 70
+
+    # A difference that owns a YAML file names it in its label; a CRM-only
+    # addition (no source file yet) does not.
+    assert "[MN-Contact.yaml]" in _diff_label(_changed())
+    assert "[" not in _diff_label(_crm_only())

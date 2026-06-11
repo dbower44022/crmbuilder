@@ -6,6 +6,8 @@ from typing import Any
 
 import httpx
 from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
+from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton
 
 from .conftest import build_client, envelope_ok
@@ -78,11 +80,35 @@ _TOUCHING_WSK001 = {
 }
 
 
-def _handler(workstreams=_WORKSTREAMS, *, touching=_TOUCHING_WSK001):
+# Child Work Task records for WSK-001 (carry area + claim state, the two
+# fields the edge summary omits). WTK-001 is claimed; WTK-002 is unclaimed.
+_CHILD_WORK_TASKS = [
+    {
+        "work_task_identifier": "WTK-001",
+        "work_task_title": "Storage layer migration",
+        "work_task_area": "storage",
+        "work_task_status": "Complete",
+        "work_task_claimed_by": "AGP-dev-storage",
+    },
+    {
+        "work_task_identifier": "WTK-002",
+        "work_task_title": "API endpoints",
+        "work_task_area": "api",
+        "work_task_status": "Ready",
+        "work_task_claimed_by": None,
+    },
+]
+
+
+def _handler(
+    workstreams=_WORKSTREAMS, *, touching=_TOUCHING_WSK001, work_tasks=_CHILD_WORK_TASKS
+):
     def handler(req: httpx.Request) -> httpx.Response:
         path = req.url.path
         if req.method == "GET" and path == "/workstreams":
             return httpx.Response(200, json=envelope_ok(workstreams))
+        if req.method == "GET" and path == "/work-tasks":
+            return httpx.Response(200, json=envelope_ok(work_tasks))
         if req.method == "GET" and path.startswith(
             "/references/touching/workstream/"
         ):
@@ -130,22 +156,102 @@ def test_records_load_and_attention_column(qtbot):
     assert processed[0]["updated_at_display"] != _WORKSTREAMS[0]["workstream_updated_at"]
 
 
+def _detail_extras(touching=_TOUCHING_WSK001, children=_CHILD_WORK_TASKS):
+    return {"references": touching, "child_work_tasks": children}
+
+
+def _work_task_grid(detail):
+    grids = detail.findChildren(WorkTaskGridSection)
+    assert len(grids) == 1
+    return grids[0]
+
+
+def _grid_headers(grid):
+    model = grid._model
+    return [
+        model.headerData(c, Qt.Orientation.Horizontal)
+        for c in range(model.columnCount())
+    ]
+
+
 def test_detail_pane_renders_parent_pi_and_work_tasks(qtbot):
     panel = WorkstreamsPanel(build_client(_handler()))
     qtbot.addWidget(panel)
-    detail = panel.render_detail(
-        _WORKSTREAMS[0], {"references": _TOUCHING_WSK001}
-    )
+    detail = panel.render_detail(_WORKSTREAMS[0], _detail_extras())
     labels = [w.text() for w in detail.findChildren(QLabel)]
-    # Parent PI link.
+    # Parent PI link still rendered as a navigable label.
     assert any('href="planning_item:PI-114"' in t for t in labels)
-    # Both Work Task links present.
-    assert any('href="work_task:WTK-001"' in t for t in labels)
-    assert any('href="work_task:WTK-002"' in t for t in labels)
+    # The Work Tasks section is now a grid, not href labels.
+    grid = _work_task_grid(detail)
+    identifiers = {r["identifier"] for r in grid._model._rows}
+    assert identifiers == {"WTK-001", "WTK-002"}
     # Key scalar fields surfaced.
     line_edits = [w.text() for w in detail.findChildren(QLineEdit)]
     assert "WSK-001" in line_edits
     assert "Development" in line_edits
+
+
+def test_work_task_grid_renders_all_five_fields(qtbot):
+    panel = WorkstreamsPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    detail = panel.render_detail(_WORKSTREAMS[0], _detail_extras())
+    grid = _work_task_grid(detail)
+    # Column model: identifier, title, area, status, claim state.
+    assert _grid_headers(grid) == [
+        "Identifier",
+        "Title",
+        "Area",
+        "Status",
+        "Claim state",
+    ]
+    by_id = {r["identifier"]: r for r in grid._model._rows}
+    claimed = by_id["WTK-001"]
+    assert claimed["title"] == "Storage layer migration"
+    assert claimed["area"] == "storage"
+    assert claimed["status"] == "Complete"
+    assert claimed["claim_state"] == "Claimed · AGP-dev-storage"
+    unclaimed = by_id["WTK-002"]
+    assert unclaimed["area"] == "api"
+    assert unclaimed["status"] == "Ready"
+    assert unclaimed["claim_state"] == "Unclaimed"
+    # Read-only: no Add affordance on the Work Task grid.
+    add_btn = grid.findChild(QPushButton, "references_section_add_button")
+    assert add_btn is None
+
+
+def test_work_task_grid_empty_case_preserved(qtbot):
+    panel = WorkstreamsPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    detail = panel.render_detail(
+        _WORKSTREAMS[0],
+        {"references": {"as_source": [], "as_target": []}, "child_work_tasks": []},
+    )
+    assert not detail.findChildren(WorkTaskGridSection)
+    labels = [w.text() for w in detail.findChildren(QLabel)]
+    assert "No Work Tasks recorded." in labels
+
+
+def test_fetch_detail_extras_joins_edges_with_records(qtbot):
+    panel = WorkstreamsPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    extras = panel.fetch_detail_extras(_WORKSTREAMS[0])
+    children = {c["work_task_identifier"]: c for c in extras["child_work_tasks"]}
+    # Both membership edges resolved to their full records (area + claim state).
+    assert set(children) == {"WTK-001", "WTK-002"}
+    assert children["WTK-001"]["work_task_area"] == "storage"
+    assert children["WTK-002"]["work_task_claimed_by"] is None
+
+
+def test_fetch_detail_extras_degrades_when_record_missing(qtbot):
+    # WSK-001's edges name WTK-001/002, but the record list omits them.
+    panel = WorkstreamsPanel(build_client(_handler(work_tasks=[])))
+    qtbot.addWidget(panel)
+    extras = panel.fetch_detail_extras(_WORKSTREAMS[0])
+    children = extras["child_work_tasks"]
+    # The membership edge set still defines the rows; missing records degrade
+    # to an identifier-only fallback (area/claim state render as the dash).
+    assert {c["work_task_identifier"] for c in children} == {"WTK-001", "WTK-002"}
+    assert all("work_task_area" not in c for c in children)
 
 
 def test_detail_pane_attention_banner_when_flagged(qtbot):

@@ -358,7 +358,7 @@ class RequirementsPanel(ListDetailPanel):
             extras.get("references") or {},
             client=self._client,
         )
-        references_section.navigate_requested.connect(self.navigate_requested)
+        self._wire_link_section(references_section)
         references_section.references_changed.connect(self.refresh)
         outer.addWidget(references_section)
 

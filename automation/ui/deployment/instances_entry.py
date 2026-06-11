@@ -571,17 +571,29 @@ class InstancesEntry(QWidget):
 
         Setting an instance as default clears the flag on its siblings, so
         this path does a full refresh to keep every row's Default column in
-        sync.  Unchecking is ignored (a default is changed by promoting a
-        different instance, not by clearing the current one) — mirrors the
-        prior Save behaviour.
+        sync.  Unchecking is not a supported operation (a default is changed
+        by promoting a different instance, not by clearing the current one):
+        the checkbox is snapped back to checked so it never disagrees with
+        the stored state — mirrors the prior Save behaviour.
         """
         if (
             self._loading_detail
             or not self._conn
             or self._selected_id is None
-            or not checked
         ):
             return
+
+        if not checked:
+            # User unchecked the current default — disallow it and restore
+            # the checkbox so the UI stays consistent with the DB.
+            if self._loaded_detail is not None and self._loaded_detail.is_default:
+                self._loading_detail = True
+                try:
+                    self._detail_default.setChecked(True)
+                finally:
+                    self._loading_detail = False
+            return
+
         if self._loaded_detail is not None and self._loaded_detail.is_default:
             return  # Already the default — nothing to do.
 

@@ -141,7 +141,7 @@ class DepositEventsPanel(ListDetailPanel):
         # Read-only audit log: disable add affordance if the widget supports it.
         if hasattr(refs, "set_add_enabled"):
             refs.set_add_enabled(False)
-        refs.navigate_requested.connect(self.navigate_requested)
+        self._wire_link_section(refs)
         outer.addWidget(refs)
 
         outer.addStretch(1)

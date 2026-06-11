@@ -133,6 +133,35 @@ class TestInstancesEntry:
         detail = load_instance_detail(single_db, w._selected_id)
         assert detail.name == "Alpha"
 
+    def test_default_checkbox_promotes_and_clears_siblings(self, qapp, multi_db):
+        """Checking Default promotes the instance and clears its siblings."""
+        from automation.ui.deployment.deployment_logic import load_instances
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(multi_db)
+        # Alpha is the default fixture; select non-default Beta and promote.
+        beta_row = next(r for r, i in enumerate(w._instances) if i.name == "Beta")
+        w._table.setCurrentCell(beta_row, 0)
+        w._detail_default.click()  # genuine user-click toggle
+        defaults = {i.name: i.is_default for i in load_instances(multi_db)}
+        assert defaults["Beta"] is True
+        assert defaults["Alpha"] is False
+
+    def test_unchecking_default_snaps_back(self, qapp, single_db):
+        """Unchecking the current default is disallowed: box stays checked, DB unchanged."""
+        from automation.ui.deployment.deployment_logic import load_instances
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)  # Alpha, the default
+        assert w._detail_default.isChecked()
+
+        w._detail_default.click()  # attempt to uncheck
+
+        # Checkbox snaps back; no transient mismatch with the DB.
+        assert w._detail_default.isChecked()
+        assert load_instances(single_db)[0].is_default is True
+
     def test_no_save_button(self, qapp, single_db):
         """The explicit Save Changes button is gone — edits auto-save."""
         from automation.ui.deployment.instances_entry import InstancesEntry

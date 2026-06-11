@@ -266,8 +266,79 @@ def test_references_context_menu_row_includes_delete(qtbot, client_stub):
     index = _seed_table_records(panel, [record])
     menu = panel._build_context_menu(index)
     # Separator entries have empty text; assert non-separator labels.
+    # PI-121 / WTK-080: an additive "Open <Pretty Type>" entry sits right
+    # after each "Go to <side>", labeled per the endpoint's type, beside
+    # (not replacing) the in-place navigation.
     labels = [a.text() for a in menu.actions() if not a.isSeparator()]
-    assert labels == ["Go to source", "Go to target", "Delete reference"]
+    assert labels == [
+        "Go to source",
+        "Open Session",
+        "Go to target",
+        "Open Decision",
+        "Delete reference",
+    ]
+
+
+def test_references_open_endpoint_emits_open_requested(qtbot, client_stub):
+    """The "Open <type>" entry emits ``open_requested`` (PI-121 / WTK-080).
+
+    Distinct from ``navigate_requested``: the host's detail-window manager
+    spawns a separate, non-modal window rather than swapping the main panel.
+    """
+    panel = ReferencesPanel(client=client_stub)
+    qtbot.addWidget(panel)
+    record = {
+        "id": 1,
+        "source_type": "session",
+        "source_id": "SES-008",
+        "target_type": "planning_item",
+        "target_id": "PI-042",
+        "relationship": "addresses",
+        "_source_display": "session:SES-008",
+        "_target_display": "planning_item:PI-042",
+    }
+    index = _seed_table_records(panel, [record])
+    menu = panel._build_context_menu(index)
+    # Label is derived from the endpoint type.
+    labels = [a.text() for a in menu.actions() if not a.isSeparator()]
+    assert "Open Session" in labels
+    assert "Open Planning Item" in labels
+
+    opened: list[tuple[str, str]] = []
+    navigated: list[tuple[str, str]] = []
+    panel.open_requested.connect(lambda t, i: opened.append((t, i)))
+    panel.navigate_requested.connect(lambda t, i: navigated.append((t, i)))
+    next(a for a in menu.actions() if a.text() == "Open Planning Item").trigger()
+    assert opened == [("planning_item", "PI-042")]
+    # "Open" must not also fire the in-place navigation path.
+    assert navigated == []
+
+
+def test_references_open_endpoint_skipped_for_non_navigable(qtbot, client_stub):
+    """A non-navigable endpoint type gets no "Open" entry (label needs a type)."""
+    panel = ReferencesPanel(client=client_stub)
+    qtbot.addWidget(panel)
+    record = {
+        "id": 1,
+        "source_type": "session",
+        "source_id": "SES-008",
+        "target_type": "work_task",  # not in _NAVIGABLE_TYPES
+        "target_id": "WTK-080",
+        "relationship": "references",
+        "_source_display": "session:SES-008",
+        "_target_display": "work_task:WTK-080",
+    }
+    index = _seed_table_records(panel, [record])
+    menu = panel._build_context_menu(index)
+    labels = [a.text() for a in menu.actions() if not a.isSeparator()]
+    # Source is navigable → "Open Session"; target is not → no "Open Work Task".
+    # Both "Go to" entries remain (unconditional), keeping navigation intact.
+    assert labels == [
+        "Go to source",
+        "Open Session",
+        "Go to target",
+        "Delete reference",
+    ]
 
 
 def test_references_go_to_source_emits_navigation(qtbot, client_stub):

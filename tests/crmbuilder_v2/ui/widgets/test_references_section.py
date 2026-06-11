@@ -242,8 +242,8 @@ def test_excluded_relationship_with_no_remaining_renders_none(qapp, qtbot):
     assert any("(none)" in t for t in _label_texts(section))
 
 
-def test_filter_box_narrows_visible_rows(qapp, qtbot):
-    payload = _payload(
+def _two_row_payload() -> dict:
+    return _payload(
         as_target=[
             {
                 "source_type": "session",
@@ -261,14 +261,69 @@ def test_filter_box_narrows_visible_rows(qapp, qtbot):
             },
         ]
     )
-    section = ReferencesSection("decision", "DEC-001", payload)
+
+
+def test_filter_box_narrows_visible_rows(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
     qtbot.addWidget(section)
     assert section._proxy.rowCount() == 2
-    section._filter.setText("TOP-9")
+    # Typing is debounced; wait for the settled filterChanged emission.
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        section._filter.setText("TOP-9")
     assert section._proxy.rowCount() == 1
     assert section._proxy.data(section._proxy.index(0, _COL_IDENTIFIER)) == "TOP-9"
+    # Clearing restores the full list immediately (no debounce).
     section._filter.setText("")
     assert section._proxy.rowCount() == 2
+
+
+def test_filter_debounce_applies_once_after_burst(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
+    qtbot.addWidget(section)
+    applied: list[str] = []
+    section._filter.filterChanged.connect(applied.append)
+    # A burst of keystrokes inside the debounce window.
+    for text in ("T", "TO", "TOP", "TOP-9"):
+        section._filter.setText(text)
+    assert applied == []  # nothing applied yet
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        pass
+    assert applied == ["TOP-9"]
+    assert section._proxy.rowCount() == 1
+
+
+def test_no_match_shows_empty_state_and_hides_table(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
+    qtbot.addWidget(section)
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        section._filter.setText("nomatchwhatsoever")
+    assert section._proxy.rowCount() == 0
+    assert section._empty_state.isVisibleTo(section)
+    assert section._empty_state.text() == 'No links match "nomatchwhatsoever".'
+    assert not section._table.isVisibleTo(section)
+
+
+def test_clearing_dismisses_empty_state_and_restores_table(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
+    qtbot.addWidget(section)
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        section._filter.setText("zzz")
+    assert section._empty_state.isVisibleTo(section)
+    section._filter.setText("")  # immediate restore
+    assert not section._empty_state.isVisibleTo(section)
+    assert section._table.isVisibleTo(section)
+    assert section._proxy.rowCount() == 2
+
+
+def test_long_query_is_elided_in_empty_state(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _two_row_payload())
+    qtbot.addWidget(section)
+    long_query = "x" * 80
+    with qtbot.waitSignal(section._filter.filterChanged, timeout=2000):
+        section._filter.setText(long_query)
+    text = section._empty_state.text()
+    assert text.endswith('…".')
+    assert long_query not in text  # truncated, not echoed in full
 
 
 def test_sort_by_identifier_column(qapp, qtbot):
@@ -499,3 +554,192 @@ def test_delete_reference_dialog_accept_emits_references_changed(
     qtbot.addWidget(section)
     with qtbot.waitSignal(section.references_changed, timeout=2000):
         section._on_delete_clicked(_ref_outbound(ref_id=99))
+        assert True
+
+
+# ---------------------------------------------------------------------------
+# GridContract seam (PI-120 / WTK-076): the same grid, a second configuration.
+# The References default must stay byte-identical; a non-references contract
+# (Work Tasks, via WorkTaskGridSection) drives its own columns/menu/no-Add.
+# ---------------------------------------------------------------------------
+
+
+def _grid_headers(section) -> list[str]:
+    model = section._model
+    return [
+        model.headerData(c, Qt.Orientation.Horizontal)
+        for c in range(model.columnCount())
+    ]
+
+
+def _work_task_rows():
+    return [
+        {
+            "identifier": "WTK-001",
+            "title": "Storage layer",
+            "area": "storage",
+            "status": "Complete",
+            "claim_state": "Claimed · AGP-dev",
+            "other_type": "work_task",
+            "other_id": "WTK-001",
+        },
+        {
+            "identifier": "WTK-002",
+            "title": "API layer",
+            "area": "api",
+            "status": "Ready",
+            "claim_state": "Unclaimed",
+            "other_type": "work_task",
+            "other_id": "WTK-002",
+        },
+    ]
+
+
+def test_references_default_contract_headers_unchanged(qapp, qtbot):
+    section = ReferencesSection(
+        "decision",
+        "DEC-001",
+        _payload(
+            as_target=[
+                {
+                    "source_type": "session",
+                    "source_id": "SES-002",
+                    "target_type": "decision",
+                    "target_id": "DEC-001",
+                    "relationship": "decided_in",
+                    "other_summary": {"title": "x", "status": "complete"},
+                }
+            ]
+        ),
+    )
+    qtbot.addWidget(section)
+    assert _grid_headers(section) == [
+        "Direction",
+        "Relationship",
+        "Identifier",
+        "Type",
+        "Title",
+        "Status",
+        "Created",
+        "Updated",
+    ]
+
+
+def test_work_task_grid_section_renders_own_columns_and_rows(qapp, qtbot):
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    section = WorkTaskGridSection("workstream", "WSK-001", _work_task_rows())
+    qtbot.addWidget(section)
+    assert _grid_headers(section) == [
+        "Identifier",
+        "Title",
+        "Area",
+        "Status",
+        "Claim state",
+    ]
+    cells = _grid_cells(section)
+    by_id = {row["Identifier"]: row for row in cells}
+    assert by_id["WTK-001"]["Area"] == "storage"
+    assert by_id["WTK-001"]["Claim state"] == "Claimed · AGP-dev"
+    assert by_id["WTK-002"]["Claim state"] == "Unclaimed"
+
+
+def test_work_task_grid_section_row_menu_is_read_only(qapp, qtbot):
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    section = WorkTaskGridSection("workstream", "WSK-001", _work_task_rows())
+    qtbot.addWidget(section)
+    menu = section._build_row_menu(section._table, _work_task_rows()[0])
+    labels = [a.text() for a in menu.actions()]
+    # PI-121 / WTK-079: the "Open Work Task" entry is added between "Go to" and
+    # "Copy identifier" — additive to the read-only menu.
+    assert labels == ["Go to WTK-001", "Open Work Task", "Copy identifier"]
+    # No edge-delete affordance on read-only Work Task rows.
+    assert "Delete reference" not in labels
+
+
+def test_work_task_grid_section_has_no_add_button(qapp, qtbot):
+    from unittest.mock import MagicMock
+
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    # Even with a client (needed for the inline preview fetch) the Work Task
+    # grid suppresses the Add affordance — it is read-only.
+    section = WorkTaskGridSection(
+        "workstream", "WSK-001", _work_task_rows(), client=MagicMock()
+    )
+    qtbot.addWidget(section)
+    from PySide6.QtWidgets import QPushButton
+
+    assert (
+        section.findChild(QPushButton, "references_section_add_button") is None
+    )
+
+
+def test_work_task_grid_section_double_click_navigates(qapp, qtbot):
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    section = WorkTaskGridSection("workstream", "WSK-001", _work_task_rows())
+    qtbot.addWidget(section)
+    with qtbot.waitSignal(section.navigate_requested, timeout=2000) as blocker:
+        proxy = section._proxy
+        for r in range(proxy.rowCount()):
+            if proxy.data(proxy.index(r, 0)) == "WTK-001":
+                section._table.doubleClicked.emit(proxy.index(r, 0))
+                break
+    assert blocker.args == ["work_task", "WTK-001"]
+
+
+# ---------------------------------------------------------------------------
+# "Open <item type>" per-row action (PI-121 / WTK-079). Additive to "Go to";
+# emits the distinct ``open_requested`` signal; label derived per row type.
+# ---------------------------------------------------------------------------
+
+
+def _open_action(menu, label: str):
+    """Return the menu action whose text == label, or None."""
+    for action in menu.actions():
+        if action.text() == label:
+            return action
+    return None
+
+
+def test_references_row_menu_has_open_action_after_go_to(qapp, qtbot):
+    # No client → read-only menu (no Delete), so the row need not carry a "ref".
+    section = ReferencesSection("decision", "DEC-001", _payload())
+    qtbot.addWidget(section)
+    row = {"other_type": "planning_item", "other_id": "PI-048"}
+    menu = section._build_row_menu(section._table, row)
+    labels = [a.text() for a in menu.actions()]
+    # Label is derived from the row's far-side type, and sits right after "Go to".
+    assert labels == ["Go to PI-048", "Open Planning Item"]
+
+
+def test_open_action_label_derived_per_row_type(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _payload())
+    qtbot.addWidget(section)
+    wt_menu = section._build_row_menu(
+        section._table, {"other_type": "work_task", "other_id": "WTK-001"}
+    )
+    pi_menu = section._build_row_menu(
+        section._table, {"other_type": "planning_item", "other_id": "PI-001"}
+    )
+    assert _open_action(wt_menu, "Open Work Task") is not None
+    assert _open_action(pi_menu, "Open Planning Item") is not None
+
+
+def test_open_action_emits_open_requested_not_navigate(qapp, qtbot):
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    section = WorkTaskGridSection("workstream", "WSK-001", _work_task_rows())
+    qtbot.addWidget(section)
+    navigated: list[tuple[str, str]] = []
+    section.navigate_requested.connect(lambda t, i: navigated.append((t, i)))
+    menu = section._build_row_menu(section._table, _work_task_rows()[0])
+    open_action = _open_action(menu, "Open Work Task")
+    assert open_action is not None
+    with qtbot.waitSignal(section.open_requested, timeout=2000) as blocker:
+        open_action.trigger()
+    # Open carries the row's far-side type/id and does NOT navigate.
+    assert blocker.args == ["work_task", "WTK-001"]
+    assert navigated == []

@@ -87,15 +87,24 @@ def _locator_name(diff) -> str:
     return diff.property or "?"
 
 
+def _source_suffix(diff) -> str:
+    """The owning YAML file name, shown after a difference's description."""
+    src = getattr(diff, "source_file", None)
+    return f"   [{Path(src).name}]" if src else ""
+
+
 def _diff_label(diff) -> str:
     """One-line description of a difference for its tree row."""
     name = _locator_name(diff)
+    suffix = _source_suffix(diff)
     if diff.category is DiffCategory.CHANGED:
-        return f"{name}.{diff.property}:  {_short(diff.yaml_value)}  →  {_short(diff.crm_value)}"
+        return (
+            f"{name}.{diff.property}:  {_short(diff.yaml_value)}  →  "
+            f"{_short(diff.crm_value)}{suffix}"
+        )
     if diff.category is DiffCategory.CRM_ONLY:
-        return f"{name}  —  add from CRM"
-    src = diff.source_file.name if diff.source_file is not None else "?"
-    return f"{name}  —  in YAML, absent from CRM — {src} (report-only)"
+        return f"{name}  —  add from CRM{suffix}"
+    return f"{name}  —  in YAML, absent from CRM (report-only){suffix}"
 
 
 class ReconcileEntry(QWidget):

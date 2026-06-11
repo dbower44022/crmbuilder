@@ -163,7 +163,7 @@ class WorkTasksPanel(ListDetailPanel):
         # Read-only: edges are authored by the decomposer / agents.
         if hasattr(refs, "set_add_enabled"):
             refs.set_add_enabled(False)
-        refs.navigate_requested.connect(self.navigate_requested)
+        self._wire_link_section(refs)
         outer.addWidget(refs)
 
         outer.addStretch(1)

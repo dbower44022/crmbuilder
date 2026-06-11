@@ -320,7 +320,7 @@ class CommitsPanel(ListDetailPanel):
         # Read-only: commits are ingested via close-out, not edited in the UI.
         if hasattr(refs, "set_add_enabled"):
             refs.set_add_enabled(False)
-        refs.navigate_requested.connect(self.navigate_requested)
+        self._wire_link_section(refs)
         outer.addWidget(refs)
 
         outer.addStretch(1)

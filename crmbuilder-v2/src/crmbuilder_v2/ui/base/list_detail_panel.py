@@ -41,7 +41,6 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QMenu,
-    QPushButton,
     QSplitter,
     QStackedWidget,
     QStyledItemDelegate,
@@ -168,10 +167,15 @@ class ListDetailPanel(QWidget):
     * ``navigate_requested(str, str)`` — emitted by subclasses (via
       ``_emit_link_navigation``) when a user clicks a cross-entity
       link in the detail pane. Args are (entity_type, identifier).
+    * ``open_requested(str, str)`` — bubbled up from a detail-pane link
+      grid's "Open <item type>" action (PI-121 / WTK-079). The main
+      window opens the related record's full detail view in a separate,
+      non-modal window. Args are (entity_type, identifier).
     """
 
     connection_lost = Signal(str)
     navigate_requested = Signal(str, str)
+    open_requested = Signal(str, str)
 
     # Subclasses can set ``False`` to render list-only with no detail
     # pane (no splitter, no detail-extras flow). The toolbar and master
@@ -368,6 +372,19 @@ class ListDetailPanel(QWidget):
         if not entity_type or not identifier:
             return
         self.navigate_requested.emit(entity_type, identifier)
+
+    def _wire_link_section(self, section: QWidget) -> None:
+        """Forward a detail-pane link grid's navigation signals to this panel.
+
+        Connects both ``navigate_requested`` ("Go to" / double-click) and
+        ``open_requested`` ("Open <item type>", PI-121 / WTK-079) from a
+        ``ReferencesSection``-family grid up to this panel's own signals, which
+        ``MainWindow`` in turn routes to its navigation router and detail-window
+        manager. The single seam for any future grid signal — call it from each
+        panel that embeds a link grid instead of wiring the signals one by one.
+        """
+        section.navigate_requested.connect(self.navigate_requested)
+        section.open_requested.connect(self.open_requested)
 
     # ------------------------------------------------------------------
     # Factory methods (v0.3 — DEC-035)
