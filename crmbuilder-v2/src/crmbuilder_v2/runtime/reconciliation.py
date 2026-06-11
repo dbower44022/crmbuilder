@@ -25,6 +25,11 @@ from crmbuilder_v2.runtime import dispatcher
 _DEVELOP_PHASE = "Develop"
 _DESIGN_PHASE = "Design"
 _COMPLETE_STATUS = "Complete"
+_NOT_APPLICABLE_STATUS = "Not Applicable"
+# A Design phase is "settled" — the Develop gate may proceed — when it is
+# Complete (reconciliation ran over real design work) OR Not Applicable (the
+# Architect found no design work to do, so there is nothing to reconcile).
+_DESIGN_SETTLED_STATUSES = frozenset({_COMPLETE_STATUS, _NOT_APPLICABLE_STATUS})
 _BLOCKING_SEVERITY = "blocking"
 
 
@@ -60,7 +65,9 @@ def evaluate_develop_gate(
 
     A non-Develop phase is never gated by reconciliation — it passes straight
     through. For a Develop phase, dispatch is allowed only when the PI's Design
-    phase is Complete **and** no related finding is open + blocking.
+    phase is *settled* — Complete (reconciliation ran) **or** Not Applicable
+    (there was no design work to reconcile) — **and** no related finding is open
+    + blocking. ``design_complete`` carries that settled predicate.
     """
     if phase_type != _DEVELOP_PHASE:
         return GateDecision(True, f"not a Develop phase ({phase_type})")
@@ -70,7 +77,8 @@ def evaluate_develop_gate(
     if not design_complete:
         return GateDecision(
             False,
-            "Design phase is not Complete — reconciliation has not run",
+            "Design phase is not settled (neither Complete nor Not Applicable) "
+            "— reconciliation has not run",
             design_complete=False,
             open_blocking=open_blocking,
         )
@@ -185,7 +193,10 @@ def develop_gate(api_base: str, engagement: str, work_task: dict) -> GateDecisio
     design = next(
         (w for w in siblings if w.get("workstream_phase_type") == _DESIGN_PHASE), None
     )
-    design_complete = design is not None and design.get("workstream_status") == _COMPLETE_STATUS
+    design_complete = (
+        design is not None
+        and design.get("workstream_status") in _DESIGN_SETTLED_STATUSES
+    )
 
     targets = [planning_item_id]
     if design is not None:
