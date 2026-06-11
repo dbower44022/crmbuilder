@@ -336,6 +336,32 @@ def test_pauses_when_the_pool_pauses():
     assert report.status == "paused" and "WSK-1" in report.reason
 
 
+def test_orchestrator_does_not_advance_phase_when_pool_rolls_back():
+    # PI-145 (a)/(c) "phase not advanced": an atomic-rollback pool report is
+    # paused, so the orchestrator short-circuits on `report.paused` — it never
+    # POSTs /complete-phase, leaving the phase un-advanced for a human (the
+    # rollback already restored main).
+    world = _World(1)
+    world.pi_status = "In Progress"
+    world.decomposed = True
+    world.phase_status["WSK-1"] = "Ready"
+    rolled_back = PoolRunReport(
+        paused=True,
+        rolled_back=True,
+        rolled_back_to="abc1234",
+        pre_phase_head="abc1234",
+    )
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=lambda c, w: rolled_back,
+        scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status == "paused"
+    assert not any("complete-phase" in c for c in world.calls)
+    assert world.phase_status["WSK-1"] != "Complete"
+
+
 def test_resume_without_redispatch_and_dry_run():
     # resume: already In Progress + decomposed → no dispatch/decompose re-issued.
     world = _World(1)
