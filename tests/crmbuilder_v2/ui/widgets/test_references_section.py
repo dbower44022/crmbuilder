@@ -651,7 +651,9 @@ def test_work_task_grid_section_row_menu_is_read_only(qapp, qtbot):
     qtbot.addWidget(section)
     menu = section._build_row_menu(section._table, _work_task_rows()[0])
     labels = [a.text() for a in menu.actions()]
-    assert labels == ["Go to WTK-001", "Copy identifier"]
+    # PI-121 / WTK-079: the "Open Work Task" entry is added between "Go to" and
+    # "Copy identifier" — additive to the read-only menu.
+    assert labels == ["Go to WTK-001", "Open Work Task", "Copy identifier"]
     # No edge-delete affordance on read-only Work Task rows.
     assert "Delete reference" not in labels
 
@@ -686,3 +688,58 @@ def test_work_task_grid_section_double_click_navigates(qapp, qtbot):
                 section._table.doubleClicked.emit(proxy.index(r, 0))
                 break
     assert blocker.args == ["work_task", "WTK-001"]
+
+
+# ---------------------------------------------------------------------------
+# "Open <item type>" per-row action (PI-121 / WTK-079). Additive to "Go to";
+# emits the distinct ``open_requested`` signal; label derived per row type.
+# ---------------------------------------------------------------------------
+
+
+def _open_action(menu, label: str):
+    """Return the menu action whose text == label, or None."""
+    for action in menu.actions():
+        if action.text() == label:
+            return action
+    return None
+
+
+def test_references_row_menu_has_open_action_after_go_to(qapp, qtbot):
+    # No client → read-only menu (no Delete), so the row need not carry a "ref".
+    section = ReferencesSection("decision", "DEC-001", _payload())
+    qtbot.addWidget(section)
+    row = {"other_type": "planning_item", "other_id": "PI-048"}
+    menu = section._build_row_menu(section._table, row)
+    labels = [a.text() for a in menu.actions()]
+    # Label is derived from the row's far-side type, and sits right after "Go to".
+    assert labels == ["Go to PI-048", "Open Planning Item"]
+
+
+def test_open_action_label_derived_per_row_type(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _payload())
+    qtbot.addWidget(section)
+    wt_menu = section._build_row_menu(
+        section._table, {"other_type": "work_task", "other_id": "WTK-001"}
+    )
+    pi_menu = section._build_row_menu(
+        section._table, {"other_type": "planning_item", "other_id": "PI-001"}
+    )
+    assert _open_action(wt_menu, "Open Work Task") is not None
+    assert _open_action(pi_menu, "Open Planning Item") is not None
+
+
+def test_open_action_emits_open_requested_not_navigate(qapp, qtbot):
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    section = WorkTaskGridSection("workstream", "WSK-001", _work_task_rows())
+    qtbot.addWidget(section)
+    navigated: list[tuple[str, str]] = []
+    section.navigate_requested.connect(lambda t, i: navigated.append((t, i)))
+    menu = section._build_row_menu(section._table, _work_task_rows()[0])
+    open_action = _open_action(menu, "Open Work Task")
+    assert open_action is not None
+    with qtbot.waitSignal(section.open_requested, timeout=2000) as blocker:
+        open_action.trigger()
+    # Open carries the row's far-side type/id and does NOT navigate.
+    assert blocker.args == ["work_task", "WTK-001"]
+    assert navigated == []

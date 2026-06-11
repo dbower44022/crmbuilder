@@ -35,6 +35,7 @@ from crmbuilder_v2.ui.about_dialog import AboutDialog
 from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
+from crmbuilder_v2.ui.detail_window_manager import DetailWindowManager
 from crmbuilder_v2.ui.exceptions import StorageConnectionError
 from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.chat import ChatPanel
@@ -136,6 +137,91 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
 }
 
 
+def build_panel(
+    label: str,
+    client: StorageClient,
+    *,
+    active_context=None,
+) -> QWidget:
+    """Construct the page widget for a sidebar label (PI-121 / WTK-079).
+
+    One label→class table, two callers: ``MainWindow.__init__`` builds every
+    sidebar page through it, and ``DetailWindowManager`` builds a standalone
+    detail window's content through it — so a new entity panel is registered
+    once. Entity panels are ``ListDetailPanel`` subclasses taking only the
+    client; Chat takes the API base URL (DEC-253), Engagements additionally
+    takes the active context, and an unmapped label falls through to a
+    placeholder ``QLabel`` (which the detail-window manager treats as
+    non-openable, C7).
+    """
+    if label == "Chat":
+        # PI-052 Slice B: the chat tab consumes the FastAPI surface directly
+        # (DEC-253/§2.8), so it takes the API base URL, not the StorageClient.
+        return ChatPanel(get_settings().api_base_url)
+    if label == "Charter":
+        return CharterPanel(client)
+    if label == "Status":
+        return StatusPanel(client)
+    if label == "Decisions":
+        return DecisionsPanel(client)
+    if label == "Sessions":
+        return SessionsPanel(client)
+    if label == "Risks":
+        return RisksPanel(client)
+    if label == "Planning Items":
+        return PlanningItemsPanel(client)
+    if label == "Topics":
+        return TopicsPanel(client)
+    if label == "References":
+        return ReferencesPanel(client)
+    if label == "Domains":
+        return DomainsPanel(client)
+    if label == "Entities":
+        return EntitiesPanel(client)
+    if label == "Processes":
+        return ProcessesPanel(client)
+    if label == "Requirements":
+        return RequirementsPanel(client)
+    if label == "Test Specs":
+        return TestSpecsPanel(client)
+    if label == "CRM Candidates":
+        return CrmCandidatesPanel(client)
+    if label == "Personas":
+        return PersonasPanel(client)
+    if label == "Fields":
+        return FieldsPanel(client)
+    if label == "Manual Configs":
+        return ManualConfigPanel(client)
+    if label == "Glossary":
+        return GlossaryPanel(client)
+    if label == "Engagements":
+        return EngagementsPanel(client, active_context=active_context)
+    # v0.7 governance entities.
+    if label == "Projects":
+        return ProjectsPanel(client)
+    if label == "Conversations":
+        return ConversationsPanel(client)
+    if label == "Reference Books":
+        return ReferenceBooksPanel(client)
+    if label == "Work Tickets":
+        return WorkTicketsPanel(client)
+    if label == "Close-Out Payloads":
+        return CloseOutPayloadsPanel(client)
+    if label == "Deposit Events":
+        return DepositEventsPanel(client)
+    if label == "Commits":
+        return CommitsPanel(client)
+    # WTK-004: ADO delivery-model monitoring panels.
+    if label == "Workstreams":
+        return WorkstreamsPanel(client)
+    if label == "Work Tasks":
+        return WorkTasksPanel(client)
+    placeholder = QLabel(f"Panel for {label} — not yet implemented.")
+    placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    placeholder.setObjectName(f"placeholder_{label.lower().replace(' ', '_')}")
+    return placeholder
+
+
 class MainWindow(QMainWindow):
     """Top-level window containing the crash banner, sidebar, and content stack."""
 
@@ -192,89 +278,30 @@ class MainWindow(QMainWindow):
         # an accepted-but-ignored constructor argument. Panels refresh on
         # selection, on lifecycle-ready, and via the manual Refresh button.)
 
+        # PI-121 / WTK-079: spawns standalone non-modal detail windows on a
+        # grid's "Open <item type>" action. Built through the same
+        # ``build_panel`` factory the sidebar uses, so it covers every entity
+        # type with no per-type window code. Constructed before the panel loop
+        # so the loop can wire each panel's ``open_requested`` to it.
+        self._detail_window_manager = DetailWindowManager(
+            client=self._client,
+            panel_factory=build_panel,
+            navigate_router=self._on_navigate_requested,
+            parent_window=self,
+        )
+
         for entry in SIDEBAR_ENTRIES:
-            if entry == "Chat":
-                # PI-052 Slice B: the chat tab consumes the existing
-                # FastAPI surface directly (DEC-253/§2.8), so it takes the
-                # API base URL rather than the StorageClient. It is not a
-                # ListDetailPanel, so it is excluded from the
-                # connection_lost / navigate wiring and the on-select
-                # refresh below.
-                page: QWidget = ChatPanel(get_settings().api_base_url)
-            elif entry == "Charter":
-                page = CharterPanel(self._client)
-            elif entry == "Status":
-                page = StatusPanel(self._client)
-            elif entry == "Decisions":
-                page = DecisionsPanel(self._client)
-            elif entry == "Sessions":
-                page = SessionsPanel(self._client)
-            elif entry == "Risks":
-                page = RisksPanel(self._client)
-            elif entry == "Planning Items":
-                page = PlanningItemsPanel(self._client)
-            elif entry == "Topics":
-                page = TopicsPanel(self._client)
-            elif entry == "References":
-                page = ReferencesPanel(self._client)
-            elif entry == "Domains":
-                page = DomainsPanel(self._client)
-            elif entry == "Entities":
-                page = EntitiesPanel(self._client)
-            elif entry == "Processes":
-                page = ProcessesPanel(self._client)
-            elif entry == "Requirements":
-                page = RequirementsPanel(self._client)
-            elif entry == "Test Specs":
-                page = TestSpecsPanel(self._client)
-            elif entry == "CRM Candidates":
-                page = CrmCandidatesPanel(self._client)
-            elif entry == "Personas":
-                page = PersonasPanel(self._client)
-            elif entry == "Fields":
-                page = FieldsPanel(self._client)
-            elif entry == "Manual Configs":
-                page = ManualConfigPanel(self._client)
-            elif entry == "Glossary":
-                page = GlossaryPanel(self._client)
-            elif entry == "Engagements":
-                page = EngagementsPanel(
-                    self._client,
-                    active_context=self._active_context,
-                )
-            # v0.7 governance entities — six new panels appended to the
-            # Governance group in workstream order.
-            elif entry == "Projects":
-                page = ProjectsPanel(self._client)
-            elif entry == "Conversations":
-                page = ConversationsPanel(self._client)
-            elif entry == "Reference Books":
-                page = ReferenceBooksPanel(self._client)
-            elif entry == "Work Tickets":
-                page = WorkTicketsPanel(self._client)
-            elif entry == "Close-Out Payloads":
-                page = CloseOutPayloadsPanel(self._client)
-            elif entry == "Deposit Events":
-                page = DepositEventsPanel(self._client)
-            elif entry == "Commits":
-                page = CommitsPanel(self._client)
-            # WTK-004: ADO delivery-model monitoring panels.
-            elif entry == "Workstreams":
-                page = WorkstreamsPanel(self._client)
-            elif entry == "Work Tasks":
-                page = WorkTasksPanel(self._client)
-            else:
-                placeholder = QLabel(
-                    f"Panel for {entry} — not yet implemented."
-                )
-                placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                placeholder.setObjectName(
-                    f"placeholder_{entry.lower().replace(' ', '_')}"
-                )
-                page = placeholder
+            # ``build_panel`` is the single label→class table (PI-121 / WTK-079);
+            # Chat and the not-yet-implemented placeholders are not
+            # ``ListDetailPanel``s, so they are excluded from the
+            # connection_lost / navigate / open wiring and the on-select refresh.
+            page = build_panel(
+                entry, self._client, active_context=self._active_context
+            )
             if isinstance(page, ListDetailPanel):
                 page.connection_lost.connect(self._on_panel_connection_lost)
                 page.navigate_requested.connect(self._on_navigate_requested)
+                page.open_requested.connect(self._on_open_requested)
             index = self._stack.addWidget(page)
             self._pages_by_entry[entry] = index
 
@@ -529,6 +556,17 @@ class MainWindow(QMainWindow):
         self._sidebar.select_entry(label)
         if isinstance(target, ListDetailPanel):
             target.select_record_by_identifier(identifier)
+
+    def _on_open_requested(self, entity_type: str, identifier: str) -> None:
+        """Spawn a standalone non-modal detail window for a related record.
+
+        The "Open <item type>" counterpart to ``_on_navigate_requested``: where
+        "Go to" replaces the main window's current panel, "Open" pulls the
+        record up beside it in its own window, leaving this view intact
+        (PI-121 / WTK-079). Delegates to the detail-window manager, which
+        no-ops gracefully on an unknown/unopenable type.
+        """
+        self._detail_window_manager.open(entity_type, identifier)
 
     def _refresh_current_panel(self) -> None:
         widget = self._stack.currentWidget()

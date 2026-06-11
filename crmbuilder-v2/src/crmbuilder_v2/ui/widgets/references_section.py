@@ -178,6 +178,7 @@ def _references_row_menu(
         lambda _checked=False, et=row["other_type"], ident=row["other_id"]:
         section.navigate_requested.emit(et, ident)
     )
+    _append_open_action(menu, section, row)
     return menu
 
 
@@ -194,11 +195,34 @@ def _work_task_row_menu(
         lambda _checked=False, et=row["other_type"], i=ident:
         section.navigate_requested.emit(et, i)
     )
+    _append_open_action(menu, section, row)
     copy_action = menu.addAction("Copy identifier")
     copy_action.triggered.connect(
         lambda _checked=False, i=ident: _copy_to_clipboard(i)
     )
     return menu
+
+
+def _append_open_action(
+    menu: QMenu, section: ReferencesSection, row: dict[str, Any]
+) -> None:
+    """Append an "Open <Pretty Type>" action that spawns a standalone window.
+
+    Shared by both contract row menus (References + Work Tasks), placed right
+    after the "Go to" entry. The label is derived from the row's far-side type
+    via :func:`_pretty_entity_type`, so a ``work_task`` row reads "Open Work
+    Task" and a ``planning_item`` row reads "Open Planning Item" with no
+    per-contract literal (PI-121 / WTK-079, C2). Triggering it emits
+    :attr:`ReferencesSection.open_requested` — a signal *distinct* from
+    ``navigate_requested`` — so the host opens the related record's full detail
+    view in a separate, non-modal window without leaving the current view (C1).
+    """
+    other_type = row["other_type"]
+    open_action = menu.addAction(f"Open {_pretty_entity_type(other_type)}")
+    open_action.triggered.connect(
+        lambda _checked=False, et=other_type, ident=row["other_id"]:
+        section.open_requested.emit(et, ident)
+    )
 
 
 def _copy_to_clipboard(text: str) -> None:
@@ -371,6 +395,10 @@ class ReferencesSection(QWidget):
     """Renders a record's inbound and outbound references as a grid."""
 
     navigate_requested = Signal(str, str)
+    # PI-121 / WTK-079: "Open <item type>" spawns a separate non-modal detail
+    # window for the row's far-side record. Distinct from ``navigate_requested``
+    # (replace-in-place "Go to") so double-click stays bound to navigate only.
+    open_requested = Signal(str, str)
     references_changed = Signal()
 
     def __init__(

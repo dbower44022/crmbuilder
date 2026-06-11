@@ -203,7 +203,7 @@ class CloseOutPayloadsPanel(ListDetailPanel):
         refs = ReferencesSection(
             "close_out_payload", identifier, extras.get("references") or {}, client=self._client
         )
-        refs.navigate_requested.connect(self.navigate_requested)
+        self._wire_link_section(refs)
         refs.references_changed.connect(self.refresh)
         outer.addWidget(refs)
 
