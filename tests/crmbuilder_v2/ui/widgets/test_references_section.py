@@ -554,3 +554,135 @@ def test_delete_reference_dialog_accept_emits_references_changed(
     qtbot.addWidget(section)
     with qtbot.waitSignal(section.references_changed, timeout=2000):
         section._on_delete_clicked(_ref_outbound(ref_id=99))
+        assert True
+
+
+# ---------------------------------------------------------------------------
+# GridContract seam (PI-120 / WTK-076): the same grid, a second configuration.
+# The References default must stay byte-identical; a non-references contract
+# (Work Tasks, via WorkTaskGridSection) drives its own columns/menu/no-Add.
+# ---------------------------------------------------------------------------
+
+
+def _grid_headers(section) -> list[str]:
+    model = section._model
+    return [
+        model.headerData(c, Qt.Orientation.Horizontal)
+        for c in range(model.columnCount())
+    ]
+
+
+def _work_task_rows():
+    return [
+        {
+            "identifier": "WTK-001",
+            "title": "Storage layer",
+            "area": "storage",
+            "status": "Complete",
+            "claim_state": "Claimed · AGP-dev",
+            "other_type": "work_task",
+            "other_id": "WTK-001",
+        },
+        {
+            "identifier": "WTK-002",
+            "title": "API layer",
+            "area": "api",
+            "status": "Ready",
+            "claim_state": "Unclaimed",
+            "other_type": "work_task",
+            "other_id": "WTK-002",
+        },
+    ]
+
+
+def test_references_default_contract_headers_unchanged(qapp, qtbot):
+    section = ReferencesSection(
+        "decision",
+        "DEC-001",
+        _payload(
+            as_target=[
+                {
+                    "source_type": "session",
+                    "source_id": "SES-002",
+                    "target_type": "decision",
+                    "target_id": "DEC-001",
+                    "relationship": "decided_in",
+                    "other_summary": {"title": "x", "status": "complete"},
+                }
+            ]
+        ),
+    )
+    qtbot.addWidget(section)
+    assert _grid_headers(section) == [
+        "Direction",
+        "Relationship",
+        "Identifier",
+        "Type",
+        "Title",
+        "Status",
+        "Created",
+        "Updated",
+    ]
+
+
+def test_work_task_grid_section_renders_own_columns_and_rows(qapp, qtbot):
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    section = WorkTaskGridSection("workstream", "WSK-001", _work_task_rows())
+    qtbot.addWidget(section)
+    assert _grid_headers(section) == [
+        "Identifier",
+        "Title",
+        "Area",
+        "Status",
+        "Claim state",
+    ]
+    cells = _grid_cells(section)
+    by_id = {row["Identifier"]: row for row in cells}
+    assert by_id["WTK-001"]["Area"] == "storage"
+    assert by_id["WTK-001"]["Claim state"] == "Claimed · AGP-dev"
+    assert by_id["WTK-002"]["Claim state"] == "Unclaimed"
+
+
+def test_work_task_grid_section_row_menu_is_read_only(qapp, qtbot):
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    section = WorkTaskGridSection("workstream", "WSK-001", _work_task_rows())
+    qtbot.addWidget(section)
+    menu = section._build_row_menu(section._table, _work_task_rows()[0])
+    labels = [a.text() for a in menu.actions()]
+    assert labels == ["Go to WTK-001", "Copy identifier"]
+    # No edge-delete affordance on read-only Work Task rows.
+    assert "Delete reference" not in labels
+
+
+def test_work_task_grid_section_has_no_add_button(qapp, qtbot):
+    from unittest.mock import MagicMock
+
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    # Even with a client (needed for the inline preview fetch) the Work Task
+    # grid suppresses the Add affordance — it is read-only.
+    section = WorkTaskGridSection(
+        "workstream", "WSK-001", _work_task_rows(), client=MagicMock()
+    )
+    qtbot.addWidget(section)
+    from PySide6.QtWidgets import QPushButton
+
+    assert (
+        section.findChild(QPushButton, "references_section_add_button") is None
+    )
+
+
+def test_work_task_grid_section_double_click_navigates(qapp, qtbot):
+    from crmbuilder_v2.ui.widgets.references_section import WorkTaskGridSection
+
+    section = WorkTaskGridSection("workstream", "WSK-001", _work_task_rows())
+    qtbot.addWidget(section)
+    with qtbot.waitSignal(section.navigate_requested, timeout=2000) as blocker:
+        proxy = section._proxy
+        for r in range(proxy.rowCount()):
+            if proxy.data(proxy.index(r, 0)) == "WTK-001":
+                section._table.doubleClicked.emit(proxy.index(r, 0))
+                break
+    assert blocker.args == ["work_task", "WTK-001"]

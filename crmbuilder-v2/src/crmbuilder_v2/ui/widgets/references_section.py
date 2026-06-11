@@ -33,6 +33,8 @@ panel's ``fetch_detail_extras`` worker thread.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 from PySide6.QtCore import (
@@ -42,6 +44,7 @@ from PySide6.QtCore import (
     Qt,
     Signal,
 )
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -132,17 +135,141 @@ _GROUP_OPTIONS: list[tuple[str, str]] = [
 ]
 
 
-def _cell_display(row: dict[str, Any], column: int) -> str:
-    """Render a row's cell for ``column`` exactly as the flat grid does.
+# Work Task grid configuration (PI-120 / WTK-076). The same grid, a second
+# contract: five columns (identifier, title, area, status, claim state), no
+# date columns, Title as the slack-absorbing Stretch column. Rows are built by
+# the panel (joining the membership edges with fetched Work Task records) and
+# fed in directly, so there is no ``_flatten`` step for this contract.
+_WORK_TASK_COLUMNS: list[tuple[str, str]] = [
+    ("Identifier", "identifier"),
+    ("Title", "title"),
+    ("Area", "area"),
+    ("Status", "status"),
+    ("Claim state", "claim_state"),
+]
 
-    Shared by the grouped ``QTreeView`` so child rows match the table. Date
-    columns format via :func:`_fmt_dt`; empties show the dash sentinel.
+_WORK_TASK_GROUP_OPTIONS: list[tuple[str, str]] = [
+    (_GROUP_NONE, ""),
+    ("Area", "area"),
+    ("Status", "status"),
+    ("Claim state", "claim_state"),
+]
+
+
+def _references_row_menu(
+    section: ReferencesSection, view: QWidget, row: dict[str, Any] | None
+) -> QMenu | None:
+    """References per-row menu: Delete reference (when writable) + Go to.
+
+    The unchanged default behavior — split out as the References contract's
+    ``row_menu`` so a different contract can supply a different menu without
+    touching this path (and so ``test_context_menus`` is unaffected).
     """
-    key = _COLUMNS[column][1]
-    value = row.get(key)
-    if key in ("created", "updated"):
-        return _fmt_dt(value)
-    return value if value not in (None, "") else _DASH
+    if row is None:
+        return None
+    menu = QMenu(view)
+    if section._client is not None:
+        delete_action = menu.addAction("Delete reference")
+        delete_action.triggered.connect(
+            lambda _checked=False, r=row["ref"]: section._on_delete_clicked(r)
+        )
+    go_action = menu.addAction(f"Go to {row['other_id']}")
+    go_action.triggered.connect(
+        lambda _checked=False, et=row["other_type"], ident=row["other_id"]:
+        section.navigate_requested.emit(et, ident)
+    )
+    return menu
+
+
+def _work_task_row_menu(
+    section: ReferencesSection, view: QWidget, row: dict[str, Any] | None
+) -> QMenu | None:
+    """Work Task per-row menu: Go to + Copy identifier (read-only, no Delete)."""
+    if row is None:
+        return None
+    menu = QMenu(view)
+    ident = row["other_id"]
+    go_action = menu.addAction(f"Go to {ident}")
+    go_action.triggered.connect(
+        lambda _checked=False, et=row["other_type"], i=ident:
+        section.navigate_requested.emit(et, i)
+    )
+    copy_action = menu.addAction("Copy identifier")
+    copy_action.triggered.connect(
+        lambda _checked=False, i=ident: _copy_to_clipboard(i)
+    )
+    return menu
+
+
+def _copy_to_clipboard(text: str) -> None:
+    clipboard = QGuiApplication.clipboard()
+    if clipboard is not None:
+        clipboard.setText(text)
+
+
+@dataclass(frozen=True)
+class GridContract:
+    """Parameterizes the grid for a given record kind (PI-120 / WTK-076).
+
+    Exactly one grid implementation exists; a contract is the small value
+    object that names the references-specific seams so the same code can drive
+    both references and Work Tasks. The References configuration
+    (:data:`_REFERENCES_CONTRACT`) is the built-in default and reproduces the
+    pre-WTK-076 behavior byte-for-byte; a non-references contract supplies its
+    own columns/group options/row menu without forking the widget.
+
+    :param columns: display columns, in order — ``(header, row-dict key)``.
+    :param datetime_keys: row-dict keys rendered via :func:`_fmt_dt` and
+        bucketed by-day when grouped (empty for contracts with no timestamps).
+    :param group_options: the Group-by combo's ``(label, row-dict key)`` list.
+    :param stretch_column: index of the slack-absorbing Stretch column.
+    :param heading: section heading text; empty suppresses the heading widget
+        (the host panel supplies its own).
+    :param empty_text: dim placeholder shown when there are no rows.
+    :param preview_subtitle_key: row-dict key feeding the inline preview card's
+        subtitle line.
+    :param show_add_button: whether to build the Add row (writable contracts
+        only); read-only contracts pass ``False``.
+    :param row_menu: ``(section, view, row) -> QMenu | None`` per-row menu
+        factory.
+    """
+
+    columns: list[tuple[str, str]]
+    datetime_keys: frozenset[str]
+    group_options: list[tuple[str, str]]
+    stretch_column: int
+    heading: str
+    empty_text: str
+    preview_subtitle_key: str
+    show_add_button: bool
+    row_menu: Callable[
+        [ReferencesSection, QWidget, dict[str, Any] | None], QMenu | None
+    ]
+
+
+_REFERENCES_CONTRACT = GridContract(
+    columns=_COLUMNS,
+    datetime_keys=frozenset({"created", "updated"}),
+    group_options=_GROUP_OPTIONS,
+    stretch_column=4,
+    heading="References",
+    empty_text="(none)",
+    preview_subtitle_key="kind_label",
+    show_add_button=True,
+    row_menu=_references_row_menu,
+)
+
+_WORK_TASK_CONTRACT = GridContract(
+    columns=_WORK_TASK_COLUMNS,
+    datetime_keys=frozenset(),
+    group_options=_WORK_TASK_GROUP_OPTIONS,
+    stretch_column=1,
+    heading="",
+    empty_text="No Work Tasks recorded.",
+    preview_subtitle_key="area",
+    show_add_button=False,
+    row_menu=_work_task_row_menu,
+)
 
 
 def _default_kind_label(direction: str, relationship: str) -> str:
@@ -188,15 +315,22 @@ class _RefsModel(QAbstractTableModel):
     case-insensitively).
     """
 
-    def __init__(self, rows: list[dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        rows: list[dict[str, Any]],
+        columns: list[tuple[str, str]],
+        datetime_keys: frozenset[str],
+    ) -> None:
         super().__init__()
         self._rows = rows
+        self._columns = columns
+        self._datetime_keys = datetime_keys
 
     def rowCount(self, _parent: QModelIndex | None = None) -> int:  # noqa: N802
         return len(self._rows)
 
     def columnCount(self, _parent: QModelIndex | None = None) -> int:  # noqa: N802
-        return len(_COLUMNS)
+        return len(self._columns)
 
     def row_dict(self, source_row: int) -> dict[str, Any]:
         return self._rows[source_row]
@@ -207,19 +341,19 @@ class _RefsModel(QAbstractTableModel):
         if (
             orientation == Qt.Orientation.Horizontal
             and role == Qt.ItemDataRole.DisplayRole
-            and 0 <= section < len(_COLUMNS)
+            and 0 <= section < len(self._columns)
         ):
-            return _COLUMNS[section][0]
+            return self._columns[section][0]
         return None
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
         row = self._rows[index.row()]
-        key = _COLUMNS[index.column()][1]
+        key = self._columns[index.column()][1]
         value = row.get(key)
         if role == Qt.ItemDataRole.DisplayRole:
-            if key in ("created", "updated"):
+            if key in self._datetime_keys:
                 return _fmt_dt(value)
             return value if value not in (None, "") else _DASH
         if role == Qt.ItemDataRole.UserRole:
@@ -227,7 +361,7 @@ class _RefsModel(QAbstractTableModel):
             # lowercased for case-insensitive ordering; missing sorts last.
             if value in (None, ""):
                 return "￿"
-            if key in ("created", "updated"):
+            if key in self._datetime_keys:
                 return str(value)
             return str(value).lower()
         return None
@@ -249,6 +383,8 @@ class ReferencesSection(QWidget):
         client: StorageClient | None = None,
         inbound_label: str = "Inbound",  # noqa: ARG002 — vestigial; back-compat
         outbound_label: str = "Outbound",  # noqa: ARG002 — vestigial; back-compat
+        contract: GridContract | None = None,
+        rows: list[dict[str, Any]] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -256,11 +392,18 @@ class ReferencesSection(QWidget):
         self._identifier = identifier
         self._exclude = set(exclude_relationships or set())
         self._client = client
+        # References is the built-in default (no contract argument → today's
+        # behavior, unchanged for all existing call sites). A non-references
+        # contract (e.g. Work Tasks) supplies its rows directly, bypassing the
+        # references ``_flatten`` step.
+        self._contract = contract or _REFERENCES_CONTRACT
         self._add_button = None
         self._table = None
         self._empty_state = None
         self._preview = None
-        self._build(references_payload or {})
+        if rows is None:
+            rows = self._flatten(references_payload or {})
+        self._build(rows)
 
     # ------------------------------------------------------------------
     # Build
@@ -300,15 +443,15 @@ class ReferencesSection(QWidget):
                 )
         return rows
 
-    def _build(self, payload: dict[str, Any]) -> None:
+    def _build(self, rows: list[dict[str, Any]]) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(int(t("space.2").rstrip("px")))
-        layout.addWidget(self._heading("References"))
+        if self._contract.heading:
+            layout.addWidget(self._heading(self._contract.heading))
 
-        rows = self._flatten(payload)
         if not rows:
-            layout.addWidget(self._dim_label("(none)"))
+            layout.addWidget(self._dim_label(self._contract.empty_text))
             self._add_button_row(layout)
             return
 
@@ -324,7 +467,9 @@ class ReferencesSection(QWidget):
         # Model + multi-sort proxy (sort + filter across all columns). The
         # PI-117 ``MultiSortProxyModel`` is a drop-in for the stock proxy:
         # same filter contract, plus an ordered sort-key list.
-        self._model = _RefsModel(rows)
+        self._model = _RefsModel(
+            rows, self._contract.columns, self._contract.datetime_keys
+        )
         self._proxy = MultiSortProxyModel(self)
         self._proxy.setSourceModel(self._model)
         self._proxy.setFilterKeyColumn(-1)  # match against every column
@@ -364,7 +509,9 @@ class ReferencesSection(QWidget):
         # Title column absorbs the slack so long titles stay readable and the
         # grid always fills the viewport width (no trailing empty gutter); a
         # Stretch column ignores the content seed and manual resize below.
-        table_header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        table_header.setSectionResizeMode(
+            self._contract.stretch_column, QHeaderView.ResizeMode.Stretch
+        )
         table_header.setMinimumSectionSize(_MIN_SECTION_WIDTH)
         # One-time content-fit seed: Interactive columns otherwise start at the
         # generic defaultSectionSize. Runs after the model + view are wired so
@@ -447,7 +594,7 @@ class ReferencesSection(QWidget):
                 row.get("other_type") or "",
                 row.get("other_id") or "",
                 row.get("title"),
-                row.get("kind_label"),
+                row.get(self._contract.preview_subtitle_key),
             ),
         )
         self._preview.attach_view(self._table)
@@ -548,7 +695,7 @@ class ReferencesSection(QWidget):
         row.addWidget(QLabel("Group by:"))
         self._group_combo = QComboBox(container)
         self._group_combo.setObjectName("references_section_group_combo")
-        for label, _key in _GROUP_OPTIONS:
+        for label, _key in self._contract.group_options:
             self._group_combo.addItem(label)
         self._group_combo.currentIndexChanged.connect(self._on_group_changed)
         row.addWidget(self._group_combo)
@@ -570,7 +717,7 @@ class ReferencesSection(QWidget):
         return combo is not None and combo.currentIndex() > 0
 
     def _group_field(self) -> str:
-        return _GROUP_OPTIONS[self._group_combo.currentIndex()][1]
+        return self._contract.group_options[self._group_combo.currentIndex()][1]
 
     def _ordered_rows(self) -> list[dict[str, Any]]:
         """Read the proxy's currently visible rows in sorted order."""
@@ -586,7 +733,7 @@ class ReferencesSection(QWidget):
         raw = row.get(key)
         if raw in (None, ""):
             return _GROUP_NONE
-        if key == "created":
+        if key in self._contract.datetime_keys:
             # Bucket on the YYYY-MM-DD prefix (reusing _fmt_dt's date part).
             return str(raw).partition("T")[0] or _GROUP_NONE
         return str(raw)
@@ -614,12 +761,26 @@ class ReferencesSection(QWidget):
             self._rebuild_tree()
             self._fit_height()
 
+    def _cell_display(self, row: dict[str, Any], column: int) -> str:
+        """Render a row's cell for ``column`` exactly as the flat grid does.
+
+        Shared with the grouped ``QTreeView`` (via ``GroupingTreeModel``) so
+        child rows match the table. Reads the active contract's columns and
+        datetime keys; date columns format via :func:`_fmt_dt`, empties show
+        the dash sentinel.
+        """
+        key = self._contract.columns[column][1]
+        value = row.get(key)
+        if key in self._contract.datetime_keys:
+            return _fmt_dt(value)
+        return value if value not in (None, "") else _DASH
+
     def _rebuild_tree(self) -> None:
         rows = self._ordered_rows()
-        headers = [col[0] for col in _COLUMNS]
+        headers = [col[0] for col in self._contract.columns]
         if self._group_model is None:
             self._group_model = GroupingTreeModel(
-                rows, headers, self._group_value, _cell_display, self
+                rows, headers, self._group_value, self._cell_display, self
             )
             self._tree.setModel(self._group_model)
         else:
@@ -629,7 +790,7 @@ class ReferencesSection(QWidget):
             QHeaderView.ResizeMode.ResizeToContents
         )
         self._tree.header().setSectionResizeMode(
-            4, QHeaderView.ResizeMode.Stretch
+            self._contract.stretch_column, QHeaderView.ResizeMode.Stretch
         )
 
     def _on_expand_all(self) -> None:
@@ -648,7 +809,7 @@ class ReferencesSection(QWidget):
     # ------------------------------------------------------------------
 
     def _add_button_row(self, layout: QVBoxLayout) -> None:
-        if self._client is None:
+        if self._client is None or not self._contract.show_add_button:
             return
         layout.addSpacing(int(t("space.3").rstrip("px")))
         button_row = QHBoxLayout()
@@ -712,27 +873,14 @@ class ReferencesSection(QWidget):
     def _build_row_menu(
         self, view: QWidget, row: dict[str, Any] | None
     ) -> QMenu | None:
-        """Build the per-row right-click menu (Delete + Go to), or ``None``.
+        """Build the per-row right-click menu, or ``None`` for a group node.
 
-        Split from :meth:`_show_row_menu` so the label set can be asserted
-        without the blocking ``menu.exec`` (mirrors the standalone panel's
-        ``_build_context_menu``). Returns ``None`` for a group-node / invalid
-        row, exactly as the prior inlined guard did.
+        Delegates to the active contract's ``row_menu`` factory so the menu's
+        label set is contract-specific (References: Delete + Go to; Work Tasks:
+        Go to + Copy identifier). Split from :meth:`_show_row_menu` so the set
+        can be asserted without the blocking ``menu.exec``.
         """
-        if row is None:
-            return None
-        menu = QMenu(view)
-        if self._client is not None:
-            delete_action = menu.addAction("Delete reference")
-            delete_action.triggered.connect(
-                lambda _checked=False, r=row["ref"]: self._on_delete_clicked(r)
-            )
-        go_action = menu.addAction(f"Go to {row['other_id']}")
-        go_action.triggered.connect(
-            lambda _checked=False, et=row["other_type"], ident=row["other_id"]:
-            self.navigate_requested.emit(et, ident)
-        )
-        return menu
+        return self._contract.row_menu(self, view, row)
 
     # ------------------------------------------------------------------
     # Add / Delete handlers
@@ -791,3 +939,35 @@ class ReferencesSection(QWidget):
         label = QLabel(text)
         label.setStyleSheet(f"color: {t('color.neutral.500')};")
         return label
+
+
+class WorkTaskGridSection(ReferencesSection):
+    """Work Task configuration of the grid (PI-120 / WTK-076).
+
+    A thin parameterization of :class:`ReferencesSection` — *not* a fork — that
+    drives the same grid (PI-116 filter, PI-117 sort/grouping, PI-118 preview,
+    PI-119 drag-resize) with the Work Task column model and a read-only
+    (no Delete) row menu. Rows are pre-built by the host panel (joining the
+    ``work_task_belongs_to_workstream`` membership edges with fetched Work Task
+    records for area + claim state) and passed in directly, so this section
+    runs no references ``_flatten`` step and writes no edges.
+    """
+
+    def __init__(
+        self,
+        entity_type: str,
+        identifier: str,
+        rows: list[dict[str, Any]],
+        *,
+        client: StorageClient | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(
+            entity_type,
+            identifier,
+            None,
+            client=client,
+            contract=_WORK_TASK_CONTRACT,
+            rows=rows,
+            parent=parent,
+        )
