@@ -53,6 +53,10 @@ def routed(api_client, monkeypatch):
         return resp.status_code, payload
 
     monkeypatch.setattr(apply_close_out, "_request", fake_request)
+    # Pin the Model A branch guard: these tests exercise apply logic against a
+    # TestClient, not the guard, and the ADO verification gate (PI-147) runs
+    # the suite inside agent worktrees that are never on 'main'.
+    monkeypatch.setattr(apply_close_out, "_current_git_branch", lambda: "main")
     return api_client
 
 
