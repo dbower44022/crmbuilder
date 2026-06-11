@@ -10,9 +10,11 @@ The ``needs_attention`` human-escape flag (DEC-359) is the trust-critical
 signal: it is surfaced both as a synthetic master-pane column and, when set,
 as a prominent banner at the top of the detail pane carrying its reason. The
 detail pane also resolves the parent Planning Item (via the
-``workstream_belongs_to_planning_item`` edge) and lists the Work Tasks that
+``workstream_belongs_to_planning_item`` edge) and renders the Work Tasks that
 belong to the workstream (the inbound ``work_task_belongs_to_workstream``
-edges), each rendered as a navigable link.
+edges) as an inline grid (PI-120 / WTK-076) — one row per child showing its
+identifier, title, area, status, and claim state — reusing the References
+grid via :class:`WorkTaskGridSection`.
 """
 
 from __future__ import annotations
@@ -41,7 +43,10 @@ from crmbuilder_v2.ui.panels._governance_helpers import (
     separator,
 )
 from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
-from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+from crmbuilder_v2.ui.widgets.references_section import (
+    ReferencesSection,
+    WorkTaskGridSection,
+)
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.workstreams")
 
@@ -102,12 +107,49 @@ class WorkstreamsPanel(ListDetailPanel):
     def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
         identifier = record.get("workstream_identifier")
         if not identifier:
-            return {"references": {"as_source": [], "as_target": []}}
+            return {
+                "references": {"as_source": [], "as_target": []},
+                "child_work_tasks": [],
+            }
+        references = self._client.list_references_touching("workstream", identifier)
         return {
-            "references": self._client.list_references_touching(
-                "workstream", identifier
-            ),
+            "references": references,
+            "child_work_tasks": self._load_child_work_tasks(references),
         }
+
+    def _load_child_work_tasks(
+        self, references: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Join the membership edges with the child Work Task records.
+
+        The child set is the inbound ``work_task_belongs_to_workstream`` edges
+        (the membership source of truth); the records supply the two fields the
+        edge summary omits — ``work_task_area`` and claim state (PI-120 §3.3).
+        Runs on the ``fetch_detail_extras`` worker thread. Degrades gracefully:
+        a child whose record can't be loaded keeps its identifier and renders
+        the missing fields as the dash sentinel.
+        """
+        child_ids = sorted(
+            edge.get("source_id") or ""
+            for edge in (references.get("as_target") or [])
+            if edge.get("relationship") == "work_task_belongs_to_workstream"
+        )
+        child_ids = [cid for cid in child_ids if cid]
+        if not child_ids:
+            return []
+        tasks_by_id: dict[str, dict[str, Any]] = {}
+        try:
+            tasks_by_id = {
+                t.get("work_task_identifier"): t
+                for t in self._client.list_work_tasks()
+            }
+        except Exception:  # noqa: BLE001 — degrade to edge-only rows
+            _log.warning(
+                "Could not load Work Task records for child grid", exc_info=True
+            )
+        return [
+            tasks_by_id.get(cid, {"work_task_identifier": cid}) for cid in child_ids
+        ]
 
     def render_detail(
         self, record: dict[str, Any], extras: dict[str, Any]
@@ -161,7 +203,7 @@ class WorkstreamsPanel(ListDetailPanel):
         # work_task_belongs_to_workstream edges).
         outer.addWidget(separator())
         outer.addWidget(QLabel("<b>Work Tasks</b>"))
-        outer.addWidget(self._work_tasks_section(references))
+        outer.addWidget(self._work_tasks_section(extras))
 
         outer.addWidget(separator())
         outer.addWidget(QLabel("<b>Description</b>"))
@@ -211,26 +253,55 @@ class WorkstreamsPanel(ListDetailPanel):
                 return edge.get("target_id") or ""
         return ""
 
-    def _work_tasks_section(self, references: dict[str, Any]) -> QWidget:
-        """Render the inbound Work Task membership edges as navigable links."""
-        task_ids = [
-            edge.get("source_id") or ""
-            for edge in (references.get("as_target") or [])
-            if edge.get("relationship") == "work_task_belongs_to_workstream"
+    def _work_tasks_section(self, extras: dict[str, Any]) -> QWidget:
+        """Render the child Work Tasks as an inline grid (PI-120 / WTK-076).
+
+        One row per child Work Task — identifier, title, area, status, claim
+        state — reusing the References grid via :class:`WorkTaskGridSection`.
+        The empty case preserves the prior dim ``"No Work Tasks recorded."``
+        label rather than building an empty grid.
+        """
+        rows = [
+            self._work_task_row(rec)
+            for rec in (extras.get("child_work_tasks") or [])
         ]
-        task_ids = [t for t in task_ids if t]
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
-        if not task_ids:
+        rows = [r for r in rows if r["identifier"]]
+        if not rows:
             empty = QLabel("No Work Tasks recorded.")
             empty.setStyleSheet("color: #888;")
-            layout.addWidget(empty)
-            return container
-        for task_id in sorted(task_ids):
-            layout.addWidget(self._link_or_dim("work_task", task_id, ""))
-        return container
+            return empty
+        identifier = ""
+        grid = WorkTaskGridSection(
+            "workstream", identifier, rows, client=self._client
+        )
+        grid.set_add_enabled(False)
+        grid.navigate_requested.connect(self.navigate_requested)
+        return grid
+
+    @staticmethod
+    def _work_task_row(record: dict[str, Any]) -> dict[str, Any]:
+        """Build one Work Task grid row from a (possibly partial) record.
+
+        Carries the five display fields plus the ``other_type``/``other_id``
+        bookkeeping the grid's generic nav/preview paths expect. Claim state is
+        a single derived string — ``"Claimed · {who}"`` / ``"Unclaimed"`` — when
+        the record was loaded; a degraded (edge-only) record leaves area and
+        claim state ``None`` so the grid renders them as the dash sentinel.
+        """
+        ident = record.get("work_task_identifier") or ""
+        row: dict[str, Any] = {
+            "identifier": ident,
+            "title": record.get("work_task_title"),
+            "area": record.get("work_task_area"),
+            "status": record.get("work_task_status"),
+            "claim_state": None,
+            "other_type": "work_task",
+            "other_id": ident,
+        }
+        if "work_task_claimed_by" in record:
+            who = record.get("work_task_claimed_by")
+            row["claim_state"] = f"Claimed · {who}" if who else "Unclaimed"
+        return row
 
     def _link_or_dim(self, entity_type: str, identifier: str, empty_text: str) -> QLabel:
         """A navigable link to ``entity_type:identifier``, or dim placeholder."""
