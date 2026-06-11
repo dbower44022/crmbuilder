@@ -573,15 +573,32 @@ class CoordinatingRuntime:
         return None
 
     def _flag_needs_attention(self, work_task_id: str, reason: str) -> None:
+        """Raise the human-escape flag on the Work Task's owning Workstream.
+
+        The escape flag lives on the **Workstream** (``workstream_needs_attention``
+        + ``_reason``), not the Work Task — ``work_task`` has no such column, so
+        PATCHing ``/work-tasks/{id}`` with those fields is rejected 422 (Extra
+        inputs are not permitted) and the flag silently never sets. Resolve the
+        owning Workstream via :meth:`_owning_workstream` and PATCH it instead.
+        Best-effort: a flag failure (no owning workstream, an HTTP error) is
+        logged but never masks the real outcome the caller is reporting.
+        """
         cfg = self.config
         try:
+            workstream = self._owning_workstream(work_task_id)
+            if workstream is None:
+                self.log(
+                    "  (warning) could not flag needs_attention: no owning "
+                    f"workstream for {work_task_id}"
+                )
+                return
             dispatcher._patch(
                 cfg.api_base,
-                f"/work-tasks/{work_task_id}",
+                f"/workstreams/{workstream['workstream_identifier']}",
                 cfg.engagement,
                 {
-                    "work_task_needs_attention": True,
-                    "work_task_needs_attention_reason": reason,
+                    "workstream_needs_attention": True,
+                    "workstream_needs_attention_reason": reason,
                 },
             )
         except Exception as exc:  # best-effort flag; never mask the real outcome
