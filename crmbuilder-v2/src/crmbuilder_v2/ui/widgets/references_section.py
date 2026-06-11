@@ -111,6 +111,11 @@ _COLUMNS: list[tuple[str, str]] = [
 
 _DASH = "—"
 _ROW_HEIGHT = 26
+# Floor for a draggable (Interactive) column (PI-119 / WTK-073) so it cannot be
+# hidden by an over-drag — this widget has no header context menu to restore a
+# zero-width column — and so ``MultiSortHeaderView``'s right-aligned ``▲1``/``▼2``
+# precedence glyph is never clipped against the header label. Cosmetic; tunable.
+_MIN_SECTION_WIDTH = 48
 
 # Group-by control (PI-117 / WTK-068). Each option maps its label to a
 # row-dict key; the ``_GROUP_NONE`` sentinel restores the flat table. The
@@ -351,9 +356,20 @@ class ReferencesSection(QWidget):
         self._table.verticalHeader().setVisible(False)
         self._table.verticalHeader().setDefaultSectionSize(_ROW_HEIGHT)
         self._table.setWordWrap(False)
-        table_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        # Title column takes the slack so long titles are readable.
+        # PI-119 / WTK-073: Interactive sections expose a draggable divider grip
+        # and honor ``resizeSection`` — that is what user drag-resize means in
+        # Qt. ResizeToContents (the prior mode) auto-sized every column and
+        # silently ignored manual resize, so this flip is the whole feature.
+        table_header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        # Title column absorbs the slack so long titles stay readable and the
+        # grid always fills the viewport width (no trailing empty gutter); a
+        # Stretch column ignores the content seed and manual resize below.
         table_header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        table_header.setMinimumSectionSize(_MIN_SECTION_WIDTH)
+        # One-time content-fit seed: Interactive columns otherwise start at the
+        # generic defaultSectionSize. Runs after the model + view are wired so
+        # the metrics are real; the Stretch column (4) is unaffected.
+        self._table.resizeColumnsToContents()
         self._table.doubleClicked.connect(self._on_double_clicked)
         self._table.setContextMenuPolicy(
             Qt.ContextMenuPolicy.CustomContextMenu
