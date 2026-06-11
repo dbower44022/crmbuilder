@@ -122,6 +122,10 @@ class ReferencesPanel(ListDetailPanel):
         )
         self._action_layout.addWidget(self._new_reference_button)
 
+        # Inline linked-record preview (PI-118 / WTK-071).
+        self._preview = None
+        self._install_preview()
+
     def _build_group_tree(self) -> QTreeView:
         tree = QTreeView(self)
         tree.setSelectionBehavior(
@@ -371,6 +375,9 @@ class ReferencesPanel(ListDetailPanel):
     # ------------------------------------------------------------------
 
     def _build_context_menu(self, index: QModelIndex) -> QMenu:
+        # Opening a context menu dismisses any open preview card (§3.6).
+        if getattr(self, "_preview", None) is not None:
+            self._preview.dismiss()
         menu = QMenu(self)
         if not index.isValid():
             new_action = menu.addAction("New reference")
@@ -526,6 +533,77 @@ class ReferencesPanel(ListDetailPanel):
         menu = self._build_context_menu(index)
         if menu.actions():
             menu.exec(self._tree.viewport().mapToGlobal(position))
+
+    # ------------------------------------------------------------------
+    # Inline linked-record preview (PI-118 / WTK-071)
+    # ------------------------------------------------------------------
+
+    def _install_preview(self) -> None:
+        """Wire the column-aware hover/keyboard inline preview.
+
+        Additive over the PI-116/PI-117 rebuild: one ``PreviewController``,
+        shared by the table and the grouped tree (both route through
+        :meth:`_record_at_index`), fed by a *column-aware* extractor that
+        previews the Source endpoint (col 0) or Target endpoint (col 2) and
+        offers no card for the non-navigable Relationship column (col 1),
+        mirroring the existing click-navigation. Any sort / group / filter
+        change dismisses an open card (§3.7).
+        """
+        # Lazy import keeps the preview module's top-level ``_fmt_dt`` import
+        # off this panel's load path.
+        from crmbuilder_v2.ui.widgets.linked_record_preview import (
+            PreviewController,
+        )
+
+        self._preview = PreviewController(
+            self,
+            self._record_at_index,
+            self._client,
+            self._preview_target,
+        )
+        self._preview.attach_view(self._table)
+        if self._tree is not None:
+            self._preview.attach_view(self._tree)
+        # Dismiss on any reorder / regroup / refilter (§3.7).
+        if self._proxy is not None:
+            self._proxy.sortKeysChanged.connect(self._preview.dismiss)
+        if self._group_combo is not None:
+            self._group_combo.currentIndexChanged.connect(self._preview.dismiss)
+        if self._text_filter is not None:
+            self._text_filter.filterChanged.connect(self._preview.dismiss)
+        if self._source_filter is not None:
+            self._source_filter.currentIndexChanged.connect(self._preview.dismiss)
+        if self._target_filter is not None:
+            self._target_filter.currentIndexChanged.connect(self._preview.dismiss)
+
+    def _preview_target(
+        self, record: dict[str, Any], column: int
+    ) -> tuple[str, str, str | None, str | None] | None:
+        """Column-aware endpoint selection for the preview controller.
+
+        Returns ``(entity_type, identifier, title, relationship)`` for the
+        Source (col 0) or Target (col 2) endpoint, or ``None`` for the
+        Relationship column (col 1) — consistent with that column not being
+        click-navigable. ``title`` / ``relationship`` are ``None``: the
+        standalone card opens header-only and is filled by the enrichment read.
+        """
+        if column == 0:
+            entity_type = record.get("source_type") or ""
+            identifier = record.get("source_id") or ""
+        elif column == 2:
+            entity_type = record.get("target_type") or ""
+            identifier = record.get("target_id") or ""
+        else:
+            return None
+        if not entity_type or not identifier:
+            return None
+        return (entity_type, identifier, None, None)
+
+    def closeEvent(self, event):  # noqa: N802 (Qt naming)
+        """Tear down the preview controller's workers, then the base panel."""
+        if self._preview is not None:
+            self._preview.shutdown()
+        super().closeEvent(event)
 
     # ------------------------------------------------------------------
     # render_detail must be defined because ``ListDetailPanel`` declares
