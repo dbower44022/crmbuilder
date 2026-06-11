@@ -75,7 +75,8 @@ def test_table_omits_updated_and_deleted(v2_env):
     assert "deposit_event_deleted_at" not in cols
     assert "deposit_event_created_at" in cols
     assert "engagement_id" in cols  # PI-123 tenant discriminator
-    assert len(cols) == 10
+    assert "deposit_event_kind" in cols  # WTK-089 D3 discriminator
+    assert len(cols) == 11
 
 
 def test_success_drives_first_transition_and_back_references(v2_env):
