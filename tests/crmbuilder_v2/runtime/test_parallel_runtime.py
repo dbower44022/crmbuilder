@@ -300,6 +300,15 @@ def _make_runtime(
     )
     rt._flagged = flagged
     monkeypatch.setattr(rt, "_record_finding", lambda wt, summary: None)
+    # PI-145: the atomic-phase-merge helpers run real git; stub them so the
+    # pool-loop tests stay git-free. ``_base_head`` returns a fixed anchor SHA;
+    # ``_reset_base_to`` records its target (the Test task asserts over this).
+    reset_calls: list[str] = []
+    monkeypatch.setattr(rt._l1, "_base_head", lambda: "PRE_PHASE_HEAD")
+    monkeypatch.setattr(
+        rt._l1, "_reset_base_to", lambda head: reset_calls.append(head)
+    )
+    rt._reset_calls = reset_calls
     return rt
 
 

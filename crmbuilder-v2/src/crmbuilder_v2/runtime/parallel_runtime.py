@@ -166,6 +166,14 @@ class PoolRunReport:
     # PI-133: each exclusive migration window held during the run (proof of the
     # drained, no-concurrent-writer property is ``active_at_run == 0``).
     migrations: list = field(default_factory=list)
+    # PI-145: atomic (all-or-nothing) phase merge. ``pre_phase_head`` is the
+    # base_branch HEAD captured before the phase pool dispatched its first
+    # worker; if any task failed, ``run()`` resets base_branch back to it,
+    # undoing every sibling merge from this phase (``rolled_back`` /
+    # ``rolled_back_to`` record that distinctly from a plain pause).
+    pre_phase_head: str | None = None
+    rolled_back: bool = False
+    rolled_back_to: str | None = None
 
     @property
     def merged(self) -> list[TaskReport]:
@@ -567,6 +575,13 @@ class ParallelCoordinatingRuntime:
         try:
             if cfg.manage_api and self.api is not None:
                 self.api.ensure_started()
+            # PI-145: capture the phase's pre-merge anchor BEFORE any worker forks
+            # a worktree or merges, so a failed phase can be rolled back to a main
+            # that still carries none of this phase's work. Locked so the rev-parse
+            # cannot race a worker's worktree create/merge git ops.
+            with self._repo_lock:
+                pre_phase_head = self._l1._base_head()
+            report.pre_phase_head = pre_phase_head
             self._fill_slots(executor, active)
             # The loop also stays alive while a migration is draining/running, so
             # an exclusive window that begins after the last agent completes still
@@ -604,6 +619,27 @@ class ParallelCoordinatingRuntime:
             executor.shutdown(wait=True)
             if cfg.manage_api and self.api is not None:
                 self.api.stop()
+            # PI-145: phase-level atomicity. After every worker is quiesced (so no
+            # `_merge` can race the reset), if ANY task in the phase failed
+            # (a merge CONFLICT or a VERIFY_FAILED), undo every sibling merge by
+            # hard-resetting base_branch to the captured anchor — leaving main
+            # either whole or untouched, never partial. The owning Workstream was
+            # already flagged needs_attention per-failure in `_integrate`; the
+            # rollback only restores main. An empty drain (no task_reports) has
+            # nothing to undo and never used pre_phase_head.
+            phase_failed = any(
+                r.outcome is not TaskOutcome.MERGED for r in report.task_reports
+            )
+            if phase_failed and report.task_reports:
+                with self._repo_lock:
+                    self._l1._reset_base_to(pre_phase_head)
+                report.rolled_back = True
+                report.rolled_back_to = pre_phase_head
+                self.log(
+                    f"↩ phase rolled back: {cfg.base_branch} reset --hard "
+                    f"{pre_phase_head[:8]} — undoing every sibling merge from this "
+                    f"phase (a task failed; workstream flagged needs_attention)"
+                )
         if lock is not None and lock.records:
             report.migrations = list(lock.records)
         return report
