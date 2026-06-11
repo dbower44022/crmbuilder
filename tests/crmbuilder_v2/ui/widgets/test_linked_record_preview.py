@@ -599,3 +599,66 @@ def test_panel_right_click_dismisses_open_card(qapp, qtbot):
     panel._build_context_menu(panel._model.index(0, 0))
     assert card.dismissed
     assert panel._preview._card is None
+
+
+# ---------------------------------------------------------------------------
+# Regression — hover trigger requires mouse tracking on the viewport
+# ---------------------------------------------------------------------------
+
+
+def test_section_viewports_have_mouse_tracking_for_hover(qapp, qtbot):
+    # The hover-dwell preview only fires if the viewport has mouse tracking
+    # enabled — otherwise Qt delivers MouseMove only while a button is held and
+    # the card never opens. The original WTK-071 build installed the event
+    # filter but not tracking, so the hover trigger was dead in the real app.
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    assert section._table.viewport().hasMouseTracking()
+    assert section._tree.viewport().hasMouseTracking()
+
+
+def test_panel_viewport_has_mouse_tracking_for_hover(qapp, qtbot):
+    panel = _seed_panel(qtbot, _panel_refs())
+    assert panel._table.viewport().hasMouseTracking()
+
+
+def test_section_real_hover_starts_dwell_and_opens_card(qapp, qtbot, monkeypatch):
+    """End-to-end hover: a real MouseMove dispatched to the viewport must run
+    the installed event filter, start the dwell timer, and open a card when it
+    elapses. This is the chain the other tests skip (they call ``_open``
+    directly), and the one the missing-mouse-tracking bug silently broke.
+    """
+    from PySide6.QtCore import QEvent, QPointF, Qt
+    from PySide6.QtGui import QMouseEvent
+
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    section.resize(600, 400)
+    section.show()
+    qtbot.waitExposed(section)
+
+    captured: dict[str, Any] = {}
+
+    def _factory(*_a, **_kw):
+        card = _FakeCard()
+        captured["card"] = card
+        return card
+
+    monkeypatch.setattr(preview_mod, "LinkedRecordPreviewCard", _factory)
+
+    ctrl = section._preview
+    view = section._table
+    index = section._proxy.index(0, _COL_DIRECTION)
+    pos = view.visualRect(index).center()
+    move = QMouseEvent(
+        QEvent.Type.MouseMove,
+        QPointF(pos),
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+    )
+    # Dispatch through the viewport so the *real* installed event filter runs.
+    qapp.sendEvent(view.viewport(), move)
+    assert ctrl._dwell_timer.isActive()  # hover registered → dwell pending
+    ctrl._on_dwell_elapsed()  # fire the dwell deterministically
+    assert captured.get("card") is not None  # card opened from the hover
