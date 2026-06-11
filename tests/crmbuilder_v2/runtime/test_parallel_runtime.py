@@ -29,6 +29,7 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     MergeResult,
     MergeStatus,
     RuntimeConfig,
+    TestRunResult,
     VerifyOutcome,
     _ResolvedAssignment,
 )
@@ -41,6 +42,16 @@ from crmbuilder_v2.runtime.parallel_runtime import (
     should_restart_api,
     slots_available,
 )
+
+
+def _pass_runner(worktree_path, target):
+    """PI-147: a fake test runner that always passes (no subprocess)."""
+    return TestRunResult(passed=True, returncode=0, target=target)
+
+
+def _fail_runner(worktree_path, target):
+    """PI-147: a fake test runner that always fails (no subprocess)."""
+    return TestRunResult(passed=False, returncode=1, target=target, output="boom")
 
 # ==========================================================================
 # Pure decision: the concurrency cap
@@ -210,6 +221,9 @@ class _FakeWorktree:
     def has_commits_beyond(self, base_ref):
         return True  # the fake agent always "committed"
 
+    def changed_files(self, base_ref):
+        return []  # PI-147: no git read in the fake → full-suite target, harmless
+
     def remove(self):
         self.removed = True
 
@@ -260,7 +274,8 @@ def _make_runtime(
         poll_interval=0.02,
     )
     rt = ParallelCoordinatingRuntime(
-        config=cfg, spawn_fn=fake_spawn, log=lambda m: None
+        config=cfg, spawn_fn=fake_spawn, log=lambda m: None,
+        test_runner_fn=_pass_runner,
     )
     rt._recorder = recorder
 
@@ -383,6 +398,52 @@ def test_verify_failure_pauses_and_flags(monkeypatch):
     assert r.outcome is TaskOutcome.VERIFY_FAILED
     assert r.verify is VerifyOutcome.NOT_COMPLETE
     assert "WTK-1" in rt._flagged
+
+
+def test_affected_tests_failure_rolls_back_phase(monkeypatch):
+    # PI-147: a lifecycle-clean task (Complete + commits) whose affected tests
+    # are RED gets verdict TESTS_FAILED, which routes through the same fail path
+    # as a verify failure — so a clean sibling that already merged is rolled back
+    # and the Workstream is flagged. Proves PI-147 composes with the PI-145
+    # rollback with no change to either.
+    rt = _make_runtime(
+        monkeypatch,
+        task_sleeps={"WTK-1": 0.05, "WTK-2": 0.15},
+        max_concurrent=2,
+    )
+    # Both tasks are Complete (default re-read), but the affected-test run fails
+    # for WTK-2's worktree (its branch name is in the fake worktree path).
+    rt._l1.test_runner_fn = lambda wp, target: TestRunResult(
+        passed="wtk-2" not in wp, returncode=0 if "wtk-2" not in wp else 1,
+        target=target,
+    )
+    report = rt.run()
+    outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-2"] is TaskOutcome.VERIFY_FAILED
+    verdicts = {r.work_task_id: r.verify for r in report.task_reports}
+    assert verdicts["WTK-2"] is VerifyOutcome.TESTS_FAILED
+    assert report.rolled_back is True
+    assert rt._reset_calls == ["PRE_PHASE_HEAD"]  # the clean sibling is undone
+    assert "WTK-2" in rt._flagged
+
+
+def test_run_pytest_real_construction(tmp_path):
+    # DEC-410: an injected-seam test misses real subprocess/construction bugs.
+    # Exercise the REAL run_pytest against a single fast passing test node, from
+    # the repo root, asserting the command runs and the verdict maps correctly.
+    from pathlib import Path
+
+    from crmbuilder_v2.runtime.coordinating_runtime import run_pytest
+
+    repo_root = str(Path(__file__).resolve().parents[3])
+    target = (
+        "tests/crmbuilder_v2/runtime/test_coordinating_runtime.py"
+        "::test_verify_ok_requires_complete_and_commits"
+    )
+    result = run_pytest(repo_root, target)
+    assert result.target == target
+    assert result.passed is True
+    assert result.returncode == 0
 
 
 def test_drains_cleanly_when_no_work(monkeypatch):

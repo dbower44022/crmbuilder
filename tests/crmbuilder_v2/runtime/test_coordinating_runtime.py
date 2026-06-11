@@ -26,11 +26,13 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     MergeStatus,
     RuntimeConfig,
     StepResult,
+    TestRunResult,
     VerifyOutcome,
     interpret_merge,
     minimal_contract_prompt,
     operating_protocol,
     pause_reason_for,
+    select_test_target,
     verify_result,
 )
 
@@ -59,6 +61,45 @@ def test_verify_no_commits_when_complete_but_branch_empty():
         verify_result({"work_task_status": "Complete"}, False)
         is VerifyOutcome.NO_COMMITS
     )
+
+
+# --------------------------------------------------------------------------
+# PI-147: select_test_target — pure mapping (touched src files → pytest target)
+# --------------------------------------------------------------------------
+
+_P = "crmbuilder-v2/src/crmbuilder_v2/"
+
+
+def test_select_target_single_mirrored_subtree_runtime():
+    assert select_test_target([f"{_P}runtime/coordinating_runtime.py"]) == (
+        "tests/crmbuilder_v2/runtime"
+    )
+
+
+def test_select_target_single_mirrored_subtree_ui():
+    assert select_test_target([f"{_P}ui/widgets/foo.py"]) == "tests/crmbuilder_v2/ui"
+
+
+def test_select_target_two_subtrees_falls_back_to_full_suite():
+    target = select_test_target([f"{_P}runtime/a.py", f"{_P}ui/b.py"])
+    assert target == "tests/crmbuilder_v2"
+
+
+def test_select_target_top_level_module_falls_back():
+    assert select_test_target([f"{_P}cli.py"]) == "tests/crmbuilder_v2"
+
+
+def test_select_target_path_outside_src_falls_back():
+    assert select_test_target(["PRDs/product/x.md"]) == "tests/crmbuilder_v2"
+
+
+def test_select_target_empty_falls_back():
+    assert select_test_target([]) == "tests/crmbuilder_v2"
+
+
+def test_select_target_unmirrored_subtree_falls_back():
+    # A real src subtree with no mirroring tests package (e.g. a future one).
+    assert select_test_target([f"{_P}brandnew/x.py"]) == "tests/crmbuilder_v2"
 
 
 def test_pause_none_when_nothing_flagged():
@@ -153,6 +194,9 @@ class _FakeWorktree:
     def has_commits_beyond(self, base_ref):
         return self._has_commits
 
+    def changed_files(self, base_ref):
+        return []  # PI-147: no git read in the fake → full-suite target
+
     def remove(self):
         self.removed = True
 
@@ -161,11 +205,17 @@ def _proc(rc=0, stdout="", stderr=""):
     return subprocess.CompletedProcess(args=[], returncode=rc, stdout=stdout, stderr=stderr)
 
 
+def _pass_runner(worktree_path, target):
+    """PI-147: a fake test runner that always passes (no subprocess)."""
+    return TestRunResult(passed=True, returncode=0, target=target)
+
+
 def _build_runtime(monkeypatch, *, assignment, task_after, has_commits, merge_result,
                    workstream=None, spawn_rc=0):
     """Wire a CoordinatingRuntime with all I/O seams stubbed."""
     cfg = RuntimeConfig(target_work_task="WTK-099", dry_run=False)
-    rt = CoordinatingRuntime(config=cfg, spawn_fn=lambda p, wp: _proc(rc=spawn_rc), log=lambda m: None)
+    rt = CoordinatingRuntime(config=cfg, spawn_fn=lambda p, wp: _proc(rc=spawn_rc),
+                             log=lambda m: None, test_runner_fn=_pass_runner)
 
     monkeypatch.setattr(rt, "_next_assignment", lambda: assignment)
     monkeypatch.setattr(rt, "_owning_workstream", lambda wt: workstream)
@@ -235,6 +285,27 @@ def test_pauses_and_flags_when_agent_did_not_complete(monkeypatch):
     assert report.verify is VerifyOutcome.NOT_COMPLETE
     assert "WTK-099" in rt._flagged  # human-attention flag set
     assert rt._fake_wt.removed
+
+
+def test_pauses_and_flags_when_affected_tests_fail(monkeypatch):
+    # PI-147: a lifecycle-clean task (Complete + commits) whose affected tests
+    # are red must NOT merge — it routes through the existing fail path.
+    task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
+    rt = _build_runtime(
+        monkeypatch,
+        assignment=_assignment(task),
+        task_after={"work_task_status": "Complete"},
+        has_commits=True,
+        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+    )
+    rt.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="boom"
+    )
+    report = rt.run_one()
+    assert report.result is StepResult.PAUSED
+    assert report.verify is VerifyOutcome.TESTS_FAILED
+    assert "WTK-099" in rt._flagged  # workstream flagged needs_attention
+    assert rt._fake_wt.removed  # branch never merged
 
 
 def test_pauses_on_merge_conflict_after_verify(monkeypatch):

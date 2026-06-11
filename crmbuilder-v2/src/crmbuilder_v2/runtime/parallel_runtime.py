@@ -51,6 +51,7 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     MergeResult,
     MergeStatus,
     RuntimeConfig,
+    TestRunnerFn,
     VerifyOutcome,
     Worktree,
     _ResolvedAssignment,
@@ -311,6 +312,10 @@ class ParallelCoordinatingRuntime:
     reports: list[TaskReport] = field(default_factory=list)
     api: ApiProcess | None = None
     migration_lock: ExclusiveMigrationLock | None = None
+    # PI-147: pass-through to the Layer-1 runtime's injectable test runner, so
+    # the parallel verify step (which calls self._l1._run_affected_tests) uses
+    # the same seam. Default None → the real run_pytest.
+    test_runner_fn: TestRunnerFn | None = None
     # An optional *shared* repo lock. When several pools run concurrently against
     # one repo (parallel independent PIs, ADO item 2), passing one shared lock
     # serializes their worktree/merge git ops across pools; left None each pool
@@ -322,7 +327,8 @@ class ParallelCoordinatingRuntime:
         # is unused here (we drive spawns from the pool), but it carries the
         # assignment/merge/flag helpers keyed off the same config.
         self._l1 = CoordinatingRuntime(
-            config=self.config, spawn_fn=None, log=self.log
+            config=self.config, spawn_fn=None, log=self.log,
+            test_runner_fn=self.test_runner_fn,
         )
         self._repo_lock = self.repo_lock or threading.Lock()
         self._completed: queue.Queue[_AgentRun] = queue.Queue()
@@ -470,6 +476,13 @@ class ParallelCoordinatingRuntime:
     def _integrate(self, run: _AgentRun) -> TaskReport:
         a = run.assignment
         verdict = verify_result(run.refreshed_task, run.has_commits)
+        if verdict is VerifyOutcome.OK:
+            # PI-147: run the affected test package before merging. The
+            # changed_files git read touches the shared repo, so take the lock
+            # for it; the helper's pytest subprocess runs in the worker's own
+            # worktree (a future optimization may drop the lock around it).
+            with self._repo_lock:
+                verdict = self._l1._run_affected_tests(run.worktree)
         self.log(
             f"  [{a.work_task_id}] verify: {verdict.value} "
             f"(branch_has_commits={run.has_commits})"

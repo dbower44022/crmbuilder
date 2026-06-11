@@ -26,6 +26,7 @@ from crmbuilder_v2.runtime import parallel_runtime as pr
 from crmbuilder_v2.runtime.coordinating_runtime import (
     MergeResult,
     MergeStatus,
+    TestRunResult,
     _ResolvedAssignment,
 )
 from crmbuilder_v2.runtime.migration_lock import (
@@ -38,6 +39,11 @@ from crmbuilder_v2.runtime.parallel_runtime import (
     ParallelCoordinatingRuntime,
     ParallelRuntimeConfig,
 )
+
+
+def _pass_runner(worktree_path, target):
+    """PI-147: fake test runner that always passes (no subprocess)."""
+    return TestRunResult(passed=True, returncode=0, target=target)
 
 # ==========================================================================
 # Pure decisions
@@ -148,6 +154,9 @@ class _FakeWorktree:
     def has_commits_beyond(self, base_ref):
         return True
 
+    def changed_files(self, base_ref):
+        return []  # PI-147: full-suite target, harmless under the fake runner
+
     def remove(self):
         return None
 
@@ -187,7 +196,8 @@ def test_migration_runs_with_no_live_agent_then_pool_resumes(monkeypatch):
         target_work_tasks=["WTK-1", "WTK-2", "WTK-3"],
         poll_interval=0.02,
     )
-    rt = ParallelCoordinatingRuntime(config=cfg, spawn_fn=fake_spawn, log=lambda m: None)
+    rt = ParallelCoordinatingRuntime(config=cfg, spawn_fn=fake_spawn, log=lambda m: None,
+                                     test_runner_fn=_pass_runner)
     rt_holder["rt"] = rt
 
     seen: set[str] = set()
