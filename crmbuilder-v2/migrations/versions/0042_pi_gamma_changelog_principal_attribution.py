@@ -30,12 +30,18 @@ _ACTORS_NEW = (
 _ACTORS_OLD = "actor IN ('claude_session', 'migration', 'manual')"
 
 
+def _has_table(table: str) -> bool:
+    return table in set(sa.inspect(op.get_bind()).get_table_names())
+
+
 def _has_column(table: str, column: str) -> bool:
     inspector = sa.inspect(op.get_bind())
     return column in {c["name"] for c in inspector.get_columns(table)}
 
 
 def upgrade() -> None:
+    if not _has_table("change_log"):
+        return  # absent when the chain is entered mid-stream (isolated-migration tests)
     # Add the column with a simple ADD COLUMN (nullable, no recreate needed).
     if not _has_column("change_log", "principal_id"):
         op.add_column(
@@ -49,6 +55,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if not _has_table("change_log"):
+        return
     op.get_bind().execute(
         sa.text(
             "DELETE FROM change_log WHERE actor IN ('service_agent', 'user')"

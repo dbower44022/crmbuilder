@@ -47,21 +47,24 @@ def _tables() -> set[str]:
 
 
 def _rebuild_entity_type_checks(types: frozenset[str]) -> None:
-    with op.batch_alter_table("change_log") as batch:
-        batch.drop_constraint("ck_changelog_entity_type", type_="check")
-        batch.create_check_constraint(
-            "ck_changelog_entity_type",
-            _check_in("entity_type", types | {"reference"}),
-        )
-    with op.batch_alter_table("refs") as batch:
-        batch.drop_constraint("ck_ref_source_type", type_="check")
-        batch.create_check_constraint(
-            "ck_ref_source_type", _check_in("source_type", types)
-        )
-        batch.drop_constraint("ck_ref_target_type", type_="check")
-        batch.create_check_constraint(
-            "ck_ref_target_type", _check_in("target_type", types)
-        )
+    existing = _tables()  # change_log/refs absent when the chain is entered mid-stream
+    if "change_log" in existing:
+        with op.batch_alter_table("change_log") as batch:
+            batch.drop_constraint("ck_changelog_entity_type", type_="check")
+            batch.create_check_constraint(
+                "ck_changelog_entity_type",
+                _check_in("entity_type", types | {"reference"}),
+            )
+    if "refs" in existing:
+        with op.batch_alter_table("refs") as batch:
+            batch.drop_constraint("ck_ref_source_type", type_="check")
+            batch.create_check_constraint(
+                "ck_ref_source_type", _check_in("source_type", types)
+            )
+            batch.drop_constraint("ck_ref_target_type", type_="check")
+            batch.create_check_constraint(
+                "ck_ref_target_type", _check_in("target_type", types)
+            )
 
 
 def upgrade() -> None:
@@ -73,17 +76,20 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
+    existing = _tables()
     # Drop any refs / change_log rows referencing the new types before narrowing.
-    op.execute(
-        "DELETE FROM refs WHERE source_type IN "
-        "('agent_profile', 'skill', 'governance_rule', 'learning') "
-        "OR target_type IN "
-        "('agent_profile', 'skill', 'governance_rule', 'learning')"
-    )
-    op.execute(
-        "DELETE FROM change_log WHERE entity_type IN "
-        "('agent_profile', 'skill', 'governance_rule', 'learning')"
-    )
+    if "refs" in existing:
+        op.execute(
+            "DELETE FROM refs WHERE source_type IN "
+            "('agent_profile', 'skill', 'governance_rule', 'learning') "
+            "OR target_type IN "
+            "('agent_profile', 'skill', 'governance_rule', 'learning')"
+        )
+    if "change_log" in existing:
+        op.execute(
+            "DELETE FROM change_log WHERE entity_type IN "
+            "('agent_profile', 'skill', 'governance_rule', 'learning')"
+        )
     _rebuild_entity_type_checks(_TYPES_OLD)
     have = _tables()
     for model in reversed(_TABLES):

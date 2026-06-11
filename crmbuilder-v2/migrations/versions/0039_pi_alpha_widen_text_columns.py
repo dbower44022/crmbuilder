@@ -41,13 +41,23 @@ _WIDENINGS: tuple[tuple[str, str, sa.types.TypeEngine, sa.types.TypeEngine], ...
 )
 
 
+def _existing_tables() -> set[str]:
+    return set(sa.inspect(op.get_bind()).get_table_names())
+
+
 def upgrade() -> None:
+    existing = _existing_tables()
     for table, column, new_type, _old in _WIDENINGS:
+        if table not in existing:
+            continue  # absent when the chain is entered mid-stream (isolated-migration tests)
         with op.batch_alter_table(table) as batch:
             batch.alter_column(column, type_=new_type)
 
 
 def downgrade() -> None:
+    existing = _existing_tables()
     for table, column, _new, old_type in _WIDENINGS:
+        if table not in existing:
+            continue
         with op.batch_alter_table(table) as batch:
             batch.alter_column(column, type_=old_type)
