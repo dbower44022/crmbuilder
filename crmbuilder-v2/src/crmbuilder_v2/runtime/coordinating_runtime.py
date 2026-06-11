@@ -604,6 +604,32 @@ class CoordinatingRuntime:
         except Exception as exc:  # best-effort flag; never mask the real outcome
             self.log(f"  (warning) could not flag needs_attention: {exc}")
 
+    def _base_head(self) -> str:
+        """Return base_branch's current HEAD SHA (the phase's pre-merge anchor).
+
+        Resolves by branch name, not ``HEAD`` — the worktree-parent repo may be
+        checked out on some other branch at capture time, and ``_merge`` itself
+        references ``cfg.base_branch`` rather than the current ref. The parallel
+        runtime captures this once before a phase's pool dispatches so a failed
+        phase can be rolled back to it (PI-145).
+        """
+        cfg = self.config
+        return _git(cfg.repo_root, "rev-parse", cfg.base_branch).stdout.strip()
+
+    def _reset_base_to(self, head: str) -> None:
+        """Hard-reset base_branch back to ``head``, undoing this phase's merges.
+
+        Checks out base_branch first (mirrors :meth:`_merge`, which checks it out
+        before merging), then ``git reset --hard <head>``. Used by the parallel
+        runtime to make a phase's merges all-or-nothing: if any sibling failed,
+        every clean sibling merge from the same phase is undone in one step
+        (PI-145). Runs with ``check=True`` — a failure to reset ``main`` is a hard
+        environment error the operator must see, not something to swallow.
+        """
+        cfg = self.config
+        _git(cfg.repo_root, "checkout", cfg.base_branch)
+        _git(cfg.repo_root, "reset", "--hard", head)
+
     def _merge(self, branch: str) -> MergeResult:
         cfg = self.config
         _git(cfg.repo_root, "checkout", cfg.base_branch)
