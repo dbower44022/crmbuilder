@@ -21,11 +21,14 @@ from __future__ import annotations
 import subprocess
 import threading
 import time
+from pathlib import Path
 
 from crmbuilder_v2.runtime import parallel_runtime as pr
 from crmbuilder_v2.runtime.coordinating_runtime import (
+    CoordinatingRuntime,
     MergeResult,
     MergeStatus,
+    RuntimeConfig,
     VerifyOutcome,
     _ResolvedAssignment,
 )
@@ -396,3 +399,186 @@ def test_worktrees_are_created_and_removed_per_task(monkeypatch):
     rt.run()
     # Both agents each got their own worktree branch (distinct paths).
     assert rt._recorder.spawn_order and set(rt._recorder.spawn_order) == {"WTK-1", "WTK-2"}
+
+
+# ==========================================================================
+# PI-145 — atomic (all-or-nothing) phase merge: control-flow (injected seams)
+#
+# The acceptance criteria from the WTK-083 design spec (§8 a–d), pinned with
+# the same stubbed seams as the pool-loop tests above. ``_make_runtime`` already
+# records the rollback: ``_base_head`` returns the fixed anchor "PRE_PHASE_HEAD"
+# and ``_reset_base_to`` appends its target into ``rt._reset_calls`` instead of
+# running git, so these tests assert the rollback *decision* without git. The
+# git *semantics* (real merge + reset --hard) are proven separately below.
+# ==========================================================================
+
+
+def test_phase_rollback_on_conflict_undoes_clean_sibling(monkeypatch):
+    # (a) Two parallel tasks, the second conflicts. WTK-1 merges clean first
+    # (shorter sleep); WTK-2 then conflicts → the whole phase is atomic, so the
+    # base is hard-reset to pre_phase_head, undoing WTK-1's already-landed merge,
+    # and the run is paused (the orchestrator never advances the phase).
+    rt = _make_runtime(
+        monkeypatch,
+        task_sleeps={"WTK-1": 0.05, "WTK-2": 0.15},
+        max_concurrent=2,
+        merge_for={"wtk-2": MergeResult(MergeStatus.CONFLICT, "CONFLICT in f.py")},
+    )
+    report = rt.run()
+    outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-1"] is TaskOutcome.MERGED  # the sibling did land...
+    assert outcomes["WTK-2"] is TaskOutcome.MERGE_CONFLICT
+    # ...but the phase failed, so base is reset to the captured anchor — neither
+    # sibling merge survives on main.
+    assert report.pre_phase_head == "PRE_PHASE_HEAD"
+    assert report.rolled_back is True
+    assert report.rolled_back_to == "PRE_PHASE_HEAD"
+    assert rt._reset_calls == ["PRE_PHASE_HEAD"]  # reset ran once, to the anchor
+    # The owning Workstream is flagged needs_attention; the phase is not advanced.
+    assert "WTK-2" in rt._flagged
+    assert report.paused is True
+
+
+def test_all_clean_phase_keeps_merges_and_does_not_roll_back(monkeypatch):
+    # (b) Both tasks merge clean → the phase advances: no pause, no rollback,
+    # _reset_base_to never called, both merges remain (TaskOutcome.MERGED).
+    rt = _make_runtime(
+        monkeypatch, task_sleeps={"WTK-1": 0.1, "WTK-2": 0.1}, max_concurrent=2
+    )
+    report = rt.run()
+    assert {r.outcome for r in report.task_reports} == {TaskOutcome.MERGED}
+    assert len(report.merged) == 2
+    assert report.paused is False
+    assert report.rolled_back is False
+    assert report.rolled_back_to is None
+    assert rt._reset_calls == []  # the all-clean phase is never reset
+    assert report.pre_phase_head == "PRE_PHASE_HEAD"  # still captured up front
+
+
+def test_verify_failure_triggers_same_rollback_as_conflict(monkeypatch):
+    # (c) A VERIFY_FAILED task rolls the phase back exactly like a conflict: the
+    # clean sibling that already merged is undone, the Workstream is flagged, and
+    # the phase is not advanced. Proves the rollback predicate keys off ANY
+    # non-MERGED outcome, not specifically a conflict.
+    rt = _make_runtime(
+        monkeypatch,
+        task_sleeps={"WTK-1": 0.05, "WTK-2": 0.15},
+        max_concurrent=2,
+    )
+    # WTK-2's post-spawn re-read is not Complete → verify fails; WTK-1 stays Complete.
+    def fake_get(api, path, eng):
+        status = "In Progress" if path.endswith("WTK-2") else "Complete"
+        return {"work_task_status": status}
+
+    monkeypatch.setattr(pr.dispatcher, "_get", fake_get)
+    report = rt.run()
+    outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-1"] is TaskOutcome.MERGED
+    assert outcomes["WTK-2"] is TaskOutcome.VERIFY_FAILED
+    assert report.rolled_back is True
+    assert report.rolled_back_to == "PRE_PHASE_HEAD"
+    assert rt._reset_calls == ["PRE_PHASE_HEAD"]  # the clean sibling is also undone
+    assert "WTK-2" in rt._flagged
+    assert report.paused is True
+
+
+def test_cap_one_happy_path_is_structurally_unchanged(monkeypatch):
+    # (d) --max-concurrent 1: the serial happy path is identical to pre-PI-145 —
+    # both tasks merge clean, the run never pauses, never rolls back,
+    # _reset_base_to is never called, and at most one agent runs at a time.
+    rt = _make_runtime(
+        monkeypatch, task_sleeps={"WTK-1": 0.05, "WTK-2": 0.05}, max_concurrent=1
+    )
+    report = rt.run()
+    assert {r.outcome for r in report.task_reports} == {TaskOutcome.MERGED}
+    assert len(report.merged) == 2
+    assert report.paused is False
+    assert report.rolled_back is False
+    assert rt._reset_calls == []
+    assert rt._recorder.max_live == 1  # strictly serial — the cap held at 1
+
+
+# ==========================================================================
+# PI-145 — atomic phase merge: real-git integration (actual merge + reset)
+#
+# The control-flow tests above stub the git helpers; these exercise the real
+# ``CoordinatingRuntime._base_head`` / ``_merge`` / ``_reset_base_to`` against a
+# throwaway ``tmp_path`` repo, so the git semantics behind the rollback (merge
+# --no-ff landing on main, then ``reset --hard`` undoing every sibling merge) are
+# proven, not just the control flow (spec §8 — "at least one real-git test").
+# ==========================================================================
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
+
+
+def _init_real_repo(repo: Path) -> str:
+    """Init a git repo on ``main`` with one base commit; return its HEAD SHA."""
+    repo.mkdir(parents=True, exist_ok=True)
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test User")
+    (repo / "base.txt").write_text("base\n")
+    _git(repo, "add", "base.txt")
+    _git(repo, "commit", "-q", "-m", "base commit")
+    out = subprocess.run(
+        ["git", "rev-parse", "main"],
+        cwd=repo, capture_output=True, text=True, check=True,
+    )
+    return out.stdout.strip()
+
+
+def _branch_with_file(repo: Path, branch: str, filename: str, content: str) -> None:
+    """Create ``branch`` off main with a one-file commit, leaving main checked out."""
+    _git(repo, "checkout", "-q", "-b", branch, "main")
+    (repo / filename).write_text(content)
+    _git(repo, "add", filename)
+    _git(repo, "commit", "-q", "-m", f"{branch}: add {filename}")
+    _git(repo, "checkout", "-q", "main")
+
+
+def _l1(repo: Path) -> CoordinatingRuntime:
+    return CoordinatingRuntime(
+        config=RuntimeConfig(repo_root=str(repo), base_branch="main"),
+        spawn_fn=None,
+        log=lambda _m: None,
+    )
+
+
+def test_real_git_clean_merges_land_then_reset_undoes_them(tmp_path):
+    repo = tmp_path / "repo"
+    anchor = _init_real_repo(repo)
+    rt = _l1(repo)
+    assert rt._base_head() == anchor  # the captured pre_phase_head anchor
+    _branch_with_file(repo, "ado/wtk-1", "a.txt", "alpha\n")
+    _branch_with_file(repo, "ado/wtk-2", "b.txt", "beta\n")
+    # Both branches merge clean → two merge commits, main advances, both present.
+    assert rt._merge("ado/wtk-1").status is MergeStatus.CLEAN
+    assert rt._merge("ado/wtk-2").status is MergeStatus.CLEAN
+    assert rt._base_head() != anchor
+    assert (repo / "a.txt").exists() and (repo / "b.txt").exists()
+    # The atomic rollback hard-resets main to the anchor — neither merge survives.
+    rt._reset_base_to(anchor)
+    assert rt._base_head() == anchor
+    assert not (repo / "a.txt").exists()
+    assert not (repo / "b.txt").exists()
+
+
+def test_real_git_conflict_then_rollback_leaves_main_at_anchor(tmp_path):
+    repo = tmp_path / "repo"
+    anchor = _init_real_repo(repo)
+    rt = _l1(repo)
+    # Two branches that both add the SAME new file with conflicting content.
+    _branch_with_file(repo, "ado/wtk-1", "shared.txt", "from one\n")
+    _branch_with_file(repo, "ado/wtk-2", "shared.txt", "from two\n")
+    # The first merges clean and lands on main...
+    assert rt._merge("ado/wtk-1").status is MergeStatus.CLEAN
+    assert rt._base_head() != anchor
+    # ...the second conflicts; ``_merge`` aborts it, leaving no merge in progress.
+    assert rt._merge("ado/wtk-2").status is MergeStatus.CONFLICT
+    # Atomic phase rollback: reset main to the anchor — the clean sibling merge is
+    # undone too, so main carries NEITHER task's work (all-or-nothing).
+    rt._reset_base_to(anchor)
+    assert rt._base_head() == anchor
+    assert not (repo / "shared.txt").exists()
