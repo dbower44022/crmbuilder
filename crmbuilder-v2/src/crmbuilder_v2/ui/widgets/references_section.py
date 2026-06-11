@@ -254,6 +254,7 @@ class ReferencesSection(QWidget):
         self._add_button = None
         self._table = None
         self._empty_state = None
+        self._preview = None
         self._build(references_payload or {})
 
     # ------------------------------------------------------------------
@@ -395,9 +396,57 @@ class ReferencesSection(QWidget):
         self._empty_state.setVisible(False)
         layout.addWidget(self._empty_state)
 
+        self._install_preview()
+
         self._fit_height()
 
         self._add_button_row(layout)
+
+    # ------------------------------------------------------------------
+    # Inline linked-record preview (PI-118 / WTK-071)
+    # ------------------------------------------------------------------
+
+    def _install_preview(self) -> None:
+        """Wire the hover/keyboard inline preview over the table and tree.
+
+        Additive over the PI-116/PI-117 rebuild: one ``PreviewController``,
+        shared by the flat ``QTableView`` and the grouped ``QTreeView`` (both
+        already route through :meth:`_row_at`), fed by a field extractor that
+        names the far-side record. Any reorder / regroup / refilter dismisses
+        an open card (§3.7). When no ``StorageClient`` is available the read
+        path is harmless — the card still renders the always-available row
+        fields and reports no extra details.
+        """
+        # Lazy import avoids a load-time cycle: the preview module imports the
+        # grid's ``_fmt_dt`` from this module at top level.
+        from crmbuilder_v2.ui.widgets.linked_record_preview import (
+            PreviewController,
+        )
+
+        self._preview = PreviewController(
+            self,
+            self._row_at,
+            self._client,
+            lambda row, _col: (
+                row.get("other_type") or "",
+                row.get("other_id") or "",
+                row.get("title"),
+                row.get("kind_label"),
+            ),
+        )
+        self._preview.attach_view(self._table)
+        self._preview.attach_view(self._tree)
+        # Dismiss on any reorder / regroup / refilter (§3.7).
+        self._proxy.sortKeysChanged.connect(self._preview.dismiss)
+        self._group_combo.currentIndexChanged.connect(self._preview.dismiss)
+        self._filter.filterChanged.connect(self._preview.dismiss)
+
+    def closeEvent(self, event):  # noqa: N802 (Qt naming)
+        """Tear down the preview controller's in-flight workers on close."""
+        preview = getattr(self, "_preview", None)
+        if preview is not None:
+            preview.shutdown()
+        super().closeEvent(event)
 
     # ------------------------------------------------------------------
     # Height: size the table to its (filtered) content so the detail
@@ -635,9 +684,27 @@ class ReferencesSection(QWidget):
     def _show_row_menu(
         self, view: QWidget, index: QModelIndex, position: QPoint
     ) -> None:
-        row = self._row_at(index)
-        if row is None:
+        # Opening the row menu dismisses any open preview card (§3.6) so the
+        # menu and the preview never overlap.
+        if self._preview is not None:
+            self._preview.dismiss()
+        menu = self._build_row_menu(view, self._row_at(index))
+        if menu is None:
             return
+        menu.exec(view.viewport().mapToGlobal(position))
+
+    def _build_row_menu(
+        self, view: QWidget, row: dict[str, Any] | None
+    ) -> QMenu | None:
+        """Build the per-row right-click menu (Delete + Go to), or ``None``.
+
+        Split from :meth:`_show_row_menu` so the label set can be asserted
+        without the blocking ``menu.exec`` (mirrors the standalone panel's
+        ``_build_context_menu``). Returns ``None`` for a group-node / invalid
+        row, exactly as the prior inlined guard did.
+        """
+        if row is None:
+            return None
         menu = QMenu(view)
         if self._client is not None:
             delete_action = menu.addAction("Delete reference")
@@ -649,7 +716,7 @@ class ReferencesSection(QWidget):
             lambda _checked=False, et=row["other_type"], ident=row["other_id"]:
             self.navigate_requested.emit(et, ident)
         )
-        menu.exec(view.viewport().mapToGlobal(position))
+        return menu
 
     # ------------------------------------------------------------------
     # Add / Delete handlers
