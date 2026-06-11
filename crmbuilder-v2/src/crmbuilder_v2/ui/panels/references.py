@@ -42,6 +42,7 @@ from crmbuilder_v2.ui.widgets.grouping_tree_model import GroupingTreeModel
 from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
 from crmbuilder_v2.ui.widgets.multi_sort_header import MultiSortHeaderView
 from crmbuilder_v2.ui.widgets.multi_sort_proxy import MultiSortProxyModel
+from crmbuilder_v2.ui.widgets.references_section import _pretty_entity_type
 
 _ALL = "All"
 
@@ -394,11 +395,17 @@ class ReferencesPanel(ListDetailPanel):
                 r.get("source_type") or "", r.get("source_id") or ""
             )
         )
+        self._append_open_endpoint_action(
+            menu, record.get("source_type") or "", record.get("source_id") or ""
+        )
         go_target_action = menu.addAction("Go to target")
         go_target_action.triggered.connect(
             lambda _checked=False, r=record: self._navigate_to_endpoint(
                 r.get("target_type") or "", r.get("target_id") or ""
             )
+        )
+        self._append_open_endpoint_action(
+            menu, record.get("target_type") or "", record.get("target_id") or ""
         )
         menu.addSeparator()
         delete_action = menu.addAction("Delete reference")
@@ -446,6 +453,42 @@ class ReferencesPanel(ListDetailPanel):
         if entity_type not in _NAVIGABLE_TYPES or not identifier:
             return
         self.navigate_requested.emit(entity_type, identifier)
+
+    def _append_open_endpoint_action(
+        self, menu: QMenu, entity_type: str, identifier: str
+    ) -> None:
+        """Append an "Open <Pretty Type>" action for one edge endpoint.
+
+        The standalone-window counterpart placed right after each "Go to
+        <side>" entry (PI-121 / WTK-080), additive over the in-place
+        navigation: triggering it emits :attr:`open_requested` so the host's
+        detail-window manager opens that record's full detail view in a
+        separate, non-modal window without leaving the references list. The
+        label is derived from the endpoint's type via
+        :func:`_pretty_entity_type`, so a ``planning_item`` endpoint reads
+        "Open Planning Item". Skipped for non-navigable types or a missing
+        identifier — the same gate as ``_navigate_to_endpoint`` — so the
+        label always names a real, openable type.
+        """
+        if entity_type not in _NAVIGABLE_TYPES or not identifier:
+            return
+        open_action = menu.addAction(f"Open {_pretty_entity_type(entity_type)}")
+        open_action.triggered.connect(
+            lambda _checked=False, et=entity_type, i=identifier:
+            self._open_endpoint(et, i)
+        )
+
+    def _open_endpoint(self, entity_type: str, identifier: str) -> None:
+        """Emit ``open_requested`` for one side of a reference edge.
+
+        The "Open <item type>" counterpart to :meth:`_navigate_to_endpoint`:
+        instead of swapping the main window to the endpoint's panel, the host
+        spawns a separate, non-modal detail window for that record. Same
+        navigability gate so non-openable types are inert.
+        """
+        if entity_type not in _NAVIGABLE_TYPES or not identifier:
+            return
+        self.open_requested.emit(entity_type, identifier)
 
     # ------------------------------------------------------------------
     # Sort + Group (PI-117 / WTK-068)
