@@ -644,6 +644,82 @@ class RequirementPatchIn(_Base):
     requirement_status: str | None = None
 
 
+# ---------- Migration mappings (methodology entity, WTK-107) ----------
+
+
+class MigrationMappingCreateIn(_Base):
+    """POST /migration-mappings body (``migration-mapping-api.md`` §4.7).
+
+    ``migration_mapping_identifier`` is server-assigned when omitted;
+    ``migration_mapping_status`` defaults to ``candidate`` server-side
+    (explicit ``confirmed`` permitted — the live-triage posture; explicit
+    ``rejected`` refused as a starter). Both edge keys are REQUIRED — the
+    access layer creates the row, the ``migrates_from_record`` edge, the
+    ``migrates_to_record`` edge(s), and the change-log emit in one
+    transaction (the DEC-249/250 pattern extended to a two-kind edge set).
+
+    ``migration_mapping_transform_rules`` is deliberately structurally
+    loose (``list[dict]``): authoritative rule-schema validation lives at
+    the repository layer against ``vocab.MIGRATION_TRANSFORM_RULE_SCHEMAS``
+    so REST, MCP, and access-layer callers enforce identically (spec §5.2).
+    """
+
+    migration_mapping_level: str
+    migration_mapping_disposition: str
+    migration_mapping_source_system_label: str
+    migration_mapping_source_entity_name: str
+    migration_mapping_migrates_from_identifier: str
+    migration_mapping_migrates_to_identifiers: list[str]
+    migration_mapping_source_attribute_name: str | None = None
+    migration_mapping_transform_rules: list[dict] | None = None
+    migration_mapping_notes: str | None = None
+    migration_mapping_status: str | None = None
+    migration_mapping_identifier: str | None = None
+
+
+class MigrationMappingReplaceIn(_Base):
+    """PUT /migration-mappings/{identifier} body — full scalar replace.
+
+    Does NOT accept the edge keys — re-pointing is explicit reference
+    management (normally soft-delete and re-create, spec §4.8).
+    ``migration_mapping_level`` / ``migration_mapping_disposition`` are
+    carried for the full-replace shape but are constitutive: values that
+    differ from the record's current ones are refused 422."""
+
+    migration_mapping_identifier: str | None = None
+    migration_mapping_level: str
+    migration_mapping_disposition: str
+    migration_mapping_source_system_label: str
+    migration_mapping_source_entity_name: str
+    migration_mapping_source_attribute_name: str | None = None
+    migration_mapping_transform_rules: list[dict] | None = None
+    migration_mapping_notes: str | None = None
+    migration_mapping_status: str
+
+
+class MigrationMappingPatchIn(_Base):
+    """PATCH /migration-mappings/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit null (clear) is distinguished from an omitted key (leave
+    unchanged). ``migration_mapping_level`` / ``_disposition`` and the
+    edge keys are deliberately absent (constitutive / POST-only).
+
+    ``rejected_by_decision`` (unprefixed, per the shared ``_rejection``
+    contract) is the WTK-088 atomic edge-and-flip admission for a status
+    change to ``rejected`` — exposed over REST for mappings (a documented
+    deviation from the field cohort, which admits rejection edge-first
+    only; spec §4.9)."""
+
+    migration_mapping_source_system_label: str | None = None
+    migration_mapping_source_entity_name: str | None = None
+    migration_mapping_source_attribute_name: str | None = None
+    migration_mapping_transform_rules: list[dict] | None = None
+    migration_mapping_notes: str | None = None
+    migration_mapping_status: str | None = None
+    rejected_by_decision: str | None = None
+
+
 # ---------- Processes (methodology entity, UI v0.4 slice D) ----------
 
 

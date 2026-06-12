@@ -40,6 +40,7 @@ from crmbuilder_v2.access.models import (
     Entity,
     Field,
     ManualConfig,
+    MigrationMapping,
     Persona,
     Reference,
     Requirement,
@@ -51,6 +52,8 @@ _KIND = "rejected_by_decision"
 # The §3.1 scope: every status-bearing methodology entity type, mapped to
 # (model, identifier attribute, status attribute). `process` carries no
 # lifecycle status and is deliberately absent (WTK-088 §3.1).
+# `migration_mapping` joined per WTK-106 (the vocab pair rule landed with
+# the storage slice; the repository wiring is WTK-107).
 _REJECTABLE_SOURCES: dict[str, tuple[type, str, str]] = {
     "domain": (Domain, "domain_identifier", "domain_status"),
     "entity": (Entity, "entity_identifier", "entity_status"),
@@ -62,6 +65,11 @@ _REJECTABLE_SOURCES: dict[str, tuple[type, str, str]] = {
         ManualConfig,
         "manual_config_identifier",
         "manual_config_status",
+    ),
+    "migration_mapping": (
+        MigrationMapping,
+        "migration_mapping_identifier",
+        "migration_mapping_status",
     ),
 }
 
