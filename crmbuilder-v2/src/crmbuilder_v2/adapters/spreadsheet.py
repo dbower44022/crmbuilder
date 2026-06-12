@@ -496,35 +496,43 @@ def _normalize_headers(
                 }
             )
         api_names.append(api)
-    seen: dict[str, int] = {}
+    # Suffixes loop until free so a renamed header can never collide
+    # with a literal one (`Amount, Amount, Amount_2`) — a collision
+    # would key two columns onto one inference and one profile entry,
+    # the silent-evidence-loss failure mode criterion C7 guards.
+    taken: set[str] = set()
     deduped: list[str] = []
     for api in api_names:
-        count = seen.get(api, 0) + 1
-        seen[api] = count
-        if count > 1:
-            suffixed = f"{api}_{count}"
+        final = api
+        suffix = 2
+        while final in taken:
+            final = f"{api}_{suffix}"
+            suffix += 1
+        if final != api:
             anomalies.append(
                 {
                     "scope": "entity",
                     "entity": sheet,
-                    "field": suffixed,
+                    "field": final,
                     "note": (
                         f"duplicate header {api!r}; "
-                        f"renamed {suffixed!r}"
+                        f"renamed {final!r}"
                     ),
                 }
             )
-            api = suffixed
-        deduped.append(api)
+        taken.add(final)
+        deduped.append(final)
     yaml_names: list[str] = []
-    yaml_seen: dict[str, int] = {}
+    yaml_taken: set[str] = set()
     for api in deduped:
         slug = _slugify(api) or api.lower()
-        count = yaml_seen.get(slug, 0) + 1
-        yaml_seen[slug] = count
-        if count > 1:
-            slug = f"{slug}_{count}"
-        yaml_names.append(slug)
+        final = slug
+        suffix = 2
+        while final in yaml_taken:
+            final = f"{slug}_{suffix}"
+            suffix += 1
+        yaml_taken.add(final)
+        yaml_names.append(final)
     return deduped, yaml_names, anomalies
 
 
@@ -724,7 +732,13 @@ def _multi_enum_pass(
 
 def _auto_number_pass(cells: list[str], decimal_comma: bool) -> bool:
     group = "." if decimal_comma else ","
-    values = [int(cell.replace(group, "").lstrip("+")) for cell in cells]
+    try:
+        values = [int(cell.replace(group, "").lstrip("+")) for cell in cells]
+    except ValueError:
+        # The base vote admits sub-threshold stragglers (match rate
+        # >= tau, not 1.0); a populated non-integer cell breaks the
+        # "all populated values" signature (spec §4.3) — no promotion.
+        return False
     distinct = set(values)
     if len(distinct) != len(values):
         return False
@@ -1246,8 +1260,11 @@ def profile_source(
     A pure function of the files given pinned ``options`` and ``now``
     (criterion C6): same bytes, same options, same clock -> the same
     pair. ``path`` is the source directory of per-sheet CSV files or a
-    single CSV file (spec §3.3); unreadable files become manifest
-    ``errors`` and the run continues over the remaining sheets.
+    single CSV file (spec §3.3); unreadable, undecodable, or
+    unparseable files become manifest ``errors`` and the run continues
+    over the remaining sheets. A missing path or a single non-CSV file
+    (a native workbook, §3.2 deferred) is an operator error and raises
+    ``ValueError`` instead.
 
     A registered store snapshot (the input directory carries a
     ``source-manifest.json``, WTK-111 §4.3) keeps the
@@ -1260,6 +1277,8 @@ def profile_source(
     """
     options = options or AdapterOptions()
     source = Path(path)
+    if not source.exists():
+        raise ValueError(f"source not found: {source}")
     registered: dict | None = None
     registration_warning: str | None = None
     if source.is_dir():
@@ -1268,6 +1287,12 @@ def profile_source(
             p for p in source.iterdir() if p.suffix.lower() == ".csv"
         )
     else:
+        if source.suffix.lower() != ".csv":
+            raise ValueError(
+                f"unsupported source format {source.suffix!r} "
+                f"({source.name}): v1 ingests CSV only (spec §3.1/§3.2) "
+                "— export each sheet to CSV"
+            )
         csv_paths = [source]
     if not csv_paths:
         raise ValueError(f"no CSV files found in {source}")
@@ -1282,7 +1307,10 @@ def profile_source(
     for csv_path in csv_paths:
         try:
             sheet = _parse_sheet(csv_path, options, recognizers)
-        except OSError as exc:
+        except (OSError, UnicodeDecodeError, csv.Error) as exc:
+            # Unreadable, undecodable (invalid in cp1252 too), or
+            # unparseable (e.g. a cell over the csv field-size limit) —
+            # the §6.1 errors posture: record and continue.
             errors.append(f"sheet {csv_path.stem}: {exc}")
             continue
         warnings.extend(sheet.warnings)
