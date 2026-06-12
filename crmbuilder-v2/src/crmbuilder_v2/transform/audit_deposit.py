@@ -582,12 +582,19 @@ def plan_deposit(
         }
         if kind is not None:
             payload["kind"] = kind
+        # A negative record_count is the profiler's count-probe sentinel
+        # ("count unknown" — e.g. servers that refuse maxSize=0 counts on
+        # some scopes); evidence semantics for unknown is NULL, same as
+        # an unprofiled subject. The API rejects negatives by design.
+        record_count = profile_entity.get("record_count")
+        if isinstance(record_count, int) and record_count < 0:
+            record_count = None
         evidence = {
             "subject_type": "entity",
             "catalog_class": (
                 "custom" if entity.get("entity_class") == "custom" else "standard"
             ),
-            "record_count": profile_entity.get("record_count"),
+            "record_count": record_count,
             "last_record_created_at": profile_entity.get(
                 "last_record_created_at"
             ),
