@@ -487,6 +487,13 @@ def plan_deposit(
     ) -> ExistingRecord | None:
         """Apply the §7 re-run rules to one mapped record. Returns the
         matched record (or None when a create was planned)."""
+        # Negative numeric metrics are profiler count-probe sentinels
+        # ("unknown"); evidence semantics for unknown is NULL, and the
+        # API rejects negatives by design. Clamp once for every subject
+        # type rather than per metric key.
+        for key, value in list(evidence.items()):
+            if key != "detail" and isinstance(value, (int, float)) and value < 0:
+                evidence[key] = None
         if record_type == "field":
             key = (field_parent_identifier or "", name.lower())
             match = existing.fields.get(key) if field_parent_identifier else None
@@ -582,19 +589,12 @@ def plan_deposit(
         }
         if kind is not None:
             payload["kind"] = kind
-        # A negative record_count is the profiler's count-probe sentinel
-        # ("count unknown" — e.g. servers that refuse maxSize=0 counts on
-        # some scopes); evidence semantics for unknown is NULL, same as
-        # an unprofiled subject. The API rejects negatives by design.
-        record_count = profile_entity.get("record_count")
-        if isinstance(record_count, int) and record_count < 0:
-            record_count = None
         evidence = {
             "subject_type": "entity",
             "catalog_class": (
                 "custom" if entity.get("entity_class") == "custom" else "standard"
             ),
-            "record_count": record_count,
+            "record_count": profile_entity.get("record_count"),
             "last_record_created_at": profile_entity.get(
                 "last_record_created_at"
             ),
