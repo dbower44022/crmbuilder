@@ -19,6 +19,14 @@ Reads support the WTK-088 §4.5 filter surface, including the
 latest-snapshot rule (``latest=True``): the current evidence for a
 subject is the row with the greatest ``evidence_profiled_at`` per
 ``(subject_type, subject_identifier, source_label)``.
+
+The WTK-097 inline read projection lives here too:
+:func:`inline_evidence_block` builds the §6.1 embedded
+``utilization_evidence`` block for one candidate (snapshots as §3
+objects via :mod:`crmbuilder_v2.access.evidence_projection`, plus
+``snapshot_count`` and ``sources``), and :func:`attach_inline_evidence`
+applies it to the record dicts the five candidate endpoint families
+return when ``include_evidence`` is requested.
 """
 
 from __future__ import annotations
@@ -31,6 +39,7 @@ from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import get_by_identifier, to_dict
 from crmbuilder_v2.access.change_log import emit
+from crmbuilder_v2.access.evidence_projection import project_evidence_object
 from crmbuilder_v2.access.exceptions import FieldError, UnprocessableError
 from crmbuilder_v2.access.models import (
     Entity,
@@ -232,6 +241,77 @@ def list_utilization_evidence(
         UtilizationEvidence.id.desc(),
     )
     return [to_dict(r) for r in session.scalars(stmt).all()]
+
+
+# ---------------------------------------------------------------------------
+# Inline read projection (WTK-097 §6)
+# ---------------------------------------------------------------------------
+
+EVIDENCE_INCLUDE_MODES = frozenset({"latest", "all"})
+
+
+def inline_evidence_block(
+    session: Session, *, subject_type: str, subject_identifier: str, mode: str
+) -> dict:
+    """Build the §6.1 embedded ``utilization_evidence`` block for one
+    candidate.
+
+    ``mode`` is ``"latest"`` (one §3 object per source — the §7.1
+    latest-snapshot rule with the greatest-``id`` exact-tie break) or
+    ``"all"`` (full history, newest first). ``snapshot_count`` is the
+    subject's total row count regardless of mode, so ``latest``
+    consumers see history exists without fetching it; a candidate with
+    no evidence rows gets the present-but-empty block — the Q4
+    completion-gate signal made visible at read time.
+    """
+    rows = list_utilization_evidence(
+        session,
+        subject_type=subject_type,
+        subject_identifier=subject_identifier,
+    )
+    if mode == "latest":
+        # Rows arrive ordered (profiled_at desc, id desc) within the
+        # subject, so the first row seen per source IS the §7.1
+        # latest-with-tie-break selection.
+        seen: set[str] = set()
+        snapshots = []
+        for row in rows:
+            if row["evidence_source_label"] not in seen:
+                seen.add(row["evidence_source_label"])
+                snapshots.append(row)
+    else:
+        snapshots = rows
+    return {
+        "snapshots": [project_evidence_object(row) for row in snapshots],
+        "snapshot_count": len(rows),
+        "sources": sorted({row["evidence_source_label"] for row in rows}),
+    }
+
+
+def attach_inline_evidence(
+    session: Session,
+    records: list[dict],
+    *,
+    subject_type: str,
+    identifier_key: str,
+    mode: str,
+) -> list[dict]:
+    """Embed the §6.1 block into each candidate record dict, in place.
+
+    Strictly additive: callers invoke this only when the
+    ``include_evidence`` parameter was supplied, so the unprojected
+    payload stays byte-identical. The join is the WTK-088 §4.2 soft
+    pair — rejected and soft-deleted candidates project their evidence
+    exactly as live ones do (invariant I10).
+    """
+    for record in records:
+        record["utilization_evidence"] = inline_evidence_block(
+            session,
+            subject_type=subject_type,
+            subject_identifier=record[identifier_key],
+            mode=mode,
+        )
+    return records
 
 
 # ---------------------------------------------------------------------------

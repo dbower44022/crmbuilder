@@ -49,9 +49,18 @@ from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 
 from crmbuilder_v2 import __version__ as _TRANSFORM_VERSION
+from crmbuilder_v2.access.evidence_projection import (
+    EVIDENCE_FLAG_KEYS,
+    project_evidence_object,
+)
 
 MANIFEST_VERSION = 1
 SOURCE_SYSTEM = "espocrm"  # the only source adapter today (spec §2.3)
+
+# Version of the WTK-097 §4 evidence_detail key schema this transform
+# emits; the discriminator consumers branch on when the detail shape
+# evolves (§7.3).
+EVIDENCE_SCHEMA_VERSION = 1
 
 # EspoCRM metadata wire type -> FIELD_TYPES vocab (spec §3.2). Lossy by
 # design — the wire type always survives in notes and evidence detail.
@@ -309,6 +318,36 @@ class DepositPlan:
         return summary
 
 
+def plan_evidence_object(
+    evidence: dict,
+    *,
+    profiled_at: str,
+    source_label: str,
+    subject_identifier: str | None = None,
+    deposit_event: str | None = None,
+) -> dict:
+    """Render one planned evidence payload as the §3 inline object.
+
+    Builds the pseudo-row the evidence write will produce and runs it
+    through the same assembler every read surface uses — WTK-097 §3.4
+    determinism, acceptance criterion A8 (plan/read parity). The two
+    execute-time-resolved envelope values default to ``None`` at plan
+    time: a create's ``subject_identifier`` is server-assigned, and the
+    ``deposit_event`` identifier is read just before the event POST.
+    """
+    row = {
+        f"evidence_{key}": value
+        for key, value in evidence.items()
+        if key != "detail"
+    }
+    row["evidence_detail"] = evidence.get("detail")
+    row["evidence_subject_identifier"] = subject_identifier
+    row["evidence_profiled_at"] = profiled_at
+    row["evidence_source_label"] = source_label
+    row["evidence_deposit_event_identifier"] = deposit_event
+    return project_evidence_object(row)
+
+
 def _source_block(pairs: list[tuple[str, object]]) -> str:
     """Render the ``Source:`` notes block (spec §3 general rules)."""
     lines = ["Source:"]
@@ -390,6 +429,43 @@ def plan_deposit(
     source_label = derive_source_label(manifest)
     snapshot_at = manifest.get("timestamp") or ""
     profiled_at = (profile or {}).get("profiled_at") or snapshot_at
+    profiler_version = (profile or {}).get("profiler_version")
+    profile_options = (profile or {}).get("options") or {}
+    # The profiler options the flags were derived under (WTK-096 §5) —
+    # they travel with the flags so re-derivation is always possible
+    # from the row alone (WTK-097 §4.1).
+    thresholds = {
+        key: profile_options[key]
+        for key in ("dormancy_window_days", "low_population_threshold")
+        if key in profile_options
+    }
+
+    def evidence_detail(wire_name: object, **keys: object) -> dict:
+        """Assemble one §4-conformant ``evidence_detail`` block.
+
+        Starts from the WTK-097 §4.1 common keys, adds the caller's
+        subject-specific keys (omitted when ``None`` — the
+        omitted-not-null convention; profile detail blocks are passed
+        through verbatim, flags included, never recomputed), then
+        finishes with ``thresholds`` when the block carries flags and
+        ``schema_only: true`` on a profile-less run.
+        """
+        detail: dict = {
+            "evidence_schema_version": EVIDENCE_SCHEMA_VERSION,
+            "wire_name": wire_name,
+            "transform_version": _TRANSFORM_VERSION,
+        }
+        if profiler_version is not None:
+            detail["profiler_version"] = profiler_version
+        if profile is None:
+            detail["schema_only"] = True
+        for key, value in keys.items():
+            if value is not None:
+                detail[key] = value
+        if thresholds and any(key in detail for key in EVIDENCE_FLAG_KEYS):
+            detail["thresholds"] = thresholds
+        return detail
+
     anomalies: list[str] = []
     skipped: list[dict] = []
     creates: list[PlannedCreate] = []
@@ -516,12 +592,15 @@ def plan_deposit(
             "last_record_created_at": profile_entity.get(
                 "last_record_created_at"
             ),
-            "detail": {
-                "espo_name": entity.get("espo_name"),
-                "yaml_name": entity.get("yaml_name"),
-                "layouts_captured": layouts_captured,
-                "transform_version": _TRANSFORM_VERSION,
-            },
+            # §4.2 keys: the entity flags, sampling qualifiers, and
+            # profiled_entity_at arrive verbatim in the profile's
+            # entity detail block (§3.3 — flags copied, not computed).
+            "detail": evidence_detail(
+                entity.get("espo_name"),
+                yaml_name=entity.get("yaml_name"),
+                layouts_captured=layouts_captured,
+                **(profile_entity.get("detail") or {}),
+            ),
         }
         diff("entity", existing.entities, name, payload, evidence)
 
@@ -540,6 +619,7 @@ def plan_deposit(
                 rel.get("label"),
                 rel.get("link"),
                 rel.get("entity_foreign"),
+                rel.get("link_foreign"),
             ),
             (
                 rel.get("audited_foreign"),
@@ -547,9 +627,10 @@ def plan_deposit(
                 rel.get("label_foreign"),
                 rel.get("link_foreign"),
                 rel.get("entity"),
+                rel.get("link"),
             ),
         )
-        for audited, wire_entity, label, link, other_entity in sides:
+        for audited, wire_entity, label, link, other_entity, other_link in sides:
             if not audited or not link:
                 continue
             entity_key = entity_key_by_wire.get(wire_entity or "")
@@ -581,13 +662,19 @@ def plan_deposit(
                     if entity_class_by_key.get(entity_key) == "custom"
                     else "standard"
                 ),
-                "detail": {
-                    "relationship": rel.get("name"),
-                    "link": link,
-                    "link_type": rel.get("link_type"),
-                    "paired_entity": other_entity,
-                    "transform_version": _TRANSFORM_VERSION,
-                },
+                # §4.3 relationship_pairing — the opposite side's wire
+                # identity. No wire_type: a RelationshipAuditResult
+                # carries the relationship's link_type, not the side's
+                # metadata field type.
+                "detail": evidence_detail(
+                    link,
+                    relationship_pairing={
+                        "relationship": rel.get("name"),
+                        "link_type": rel.get("link_type"),
+                        "entity": other_entity,
+                        "link": other_link,
+                    },
+                ),
             }
             relationship_fields.append((entity_key, payload, evidence))
 
@@ -646,13 +733,16 @@ def plan_deposit(
                 len(options) if isinstance(options, list) else None
             ),
             "used_option_count": profile_field.get("used_option_count"),
-            "detail": {
-                "yaml_name": field_result.get("yaml_name"),
-                "api_name": field_result.get("api_name"),
-                "wire_type": wire_type,
-                "value_detail": profile_field.get("detail"),
-                "transform_version": _TRANSFORM_VERSION,
-            },
+            # §4.3 keys (value_distribution, undeclared_values,
+            # top_values, last_populated_at_basis, empty_string_count,
+            # distinct_overflow, and the field flags) arrive verbatim
+            # in the profile's per-field detail block.
+            "detail": evidence_detail(
+                field_result.get("api_name"),
+                yaml_name=field_result.get("yaml_name"),
+                wire_type=wire_type,
+                **(profile_field.get("detail") or {}),
+            ),
         }
         relationship_fields.append((entity_key, payload, evidence))
 
@@ -714,11 +804,17 @@ def plan_deposit(
             "notes": _source_block(notes_pairs),
             "status": "candidate",
         }
+        kinds = sorted({s["kind"] for s in sources})
         evidence = {
             "subject_type": "persona",
-            "detail": {
-                "kinds": sorted({s["kind"] for s in sources}),
-                "scope_access": next(
+            # §4.4 persona keys; ``kind`` is the primary source's
+            # (role wins a role+team name merge), ``kinds`` the merged
+            # set (a permitted additional key).
+            "detail": evidence_detail(
+                name,
+                kind="role" if "role" in kinds else "team",
+                kinds=kinds,
+                scope_access=next(
                     (
                         s.get("scope_access")
                         for s in sources
@@ -726,8 +822,15 @@ def plan_deposit(
                     ),
                     None,
                 ),
-                "transform_version": _TRANSFORM_VERSION,
-            },
+                system_permissions=next(
+                    (
+                        s.get("system_permissions")
+                        for s in sources
+                        if s.get("system_permissions")
+                    ),
+                    None,
+                ),
+            ),
         }
         diff("persona", existing.personas, name, payload, evidence)
 
@@ -759,15 +862,19 @@ def plan_deposit(
                 "classification": "unclassified",
                 "notes": notes,
             }
+            # §4.4 process keys; ``filter`` is included even when null
+            # (null IS the unrecoverable marker).
+            process_detail = evidence_detail(
+                tab.get("id"),
+                scope=tab.get("scope"),
+                acl=tab.get("acl"),
+                nav_order=tab.get("nav_order"),
+                entity=entity_name,
+            )
+            process_detail["filter"] = filter_ast
             evidence = {
                 "subject_type": "process",
-                "detail": {
-                    "tab_id": tab.get("id"),
-                    "scope": tab.get("scope"),
-                    "entity": entity_name,
-                    "filter_recovered": filter_ast is not None,
-                    "transform_version": _TRANSFORM_VERSION,
-                },
+                "detail": process_detail,
             }
             process_plans.append((tab_name, payload, evidence))
             if filter_ast is None:
@@ -798,11 +905,12 @@ def plan_deposit(
                 }
                 mc_evidence = {
                     "subject_type": "manual_config",
-                    "detail": {
-                        "tab_id": tab.get("id"),
-                        "scope": tab.get("scope"),
-                        "transform_version": _TRANSFORM_VERSION,
-                    },
+                    "detail": evidence_detail(
+                        tab.get("id"),
+                        origin="unrecoverable_filter",
+                        tab_scope=tab.get("scope"),
+                        tab_id=tab.get("id"),
+                    ),
                 }
                 manual_config_plans.append((mc_name, mc_payload, mc_evidence))
 
@@ -1170,6 +1278,27 @@ def execute_plan(plan: DepositPlan, client: DepositClient) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _prefix_payload(
+    prefix: str, payload: dict, passthrough: frozenset[str] = frozenset()
+) -> dict:
+    """Map repository-kwarg keys to a REST body's parent-prefixed names.
+
+    The plan's payloads use the repositories' unprefixed kwargs (the
+    shape the access-layer test client consumes directly); the REST
+    schemas carry parent-prefixed field names with ``extra="forbid"``.
+    Keys already prefixed (``field_belongs_to_entity_identifier``) and
+    keys named in ``passthrough`` (``references``) pass unchanged.
+    """
+    return {
+        (
+            key
+            if key in passthrough or key.startswith(prefix)
+            else f"{prefix}{key}"
+        ): value
+        for key, value in payload.items()
+    }
+
+
 class RestDepositClient(DepositClient):
     """REST client of the live V2 API (TOP-013; mirrors apply_close_out).
 
@@ -1177,7 +1306,9 @@ class RestDepositClient(DepositClient):
     the ``{data, meta, errors}`` envelope; non-2xx bodies may bypass the
     envelope (``api/errors.py``), so the raw body is surfaced in the
     raised error. Issues GET and POST only — never PATCH, PUT, or
-    DELETE (spec §6).
+    DELETE (spec §6). Create payloads are re-keyed to the REST schemas'
+    parent-prefixed names via :func:`_prefix_payload`; planning-item
+    and utilization-evidence bodies are unprefixed on the wire already.
     """
 
     def __init__(
@@ -1239,41 +1370,77 @@ class RestDepositClient(DepositClient):
         return data["identifier"] if isinstance(data, dict) else data
 
     def create_entity(self, **payload) -> dict:
-        return self._request("POST", "/entities", payload)
+        return self._request(
+            "POST", "/entities", _prefix_payload("entity_", payload)
+        )
 
     def create_field(self, **payload) -> dict:
-        return self._request("POST", "/fields", payload)
+        return self._request(
+            "POST", "/fields", _prefix_payload("field_", payload)
+        )
 
     def create_persona(self, **payload) -> dict:
-        return self._request("POST", "/personas", payload)
+        return self._request(
+            "POST", "/personas", _prefix_payload("persona_", payload)
+        )
 
     def create_process(self, **payload) -> dict:
-        return self._request("POST", "/processes", payload)
+        return self._request(
+            "POST", "/processes", _prefix_payload("process_", payload)
+        )
 
     def create_manual_config(self, **payload) -> dict:
-        return self._request("POST", "/manual-configs", payload)
+        return self._request(
+            "POST",
+            "/manual-configs",
+            _prefix_payload("manual_config_", payload),
+        )
 
     def create_domain(self, **payload) -> dict:
-        return self._request("POST", "/domains", payload)
+        return self._request(
+            "POST", "/domains", _prefix_payload("domain_", payload)
+        )
 
     def create_planning_item(self, **payload) -> dict:
         return self._request("POST", "/planning-items", payload)
 
     def create_deposit_event(self, **payload) -> dict:
-        return self._request("POST", "/deposit-events", payload)
+        return self._request(
+            "POST",
+            "/deposit-events",
+            _prefix_payload(
+                "deposit_event_", payload, passthrough=frozenset({"references"})
+            ),
+        )
 
     def create_utilization_evidence(self, **payload) -> dict:
         return self._request("POST", "/utilization-evidence", payload)
 
 
 def _print_plan(plan: DepositPlan) -> None:
+    """Print the plan, each candidate's evidence as its §3 inline
+    object (WTK-097 §5 obligation 3) — the operator previews at deposit
+    time exactly what triage reads later."""
+
+    def _render(evidence: dict, identifier: str | None = None) -> str:
+        obj = plan_evidence_object(
+            evidence,
+            profiled_at=plan.profiled_at,
+            source_label=plan.source_label,
+            subject_identifier=identifier,
+        )
+        return json.dumps(obj, sort_keys=True)
+
     print(f"Source: {plan.source_label} (snapshot {plan.snapshot_at})")
     print(f"Creates ({len(plan.creates)}):")
     for item in plan.creates:
         print(f"  + {item.record_type}: {item.key}")
+        if item.evidence is not None:
+            print(f"    evidence: {_render(item.evidence)}")
     print(f"Matches ({len(plan.matches)}):")
     for match in plan.matches:
         print(f"  = {match.record_type}: {match.identifier} ({match.key})")
+        print(f"    evidence: {_render(match.evidence, match.identifier)}")
     for row in plan.skipped_soft_deleted:
         print(
             f"  ! skipped soft-deleted {row['record_type']} "

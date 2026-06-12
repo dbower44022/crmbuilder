@@ -30,6 +30,7 @@ from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import field
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
+from crmbuilder_v2.api.routers.utilization_evidence import embed_inline_evidence
 from crmbuilder_v2.api.schemas import (
     FieldCreateIn,
     FieldPatchIn,
@@ -48,13 +49,22 @@ _FIELD_PREFIX = "field_"
 def list_all(
     entity_identifier: str | None = None,
     include_deleted: bool = False,
+    include_evidence: str | None = None,
 ):
     with readonly_session() as s:
+        records = field.list_fields(
+            s,
+            entity_identifier=entity_identifier,
+            include_deleted=include_deleted,
+        )
         return ok(
-            field.list_fields(
+            embed_inline_evidence(
                 s,
-                entity_identifier=entity_identifier,
-                include_deleted=include_deleted,
+                records,
+                subject_type="field",
+                identifier_key="field_identifier",
+                include_evidence=include_evidence,
+                is_list=True,
             )
         )
 
@@ -67,13 +77,25 @@ def next_identifier():
 
 
 @router.get("/{identifier}")
-def get(identifier: str, include_deleted: bool = False):
+def get(
+    identifier: str,
+    include_deleted: bool = False,
+    include_evidence: str | None = None,
+):
     with readonly_session() as s:
         record = field.get_field(
             s, identifier, include_deleted=include_deleted
         )
         if record is None:
             raise NotFoundError("field", identifier)
+        embed_inline_evidence(
+            s,
+            [record],
+            subject_type="field",
+            identifier_key="field_identifier",
+            include_evidence=include_evidence,
+            is_list=False,
+        )
         return ok(record)
 
 

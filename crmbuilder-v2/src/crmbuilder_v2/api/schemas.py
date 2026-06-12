@@ -1541,6 +1541,9 @@ class DepositEventCreateIn(_Base):
     deposit_event_records_summary: dict[str, Any]
     deposit_event_apply_context: dict[str, Any]
     deposit_event_log_file_path: str
+    # WTK-089 kind discriminator; defaults server-side to the close-out
+    # apply. The audit deposit path posts ``audit_deposit``.
+    deposit_event_kind: str | None = None
     deposit_event_error_info: dict[str, Any] | None = None
     deposit_event_identifier: str | None = None
     references: list[DepositEventEdgeIn] | None = None
@@ -1549,3 +1552,29 @@ class DepositEventCreateIn(_Base):
     # pass the real payload file path so the lazy COP's file_path points
     # at the right artifact (PRD §3.5).
     target_file_path: str | None = None
+
+
+class UtilizationEvidenceCreateIn(_Base):
+    """POST /utilization-evidence body (WTK-088 §4.5).
+
+    Unprefixed key names — the repository kwargs and the wire shape the
+    WTK-090 deposit transform posts. All metric columns are optional:
+    evidence is shape-heterogeneous, and a schema-only deposit
+    legitimately writes structural facts only. Datetimes travel as ISO
+    strings; the access layer coerces and validates."""
+
+    subject_type: str
+    subject_identifier: str
+    profiled_at: str
+    source_label: str
+    deposit_event_identifier: str | None = None
+    catalog_class: str | None = None
+    record_count: int | None = None
+    last_record_created_at: str | None = None
+    populated_count: int | None = None
+    population_rate: float | None = None
+    last_populated_at: str | None = None
+    distinct_value_count: int | None = None
+    declared_option_count: int | None = None
+    used_option_count: int | None = None
+    detail: dict[str, Any] | None = None
