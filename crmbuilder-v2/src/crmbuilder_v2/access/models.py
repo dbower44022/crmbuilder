@@ -70,6 +70,9 @@ from crmbuilder_v2.access.vocab import (
     LEARNING_TIERS,
     MANUAL_CONFIG_CATEGORIES,
     MANUAL_CONFIG_STATUSES,
+    MIGRATION_MAPPING_DISPOSITIONS,
+    MIGRATION_MAPPING_LEVELS,
+    MIGRATION_MAPPING_STATUSES,
     PERSONA_STATUSES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -1288,6 +1291,127 @@ class TestSpec(EngagementScopedPKMixin, Base):
         Index(
             "ix_test_specs_test_spec_deleted_at",
             "test_spec_deleted_at",
+        ),
+    )
+
+
+class MigrationMapping(EngagementScopedPKMixin, Base):
+    """Methodology entity — one keep/transform disposition's migration obligation.
+
+    WTK-106 storage layer per the WTK-104 design spec
+    (``methodology-schema-specs/migration_mapping.md`` §3.2): records and
+    values from one source entity/field land in target entity/field(s),
+    transformed by the §4 rule list. Parent-prefix field naming; primary
+    key is the prefixed-string identifier ``migration_mapping_identifier``
+    (``MIG-NNN``). No name column — documented deviation (spec §3.2.1):
+    the natural label *is* the source → target pair, derived from the
+    edges.
+
+    Both linkages live in ``refs`` as references-entity edges, not FK
+    columns (DEC-006, DEC-249): ``migration_mapping_migrates_from_record``
+    (exactly one — the disposed baseline candidate; at most one live
+    inbound per candidate encodes "one mapping per disposition") and
+    ``migration_mapping_migrates_to_record`` (≥1 — the confirmed target
+    record(s); >1 only with a ``split`` rule). Edge cardinality, target
+    liveness/status, level agreement, and the keep/split shape rules are
+    access-layer enforcement (spec invariants I1–I8); this table carries
+    the I11 CHECK (``source_attribute_name`` present iff
+    ``level = 'field'``).
+
+    The literal source-system coordinates (system label, entity name,
+    attribute name) are denormalized deliberately at triage time so the
+    future compiler extracts data by the names the audit observed,
+    independent of later methodology-record renames (spec §6.2) — this is
+    what lets confirmed mappings compile mechanically into import batches
+    for ``espo_impl/core/import_manager.py``.
+    """
+
+    __tablename__ = "migration_mappings"
+
+    migration_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    migration_mapping_level: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    migration_mapping_disposition: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    migration_mapping_source_system_label: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+    migration_mapping_source_entity_name: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+    migration_mapping_source_attribute_name: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    # Ordered list of §4 rule objects (rule_kind ∈
+    # MIGRATION_TRANSFORM_RULE_KINDS); per-kind schema validation is the
+    # repository layer's invariant I9. NULL (or empty) is valid for a
+    # rename-only transform and mandatory for a keep (spec §3.2.2).
+    migration_mapping_transform_rules: Mapped[list | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    migration_mapping_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    migration_mapping_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    migration_mapping_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    migration_mapping_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    migration_mapping_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^MIG-\d{3}$`` expressed as a SQLite GLOB pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("migration_mapping_identifier", ["MIG"]),
+            name="ck_migration_mapping_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("migration_mapping_status", MIGRATION_MAPPING_STATUSES),
+            name="ck_migration_mapping_status",
+        ),
+        CheckConstraint(
+            _check_in("migration_mapping_level", MIGRATION_MAPPING_LEVELS),
+            name="ck_migration_mapping_level",
+        ),
+        CheckConstraint(
+            _check_in(
+                "migration_mapping_disposition", MIGRATION_MAPPING_DISPOSITIONS
+            ),
+            name="ck_migration_mapping_disposition",
+        ),
+        # I11: the attribute coordinate is present iff the mapping is
+        # field-level (non-empty-trimmed is repository-layer validation).
+        CheckConstraint(
+            "(migration_mapping_level = 'field' "
+            "AND migration_mapping_source_attribute_name IS NOT NULL) "
+            "OR (migration_mapping_level = 'entity' "
+            "AND migration_mapping_source_attribute_name IS NULL)",
+            name="ck_migration_mapping_attribute_per_level",
+        ),
+        Index(
+            "ix_migration_mappings_migration_mapping_status",
+            "migration_mapping_status",
+        ),
+        Index(
+            "ix_migration_mappings_migration_mapping_level",
+            "migration_mapping_level",
+        ),
+        Index(
+            "ix_migration_mappings_migration_mapping_deleted_at",
+            "migration_mapping_deleted_at",
         ),
     )
 
