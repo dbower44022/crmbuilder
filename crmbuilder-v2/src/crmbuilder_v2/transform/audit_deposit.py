@@ -1365,8 +1365,11 @@ class RestDepositClient(DepositClient):
         return self._request("GET", "/domains?include_deleted=true")
 
     def next_deposit_event_identifier(self) -> str:
+        # The DEC-043 next-identifier helpers return {"next": "<PREFIX>-NNN"}.
         data = self._request("GET", "/deposit-events/next-identifier")
-        return data["identifier"] if isinstance(data, dict) else data
+        if isinstance(data, dict):
+            return data.get("next") or data["identifier"]
+        return data
 
     def create_entity(self, **payload) -> dict:
         return self._request(
