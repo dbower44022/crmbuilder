@@ -5,10 +5,11 @@ Connects to a source EspoCRM instance, discovers its configuration
 files in the same schema the configure engine consumes.
 """
 
+import json
 import logging
 import sqlite3
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -249,6 +250,57 @@ class AuditReport:
     files_written: int = 0
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Manifest serialization (WTK-090 §2.1)
+# ---------------------------------------------------------------------------
+
+MANIFEST_VERSION = 1
+MANIFEST_FILENAME = "audit-report.json"
+
+
+def write_manifest(report: AuditReport, output_dir: Path) -> Path:
+    """Serialize ``report`` to ``audit-report.json`` in ``output_dir``.
+
+    The manifest is the seam the V2 deposit transform consumes
+    (``crmbuilder-v2-deposit-audit``): a ``dataclasses.asdict`` of the
+    report tree plus ``manifest_version``, with enums serialized as
+    their ``.value`` strings and each filtered tab's parsed filter AST
+    rendered to the canonical structured form (``{all: [...]}``) or
+    ``null`` when the audit could not recover it.
+    """
+    manifest = asdict(report)
+    manifest["manifest_version"] = MANIFEST_VERSION
+    # asdict recurses into the ConditionNode dataclasses; replace each
+    # filtered tab's filter with its render_condition structured form,
+    # which is what the transform (and the deploy-side YAML) read.
+    for entity, entity_dict in zip(
+        report.entities, manifest["entities"], strict=True
+    ):
+        for tab, tab_dict in zip(
+            entity.filtered_tabs,
+            entity_dict.get("filtered_tabs") or [],
+            strict=False,
+        ):
+            tab_dict["filter"] = (
+                render_condition(tab.filter) if tab.filter is not None else None
+            )
+
+    def _default(obj: Any) -> Any:
+        value = getattr(obj, "value", None)
+        if value is not None:  # Enum members
+            return value
+        raise TypeError(f"not JSON serializable: {type(obj).__name__}")
+
+    path = Path(output_dir) / MANIFEST_FILENAME
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(
+        json.dumps(manifest, indent=2, default=_default) + "\n",
+        encoding="utf-8",
+    )
+    tmp.replace(path)
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -570,6 +622,20 @@ class AuditManager:
                 msg = f"Data profiling failed: {exc}"
                 report.warnings.append(msg)
                 self._cb(f"[AUDIT]    WARNING: {msg}", "yellow")
+
+        # Step 4.6: Manifest serialization (WTK-090 §2.1) — the seam the
+        # V2 deposit transform consumes. Failure is non-fatal to the
+        # YAML output already written.
+        try:
+            manifest_path = write_manifest(report, output_dir)
+            self._cb(
+                f"[AUDIT]    Manifest written → {manifest_path.name}",
+                "green",
+            )
+        except Exception as exc:
+            msg = f"Manifest serialization failed: {exc}"
+            report.warnings.append(msg)
+            self._cb(f"[AUDIT]    WARNING: {msg}", "yellow")
 
         # Step 5: Insert database records
         db_records = 0
