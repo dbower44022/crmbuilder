@@ -39,18 +39,19 @@ or a spawned agent.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
-import time
 import urllib.parse
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import Enum
-from pathlib import Path
 
+from crmbuilder_v2.config import verify_log_dir
 from crmbuilder_v2.runtime import dispatcher, reconciliation
-from crmbuilder_v2.runtime.agent_runtime import AgentInvocation, build_agent_prompt
+from crmbuilder_v2.runtime.agent_runtime import build_agent_prompt
 
 # --------------------------------------------------------------------------
 # Outcomes (small enums + records the loop and its tests reason over)
@@ -63,6 +64,7 @@ class VerifyOutcome(str, Enum):
     OK = "ok"  # Work Task Complete + branch carries commits → safe to merge
     NOT_COMPLETE = "not_complete"  # agent exited without driving the task Complete
     NO_COMMITS = "no_commits"  # task marked Complete but the branch is empty
+    TESTS_FAILED = "tests_failed"  # Complete + commits, but the affected tests are red (PI-147)
 
 
 class StepResult(str, Enum):
@@ -95,6 +97,9 @@ class IterationReport:
     pause_reason: str | None = None
     agent_returncode: int | None = None
     branch: str | None = None
+    # PI-157: absolute path of the persisted verify-failure pytest output
+    # (None on a green run, a pre-test verdict, or a failed log write).
+    verify_log_path: str | None = None
 
 
 # --------------------------------------------------------------------------
@@ -115,6 +120,96 @@ def verify_result(work_task: dict, branch_has_commits: bool) -> VerifyOutcome:
     if not branch_has_commits:
         return VerifyOutcome.NO_COMMITS
     return VerifyOutcome.OK
+
+
+# The src subtrees that mirror a tests/ package 1:1. A touched subtree not in
+# this set (a future src package with no tests yet) falls back to the full
+# suite. Update this when a new mirrored package lands. (PI-147 §4.)
+_MIRRORED_SUBTREES = frozenset(
+    {"access", "api", "bootstrap", "mcp_server", "migration", "runtime", "ui"}
+)
+_SRC_PREFIX = "crmbuilder-v2/src/crmbuilder_v2/"
+_TEST_ROOT = "tests/crmbuilder_v2"
+
+
+def select_test_target(touched_paths: Iterable[str]) -> str:
+    """Map the source files a task touched to the pytest target to run (PI-147).
+
+    Returns a single, conservative pytest target:
+
+    * the mirroring package ``tests/crmbuilder_v2/<sub>`` **iff** every touched
+      file under the v2 source tree resolves to the *same* mirrored subtree;
+    * the full ``tests/crmbuilder_v2`` suite otherwise — the conservative
+      fallback when the change is ambiguous (spans >1 subtree, touches a
+      top-level module such as ``cli.py``/``config.py`` with no mirroring
+      package, touches files outside the v2 source tree, or the touched set is
+      empty/unknown). A localization miss therefore widens coverage, never
+      narrows it.
+    """
+    subtrees: set[str] = set()
+    for path in touched_paths:
+        if not path.startswith(_SRC_PREFIX):
+            # A change we cannot localize to the v2 src tree → full suite.
+            return _TEST_ROOT
+        remainder = path[len(_SRC_PREFIX):]
+        segments = remainder.split("/")
+        if len(segments) < 2:
+            # A top-level src module (cli.py, config.py) with no mirroring
+            # package directory → full suite.
+            return _TEST_ROOT
+        subtrees.add(segments[0])
+    if len(subtrees) == 1:
+        (sub,) = tuple(subtrees)
+        if sub in _MIRRORED_SUBTREES:
+            return f"{_TEST_ROOT}/{sub}"
+    # Empty touched set, >1 subtree, or an unmirrored subtree → full suite.
+    return _TEST_ROOT
+
+
+@dataclass
+class TestRunResult:
+    """Outcome of running a pytest target in a worktree (PI-147)."""
+
+    __test__ = False  # not a pytest test class despite the "Test" prefix
+
+    passed: bool
+    returncode: int
+    target: str
+    # Tail of combined stdout+stderr. Wide enough (20000 chars, PI-157) to keep
+    # the failing traceback for the persisted log; flag/finding text stays short.
+    output: str = ""
+
+
+TestRunnerFn = Callable[[str, str], TestRunResult]  # (worktree_path, pytest_target)
+
+
+def run_pytest(worktree_path: str, target: str, *, timeout: int = 1800) -> TestRunResult:
+    """Default test runner: ``uv run pytest <target> -q`` from the worktree root.
+
+    The repo's tests run from the repo root (there is no
+    ``crmbuilder-v2/pyproject.toml`` — v2 is bundled into the root distribution),
+    so the worktree root *is* the correct cwd and ``target`` is a repo-root
+    relative path.
+
+    Runs headless: forces ``QT_QPA_PLATFORM=offscreen`` so the PySide6 UI tests
+    do not SIGABRT (rc 134) when the ADO worker has no display — otherwise any
+    target that includes UI tests (including the ambiguous-change full-suite
+    fallback) crashes mid-run and is mis-reported as a test failure.
+    """
+    proc = subprocess.run(
+        ["uv", "run", "pytest", target, "-q"],
+        cwd=worktree_path,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+    )
+    return TestRunResult(
+        passed=proc.returncode == 0,
+        returncode=proc.returncode,
+        target=target,
+        output=(proc.stdout + proc.stderr)[-20_000:],
+    )
 
 
 def pause_reason_for(
@@ -261,6 +356,19 @@ class Worktree:
         except ValueError:
             return False
 
+    def changed_files(self, base_ref: str) -> list[str]:
+        """Source paths this branch changed since it forked from ``base_ref``.
+
+        Uses the three-dot merge-base diff (``base...HEAD``) so a sibling's
+        merge that advanced ``base_ref`` *after* this worktree forked is NOT
+        counted as this task's change — only commits unique to this branch
+        appear (PI-147 §6). Mirrors ``has_commits_beyond`` but for the file set.
+        """
+        out = _git(
+            self.path, "diff", "--name-only", f"{base_ref}...HEAD"
+        ).stdout
+        return [line.strip() for line in out.splitlines() if line.strip()]
+
     def remove(self) -> None:
         if self.path:
             _git(self.repo_root, "worktree", "remove", "--force", self.path, check=False)
@@ -330,6 +438,9 @@ class CoordinatingRuntime:
 
     config: RuntimeConfig
     spawn_fn: SpawnFn | None = None
+    # PI-147: injectable test runner. Default = real ``run_pytest``; unit tests
+    # inject a fake returning a chosen TestRunResult without shelling out.
+    test_runner_fn: TestRunnerFn | None = None
     log: Callable[[str], None] = print
     reports: list[IterationReport] = field(default_factory=list)
 
@@ -492,14 +603,22 @@ class CoordinatingRuntime:
             )
             has_commits = worktree.has_commits_beyond(cfg.base_branch)
             verdict = verify_result(refreshed, has_commits)
+            verify_log_path = None
+            if verdict is VerifyOutcome.OK:
+                # PI-147: a lifecycle-clean task still must not break the suite.
+                verdict, verify_log_path = self._run_affected_tests(
+                    worktree, assignment.work_task_id
+                )
             self.log(f"  verify: {verdict.value} (branch_has_commits={has_commits})")
 
             if verdict is not VerifyOutcome.OK:
-                self._flag_needs_attention(
-                    assignment.work_task_id,
+                reason = (
                     f"verification failed: {verdict.value} "
-                    f"(agent rc={returncode})",
+                    f"(agent rc={returncode})"
                 )
+                if verify_log_path:
+                    reason += f" — output: {verify_log_path}"
+                self._flag_needs_attention(assignment.work_task_id, reason)
                 return IterationReport(
                     result=StepResult.PAUSED,
                     work_task_id=assignment.work_task_id,
@@ -507,6 +626,7 @@ class CoordinatingRuntime:
                     agent_returncode=returncode,
                     branch=assignment.branch,
                     pause_reason=f"verification {verdict.value}",
+                    verify_log_path=verify_log_path,
                 )
 
             # Merge (REQ-056): land the agent's branch on the base branch.
@@ -572,20 +692,129 @@ class CoordinatingRuntime:
                 )
         return None
 
+    def _run_affected_tests(
+        self, worktree: Worktree, work_task_id: str
+    ) -> tuple[VerifyOutcome, str | None]:
+        """Run the affected test package in ``worktree`` (PI-147).
+
+        Resolves the task's touched source files (git read), maps them to a
+        single pytest target (pure :func:`select_test_target`), and runs it
+        through the injectable runner. ``OK`` if the run is green, else
+        ``TESTS_FAILED`` — which the caller routes through the existing non-OK
+        fail path (flag + pause, and on the parallel site the PI-145 rollback),
+        so a branch that breaks a pre-existing test never merges.
+
+        On a red run the captured output is persisted to ``verify_log_dir()``
+        (PI-157) and the log's absolute path is returned alongside the verdict,
+        so every failure surface can point the operator at it. A green run
+        writes nothing and returns ``None`` for the path. The explicit return
+        keeps the runtime stateless across the serialized-but-shared parallel
+        integrations.
+        """
+        touched = worktree.changed_files(self.config.base_branch)
+        target = select_test_target(touched)
+        runner = self.test_runner_fn or run_pytest
+        result = runner(worktree.path, target)
+        log_path = None
+        if not result.passed:
+            log_path = self._persist_verify_output(work_task_id, result, worktree)
+        self.log(
+            f"  affected-tests: {target} → "
+            + ("pass" if result.passed else "FAIL"
+               + (f" (output: {log_path})" if log_path else ""))
+        )
+        verdict = VerifyOutcome.OK if result.passed else VerifyOutcome.TESTS_FAILED
+        return verdict, log_path
+
+    def _persist_verify_output(
+        self, work_task_id: str, result: TestRunResult, worktree: Worktree
+    ) -> str | None:
+        """Write a red test run's captured output to the verify log (PI-157).
+
+        Failure-only by design — success output has no operator. Timestamped
+        ``{work_task_id}-{UTC}.log`` so a retry after a fix writes a second
+        file rather than overwriting the evidence of the first failure.
+        Best-effort with the same discipline as ``_flag_needs_attention``: an
+        ``OSError`` is logged and never masks the ``TESTS_FAILED`` verdict.
+        """
+        try:
+            log_dir = verify_log_dir()
+            log_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+            path = log_dir / f"{work_task_id}-{stamp}.log"
+            header = (
+                f"work_task:  {work_task_id}\n"
+                f"target:     {result.target}\n"
+                f"returncode: {result.returncode}\n"
+                f"worktree:   {worktree.path}\n"
+                f"branch base: {self.config.base_branch}\n"
+                f"captured:   {datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')} "
+                f"(tail of combined stdout+stderr, last 20000 chars)\n"
+                + "-" * 68 + "\n"
+            )
+            path.write_text(header + result.output, encoding="utf-8")
+            return str(path)
+        except OSError as exc:
+            self.log(f"  (warning) could not persist verify output: {exc}")
+            return None
+
     def _flag_needs_attention(self, work_task_id: str, reason: str) -> None:
+        """Raise the human-escape flag on the Work Task's owning Workstream.
+
+        The escape flag lives on the **Workstream** (``workstream_needs_attention``
+        + ``_reason``), not the Work Task — ``work_task`` has no such column, so
+        PATCHing ``/work-tasks/{id}`` with those fields is rejected 422 (Extra
+        inputs are not permitted) and the flag silently never sets. Resolve the
+        owning Workstream via :meth:`_owning_workstream` and PATCH it instead.
+        Best-effort: a flag failure (no owning workstream, an HTTP error) is
+        logged but never masks the real outcome the caller is reporting.
+        """
         cfg = self.config
         try:
+            workstream = self._owning_workstream(work_task_id)
+            if workstream is None:
+                self.log(
+                    "  (warning) could not flag needs_attention: no owning "
+                    f"workstream for {work_task_id}"
+                )
+                return
             dispatcher._patch(
                 cfg.api_base,
-                f"/work-tasks/{work_task_id}",
+                f"/workstreams/{workstream['workstream_identifier']}",
                 cfg.engagement,
                 {
-                    "work_task_needs_attention": True,
-                    "work_task_needs_attention_reason": reason,
+                    "workstream_needs_attention": True,
+                    "workstream_needs_attention_reason": reason,
                 },
             )
         except Exception as exc:  # best-effort flag; never mask the real outcome
             self.log(f"  (warning) could not flag needs_attention: {exc}")
+
+    def _base_head(self) -> str:
+        """Return base_branch's current HEAD SHA (the phase's pre-merge anchor).
+
+        Resolves by branch name, not ``HEAD`` — the worktree-parent repo may be
+        checked out on some other branch at capture time, and ``_merge`` itself
+        references ``cfg.base_branch`` rather than the current ref. The parallel
+        runtime captures this once before a phase's pool dispatches so a failed
+        phase can be rolled back to it (PI-145).
+        """
+        cfg = self.config
+        return _git(cfg.repo_root, "rev-parse", cfg.base_branch).stdout.strip()
+
+    def _reset_base_to(self, head: str) -> None:
+        """Hard-reset base_branch back to ``head``, undoing this phase's merges.
+
+        Checks out base_branch first (mirrors :meth:`_merge`, which checks it out
+        before merging), then ``git reset --hard <head>``. Used by the parallel
+        runtime to make a phase's merges all-or-nothing: if any sibling failed,
+        every clean sibling merge from the same phase is undone in one step
+        (PI-145). Runs with ``check=True`` — a failure to reset ``main`` is a hard
+        environment error the operator must see, not something to swallow.
+        """
+        cfg = self.config
+        _git(cfg.repo_root, "checkout", cfg.base_branch)
+        _git(cfg.repo_root, "reset", "--hard", head)
 
     def _merge(self, branch: str) -> MergeResult:
         cfg = self.config

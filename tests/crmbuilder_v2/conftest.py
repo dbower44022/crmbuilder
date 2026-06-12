@@ -45,6 +45,14 @@ from crmbuilder_v2.access.models import Base, EngagementRow
 from crmbuilder_v2.config import get_settings, reset_settings_cache
 from sqlalchemy import text
 
+# Run the PySide6 UI tests headless by default. This conftest is imported before
+# any test module imports Qt, so setting the platform here (if the environment
+# has not already chosen one) reaches QApplication before it initializes — without
+# it the UI tests SIGABRT (rc 134) on a machine with no display. Makes the suite
+# self-sufficient instead of depending on the caller's ambient env (the gap that
+# spuriously failed the ADO's PI-147 test-gate when run in a headless worktree).
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
 # The default engagement every test runs under unless it overrides the
 # active-engagement context itself.
 DEFAULT_ENGAGEMENT_ID = "ENG-001"

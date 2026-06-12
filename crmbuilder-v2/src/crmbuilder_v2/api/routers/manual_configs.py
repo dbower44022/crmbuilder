@@ -33,6 +33,7 @@ from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import manual_config
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
+from crmbuilder_v2.api.routers.utilization_evidence import embed_inline_evidence
 from crmbuilder_v2.api.schemas import (
     ManualConfigCreateIn,
     ManualConfigPatchIn,
@@ -48,11 +49,19 @@ _FIELD_PREFIX = "manual_config_"
 
 
 @router.get("")
-def list_all(include_deleted: bool = False):
+def list_all(include_deleted: bool = False, include_evidence: str | None = None):
     with readonly_session() as s:
+        records = manual_config.list_manual_configs(
+            s, include_deleted=include_deleted
+        )
         return ok(
-            manual_config.list_manual_configs(
-                s, include_deleted=include_deleted
+            embed_inline_evidence(
+                s,
+                records,
+                subject_type="manual_config",
+                identifier_key="manual_config_identifier",
+                include_evidence=include_evidence,
+                is_list=True,
             )
         )
 
@@ -67,13 +76,25 @@ def next_identifier():
 
 
 @router.get("/{identifier}")
-def get(identifier: str, include_deleted: bool = False):
+def get(
+    identifier: str,
+    include_deleted: bool = False,
+    include_evidence: str | None = None,
+):
     with readonly_session() as s:
         record = manual_config.get_manual_config(
             s, identifier, include_deleted=include_deleted
         )
         if record is None:
             raise NotFoundError("manual_config", identifier)
+        embed_inline_evidence(
+            s,
+            [record],
+            subject_type="manual_config",
+            identifier_key="manual_config_identifier",
+            include_evidence=include_evidence,
+            is_list=False,
+        )
         return ok(record)
 
 

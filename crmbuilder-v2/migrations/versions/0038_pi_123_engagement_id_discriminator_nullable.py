@@ -68,8 +68,15 @@ def _columns(table: str) -> set[str]:
     return {c["name"] for c in sa.inspect(bind).get_columns(table)}
 
 
+def _existing_tables() -> set[str]:
+    return set(sa.inspect(op.get_bind()).get_table_names())
+
+
 def upgrade() -> None:
+    existing = _existing_tables()
     for table in SCOPED_TABLES:
+        if table not in existing:
+            continue  # absent when the chain is entered mid-stream (isolated-migration tests)
         if "engagement_id" in _columns(table):
             continue  # idempotent
         op.add_column(
@@ -79,7 +86,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    existing = _existing_tables()
     for table in SCOPED_TABLES:
+        if table not in existing:
+            continue
         if "engagement_id" not in _columns(table):
             continue
         with op.batch_alter_table(table) as batch:

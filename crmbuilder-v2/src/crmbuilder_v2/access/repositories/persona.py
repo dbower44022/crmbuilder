@@ -60,6 +60,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import Persona
+from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     PERSONA_STATUS_TRANSITIONS,
     PERSONA_STATUSES,
@@ -347,6 +348,7 @@ def update_persona(
     responsibilities: str | None = None,
     notes: str | None = None,
     status: str | None = None,
+    rejected_by_decision: str | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -379,7 +381,23 @@ def update_persona(
     if status is not None and status != row.persona_status:
         _require_status(status)
         _check_transition(row.persona_status, status)
+        if status == "rejected":
+            _rejection.enforce_rejected_status(
+                session,
+                source_type=_ENTITY_TYPE,
+                source_identifier=identifier,
+                decision_identifier=rejected_by_decision,
+            )
+            rejected_by_decision = None
         row.persona_status = status
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.persona_status,
+        )
 
     row.persona_name = name
     row.persona_role_summary = role_summary
@@ -403,8 +421,12 @@ def patch_persona(session: Session, identifier: str, **fields) -> dict:
     """Partial update (PATCH). Only the supplied fields are touched.
 
     Recognised keys: ``name``, ``role_summary``, ``responsibilities``,
-    ``notes``, ``status``. A ``status`` change is transition-validated.
+    ``notes``, ``status``, ``rejected_by_decision``. A ``status``
+    change is transition-validated; a move to ``rejected`` requires
+    either the ``rejected_by_decision`` key (atomic edge + flip,
+    PI-153 §3.4) or a pre-existing ``rejected_by_decision`` edge.
     """
+    rejected_by_decision = fields.pop("rejected_by_decision", None)
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
         raise UnprocessableError(
@@ -438,7 +460,23 @@ def patch_persona(session: Session, identifier: str, **fields) -> dict:
         status = _require_status(fields["status"])
         if status != row.persona_status:
             _check_transition(row.persona_status, status)
+            if status == "rejected":
+                _rejection.enforce_rejected_status(
+                    session,
+                    source_type=_ENTITY_TYPE,
+                    source_identifier=identifier,
+                    decision_identifier=rejected_by_decision,
+                )
+                rejected_by_decision = None
             row.persona_status = status
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.persona_status,
+        )
 
     session.flush()
     after = to_dict(row)

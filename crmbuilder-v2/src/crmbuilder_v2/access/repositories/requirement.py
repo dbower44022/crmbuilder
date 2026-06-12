@@ -65,6 +65,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import Requirement
+from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     REQUIREMENT_PRIORITIES,
     REQUIREMENT_STATUS_TRANSITIONS,
@@ -401,6 +402,7 @@ def update_requirement(
     priority: str | None = None,
     notes: str | None = None,
     status: str | None = None,
+    rejected_by_decision: str | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -442,7 +444,23 @@ def update_requirement(
     if status is not None and status != row.requirement_status:
         _require_status(status)
         _check_transition(row.requirement_status, status)
+        if status == "rejected":
+            _rejection.enforce_rejected_status(
+                session,
+                source_type=_ENTITY_TYPE,
+                source_identifier=identifier,
+                decision_identifier=rejected_by_decision,
+            )
+            rejected_by_decision = None
         row.requirement_status = status
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.requirement_status,
+        )
 
     row.requirement_name = name
     row.requirement_description = description
@@ -467,10 +485,14 @@ def patch_requirement(session: Session, identifier: str, **fields) -> dict:
     """Partial update (PATCH). Only the supplied fields are touched.
 
     Recognised keys: ``name``, ``description``, ``acceptance_summary``,
-    ``notes``, ``priority``, ``status``. A ``status`` change is
-    transition-validated; a ``priority`` change is enum-validated only
-    (any-to-any movement permitted per spec §3.2.3).
+    ``notes``, ``priority``, ``status``, ``rejected_by_decision``. A
+    ``status`` change is transition-validated; a move to ``rejected``
+    requires either the ``rejected_by_decision`` key (atomic edge +
+    flip, PI-153 §3.4) or a pre-existing ``rejected_by_decision`` edge.
+    A ``priority`` change is enum-validated only (any-to-any movement
+    permitted per spec §3.2.3).
     """
+    rejected_by_decision = fields.pop("rejected_by_decision", None)
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
         raise UnprocessableError(
@@ -511,7 +533,23 @@ def patch_requirement(session: Session, identifier: str, **fields) -> dict:
         status = _require_status(fields["status"])
         if status != row.requirement_status:
             _check_transition(row.requirement_status, status)
+            if status == "rejected":
+                _rejection.enforce_rejected_status(
+                    session,
+                    source_type=_ENTITY_TYPE,
+                    source_identifier=identifier,
+                    decision_identifier=rejected_by_decision,
+                )
+                rejected_by_decision = None
             row.requirement_status = status
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.requirement_status,
+        )
 
     session.flush()
     after = to_dict(row)

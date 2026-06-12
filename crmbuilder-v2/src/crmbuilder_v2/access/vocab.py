@@ -132,19 +132,29 @@ SYSTEM_AREA_RANKS: dict[str, int | None] = {
 SYSTEM_AREAS: frozenset[str] = frozenset(SYSTEM_AREA_RANKS)
 
 # Methodology entity `domain` lifecycle (UI v0.4 slice B, DEC-047).
-# Three-status propose-verify lifecycle per ``domain.md`` section 3.4.
+# Three-status propose-verify lifecycle per ``domain.md`` section 3.4,
+# extended with a fourth truly-terminal ``rejected`` status (PI-153 /
+# WTK-088 design spec — the Phase 3 triage *drop* disposition; see
+# methodology-schema-specs/candidate-lifecycle-rejected-and-utilization-
+# evidence.md §3).
 DOMAIN_STATUSES: frozenset[str] = frozenset(
-    {"candidate", "confirmed", "deferred"}
+    {"candidate", "confirmed", "deferred", "rejected"}
 )
 
 # Valid status successors per ``domain.md`` section 3.4.1. A transition
 # is valid when the target equals the current value (a no-op) or appears
 # in the current value's successor set. The one-way propose-verify gate
-# means no value lists ``candidate`` as a successor.
+# means no value lists ``candidate`` as a successor. ``rejected`` is
+# reachable from ``candidate`` and ``deferred`` only — never directly
+# from ``confirmed`` (two-step demotion via ``deferred`` instead) — and
+# is truly terminal (empty successor set). The mandatory
+# ``rejected_by_decision`` edge accompanying the flip is enforced at the
+# repository layer, not by this map (WTK-088 §3.4).
 DOMAIN_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "candidate": frozenset({"confirmed", "deferred"}),
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
     "confirmed": frozenset({"deferred"}),
-    "deferred": frozenset({"confirmed"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
 }
 
 # Methodology entity `entity` lifecycle (UI v0.4 slice C, DEC-052).
@@ -152,17 +162,19 @@ DOMAIN_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 # per ``entity.md`` section 3.4 — entities, like domains, are surfaced
 # by the consultant and verified by the client.
 ENTITY_STATUSES: frozenset[str] = frozenset(
-    {"candidate", "confirmed", "deferred"}
+    {"candidate", "confirmed", "deferred", "rejected"}
 )
 
 # Valid status successors per ``entity.md`` section 3.4.1. Same one-way
 # propose-verify gate as ``domain``: once out of ``candidate`` a record
 # never regresses to it; ``confirmed`` and ``deferred`` move freely
-# between each other.
+# between each other. ``rejected`` arcs mirror ``domain`` (PI-153 /
+# WTK-088 §3.2 — uniform across the seven status-bearing types).
 ENTITY_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "candidate": frozenset({"confirmed", "deferred"}),
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
     "confirmed": frozenset({"deferred"}),
-    "deferred": frozenset({"confirmed"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
 }
 
 # `entity_kind` base-type classification enum (v0.5+, PI-010 / DEC-292).
@@ -178,26 +190,30 @@ ENTITY_KINDS: frozenset[str] = frozenset(
 # Mirrors `domain` / `entity` exactly — three-status propose-verify
 # lifecycle with one-way gate out of `candidate`.
 PERSONA_STATUSES: frozenset[str] = frozenset(
-    {"candidate", "confirmed", "deferred"}
+    {"candidate", "confirmed", "deferred", "rejected"}
 )
 
+# ``rejected`` arcs mirror ``domain`` (PI-153 / WTK-088 §3.2).
 PERSONA_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "candidate": frozenset({"confirmed", "deferred"}),
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
     "confirmed": frozenset({"deferred"}),
-    "deferred": frozenset({"confirmed"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
 }
 
 # Methodology entity `field` lifecycle (v0.5+, PI-004 first slice).
 # Mirrors `domain` / `entity` exactly — three-status propose-verify
 # lifecycle with one-way gate out of `candidate` per ``field.md`` §3.4.
 FIELD_STATUSES: frozenset[str] = frozenset(
-    {"candidate", "confirmed", "deferred"}
+    {"candidate", "confirmed", "deferred", "rejected"}
 )
 
+# ``rejected`` arcs mirror ``domain`` (PI-153 / WTK-088 §3.2).
 FIELD_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "candidate": frozenset({"confirmed", "deferred"}),
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
     "confirmed": frozenset({"deferred"}),
-    "deferred": frozenset({"confirmed"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
 }
 
 # `field_type` enum (v0.5+, PI-004 first slice). 11-value vocabulary
@@ -223,16 +239,18 @@ FIELD_TYPES: frozenset[str] = frozenset(
 # Three-status propose-verify mirroring ``domain`` / ``entity`` per
 # ``requirement.md`` section 3.4.
 REQUIREMENT_STATUSES: frozenset[str] = frozenset(
-    {"candidate", "confirmed", "deferred"}
+    {"candidate", "confirmed", "deferred", "rejected"}
 )
 
 # Same one-way propose-verify gate as ``domain`` / ``entity``: once out
 # of ``candidate``, never regress; ``confirmed`` / ``deferred`` move
-# freely between each other.
+# freely between each other. ``rejected`` arcs mirror ``domain``
+# (PI-153 / WTK-088 §3.2).
 REQUIREMENT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "candidate": frozenset({"confirmed", "deferred"}),
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
     "confirmed": frozenset({"deferred"}),
-    "deferred": frozenset({"confirmed"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
 }
 
 # MoSCoW priority enum per ``requirement.md`` section 3.2.3. Default
@@ -254,14 +272,18 @@ REQUIREMENT_PRIORITIES: frozenset[str] = frozenset(
 # ``completed``) is enforced at the repository layer per §3.5.3, not by
 # this map.
 MANUAL_CONFIG_STATUSES: frozenset[str] = frozenset(
-    {"candidate", "confirmed", "deferred", "completed"}
+    {"candidate", "confirmed", "deferred", "completed", "rejected"}
 )
 
+# ``rejected`` arcs mirror ``domain`` (PI-153 / WTK-088 §3.2);
+# ``completed`` keeps its terminal posture — completed work is never
+# retroactively rejected.
 MANUAL_CONFIG_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "candidate": frozenset({"confirmed", "deferred"}),
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
     "confirmed": frozenset({"deferred", "completed"}),
-    "deferred": frozenset({"confirmed"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
     "completed": frozenset(),
+    "rejected": frozenset(),
 }
 
 # Seven-value ``manual_config_category`` enum per ``manual_config.md``
@@ -288,13 +310,15 @@ MANUAL_CONFIG_CATEGORIES: frozenset[str] = frozenset(
 # below) is a SEPARATE field with unrestricted transitions per
 # §3.4.2-3.4.3 — see the dual-axis rationale in the spec.
 TEST_SPEC_STATUSES: frozenset[str] = frozenset(
-    {"candidate", "confirmed", "deferred"}
+    {"candidate", "confirmed", "deferred", "rejected"}
 )
 
+# ``rejected`` arcs mirror ``domain`` (PI-153 / WTK-088 §3.2).
 TEST_SPEC_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "candidate": frozenset({"confirmed", "deferred"}),
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
     "confirmed": frozenset({"deferred"}),
-    "deferred": frozenset({"confirmed"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
 }
 
 # Execution-outcome enum for ``test_spec`` — the snapshot of the most
@@ -310,6 +334,105 @@ TEST_SPEC_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 # repository layer in ``repositories/test_spec.py``, not in this map.
 TEST_SPEC_RUN_OUTCOMES: frozenset[str] = frozenset(
     {"not_run", "passing", "failing", "skipped"}
+)
+
+# Methodology entity `migration_mapping` lifecycle (WTK-106, per the WTK-104
+# design spec methodology-schema-specs/migration_mapping.md §3.4). Standard
+# four-status propose-verify lifecycle exactly as the other status-bearing
+# methodology types — no per-type variation. Mappings recorded live at triage
+# with the stakeholder present legitimately POST directly at ``confirmed``
+# (spec §3.2.3); ``confirmed ⇄ deferred`` supports migration-wave re-scoping.
+MIGRATION_MAPPING_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+# ``rejected`` arcs mirror ``domain`` (PI-153 / WTK-088 §3.2).
+MIGRATION_MAPPING_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
+# Mapping scope (spec §3.2.3): the two data-bearing Phase 1.5 capture types.
+# `entity` — records of the source entity land in the target entity; `field`
+# — values of the source field land in the target field. The non-data capture
+# types (persona/process/manual_config) never produce a mapping (spec §2);
+# the edge pair rules below make them unrepresentable (invariant I12).
+MIGRATION_MAPPING_LEVELS: frozenset[str] = frozenset({"entity", "field"})
+
+# The originating Phase 3 disposition (spec §3.2.3). `keep` ⇒ direct mapping
+# (source record = target record, empty rules); `transform` ⇒ source ≠
+# target. *Drop* dispositions never produce a mapping. Declared (not derived)
+# so declared-vs-observable agreement is verifiable (spec invariants I7/I8).
+MIGRATION_MAPPING_DISPOSITIONS: frozenset[str] = frozenset({"keep", "transform"})
+
+# Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
+# PRD v0.2 §8 named set. Per-kind rule-object schema validation (required
+# keys, level applicability, conditional-key consistency — invariant I9)
+# lives at the repository layer; this set backs the `rule_kind` membership
+# check. Deliberately closed: cheap to extend, expensive to shrink (spec §8).
+MIGRATION_TRANSFORM_RULE_KINDS: frozenset[str] = frozenset(
+    {"type_change", "enum_value_map", "merge", "split"}
+)
+
+# Per-kind rule-object schema table (WTK-105 §5.2, settling the WTK-104 §8
+# rule-schema location question): authoritative validation lives at the
+# repository layer against this published table — NOT as pydantic models on
+# the API boundary — so the REST API, the MCP tools, any future access-layer
+# caller (the compiler, backfills), and the desktop dialogs' client-side
+# checks all enforce identically. Key sets per migration_mapping.md §4.2–4.5;
+# `levels` is the §4.6 applicability matrix. The conditional couplings that a
+# flat key table can't express (`default_value` ⇔ `unmapped_policy =
+# "default"`, `separator` ⇔ `combinator = "concat"`, entity-level `merge`
+# only with `coalesce`, entity-level `split` requiring `value_router` +
+# `unrouted_policy`, `to_type ≠ from_type`) live in the repository validator
+# beside the value vocabularies below.
+MIGRATION_TRANSFORM_RULE_SCHEMAS: dict[str, dict[str, frozenset[str]]] = {
+    "type_change": {
+        "levels": frozenset({"field"}),
+        "required": frozenset({"rule_kind", "from_type", "to_type"}),
+        "optional": frozenset({"conversion"}),
+    },
+    "enum_value_map": {
+        "levels": frozenset({"field"}),
+        "required": frozenset({"rule_kind", "value_map", "unmapped_policy"}),
+        "optional": frozenset({"default_value"}),
+    },
+    "merge": {
+        "levels": frozenset({"field", "entity"}),
+        "required": frozenset(
+            {"rule_kind", "merge_group", "combinator", "merge_order"}
+        ),
+        "optional": frozenset({"separator", "description"}),
+    },
+    "split": {
+        "levels": frozenset({"field", "entity"}),
+        "required": frozenset({"rule_kind", "assignments"}),
+        "optional": frozenset({"unrouted_policy"}),
+    },
+}
+
+# Closed value vocabularies for the conditional rule keys (spec §4.2–4.5).
+# `error` ("fail the record and report") is the recommended default
+# everywhere — the no-silent-widening posture inherited from WTK-102 §3.10.
+MIGRATION_ENUM_UNMAPPED_POLICIES: frozenset[str] = frozenset(
+    {"error", "passthrough", "null", "default"}
+)
+MIGRATION_MERGE_COMBINATORS: frozenset[str] = frozenset(
+    {"concat", "coalesce", "sum", "custom"}
+)
+MIGRATION_SPLIT_UNROUTED_POLICIES: frozenset[str] = frozenset(
+    {"error", "skip_record"}
+)
+MIGRATION_TYPE_CHANGE_STRATEGIES: frozenset[str] = frozenset(
+    {"cast", "parse", "custom"}
+)
+MIGRATION_TYPE_CHANGE_ON_ERROR: frozenset[str] = frozenset(
+    {"error", "null", "skip_record"}
+)
+MIGRATION_SPLIT_FIELD_STRATEGIES: frozenset[str] = frozenset(
+    {"delimiter", "pattern", "custom"}
 )
 
 # Methodology entity `crm_candidate` lifecycle (UI v0.4 slice E, DEC-062).
@@ -565,6 +688,29 @@ CLOSE_OUT_PAYLOAD_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 # values are permanent facts, not transitioning workflow states.
 DEPOSIT_EVENT_OUTCOMES: frozenset[str] = frozenset({"success", "failure"})
 
+# `deposit_event_kind` discriminator (WTK-089 design spec §4.1, D3). A
+# deposit event is either a close-out-payload apply (the v0.7 shape —
+# exactly-one parent edge, lazy payload, `{apply_script_version,
+# invocation, runner}` apply_context) or a Phase 1.5 audit deposit
+# (parent edge forbidden; apply_context carries `source_system` /
+# `source_instance` / `snapshot_at`). Kind-conditional rules are
+# enforced at the repository layer; this set backs `ck_deposit_event_kind`.
+DEPOSIT_EVENT_KINDS: frozenset[str] = frozenset(
+    {"close_out_apply", "audit_deposit"}
+)
+
+# The five Phase 1.5 capture types (Master CRMBuilder PRD v0.2 §7 table):
+# the things an existing-system audit deposits as candidates. Defined once
+# so the `observed_in` pair clause (WTK-089 §3.2) and the
+# utilization-evidence subject vocabulary (WTK-088 §4.3) cannot drift.
+BASELINE_CAPTURE_TYPES: frozenset[str] = frozenset(
+    {"entity", "field", "persona", "process", "manual_config"}
+)
+
+# Subject types admitted on `utilization_evidence` rows (WTK-088 §4.3) —
+# exactly the baseline capture types, by design (WTK-089 §3.2).
+EVIDENCE_SUBJECT_TYPES: frozenset[str] = BASELINE_CAPTURE_TYPES
+
 
 REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
     {
@@ -720,6 +866,33 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # finding pair (the D-δ6 target that PI-122 left waiting on this entity).
         "finding_relates_to",
         "finding_resolved_by",
+        # PI-153 (WTK-088 design spec §3.4). Drop rationale for the new
+        # terminal `rejected` lifecycle status: a rejected methodology
+        # record carries ≥1 outbound edge to the Decision that rejected
+        # it (atomic edge + status flip at the repository layer, PI-030
+        # `resolves` precedent). Generic single name constrained by the
+        # pair rules per the v0.8 precedent (`resolves`, `addresses`,
+        # `blocked_by`).
+        "rejected_by_decision",
+        # Audit-to-V2 deposit path (WTK-089 design spec §3, D1).
+        # Observational provenance: "this candidate was present in the
+        # source system as of this deposit's snapshot" — outbound from a
+        # baseline capture record to the observing `deposit_event`,
+        # appended per observing audit run. Distinct from the write
+        # provenance `deposit_event_wrote_record` (created exactly once,
+        # at row creation).
+        "observed_in",
+        # WTK-106 (migration_mapping.md §3.3.1). The mapping's two mandatory
+        # outgoing edges: the disposed baseline candidate it migrates from
+        # (exactly one per live mapping; at most one live inbound per
+        # candidate encodes "one mapping per disposition") and the confirmed
+        # record(s) its data lands in (≥1; >1 only with a `split` rule).
+        # Generic `record` target word per the `deposit_event_wrote_record`
+        # precedent — the target side spans the two data-bearing capture
+        # types (`entity` / `field`). Cardinality, liveness, and level
+        # agreement are access-layer enforcement, not pair-rule concerns.
+        "migration_mapping_migrates_from_record",
+        "migration_mapping_migrates_to_record",
     }
 )
 
@@ -797,6 +970,10 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # definition (TERM-). System/shared with a nullable engagement_id =
         # scope, like the registry entities. See methodology-schema-specs/term.md.
         "term",
+        # WTK-106 methodology entity (per the WTK-104 design spec). One
+        # Phase 3 keep/transform disposition's data-migration obligation
+        # (MIG-). See methodology-schema-specs/migration_mapping.md.
+        "migration_mapping",
     }
 )
 
@@ -945,8 +1122,25 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         "conversation",
         "work_ticket",
         "commit",
+        # WTK-089 D2: the five Phase 1.5 capture types, so an audit
+        # deposit's wrote_record edges can target the candidate records
+        # it creates (same audit-chain rationale as above).
+        *BASELINE_CAPTURE_TYPES,
+        # WTK-090 §4.2 (sixth methodology target): the per-source
+        # baseline placeholder domain the transform creates for its
+        # process candidates gets a wrote_record edge like every other
+        # record the run created. Pure pair-clause extension — the kind
+        # is already in the refs CHECK, so no migration (the WTK-089 D2
+        # rationale).
+        "domain",
     ):
         kinds.add("deposit_event_wrote_record")
+    # WTK-089 D1: observational provenance from a baseline capture record
+    # to the audit `deposit_event` whose snapshot observed it. Appended
+    # per observing run (re-audits accumulate edges); see the kind's
+    # registration comment for the write- vs observation-provenance split.
+    if source_type in BASELINE_CAPTURE_TYPES and target_type == "deposit_event":
+        kinds.add("observed_in")
     # v0.8 Code Change Lifecycle additions (PI-029, methodology §3.2–§3.4):
     if source_type == "conversation" and target_type == "planning_item":
         kinds.add("resolves")
@@ -1083,6 +1277,29 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         "workstream",
     ):
         kinds.add("finding_resolved_by")
+    # WTK-106 (migration_mapping.md §3.3.1): both mapping edges admit only
+    # the two data-bearing capture types, so mappings for the non-data
+    # capture types (persona/process/manual_config) are unrepresentable by
+    # construction (invariant I12). Source-side uniqueness ("one mapping per
+    # disposition"), target liveness/status, and level agreement are
+    # access-layer enforcement per the DEC-249/250 mandatory-edge pattern.
+    if source_type == "migration_mapping" and target_type in ("entity", "field"):
+        kinds.add("migration_mapping_migrates_from_record")
+        kinds.add("migration_mapping_migrates_to_record")
+    # PI-153 (WTK-088 §3.4): the status-bearing methodology entity types
+    # (the original seven, plus `migration_mapping` per WTK-106 — spec §10)
+    # link their terminal `rejected` flip to the rejecting Decision.
+    if source_type in (
+        "domain",
+        "entity",
+        "field",
+        "persona",
+        "requirement",
+        "test_spec",
+        "manual_config",
+        "migration_mapping",
+    ) and target_type == "decision":
+        kinds.add("rejected_by_decision")
     return frozenset(kinds)
 
 
@@ -1137,6 +1354,17 @@ def source_types_with_relationships() -> frozenset[str]:
     return frozenset(out)
 
 CHANGE_LOG_OPERATIONS: frozenset[str] = frozenset({"insert", "update", "delete"})
+
+# Entity types admitted in `change_log.entity_type`: every reference-capable
+# type plus the mechanical types outside the refs discipline — `reference`
+# (the refs rows themselves) and `utilization_evidence` (PI-153 / WTK-088
+# §4.2: evidence rows log like every mutating access-layer write but never
+# participate in refs, so the type is admitted here and NOT in ENTITY_TYPES).
+# `ck_changelog_entity_type` and its migrations derive from this set so the
+# CHECK cannot drift from the models.
+CHANGE_LOG_ENTITY_TYPES: frozenset[str] = ENTITY_TYPES | frozenset(
+    {"reference", "utilization_evidence"}
+)
 
 CHANGE_LOG_ACTORS: frozenset[str] = frozenset(
     # PI-γ added ``service_agent`` and ``user`` so an authenticated principal's

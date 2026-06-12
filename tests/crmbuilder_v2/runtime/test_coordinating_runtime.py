@@ -9,10 +9,17 @@ end-to-end spawn/merge is proven by the demo (see the apply prompt), not here.
 
 from __future__ import annotations
 
+import json
+import re
+import socket
 import subprocess
+import threading
+import time
+import urllib.error
+import urllib.request
 
 import pytest
-
+import uvicorn
 from crmbuilder_v2.runtime import coordinating_runtime as cr
 from crmbuilder_v2.runtime.coordinating_runtime import (
     CoordinatingRuntime,
@@ -20,14 +27,15 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     MergeStatus,
     RuntimeConfig,
     StepResult,
+    TestRunResult,
     VerifyOutcome,
     interpret_merge,
     minimal_contract_prompt,
     operating_protocol,
     pause_reason_for,
+    select_test_target,
     verify_result,
 )
-
 
 # --------------------------------------------------------------------------
 # Pure decision helpers
@@ -54,6 +62,45 @@ def test_verify_no_commits_when_complete_but_branch_empty():
         verify_result({"work_task_status": "Complete"}, False)
         is VerifyOutcome.NO_COMMITS
     )
+
+
+# --------------------------------------------------------------------------
+# PI-147: select_test_target — pure mapping (touched src files → pytest target)
+# --------------------------------------------------------------------------
+
+_P = "crmbuilder-v2/src/crmbuilder_v2/"
+
+
+def test_select_target_single_mirrored_subtree_runtime():
+    assert select_test_target([f"{_P}runtime/coordinating_runtime.py"]) == (
+        "tests/crmbuilder_v2/runtime"
+    )
+
+
+def test_select_target_single_mirrored_subtree_ui():
+    assert select_test_target([f"{_P}ui/widgets/foo.py"]) == "tests/crmbuilder_v2/ui"
+
+
+def test_select_target_two_subtrees_falls_back_to_full_suite():
+    target = select_test_target([f"{_P}runtime/a.py", f"{_P}ui/b.py"])
+    assert target == "tests/crmbuilder_v2"
+
+
+def test_select_target_top_level_module_falls_back():
+    assert select_test_target([f"{_P}cli.py"]) == "tests/crmbuilder_v2"
+
+
+def test_select_target_path_outside_src_falls_back():
+    assert select_test_target(["PRDs/product/x.md"]) == "tests/crmbuilder_v2"
+
+
+def test_select_target_empty_falls_back():
+    assert select_test_target([]) == "tests/crmbuilder_v2"
+
+
+def test_select_target_unmirrored_subtree_falls_back():
+    # A real src subtree with no mirroring tests package (e.g. a future one).
+    assert select_test_target([f"{_P}brandnew/x.py"]) == "tests/crmbuilder_v2"
 
 
 def test_pause_none_when_nothing_flagged():
@@ -148,6 +195,9 @@ class _FakeWorktree:
     def has_commits_beyond(self, base_ref):
         return self._has_commits
 
+    def changed_files(self, base_ref):
+        return []  # PI-147: no git read in the fake → full-suite target
+
     def remove(self):
         self.removed = True
 
@@ -156,11 +206,17 @@ def _proc(rc=0, stdout="", stderr=""):
     return subprocess.CompletedProcess(args=[], returncode=rc, stdout=stdout, stderr=stderr)
 
 
+def _pass_runner(worktree_path, target):
+    """PI-147: a fake test runner that always passes (no subprocess)."""
+    return TestRunResult(passed=True, returncode=0, target=target)
+
+
 def _build_runtime(monkeypatch, *, assignment, task_after, has_commits, merge_result,
                    workstream=None, spawn_rc=0):
     """Wire a CoordinatingRuntime with all I/O seams stubbed."""
     cfg = RuntimeConfig(target_work_task="WTK-099", dry_run=False)
-    rt = CoordinatingRuntime(config=cfg, spawn_fn=lambda p, wp: _proc(rc=spawn_rc), log=lambda m: None)
+    rt = CoordinatingRuntime(config=cfg, spawn_fn=lambda p, wp: _proc(rc=spawn_rc),
+                             log=lambda m: None, test_runner_fn=_pass_runner)
 
     monkeypatch.setattr(rt, "_next_assignment", lambda: assignment)
     monkeypatch.setattr(rt, "_owning_workstream", lambda wt: workstream)
@@ -232,6 +288,123 @@ def test_pauses_and_flags_when_agent_did_not_complete(monkeypatch):
     assert rt._fake_wt.removed
 
 
+def test_pauses_and_flags_when_affected_tests_fail(monkeypatch):
+    # PI-147: a lifecycle-clean task (Complete + commits) whose affected tests
+    # are red must NOT merge — it routes through the existing fail path.
+    task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
+    rt = _build_runtime(
+        monkeypatch,
+        assignment=_assignment(task),
+        task_after={"work_task_status": "Complete"},
+        has_commits=True,
+        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+    )
+    rt.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="boom"
+    )
+    report = rt.run_one()
+    assert report.result is StepResult.PAUSED
+    assert report.verify is VerifyOutcome.TESTS_FAILED
+    assert "WTK-099" in rt._flagged  # workstream flagged needs_attention
+    assert rt._fake_wt.removed  # branch never merged
+
+
+# --------------------------------------------------------------------------
+# PI-157: verify-failure output persistence (serial site, fake runner — §5g)
+# --------------------------------------------------------------------------
+
+
+def _tests_failed_runtime(monkeypatch):
+    task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
+    return _build_runtime(
+        monkeypatch,
+        assignment=_assignment(task),
+        task_after={"work_task_status": "Complete"},
+        has_commits=True,
+        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+    )
+
+
+def test_verify_failure_persists_output_log(monkeypatch, tmp_path):
+    rt = _tests_failed_runtime(monkeypatch)
+    rt.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="FAILED test_x — boom"
+    )
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    report = rt.run_one()
+    assert report.verify is VerifyOutcome.TESTS_FAILED
+    files = list((tmp_path / "verify").glob("WTK-099-*.log"))
+    assert len(files) == 1
+    text = files[0].read_text()
+    assert "FAILED test_x" in text          # the captured pytest output
+    assert "work_task:  WTK-099" in text    # the header fields
+    assert "returncode: 1" in text
+    assert report.verify_log_path == str(files[0])
+    # The needs_attention reason carries the path — the operator never has to
+    # know the directory convention.
+    assert str(files[0]) in rt._flagged["WTK-099"]
+
+
+def test_green_run_writes_no_verify_log(monkeypatch, tmp_path):
+    rt = _tests_failed_runtime(monkeypatch)  # default _pass_runner stays
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    report = rt.run_one()
+    assert report.result is StepResult.MERGED
+    assert not (tmp_path / "verify").exists()  # directory not even created
+    assert report.verify_log_path is None
+
+
+def test_not_complete_verdict_writes_no_verify_log(monkeypatch, tmp_path):
+    task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
+    rt = _build_runtime(
+        monkeypatch,
+        assignment=_assignment(task),
+        task_after={"work_task_status": "In Progress"},  # never reaches the test step
+        has_commits=True,
+        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+    )
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    report = rt.run_one()
+    assert report.verify is VerifyOutcome.NOT_COMPLETE
+    assert not (tmp_path / "verify").exists()
+    assert report.verify_log_path is None
+    assert "output:" not in rt._flagged["WTK-099"]  # no path to point at
+
+
+def test_verify_log_write_failure_never_masks_tests_failed(monkeypatch, tmp_path):
+    # §3.2 best-effort discipline: an OSError on the log write is itself logged
+    # as a warning and never masks the TESTS_FAILED verdict; the flag reason
+    # then carries no path (there is none to point at).
+    rt = _tests_failed_runtime(monkeypatch)
+    rt.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="FAILED test_x — boom"
+    )
+    blocker = tmp_path / "verify"
+    blocker.write_text("a file where the log dir should go")  # mkdir → OSError
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: blocker)
+    lines: list[str] = []
+    rt.log = lines.append
+    report = rt.run_one()
+    assert report.result is StepResult.PAUSED
+    assert report.verify is VerifyOutcome.TESTS_FAILED
+    assert report.verify_log_path is None
+    assert any("could not persist verify output" in ln for ln in lines)
+    assert "output:" not in rt._flagged["WTK-099"]
+
+
+def test_verify_log_filename_matches_spec_naming(monkeypatch, tmp_path):
+    # §3.1: ``{work_task_id}-{UTC timestamp}.log`` — timestamped so a retry
+    # after a fix writes a second file rather than overwriting the evidence.
+    rt = _tests_failed_runtime(monkeypatch)
+    rt.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="boom"
+    )
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    rt.run_one()
+    [logfile] = (tmp_path / "verify").iterdir()
+    assert re.fullmatch(r"WTK-099-\d{8}T\d{6}Z\.log", logfile.name)
+
+
 def test_pauses_on_merge_conflict_after_verify(monkeypatch):
     task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
     rt = _build_runtime(
@@ -288,3 +461,145 @@ def test_run_stops_at_first_pause(monkeypatch):
     monkeypatch.setattr(rt, "_owning_workstream", lambda wt: None)
     reports = rt.run()
     assert len(reports) == 1  # dry-run pause stops the loop immediately
+
+
+# --------------------------------------------------------------------------
+# Real-API regression (WTK-082 / DEC-410)
+#
+# ``_flag_needs_attention`` must raise the human-escape flag on the Work Task's
+# OWNING WORKSTREAM, not the Work Task — ``work_task`` has no needs_attention
+# column, so PATCHing ``/work-tasks/{id}`` with those fields is rejected 422 and
+# the flag silently never sets. Per DEC-410, an injected seam (monkeypatched
+# ``_patch`` / ``_owning_workstream``) would never run the real route + Pydantic
+# schema and so would never catch the 422; this drives the genuine HTTP path
+# against a live uvicorn server bound to the per-test DB.
+# --------------------------------------------------------------------------
+
+
+def _free_port() -> int:
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    return port
+
+
+@pytest.fixture
+def live_api(v2_env):
+    """A real uvicorn API on a socket, bound to the per-test database.
+
+    The runtime talks to the API over genuine HTTP (``urllib``), so the real
+    route + request schema must run behind a socket to reproduce the 422 — a
+    ``TestClient`` or injected seam would bypass exactly the validation this
+    regression guards (DEC-410).
+    """
+    from crmbuilder_v2.api.main import create_app
+
+    port = _free_port()
+    server = uvicorn.Server(
+        uvicorn.Config(create_app(), host="127.0.0.1", port=port, log_level="error")
+    )
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    deadline = time.time() + 10
+    while not server.started and time.time() < deadline:
+        time.sleep(0.05)
+    if not server.started:  # pragma: no cover - startup failure is environmental
+        raise RuntimeError("live API did not start")
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.should_exit = True
+        thread.join(timeout=10)
+
+
+def _api(base: str, method: str, path: str, *, body: dict | None = None):
+    """One HTTP round-trip to the live API, returning ``(status, json_body)``."""
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    req = urllib.request.Request(
+        base + path,
+        data=data,
+        method=method,
+        headers={"X-Engagement": "ENG-001", "Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status, json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        return exc.code, json.loads(exc.read().decode("utf-8"))
+
+
+def test_flag_needs_attention_flags_owning_workstream_over_real_http(live_api):
+    base = live_api
+
+    # Seed a Workstream and a Work Task that belongs to it.
+    status, ws = _api(
+        base,
+        "POST",
+        "/workstreams",
+        body={"workstream_phase_type": "Development", "workstream_title": "WTK-082"},
+    )
+    assert status == 201, ws
+    ws_id = ws["data"]["workstream_identifier"]
+
+    status, wt = _api(
+        base,
+        "POST",
+        "/work-tasks",
+        body={"work_task_title": "do a thing", "work_task_area": "api"},
+    )
+    assert status == 201, wt
+    wt_id = wt["data"]["work_task_identifier"]
+
+    status, edge = _api(
+        base,
+        "POST",
+        "/references",
+        body={
+            "source_type": "work_task",
+            "source_id": wt_id,
+            "target_type": "workstream",
+            "target_id": ws_id,
+            "relationship": "work_task_belongs_to_workstream",
+        },
+    )
+    assert status == 201, edge
+
+    # The bug this guards: the Work Task has no needs_attention column, so the
+    # old PATCH /work-tasks/{id} with these fields is rejected 422.
+    status, _ = _api(
+        base,
+        "PATCH",
+        f"/work-tasks/{wt_id}",
+        body={
+            "work_task_needs_attention": True,
+            "work_task_needs_attention_reason": "x",
+        },
+    )
+    assert status == 422  # documents why the flag must target the Workstream
+
+    # Drive the real runtime helper over HTTP — no seam: real _owning_workstream
+    # + real _patch + real route/schema.
+    logs: list[str] = []
+    rt = CoordinatingRuntime(
+        config=RuntimeConfig(api_base=base, engagement="ENG-001"), log=logs.append
+    )
+    rt._flag_needs_attention(
+        wt_id, "verification failed: not_complete (agent rc=1)"
+    )
+
+    # No 422 swallowed: the best-effort except would have logged this warning.
+    assert not any("could not flag needs_attention" in m for m in logs), logs
+
+    # The OWNING WORKSTREAM ends flagged, with the reason populated.
+    status, refreshed = _api(base, "GET", f"/workstreams/{ws_id}")
+    assert status == 200, refreshed
+    assert refreshed["data"]["workstream_needs_attention"] is True
+    assert "verification failed" in (
+        refreshed["data"]["workstream_needs_attention_reason"] or ""
+    )
+
+    # The Work Task itself was never touched with the bogus fields.
+    status, wt_after = _api(base, "GET", f"/work-tasks/{wt_id}")
+    assert status == 200, wt_after
+    assert not wt_after["data"].get("work_task_needs_attention")

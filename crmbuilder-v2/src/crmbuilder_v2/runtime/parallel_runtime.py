@@ -51,6 +51,7 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     MergeResult,
     MergeStatus,
     RuntimeConfig,
+    TestRunnerFn,
     VerifyOutcome,
     Worktree,
     _ResolvedAssignment,
@@ -154,6 +155,9 @@ class TaskReport:
     spawned_at: float | None = None
     finished_at: float | None = None
     merged_at: float | None = None
+    # PI-157: absolute path of the persisted verify-failure pytest output
+    # (None on a green run, a pre-test verdict, or a failed log write).
+    verify_log_path: str | None = None
 
 
 @dataclass
@@ -166,6 +170,14 @@ class PoolRunReport:
     # PI-133: each exclusive migration window held during the run (proof of the
     # drained, no-concurrent-writer property is ``active_at_run == 0``).
     migrations: list = field(default_factory=list)
+    # PI-145: atomic (all-or-nothing) phase merge. ``pre_phase_head`` is the
+    # base_branch HEAD captured before the phase pool dispatched its first
+    # worker; if any task failed, ``run()`` resets base_branch back to it,
+    # undoing every sibling merge from this phase (``rolled_back`` /
+    # ``rolled_back_to`` record that distinctly from a plain pause).
+    pre_phase_head: str | None = None
+    rolled_back: bool = False
+    rolled_back_to: str | None = None
 
     @property
     def merged(self) -> list[TaskReport]:
@@ -303,6 +315,10 @@ class ParallelCoordinatingRuntime:
     reports: list[TaskReport] = field(default_factory=list)
     api: ApiProcess | None = None
     migration_lock: ExclusiveMigrationLock | None = None
+    # PI-147: pass-through to the Layer-1 runtime's injectable test runner, so
+    # the parallel verify step (which calls self._l1._run_affected_tests) uses
+    # the same seam. Default None → the real run_pytest.
+    test_runner_fn: TestRunnerFn | None = None
     # An optional *shared* repo lock. When several pools run concurrently against
     # one repo (parallel independent PIs, ADO item 2), passing one shared lock
     # serializes their worktree/merge git ops across pools; left None each pool
@@ -314,7 +330,8 @@ class ParallelCoordinatingRuntime:
         # is unused here (we drive spawns from the pool), but it carries the
         # assignment/merge/flag helpers keyed off the same config.
         self._l1 = CoordinatingRuntime(
-            config=self.config, spawn_fn=None, log=self.log
+            config=self.config, spawn_fn=None, log=self.log,
+            test_runner_fn=self.test_runner_fn,
         )
         self._repo_lock = self.repo_lock or threading.Lock()
         self._completed: queue.Queue[_AgentRun] = queue.Queue()
@@ -462,17 +479,30 @@ class ParallelCoordinatingRuntime:
     def _integrate(self, run: _AgentRun) -> TaskReport:
         a = run.assignment
         verdict = verify_result(run.refreshed_task, run.has_commits)
+        verify_log_path = None
+        if verdict is VerifyOutcome.OK:
+            # PI-147: run the affected test package before merging. The
+            # changed_files git read touches the shared repo, so take the lock
+            # for it; the helper's pytest subprocess runs in the worker's own
+            # worktree (a future optimization may drop the lock around it).
+            with self._repo_lock:
+                verdict, verify_log_path = self._l1._run_affected_tests(
+                    run.worktree, a.work_task_id
+                )
         self.log(
             f"  [{a.work_task_id}] verify: {verdict.value} "
             f"(branch_has_commits={run.has_commits})"
         )
         if verdict is not VerifyOutcome.OK:
+            log_suffix = f" — output: {verify_log_path}" if verify_log_path else ""
             self._l1._flag_needs_attention(
                 a.work_task_id,
-                f"verification failed: {verdict.value} (agent rc={run.returncode})",
+                f"verification failed: {verdict.value} "
+                f"(agent rc={run.returncode}){log_suffix}",
             )
             self._record_finding(
-                a.work_task_id, f"verification failed: {verdict.value}"
+                a.work_task_id,
+                f"verification failed: {verdict.value}{log_suffix}",
             )
             run.worktree.remove()
             return TaskReport(
@@ -483,6 +513,7 @@ class ParallelCoordinatingRuntime:
                 agent_returncode=run.returncode,
                 spawned_at=run.spawned_at,
                 finished_at=run.finished_at,
+                verify_log_path=verify_log_path,
             )
         # Merge is serialized: only one branch lands on the base at a time, in
         # completion order (the order results arrive on the queue).
@@ -567,6 +598,13 @@ class ParallelCoordinatingRuntime:
         try:
             if cfg.manage_api and self.api is not None:
                 self.api.ensure_started()
+            # PI-145: capture the phase's pre-merge anchor BEFORE any worker forks
+            # a worktree or merges, so a failed phase can be rolled back to a main
+            # that still carries none of this phase's work. Locked so the rev-parse
+            # cannot race a worker's worktree create/merge git ops.
+            with self._repo_lock:
+                pre_phase_head = self._l1._base_head()
+            report.pre_phase_head = pre_phase_head
             self._fill_slots(executor, active)
             # The loop also stays alive while a migration is draining/running, so
             # an exclusive window that begins after the last agent completes still
@@ -604,6 +642,27 @@ class ParallelCoordinatingRuntime:
             executor.shutdown(wait=True)
             if cfg.manage_api and self.api is not None:
                 self.api.stop()
+            # PI-145: phase-level atomicity. After every worker is quiesced (so no
+            # `_merge` can race the reset), if ANY task in the phase failed
+            # (a merge CONFLICT or a VERIFY_FAILED), undo every sibling merge by
+            # hard-resetting base_branch to the captured anchor — leaving main
+            # either whole or untouched, never partial. The owning Workstream was
+            # already flagged needs_attention per-failure in `_integrate`; the
+            # rollback only restores main. An empty drain (no task_reports) has
+            # nothing to undo and never used pre_phase_head.
+            phase_failed = any(
+                r.outcome is not TaskOutcome.MERGED for r in report.task_reports
+            )
+            if phase_failed and report.task_reports:
+                with self._repo_lock:
+                    self._l1._reset_base_to(pre_phase_head)
+                report.rolled_back = True
+                report.rolled_back_to = pre_phase_head
+                self.log(
+                    f"↩ phase rolled back: {cfg.base_branch} reset --hard "
+                    f"{pre_phase_head[:8]} — undoing every sibling merge from this "
+                    f"phase (a task failed; workstream flagged needs_attention)"
+                )
         if lock is not None and lock.records:
             report.migrations = list(lock.records)
         return report

@@ -70,6 +70,11 @@ _SPECS: dict[str, _Spec] = {
     "manual_config": _Spec(models.ManualConfig, "manual_config_identifier", "manual_config_name", "manual_config_status", "manual_config_created_at", "manual_config_updated_at"),
     "test_spec": _Spec(models.TestSpec, "test_spec_identifier", "test_spec_name", "test_spec_status", "test_spec_created_at", "test_spec_updated_at"),
     "crm_candidate": _Spec(models.CrmCandidate, "crm_candidate_identifier", "crm_candidate_name", "crm_candidate_status", "crm_candidate_created_at", "crm_candidate_updated_at"),
+    # WTK-106: no name column (documented deviation, migration_mapping.md
+    # §3.2.1 — the natural label is the edge-derived source → target pair);
+    # the literal source entity name is the most informative single column
+    # for the title slot.
+    "migration_mapping": _Spec(models.MigrationMapping, "migration_mapping_identifier", "migration_mapping_source_entity_name", "migration_mapping_status", "migration_mapping_created_at", "migration_mapping_updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),

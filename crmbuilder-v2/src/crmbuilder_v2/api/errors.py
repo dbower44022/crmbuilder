@@ -10,6 +10,7 @@ from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
     ClassificationTransitionError,
     CompletedStatusRequiresCompletionFieldsError,
+    DuplicateMappingForCandidateError,
     InvalidDomainReferenceError,
     SelectedCandidateConflictError,
     StatusTransitionError,
@@ -156,6 +157,31 @@ def selected_candidate_conflict_handler(
         content={
             "error": "selected_candidate_already_exists",
             "existing": exc.existing_identifier,
+        },
+    )
+
+
+def duplicate_mapping_for_candidate_handler(
+    _request: Request, exc: DuplicateMappingForCandidateError
+) -> JSONResponse:
+    """Render an invariant-I3 violation on ``migration_mapping``.
+
+    Uses the dedicated body shape from ``migration_mapping.md`` §3.3.1 /
+    ``migration-mapping-api.md`` §6 — ``{"error":
+    "duplicate_mapping_for_candidate", "candidate_identifier": "...",
+    "existing_mapping": "MIG-NNN"}`` — rather than the standard
+    ``{data, meta, errors}`` envelope (the ``selected_candidate_conflict``
+    precedent: a named single-cause domain conflict whose recovery is
+    specific — find and resolve ``existing_mapping``). Registered as a
+    more-specific handler than :func:`access_layer_handler` so Starlette
+    routes ``DuplicateMappingForCandidateError`` here by exact class match.
+    """
+    return JSONResponse(
+        status_code=exc.http_status,
+        content={
+            "error": "duplicate_mapping_for_candidate",
+            "candidate_identifier": exc.candidate_identifier,
+            "existing_mapping": exc.existing_mapping,
         },
     )
 

@@ -14,6 +14,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     ForeignKeyConstraint,
     Index,
@@ -45,16 +46,19 @@ from crmbuilder_v2.access.vocab import (
     CATALOG_RELATIONSHIP_ROLES,
     CATALOG_SYSTEMS,
     CHANGE_LOG_ACTORS,
+    CHANGE_LOG_ENTITY_TYPES,
     CHANGE_LOG_OPERATIONS,
     CLOSE_OUT_PAYLOAD_STATUSES,
     CONVERSATION_STATUSES,
     CRM_CANDIDATE_STATUSES,
     DECISION_STATUSES,
+    DEPOSIT_EVENT_KINDS,
     DEPOSIT_EVENT_OUTCOMES,
     DOMAIN_STATUSES,
     ENTITY_KINDS,
     ENTITY_STATUSES,
     ENTITY_TYPES,
+    EVIDENCE_SUBJECT_TYPES,
     FIELD_STATUSES,
     FIELD_TYPES,
     FINDING_RESOLUTION_METHODS,
@@ -66,6 +70,9 @@ from crmbuilder_v2.access.vocab import (
     LEARNING_TIERS,
     MANUAL_CONFIG_CATEGORIES,
     MANUAL_CONFIG_STATUSES,
+    MIGRATION_MAPPING_DISPOSITIONS,
+    MIGRATION_MAPPING_LEVELS,
+    MIGRATION_MAPPING_STATUSES,
     PERSONA_STATUSES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -1288,6 +1295,127 @@ class TestSpec(EngagementScopedPKMixin, Base):
     )
 
 
+class MigrationMapping(EngagementScopedPKMixin, Base):
+    """Methodology entity — one keep/transform disposition's migration obligation.
+
+    WTK-106 storage layer per the WTK-104 design spec
+    (``methodology-schema-specs/migration_mapping.md`` §3.2): records and
+    values from one source entity/field land in target entity/field(s),
+    transformed by the §4 rule list. Parent-prefix field naming; primary
+    key is the prefixed-string identifier ``migration_mapping_identifier``
+    (``MIG-NNN``). No name column — documented deviation (spec §3.2.1):
+    the natural label *is* the source → target pair, derived from the
+    edges.
+
+    Both linkages live in ``refs`` as references-entity edges, not FK
+    columns (DEC-006, DEC-249): ``migration_mapping_migrates_from_record``
+    (exactly one — the disposed baseline candidate; at most one live
+    inbound per candidate encodes "one mapping per disposition") and
+    ``migration_mapping_migrates_to_record`` (≥1 — the confirmed target
+    record(s); >1 only with a ``split`` rule). Edge cardinality, target
+    liveness/status, level agreement, and the keep/split shape rules are
+    access-layer enforcement (spec invariants I1–I8); this table carries
+    the I11 CHECK (``source_attribute_name`` present iff
+    ``level = 'field'``).
+
+    The literal source-system coordinates (system label, entity name,
+    attribute name) are denormalized deliberately at triage time so the
+    future compiler extracts data by the names the audit observed,
+    independent of later methodology-record renames (spec §6.2) — this is
+    what lets confirmed mappings compile mechanically into import batches
+    for ``espo_impl/core/import_manager.py``.
+    """
+
+    __tablename__ = "migration_mappings"
+
+    migration_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    migration_mapping_level: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    migration_mapping_disposition: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    migration_mapping_source_system_label: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+    migration_mapping_source_entity_name: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )
+    migration_mapping_source_attribute_name: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    # Ordered list of §4 rule objects (rule_kind ∈
+    # MIGRATION_TRANSFORM_RULE_KINDS); per-kind schema validation is the
+    # repository layer's invariant I9. NULL (or empty) is valid for a
+    # rename-only transform and mandatory for a keep (spec §3.2.2).
+    migration_mapping_transform_rules: Mapped[list | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    migration_mapping_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    migration_mapping_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    migration_mapping_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    migration_mapping_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    migration_mapping_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^MIG-\d{3}$`` expressed as a SQLite GLOB pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("migration_mapping_identifier", ["MIG"]),
+            name="ck_migration_mapping_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("migration_mapping_status", MIGRATION_MAPPING_STATUSES),
+            name="ck_migration_mapping_status",
+        ),
+        CheckConstraint(
+            _check_in("migration_mapping_level", MIGRATION_MAPPING_LEVELS),
+            name="ck_migration_mapping_level",
+        ),
+        CheckConstraint(
+            _check_in(
+                "migration_mapping_disposition", MIGRATION_MAPPING_DISPOSITIONS
+            ),
+            name="ck_migration_mapping_disposition",
+        ),
+        # I11: the attribute coordinate is present iff the mapping is
+        # field-level (non-empty-trimmed is repository-layer validation).
+        CheckConstraint(
+            "(migration_mapping_level = 'field' "
+            "AND migration_mapping_source_attribute_name IS NOT NULL) "
+            "OR (migration_mapping_level = 'entity' "
+            "AND migration_mapping_source_attribute_name IS NULL)",
+            name="ck_migration_mapping_attribute_per_level",
+        ),
+        Index(
+            "ix_migration_mappings_migration_mapping_status",
+            "migration_mapping_status",
+        ),
+        Index(
+            "ix_migration_mappings_migration_mapping_level",
+            "migration_mapping_level",
+        ),
+        Index(
+            "ix_migration_mappings_migration_mapping_deleted_at",
+            "migration_mapping_deleted_at",
+        ),
+    )
+
+
 class CrmCandidate(EngagementScopedPKMixin, Base):
     """Methodology entity — one Phase 1 Initial CRM Candidate Set member.
 
@@ -1973,6 +2101,13 @@ class DepositEvent(EngagementScopedPKMixin, Base):
     timestamp. Carries an ``_outcome`` enum (``success`` | ``failure``)
     rather than a transitioning ``_status``. Three diagnostic JSON fields.
     Created exclusively via POST; never updated or deleted.
+
+    ``deposit_event_kind`` (WTK-089 §4.1, D3) discriminates the
+    close-out-payload apply shape from the Phase 1.5 ``audit_deposit``
+    shape — set at POST, never changed. The kind-conditional rules
+    (parent-edge requirement vs prohibition, ``apply_context`` required
+    keys) are enforced at the repository layer; the ``DEP-NNN``
+    identifier sequence is shared across kinds.
     """
 
     __tablename__ = "deposit_events"
@@ -1982,6 +2117,9 @@ class DepositEvent(EngagementScopedPKMixin, Base):
     )
     deposit_event_title: Mapped[str] = mapped_column(String(255), nullable=False)
     deposit_event_description: Mapped[str] = mapped_column(Text, nullable=False)
+    deposit_event_kind: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="close_out_apply"
+    )
     deposit_event_outcome: Mapped[str] = mapped_column(String(16), nullable=False)
     deposit_event_records_summary: Mapped[dict] = mapped_column(
         JSONColumn, nullable=False
@@ -2004,7 +2142,12 @@ class DepositEvent(EngagementScopedPKMixin, Base):
             _check_in("deposit_event_outcome", DEPOSIT_EVENT_OUTCOMES),
             name="ck_deposit_event_outcome",
         ),
+        CheckConstraint(
+            _check_in("deposit_event_kind", DEPOSIT_EVENT_KINDS),
+            name="ck_deposit_event_kind",
+        ),
         Index("ix_deposit_events_deposit_event_outcome", "deposit_event_outcome"),
+        Index("ix_deposit_events_deposit_event_kind", "deposit_event_kind"),
         Index(
             "ix_deposit_events_deposit_event_created_at",
             "deposit_event_created_at",
@@ -2487,7 +2630,7 @@ class ChangeLog(EngagementScopedMixin, Base):
 
     __table_args__ = (
         CheckConstraint(
-            _check_in("entity_type", ENTITY_TYPES | {"reference"}),
+            _check_in("entity_type", CHANGE_LOG_ENTITY_TYPES),
             name="ck_changelog_entity_type",
         ),
         CheckConstraint(
@@ -2497,6 +2640,141 @@ class ChangeLog(EngagementScopedMixin, Base):
         Index("ix_changelog_timestamp", "timestamp"),
         Index("ix_changelog_entity", "entity_type", "entity_identifier"),
         Index("ix_changelog_engagement", "engagement_id"),
+    )
+
+
+class UtilizationEvidence(EngagementScopedMixin, Base):
+    """Append-only utilization-evidence snapshot for one baseline candidate.
+
+    PI-153 / WTK-088 design spec §4 (D2). One row = one profiling
+    measurement of one Phase 1.5 capture record (entity, field, persona,
+    process, manual_config) at one source snapshot, written mechanically
+    by the audit deposit path (or a standalone re-profile). Joins the
+    mechanical-table family (``change_log``, ``identifier_reservations``):
+    integer surrogate PK, no prefixed identifier, polymorphic soft subject
+    reference (``evidence_subject_type`` + ``evidence_subject_identifier``)
+    outside the refs discipline. Append-only — no ``_updated_at`` /
+    ``_deleted_at``; re-profiles append new rows and history accumulates by
+    design (the drift-detection input). Subject existence/liveness/type-match
+    is validated at the repository layer (invariant I9); the typed metric
+    columns are nullable because evidence is shape-heterogeneous (entity
+    rows use the record-count pair, field rows the population trio, enum
+    fields additionally the option pair) — everything else lives in
+    ``evidence_detail`` until a triage query needs it indexed.
+    """
+
+    __tablename__ = "utilization_evidence"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    evidence_subject_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    evidence_subject_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    # Snapshot timestamp of the *source data* — when the profiler read the
+    # source system, not when this row was written (WTK-088 §4.3).
+    evidence_profiled_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    # Denormalized human-readable source identity, e.g.
+    # "espocrm @ crm.cbmentors.org"; the depositing event's apply_context
+    # carries the authoritative identity (WTK-089 invariant I5).
+    evidence_source_label: Mapped[str] = mapped_column(Text, nullable=False)
+    # Soft reference to the depositing deposit_event — nullable because a
+    # standalone re-profile (drift check) may run outside a deposit.
+    evidence_deposit_event_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    evidence_catalog_class: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )
+    evidence_record_count: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    evidence_last_record_created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    evidence_populated_count: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    # Stored (not derived at query time) so the headline triage query
+    # ("all fields under 5% population") is a flat indexed comparison.
+    evidence_population_rate: Mapped[float | None] = mapped_column(
+        Float, nullable=True
+    )
+    evidence_last_populated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    evidence_distinct_value_count: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    evidence_declared_option_count: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    evidence_used_option_count: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
+    evidence_detail: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    evidence_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("evidence_subject_type", EVIDENCE_SUBJECT_TYPES),
+            name="ck_evidence_subject_type",
+        ),
+        CheckConstraint(
+            _IdentifierFormatCheck(
+                "evidence_deposit_event_identifier", ["DEP"], allow_null=True
+            ),
+            name="ck_evidence_deposit_event_identifier_format",
+        ),
+        CheckConstraint(
+            "evidence_catalog_class IS NULL OR "
+            + _check_in("evidence_catalog_class", frozenset({"standard", "custom"})),
+            name="ck_evidence_catalog_class",
+        ),
+        CheckConstraint(
+            "evidence_record_count >= 0", name="ck_evidence_record_count_nonneg"
+        ),
+        CheckConstraint(
+            "evidence_populated_count >= 0",
+            name="ck_evidence_populated_count_nonneg",
+        ),
+        CheckConstraint(
+            "evidence_population_rate >= 0.0 AND evidence_population_rate <= 1.0",
+            name="ck_evidence_population_rate_range",
+        ),
+        CheckConstraint(
+            "evidence_distinct_value_count >= 0",
+            name="ck_evidence_distinct_value_count_nonneg",
+        ),
+        CheckConstraint(
+            "evidence_declared_option_count >= 0",
+            name="ck_evidence_declared_option_count_nonneg",
+        ),
+        CheckConstraint(
+            "evidence_used_option_count >= 0",
+            name="ck_evidence_used_option_count_nonneg",
+        ),
+        # The latest-snapshot lookup (WTK-088 §4.4): greatest profiled_at
+        # per (subject_type, subject_identifier, source_label).
+        Index(
+            "ix_utilization_evidence_subject",
+            "evidence_subject_type",
+            "evidence_subject_identifier",
+            "evidence_profiled_at",
+        ),
+        Index(
+            "ix_utilization_evidence_population_rate", "evidence_population_rate"
+        ),
+        Index(
+            "ix_utilization_evidence_deposit_event",
+            "evidence_deposit_event_identifier",
+        ),
+        Index("ix_utilization_evidence_engagement", "engagement_id"),
     )
 
 

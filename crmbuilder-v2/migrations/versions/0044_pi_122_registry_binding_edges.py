@@ -13,6 +13,7 @@ SQLite chain head 0043 -> 0044. Companion PG-chain delta:
 
 from collections.abc import Sequence
 
+import sqlalchemy as sa
 from alembic import op
 from crmbuilder_v2.access.vocab import REFERENCE_RELATIONSHIPS, _check_in
 
@@ -34,6 +35,11 @@ _KINDS_NEW = REFERENCE_RELATIONSHIPS
 _KINDS_OLD = REFERENCE_RELATIONSHIPS - _NEW_KINDS
 
 
+def _has_refs() -> bool:
+    # refs is absent when the chain is entered mid-stream (isolated-migration tests)
+    return "refs" in set(sa.inspect(op.get_bind()).get_table_names())
+
+
 def _rebuild(kinds: frozenset[str]) -> None:
     with op.batch_alter_table("refs") as batch:
         batch.drop_constraint("ck_ref_relationship", type_="check")
@@ -43,10 +49,14 @@ def _rebuild(kinds: frozenset[str]) -> None:
 
 
 def upgrade() -> None:
+    if not _has_refs():
+        return
     _rebuild(_KINDS_NEW)
 
 
 def downgrade() -> None:
+    if not _has_refs():
+        return
     op.execute(
         "DELETE FROM refs WHERE relationship_kind IN "
         "('agent_profile_has_skill', 'agent_profile_governed_by_rule', "

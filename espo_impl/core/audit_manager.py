@@ -5,12 +5,14 @@ Connects to a source EspoCRM instance, discovers its configuration
 files in the same schema the configure engine consumes.
 """
 
+import json
 import logging
 import sqlite3
-from dataclasses import dataclass, field
-from datetime import UTC, datetime, timezone
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import yaml
 
@@ -74,6 +76,11 @@ class AuditOptions:
     :param include_native_fields: Include native fields (normally excluded).
     :param include_security: Discover roles and teams (DEC-180).
     :param include_filtered_tabs: Discover filtered tabs (DEC-180).
+    :param include_data_profile: Run the pass-2 data profiler after
+        schema discovery, writing ``utilization-profile.json`` to the
+        output directory (WTK-096). Default on, matching the DEC-180
+        precedent that the audit's identity is full-configuration
+        capture. Pass-2 failure is non-fatal to pass 1's output.
     :param selected_entities: Optional set of EspoCRM wire-name entities
         (e.g. ``{"Contact", "CEngagement"}``) to restrict the audit to.
         ``None`` means audit every discovered entity (existing behavior);
@@ -96,6 +103,7 @@ class AuditOptions:
     include_native_fields: bool = False
     include_security: bool = True
     include_filtered_tabs: bool = True
+    include_data_profile: bool = True
     selected_entities: set[str] | None = None
 
 
@@ -242,6 +250,57 @@ class AuditReport:
     files_written: int = 0
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Manifest serialization (WTK-090 §2.1)
+# ---------------------------------------------------------------------------
+
+MANIFEST_VERSION = 1
+MANIFEST_FILENAME = "audit-report.json"
+
+
+def write_manifest(report: AuditReport, output_dir: Path) -> Path:
+    """Serialize ``report`` to ``audit-report.json`` in ``output_dir``.
+
+    The manifest is the seam the V2 deposit transform consumes
+    (``crmbuilder-v2-deposit-audit``): a ``dataclasses.asdict`` of the
+    report tree plus ``manifest_version``, with enums serialized as
+    their ``.value`` strings and each filtered tab's parsed filter AST
+    rendered to the canonical structured form (``{all: [...]}``) or
+    ``null`` when the audit could not recover it.
+    """
+    manifest = asdict(report)
+    manifest["manifest_version"] = MANIFEST_VERSION
+    # asdict recurses into the ConditionNode dataclasses; replace each
+    # filtered tab's filter with its render_condition structured form,
+    # which is what the transform (and the deploy-side YAML) read.
+    for entity, entity_dict in zip(
+        report.entities, manifest["entities"], strict=True
+    ):
+        for tab, tab_dict in zip(
+            entity.filtered_tabs,
+            entity_dict.get("filtered_tabs") or [],
+            strict=False,
+        ):
+            tab_dict["filter"] = (
+                render_condition(tab.filter) if tab.filter is not None else None
+            )
+
+    def _default(obj: Any) -> Any:
+        value = getattr(obj, "value", None)
+        if value is not None:  # Enum members
+            return value
+        raise TypeError(f"not JSON serializable: {type(obj).__name__}")
+
+    path = Path(output_dir) / MANIFEST_FILENAME
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(
+        json.dumps(manifest, indent=2, default=_default) + "\n",
+        encoding="utf-8",
+    )
+    tmp.replace(path)
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -427,7 +486,7 @@ class AuditManager:
         :param instance_id: Optional Instance table row ID for ConfigurationRun.
         :returns: AuditReport with results.
         """
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         report = AuditReport(
             source_url=self._client.profile.url,
@@ -531,6 +590,52 @@ class AuditManager:
         output_dir.mkdir(parents=True, exist_ok=True)
         files_written = self._write_yaml_files(entities, relationships, output_dir, report)
         report.files_written = files_written
+
+        # Step 4.5: Data-profiling pass (pass 2, WTK-096) — consumes
+        # the just-assembled report as its work-list and writes
+        # utilization-profile.json beside the YAML output. Failure is
+        # non-fatal to pass 1's output (WTK-096 §2.2).
+        if self._options.include_data_profile and entities:
+            self._cb("[AUDIT]    Profiling record data (pass 2) ...", "cyan")
+            try:
+                from espo_impl.core.data_profiler import DataProfiler
+                profiler = DataProfiler(
+                    self._client, report, callback=self._cb,
+                )
+                profile = profiler.run()
+                report.warnings.extend(profile.warning_lines())
+                profile_path = profile.write(output_dir)
+                if profile_path is not None:
+                    entity_count = len(profile.data.get("entities", {}))
+                    self._cb(
+                        f"[AUDIT]    Utilization profile written for "
+                        f"{entity_count} entities → {profile_path.name}",
+                        "green" if not profile.aborted else "yellow",
+                    )
+                else:
+                    self._cb(
+                        "[AUDIT]    WARNING: data profiling aborted before "
+                        "any entity completed — no profile written",
+                        "yellow",
+                    )
+            except Exception as exc:
+                msg = f"Data profiling failed: {exc}"
+                report.warnings.append(msg)
+                self._cb(f"[AUDIT]    WARNING: {msg}", "yellow")
+
+        # Step 4.6: Manifest serialization (WTK-090 §2.1) — the seam the
+        # V2 deposit transform consumes. Failure is non-fatal to the
+        # YAML output already written.
+        try:
+            manifest_path = write_manifest(report, output_dir)
+            self._cb(
+                f"[AUDIT]    Manifest written → {manifest_path.name}",
+                "green",
+            )
+        except Exception as exc:
+            msg = f"Manifest serialization failed: {exc}"
+            report.warnings.append(msg)
+            self._cb(f"[AUDIT]    WARNING: {msg}", "yellow")
 
         # Step 5: Insert database records
         db_records = 0
@@ -691,7 +796,9 @@ class AuditManager:
                 if options:
                     props["options"] = options
                 translated = meta.get("translatedOptions")
-                if translated and translated != dict(zip(options or [], options or [])):
+                if translated and translated != dict(
+                    zip(options or [], options or [], strict=True)
+                ):
                     props["translatedOptions"] = translated
                 style = meta.get("style")
                 if style:
@@ -1061,8 +1168,6 @@ class AuditManager:
         :param report: Report to append errors/warnings to.
         :returns: Deduplicated list of relationship results.
         """
-        # Track which entity espo names are in scope
-        in_scope = {e.espo_name for e in entities}
         espo_to_yaml = {e.espo_name: e.yaml_name for e in entities}
 
         # Deduplication: track seen relationship pairs
@@ -1706,7 +1811,7 @@ class AuditManager:
         :param entity: Audited entity.
         :returns: YAML-serializable dict.
         """
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         source_url = self._client.profile.url
 
         entity_block: dict[str, Any] = {}
@@ -1767,7 +1872,7 @@ class AuditManager:
         :param relationships: Audited relationships.
         :returns: YAML-serializable dict.
         """
-        timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         source_url = self._client.profile.url
 
         rels_list: list[dict[str, Any]] = []

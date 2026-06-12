@@ -33,6 +33,18 @@ def upgrade() -> None:
     if _has_column("engagements", "engagement_export_dir"):
         with op.batch_alter_table("engagements") as batch:
             batch.drop_column("engagement_export_dir")
+        # SQLite batch mode recreates the table from reflected metadata, and
+        # reflection cannot round-trip expression indexes — the recreate
+        # silently drops 0037's two functional unique indexes. Restore them
+        # (IF NOT EXISTS keeps this idempotent where the recreate never ran).
+        op.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_engagements_code_lower "
+            "ON engagements (LOWER(engagement_code))"
+        )
+        op.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_engagements_name_lower "
+            "ON engagements (LOWER(engagement_name))"
+        )
 
 
 def downgrade() -> None:

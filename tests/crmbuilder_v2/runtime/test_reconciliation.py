@@ -58,7 +58,7 @@ def test_non_develop_phase_passes():
 def test_develop_blocked_when_design_incomplete():
     d = evaluate_develop_gate("Develop", design_complete=False, findings=[])
     assert d.allow is False
-    assert "not Complete" in d.reason
+    assert "not settled" in d.reason
 
 
 def test_develop_blocked_by_open_blocking_finding():
@@ -158,6 +158,17 @@ def test_develop_gate_blocks_when_design_incomplete(monkeypatch):
     d = reconciliation.develop_gate("http://x", "ENG", _DEV_TASK)
     assert d.allow is False
     assert d.design_complete is False
+
+
+def test_develop_gate_allows_when_design_not_applicable(monkeypatch):
+    # A Not Applicable Design (the Architect found no design work) is a settled
+    # terminal state with nothing to reconcile — the Develop gate must open, not
+    # block forever waiting for a "Complete" that will never come. Regression
+    # for the gate bug surfaced running PI-146 through the ADO.
+    _stub_graph(monkeypatch, design_status="Not Applicable", finding=None)
+    d = reconciliation.develop_gate("http://x", "ENG", _DEV_TASK)
+    assert d.allow is True
+    assert d.design_complete is True
 
 
 def test_develop_gate_passes_non_develop(monkeypatch):

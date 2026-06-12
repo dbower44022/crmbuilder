@@ -433,6 +433,13 @@ class PreviewController(QObject):
         model when one is present.
         """
         self._views.append(view)
+        # Mouse tracking MUST be enabled on the viewport or Qt only delivers
+        # MouseMove while a button is held — so hover-dwell would never fire and
+        # the card could only be opened via the Space key (PI-118 follow-up fix:
+        # the original WTK-071 build installed the filter but not tracking, so
+        # the hover trigger was dead in the real app; unit tests missed it by
+        # posting MouseMove straight to eventFilter).
+        view.viewport().setMouseTracking(True)
         view.viewport().installEventFilter(self)
         view.installEventFilter(self)
         sel_model = view.selectionModel()

@@ -74,6 +74,21 @@ def _guard_field_belongs_to_entity_delete(
     )
 
 
+def _guard_rejected_by_decision_delete(session: Session, row: Reference) -> None:
+    """Reject deleting the ``rejected_by_decision`` edge of a rejected record.
+
+    PI-153 / WTK-088 §3.4 invariant I4 (the consumed-requires-edge
+    precedent): no record may sit at ``rejected`` without its supporting
+    Decision edge, so the edge is locked while the source remains at
+    ``rejected``. Delegates to the shared rejection module.
+    """
+    # Imported locally to avoid a module-load cycle (_rejection creates
+    # edges through this module's upsert).
+    from crmbuilder_v2.access.repositories import _rejection
+
+    _rejection.guard_edge_delete(session, row)
+
+
 def next_reference_identifier(session: Session) -> str:
     """Return the next available ``REF-NNNN`` external identifier (v0.7).
 
@@ -485,6 +500,7 @@ def delete_by_id(
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, str(ref_id))
     _guard_field_belongs_to_entity_delete(session, row, _skip_cardinality_check)
+    _guard_rejected_by_decision_delete(session, row)
     before = _row_dict(row)
     identifier = _identifier(row)
     session.delete(row)
@@ -532,6 +548,7 @@ def delete(
             f"{source_type}:{source_id} -[{relationship}]-> {target_type}:{target_id}",
         )
     _guard_field_belongs_to_entity_delete(session, row, _skip_cardinality_check)
+    _guard_rejected_by_decision_delete(session, row)
     before = _row_dict(row)
     identifier = _identifier(row)
     session.delete(row)

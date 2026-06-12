@@ -10,6 +10,7 @@ from crmbuilder_v2.access.exceptions import (
     AccessLayerError,
     ClassificationTransitionError,
     CompletedStatusRequiresCompletionFieldsError,
+    DuplicateMappingForCandidateError,
     InvalidDomainReferenceError,
     SelectedCandidateConflictError,
     StatusTransitionError,
@@ -19,6 +20,7 @@ from crmbuilder_v2.api.errors import (
     access_layer_handler,
     classification_transition_handler,
     completed_status_requires_completion_fields_handler,
+    duplicate_mapping_for_candidate_handler,
     invalid_domain_reference_handler,
     permission_denied_handler,
     request_validation_handler,
@@ -44,6 +46,7 @@ from crmbuilder_v2.api.routers import (
     health,
     identifiers,
     manual_configs,
+    migration_mappings,
     orchestration,
     orientation,
     persona,
@@ -61,6 +64,7 @@ from crmbuilder_v2.api.routers import (
     terms,
     test_specs,
     topics,
+    utilization_evidence,
     work_tasks,
     work_tickets,
     workstreams,
@@ -118,6 +122,10 @@ def create_app() -> FastAPI:
         CompletedStatusRequiresCompletionFieldsError,
         completed_status_requires_completion_fields_handler,
     )
+    app.add_exception_handler(
+        DuplicateMappingForCandidateError,
+        duplicate_mapping_for_candidate_handler,
+    )
     app.add_exception_handler(AccessLayerError, access_layer_handler)
     app.add_exception_handler(PermissionDenied, permission_denied_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
@@ -158,6 +166,8 @@ def create_app() -> FastAPI:
     app.include_router(work_tickets.router)
     app.include_router(close_out_payloads.router)
     app.include_router(deposit_events.router)
+    app.include_router(utilization_evidence.router)
+    app.include_router(migration_mappings.router)
     app.include_router(commits.router)
     # Agent Profile Registry (PI-122).
     app.include_router(registry.agent_profiles_router)

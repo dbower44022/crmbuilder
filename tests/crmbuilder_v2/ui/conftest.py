@@ -4,7 +4,26 @@ Forces the offscreen Qt platform plugin so headless test runs (CI,
 plain shells with no display) don't hang on a missing X server. Set
 before any pytest-qt fixture imports a QApplication. ``qapp`` and
 ``qtbot`` themselves come from pytest-qt and are picked up
-automatically without re-export.
+automatically without re-export. (The repo-root ``tests/conftest.py``
+also pins the platform, so every collection order is covered.)
+
+**Widget-cleanup conventions (PI-159 §5.3).** Every UI test in this
+subtree follows three ownership rules:
+
+1. every top-level widget goes through ``qtbot.addWidget`` — close +
+   ``deleteLater`` are handled centrally; never scatter manual
+   ``widget.close()`` calls in tests;
+2. ``qtbot.addWidget`` holds only a **weakref** — registration is
+   cleanup, not ownership. Tests and helpers must keep a strong
+   reference to the widget-tree root for the test's duration;
+3. models and proxies are parented to their view/panel; no parentless
+   QObject may outlive the function that created it unless the test
+   holds it.
+
+The ``pytest_runtest_teardown`` hook below is the deterministic
+counterpart: it drains ``DeferredDelete`` events inside each test's own
+teardown, so destruction never drifts across test boundaries into a
+later test's event processing (the SIGSEGV window PI-159 closes).
 """
 
 from __future__ import annotations
@@ -20,6 +39,27 @@ import httpx  # noqa: E402
 import pytest  # noqa: E402
 from crmbuilder_v2.ui.client import StorageClient  # noqa: E402
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle  # noqa: E402
+from PySide6.QtCore import QEvent  # noqa: E402
+from PySide6.QtWidgets import QApplication  # noqa: E402
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_runtest_teardown(item):
+    """Drain deferred deletions inside the test that posted them.
+
+    pytest-qt's teardown closes then ``deleteLater()``s every registered
+    widget; ``DeferredDelete`` delivery rules can defer the actual
+    destruction into a *later* test's event processing, where a paint on
+    a half-destructed widget segfaults. Runs ``trylast`` so it executes
+    after fixture finalization (where pytest-qt posts the deletions); the
+    bounded double pass settles deletions that themselves post more.
+    """
+    app = QApplication.instance()
+    if app is None:
+        return
+    for _ in range(2):
+        app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        app.processEvents()
 
 
 @pytest.fixture

@@ -147,6 +147,34 @@ class SelectedCandidateConflictError(AccessLayerError):
         )
 
 
+class DuplicateMappingForCandidateError(AccessLayerError):
+    """A second live ``migration_mapping`` cannot source the same candidate.
+
+    WTK-104 §3.3.1 invariant I3 ("one mapping per disposition"): a baseline
+    candidate is the ``migration_mapping_migrates_from_record`` target of at
+    most one live, non-rejected mapping. Raised by the ``migration_mapping``
+    repository on POST and on POST ``/restore`` when the candidate is
+    already sourced. Carries the candidate's identifier and the existing
+    mapping's identifier — the caller's recovery is specific: find and
+    resolve ``existing_mapping`` (soft-delete or reject it) first. The API
+    layer renders this as HTTP 422 with the dedicated body shape
+    ``{"error": "duplicate_mapping_for_candidate", "candidate_identifier":
+    ..., "existing_mapping": ...}`` (``migration-mapping-api.md`` §6) — not
+    the standard v2 envelope.
+    """
+
+    http_status = 422
+    code = "duplicate_mapping_for_candidate"
+
+    def __init__(self, candidate_identifier: str, existing_mapping: str):
+        self.candidate_identifier = candidate_identifier
+        self.existing_mapping = existing_mapping
+        super().__init__(
+            f"candidate {candidate_identifier!r} is already sourced by "
+            f"live mapping {existing_mapping!r}"
+        )
+
+
 class CompletedStatusRequiresCompletionFieldsError(AccessLayerError):
     """A ``manual_config`` transition into ``completed`` is missing one
     or both completion fields.

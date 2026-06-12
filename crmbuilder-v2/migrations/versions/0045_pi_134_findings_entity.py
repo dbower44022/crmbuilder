@@ -53,19 +53,24 @@ def _tables() -> set[str]:
 
 
 def _rebuild_entity_type_checks(types: frozenset[str]) -> None:
-    with op.batch_alter_table("change_log") as batch:
-        batch.drop_constraint("ck_changelog_entity_type", type_="check")
-        batch.create_check_constraint(
-            "ck_changelog_entity_type", _check_in("entity_type", types | {"reference"})
-        )
-    with op.batch_alter_table("refs") as batch:
-        batch.drop_constraint("ck_ref_source_type", type_="check")
-        batch.create_check_constraint("ck_ref_source_type", _check_in("source_type", types))
-        batch.drop_constraint("ck_ref_target_type", type_="check")
-        batch.create_check_constraint("ck_ref_target_type", _check_in("target_type", types))
+    existing = _tables()  # change_log/refs absent when the chain is entered mid-stream
+    if "change_log" in existing:
+        with op.batch_alter_table("change_log") as batch:
+            batch.drop_constraint("ck_changelog_entity_type", type_="check")
+            batch.create_check_constraint(
+                "ck_changelog_entity_type", _check_in("entity_type", types | {"reference"})
+            )
+    if "refs" in existing:
+        with op.batch_alter_table("refs") as batch:
+            batch.drop_constraint("ck_ref_source_type", type_="check")
+            batch.create_check_constraint("ck_ref_source_type", _check_in("source_type", types))
+            batch.drop_constraint("ck_ref_target_type", type_="check")
+            batch.create_check_constraint("ck_ref_target_type", _check_in("target_type", types))
 
 
 def _rebuild_relationship_check(kinds: frozenset[str]) -> None:
+    if "refs" not in _tables():
+        return
     with op.batch_alter_table("refs") as batch:
         batch.drop_constraint("ck_ref_relationship", type_="check")
         batch.create_check_constraint(
@@ -82,11 +87,14 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     bind = op.get_bind()
-    op.execute(
-        "DELETE FROM refs WHERE source_type = 'finding' OR target_type = 'finding' "
-        "OR relationship_kind IN ('finding_relates_to', 'finding_resolved_by')"
-    )
-    op.execute("DELETE FROM change_log WHERE entity_type = 'finding'")
+    existing = _tables()
+    if "refs" in existing:
+        op.execute(
+            "DELETE FROM refs WHERE source_type = 'finding' OR target_type = 'finding' "
+            "OR relationship_kind IN ('finding_relates_to', 'finding_resolved_by')"
+        )
+    if "change_log" in existing:
+        op.execute("DELETE FROM change_log WHERE entity_type = 'finding'")
     _rebuild_entity_type_checks(_TYPES_OLD)
     _rebuild_relationship_check(_KINDS_OLD)
     if Finding.__tablename__ in _tables():

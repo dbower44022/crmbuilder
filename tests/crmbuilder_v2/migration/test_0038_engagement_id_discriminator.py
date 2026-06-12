@@ -55,7 +55,12 @@ def _load_migration_module():
 # from the migration↔model equality below. Their own create migration (or
 # create_all on the live DB) scopes them from birth.
 #   - ``findings`` — PI-134 reconciliation gate (DEC-400).
-_POST_0038_SCOPED_TABLES: frozenset[str] = frozenset({"findings"})
+#   - ``utilization_evidence`` — PI-153 baseline-candidate evidence (WTK-088).
+#   - ``migration_mappings`` — WTK-106 Phase 3 migration-mapping record
+#     (created scoped-from-birth by migration 0048).
+_POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
+    {"findings", "utilization_evidence", "migration_mappings"}
+)
 
 
 def _model_scoped_tables() -> set[str]:

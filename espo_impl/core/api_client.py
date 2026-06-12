@@ -6,7 +6,7 @@ import hmac
 import json
 import logging
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 import requests
 
@@ -47,6 +47,34 @@ def _format_error_detail(body: Any) -> str:
     return repr(body)[:_DETAIL_TRUNCATION]
 
 
+def _where_query_params(where: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    """Encode EspoCRM where-items as flat query parameters.
+
+    Produces the ``where[i][type]`` / ``where[i][attribute]`` /
+    ``where[i][value]`` triples the record list endpoint expects (the
+    same idiom :meth:`EspoAdminClient.search_by_email` hand-writes).
+    List values are emitted as repeated ``where[i][value][]`` entries
+    (the shape ``arrayAnyOf`` takes).
+
+    :param where: List of where-item dicts, each with a ``type`` key
+        and optional ``attribute`` / ``value`` keys.
+    :returns: Ordered (key, value) pairs ready for ``urlencode``.
+    """
+    params: list[tuple[str, str]] = []
+    for i, item in enumerate(where):
+        params.append((f"where[{i}][type]", str(item["type"])))
+        if "attribute" in item:
+            params.append((f"where[{i}][attribute]", str(item["attribute"])))
+        if "value" in item:
+            value = item["value"]
+            if isinstance(value, (list, tuple)):
+                for element in value:
+                    params.append((f"where[{i}][value][]", str(element)))
+            else:
+                params.append((f"where[{i}][value]", str(value)))
+    return params
+
+
 class EspoAdminClient:
     """EspoCRM Admin API client for field management.
 
@@ -59,6 +87,13 @@ class EspoAdminClient:
     def __init__(self, profile: InstanceProfile, timeout: int = 30) -> None:
         self.profile = profile
         self.timeout = timeout
+        # Headers of the most recent response, for callers that need
+        # e.g. Retry-After on a 429. Empty after a transport failure.
+        self.last_response_headers: dict[str, str] = {}
+        # Whether this server accepts maxSize=0 count queries. None
+        # until the first count_records call probes it (per WTK-096
+        # §4.1 — detected once per run and remembered).
+        self._count_max_size_zero_ok: bool | None = None
         self.session = requests.Session()
         self.session.headers.update({
             "Content-Type": "application/json",
@@ -132,6 +167,7 @@ class EspoAdminClient:
         headers = kwargs.pop("headers", {})
         headers.update(self._hmac_header(method, url))
 
+        self.last_response_headers = {}
         try:
             resp = self.session.request(
                 method, url, headers=headers, timeout=self.timeout, **kwargs
@@ -160,6 +196,11 @@ class EspoAdminClient:
                 "_error": str(exc),
                 "_exception_type": type(exc).__name__,
             }
+
+        try:
+            self.last_response_headers = dict(resp.headers or {})
+        except (TypeError, ValueError):
+            self.last_response_headers = {}
 
         if not resp.content:
             return resp.status_code, None
@@ -527,6 +568,97 @@ class EspoAdminClient:
             f"?key=entityDefs.{entity}.fields"
         )
         return self._request("GET", url)
+
+    def list_records(
+        self,
+        entity: str,
+        select: list[str] | None = None,
+        where: list[dict[str, Any]] | None = None,
+        order_by: str | None = None,
+        order: str | None = None,
+        offset: int = 0,
+        max_size: int = 200,
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Query the record list endpoint with arbitrary search parameters.
+
+        Generic surface over ``GET /{Entity}`` returning the standard
+        EspoCRM list shape ``{"total": N, "list": [...]}``. The query
+        string is built into the URL (not passed as ``params``) so the
+        HMAC signature covers it, matching ``search_by_email``.
+
+        :param entity: EspoCRM entity name (C-prefixed for custom).
+        :param select: Attribute names to return per record; ``None``
+            lets the server choose its default attribute set.
+        :param where: Where-item dicts (see :func:`_where_query_params`).
+        :param order_by: Attribute to sort by (e.g., ``createdAt``).
+        :param order: Sort direction, ``"asc"`` or ``"desc"``.
+        :param offset: Pagination offset.
+        :param max_size: Page size; the server may clamp it lower.
+        :returns: Tuple of (status_code, response_json or None).
+        """
+        params: list[tuple[str, str]] = [
+            ("maxSize", str(max_size)),
+            ("offset", str(offset)),
+        ]
+        if select:
+            params.append(("select", ",".join(select)))
+        if order_by:
+            params.append(("orderBy", order_by))
+        if order:
+            params.append(("order", order))
+        if where:
+            params.extend(_where_query_params(where))
+        url = f"{self.profile.api_url}/{entity}?{urlencode(params)}"
+        return self._request("GET", url)
+
+    def count_records(
+        self,
+        entity: str,
+        where: list[dict[str, Any]] | None = None,
+    ) -> tuple[int, int | None]:
+        """Count records matching the given where-items.
+
+        Uses the ``maxSize=0`` count idiom (the server returns ``total``
+        with an empty list, so no record payload crosses the wire). A
+        server build that rejects ``maxSize=0`` is detected on the first
+        count query of the client's lifetime and remembered — subsequent
+        counts use the ``maxSize=1&select=id`` fallback (WTK-096 §4.1).
+
+        :param entity: EspoCRM entity name (C-prefixed for custom).
+        :param where: Optional where-item dicts restricting the count.
+        :returns: Tuple of (status_code, total or None). ``total`` is
+            None on any non-200 or shape mismatch.
+        """
+        def _count(max_size: int, select: list[str] | None) -> tuple[int, int | None]:
+            status, body = self.list_records(
+                entity, select=select, where=where, max_size=max_size
+            )
+            if status == 200 and isinstance(body, dict):
+                total = body.get("total")
+                return status, total if isinstance(total, int) else None
+            return status, None
+
+        if self._count_max_size_zero_ok is False:
+            return _count(1, ["id"])
+
+        status, total = _count(0, None)
+        if status == 200:
+            self._count_max_size_zero_ok = True
+            return status, total
+
+        if status == 400 and self._count_max_size_zero_ok is None:
+            # Ambiguous 400: maxSize=0 unsupported, or the where-item
+            # itself rejected. Probe once with the fallback shape; if it
+            # succeeds the server doesn't take maxSize=0, otherwise the
+            # where was the problem and maxSize=0 stands as supported.
+            fb_status, fb_total = _count(1, ["id"])
+            if fb_status == 200:
+                self._count_max_size_zero_ok = False
+                return fb_status, fb_total
+            self._count_max_size_zero_ok = True
+            return fb_status, fb_total
+
+        return status, total
 
     def search_by_email(
         self, entity: str, email: str
