@@ -71,10 +71,15 @@ class StandaloneDetailWindow(QMainWindow):
     def closeEvent(self, event):  # noqa: N802 (Qt naming)
         """Emit ``closed`` so the manager drops its reference, then close.
 
-        ``WA_DeleteOnClose`` then schedules deletion; the hosted panel's own
-        ``closeEvent`` drains its in-flight workers before destruction.
+        Qt delivers ``closeEvent`` only to this top-level window, NOT to the
+        hosted panel, so the panel's own worker-draining ``closeEvent`` never
+        runs on a window close. We therefore drain the panel's workers
+        explicitly here — otherwise ``WA_DeleteOnClose`` deletes the panel while
+        a worker QThread is still live, which aborts the process (a flaky
+        teardown SIGABRT that surfaced running the full suite in one process).
         """
         self.closed.emit(self)
+        self._panel.drain_workers()
         super().closeEvent(event)
 
 
