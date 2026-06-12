@@ -270,6 +270,41 @@ _BLOOMERANG_TYPES: dict[StageOneKey, str] = {
     "reference": "reference",  # stock links (household, soft-credit, tribute)
 }
 
+# WTK-110 §6.3 (delta D3) — the spreadsheet adapter's closed
+# inferred-type vocabulary, the eighth stage-1 table. All bare-string
+# keys (the adapter owns its own vocabulary, so it never needs a
+# subtype discriminator) and no calculated/multivalued flags (formulas
+# are invisible in CSV exports; multi-valuedness is its own native
+# type). `CATALOG_SYSTEMS` deliberately does NOT grow — that frozenset
+# is the catalog-survey vocabulary, and a spreadsheet is not a surveyed
+# product; only this registry and the partition rule know the slug.
+_SPREADSHEET_TYPES: dict[StageOneKey, str] = {
+    "text": "string",
+    "long_text": "text",
+    "integer": "integer",
+    "decimal": "decimal",
+    "currency": "currency",
+    "percent": "decimal",
+    "boolean": "boolean",
+    "date": "date",
+    "datetime": "datetime",
+    # Stage-2 lossy rule, shared: no time-of-day in FIELD_TYPES.
+    "time": "time",
+    # PI-054 refinement candidates, shared: email/phone/url -> text.
+    "email": "email",
+    "phone": "phone",
+    "url": "url",
+    "enum": "enum",
+    "multi_enum": "multienum",
+    "reference": "reference",
+    "auto_number": "autonumber",
+    # An empty column is signal (gaps-and-ghosts evidence), not the
+    # anomaly fallback; inference confidence is `none` in evidence.
+    "empty": "string",
+}
+
+SPREADSHEET_SYSTEM = "spreadsheet"
+
 SYSTEM_TYPE_MAPS: dict[str, dict[StageOneKey, str]] = {
     "espocrm": _ESPOCRM_TYPES,
     "salesforce": _SALESFORCE_TYPES,
@@ -278,6 +313,7 @@ SYSTEM_TYPE_MAPS: dict[str, dict[StageOneKey, str]] = {
     "attio": _ATTIO_TYPES,
     "civicrm": _CIVICRM_TYPES,
     "bloomerang": _BLOOMERANG_TYPES,
+    SPREADSHEET_SYSTEM: _SPREADSHEET_TYPES,
 }
 
 # Single-valued -> multi-valued promotion for the `multivalued` flag
@@ -567,6 +603,11 @@ def partition_detailed(
     signal: misclassifying standard as custom costs one triage glance;
     the reverse buries paid-for requirements signal.
     """
+    if system == SPREADSHEET_SYSTEM:
+        # WTK-110 §2.4 delta D4: a spreadsheet has no stock schema and
+        # no catalog presence — every item, entity and attribute, is
+        # `custom`; tiers 2 and 3 are never consulted.
+        return PartitionResult("custom", 1), None
     if system not in CATALOG_SYSTEMS:
         raise ValueError(f"unknown catalog system {system!r}")
     marker_class = _tier1(system, item)
