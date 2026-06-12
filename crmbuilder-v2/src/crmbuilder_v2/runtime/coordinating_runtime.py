@@ -42,15 +42,15 @@ from __future__ import annotations
 import shutil
 import subprocess
 import tempfile
-import time
 import urllib.parse
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import Enum
-from pathlib import Path
 
+from crmbuilder_v2.config import verify_log_dir
 from crmbuilder_v2.runtime import dispatcher, reconciliation
-from crmbuilder_v2.runtime.agent_runtime import AgentInvocation, build_agent_prompt
+from crmbuilder_v2.runtime.agent_runtime import build_agent_prompt
 
 # --------------------------------------------------------------------------
 # Outcomes (small enums + records the loop and its tests reason over)
@@ -96,6 +96,9 @@ class IterationReport:
     pause_reason: str | None = None
     agent_returncode: int | None = None
     branch: str | None = None
+    # PI-157: absolute path of the persisted verify-failure pytest output
+    # (None on a green run, a pre-test verdict, or a failed log write).
+    verify_log_path: str | None = None
 
 
 # --------------------------------------------------------------------------
@@ -171,7 +174,9 @@ class TestRunResult:
     passed: bool
     returncode: int
     target: str
-    output: str = ""  # tail of combined stdout+stderr, for the flag/finding text
+    # Tail of combined stdout+stderr. Wide enough (20000 chars, PI-157) to keep
+    # the failing traceback for the persisted log; flag/finding text stays short.
+    output: str = ""
 
 
 TestRunnerFn = Callable[[str, str], TestRunResult]  # (worktree_path, pytest_target)
@@ -196,7 +201,7 @@ def run_pytest(worktree_path: str, target: str, *, timeout: int = 1800) -> TestR
         passed=proc.returncode == 0,
         returncode=proc.returncode,
         target=target,
-        output=(proc.stdout + proc.stderr)[-2000:],
+        output=(proc.stdout + proc.stderr)[-20_000:],
     )
 
 
@@ -591,17 +596,22 @@ class CoordinatingRuntime:
             )
             has_commits = worktree.has_commits_beyond(cfg.base_branch)
             verdict = verify_result(refreshed, has_commits)
+            verify_log_path = None
             if verdict is VerifyOutcome.OK:
                 # PI-147: a lifecycle-clean task still must not break the suite.
-                verdict = self._run_affected_tests(worktree)
+                verdict, verify_log_path = self._run_affected_tests(
+                    worktree, assignment.work_task_id
+                )
             self.log(f"  verify: {verdict.value} (branch_has_commits={has_commits})")
 
             if verdict is not VerifyOutcome.OK:
-                self._flag_needs_attention(
-                    assignment.work_task_id,
+                reason = (
                     f"verification failed: {verdict.value} "
-                    f"(agent rc={returncode})",
+                    f"(agent rc={returncode})"
                 )
+                if verify_log_path:
+                    reason += f" — output: {verify_log_path}"
+                self._flag_needs_attention(assignment.work_task_id, reason)
                 return IterationReport(
                     result=StepResult.PAUSED,
                     work_task_id=assignment.work_task_id,
@@ -609,6 +619,7 @@ class CoordinatingRuntime:
                     agent_returncode=returncode,
                     branch=assignment.branch,
                     pause_reason=f"verification {verdict.value}",
+                    verify_log_path=verify_log_path,
                 )
 
             # Merge (REQ-056): land the agent's branch on the base branch.
@@ -674,7 +685,9 @@ class CoordinatingRuntime:
                 )
         return None
 
-    def _run_affected_tests(self, worktree: Worktree) -> VerifyOutcome:
+    def _run_affected_tests(
+        self, worktree: Worktree, work_task_id: str
+    ) -> tuple[VerifyOutcome, str | None]:
         """Run the affected test package in ``worktree`` (PI-147).
 
         Resolves the task's touched source files (git read), maps them to a
@@ -683,15 +696,60 @@ class CoordinatingRuntime:
         ``TESTS_FAILED`` — which the caller routes through the existing non-OK
         fail path (flag + pause, and on the parallel site the PI-145 rollback),
         so a branch that breaks a pre-existing test never merges.
+
+        On a red run the captured output is persisted to ``verify_log_dir()``
+        (PI-157) and the log's absolute path is returned alongside the verdict,
+        so every failure surface can point the operator at it. A green run
+        writes nothing and returns ``None`` for the path. The explicit return
+        keeps the runtime stateless across the serialized-but-shared parallel
+        integrations.
         """
         touched = worktree.changed_files(self.config.base_branch)
         target = select_test_target(touched)
         runner = self.test_runner_fn or run_pytest
         result = runner(worktree.path, target)
+        log_path = None
+        if not result.passed:
+            log_path = self._persist_verify_output(work_task_id, result, worktree)
         self.log(
-            f"  affected-tests: {target} → {'pass' if result.passed else 'FAIL'}"
+            f"  affected-tests: {target} → "
+            + ("pass" if result.passed else "FAIL"
+               + (f" (output: {log_path})" if log_path else ""))
         )
-        return VerifyOutcome.OK if result.passed else VerifyOutcome.TESTS_FAILED
+        verdict = VerifyOutcome.OK if result.passed else VerifyOutcome.TESTS_FAILED
+        return verdict, log_path
+
+    def _persist_verify_output(
+        self, work_task_id: str, result: TestRunResult, worktree: Worktree
+    ) -> str | None:
+        """Write a red test run's captured output to the verify log (PI-157).
+
+        Failure-only by design — success output has no operator. Timestamped
+        ``{work_task_id}-{UTC}.log`` so a retry after a fix writes a second
+        file rather than overwriting the evidence of the first failure.
+        Best-effort with the same discipline as ``_flag_needs_attention``: an
+        ``OSError`` is logged and never masks the ``TESTS_FAILED`` verdict.
+        """
+        try:
+            log_dir = verify_log_dir()
+            log_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+            path = log_dir / f"{work_task_id}-{stamp}.log"
+            header = (
+                f"work_task:  {work_task_id}\n"
+                f"target:     {result.target}\n"
+                f"returncode: {result.returncode}\n"
+                f"worktree:   {worktree.path}\n"
+                f"branch base: {self.config.base_branch}\n"
+                f"captured:   {datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')} "
+                f"(tail of combined stdout+stderr, last 20000 chars)\n"
+                + "-" * 68 + "\n"
+            )
+            path.write_text(header + result.output, encoding="utf-8")
+            return str(path)
+        except OSError as exc:
+            self.log(f"  (warning) could not persist verify output: {exc}")
+            return None
 
     def _flag_needs_attention(self, work_task_id: str, reason: str) -> None:
         """Raise the human-escape flag on the Work Task's owning Workstream.

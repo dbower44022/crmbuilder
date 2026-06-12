@@ -446,6 +446,71 @@ def test_run_pytest_real_construction(tmp_path):
     assert result.returncode == 0
 
 
+# --------------------------------------------------------------------------
+# PI-157: verify-failure output persistence — parallel site (§5g) + real
+# runner construction (§5h, DEC-410)
+# --------------------------------------------------------------------------
+
+
+def test_verify_failure_persists_output_log_parallel(monkeypatch, tmp_path):
+    from crmbuilder_v2.runtime import coordinating_runtime as cr
+
+    rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.05})
+    rt._l1.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="FAILED test_y — boom"
+    )
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    report = rt.run()
+    r = report.task_reports[0]
+    assert r.outcome is TaskOutcome.VERIFY_FAILED
+    assert r.verify is VerifyOutcome.TESTS_FAILED
+    files = list((tmp_path / "verify").glob("WTK-1-*.log"))
+    assert len(files) == 1
+    assert "FAILED test_y" in files[0].read_text()
+    assert r.verify_log_path == str(files[0])
+    # The flag reason the Workstream carries points at the log.
+    assert str(files[0]) in rt._flagged["WTK-1"]
+
+
+def test_run_pytest_real_failure_persists_wide_tail(monkeypatch, tmp_path):
+    # §5h: a real red run, persisted through the real _run_affected_tests. Also
+    # pins the PI-157 tail-widening — a >2000-char output is preserved (the old
+    # cap truncated the traceback away).
+    from crmbuilder_v2.runtime import coordinating_runtime as cr
+    from crmbuilder_v2.runtime.coordinating_runtime import run_pytest
+
+    repo_root = str(Path(__file__).resolve().parents[3])
+    failing = tmp_path / "test_wtk094_deliberate_fail.py"
+    failing.write_text(
+        "def test_deliberately_fails():\n"
+        "    print('x' * 5000)\n"
+        "    raise AssertionError('deliberate failure for PI-157')\n"
+    )
+    result = run_pytest(repo_root, str(failing))
+    assert result.passed is False and result.returncode != 0
+    assert len(result.output) > 2500  # the 2000-char tail was widened
+
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    rt = CoordinatingRuntime(
+        config=RuntimeConfig(),
+        log=lambda m: None,
+        test_runner_fn=lambda wp, target: result,
+    )
+
+    class _Wt:
+        path = "/tmp/fake-wt"
+
+        def changed_files(self, base_ref):
+            return []
+
+    verdict, log_path = rt._run_affected_tests(_Wt(), "WTK-094")
+    assert verdict is VerifyOutcome.TESTS_FAILED
+    assert log_path is not None and "WTK-094-" in log_path
+    text = Path(log_path).read_text()
+    assert "deliberate failure for PI-157" in text
+    assert "work_task:  WTK-094" in text
+
+
 def test_drains_cleanly_when_no_work(monkeypatch):
     rt = _make_runtime(monkeypatch, task_sleeps={}, max_concurrent=2)
     report = rt.run()

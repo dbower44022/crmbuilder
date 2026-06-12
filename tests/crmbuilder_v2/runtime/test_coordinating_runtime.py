@@ -308,6 +308,68 @@ def test_pauses_and_flags_when_affected_tests_fail(monkeypatch):
     assert rt._fake_wt.removed  # branch never merged
 
 
+# --------------------------------------------------------------------------
+# PI-157: verify-failure output persistence (serial site, fake runner — §5g)
+# --------------------------------------------------------------------------
+
+
+def _tests_failed_runtime(monkeypatch):
+    task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
+    return _build_runtime(
+        monkeypatch,
+        assignment=_assignment(task),
+        task_after={"work_task_status": "Complete"},
+        has_commits=True,
+        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+    )
+
+
+def test_verify_failure_persists_output_log(monkeypatch, tmp_path):
+    rt = _tests_failed_runtime(monkeypatch)
+    rt.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="FAILED test_x — boom"
+    )
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    report = rt.run_one()
+    assert report.verify is VerifyOutcome.TESTS_FAILED
+    files = list((tmp_path / "verify").glob("WTK-099-*.log"))
+    assert len(files) == 1
+    text = files[0].read_text()
+    assert "FAILED test_x" in text          # the captured pytest output
+    assert "work_task:  WTK-099" in text    # the header fields
+    assert "returncode: 1" in text
+    assert report.verify_log_path == str(files[0])
+    # The needs_attention reason carries the path — the operator never has to
+    # know the directory convention.
+    assert str(files[0]) in rt._flagged["WTK-099"]
+
+
+def test_green_run_writes_no_verify_log(monkeypatch, tmp_path):
+    rt = _tests_failed_runtime(monkeypatch)  # default _pass_runner stays
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    report = rt.run_one()
+    assert report.result is StepResult.MERGED
+    assert not (tmp_path / "verify").exists()  # directory not even created
+    assert report.verify_log_path is None
+
+
+def test_not_complete_verdict_writes_no_verify_log(monkeypatch, tmp_path):
+    task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
+    rt = _build_runtime(
+        monkeypatch,
+        assignment=_assignment(task),
+        task_after={"work_task_status": "In Progress"},  # never reaches the test step
+        has_commits=True,
+        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+    )
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    report = rt.run_one()
+    assert report.verify is VerifyOutcome.NOT_COMPLETE
+    assert not (tmp_path / "verify").exists()
+    assert report.verify_log_path is None
+    assert "output:" not in rt._flagged["WTK-099"]  # no path to point at
+
+
 def test_pauses_on_merge_conflict_after_verify(monkeypatch):
     task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
     rt = _build_runtime(
