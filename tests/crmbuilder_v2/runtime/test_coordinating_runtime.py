@@ -10,6 +10,7 @@ end-to-end spawn/merge is proven by the demo (see the apply prompt), not here.
 from __future__ import annotations
 
 import json
+import re
 import socket
 import subprocess
 import threading
@@ -368,6 +369,40 @@ def test_not_complete_verdict_writes_no_verify_log(monkeypatch, tmp_path):
     assert not (tmp_path / "verify").exists()
     assert report.verify_log_path is None
     assert "output:" not in rt._flagged["WTK-099"]  # no path to point at
+
+
+def test_verify_log_write_failure_never_masks_tests_failed(monkeypatch, tmp_path):
+    # §3.2 best-effort discipline: an OSError on the log write is itself logged
+    # as a warning and never masks the TESTS_FAILED verdict; the flag reason
+    # then carries no path (there is none to point at).
+    rt = _tests_failed_runtime(monkeypatch)
+    rt.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="FAILED test_x — boom"
+    )
+    blocker = tmp_path / "verify"
+    blocker.write_text("a file where the log dir should go")  # mkdir → OSError
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: blocker)
+    lines: list[str] = []
+    rt.log = lines.append
+    report = rt.run_one()
+    assert report.result is StepResult.PAUSED
+    assert report.verify is VerifyOutcome.TESTS_FAILED
+    assert report.verify_log_path is None
+    assert any("could not persist verify output" in ln for ln in lines)
+    assert "output:" not in rt._flagged["WTK-099"]
+
+
+def test_verify_log_filename_matches_spec_naming(monkeypatch, tmp_path):
+    # §3.1: ``{work_task_id}-{UTC timestamp}.log`` — timestamped so a retry
+    # after a fix writes a second file rather than overwriting the evidence.
+    rt = _tests_failed_runtime(monkeypatch)
+    rt.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="boom"
+    )
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    rt.run_one()
+    [logfile] = (tmp_path / "verify").iterdir()
+    assert re.fullmatch(r"WTK-099-\d{8}T\d{6}Z\.log", logfile.name)
 
 
 def test_pauses_on_merge_conflict_after_verify(monkeypatch):

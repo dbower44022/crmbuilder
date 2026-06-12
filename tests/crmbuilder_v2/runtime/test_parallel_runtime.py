@@ -472,6 +472,26 @@ def test_verify_failure_persists_output_log_parallel(monkeypatch, tmp_path):
     assert str(files[0]) in rt._flagged["WTK-1"]
 
 
+def test_verify_failure_finding_summary_carries_log_path(monkeypatch, tmp_path):
+    # §3.3: the parallel finding summary gets the same " — output: {path}"
+    # suffix as the flag reason (``_make_runtime`` stubs ``_record_finding`` to
+    # a no-op, so capture it here).
+    from crmbuilder_v2.runtime import coordinating_runtime as cr
+
+    rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.05})
+    rt._l1.test_runner_fn = lambda wp, target: TestRunResult(
+        passed=False, returncode=1, target=target, output="FAILED test_z"
+    )
+    monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
+    findings: dict[str, str] = {}
+    monkeypatch.setattr(
+        rt, "_record_finding", lambda wt, summary: findings.update({wt: summary})
+    )
+    rt.run()
+    [logfile] = (tmp_path / "verify").glob("WTK-1-*.log")
+    assert findings["WTK-1"] == f"verification failed: tests_failed — output: {logfile}"
+
+
 def test_run_pytest_real_failure_persists_wide_tail(monkeypatch, tmp_path):
     # §5h: a real red run, persisted through the real _run_affected_tests. Also
     # pins the PI-157 tail-widening — a >2000-char output is preserved (the old

@@ -629,6 +629,86 @@ def test_resume_idempotent_after_second_pause():
     assert world.patches[-2:] == [("WTK-2", "Failed"), ("WTK-2", "Ready")]
 
 
+def test_resume_mid_sequence_then_later_phases_follow_normally():
+    # §2.4: a run interrupted mid-PI resumes mid-sequence — earlier terminal
+    # phases skip, the In Progress phase RESUMEs (no start-execution), and the
+    # later phases follow normally (SCOPE → START) once it completes.
+    world = _World(3)  # Design, Develop, Test
+    world.pi_status = "In Progress"
+    world.decomposed = True
+    world.phase_status = {"WSK-1": "Complete", "WSK-2": "In Progress", "WSK-3": "Planned"}
+    world.add_task("WSK-2", "WTK-1", "Ready")
+    pool_calls = []
+
+    def _pool(cfg, ws):
+        pool_calls.append(ws)
+        if ws == "WSK-2":
+            world.tasks["WTK-1"]["status"] = "Complete"
+        return PoolRunReport(paused=False)
+
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    assert report.completed_phases == ["WSK-2", "WSK-3"]
+    assert pool_calls == ["WSK-2", "WSK-3"]
+    # The resumed phase was never re-opened or re-scoped; the following phase
+    # went through the unchanged SCOPE → START path.
+    assert "/workstreams/WSK-2/start-execution" not in world.calls
+    assert "scope:WSK-2" not in world.calls
+    assert "scope:WSK-3" in world.calls
+    assert "/workstreams/WSK-3/start-execution" in world.calls
+    assert world.pi_status == "In Review"
+
+
+def test_resume_develop_gate_open_proceeds_to_pool():
+    # §2.4 complement to the held case: a resuming Develop phase consults the
+    # gate, and an open gate lets the pool run and the phase complete.
+    world = _World(2)
+    world.pi_status = "In Progress"
+    world.decomposed = True
+    world.phase_status = {"WSK-1": "Complete", "WSK-2": "In Progress"}  # Develop resuming
+    world.add_task("WSK-2", "WTK-1", "Ready")
+    seen: list[str] = []
+    pool_calls = []
+
+    def _pool(cfg, ws):
+        pool_calls.append(ws)
+        world.tasks["WTK-1"]["status"] = "Complete"
+        return PoolRunReport(paused=False)
+
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_pool, scope_runner=_scopes_to_ready(world),
+        gate_checker=lambda c, w: (seen.append(w) or GateDecision(True, "ok")),
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    assert seen == ["WSK-2"]  # the gate WAS consulted on resume
+    assert pool_calls == ["WSK-2"]
+    assert "/workstreams/WSK-2/start-execution" not in world.calls
+
+
+def test_resume_residue_guard_checks_only_complete_tasks():
+    # §2.6: the rollback-residue guard costs two git reads per COMPLETE task —
+    # it is never consulted for a task in any other state.
+    world = _resume_world()
+    world.add_task("WSK-1", "WTK-1", "Complete")
+    world.add_task("WSK-1", "WTK-2", "Ready")
+    world.add_task("WSK-1", "WTK-3", "Failed")
+    checked: list[str] = []
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+        unmerged_check=lambda c, t: (checked.append(t) or False),
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    assert checked == ["WTK-1"]
+
+
 # --------------------------------------------------------------------------
 # slice 3 — PM auto-dispatch over a Project backlog
 # --------------------------------------------------------------------------
