@@ -1,0 +1,28 @@
+{
+  "apply_context": {
+    "audit_manifest_path": "/home/doug/Dropbox/Projects/ClevelandBusinessMentors/programs/audit-20260612-161238/audit-report.json",
+    "baseline_report_path": "/home/doug/Dropbox/Projects/ClevelandBusinessMentors/programs/audit-20260612-161238/baseline-report.md",
+    "kind": "audit_baseline_deposit",
+    "manifest_version": 1,
+    "profiled_at": "2026-06-12T16:15:20Z",
+    "snapshot_at": "2026-06-12T16:12:38Z",
+    "source_instance": "https://crm-test.clevelandbusinessmentors.org/",
+    "source_label": "espocrm @ crm-test.clevelandbusinessmentors.org",
+    "source_name": "CBM_Hosted_Test",
+    "source_system": "espocrm",
+    "transform_version": "0.7.0"
+  },
+  "created": [
+    {
+      "identifier": "PI-004",
+      "key": "anomalies/espocrm @ crm-test.clevelandbusinessmentors.org",
+      "record_type": "planning_item"
+    }
+  ],
+  "deposit_event_identifier": "DEP-003",
+  "evidence_rows": 247,
+  "matched": 247,
+  "records_summary": {
+    "planning_items": 1
+  }
+}
