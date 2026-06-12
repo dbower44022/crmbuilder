@@ -27,6 +27,7 @@ from crmbuilder_v2.transform import audit_deposit
 from tests.crmbuilder_v2.transform.test_audit_deposit import (
     AccessClient,
     t1_manifest,
+    t1_manifest_quiet,
     t1_profile,
 )
 
@@ -448,6 +449,99 @@ def test_rest_payloads_validate_against_api_schemas():
         deposit_event_identifier="DEP-001",
         **first.evidence,
     )
+
+
+# ---------------------------------------------------------------------------
+# §7 — versioning and idempotency on re-profile (WTK-101 verification)
+# ---------------------------------------------------------------------------
+
+
+def _month_later_profile() -> dict:
+    """The rich profile re-run a month later under new thresholds:
+    startDate has recovered (both field flags flip false), and the
+    operator widened the low-population threshold."""
+    profile = rich_profile()
+    profile["profiled_at"] = "2026-07-11T18:00:00Z"
+    profile["options"] = {
+        "dormancy_window_days": 365,
+        "low_population_threshold": 0.10,
+        "scan_cap": 5000,
+    }
+    start = profile["entities"]["CEngagement"]["fields"]["startDate"]
+    start.update(
+        populated_count=120,
+        population_rate=0.30,
+        last_populated_at="2026-07-10T00:00:00Z",
+    )
+    start["detail"] = {
+        "last_populated_at_basis": "created_at",
+        "low_population": False,
+        "stale": False,
+    }
+    return profile
+
+
+def test_rerun_supersession_provenance_and_frozen_snapshots(v2_env):
+    # §7.2 in one pass: a re-profile duplicates no candidates and never
+    # touches the candidate row; evidence appends; ``latest``
+    # supersedes; flags flip between snapshots with each snapshot
+    # frozen at its own thresholds; provenance is per-snapshot, never
+    # rewritten.
+    client = AccessClient()
+
+    def deposit(profile):
+        plan = audit_deposit.plan_deposit(
+            t1_manifest_quiet(), profile, audit_deposit.fetch_existing_state(client)
+        )
+        return audit_deposit.execute_plan(plan, client)
+
+    first = deposit(rich_profile())
+    with session_scope() as s:
+        before = next(
+            f
+            for f in field_repo.list_fields(s)
+            if f["field_name"] == "Start Date"
+        )
+
+    second = deposit(_month_later_profile())
+    assert second["created"] == []
+    assert second["deposit_event_identifier"] != first["deposit_event_identifier"]
+
+    with session_scope() as s:
+        # Candidate row untouched by re-observation (§7.2 row 1).
+        assert field_repo.get_field(s, before["field_identifier"]) == before
+        history = utilization_evidence.inline_evidence_block(
+            s,
+            subject_type="field",
+            subject_identifier=before["field_identifier"],
+            mode="all",
+        )
+        latest = utilization_evidence.inline_evidence_block(
+            s,
+            subject_type="field",
+            subject_identifier=before["field_identifier"],
+            mode="latest",
+        )
+
+    assert history["snapshot_count"] == 2
+    newer, older = history["snapshots"]
+
+    # Supersession: latest mode returns only the new snapshot, while
+    # snapshot_count still reveals the accumulated history.
+    assert latest["snapshots"] == [newer]
+    assert latest["snapshot_count"] == 2
+
+    # Flags flipped — the drift signal — and each snapshot stays frozen
+    # with the thresholds it was derived under.
+    assert older["flags"] == {"low_population": True, "stale": True}
+    assert older["detail"]["thresholds"]["low_population_threshold"] == 0.05
+    assert newer["flags"] == {"low_population": False, "stale": False}
+    assert newer["detail"]["thresholds"]["low_population_threshold"] == 0.10
+    assert newer["metrics"]["population_rate"] == 0.30
+
+    # Provenance per snapshot: prior rows keep their deposit event.
+    assert older["deposit_event"] == first["deposit_event_identifier"]
+    assert newer["deposit_event"] == second["deposit_event_identifier"]
 
 
 def test_flags_lift_into_plan_objects():

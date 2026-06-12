@@ -262,3 +262,183 @@ def test_evidence_survives_subject_rejection_and_delete(v2_env):
             s, subject_type="entity", subject_identifier=ent
         )
         assert len(rows) == 1
+
+
+# ---------------------------------------------------------------------------
+# WTK-097 verification (WTK-101) — claims the suites above left unpinned
+# ---------------------------------------------------------------------------
+
+
+def test_exact_tie_greatest_id_wins(v2_env):
+    # WTK-097 §7.1: duplicate rows for one (subject, source,
+    # profiled_at) — the failure-and-rerun re-append WTK-090 §5
+    # tolerates — resolve to the greatest ``id`` in both the
+    # ``latest=True`` list filter and the inline block's latest mode.
+    with session_scope() as s:
+        ent = _make_entity(s)
+        fld = _make_field(s, ent)
+        first = ue.create_utilization_evidence(
+            s,
+            subject_type="field",
+            subject_identifier=fld,
+            profiled_at="2026-06-11T18:00:00Z",
+            source_label="espocrm @ a",
+            population_rate=0.5,
+            detail={"attempt": 1},
+        )
+        second = ue.create_utilization_evidence(
+            s,
+            subject_type="field",
+            subject_identifier=fld,
+            profiled_at="2026-06-11T18:00:00Z",
+            source_label="espocrm @ a",
+            population_rate=0.5,
+            detail={"attempt": 2},
+        )
+        assert second["id"] > first["id"]
+
+        latest = ue.list_utilization_evidence(
+            s, subject_type="field", subject_identifier=fld, latest=True
+        )
+        assert [r["id"] for r in latest] == [second["id"]]
+
+        block = ue.inline_evidence_block(
+            s, subject_type="field", subject_identifier=fld, mode="latest"
+        )
+        assert block["snapshot_count"] == 2
+        (obj,) = block["snapshots"]
+        assert obj["detail"]["attempt"] == 2
+
+
+# The WTK-088 §5.1 latest-snapshot CTE, verbatim from the spec.
+_LATEST_CTE = """
+WITH latest AS (
+  SELECT ue.*,
+         ROW_NUMBER() OVER (
+           PARTITION BY ue.evidence_subject_type,
+                        ue.evidence_subject_identifier,
+                        ue.evidence_source_label
+           ORDER BY ue.evidence_profiled_at DESC
+         ) AS rn
+  FROM utilization_evidence ue
+)
+"""
+
+_Q2_DORMANT_ENTITIES = _LATEST_CTE + """
+SELECT e.entity_identifier, e.entity_name,
+       l.evidence_record_count, l.evidence_last_record_created_at
+FROM entities e
+JOIN latest l
+  ON l.evidence_subject_type = 'entity'
+ AND l.evidence_subject_identifier = e.entity_identifier
+ AND l.rn = 1
+WHERE e.entity_deleted_at IS NULL
+  AND e.entity_status = 'candidate'
+  AND (l.evidence_record_count = 0
+       OR l.evidence_last_record_created_at < :twelve_months_ago)
+"""
+
+_Q3_GHOST_OPTIONS = _LATEST_CTE + """
+SELECT f.field_identifier, f.field_name,
+       l.evidence_declared_option_count - l.evidence_used_option_count
+         AS ghost_options
+FROM fields f
+JOIN latest l
+  ON l.evidence_subject_type = 'field'
+ AND l.evidence_subject_identifier = f.field_identifier
+ AND l.rn = 1
+WHERE f.field_deleted_at IS NULL
+  AND l.evidence_declared_option_count IS NOT NULL
+  AND l.evidence_used_option_count < l.evidence_declared_option_count
+ORDER BY ghost_options DESC
+"""
+
+
+def test_wtk088_q2_q3_sql_runs_against_typed_columns(v2_env):
+    # WTK-097 §8 A6: Q2 (dormant entities) and Q3 (ghost options) run
+    # unchanged against the typed columns (Q1 is pinned over REST in
+    # the API suite). Each subject also carries an older superseded
+    # snapshot that would invert the result if the rn=1 latest
+    # discipline were broken.
+    from datetime import UTC, datetime
+
+    from sqlalchemy import text
+
+    def evidence(s, subject_type, subject_identifier, profiled_at, **metrics):
+        ue.create_utilization_evidence(
+            s,
+            subject_type=subject_type,
+            subject_identifier=subject_identifier,
+            profiled_at=profiled_at,
+            source_label="espocrm @ a",
+            **metrics,
+        )
+
+    with session_scope() as s:
+        ghost_town = _make_entity(s, name="Ghost Town")
+        old_timer = _make_entity(s, name="Old Timer")
+        active = _make_entity(s, name="Active")
+        stage = _make_field(s, active, name="Stage")
+        clean = _make_field(s, active, name="Clean")
+
+        # Q2 subjects: empty, recency-dormant, and active; the active
+        # entity's older snapshot was empty (superseded).
+        evidence(s, "entity", ghost_town, "2026-06-11T18:00:00Z", record_count=0)
+        evidence(
+            s,
+            "entity",
+            old_timer,
+            "2026-06-11T18:00:00Z",
+            record_count=50,
+            last_record_created_at="2024-01-01T00:00:00Z",
+        )
+        evidence(s, "entity", active, "2026-06-01T00:00:00Z", record_count=0)
+        evidence(
+            s,
+            "entity",
+            active,
+            "2026-06-11T18:00:00Z",
+            record_count=412,
+            last_record_created_at="2026-06-09T14:22:00Z",
+        )
+
+        # Q3 subjects: ghosts appeared in the latest snapshot only
+        # (older snapshot had every option used), and a clean enum.
+        evidence(
+            s,
+            "field",
+            stage,
+            "2026-06-01T00:00:00Z",
+            declared_option_count=7,
+            used_option_count=7,
+        )
+        evidence(
+            s,
+            "field",
+            stage,
+            "2026-06-11T18:00:00Z",
+            declared_option_count=7,
+            used_option_count=5,
+        )
+        evidence(
+            s,
+            "field",
+            clean,
+            "2026-06-11T18:00:00Z",
+            declared_option_count=4,
+            used_option_count=4,
+        )
+
+        dormant = s.execute(
+            text(_Q2_DORMANT_ENTITIES),
+            {"twelve_months_ago": datetime(2025, 6, 11, tzinfo=UTC)},
+        ).all()
+        assert {row.entity_identifier for row in dormant} == {
+            ghost_town,
+            old_timer,
+        }
+
+        ghosts = s.execute(text(_Q3_GHOST_OPTIONS)).all()
+        assert [(row.field_identifier, row.ghost_options) for row in ghosts] == [
+            (stage, 2)
+        ]
