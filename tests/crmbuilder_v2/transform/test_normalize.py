@@ -27,7 +27,12 @@ from crmbuilder_v2.transform.normalize import DiscoveredItem
 
 
 def test_n1_stage1_tables_cover_all_seven_systems():
-    assert set(normalize.SYSTEM_TYPE_MAPS) == CATALOG_SYSTEMS
+    # The spreadsheet table is the eighth, adapter-only entry (WTK-110
+    # delta D3): CATALOG_SYSTEMS deliberately does not grow — a
+    # spreadsheet is not a catalog-surveyed product.
+    assert set(normalize.SYSTEM_TYPE_MAPS) == CATALOG_SYSTEMS | {
+        normalize.SPREADSHEET_SYSTEM
+    }
 
 
 def test_n1_stage1_totality_per_system():

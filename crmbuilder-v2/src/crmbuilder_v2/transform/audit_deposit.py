@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import posixpath
 import sys
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
@@ -59,7 +60,9 @@ from crmbuilder_v2.transform.normalize import (
 from crmbuilder_v2.transform.normalize import composed_type_map
 
 MANIFEST_VERSION = 1
-SOURCE_SYSTEM = "espocrm"  # the only source adapter today (spec §2.3)
+# Default when the manifest carries no `source_system` key (WTK-110
+# §2.4 delta D1) — every pre-D1 manifest is an EspoCRM serialization.
+SOURCE_SYSTEM = "espocrm"
 
 # Version of the WTK-097 §4 evidence_detail key schema this transform
 # emits; the discriminator consumers branch on when the detail shape
@@ -71,6 +74,8 @@ EVIDENCE_SCHEMA_VERSION = 1
 # projection (normalize.py), pinned behavior-identical to the
 # previously inline map by the N3 composition test. Lossy by design —
 # the wire type always survives in notes and evidence detail.
+# Module-level for the default system only; `plan_deposit` selects
+# `composed_type_map(source_system)` per run (WTK-110 §2.4 delta D1).
 WIRE_TYPE_MAP: dict[str, str] = composed_type_map(SOURCE_SYSTEM)
 _LINK_WIRE_TYPES = frozenset({"link", "linkParent", "linkMultiple", "linkOne"})
 
@@ -119,9 +124,18 @@ def load_profile(path: str | Path | None) -> dict | None:
 
 
 def derive_source_label(manifest: dict) -> str:
-    """``{product} @ {host}`` per §2.3, e.g. ``espocrm @ crm.cbmentors.org``."""
-    host = urllib_parse.urlsplit(manifest.get("source_url") or "").netloc
-    return f"{SOURCE_SYSTEM} @ {host or 'unknown'}"
+    """``{product} @ {host}`` per §2.3, e.g. ``espocrm @ crm.cbmentors.org``.
+
+    A ``file://`` URI has an empty netloc; the label uses the URL
+    path's basename instead (WTK-110 §2.4 delta D2), e.g.
+    ``spreadsheet @ cbm-mentor-tracking.xlsx``.
+    """
+    source_system = manifest.get("source_system") or SOURCE_SYSTEM
+    split = urllib_parse.urlsplit(manifest.get("source_url") or "")
+    host = split.netloc
+    if not host:
+        host = posixpath.basename(urllib_parse.unquote(split.path).rstrip("/"))
+    return f"{source_system} @ {host or 'unknown'}"
 
 
 # ---------------------------------------------------------------------------
@@ -406,6 +420,11 @@ def plan_deposit(
     ``existing`` (spec §3 + §7). Pure and deterministic: write order is
     dependency tiers, alphabetical within a tier."""
     source_label = derive_source_label(manifest)
+    # WTK-110 §2.4 delta D1: optional manifest `source_system` selects
+    # the composed type map per run; absent -> espocrm (every pre-D1
+    # manifest is an EspoCRM serialization).
+    source_system = manifest.get("source_system") or SOURCE_SYSTEM
+    wire_type_map = composed_type_map(source_system)
     snapshot_at = manifest.get("timestamp") or ""
     profiled_at = (profile or {}).get("profiled_at") or snapshot_at
     profiler_version = (profile or {}).get("profiler_version")
@@ -668,7 +687,7 @@ def plan_deposit(
         ):
             continue  # the relationship mapping wins
         name = _field_name(field_result)
-        field_type = WIRE_TYPE_MAP.get(wire_type)
+        field_type = wire_type_map.get(wire_type)
         if field_type is None:
             field_type = _FALLBACK_FIELD_TYPE
             anomalies.append(
@@ -978,7 +997,7 @@ def plan_deposit(
 
     apply_context = {
         # WTK-089 §4.3 required keys (validated by create_deposit_event).
-        "source_system": SOURCE_SYSTEM,
+        "source_system": source_system,
         "source_instance": manifest.get("source_url"),
         "snapshot_at": snapshot_at,
         # WTK-090 §4.3 diagnostic depth.
