@@ -60,6 +60,10 @@ crmbuilder-v2/data/v2.db.pre-v0.5-backup
 # regenerated on every run — never committed.
 crmbuilder-v2/data/logs/
 
+# Client-supplied source store (WTK-111 §3.1/§3.5): held client record
+# data — never under a git-tracked path.
+crmbuilder-v2/data/sources/
+
 # MCP OAuth authorization-server secrets (never commit)
 crmbuilder-v2/data/oauth_jwt_secret
 crmbuilder-v2/data/oauth_secrets.env

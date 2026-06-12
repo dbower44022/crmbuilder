@@ -41,6 +41,22 @@ def verify_log_dir() -> Path:
     return _repo_root() / "crmbuilder-v2" / "data" / "logs" / "verify"
 
 
+def sources_dir() -> Path:
+    """Root of the client-supplied source store (WTK-111 §3.1).
+
+    Repo-rooted like ``api_log_path`` — file storage, not database storage;
+    one durable location regardless of which engagement is active. Layout
+    below it is ``{ENGAGEMENT}/{source-slug}/{snapshot}/``. The root is
+    gitignored: it holds client record data at rest (§3.5 rule 1). Override
+    via ``CRMBUILDER_V2_SOURCES_DIR`` for tests and future production
+    topology.
+    """
+    override = get_settings().sources_dir
+    if override is not None:
+        return override
+    return _repo_root() / "crmbuilder-v2" / "data" / "sources"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="CRMBUILDER_V2_",
@@ -87,6 +103,11 @@ class Settings(BaseSettings):
                 "(e.g. postgresql+psycopg://user:pw@host:5432/dbname)"
             )
         return url
+
+    # WTK-111 §3.1: source-store root override (``CRMBUILDER_V2_SOURCES_DIR``).
+    # Unset (the default) resolves to the repo-rooted ``data/sources/`` via the
+    # module-level ``sources_dir()`` helper.
+    sources_dir: Path | None = None
 
     api_host: str = "127.0.0.1"
     api_port: int = 8765

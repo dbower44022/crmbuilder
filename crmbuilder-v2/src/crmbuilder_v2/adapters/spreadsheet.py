@@ -58,6 +58,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from crmbuilder_v2 import __version__ as _ADAPTER_VERSION
+from crmbuilder_v2.adapters.source_store import SOURCE_MANIFEST_FILENAME
 
 MANIFEST_VERSION = 1
 SOURCE_SYSTEM = "spreadsheet"
@@ -1212,6 +1213,27 @@ def _entity_manifest(
     }
 
 
+def _read_source_manifest(source: Path) -> tuple[dict | None, str | None]:
+    """Load a registered snapshot's ``source-manifest.json`` when the
+    input directory carries one (WTK-111 §4.3). The manifest is just
+    another input file — the adapter stays a pure function of files —
+    and an unreadable one degrades to the unregistered posture with a
+    warning, never a failure."""
+    manifest_path = source / SOURCE_MANIFEST_FILENAME
+    if not manifest_path.is_file():
+        return None, None
+    try:
+        loaded = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        loaded = None
+    if not isinstance(loaded, dict):
+        return None, (
+            f"{SOURCE_MANIFEST_FILENAME} unreadable; treating the input "
+            "as an unregistered directory"
+        )
+    return loaded, None
+
+
 def profile_source(
     path: str | Path,
     options: AdapterOptions | None = None,
@@ -1226,10 +1248,22 @@ def profile_source(
     pair. ``path`` is the source directory of per-sheet CSV files or a
     single CSV file (spec §3.3); unreadable files become manifest
     ``errors`` and the run continues over the remaining sheets.
+
+    A registered store snapshot (the input directory carries a
+    ``source-manifest.json``, WTK-111 §4.3) keeps the
+    ``evidence_source_label`` stable across re-uploads: ``source_url``
+    becomes the *source* directory (the snapshot's parent) so the
+    label's basename never carries the snapshot timestamp,
+    ``source_name`` defaults from the registered name, and each
+    entity's evidence detail is enriched with the sheet's registered
+    ``source_file_sha256`` (§4.2 content identity).
     """
     options = options or AdapterOptions()
     source = Path(path)
+    registered: dict | None = None
+    registration_warning: str | None = None
     if source.is_dir():
+        registered, registration_warning = _read_source_manifest(source)
         csv_paths = sorted(
             p for p in source.iterdir() if p.suffix.lower() == ".csv"
         )
@@ -1242,6 +1276,8 @@ def profile_source(
 
     errors: list[str] = []
     warnings: list[str] = []
+    if registration_warning:
+        warnings.append(registration_warning)
     sheets: list[_Sheet] = []
     for csv_path in csv_paths:
         try:
@@ -1262,6 +1298,19 @@ def profile_source(
     _detect_references(sheets, inferences, options)
     similar = _similar_sheets(sheets)
 
+    # WTK-111 §4.2: a registered snapshot's per-sheet hashes ride into
+    # each entity's evidence detail as the content identity behind the
+    # provenance chain.
+    sheet_hashes: dict[str, str] = {}
+    if registered is not None:
+        for entry in registered.get("sheets", []):
+            if (
+                isinstance(entry, dict)
+                and isinstance(entry.get("file"), str)
+                and isinstance(entry.get("sha256"), str)
+            ):
+                sheet_hashes[entry["file"]] = entry["sha256"]
+
     anomalies: list[dict] = []
     entities: list[dict] = []
     profile_entities: dict[str, dict] = {}
@@ -1277,13 +1326,35 @@ def profile_source(
         profile_entities[sheet.name] = _entity_profile(
             sheet, inferences, structure, options
         )
+        sha256 = sheet_hashes.get(sheet.source_file)
+        if sha256 is not None:
+            profile_entities[sheet.name]["detail"][
+                "source_file_sha256"
+            ] = sha256
+
+    # WTK-111 §4.3 — the source-label stability invariant: a registered
+    # snapshot's ``source_url`` is the source directory (the snapshot's
+    # parent), so every snapshot of one source yields one
+    # ``evidence_source_label``; the snapshot instant travels in the
+    # manifest ``timestamp`` (-> ``apply_context.snapshot_at``).
+    if registered is not None:
+        source_url = source.resolve().parent.as_uri()
+        registered_name = registered.get("source_name")
+        default_name = (
+            registered_name
+            if isinstance(registered_name, str) and registered_name
+            else source.name
+        )
+    else:
+        source_url = source.resolve().as_uri()
+        default_name = source.name
 
     manifest = {
         "manifest_version": MANIFEST_VERSION,
         "source_system": SOURCE_SYSTEM,
         "timestamp": stamp,
-        "source_url": source.resolve().as_uri(),
-        "source_name": source_name or source.name,
+        "source_url": source_url,
+        "source_name": source_name or default_name,
         "errors": errors,
         "warnings": warnings,
         "entities": entities,
