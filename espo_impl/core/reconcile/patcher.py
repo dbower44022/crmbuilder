@@ -152,3 +152,46 @@ def apply_team_change(doc: YamlDocument, locator: TeamLocator, new_value) -> Non
         _set_existing(team, "description", new_value, doc, f"team {locator.team!r}")
     else:
         raise ValueError(f"unsupported team locator part {locator.part!r}")
+
+
+# RelationshipDefinition attribute -> YAML key (the loader's _parse_relationship
+# mapping). Attributes whose name already matches the key are omitted.
+_REL_ATTR_TO_KEY = {
+    "link_type": "linkType",
+    "entity_foreign": "entityForeign",
+    "link_foreign": "linkForeign",
+    "label_foreign": "labelForeign",
+    "relation_name": "relationName",
+    "audited_foreign": "auditedForeign",
+}
+
+
+def _find_relationship(doc: YamlDocument, entity: str, link: str):
+    rels = doc.data.get("relationships")
+    if not rels:
+        raise KeyError("no top-level 'relationships:' block")
+    for item in rels:
+        if item.get("entity") == entity and item.get("link") == link:
+            return item
+    raise KeyError(f"relationship with link {link!r} on entity {entity!r} not found")
+
+
+def apply_relationship_change(
+    doc: YamlDocument, locator, prop: str, new_value
+) -> None:
+    """Write an accepted relationship-property drift back into the YAML.
+
+    The relationship is matched in the top-level ``relationships:`` list by its
+    primary ``entity`` + ``link`` (the diff identity), then the changed property
+    is set surgically. ``prop`` is the RelationshipDefinition attribute name (e.g.
+    ``entity_foreign``); it is mapped to the YAML key (``entityForeign``).
+    Booleans (``audited``/``auditedForeign``) keep their yes/no vs true/false
+    spelling via set_scalar. Only existing keys are changed (changed-in-both);
+    a property the YAML omits raises (insert-key deferred).
+    """
+    rel = _find_relationship(doc, locator.entity, locator.rel_name)
+    key = _REL_ATTR_TO_KEY.get(prop, prop)
+    _set_existing(
+        rel, key, new_value, doc,
+        f"relationship {locator.rel_name!r} on {locator.entity!r}",
+    )
