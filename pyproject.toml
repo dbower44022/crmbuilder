@@ -47,6 +47,7 @@ crmbuilder-v2-runtime-pool = "crmbuilder_v2.runtime.parallel_runtime:main"
 crmbuilder-v2-ado = "crmbuilder_v2.runtime.ado_runtime:main"
 crmbuilder-v2-ado-pm = "crmbuilder_v2.runtime.ado_runtime:project_main"
 crmbuilder-v2-deposit-audit = "crmbuilder_v2.transform.audit_deposit:main"
+crmbuilder-v2-render-baseline = "crmbuilder_v2.render.baseline_report:main"
 crmbuilder-v2-spreadsheet-profile = "crmbuilder_v2.adapters.spreadsheet:main"
 crmbuilder-v2-register-source = "crmbuilder_v2.adapters.source_store:main"
 

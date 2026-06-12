@@ -44,6 +44,7 @@ import posixpath
 import sys
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
@@ -1474,12 +1475,48 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="print the plan (creates, matches, evidence count) and exit",
     )
+    parser.add_argument(
+        "--no-render-report",
+        dest="render_report",
+        action="store_false",
+        help=(
+            "skip the Baseline Report render step (rendering is default-on "
+            "per WTK-116 §6.3; the deposit itself is unaffected either way)"
+        ),
+    )
+    parser.add_argument(
+        "--report-output",
+        default=None,
+        help=(
+            "Baseline Report output path (default: baseline-report.md "
+            "beside the manifest)"
+        ),
+    )
     args = parser.parse_args(argv)
+
+    # Imported here, not at module level — the renderer imports this
+    # module's manifest helpers (WTK-116 §9 reuses, not duplicates).
+    from crmbuilder_v2.render import baseline_report
 
     manifest = load_manifest(args.manifest)
     profile = load_profile(args.profile)
     client = RestDepositClient(args.base_url, engagement=args.engagement)
     plan = plan_deposit(manifest, profile, fetch_existing_state(client))
+    # Additive apply_context diagnostics (WTK-089 §4.3 free growth):
+    # where the manifest pair lives (WTK-116 §2.2 — the standalone
+    # re-render's discovery route) and, when rendering, where the
+    # report will land (§6.3). The event is POSTed before rendering
+    # begins, so the report path is the *planned* home — a later render
+    # failure never taints the deposit.
+    manifest_path = Path(args.manifest).resolve()
+    plan.apply_context["audit_manifest_path"] = str(manifest_path)
+    report_path = (
+        Path(args.report_output)
+        if args.report_output
+        else manifest_path.parent / baseline_report.REPORT_FILENAME
+    )
+    if args.render_report:
+        plan.apply_context["baseline_report_path"] = str(report_path)
     _print_plan(plan)
     if args.dry_run:
         return 0
@@ -1516,6 +1553,33 @@ def main(argv: list[str] | None = None) -> int:
             "current working directory; deposit log not written (run from "
             "the repo root to capture it)."
         )
+
+    if args.render_report:
+        # Render failure never taints a successful deposit (WTK-116
+        # §6.3): the event is already posted; report the failure loudly
+        # with its own exit status and leave the standalone re-render
+        # (crmbuilder-v2-render-baseline) as the repair path.
+        try:
+            render_client = baseline_report.RestRenderClient(
+                args.base_url, engagement=args.engagement
+            )
+            written = baseline_report.render_baseline_report(
+                render_client,
+                plan.source_label,
+                output_path=report_path,
+                rendered_at=datetime.now(UTC).isoformat(),
+                manifest=manifest,
+                profile=profile,
+                manifest_path=str(manifest_path),
+                profile_path=args.profile,
+            )
+            print(f"Baseline report written: {written}")
+        except Exception as exc:  # noqa: BLE001 — the deposit stands; the render fails on its own exit status
+            print(
+                "ERROR: Baseline Report render failed (deposit "
+                f"{summary['deposit_event_identifier']} stands): {exc}"
+            )
+            return 1
     return 0
 
 
