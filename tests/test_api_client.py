@@ -359,3 +359,131 @@ def test_basic_auth_session_headers():
     assert client.session.headers["Authorization"] == f"Basic {expected}"
     assert client.session.headers["Espo-Authorization"] == expected
     assert "X-Api-Key" not in client.session.headers
+
+
+# ---------------------------------------------------------------------------
+# list_records / count_records (WTK-096 §4.1)
+# ---------------------------------------------------------------------------
+
+from urllib.parse import parse_qsl, urlparse  # noqa: E402
+
+
+def _query(url: str) -> list[tuple[str, str]]:
+    return parse_qsl(urlparse(url).query)
+
+
+def test_list_records_builds_get_url_with_all_params():
+    client = make_client()
+    client.session.request = MagicMock(
+        return_value=mock_response(json_return={"total": 0, "list": []})
+    )
+
+    status, body = client.list_records(
+        "CEngagement",
+        select=["id", "createdAt", "stage"],
+        where=[{"type": "isNotNull", "attribute": "stage"}],
+        order_by="createdAt",
+        order="desc",
+        offset=200,
+        max_size=200,
+    )
+
+    method, url = client.session.request.call_args[0][:2]
+    assert method == "GET"
+    assert url.startswith("https://test.espocloud.com/api/v1/CEngagement?")
+    params = dict(_query(url))
+    assert params["maxSize"] == "200"
+    assert params["offset"] == "200"
+    assert params["select"] == "id,createdAt,stage"
+    assert params["orderBy"] == "createdAt"
+    assert params["order"] == "desc"
+    assert params["where[0][type]"] == "isNotNull"
+    assert params["where[0][attribute]"] == "stage"
+    assert status == 200
+    assert body == {"total": 0, "list": []}
+
+
+def test_list_records_encodes_array_where_values():
+    client = make_client()
+    client.session.request = MagicMock(
+        return_value=mock_response(json_return={"total": 0, "list": []})
+    )
+
+    client.list_records(
+        "CEngagement",
+        where=[{"type": "arrayAnyOf", "attribute": "tags", "value": ["x", "y"]}],
+    )
+
+    url = client.session.request.call_args[0][1]
+    params = _query(url)
+    assert ("where[0][value][]", "x") in params
+    assert ("where[0][value][]", "y") in params
+
+
+def test_count_records_uses_max_size_zero():
+    client = make_client()
+    client.session.request = MagicMock(
+        return_value=mock_response(json_return={"total": 412, "list": []})
+    )
+
+    status, total = client.count_records("CEngagement")
+
+    method, url = client.session.request.call_args[0][:2]
+    assert method == "GET"
+    assert dict(_query(url))["maxSize"] == "0"
+    assert (status, total) == (200, 412)
+    assert client._count_max_size_zero_ok is True
+
+
+def test_count_records_falls_back_when_max_size_zero_rejected():
+    client = make_client()
+    client.session.request = MagicMock(side_effect=[
+        mock_response(status_code=400, json_return={"message": "bad maxSize"}),
+        mock_response(json_return={"total": 3, "list": [{"id": "a"}]}),
+        mock_response(json_return={"total": 7, "list": [{"id": "b"}]}),
+    ])
+
+    status, total = client.count_records("CEngagement")
+    assert (status, total) == (200, 3)
+    assert client._count_max_size_zero_ok is False
+
+    # The fallback is remembered: the next count goes straight to
+    # maxSize=1&select=id with a single request.
+    status, total = client.count_records("CEngagement")
+    assert (status, total) == (200, 7)
+    third_url = client.session.request.call_args[0][1]
+    params = dict(_query(third_url))
+    assert params["maxSize"] == "1"
+    assert params["select"] == "id"
+    assert client.session.request.call_count == 3
+
+
+def test_count_records_400_from_where_not_misdetected():
+    client = make_client()
+    # maxSize=0 works; a later bad where-type 400s on both shapes —
+    # the 400 is reported and maxSize=0 stays detected as supported.
+    client.session.request = MagicMock(side_effect=[
+        mock_response(status_code=400, json_return={"message": "bad where"}),
+        mock_response(status_code=400, json_return={"message": "bad where"}),
+        mock_response(json_return={"total": 5, "list": []}),
+    ])
+
+    status, total = client.count_records(
+        "CEngagement", where=[{"type": "bogus", "attribute": "f"}]
+    )
+    assert (status, total) == (400, None)
+    assert client._count_max_size_zero_ok is True
+
+    status, total = client.count_records("CEngagement")
+    assert (status, total) == (200, 5)
+
+
+def test_last_response_headers_captured():
+    client = make_client()
+    resp = mock_response(status_code=429, json_return={"message": "slow down"})
+    resp.headers = {"Retry-After": "3"}
+    client.session.request = MagicMock(return_value=resp)
+
+    client.list_records("CEngagement")
+
+    assert client.last_response_headers.get("Retry-After") == "3"
