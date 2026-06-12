@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.models import ChangeLog
 from crmbuilder_v2.access.vocab import (
     CHANGE_LOG_ACTORS,
+    CHANGE_LOG_ENTITY_TYPES,
     CHANGE_LOG_OPERATIONS,
-    ENTITY_TYPES,
 )
 
 _actor: ContextVar[str] = ContextVar(
@@ -71,7 +71,11 @@ def emit(
     before: dict | None,
     after: dict | None,
 ) -> ChangeLog:
-    if entity_type not in ENTITY_TYPES | {"reference"}:
+    # CHANGE_LOG_ENTITY_TYPES = ENTITY_TYPES + the log-only types
+    # (`reference`, `utilization_evidence`) — the same derived set the
+    # `ck_changelog_entity_type` CHECK is rebuilt from, so this guard
+    # cannot drift from the schema (WTK-091).
+    if entity_type not in CHANGE_LOG_ENTITY_TYPES:
         raise ValueError(f"unknown entity_type {entity_type!r}")
     if operation not in CHANGE_LOG_OPERATIONS:
         raise ValueError(f"unknown operation {operation!r}")

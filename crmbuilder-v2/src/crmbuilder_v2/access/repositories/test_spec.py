@@ -74,6 +74,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import TestSpec
+from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUS_TRANSITIONS,
@@ -546,6 +547,7 @@ def update_test_spec(
     last_run_at: datetime | None = None,
     last_run_notes: str | None = None,
     last_run_at_supplied: bool = False,
+    rejected_by_decision: str | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -591,6 +593,22 @@ def update_test_spec(
         _reject_duplicate_name(session, name, exclude_identifier=identifier)
     if status != row.test_spec_status:
         _check_transition(row.test_spec_status, status)
+        if status == "rejected":
+            _rejection.enforce_rejected_status(
+                session,
+                source_type=_ENTITY_TYPE,
+                source_identifier=identifier,
+                decision_identifier=rejected_by_decision,
+            )
+            rejected_by_decision = None
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=status,
+        )
 
     row.test_spec_name = name
     row.test_spec_description = description
@@ -638,7 +656,12 @@ def patch_test_spec(
     ``last_run_at`` field via the conventional pattern ``"last_run_at"
     in fields`` — a PATCH that explicitly clears ``last_run_at`` to
     null while leaving outcome as a run state raises 422.
+
+    A move to ``rejected`` requires either the ``rejected_by_decision``
+    key (atomic edge + flip, PI-153 §3.4) or a pre-existing
+    ``rejected_by_decision`` edge.
     """
+    rejected_by_decision = fields.pop("rejected_by_decision", None)
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
         raise UnprocessableError(
@@ -682,7 +705,23 @@ def patch_test_spec(
         status_after = _require_status(fields["status"])
         if status_after != row.test_spec_status:
             _check_transition(row.test_spec_status, status_after)
+            if status_after == "rejected":
+                _rejection.enforce_rejected_status(
+                    session,
+                    source_type=_ENTITY_TYPE,
+                    source_identifier=identifier,
+                    decision_identifier=rejected_by_decision,
+                )
+                rejected_by_decision = None
         row.test_spec_status = status_after
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.test_spec_status,
+        )
 
     # Apply last_run_notes verbatim if supplied. The invariant helper
     # may clear it on transition to not_run; that runs after.

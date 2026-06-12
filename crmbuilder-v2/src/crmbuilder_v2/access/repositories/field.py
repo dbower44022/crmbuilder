@@ -68,6 +68,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import Entity, Field, Reference
+from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     FIELD_STATUS_TRANSITIONS,
     FIELD_STATUSES,
@@ -509,6 +510,7 @@ def update_field(
     required: bool,
     notes: str | None = None,
     status: str,
+    rejected_by_decision: str | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -539,7 +541,23 @@ def update_field(
     status_v = _require_status(status)
     if status_v != row.field_status:
         _check_transition(row.field_status, status_v)
+        if status_v == "rejected":
+            _rejection.enforce_rejected_status(
+                session,
+                source_type=_ENTITY_TYPE,
+                source_identifier=identifier,
+                decision_identifier=rejected_by_decision,
+            )
+            rejected_by_decision = None
         row.field_status = status_v
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.field_status,
+        )
 
     if name.lower() != row.field_name.lower():
         parent = _resolve_parent_entity_identifier(session, identifier)
@@ -571,9 +589,13 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
     """Partial update (PATCH). Only the supplied fields are touched.
 
     Recognised keys: ``name``, ``description``, ``type``, ``required``,
-    ``notes``, ``status``. A ``status`` change is transition-validated.
-    Parent-entity reparenting is not allowed via PATCH (spec §3.5.4).
+    ``notes``, ``status``, ``rejected_by_decision``. A ``status`` change
+    is transition-validated; a move to ``rejected`` requires either the
+    ``rejected_by_decision`` key (atomic edge + flip, PI-153 §3.4) or a
+    pre-existing ``rejected_by_decision`` edge. Parent-entity
+    reparenting is not allowed via PATCH (spec §3.5.4).
     """
+    rejected_by_decision = fields.pop("rejected_by_decision", None)
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
         raise UnprocessableError(
@@ -611,7 +633,23 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
         status_v = _require_status(fields["status"])
         if status_v != row.field_status:
             _check_transition(row.field_status, status_v)
+            if status_v == "rejected":
+                _rejection.enforce_rejected_status(
+                    session,
+                    source_type=_ENTITY_TYPE,
+                    source_identifier=identifier,
+                    decision_identifier=rejected_by_decision,
+                )
+                rejected_by_decision = None
             row.field_status = status_v
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.field_status,
+        )
 
     session.flush()
     after = to_dict(row)

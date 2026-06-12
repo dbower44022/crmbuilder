@@ -60,6 +60,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import ManualConfig
+from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     MANUAL_CONFIG_CATEGORIES,
     MANUAL_CONFIG_STATUS_TRANSITIONS,
@@ -496,6 +497,7 @@ def update_manual_config(
     status: str | None = None,
     completed_at: datetime | None = None,
     completed_by: str | None = None,
+    rejected_by_decision: str | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -541,6 +543,22 @@ def update_manual_config(
         _reject_duplicate_name(session, name, exclude_identifier=identifier)
     if status != row.manual_config_status:
         _check_transition(row.manual_config_status, status)
+        if status == "rejected":
+            _rejection.enforce_rejected_status(
+                session,
+                source_type=_ENTITY_TYPE,
+                source_identifier=identifier,
+                decision_identifier=rejected_by_decision,
+            )
+            rejected_by_decision = None
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=status,
+        )
 
     # §3.5.3 cross-field invariant against the post-write status.
     resolved_completed_at, resolved_completed_by = (
@@ -586,7 +604,12 @@ def patch_manual_config(
     only ``status: completed`` on a record whose completion fields are
     null fails with the dedicated 422 body identifying the missing
     field(s).
+
+    A move to ``rejected`` requires either the ``rejected_by_decision``
+    key (atomic edge + flip, PI-153 §3.4) or a pre-existing
+    ``rejected_by_decision`` edge.
     """
+    rejected_by_decision = fields.pop("rejected_by_decision", None)
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
         raise UnprocessableError(
@@ -633,6 +656,22 @@ def patch_manual_config(
         status_after = _require_status(fields["status"])
         if status_after != row.manual_config_status:
             _check_transition(row.manual_config_status, status_after)
+            if status_after == "rejected":
+                _rejection.enforce_rejected_status(
+                    session,
+                    source_type=_ENTITY_TYPE,
+                    source_identifier=identifier,
+                    decision_identifier=rejected_by_decision,
+                )
+                rejected_by_decision = None
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=status_after,
+        )
 
     completed_at_after = fields.get(
         "completed_at", row.manual_config_completed_at

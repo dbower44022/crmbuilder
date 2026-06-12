@@ -11,6 +11,18 @@ payload to ``applied`` (the first-success-transitions semantics of DEC-158).
 If the target close_out_payload identifier does not yet exist, the access
 layer lazy-creates a minimal ``ready`` payload row so the apply path is
 forward-compatible with both routine applies and backfill (PRD section 3.5).
+
+**Kind-conditional rules (WTK-089 design spec §4.2–4.3, D3).** The
+``deposit_event_kind`` discriminator partitions the shape:
+
+* ``close_out_apply`` (default) — everything above, unchanged.
+* ``audit_deposit`` — the Phase 1.5 audit deposit. The
+  ``deposit_event_applies_close_out_payload`` parent edge is **forbidden**
+  (no lazy payload is ever created), and ``apply_context`` must carry
+  ``source_system``, ``source_instance``, and an ISO 8601 ``snapshot_at``
+  (the source-identity + as-of-when half of the PRD's provenance rule).
+  ``wrote_record`` edges, the records_summary cross-check, ``error_info``
+  conditionals, and ``log_file_path`` behave identically across kinds.
 """
 
 from __future__ import annotations
@@ -36,7 +48,7 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.models import CloseOutPayload, DepositEvent
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.repositories import references as references_repo
-from crmbuilder_v2.access.vocab import DEPOSIT_EVENT_OUTCOMES
+from crmbuilder_v2.access.vocab import DEPOSIT_EVENT_KINDS, DEPOSIT_EVENT_OUTCOMES
 
 _ENTITY_TYPE = "deposit_event"
 _IDENTIFIER_PREFIX = "DEP"
@@ -63,13 +75,15 @@ def _increment_identifier(identifier: str) -> str:
 
 
 def list_deposit_events(
-    session: Session, *, outcome: str | None = None
+    session: Session, *, outcome: str | None = None, kind: str | None = None
 ) -> list[dict]:
     stmt = select(DepositEvent).order_by(
         DepositEvent.deposit_event_identifier.desc()
     )
     if outcome is not None:
         stmt = stmt.where(DepositEvent.deposit_event_outcome == outcome)
+    if kind is not None:
+        stmt = stmt.where(DepositEvent.deposit_event_kind == kind)
     return [to_dict(r) for r in session.scalars(stmt).all()]
 
 
@@ -144,6 +158,32 @@ def _lazy_get_or_create_payload(
     return row
 
 
+def _require_audit_apply_context(apply_context: dict) -> None:
+    """Validate the ``audit_deposit`` apply_context shape (WTK-089 §4.3).
+
+    Required keys: ``source_system`` and ``source_instance`` (non-empty
+    strings) and ``snapshot_at`` (ISO 8601). Everything beyond them is
+    diagnostic depth the JSON column absorbs without validation.
+    """
+    for key in ("source_system", "source_instance"):
+        value = apply_context.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "deposit_event_apply_context",
+                        "audit_deposit_apply_context_incomplete",
+                        f"apply_context.{key} must be a non-empty string "
+                        "when kind is audit_deposit",
+                    )
+                ]
+            )
+    gov.coerce_datetime(
+        apply_context.get("snapshot_at"),
+        field="deposit_event_apply_context.snapshot_at",
+    )
+
+
 def create_deposit_event(
     session: Session,
     *,
@@ -153,6 +193,7 @@ def create_deposit_event(
     records_summary: dict,
     apply_context: dict,
     log_file_path: str,
+    kind: str = "close_out_apply",
     error_info: dict | None = None,
     references: list[dict] | None = None,
     identifier: str | None = None,
@@ -160,6 +201,7 @@ def create_deposit_event(
     created_at: datetime | None = None,
 ) -> dict:
     title = gov.require_nonempty(title, field="deposit_event_title")
+    kind = gov.require_in(kind, DEPOSIT_EVENT_KINDS, field="deposit_event_kind")
     description = gov.require_nonempty(description, field="deposit_event_description")
     outcome = _require_outcome(outcome)
     log_file_path = gov.require_repo_relative_path(
@@ -209,26 +251,42 @@ def create_deposit_event(
         )
 
     parents, wrote = _split_references(references)
-    if len(parents) == 0:
-        raise UnprocessableError(
-            [
-                FieldError(
-                    "references",
-                    "deposit_event_requires_applies_close_out_payload_edge",
-                    "exactly one deposit_event_applies_close_out_payload edge is required",
-                )
-            ]
-        )
-    if len(parents) > 1:
-        raise UnprocessableError(
-            [
-                FieldError(
-                    "references",
-                    "deposit_event_single_parent_violation",
-                    "a deposit_event applies exactly one close_out_payload",
-                )
-            ]
-        )
+    if kind == "audit_deposit":
+        # WTK-089 §4.2: an audit deposit has no close-out payload — the
+        # parent edge is forbidden and no lazy payload is ever created.
+        if parents:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "references",
+                        "deposit_event_audit_kind_forbids_close_out_payload_edge",
+                        "an audit_deposit deposit_event admits no "
+                        "deposit_event_applies_close_out_payload edge",
+                    )
+                ]
+            )
+        _require_audit_apply_context(apply_context)
+    else:
+        if len(parents) == 0:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "references",
+                        "deposit_event_requires_applies_close_out_payload_edge",
+                        "exactly one deposit_event_applies_close_out_payload edge is required",
+                    )
+                ]
+            )
+        if len(parents) > 1:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "references",
+                        "deposit_event_single_parent_violation",
+                        "a deposit_event applies exactly one close_out_payload",
+                    )
+                ]
+            )
 
     # records_summary sum must equal the count of wrote_record edges.
     summary_sum = sum(int(v) for v in records_summary.values())
@@ -244,23 +302,26 @@ def create_deposit_event(
             ]
         )
 
-    cop_identifier = parents[0]["target_id"]
-    payload = _lazy_get_or_create_payload(
-        session, cop_identifier, target_file_path=target_file_path
-    )
-    if outcome == "success" and payload.close_out_payload_status not in (
-        "ready",
-        "applied",
-    ):
-        raise UnprocessableError(
-            [
-                FieldError(
-                    "references",
-                    "deposit_event_target_close_out_payload_not_ready_or_applied",
-                    "a successful apply targets a ready or applied close_out_payload",
-                )
-            ]
+    cop_identifier: str | None = None
+    payload: CloseOutPayload | None = None
+    if kind == "close_out_apply":
+        cop_identifier = parents[0]["target_id"]
+        payload = _lazy_get_or_create_payload(
+            session, cop_identifier, target_file_path=target_file_path
         )
+        if outcome == "success" and payload.close_out_payload_status not in (
+            "ready",
+            "applied",
+        ):
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "references",
+                        "deposit_event_target_close_out_payload_not_ready_or_applied",
+                        "a successful apply targets a ready or applied close_out_payload",
+                    )
+                ]
+            )
 
     # Create the deposit_event row (collision-safe identifier auto-assign).
     if identifier is None:
@@ -282,6 +343,7 @@ def create_deposit_event(
             deposit_event_identifier=candidate,
             deposit_event_title=title,
             deposit_event_description=description,
+            deposit_event_kind=kind,
             deposit_event_outcome=outcome,
             deposit_event_records_summary=records_summary,
             deposit_event_error_info=error_info,
@@ -312,15 +374,17 @@ def create_deposit_event(
 
     dep_identifier = row.deposit_event_identifier
 
-    # Outbound edges: parent + wrote_record back-references.
-    references_repo.upsert(
-        session,
-        source_type=_ENTITY_TYPE,
-        source_id=dep_identifier,
-        target_type="close_out_payload",
-        target_id=cop_identifier,
-        relationship=_APPLY_KIND,
-    )
+    # Outbound edges: parent (close_out_apply only) + wrote_record
+    # back-references.
+    if cop_identifier is not None:
+        references_repo.upsert(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_id=dep_identifier,
+            target_type="close_out_payload",
+            target_id=cop_identifier,
+            relationship=_APPLY_KIND,
+        )
     for spec in wrote:
         references_repo.upsert(
             session,
@@ -332,7 +396,11 @@ def create_deposit_event(
         )
 
     # First-success-transition: drive ready -> applied on the first success.
-    if outcome == "success" and payload.close_out_payload_status == "ready":
+    if (
+        payload is not None
+        and outcome == "success"
+        and payload.close_out_payload_status == "ready"
+    ):
         payload.close_out_payload_status = "applied"
         payload.close_out_payload_applied_at = (
             row.deposit_event_created_at or datetime.now(UTC)

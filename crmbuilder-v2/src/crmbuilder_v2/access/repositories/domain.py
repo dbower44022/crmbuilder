@@ -43,6 +43,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import Domain
+from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     DOMAIN_STATUS_TRANSITIONS,
     DOMAIN_STATUSES,
@@ -330,6 +331,7 @@ def update_domain(
     description: str | None = None,
     notes: str | None = None,
     status: str | None = None,
+    rejected_by_decision: str | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -338,7 +340,9 @@ def update_domain(
     :class:`UnprocessableError`. ``name`` / ``purpose`` / ``description``
     are required (a full replace cannot blank them); ``notes`` is
     replaced wholesale (``None`` clears it). A ``status`` change is
-    transition-validated.
+    transition-validated. A move to ``rejected`` requires either the
+    ``rejected_by_decision`` key (atomic edge + flip, PI-153 §3.4) or a
+    pre-existing ``rejected_by_decision`` edge.
     """
     row = _get_row(session, identifier)
     if domain_identifier is not None and domain_identifier != identifier:
@@ -361,7 +365,23 @@ def update_domain(
     if status is not None and status != row.domain_status:
         _require_status(status)
         _check_transition(row.domain_status, status)
+        if status == "rejected":
+            _rejection.enforce_rejected_status(
+                session,
+                source_type=_ENTITY_TYPE,
+                source_identifier=identifier,
+                decision_identifier=rejected_by_decision,
+            )
+            rejected_by_decision = None
         row.domain_status = status
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.domain_status,
+        )
 
     row.domain_name = name
     row.domain_purpose = purpose
@@ -385,8 +405,12 @@ def patch_domain(session: Session, identifier: str, **fields) -> dict:
     """Partial update (PATCH). Only the supplied fields are touched.
 
     Recognised keys: ``name``, ``purpose``, ``description``, ``notes``,
-    ``status``. A ``status`` change is transition-validated.
+    ``status``, ``rejected_by_decision``. A ``status`` change is
+    transition-validated; a move to ``rejected`` requires either the
+    ``rejected_by_decision`` key (atomic edge + flip, PI-153 §3.4) or a
+    pre-existing ``rejected_by_decision`` edge.
     """
+    rejected_by_decision = fields.pop("rejected_by_decision", None)
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
         raise UnprocessableError(
@@ -422,7 +446,23 @@ def patch_domain(session: Session, identifier: str, **fields) -> dict:
         status = _require_status(fields["status"])
         if status != row.domain_status:
             _check_transition(row.domain_status, status)
+            if status == "rejected":
+                _rejection.enforce_rejected_status(
+                    session,
+                    source_type=_ENTITY_TYPE,
+                    source_identifier=identifier,
+                    decision_identifier=rejected_by_decision,
+                )
+                rejected_by_decision = None
             row.domain_status = status
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.domain_status,
+        )
 
     session.flush()
     after = to_dict(row)
