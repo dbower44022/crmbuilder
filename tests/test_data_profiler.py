@@ -739,3 +739,326 @@ def test_work_list_skips_unprofiled_relationship_side():
     (item,) = build_work_list(report)
     assert [t.api_name for t in item.targets] == ["account"]
     assert item.targets[0].field_type == "link"
+
+
+# ---------------------------------------------------------------------------
+# WTK-100 — verification pass against the WTK-096 spec. The tests below
+# pin spec claims the WTK-098 suite left unasserted: exact REST request
+# shapes (§4.1/§4.4), the sample-is-a-floor rule (§4.5), the §7.1 backoff
+# schedule and throttle pacing, mid-scan page failure, the option-count
+# fallback, the 404 drift tier (§2.3), the empty-entity request budget,
+# the optionless-enum edge, second-exact threshold boundaries (§5), and
+# the P10 contract round-trip through the WTK-090 transform.
+# ---------------------------------------------------------------------------
+
+
+def test_recency_query_request_shape():
+    """§4.1 — recency queries are maxSize=1, id+createdAt, newest-first."""
+    client = FakeEspoClient({"CThing": [_rec(0, notes="v")]})
+    _run(_report([_entity("CThing", [_field("notes", "varchar")])]), client)
+    recency = [
+        kwargs for name, _, kwargs in client.calls
+        if name == "list_records" and kwargs["max_size"] == 1
+    ]
+    # One entity-level recency (no where) + one field-level (populated-where).
+    assert len(recency) == 2
+    for kwargs in recency:
+        assert kwargs["select"] == ["id", "createdAt"]
+        assert kwargs["order_by"] == "createdAt"
+        assert kwargs["order"] == "desc"
+    assert recency[0]["where"] is None
+    assert recency[1]["where"] == [{"type": "isNotNull", "attribute": "notes"}]
+
+
+def test_scan_select_list_discipline():
+    """§4.4 — only profiled-field attributes are requested; linkMultiple
+    and bool never enter the scan select; composites expand."""
+    record = _rec(0, notes="v", mentorId="m1", firstName="Ada",
+                  homeCity="Akron", tags=["x"], active=True)
+    client = FakeEspoClient({"CThing": [record]})
+    fields = [
+        _field("notes", "varchar"),
+        _field("mentor", "link"),
+        _field("name", "personName"),
+        _field("home", "address"),
+        _field("active", "bool"),
+        _field("members", "linkMultiple"),
+        _field("tags", "multiEnum", options=["x"]),
+    ]
+    _run(_report([_entity("CThing", fields)]), client)
+    (scan,) = [
+        kwargs for name, _, kwargs in client.calls
+        if name == "list_records" and kwargs["max_size"] > 1
+    ]
+    select = scan["select"]
+    assert select[:2] == ["id", "createdAt"]
+    assert {"notes", "mentorId", "tags"} <= set(select)
+    assert {"firstName", "lastName", "middleName"} <= set(select)
+    assert {"homeStreet", "homeCity", "homeState", "homeCountry",
+            "homePostalCode"} <= set(select)
+    assert "active" not in select
+    assert "members" not in select
+    assert "membersIds" not in select
+    assert scan["order_by"] == "createdAt"
+    assert scan["order"] == "desc"
+
+
+def test_scan_skipped_when_only_unscannable_targets():
+    """§4.4 skip rule — bool/linkMultiple-only entities scan nothing."""
+    client = FakeEspoClient({"CThing": [_rec(0, active=True, membersIds=["a"])]})
+    fields = [_field("active", "bool"), _field("members", "linkMultiple")]
+    _run(_report([_entity("CThing", fields)]), client)
+    page_scans = [
+        kwargs for name, _, kwargs in client.calls
+        if name == "list_records" and kwargs["max_size"] > 1
+    ]
+    assert page_scans == []
+
+
+def test_sampled_scan_does_not_refine_exact_count_mode_metrics():
+    """§4.5 — a sample is a floor: only a complete scan may override the
+    exact count-mode numbers with strict-predicate refinements."""
+    # 20 records; the newest 10 include 4 empty strings. Count mode sees
+    # 16 non-NULL; a complete scan would trim toward the strict count —
+    # but under sampling the exact count-mode number must stand.
+    records = []
+    for i in range(20):
+        notes = "" if i < 4 else (None if i >= 16 else f"v{i}")
+        records.append(_rec(i, created=_ts(NOW - timedelta(days=i)), notes=notes))
+    client = FakeEspoClient({"CBig": records})
+    profile = _run(_report([_entity("CBig", [_field("notes", "varchar")])]),
+                   client, options=ProfileOptions(scan_cap=10, page_size=10))
+    ent = profile.data["entities"]["CBig"]
+    assert ent["detail"]["sampled"] is True
+    notes = ent["fields"]["notes"]
+    assert notes["populated_count"] == 16
+    assert notes["population_rate"] == 0.8
+    assert "empty_string_count" not in notes.get("detail", {})
+
+
+def test_backoff_schedule_and_attempt_count(monkeypatch):
+    """§7.1 — 5 attempts total with 1/2/4/8 s gaps, then the entity tier."""
+    sleeps = _no_sleep(monkeypatch)
+    client = FakeEspoClient({})
+    client.count_hook = lambda entity, where: (503, None)
+    profile = _run(_report([_entity("COnly", [])]), client)
+    assert len(client.calls) == 5
+    assert sleeps == [1.0, 2.0, 4.0, 8.0]
+    # One exhaustion is below the 3-consecutive run tier: the profile is
+    # still written, with the entity carried as an anomaly only.
+    assert profile.aborted is False
+    assert profile.data["entities"] == {}
+    (anomaly,) = profile.data["anomalies"]
+    assert anomaly["scope"] == "entity"
+    assert "retries exhausted" in anomaly["note"]
+
+
+def test_scan_page_failure_mid_scan_truncates_scan_only():
+    """§7.3 metric tier — a failed scan page degrades scan-derived
+    metrics to the scanned prefix; count-mode metrics stay exact."""
+    records = [_rec(i, created=_ts(NOW - timedelta(minutes=i)), notes=f"v{i}")
+               for i in range(450)]
+    client = FakeEspoClient({"CBig": records})
+    real_list = client.list_records
+
+    def fail_after_first_page(entity, **kwargs):
+        if kwargs.get("max_size", 200) > 1 and kwargs.get("offset", 0) > 0:
+            return 500, None
+        return real_list(entity, **kwargs)
+
+    client.list_records = fail_after_first_page
+    profile = _run(_report([_entity("CBig", [_field("notes", "varchar")])]), client)
+    ent = profile.data["entities"]["CBig"]
+    assert ent["detail"]["sampled"] is True
+    assert ent["detail"]["scan_count"] == 200
+    notes = ent["fields"]["notes"]
+    assert notes["populated_count"] == 450  # count mode unaffected
+    assert notes["distinct_value_count"] == 200  # scanned prefix only
+    (anomaly,) = profile.data["anomalies"]
+    assert anomaly["scope"] == "metric"
+    assert anomaly["metric"] == "scan"
+    assert "offset 200" in anomaly["note"]
+
+
+def test_option_count_400_downgrades_distribution_to_scan():
+    """§4.2 fallback — a 400 on an option count makes the distribution
+    scan-derived; sibling metrics stay count-derived."""
+    records = [_rec(i, stage="A" if i < 3 else None) for i in range(5)]
+    client = FakeEspoClient({"CThing": records})
+
+    def reject_equals(entity, where):
+        if where and where[0].get("type") == "equals":
+            return 400, None
+        return None
+
+    client.count_hook = reject_equals
+    profile = _run(
+        _report([_entity("CThing", [_field("stage", "enum", options=["A", "B"])])]),
+        client,
+    )
+    stage = profile.data["entities"]["CThing"]["fields"]["stage"]
+    assert stage["populated_count"] == 3  # count-derived, unaffected
+    assert stage["detail"]["value_distribution"] == {"A": 3, "B": 0}
+    assert stage["used_option_count"] == 1
+    assert stage["detail"]["ghost_options"] == 1
+    anomalies = [a for a in profile.data["anomalies"]
+                 if a.get("metric") == "value_distribution"]
+    assert len(anomalies) == 1
+    assert anomalies[0]["status"] == 400
+
+
+def test_404_entities_do_not_count_toward_run_abort():
+    """§2.3/§7.3 — manifest entities gone from the source (drift) are
+    entity-tier anomalies; they never trip the consecutive-outage abort."""
+    client = FakeEspoClient({"CAlive": [_rec(0)]})
+    profile = _run(
+        _report([_entity("CGone1", []), _entity("CGone2", []),
+                 _entity("CGone3", []), _entity("CAlive", [])]),
+        client,
+    )
+    assert profile.aborted is False
+    assert list(profile.data["entities"]) == ["CAlive"]
+    gone = [a for a in profile.data["anomalies"] if a["scope"] == "entity"]
+    assert [a["entity"] for a in gone] == ["CGone1", "CGone2", "CGone3"]
+    assert all(a["status"] == 404 for a in gone)
+
+
+def test_throttle_paces_every_request(monkeypatch):
+    """§7.1 pacing — throttle_seconds sleeps before each request."""
+    sleeps = _no_sleep(monkeypatch)
+    client = FakeEspoClient({"CThing": [_rec(0, notes="v")]})
+    _run(_report([_entity("CThing", [_field("notes", "varchar")])]), client,
+         options=ProfileOptions(throttle_seconds=0.25))
+    assert len(sleeps) == len(client.calls)
+    assert set(sleeps) == {0.25}
+
+
+def test_empty_entity_issues_only_the_count_probe():
+    """§3.3/§4.4 — an empty entity costs one request: no recency, no
+    per-field queries, no scan; declared options still report zeros."""
+    client = FakeEspoClient({"CGhost": []})
+    profile = _run(
+        _report([_entity("CGhost", [_field("notes", "varchar"),
+                                    _field("stage", "enum", options=["a"])])]),
+        client,
+    )
+    assert client.calls == [("count_records", "CGhost", {"where": None})]
+    stage = profile.data["entities"]["CGhost"]["fields"]["stage"]
+    assert stage["detail"]["value_distribution"] == {"a": 0}
+    assert stage["used_option_count"] == 0
+
+
+def test_enum_with_no_declared_options_profiles_as_open_values():
+    """An optionsDeferred-style enum (no declared options in the
+    manifest) gets no enum-usage metrics; observed values surface
+    through top_values like any open field."""
+    records = [_rec(0, kind="x"), _rec(1, kind="x"), _rec(2, kind="y"),
+               _rec(3, kind=None)]
+    client = FakeEspoClient({"CThing": records})
+    profile = _run(
+        _report([_entity("CThing", [_field("kind", "enum", options=[]),
+                                    _field("status", "enum")])]),
+        client,
+    )
+    kind = profile.data["entities"]["CThing"]["fields"]["kind"]
+    assert kind["populated_count"] == 3
+    assert kind["distinct_value_count"] == 2
+    assert "declared_option_count" not in kind
+    assert "used_option_count" not in kind
+    assert kind["detail"]["top_values"] == {"x": 2, "y": 1}
+    assert "ghost_options" not in kind["detail"]
+    # An enum with no options key at all takes the same path.
+    assert "declared_option_count" not in (
+        profile.data["entities"]["CThing"]["fields"]["status"])
+    assert profile.data["anomalies"] == []
+
+
+def test_dormancy_boundaries_to_the_second():
+    """§5 — flags flip strictly below the cutoff; 0.05 exactly is not
+    low-population (pure derivations, exact to the second)."""
+    profiled_at = datetime(2026, 6, 11, 12, 0, 0, tzinfo=UTC)
+    cutoff = profiled_at - timedelta(days=365)
+    one_s = timedelta(seconds=1)
+    assert dp.derive_entity_flags(1, cutoff + one_s, profiled_at, 365) == {
+        "dormant": False, "empty": False}
+    assert dp.derive_entity_flags(1, cutoff, profiled_at, 365)["dormant"] is False
+    assert dp.derive_entity_flags(1, cutoff - one_s, profiled_at, 365)["dormant"] is True
+    assert dp.is_stale(1, cutoff - one_s, profiled_at, 365) is True
+    assert dp.is_stale(1, cutoff + one_s, profiled_at, 365) is False
+    assert dp.is_stale(0, None, profiled_at, 365) is False
+    assert dp.is_low_population(0.05, 0.05) is False
+    assert dp.is_low_population(0.049, 0.05) is True
+    assert dp.is_low_population(None, 0.05) is False
+
+
+def test_predicate_currency_address_and_whitespace():
+    """§3.1 rows the P2 tests left uncovered: currency zero amount,
+    address any-component, whitespace-only strings."""
+    rec = {
+        "id": "r0", "createdAt": RECENT,
+        "budget": 0.0,
+        "homeStreet": None, "homeCity": "  ", "homeState": None,
+        "homeCountry": None, "homePostalCode": "44022",
+        "notes": "   ",
+        "firstName": " ", "lastName": None, "middleName": None,
+    }
+    assert is_populated("budget", "currency", rec) is True  # 0 is a real answer
+    assert is_populated("home", "address", rec) is True  # any component
+    assert is_populated("notes", "varchar", rec) is False  # whitespace-only
+    assert is_populated("name", "personName", rec) is False  # all blank
+    assert is_populated("budget", "currencyConverted", {"budget": None}) is False
+    assert is_populated("home", "address",
+                        {**rec, "homePostalCode": None}) is False
+
+
+def test_p10_profile_consumed_by_deposit_transform_unmodified():
+    """P10 — a produced profile feeds the WTK-090 transform's evidence
+    path unmodified: wire-name keys join against the manifest and the
+    typed metrics land on the planned evidence rows. The JSON contract
+    is the package interface (§8); only the transform's pure planning
+    layer is exercised here."""
+    from crmbuilder_v2.transform.audit_deposit import ExistingState, plan_deposit
+
+    client = FakeEspoClient({"CEngagement": _p1_dataset()})
+    profile = _run(_report([_p1_entity()]), client)
+
+    manifest = {
+        "manifest_version": 1,
+        "source_url": "https://crm.example.org",
+        "source_name": "profiler-test",
+        "timestamp": "2026-06-11T00:00:00Z",
+        "entities": [
+            {
+                "yaml_name": "Engagement", "espo_name": "CEngagement",
+                "entity_class": "custom", "entity_type": "Base",
+                "label_singular": "Engagement", "label_plural": "Engagements",
+                "fields": [
+                    {"yaml_name": "stage", "api_name": "stage",
+                     "field_type": "enum", "label": "Stage",
+                     "properties": {"options": list("ABCDEFG")}},
+                    {"yaml_name": "notes", "api_name": "notes",
+                     "field_type": "varchar", "label": "Notes",
+                     "properties": {}},
+                ],
+            }
+        ],
+    }
+    plan = plan_deposit(manifest, profile.data, ExistingState())
+    by_name = {item.payload["name"]: item for item in plan.creates
+               if item.record_type in ("entity", "field")}
+
+    engagement = by_name["Engagement"]
+    assert engagement.evidence["record_count"] == 12
+    assert engagement.evidence["detail"]["dormant"] is False
+
+    stage = by_name["Stage"]
+    assert stage.evidence["populated_count"] == 9
+    assert stage.evidence["population_rate"] == 0.75
+    assert stage.evidence["declared_option_count"] == 7
+    assert stage.evidence["used_option_count"] == 3
+    assert stage.evidence["detail"]["value_distribution"] == {
+        "A": 5, "B": 3, "C": 1, "D": 0, "E": 0, "F": 0, "G": 0}
+    assert stage.evidence["detail"]["last_populated_at_basis"] == "created_at"
+
+    notes = by_name["Notes"]
+    assert notes.evidence["population_rate"] == 0.75

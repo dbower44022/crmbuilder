@@ -1190,6 +1190,43 @@ def test_run_audit_profiler_failure_is_non_fatal(tmp_path, monkeypatch):
     assert not (tmp_path / "utilization-profile.json").exists()
 
 
+def test_run_audit_profiler_sequences_after_assembly_and_merges_warnings(
+    tmp_path, monkeypatch
+):
+    """WTK-100 — pass 2 runs strictly after pass-1 assembly (WTK-096
+    §2.1): the profiler is constructed with the populated work-list and
+    the YAML already written; its anomalies surface in the audit's
+    warnings stream (§7.3)."""
+    import espo_impl.core.data_profiler as dp
+
+    observed = {}
+
+    class FakeProfiler:
+        def __init__(self, client, report, options=None, callback=None):
+            observed["entities_at_init"] = len(report.entities)
+            observed["files_written_at_init"] = report.files_written
+
+        def run(self):
+            return dp.UtilizationProfile(data={
+                "manifest_version": 1,
+                "anomalies": [{"scope": "entity", "entity": "CEngagement",
+                               "status": 403,
+                               "note": "HTTP 403 on record count"}],
+                "entities": {},
+            })
+
+    monkeypatch.setattr(dp, "DataProfiler", FakeProfiler)
+    manager, _log = _make_manager(_profiling_client(), _profile_off_options())
+
+    report = manager.run_audit(tmp_path)
+
+    assert observed["entities_at_init"] == 1
+    assert observed["files_written_at_init"] >= 1
+    assert any(
+        "profiler [entity] CEngagement" in w for w in report.warnings
+    )
+
+
 def test_run_audit_profile_opt_out(tmp_path, monkeypatch):
     import espo_impl.core.data_profiler as dp
 
