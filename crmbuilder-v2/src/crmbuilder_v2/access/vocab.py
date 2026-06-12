@@ -336,6 +336,46 @@ TEST_SPEC_RUN_OUTCOMES: frozenset[str] = frozenset(
     {"not_run", "passing", "failing", "skipped"}
 )
 
+# Methodology entity `migration_mapping` lifecycle (WTK-106, per the WTK-104
+# design spec methodology-schema-specs/migration_mapping.md §3.4). Standard
+# four-status propose-verify lifecycle exactly as the other status-bearing
+# methodology types — no per-type variation. Mappings recorded live at triage
+# with the stakeholder present legitimately POST directly at ``confirmed``
+# (spec §3.2.3); ``confirmed ⇄ deferred`` supports migration-wave re-scoping.
+MIGRATION_MAPPING_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+# ``rejected`` arcs mirror ``domain`` (PI-153 / WTK-088 §3.2).
+MIGRATION_MAPPING_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
+# Mapping scope (spec §3.2.3): the two data-bearing Phase 1.5 capture types.
+# `entity` — records of the source entity land in the target entity; `field`
+# — values of the source field land in the target field. The non-data capture
+# types (persona/process/manual_config) never produce a mapping (spec §2);
+# the edge pair rules below make them unrepresentable (invariant I12).
+MIGRATION_MAPPING_LEVELS: frozenset[str] = frozenset({"entity", "field"})
+
+# The originating Phase 3 disposition (spec §3.2.3). `keep` ⇒ direct mapping
+# (source record = target record, empty rules); `transform` ⇒ source ≠
+# target. *Drop* dispositions never produce a mapping. Declared (not derived)
+# so declared-vs-observable agreement is verifiable (spec invariants I7/I8).
+MIGRATION_MAPPING_DISPOSITIONS: frozenset[str] = frozenset({"keep", "transform"})
+
+# Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
+# PRD v0.2 §8 named set. Per-kind rule-object schema validation (required
+# keys, level applicability, conditional-key consistency — invariant I9)
+# lives at the repository layer; this set backs the `rule_kind` membership
+# check. Deliberately closed: cheap to extend, expensive to shrink (spec §8).
+MIGRATION_TRANSFORM_RULE_KINDS: frozenset[str] = frozenset(
+    {"type_change", "enum_value_map", "merge", "split"}
+)
+
 # Methodology entity `crm_candidate` lifecycle (UI v0.4 slice E, DEC-062).
 # Four-status lifecycle per ``crm_candidate.md`` section 3.4. ``active``
 # is the starter status; ``selected``, ``declined``, ``removed`` are
@@ -783,6 +823,17 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # provenance `deposit_event_wrote_record` (created exactly once,
         # at row creation).
         "observed_in",
+        # WTK-106 (migration_mapping.md §3.3.1). The mapping's two mandatory
+        # outgoing edges: the disposed baseline candidate it migrates from
+        # (exactly one per live mapping; at most one live inbound per
+        # candidate encodes "one mapping per disposition") and the confirmed
+        # record(s) its data lands in (≥1; >1 only with a `split` rule).
+        # Generic `record` target word per the `deposit_event_wrote_record`
+        # precedent — the target side spans the two data-bearing capture
+        # types (`entity` / `field`). Cardinality, liveness, and level
+        # agreement are access-layer enforcement, not pair-rule concerns.
+        "migration_mapping_migrates_from_record",
+        "migration_mapping_migrates_to_record",
     }
 )
 
@@ -860,6 +911,10 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # definition (TERM-). System/shared with a nullable engagement_id =
         # scope, like the registry entities. See methodology-schema-specs/term.md.
         "term",
+        # WTK-106 methodology entity (per the WTK-104 design spec). One
+        # Phase 3 keep/transform disposition's data-migration obligation
+        # (MIG-). See methodology-schema-specs/migration_mapping.md.
+        "migration_mapping",
     }
 )
 
@@ -1163,8 +1218,18 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         "workstream",
     ):
         kinds.add("finding_resolved_by")
-    # PI-153 (WTK-088 §3.4): the seven status-bearing methodology entity
-    # types link their terminal `rejected` flip to the rejecting Decision.
+    # WTK-106 (migration_mapping.md §3.3.1): both mapping edges admit only
+    # the two data-bearing capture types, so mappings for the non-data
+    # capture types (persona/process/manual_config) are unrepresentable by
+    # construction (invariant I12). Source-side uniqueness ("one mapping per
+    # disposition"), target liveness/status, and level agreement are
+    # access-layer enforcement per the DEC-249/250 mandatory-edge pattern.
+    if source_type == "migration_mapping" and target_type in ("entity", "field"):
+        kinds.add("migration_mapping_migrates_from_record")
+        kinds.add("migration_mapping_migrates_to_record")
+    # PI-153 (WTK-088 §3.4): the status-bearing methodology entity types
+    # (the original seven, plus `migration_mapping` per WTK-106 — spec §10)
+    # link their terminal `rejected` flip to the rejecting Decision.
     if source_type in (
         "domain",
         "entity",
@@ -1173,6 +1238,7 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         "requirement",
         "test_spec",
         "manual_config",
+        "migration_mapping",
     ) and target_type == "decision":
         kinds.add("rejected_by_decision")
     return frozenset(kinds)
