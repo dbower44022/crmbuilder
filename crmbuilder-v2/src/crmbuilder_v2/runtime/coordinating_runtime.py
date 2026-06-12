@@ -39,6 +39,7 @@ or a spawned agent.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -189,6 +190,11 @@ def run_pytest(worktree_path: str, target: str, *, timeout: int = 1800) -> TestR
     ``crmbuilder-v2/pyproject.toml`` — v2 is bundled into the root distribution),
     so the worktree root *is* the correct cwd and ``target`` is a repo-root
     relative path.
+
+    Runs headless: forces ``QT_QPA_PLATFORM=offscreen`` so the PySide6 UI tests
+    do not SIGABRT (rc 134) when the ADO worker has no display — otherwise any
+    target that includes UI tests (including the ambiguous-change full-suite
+    fallback) crashes mid-run and is mis-reported as a test failure.
     """
     proc = subprocess.run(
         ["uv", "run", "pytest", target, "-q"],
@@ -196,6 +202,7 @@ def run_pytest(worktree_path: str, target: str, *, timeout: int = 1800) -> TestR
         capture_output=True,
         text=True,
         timeout=timeout,
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
     )
     return TestRunResult(
         passed=proc.returncode == 0,
