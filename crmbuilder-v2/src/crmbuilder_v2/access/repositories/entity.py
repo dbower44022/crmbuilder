@@ -56,6 +56,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import Entity
+from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     ENTITY_KINDS,
     ENTITY_STATUS_TRANSITIONS,
@@ -376,6 +377,7 @@ def update_entity(
     notes: str | None = None,
     status: str | None = None,
     kind: str | None = None,
+    rejected_by_decision: str | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -409,7 +411,23 @@ def update_entity(
     if status is not None and status != row.entity_status:
         _require_status(status)
         _check_transition(row.entity_status, status)
+        if status == "rejected":
+            _rejection.enforce_rejected_status(
+                session,
+                source_type=_ENTITY_TYPE,
+                source_identifier=identifier,
+                decision_identifier=rejected_by_decision,
+            )
+            rejected_by_decision = None
         row.entity_status = status
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.entity_status,
+        )
 
     row.entity_name = name
     row.entity_description = description
@@ -433,10 +451,14 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
     """Partial update (PATCH). Only the supplied fields are touched.
 
     Recognised keys: ``name``, ``description``, ``notes``, ``status``,
-    ``kind``. A ``status`` change is transition-validated. A ``kind``
-    of ``None`` or an empty string clears the field; otherwise the
-    value must be a member of :data:`ENTITY_KINDS`.
+    ``kind``, ``rejected_by_decision``. A ``status`` change is
+    transition-validated; a move to ``rejected`` requires either the
+    ``rejected_by_decision`` key (atomic edge + flip, PI-153 §3.4) or a
+    pre-existing ``rejected_by_decision`` edge. A ``kind`` of ``None``
+    or an empty string clears the field; otherwise the value must be a
+    member of :data:`ENTITY_KINDS`.
     """
+    rejected_by_decision = fields.pop("rejected_by_decision", None)
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
         raise UnprocessableError(
@@ -468,7 +490,23 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
         status = _require_status(fields["status"])
         if status != row.entity_status:
             _check_transition(row.entity_status, status)
+            if status == "rejected":
+                _rejection.enforce_rejected_status(
+                    session,
+                    source_type=_ENTITY_TYPE,
+                    source_identifier=identifier,
+                    decision_identifier=rejected_by_decision,
+                )
+                rejected_by_decision = None
             row.entity_status = status
+    if rejected_by_decision is not None:
+        _rejection.attach_decision(
+            session,
+            source_type=_ENTITY_TYPE,
+            source_identifier=identifier,
+            decision_identifier=rejected_by_decision,
+            current_status=row.entity_status,
+        )
     if "kind" in fields:
         row.entity_kind = _coerce_kind(fields["kind"])
 

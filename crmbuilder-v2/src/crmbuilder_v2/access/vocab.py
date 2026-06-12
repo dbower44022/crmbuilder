@@ -1012,6 +1012,13 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         # deposit's wrote_record edges can target the candidate records
         # it creates (same audit-chain rationale as above).
         *BASELINE_CAPTURE_TYPES,
+        # WTK-090 §4.2 (sixth methodology target): the per-source
+        # baseline placeholder domain the transform creates for its
+        # process candidates gets a wrote_record edge like every other
+        # record the run created. Pure pair-clause extension — the kind
+        # is already in the refs CHECK, so no migration (the WTK-089 D2
+        # rationale).
+        "domain",
     ):
         kinds.add("deposit_event_wrote_record")
     # WTK-089 D1: observational provenance from a baseline capture record
