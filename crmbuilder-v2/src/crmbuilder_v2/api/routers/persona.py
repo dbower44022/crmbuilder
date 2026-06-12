@@ -26,6 +26,7 @@ from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import persona
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
+from crmbuilder_v2.api.routers.utilization_evidence import embed_inline_evidence
 from crmbuilder_v2.api.schemas import (
     PersonaCreateIn,
     PersonaPatchIn,
@@ -41,9 +42,19 @@ _FIELD_PREFIX = "persona_"
 
 
 @router.get("")
-def list_all(include_deleted: bool = False):
+def list_all(include_deleted: bool = False, include_evidence: str | None = None):
     with readonly_session() as s:
-        return ok(persona.list_personas(s, include_deleted=include_deleted))
+        records = persona.list_personas(s, include_deleted=include_deleted)
+        return ok(
+            embed_inline_evidence(
+                s,
+                records,
+                subject_type="persona",
+                identifier_key="persona_identifier",
+                include_evidence=include_evidence,
+                is_list=True,
+            )
+        )
 
 
 @router.get("/next-identifier")
@@ -54,13 +65,25 @@ def next_identifier():
 
 
 @router.get("/{identifier}")
-def get(identifier: str, include_deleted: bool = False):
+def get(
+    identifier: str,
+    include_deleted: bool = False,
+    include_evidence: str | None = None,
+):
     with readonly_session() as s:
         record = persona.get_persona(
             s, identifier, include_deleted=include_deleted
         )
         if record is None:
             raise NotFoundError("persona", identifier)
+        embed_inline_evidence(
+            s,
+            [record],
+            subject_type="persona",
+            identifier_key="persona_identifier",
+            include_evidence=include_evidence,
+            is_list=False,
+        )
         return ok(record)
 
 

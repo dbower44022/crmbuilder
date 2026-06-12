@@ -61,6 +61,7 @@ from crmbuilder_v2.api.routers import (
     terms,
     test_specs,
     topics,
+    utilization_evidence,
     work_tasks,
     work_tickets,
     workstreams,
@@ -158,6 +159,7 @@ def create_app() -> FastAPI:
     app.include_router(work_tickets.router)
     app.include_router(close_out_payloads.router)
     app.include_router(deposit_events.router)
+    app.include_router(utilization_evidence.router)
     app.include_router(commits.router)
     # Agent Profile Registry (PI-122).
     app.include_router(registry.agent_profiles_router)

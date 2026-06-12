@@ -52,6 +52,7 @@ def create(body: DepositEventCreateIn):
                 s,
                 title=body.deposit_event_title,
                 description=body.deposit_event_description,
+                kind=body.deposit_event_kind or "close_out_apply",
                 outcome=body.deposit_event_outcome,
                 records_summary=body.deposit_event_records_summary,
                 apply_context=body.deposit_event_apply_context,
