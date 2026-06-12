@@ -53,6 +53,10 @@ from crmbuilder_v2.access.evidence_projection import (
     EVIDENCE_FLAG_KEYS,
     project_evidence_object,
 )
+from crmbuilder_v2.transform.normalize import (
+    FALLBACK_FIELD_TYPE as _FALLBACK_FIELD_TYPE,
+)
+from crmbuilder_v2.transform.normalize import composed_type_map
 
 MANIFEST_VERSION = 1
 SOURCE_SYSTEM = "espocrm"  # the only source adapter today (spec §2.3)
@@ -62,37 +66,12 @@ SOURCE_SYSTEM = "espocrm"  # the only source adapter today (spec §2.3)
 # evolves (§7.3).
 EVIDENCE_SCHEMA_VERSION = 1
 
-# EspoCRM metadata wire type -> FIELD_TYPES vocab (spec §3.2). Lossy by
-# design — the wire type always survives in notes and evidence detail.
-WIRE_TYPE_MAP: dict[str, str] = {
-    "varchar": "text",
-    "email": "text",
-    "phone": "text",
-    "url": "text",
-    "personName": "text",
-    "address": "text",
-    "text": "long_text",
-    "wysiwyg": "long_text",
-    "enum": "enum",
-    "multiEnum": "multi_enum",
-    "checklist": "multi_enum",
-    "array": "multi_enum",
-    "date": "date",
-    "datetime": "datetime",
-    "datetimeOptional": "datetime",
-    "currency": "money",
-    "currencyConverted": "money",
-    "bool": "boolean",
-    "int": "number",
-    "float": "number",
-    "autoincrement": "number",
-    "link": "reference",
-    "linkParent": "reference",
-    "linkMultiple": "reference",
-    "linkOne": "reference",
-    "foreign": "derived",
-}
-_FALLBACK_FIELD_TYPE = "text"
+# EspoCRM metadata wire type -> FIELD_TYPES vocab (spec §3.2) — the
+# WTK-102 espocrm stage-1 table composed with the fixed stage-2
+# projection (normalize.py), pinned behavior-identical to the
+# previously inline map by the N3 composition test. Lossy by design —
+# the wire type always survives in notes and evidence detail.
+WIRE_TYPE_MAP: dict[str, str] = composed_type_map(SOURCE_SYSTEM)
 _LINK_WIRE_TYPES = frozenset({"link", "linkParent", "linkMultiple", "linkOne"})
 
 # EspoCRM base entity type -> ENTITY_KINDS vocab (spec §3.1). Anything
