@@ -1,14 +1,17 @@
 # PI-124 — Selectable / copyable text on every V2 UI message surface: Design Specification
 
-**Status:** v0.1 — PI-124's design pass (06-12-26, WTK-122). Build-ready
-specification; not implementation.
+**Status:** v0.1.1 — PI-124's design pass (06-12-26, WTK-122; re-verified
+06-12-26, WTK-127). Build-ready specification; not implementation.
 **Project:** PRJ-015 (UI usability).
 **Planning item:** PI-124 — "All UI message/error dialogs must support
 select-all and copy". Surfaced 06-02-26 during PI-123 cutover testing
 (a non-copyable engagement-switch error dialog).
-**Verified against:** `main` @ `14c3b807` (every file/line cited below was
+**Verified against:** `main` @ `71bdbb3e` (every file/line cited below was
 re-checked on this revision — the PI description predates PI-β and names
-two surfaces that have since moved or been deleted; §1 records the mapping).
+two surfaces that have since moved or been deleted; §1 records the mapping.
+WTK-127 re-confirmed the §1 inventory, the §1.5 prior-art citations, the
+absence of `ui/widgets/selectable_text.py`, and the §5.2 regression floor:
+`test_error_dialog.py` + `test_auto_reconnect.py` = 18 passing).
 
 ---
 
