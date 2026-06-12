@@ -14,10 +14,23 @@ to:
 It subscribes to the proxy's ``sortKeysChanged`` signal so the indicators
 always reflect live precedence. Installed on both link surfaces so the
 indicator rendering and modifier semantics stay identical.
+
+**Lifetime guards (PI-159 / WTK-119).** Paint and update events can be
+delivered during teardown windows (pytest-qt's ``_process_events``, deferred
+deletions crossing event-loop iterations) to a header whose owning table,
+proxy, or paint device is mid-destruction — a SIGSEGV, not an exception.
+Every path that touches a C++ object therefore probes ``shiboken6.isValid``
+first and degrades to a no-op on a torn-down object. Transient-object rule:
+``paintSection`` constructs no QStyle/QStyleOption objects — it delegates
+stock painting to ``super()`` and draws with the supplied painter. If a
+future change needs a ``QStyleOptionHeader``, construct it per-call as a
+Python local (a value type, so ``deleteLater()`` does not apply), never
+cached on the instance across paints.
 """
 
 from __future__ import annotations
 
+import shiboken6
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QHeaderView
@@ -48,10 +61,35 @@ class MultiSortHeaderView(QHeaderView):
     # ------------------------------------------------------------------
 
     def attach_proxy(self, proxy) -> None:
-        """Bind to a :class:`MultiSortProxyModel` and repaint on changes."""
+        """Bind to a :class:`MultiSortProxyModel` and repaint on changes.
+
+        Also subscribes to the proxy's ``destroyed`` signal so a destroyed
+        proxy is unreachable from the paint path even before the validity
+        probes in :meth:`indicator_for` / :meth:`paintSection`.
+        """
         self._proxy = proxy
         proxy.sortKeysChanged.connect(self._on_sort_keys_changed)
+        proxy.destroyed.connect(self._on_proxy_destroyed)
         self._on_sort_keys_changed()
+
+    def detach_proxy(self) -> None:
+        """Disconnect from the attached proxy and clear the back-reference.
+
+        Safe to call with no proxy attached or with a proxy whose C++
+        object is already gone — teardown must never raise.
+        """
+        proxy = self._proxy
+        self._proxy = None
+        if proxy is None or not shiboken6.isValid(proxy):
+            return
+        try:
+            proxy.sortKeysChanged.disconnect(self._on_sort_keys_changed)
+            proxy.destroyed.disconnect(self._on_proxy_destroyed)
+        except RuntimeError:
+            pass  # already disconnected
+
+    def _on_proxy_destroyed(self) -> None:
+        self._proxy = None
 
     def indicator_for(
         self, column: int
@@ -60,11 +98,13 @@ class MultiSortHeaderView(QHeaderView):
 
         ``rank`` is the 1-based precedence; ``order`` the column's own sort
         direction. Inactive columns return ``None`` (no glyph). Exposed for
-        tests and for :meth:`paintSection`.
+        tests and for :meth:`paintSection`, so it must be safe standalone:
+        a missing or destroyed proxy reads as "no active sort".
         """
-        if self._proxy is None:
+        proxy = self._proxy
+        if proxy is None or not shiboken6.isValid(proxy):
             return None
-        for rank, (col, order) in enumerate(self._proxy.sort_keys(), start=1):
+        for rank, (col, order) in enumerate(proxy.sort_keys(), start=1):
             if col == column:
                 return (rank, order)
         return None
@@ -109,6 +149,10 @@ class MultiSortHeaderView(QHeaderView):
     # ------------------------------------------------------------------
 
     def _on_sort_keys_changed(self) -> None:
+        # The proxy's sortKeysChanged can fire while the header is dying;
+        # don't touch the C++ side of a half-destructed widget.
+        if not shiboken6.isValid(self):
+            return
         viewport = self.viewport()
         if viewport is not None:
             viewport.update()
@@ -116,6 +160,8 @@ class MultiSortHeaderView(QHeaderView):
     def paintSection(  # noqa: N802 (Qt override)
         self, painter: QPainter, rect, logical_index: int
     ) -> None:
+        if not shiboken6.isValid(self) or not painter.isActive():
+            return
         super().paintSection(painter, rect, logical_index)
         indicator = self.indicator_for(logical_index)
         if indicator is None:
@@ -123,10 +169,16 @@ class MultiSortHeaderView(QHeaderView):
         rank, order = indicator
         arrow = "▲" if order == Qt.SortOrder.AscendingOrder else "▼"
         glyph = f"{arrow}{rank}"
-        painter.save()
-        painter.drawText(
-            rect.adjusted(0, 0, -_GLYPH_MARGIN, 0),
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
-            glyph,
-        )
-        painter.restore()
+        # Last fence: PySide6 raises RuntimeError on wrapper access it can
+        # detect as already-deleted; a skipped glyph beats a crash. Kept
+        # narrow so programming errors still surface.
+        try:
+            painter.save()
+            painter.drawText(
+                rect.adjusted(0, 0, -_GLYPH_MARGIN, 0),
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                glyph,
+            )
+            painter.restore()
+        except RuntimeError:
+            return
