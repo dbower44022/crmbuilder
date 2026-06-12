@@ -1110,3 +1110,97 @@ def test_discover_entities_with_empty_set_audits_nothing():
     entities = manager._discover_entities(report)
 
     assert entities == []
+
+
+# ---------------------------------------------------------------------------
+# run_audit — pass-2 data-profiling hook (WTK-096 §2.2)
+# ---------------------------------------------------------------------------
+
+
+def _profiling_client() -> MagicMock:
+    """Client mock satisfying a minimal layouts-off, security-off run."""
+    return _make_client(
+        get_all_scopes=(200, {
+            "CEngagement": {"entity": True, "customizable": True,
+                            "isCustom": True, "type": "Base"},
+        }),
+        get_i18n=(200, {}),
+        get_entity_field_list=(200, {
+            "cStage": {"type": "enum", "isCustom": True,
+                       "options": ["a", "b"]},
+        }),
+    )
+
+
+def _profile_off_options(**overrides) -> AuditOptions:
+    kwargs = {
+        "include_detail_layouts": False, "include_list_layouts": False,
+        "include_edit_layout": False, "include_small_layouts": False,
+        "include_detail_convert": False, "include_kanban": False,
+        "include_search_massupdate": False, "include_relationships_layout": False,
+        "include_side_bottom_panels": False, "include_relationships": False,
+        "include_security": False, "include_filtered_tabs": False,
+    }
+    kwargs.update(overrides)
+    return AuditOptions(**kwargs)
+
+
+def test_run_audit_invokes_profiler_and_writes_profile(tmp_path, monkeypatch):
+    import espo_impl.core.data_profiler as dp
+
+    invoked = {}
+
+    class FakeProfiler:
+        def __init__(self, client, report, options=None, callback=None):
+            invoked["report"] = report
+
+        def run(self):
+            return dp.UtilizationProfile(data={
+                "manifest_version": 1, "anomalies": [], "entities": {"CEngagement": {}},
+            })
+
+    monkeypatch.setattr(dp, "DataProfiler", FakeProfiler)
+    manager, log = _make_manager(_profiling_client(), _profile_off_options())
+
+    report = manager.run_audit(tmp_path)
+
+    assert invoked["report"] is report
+    assert (tmp_path / "utilization-profile.json").exists()
+    assert any("pass 2" in msg for msg, _ in log)
+
+
+def test_run_audit_profiler_failure_is_non_fatal(tmp_path, monkeypatch):
+    import espo_impl.core.data_profiler as dp
+
+    class ExplodingProfiler:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self):
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(dp, "DataProfiler", ExplodingProfiler)
+    manager, _log = _make_manager(_profiling_client(), _profile_off_options())
+
+    report = manager.run_audit(tmp_path)
+
+    # Pass 1's output stands; the failure lands in warnings only.
+    assert report.files_written >= 1
+    assert any("Data profiling failed: boom" in w for w in report.warnings)
+    assert not (tmp_path / "utilization-profile.json").exists()
+
+
+def test_run_audit_profile_opt_out(tmp_path, monkeypatch):
+    import espo_impl.core.data_profiler as dp
+
+    def _fail(*args, **kwargs):
+        raise AssertionError("profiler must not be constructed when opted out")
+
+    monkeypatch.setattr(dp, "DataProfiler", _fail)
+    manager, _log = _make_manager(
+        _profiling_client(), _profile_off_options(include_data_profile=False),
+    )
+
+    report = manager.run_audit(tmp_path)
+    assert report.errors == []
+    assert not (tmp_path / "utilization-profile.json").exists()
