@@ -376,6 +376,65 @@ MIGRATION_TRANSFORM_RULE_KINDS: frozenset[str] = frozenset(
     {"type_change", "enum_value_map", "merge", "split"}
 )
 
+# Per-kind rule-object schema table (WTK-105 §5.2, settling the WTK-104 §8
+# rule-schema location question): authoritative validation lives at the
+# repository layer against this published table — NOT as pydantic models on
+# the API boundary — so the REST API, the MCP tools, any future access-layer
+# caller (the compiler, backfills), and the desktop dialogs' client-side
+# checks all enforce identically. Key sets per migration_mapping.md §4.2–4.5;
+# `levels` is the §4.6 applicability matrix. The conditional couplings that a
+# flat key table can't express (`default_value` ⇔ `unmapped_policy =
+# "default"`, `separator` ⇔ `combinator = "concat"`, entity-level `merge`
+# only with `coalesce`, entity-level `split` requiring `value_router` +
+# `unrouted_policy`, `to_type ≠ from_type`) live in the repository validator
+# beside the value vocabularies below.
+MIGRATION_TRANSFORM_RULE_SCHEMAS: dict[str, dict[str, frozenset[str]]] = {
+    "type_change": {
+        "levels": frozenset({"field"}),
+        "required": frozenset({"rule_kind", "from_type", "to_type"}),
+        "optional": frozenset({"conversion"}),
+    },
+    "enum_value_map": {
+        "levels": frozenset({"field"}),
+        "required": frozenset({"rule_kind", "value_map", "unmapped_policy"}),
+        "optional": frozenset({"default_value"}),
+    },
+    "merge": {
+        "levels": frozenset({"field", "entity"}),
+        "required": frozenset(
+            {"rule_kind", "merge_group", "combinator", "merge_order"}
+        ),
+        "optional": frozenset({"separator", "description"}),
+    },
+    "split": {
+        "levels": frozenset({"field", "entity"}),
+        "required": frozenset({"rule_kind", "assignments"}),
+        "optional": frozenset({"unrouted_policy"}),
+    },
+}
+
+# Closed value vocabularies for the conditional rule keys (spec §4.2–4.5).
+# `error` ("fail the record and report") is the recommended default
+# everywhere — the no-silent-widening posture inherited from WTK-102 §3.10.
+MIGRATION_ENUM_UNMAPPED_POLICIES: frozenset[str] = frozenset(
+    {"error", "passthrough", "null", "default"}
+)
+MIGRATION_MERGE_COMBINATORS: frozenset[str] = frozenset(
+    {"concat", "coalesce", "sum", "custom"}
+)
+MIGRATION_SPLIT_UNROUTED_POLICIES: frozenset[str] = frozenset(
+    {"error", "skip_record"}
+)
+MIGRATION_TYPE_CHANGE_STRATEGIES: frozenset[str] = frozenset(
+    {"cast", "parse", "custom"}
+)
+MIGRATION_TYPE_CHANGE_ON_ERROR: frozenset[str] = frozenset(
+    {"error", "null", "skip_record"}
+)
+MIGRATION_SPLIT_FIELD_STRATEGIES: frozenset[str] = frozenset(
+    {"delimiter", "pattern", "custom"}
+)
+
 # Methodology entity `crm_candidate` lifecycle (UI v0.4 slice E, DEC-062).
 # Four-status lifecycle per ``crm_candidate.md`` section 3.4. ``active``
 # is the starter status; ``selected``, ``declined``, ``removed`` are
