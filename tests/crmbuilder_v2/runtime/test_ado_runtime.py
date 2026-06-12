@@ -88,6 +88,31 @@ def test_attention_takes_precedence():
     assert step.kind is StepKind.PAUSE and "WSK-1" in step.reason
 
 
+def test_decide_resume_when_phase_is_in_progress():
+    # PI-157 §5a: an interrupted run's In Progress phase is adopted, not refused.
+    step = decide_next(_ov([_phase("WSK-1", "In Progress")]))
+    assert step.kind is StepKind.RESUME and step.workstream == "WSK-1"
+    assert step.phase_type == "Design"
+
+
+def test_decide_blocked_when_in_progress_predecessors_not_terminal():
+    step = decide_next(_ov([_phase("WSK-1", "In Progress", preds_ok=False)]))
+    assert step.kind is StepKind.BLOCKED  # the unchanged guard still wins
+
+
+def test_decide_scoping_phase_stays_blocked():
+    # A Scoping row persisted between runs is a crash mid-scope — a person looks.
+    step = decide_next(_ov([_phase("WSK-1", "Scoping")]))
+    assert step.kind is StepKind.BLOCKED and "Scoping" in step.reason
+
+
+def test_attention_takes_precedence_over_resume():
+    step = decide_next(
+        _ov([_phase("WSK-1", "In Progress", attention=True)], attention=["WSK-1"])
+    )
+    assert step.kind is StepKind.PAUSE
+
+
 # --------------------------------------------------------------------------
 # the loop — driven against an in-memory substrate fake
 # --------------------------------------------------------------------------
@@ -104,6 +129,13 @@ class _World:
         self.phase_status = dict.fromkeys(self.phase_ids, "Planned")
         self.attention: set[str] = set()
         self.calls: list[str] = []
+        # PI-157 RESUME state: per-task rows + the recorded release/PATCH calls.
+        self.tasks: dict[str, dict] = {}        # wtid -> {workstream, status, claimed_by}
+        self.released: list[tuple[str, str]] = []   # (wtid, claimed_by echoed)
+        self.patches: list[tuple[str, str]] = []    # (wtid, new status), in order
+
+    def add_task(self, ws, wtid, status, claimed_by=None):
+        self.tasks[wtid] = {"workstream": ws, "status": status, "claimed_by": claimed_by}
 
     def overview(self):
         if not self.decomposed:
@@ -129,10 +161,26 @@ class _FakeDriver(AdoRuntime):
         self.world = world
         if "reconcile_runner" not in kw:
             self.reconcile_runner = lambda c, w: None  # no real agent under test
+        if "unmerged_check" not in kw:
+            self.unmerged_check = lambda c, t: False  # no real git under test
 
     def _get(self, path):
         if path.endswith("/phase-overview"):
             return self.world.overview()
+        if path.startswith("/references?"):
+            ws = path.split("target_id=")[1].split("&")[0]
+            return [
+                {"source_id": tid, "source_type": "work_task", "target_id": ws}
+                for tid, t in self.world.tasks.items() if t["workstream"] == ws
+            ]
+        if path.startswith("/work-tasks/"):
+            tid = path.split("/")[2]
+            t = self.world.tasks[tid]
+            return {
+                "work_task_identifier": tid,
+                "work_task_status": t["status"],
+                "work_task_claimed_by": t.get("claimed_by"),
+            }
         return {"status": self.world.pi_status}  # GET /planning-items/{id}
 
     def _post(self, path, body=None):
@@ -145,6 +193,18 @@ class _FakeDriver(AdoRuntime):
             self.world.phase_status[path.split("/")[2]] = "In Progress"
         elif path.endswith("/complete-phase"):
             self.world.phase_status[path.split("/")[2]] = "Complete"
+        elif path.endswith("/release"):
+            tid = path.split("/")[2]
+            self.world.released.append((tid, (body or {}).get("claimed_by")))
+            self.world.tasks[tid]["claimed_by"] = None
+        return {}
+
+    def _patch(self, path, body):
+        self.world.calls.append(f"PATCH {path}")
+        if path.startswith("/work-tasks/"):
+            tid = path.split("/")[2]
+            self.world.patches.append((tid, body["work_task_status"]))
+            self.world.tasks[tid]["status"] = body["work_task_status"]
         return {}
 
     def _patch_pi_status(self, status):
@@ -375,6 +435,198 @@ def test_resume_without_redispatch_and_dry_run():
     assert report.status == "dry_run"
     assert "/planning-items/PI-900/dispatch" not in world.calls
     assert not any("start-execution" in c for c in world.calls)
+
+
+# --------------------------------------------------------------------------
+# PI-157 — the RESUME recovery pass (the two 06-11-26 production shapes + table)
+# --------------------------------------------------------------------------
+
+
+def _resume_world(n_phases=1):
+    """A world whose (first) phase an interrupted run left In Progress."""
+    world = _World(n_phases)
+    world.pi_status = "In Progress"
+    world.decomposed = True
+    world.phase_status["WSK-1"] = "In Progress"
+    return world
+
+
+def test_resume_all_tasks_complete_auto_completes_phase():
+    # PI-153/WSK-072 shape (§5b): every task Complete, the run died before
+    # complete-phase. RESUME issues complete-phase directly — no pool run, no
+    # start-execution, no Workstream status write besides complete-phase.
+    world = _resume_world()
+    world.add_task("WSK-1", "WTK-1", "Complete")
+    world.add_task("WSK-1", "WTK-2", "Complete")
+    pool_calls = []
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=lambda c, w: pool_calls.append(w) or PoolRunReport(paused=False),
+        scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    assert report.completed_phases == ["WSK-1"]
+    assert pool_calls == []
+    assert "/workstreams/WSK-1/start-execution" not in world.calls
+    assert "/workstreams/WSK-1/complete-phase" in world.calls
+    assert not any(c.startswith("PATCH /workstreams") for c in world.calls)
+    assert world.pi_status == "In Review"
+
+
+def test_resume_partial_completion_releases_stale_claim_and_runs_pool():
+    # PI-150/WSK-076 shape (§5c): task A Complete, task B stale-claimed. RESUME
+    # releases B with B's RECORDED claimant, rewinds Claimed → Ready, runs the
+    # pool — with no start-execution and no Workstream rewind PATCH.
+    world = _resume_world()
+    world.add_task("WSK-1", "WTK-1", "Complete")
+    world.add_task("WSK-1", "WTK-2", "Claimed", claimed_by="AGP-other-identity")
+    pool_calls = []
+
+    def _pool(cfg, ws):
+        pool_calls.append(ws)
+        world.tasks["WTK-2"]["status"] = "Complete"
+        return PoolRunReport(paused=False)
+
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    assert world.released == [("WTK-2", "AGP-other-identity")]
+    assert world.patches == [("WTK-2", "Ready")]
+    assert pool_calls == ["WSK-1"]
+    assert "/workstreams/WSK-1/start-execution" not in world.calls
+    assert "/workstreams/WSK-1/complete-phase" in world.calls
+    assert not any(c.startswith("PATCH /workstreams") for c in world.calls)
+
+
+def test_resume_ready_claimed_row_releases_without_status_patch():
+    # A pre-PI-137-shaped row: claim attached without the Claimed status.
+    world = _resume_world()
+    world.add_task("WSK-1", "WTK-1", "Ready", claimed_by="AGP-x")
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    assert world.released == [("WTK-1", "AGP-x")]
+    assert world.patches == []  # already Ready — release only
+
+
+def test_resume_in_progress_task_rewinds_via_failed():
+    # §5d: no legal In Progress → Ready transition — the recorded sequence is
+    # release, then In Progress → Failed, then Failed → Ready, in that order.
+    world = _resume_world()
+    world.add_task("WSK-1", "WTK-1", "In Progress", claimed_by="AGP-x")
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    assert world.released == [("WTK-1", "AGP-x")]
+    assert world.patches == [("WTK-1", "Failed"), ("WTK-1", "Ready")]
+
+
+def test_resume_failed_and_planned_tasks_re_readied():
+    world = _resume_world()
+    world.add_task("WSK-1", "WTK-1", "Failed")           # unclaimed retry path
+    world.add_task("WSK-1", "WTK-2", "Planned")          # scoped after start
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    assert world.released == []  # no claims to release
+    assert world.patches == [("WTK-1", "Ready"), ("WTK-2", "Ready")]
+
+
+def test_resume_blocked_task_pauses_not_guesses():
+    # §5e: a person parked it; RESUME must not auto-unblock.
+    world = _resume_world()
+    world.add_task("WSK-1", "WTK-1", "Blocked")
+    pool_calls = []
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=lambda c, w: pool_calls.append(w) or PoolRunReport(paused=False),
+        scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status == "paused"
+    assert "WTK-1" in report.reason and "Blocked" in report.reason
+    assert pool_calls == []
+    assert world.patches == []  # the Blocked task was never PATCHed
+
+
+def test_resume_unmerged_complete_residue_pauses():
+    # §5e/§2.6: a Complete task whose branch was un-merged by a PI-145 rollback
+    # pauses with the residue reason — no auto-re-merge, no complete-phase.
+    world = _resume_world()
+    world.add_task("WSK-1", "WTK-1", "Complete")
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+        unmerged_check=lambda c, t: True,
+    )
+    report = driver.run()
+    assert report.status == "paused"
+    assert "WTK-1" in report.reason and "rollback residue" in report.reason
+    assert "/workstreams/WSK-1/complete-phase" not in world.calls
+
+
+def test_resume_develop_gate_rechecked():
+    # §2.4: a Develop phase resuming consults the gate exactly as START does.
+    world = _World(2)
+    world.pi_status = "In Progress"
+    world.decomposed = True
+    world.phase_status = {"WSK-1": "Complete", "WSK-2": "In Progress"}  # Develop resuming
+    world.add_task("WSK-2", "WTK-1", "Ready")
+    held = GateDecision(False, "open blocking findings ['FND-9']", open_blocking=["FND-9"])
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world),
+        gate_checker=lambda c, w: held,
+    )
+    report = driver.run()
+    assert report.status == "paused" and "gate held" in report.reason.lower()
+
+
+def test_resume_idempotent_after_second_pause():
+    # §5f: a resume that pauses again leaves the phase In Progress with the task
+    # states recorded; a fresh driver RESUMEs again from exactly there.
+    world = _resume_world()
+    world.add_task("WSK-1", "WTK-1", "Complete")
+    world.add_task("WSK-1", "WTK-2", "Claimed", claimed_by="AGP-x")
+
+    def _pausing_pool(cfg, ws):
+        # A second verify failure: the pool's agent died mid-task again.
+        world.tasks["WTK-2"].update(status="In Progress", claimed_by="AGP-x")
+        return PoolRunReport(paused=True)
+
+    first = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_pausing_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    assert first.run().status == "paused"
+    assert world.phase_status["WSK-1"] == "In Progress"  # never rewound
+
+    def _clean_second(cfg, ws):
+        world.tasks["WTK-2"]["status"] = "Complete"
+        return PoolRunReport(paused=False)
+
+    second = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_second, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = second.run()
+    assert report.status == "complete"
+    # The second pass released the new stale claim and rewound via Failed.
+    assert world.released[-1] == ("WTK-2", "AGP-x")
+    assert world.patches[-2:] == [("WTK-2", "Failed"), ("WTK-2", "Ready")]
 
 
 # --------------------------------------------------------------------------

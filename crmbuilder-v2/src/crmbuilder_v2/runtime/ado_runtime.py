@@ -11,6 +11,9 @@ the already-built substrate with the already-built execution pool:
 
     dispatch (PM) → decompose → for each phase in serial order:
         scope (Architect) → start_phase (Lead) → run the pool → complete_phase
+        (or, for a phase an interrupted run left ``In Progress``: resume — a
+        recovery pass over the recorded Work Task states, then the same
+        pool-run → complete_phase tail, PI-157)
     → advance the Planning Item to ``In Review``
 
 **Slice 1** drove a pre-scoped PI (scoping supplied). **Slice 2 (this build) adds
@@ -65,6 +68,7 @@ _DONE_STATUS = "In Review"
 class StepKind(str, Enum):
     SCOPE = "scope"        # a Planned phase needs scoping (an Architect agent)
     START = "start"        # start + execute this Ready phase Workstream
+    RESUME = "resume"      # re-enter an In Progress phase from recorded task states
     DONE = "done"          # every phase terminal — advance the PI
     PAUSE = "pause"        # a phase needs a human (needs_attention)
     BLOCKED = "blocked"    # a phase is in an unexpected state mid-loop
@@ -86,9 +90,13 @@ def decide_next(overview: dict) -> AdoStep:
     ``needs_attention`` flag stops everything; then "all phases terminal" is done.
     Otherwise the first non-terminal phase drives the step — ``SCOPE`` it if it is
     still ``Planned`` (slice 2 spawns an Architect to create its Work Tasks),
-    ``START`` it once it is ``Ready``. A phase whose predecessors are not terminal,
-    or one sitting in a transient ``Scoping``/``In Progress`` state between
-    iterations, is an unexpected state and surfaces as ``BLOCKED``.
+    ``START`` it once it is ``Ready``, ``RESUME`` it when an interrupted run left
+    it ``In Progress`` (PI-157 — the driver re-enters from the recorded Work Task
+    states). A phase whose predecessors are not terminal surfaces as ``BLOCKED``;
+    so does a persisted ``Scoping`` phase — ``scope_workstream`` drives
+    ``Planned → Scoping → Ready`` inside one call, so a ``Scoping`` row found
+    *between* runs is a crash mid-scope with no recorded Work Task basis to
+    resume from, and a person should look at it.
     """
     attention = overview.get("needs_attention") or []
     if attention:
@@ -115,6 +123,8 @@ def decide_next(overview: dict) -> AdoStep:
             return AdoStep(StepKind.SCOPE, workstream=wsid, phase_type=ptype)
         if p["status"] == "Ready":
             return AdoStep(StepKind.START, workstream=wsid, phase_type=ptype)
+        if p["status"] == "In Progress":
+            return AdoStep(StepKind.RESUME, workstream=wsid, phase_type=ptype)
         return AdoStep(
             StepKind.BLOCKED, workstream=wsid, phase_type=ptype,
             reason=f"phase {wsid} is {p['status']!r} (unexpected between iterations)",
@@ -360,6 +370,41 @@ def develop_gate_open(cfg: AdoRuntimeConfig, workstream_id: str) -> GateDecision
 
 
 # --------------------------------------------------------------------------
+# Rollback-residue seam (PI-157 §2.6) — detects a PI-145 un-merged Complete task
+# --------------------------------------------------------------------------
+
+
+def task_branch_unmerged(cfg: AdoRuntimeConfig, work_task_id: str) -> bool:
+    """Whether a Complete task's ``ado/<wtk-id>`` branch is un-merged (PI-145 residue).
+
+    Under PI-145 a failed phase rolls back every sibling merge, but the
+    rolled-back siblings' Work Task rows stay ``Complete``. Detection-only: the
+    branch still exists *and* carries commits not reachable from
+    ``cfg.base_branch`` means the task's verified work was un-merged by a
+    rollback. A task whose branch is absent or fully merged passes silently —
+    two fast local git reads per Complete task.
+    """
+    import subprocess
+
+    branch = f"ado/{work_task_id.lower()}"
+    probe = subprocess.run(
+        ["git", "-C", cfg.repo_root, "rev-parse", "--verify", "--quiet", branch],
+        capture_output=True, text=True,
+    )
+    if probe.returncode != 0:
+        return False  # branch absent → nothing un-merged
+    count = subprocess.run(
+        ["git", "-C", cfg.repo_root, "rev-list", "--count",
+         f"{cfg.base_branch}..{branch}"],
+        capture_output=True, text=True,
+    )
+    try:
+        return int(count.stdout.strip()) > 0
+    except ValueError:
+        return False
+
+
+# --------------------------------------------------------------------------
 # The driver
 # --------------------------------------------------------------------------
 
@@ -374,6 +419,7 @@ class AdoRuntime:
     scope_runner: Callable[[AdoRuntimeConfig, str, str], None] = scope_phase_agent
     gate_checker: Callable[[AdoRuntimeConfig, str], GateDecision] = develop_gate_open
     reconcile_runner: Callable[[AdoRuntimeConfig, str], None] = reconcile_phase_agent
+    unmerged_check: Callable[[AdoRuntimeConfig, str], bool] = task_branch_unmerged
 
     def log(self, msg: str) -> None:
         self.config.log(msg)
@@ -394,6 +440,11 @@ class AdoRuntime:
             self.config.api_base, path, self.config.engagement, body or {}
         )
 
+    def _patch(self, path: str, body: dict) -> object:
+        return dispatcher._patch(
+            self.config.api_base, path, self.config.engagement, body
+        )
+
     def _pi(self) -> dict:
         return self._get(f"/planning-items/{self.config.planning_item}")  # type: ignore[return-value]
 
@@ -401,6 +452,20 @@ class AdoRuntime:
         return self._get(
             f"/planning-items/{self.config.planning_item}/phase-overview"
         )  # type: ignore[return-value]
+
+    def _phase_work_tasks(self, workstream_id: str) -> list[dict]:
+        """The phase's Work Task rows, in identifier order (the edge query
+        ``develop_gate_open``/``_workstream_members`` already use)."""
+        edges = self._get(
+            f"/references?target_id={workstream_id}"
+            "&relationship=work_task_belongs_to_workstream"
+        )
+        ids = (
+            [e["source_id"] for e in edges if e.get("source_type") == "work_task"]
+            if isinstance(edges, list)
+            else []
+        )
+        return [self._get(f"/work-tasks/{wtid}") for wtid in sorted(ids)]  # type: ignore[misc]
 
     # --- the loop -------------------------------------------------------
 
@@ -438,6 +503,8 @@ class AdoRuntime:
 
         # 3. drive phases serially until done / paused / blocked. Each phase can
         # take two iterations (scope, then execute), so budget accordingly.
+        # (A RESUME consumes an iteration exactly as START does — a
+        # resume-after-pause is a fresh run, so the formula is unchanged.)
         for _ in range(cfg.max_phases * 2 + 1):
             ov = self._overview()
             step = decide_next(ov)
@@ -481,44 +548,157 @@ class AdoRuntime:
                 self.log(f"  {ws} scoped → {after}")
                 continue
 
-            # START: a Develop phase first clears the reconciliation gate.
-            if step.phase_type == _DEVELOP_PHASE:
-                gate = self.gate_checker(cfg, ws)
-                if not gate.allow:
-                    report.status = "paused"
-                    report.reason = (
-                        f"Develop gate held on {ws}: {gate.reason} — reconcile the "
-                        f"Design before building"
-                    )
-                    self.log(f"⏸ {pi}: {report.reason}")
+            # RESUME (PI-157): recover an In Progress phase from its recorded
+            # Work Task states, then re-enter the shared execution tail.
+            if step.kind is StepKind.RESUME:
+                if not self._resume_phase(report, ws, step.phase_type):
                     return report
+                continue
 
-            # open the phase, run the pool over it, then complete it.
-            self._post(f"/workstreams/{ws}/start-execution")
-            self.log(f"▶ {pi}: started phase {ws} → running pool")
-
-            pool_report = self.pool_runner(cfg, ws)
-            if pool_report.paused:
-                self.log(f"⏸ {pi}: execution paused in phase {ws}")
-                report.status = "paused"
-                report.reason = f"execution paused in {ws}"
+            # START: open the phase and run the shared execution tail.
+            if not self._execute_phase(report, ws, step.phase_type, open_phase=True):
                 return report
-
-            self._post(f"/workstreams/{ws}/complete-phase")
-            self.log(f"✔ {pi}: phase {ws} complete "
-                     f"({len(pool_report.merged)} task(s) merged)")
-            report.completed_phases.append(ws)
-
-            # A completed Design phase is reconciled across areas: the reviewer
-            # raises findings; the Develop gate (above) then enforces blocking ones.
-            if step.phase_type == "Design":
-                self.log(f"▶ {pi}: reconciling Design ({ws}) — checking coherence")
-                self.reconcile_runner(cfg, ws)
 
         report.status = "blocked"
         report.reason = f"exceeded the phase budget ({cfg.max_phases}) without finishing"
         self.log(f"⚠ {pi}: {report.reason}")
         return report
+
+    def _execute_phase(
+        self, report: AdoRunReport, ws: str, phase_type: str | None,
+        *, open_phase: bool,
+    ) -> bool:
+        """The shared START/RESUME execution tail (PI-157).
+
+        A Develop phase first clears the reconciliation gate (re-checked on
+        RESUME too — a blocking finding may have been raised between the
+        original start and the resume). START opens the phase
+        (``start-execution``); RESUME skips that call — ``start_phase``
+        requires ``Ready`` and would 409 on an ``In Progress`` Workstream.
+        Then the pool runs, the phase completes, and a completed Design phase
+        is reconciled. Returns True to continue the driver loop, False when
+        ``report`` is finalized (a pause) and the loop should return it.
+        """
+        cfg = self.config
+        pi = cfg.planning_item
+
+        if phase_type == _DEVELOP_PHASE:
+            gate = self.gate_checker(cfg, ws)
+            if not gate.allow:
+                report.status = "paused"
+                report.reason = (
+                    f"Develop gate held on {ws}: {gate.reason} — reconcile the "
+                    f"Design before building"
+                )
+                self.log(f"⏸ {pi}: {report.reason}")
+                return False
+
+        if open_phase:
+            self._post(f"/workstreams/{ws}/start-execution")
+            self.log(f"▶ {pi}: started phase {ws} → running pool")
+        else:
+            self.log(f"▶ {pi}: resuming phase {ws} → running pool")
+
+        pool_report = self.pool_runner(cfg, ws)
+        if pool_report.paused:
+            self.log(f"⏸ {pi}: execution paused in phase {ws}")
+            report.status = "paused"
+            report.reason = f"execution paused in {ws}"
+            return False
+
+        self._post(f"/workstreams/{ws}/complete-phase")
+        self.log(f"✔ {pi}: phase {ws} complete "
+                 f"({len(pool_report.merged)} task(s) merged)")
+        report.completed_phases.append(ws)
+
+        # A completed Design phase is reconciled across areas: the reviewer
+        # raises findings; the Develop gate (above) then enforces blocking ones.
+        if phase_type == "Design":
+            self.log(f"▶ {pi}: reconciling Design ({ws}) — checking coherence")
+            self.reconcile_runner(cfg, ws)
+        return True
+
+    def _resume_phase(
+        self, report: AdoRunReport, ws: str, phase_type: str | None
+    ) -> bool:
+        """Recovery pass over an ``In Progress`` phase's recorded task states (PI-157).
+
+        Reconciles each Work Task by its recorded state — skip ``Complete``
+        (subject to the PI-145 rollback-residue guard), release stale claims
+        (a claim observed at resume time is stale by definition: one runtime
+        per PI, and agents are synchronous children of the dead run), and
+        rewind stale statuses along legal lifecycle transitions only. The
+        Workstream status itself is never rewound — the phase stays
+        ``In Progress`` throughout, which is truthful. Re-runnable: release is
+        idempotent when unclaimed and every PATCH is conditional on the
+        observed state. Returns True to continue the loop, False when
+        ``report`` is finalized.
+        """
+        cfg = self.config
+        pi = cfg.planning_item
+        self.log(f"▶ {pi}: resuming phase {ws} ({phase_type}) — recovery pass")
+
+        tasks = self._phase_work_tasks(ws)
+        blocked: list[str] = []
+        residue: list[str] = []
+        for task in tasks:
+            wtid = task["work_task_identifier"]
+            status = task.get("work_task_status")
+            claimant = task.get("work_task_claimed_by")
+            if status == "Complete":
+                if self.unmerged_check(cfg, wtid):
+                    residue.append(wtid)
+                continue
+            if status == "Blocked":
+                # A person parked it; RESUME must not override human judgment.
+                blocked.append(wtid)
+                continue
+            if claimant:
+                # Echo the row's recorded claimant — release rejects a mismatch,
+                # and a registry-profile agent may claim under another identity.
+                self._post(f"/work-tasks/{wtid}/release", {"claimed_by": claimant})
+                self.log(f"  {wtid}: released stale claim ({claimant})")
+            if status == "Claimed":
+                self._patch(f"/work-tasks/{wtid}", {"work_task_status": "Ready"})
+            elif status == "In Progress":
+                # No legal In Progress → Ready transition: Failed records the
+                # dead attempt, then Failed → Ready is the vocab's retry path.
+                self._patch(f"/work-tasks/{wtid}", {"work_task_status": "Failed"})
+                self._patch(f"/work-tasks/{wtid}", {"work_task_status": "Ready"})
+            elif status in ("Failed", "Planned"):
+                # Failed → Ready is the retry path; a Planned task scoped after
+                # the phase started was never readied (mirrors start_phase).
+                self._patch(f"/work-tasks/{wtid}", {"work_task_status": "Ready"})
+            # "Ready" (now unclaimed): leave — the pool will dispatch it.
+
+        if residue:
+            report.status = "paused"
+            report.reason = (
+                f"resume: {ws} has Complete task(s) {residue} whose branch is "
+                f"not merged into {cfg.base_branch} (PI-145 rollback residue) — "
+                f"re-merge or re-open them, then relaunch"
+            )
+            self.log(f"⏸ {pi}: {report.reason}")
+            return False
+
+        if blocked:
+            report.status = "paused"
+            report.reason = (
+                f"resume: {ws} has Blocked task(s) {blocked}; a person parked "
+                f"them — unblock or fail them, then relaunch"
+            )
+            self.log(f"⏸ {pi}: {report.reason}")
+            return False
+
+        if tasks and all(t.get("work_task_status") == "Complete" for t in tasks):
+            # The PI-153/WSK-072 shape: the previous run finished every task but
+            # exited before issuing complete-phase. No pool run, no start.
+            self._post(f"/workstreams/{ws}/complete-phase")
+            self.log(f"✔ {pi}: phase {ws} resumed — all tasks already complete")
+            report.completed_phases.append(ws)
+            return True
+
+        return self._execute_phase(report, ws, phase_type, open_phase=False)
 
     def _patch_pi_status(self, status: str) -> None:
         # The update endpoint is PATCH; dispatcher only has GET/POST, so go

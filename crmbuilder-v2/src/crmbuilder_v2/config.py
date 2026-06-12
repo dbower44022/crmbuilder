@@ -31,6 +31,16 @@ def api_log_path() -> Path:
     return _repo_root() / "crmbuilder-v2" / "data" / "logs" / "api.log"
 
 
+def verify_log_dir() -> Path:
+    """Directory for persisted verify-failure pytest output (PI-157).
+
+    Repo-rooted like ``api_log_path`` so one durable location collects every
+    runtime's verify failures regardless of engagement or launch mode. Created
+    at write time by the runtime, so the no-failure path creates nothing.
+    """
+    return _repo_root() / "crmbuilder-v2" / "data" / "logs" / "verify"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="CRMBUILDER_V2_",

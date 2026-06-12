@@ -155,6 +155,9 @@ class TaskReport:
     spawned_at: float | None = None
     finished_at: float | None = None
     merged_at: float | None = None
+    # PI-157: absolute path of the persisted verify-failure pytest output
+    # (None on a green run, a pre-test verdict, or a failed log write).
+    verify_log_path: str | None = None
 
 
 @dataclass
@@ -476,24 +479,30 @@ class ParallelCoordinatingRuntime:
     def _integrate(self, run: _AgentRun) -> TaskReport:
         a = run.assignment
         verdict = verify_result(run.refreshed_task, run.has_commits)
+        verify_log_path = None
         if verdict is VerifyOutcome.OK:
             # PI-147: run the affected test package before merging. The
             # changed_files git read touches the shared repo, so take the lock
             # for it; the helper's pytest subprocess runs in the worker's own
             # worktree (a future optimization may drop the lock around it).
             with self._repo_lock:
-                verdict = self._l1._run_affected_tests(run.worktree)
+                verdict, verify_log_path = self._l1._run_affected_tests(
+                    run.worktree, a.work_task_id
+                )
         self.log(
             f"  [{a.work_task_id}] verify: {verdict.value} "
             f"(branch_has_commits={run.has_commits})"
         )
         if verdict is not VerifyOutcome.OK:
+            log_suffix = f" — output: {verify_log_path}" if verify_log_path else ""
             self._l1._flag_needs_attention(
                 a.work_task_id,
-                f"verification failed: {verdict.value} (agent rc={run.returncode})",
+                f"verification failed: {verdict.value} "
+                f"(agent rc={run.returncode}){log_suffix}",
             )
             self._record_finding(
-                a.work_task_id, f"verification failed: {verdict.value}"
+                a.work_task_id,
+                f"verification failed: {verdict.value}{log_suffix}",
             )
             run.worktree.remove()
             return TaskReport(
@@ -504,6 +513,7 @@ class ParallelCoordinatingRuntime:
                 agent_returncode=run.returncode,
                 spawned_at=run.spawned_at,
                 finished_at=run.finished_at,
+                verify_log_path=verify_log_path,
             )
         # Merge is serialized: only one branch lands on the base at a time, in
         # completion order (the order results arrive on the queue).
