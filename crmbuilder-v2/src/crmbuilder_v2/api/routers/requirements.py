@@ -80,6 +80,7 @@ def create(body: RequirementCreateIn):
                 notes=body.requirement_notes,
                 status=body.requirement_status,
                 identifier=body.requirement_identifier,
+                origin=body.requirement_origin,
             )
         )
 

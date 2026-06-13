@@ -51,6 +51,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access import readability
 from crmbuilder_v2.access._helpers import (
     get_by_identifier,
     next_prefixed_identifier,
@@ -67,6 +68,7 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.models import Reference, Requirement
 from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
+    REQUIREMENT_ORIGINS,
     REQUIREMENT_PRIORITIES,
     REQUIREMENT_STATUS_TRANSITIONS,
     REQUIREMENT_STATUSES,
@@ -147,6 +149,23 @@ def _require_priority(priority: object) -> str:
             ]
         )
     return priority  # type: ignore[return-value]
+
+
+def _require_origin(origin: object) -> str:
+    """Validate ``requirement_origin``; default to ``human_defined`` when omitted."""
+    if origin is None:
+        return "human_defined"
+    if origin not in REQUIREMENT_ORIGINS:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "requirement_origin",
+                    "invalid_value",
+                    f"must be one of {sorted(REQUIREMENT_ORIGINS)}",
+                )
+            ]
+        )
+    return origin  # type: ignore[return-value]
 
 
 def _check_transition(current: str, requested: str) -> None:
@@ -338,6 +357,7 @@ def create_requirement(
     notes: str | None = None,
     status: str | None = None,
     identifier: str | None = None,
+    origin: str | None = None,
 ) -> dict:
     """Create a requirement.
 
@@ -361,6 +381,7 @@ def create_requirement(
     if status is None:
         status = "candidate"
     _require_status(status)
+    origin = _require_origin(origin)
     _reject_duplicate_name(session, name)
 
     if identifier is None:
@@ -379,6 +400,8 @@ def create_requirement(
         session.add(row)
         session.flush()
 
+    row.requirement_origin = origin
+    session.flush()
     after = to_dict(row)
     emit(
         session,
@@ -563,6 +586,11 @@ def activate_by_decision(session: Session, identifier: str) -> dict:
                 )
             ]
         )
+    readability.validate_requirement_readability(
+        row.requirement_name,
+        row.requirement_description,
+        row.requirement_acceptance_summary,
+    )
     if not _resolves_via_ancestry(
         session, identifier, "requirement_defined_in_conversation"
     ):

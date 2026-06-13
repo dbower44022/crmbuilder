@@ -610,6 +610,9 @@ class RequirementCreateIn(_Base):
     requirement_notes: str | None = None
     requirement_status: str | None = None
     requirement_identifier: str | None = None
+    # Requirements-provenance Phase 5: how the requirement came to be —
+    # ``human_defined`` (default when omitted) or ``ai_derived``.
+    requirement_origin: str | None = None
 
 
 class RequirementReplaceIn(_Base):
