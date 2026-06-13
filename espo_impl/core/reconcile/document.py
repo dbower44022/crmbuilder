@@ -197,7 +197,7 @@ class YamlDocument:
                 return indent
             i += 1
         # Empty sequence (no items yet): indent one level under the key.
-        return self._indent_of(key_line) or 0
+        return (self._indent_of(key_line) or 0) + 2
 
     def _render_sequence_item(
         self, mapping: dict, marker_col: int, *, blank_line_before: bool
@@ -243,6 +243,50 @@ class YamlDocument:
         if insert_at > 0 and self._text[insert_at - 1] != "\n":
             item_text = "\n" + item_text
         self._edits.append(_Edit(insert_at, insert_at, item_text))
+
+    def insert_or_create_top_level_block(
+        self, block_key: str, items: list[dict]
+    ) -> None:
+        """Append ``items`` to a top-level list block, creating it at EOF if absent.
+
+        Used to capture CRM-only whole items (roles/teams/relationships) into a
+        file. All items go in a *single* splice, so a batch lands correctly under
+        the splice-against-original-offsets model (per-item appends would all
+        target the same offset). If ``block_key:`` already exists the items are
+        appended after its last entry; otherwise a fresh ``block_key:`` block is
+        written at end-of-file, separated by a blank line.
+        """
+        if not items:
+            return
+        present = block_key in self.data
+
+        if present:
+            key_line, key_col = self.data.lc.key(block_key)
+            marker_col = self._marker_col_of_sequence(key_line)
+            body = "".join(
+                self._render_sequence_item(it, marker_col, blank_line_before=True)
+                for it in items
+            )
+            last = self._block_last_content_line(key_line, key_col)
+            insert_at = (
+                self._line_starts[last + 1]
+                if last + 1 < len(self._line_starts)
+                else len(self._text)
+            )
+            if insert_at > 0 and self._text[insert_at - 1] != "\n":
+                body = "\n" + body
+            self._edits.append(_Edit(insert_at, insert_at, body))
+            return
+
+        # Absent: create a new top-level block at EOF (items indented at col 2).
+        rendered = "".join(
+            self._render_sequence_item(it, 2, blank_line_before=(i > 0))
+            for i, it in enumerate(items)
+        )
+        block = f"{block_key}:\n{rendered}"
+        eof = len(self._text)
+        prefix = "" if (eof > 0 and self._text[eof - 1] == "\n") else "\n"
+        self._edits.append(_Edit(eof, eof, prefix + "\n" + block))
 
     def render_block_body(self, value, indent: int) -> str:
         """Render a Python value as an indented YAML block body (no key line)."""

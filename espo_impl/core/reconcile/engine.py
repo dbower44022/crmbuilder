@@ -126,10 +126,53 @@ def detect_drift(
     )
     _attach_layout_write_bodies(layout_diffs, cap, specs)
     report.differences += layout_diffs
-    report.differences += diff_roles(roles, roles_live, source_files=role_files)
-    report.differences += diff_teams(teams, teams_live, source_files=team_files)
+    role_diffs = diff_roles(roles, roles_live, source_files=role_files)
+    team_diffs = diff_teams(teams, teams_live, source_files=team_files)
+    _attach_security_insert_bodies(role_diffs, ConfigType.ROLE, report.warnings)
+    _attach_security_insert_bodies(team_diffs, ConfigType.TEAM, report.warnings)
+    report.differences += role_diffs
+    report.differences += team_diffs
 
     return report
+
+
+def _attach_security_insert_bodies(
+    diffs: list[Difference], config_type, warnings: list[str]
+) -> None:
+    """Reconstruct each CRM_ONLY role/team's live view into the YAML mapping to
+    insert (``full_crm_block``), so whole-item capture is applicable.
+
+    The CRM_ONLY diff initially carries the live audit-result view; we replace it
+    with the serialized ``roles:``/``teams:`` mapping. A role holding a value the
+    schema can't represent (e.g. EspoCRM ``not-set``) is left uncaptured
+    (``full_crm_block=None`` -> report-only) with a warning, rather than writing
+    YAML that won't re-parse. ``Difference`` is frozen, so we swap in copies.
+    """
+    from dataclasses import replace
+
+    from espo_impl.core.reconcile.reconstruct import (
+        role_representability_issue,
+        role_to_yaml,
+        team_to_yaml,
+    )
+
+    for i, diff in enumerate(diffs):
+        if diff.category is not DiffCategory.CRM_ONLY or diff.full_crm_block is None:
+            continue
+        if config_type is ConfigType.ROLE:
+            block = role_to_yaml(diff.full_crm_block)
+            issue = role_representability_issue(block)
+            if issue:
+                warnings.append(
+                    f"Role {diff.entity!r}: {issue} is not representable in the "
+                    "YAML role schema (only all/team/own/no); not captured — "
+                    "capture manually or extend the schema to allow 'not-set'."
+                )
+                diffs[i] = replace(diff, full_crm_block=None)
+                continue
+        else:
+            block = team_to_yaml(diff.full_crm_block)
+        diffs[i] = replace(diff, full_crm_block=block)
 
 
 def _attach_layout_write_bodies(layout_diffs, cap, specs) -> None:

@@ -148,7 +148,34 @@ def apply_reconciliation(
     for path, diffs in by_file.items():
         doc = YamlDocument(path.read_text())
         fr = FileReconcileResult(path=path)
+
+        # Whole-item insertions into a top-level list (CRM-only roles/teams) are
+        # batched per block: all items go in one splice (per-item appends would
+        # collide on the same end-of-block offset, and a missing block must be
+        # created exactly once). Handled here, ahead of the per-diff pass.
+        handled: set[int] = set()
+        for block_key, ct in (("roles", ConfigType.ROLE), ("teams", ConfigType.TEAM)):
+            group = [
+                d for d in diffs
+                if d.config_type is ct
+                and d.category is DiffCategory.CRM_ONLY
+                and d.full_crm_block is not None
+            ]
+            if not group:
+                continue
+            try:
+                doc.insert_or_create_top_level_block(
+                    block_key, [d.full_crm_block for d in group]
+                )
+            except (KeyError, ValueError) as exc:
+                fr.not_applied += [(d, f"error: {exc}") for d in group]
+            else:
+                fr.applied += group
+            handled.update(id(d) for d in group)
+
         for diff in diffs:
+            if id(diff) in handled:
+                continue
             try:
                 reason = _apply_one(doc, diff)
             except (KeyError, ValueError) as exc:
