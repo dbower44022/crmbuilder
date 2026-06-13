@@ -28,6 +28,10 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.icons import lucide
 from crmbuilder_v2.ui.styling import t
+from crmbuilder_v2.ui.widgets.selectable_text import (
+    copy_to_clipboard,
+    make_selectable,
+)
 
 _DEFAULT_MESSAGE = "Storage server stopped."
 
@@ -101,9 +105,21 @@ class CrashBanner(QWidget):
             f" font-size: {t('font.size.body')};"
             f" font-weight: {t('font.weight.medium')};"
         )
+        # PI-124: let an operator select the banner text and copy the
+        # full message (URL / attempt count / log path) into a bug report.
+        make_selectable(self._label)
         layout.addWidget(self._label)
 
         layout.addStretch(1)
+
+        # Explicit Copy affordance — the banner is not a QMessageBox, so
+        # the native context-menu Copy isn't reliably available; a button
+        # copies the current message text outright.
+        self._copy_button = QPushButton("Copy")
+        self._copy_button.setObjectName("crashBannerCopy")
+        self._copy_button.setStyleSheet(_banner_button_style())
+        self._copy_button.clicked.connect(self._on_copy_clicked)
+        layout.addWidget(self._copy_button)
 
         self._reconnect_button = QPushButton("Reconnect")
         self._reconnect_button.setStyleSheet(_banner_button_style())
@@ -116,6 +132,10 @@ class CrashBanner(QWidget):
         """Show the banner with the given message (or the default)."""
         self._label.setText(message or _DEFAULT_MESSAGE)
         self.show()
+
+    def _on_copy_clicked(self) -> None:
+        """Copy the current banner message to the clipboard."""
+        copy_to_clipboard(self._label.text())
 
     def _on_reconnect_clicked(self) -> None:
         self.hide()

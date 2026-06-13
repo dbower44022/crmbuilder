@@ -25,6 +25,7 @@ from crmbuilder_v2.ui.elevation import apply_dialog_shadow
 from crmbuilder_v2.ui.icons import lucide
 from crmbuilder_v2.ui.widgets.modal_backdrop import attach as _backdrop_attach
 from crmbuilder_v2.ui.widgets.modal_backdrop import detach as _backdrop_detach
+from crmbuilder_v2.ui.widgets.selectable_text import make_selectable
 
 
 class ErrorDialog(QDialog):
@@ -77,6 +78,7 @@ class ErrorDialog(QDialog):
         title_label = QLabel(title)
         title_label.setObjectName("errorDialogHeader")
         title_label.setWordWrap(True)
+        make_selectable(title_label)
         header_layout.addWidget(title_label, stretch=1)
 
         outer.addWidget(header_row)
@@ -84,9 +86,7 @@ class ErrorDialog(QDialog):
         message_label = QLabel(message)
         message_label.setWordWrap(True)
         message_label.setMinimumWidth(360)
-        message_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
+        make_selectable(message_label)
         outer.addWidget(message_label)
 
         if detail:
