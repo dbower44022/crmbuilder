@@ -28,6 +28,7 @@ from pathlib import Path
 from espo_impl.core.reconcile.document import YamlDocument
 from espo_impl.core.reconcile.models import ConfigType, DiffCategory, Difference
 from espo_impl.core.reconcile.patcher import (
+    apply_relationship_change,
     apply_role_change,
     apply_team_change,
     insert_field,
@@ -97,6 +98,12 @@ def _apply_one(doc: YamlDocument, diff: Difference) -> str | None:
             )
             return None
         return _REPORT_ONLY  # CRM-only layout add / YAML_ONLY
+
+    if ct is ConfigType.RELATIONSHIP:
+        if cat is DiffCategory.CHANGED:
+            apply_relationship_change(doc, diff.locator, diff.property, diff.crm_value)
+            return None
+        return _REPORT_ONLY  # CRM-only / YAML_ONLY relationship
 
     if ct is ConfigType.ROLE:
         if cat is DiffCategory.CHANGED:
