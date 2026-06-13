@@ -312,3 +312,60 @@ class LiveStateCapture:
         roles = {r.name: r for r in audit._discover_roles(report)}
         teams = {t.name: t for t in audit._discover_teams(report)}
         return roles, teams, report.warnings + report.errors
+
+
+def gather_server_fields(
+    client, entity_names: Iterable[str]
+) -> tuple[dict[str, frozenset[str]], list[str]]:
+    """Discover the field names already present on a live instance.
+
+    Best-effort read of the target instance so the Configure-time
+    validator can resolve a reference to a field created by an earlier
+    deploy (or by a YAML outside the current batch) instead of
+    rejecting it. Reuses the Audit/reconcile discovery primitives
+    (``get_all_scopes`` → :func:`map_entity_specs` →
+    :meth:`LiveStateCapture.capture_fields`), so field names come back
+    in the same natural form the validator compares against — custom
+    fields have their ``c`` prefix stripped, native fields keep their
+    names.
+
+    Read-only and side-effect-free. Any failure (no instance, auth
+    error, scopes unreadable) is reported through the returned warnings
+    list rather than raised — the caller falls back to batch-only
+    validation.
+
+    :param client: A connected ``EspoAdminClient`` (or any object
+        exposing ``get_all_scopes`` and ``get_entity_field_list``).
+    :param entity_names: Natural names of the entities in the deploy
+        batch to discover fields for.
+    :returns: ``(server_fields_by_entity, warnings)`` where
+        ``server_fields_by_entity`` maps each entity natural name found
+        on the instance to its live field-name set, and ``warnings``
+        lists entities that could not be reached or mapped.
+    """
+    names = sorted(set(entity_names))
+    if not names:
+        return {}, []
+
+    status, scopes = client.get_all_scopes()
+    if status != 200 or not isinstance(scopes, dict):
+        return {}, [
+            f"Could not read live instance scopes (HTTP {status}); "
+            "validating against the deploy batch only."
+        ]
+
+    specs, unmapped = map_entity_specs(names, scopes)
+    warnings: list[str] = [
+        f"{name}: not present on the live instance — "
+        "validated against the deploy batch only."
+        for name in unmapped
+    ]
+    if not specs:
+        return {}, warnings
+
+    live, capture_warnings = LiveStateCapture(client).capture_fields(specs)
+    warnings.extend(capture_warnings)
+    server_fields = {
+        entity: frozenset(fields.keys()) for entity, fields in live.items()
+    }
+    return server_fields, warnings

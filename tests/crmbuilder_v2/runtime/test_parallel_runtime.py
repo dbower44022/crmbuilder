@@ -400,6 +400,38 @@ def test_verify_failure_pauses_and_flags(monkeypatch):
     assert "WTK-1" in rt._flagged
 
 
+def test_build_agent_retried_once_on_incomplete_then_merges(monkeypatch):
+    # Per-agent retry: the post-spawn re-read is In Progress the first time
+    # (agent incomplete) and Complete on the retry → the pool re-spawns the
+    # agent once and the task then merges, instead of failing the phase.
+    rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.02}, max_concurrent=1)
+    reads = {"n": 0}
+
+    def fake_get(api, path, eng):
+        reads["n"] += 1
+        return {"work_task_status": "Complete" if reads["n"] >= 2 else "In Progress"}
+
+    monkeypatch.setattr(pr.dispatcher, "_get", fake_get)
+    report = rt.run()
+    outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-1"] is TaskOutcome.MERGED
+    assert reads["n"] == 2  # re-read twice → the agent was re-spawned once
+    assert "WTK-1" not in rt._flagged
+
+
+def test_build_agent_incomplete_twice_fails_the_phase(monkeypatch):
+    # If the retry is also incomplete, the task fails (and the all-or-nothing
+    # phase rolls back) — the retry does not mask a persistently-failing agent.
+    rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.02}, max_concurrent=1)
+    monkeypatch.setattr(
+        pr.dispatcher, "_get", lambda api, path, eng: {"work_task_status": "In Progress"}
+    )
+    report = rt.run()
+    outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-1"] is TaskOutcome.VERIFY_FAILED
+    assert "WTK-1" in rt._flagged
+
+
 def test_affected_tests_failure_rolls_back_phase(monkeypatch):
     # PI-147: a lifecycle-clean task (Complete + commits) whose affected tests
     # are RED gets verdict TESTS_FAILED, which routes through the same fail path

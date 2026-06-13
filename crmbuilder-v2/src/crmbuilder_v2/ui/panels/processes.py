@@ -71,6 +71,7 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
     required_label,
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 from crmbuilder_v2.ui.widgets.warning_callout import WarningCallout
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.processes")
@@ -580,7 +581,7 @@ class ProcessesPanel(ListDetailPanel):
         name = record.get("process_name") or ""
         if not identifier:
             return
-        confirm = QMessageBox(self)
+        confirm = CopyableMessageBox(self)
         confirm.setWindowTitle("Restore process")
         confirm.setText(
             f"Restore {identifier} — {name or '(unnamed)'}?\n\n"

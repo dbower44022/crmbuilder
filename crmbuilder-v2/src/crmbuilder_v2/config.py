@@ -58,9 +58,17 @@ def sources_dir() -> Path:
 
 
 class Settings(BaseSettings):
+    # A gitignored, repo-rooted ``data/crmbuilder.env`` supplies durable
+    # ``CRMBUILDER_V2_*`` defaults that survive restarts — read on every
+    # process start regardless of launcher (standalone ``crmbuilder-v2-api`` or
+    # the desktop UI's spawned API subprocess), so a setting like
+    # ``CRMBUILDER_V2_PROVENANCE_BASELINE`` persists without polluting the
+    # shell. Real environment variables still take precedence over the file
+    # (so tests/CI override per the conftest), and unknown keys are ignored.
     model_config = SettingsConfigDict(
         env_prefix="CRMBUILDER_V2_",
-        env_file=None,
+        env_file=str(_repo_root() / "crmbuilder-v2" / "data" / "crmbuilder.env"),
+        extra="ignore",
         case_sensitive=False,
     )
 
@@ -131,6 +139,33 @@ class Settings(BaseSettings):
 
     api_base_url: str = "http://127.0.0.1:8765"
     mcp_http_port: int = 8810
+
+    # requirements-provenance Phase 3 baseline cutoff. An ISO-8601 date (or
+    # datetime) marking when the provenance model went live for this store;
+    # the coverage report treats gaps on records created before it as legacy
+    # *baseline* debt rather than live gaps. Empty (the default) => no cutoff,
+    # every gap counts as live (pre-cutoff behavior). A per-request
+    # ``?since=`` query param overrides this. Binds from
+    # ``CRMBUILDER_V2_PROVENANCE_BASELINE``.
+    provenance_baseline: str = ""
+
+    @field_validator("provenance_baseline", mode="before")
+    @classmethod
+    def _validate_provenance_baseline(cls, value: object) -> object:
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return ""
+        if not isinstance(value, str):
+            raise ValueError("CRMBUILDER_V2_PROVENANCE_BASELINE must be a string")
+        from datetime import datetime
+
+        try:
+            datetime.fromisoformat(value.strip())
+        except ValueError as exc:
+            raise ValueError(
+                "CRMBUILDER_V2_PROVENANCE_BASELINE must be ISO-8601 "
+                "(e.g. 2026-06-13 or 2026-06-13T00:00:00)"
+            ) from exc
+        return value.strip()
 
     # PI-β follow-on A1: the MCP server names the active engagement on its
     # REST calls via the ``X-Engagement`` header, mirroring the desktop. When

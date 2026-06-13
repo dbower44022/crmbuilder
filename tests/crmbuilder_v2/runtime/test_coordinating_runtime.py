@@ -29,6 +29,7 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     StepResult,
     TestRunResult,
     VerifyOutcome,
+    _is_harness_crash,
     interpret_merge,
     minimal_contract_prompt,
     operating_protocol,
@@ -101,6 +102,75 @@ def test_select_target_empty_falls_back():
 def test_select_target_unmirrored_subtree_falls_back():
     # A real src subtree with no mirroring tests package (e.g. a future one).
     assert select_test_target([f"{_P}brandnew/x.py"]) == "tests/crmbuilder_v2"
+
+
+# --------------------------------------------------------------------------
+# PI-147 crash-tolerance: a signal-kill is a flaky harness crash, retried once;
+# a real rc=1 test failure is not retried.
+# --------------------------------------------------------------------------
+
+
+def test_is_harness_crash_distinguishes_signal_from_test_failure():
+    assert _is_harness_crash(139) is True  # SIGSEGV
+    assert _is_harness_crash(134) is True  # SIGABRT
+    assert _is_harness_crash(128) is True
+    assert _is_harness_crash(1) is False  # a real pytest test failure
+    assert _is_harness_crash(0) is False
+    assert _is_harness_crash(5) is False  # pytest "no tests collected"
+
+
+class _StatefulRunner:
+    """A fake test runner returning a scripted result per call (PI-147 retry)."""
+
+    def __init__(self, results):
+        self._results = list(results)
+        self.calls = 0
+
+    def __call__(self, worktree_path, target):
+        result = self._results[self.calls]
+        self.calls += 1
+        return result
+
+
+def _runtime_for_affected_tests(monkeypatch, runner):
+    cfg = RuntimeConfig(target_work_task="WTK-099", dry_run=False)
+    rt = CoordinatingRuntime(config=cfg, log=lambda m: None, test_runner_fn=runner)
+    # Avoid touching the real verify-log dir in a unit test.
+    monkeypatch.setattr(rt, "_persist_verify_output", lambda *a, **k: None)
+    return rt
+
+
+def test_affected_tests_retries_once_on_crash_then_passes(monkeypatch):
+    runner = _StatefulRunner([
+        TestRunResult(passed=False, returncode=139, target="t"),  # SIGSEGV
+        TestRunResult(passed=True, returncode=0, target="t"),  # retry is clean
+    ])
+    rt = _runtime_for_affected_tests(monkeypatch, runner)
+    verdict, _ = rt._run_affected_tests(_FakeWorktree(has_commits=True), "WTK-1")
+    assert verdict is VerifyOutcome.OK
+    assert runner.calls == 2  # crashed once, retried, passed
+
+
+def test_affected_tests_fails_after_second_crash(monkeypatch):
+    runner = _StatefulRunner([
+        TestRunResult(passed=False, returncode=139, target="t"),
+        TestRunResult(passed=False, returncode=134, target="t"),
+    ])
+    rt = _runtime_for_affected_tests(monkeypatch, runner)
+    verdict, _ = rt._run_affected_tests(_FakeWorktree(has_commits=True), "WTK-1")
+    assert verdict is VerifyOutcome.TESTS_FAILED
+    assert runner.calls == 2  # two crashes → block
+
+
+def test_affected_tests_real_failure_is_not_retried(monkeypatch):
+    runner = _StatefulRunner([
+        TestRunResult(passed=False, returncode=1, target="t"),  # real failure
+        TestRunResult(passed=True, returncode=0, target="t"),  # must NOT run
+    ])
+    rt = _runtime_for_affected_tests(monkeypatch, runner)
+    verdict, _ = rt._run_affected_tests(_FakeWorktree(has_commits=True), "WTK-1")
+    assert verdict is VerifyOutcome.TESTS_FAILED
+    assert runner.calls == 1  # a genuine rc=1 failure blocks immediately
 
 
 def test_pause_none_when_nothing_flagged():

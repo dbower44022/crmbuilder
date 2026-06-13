@@ -279,3 +279,29 @@ def test_multiple_open_windows_coexist_with_no_cap(qapp, qtbot, open_window):
     assert len(positions) == spawn_count
 
     _drain_and_close(qtbot, open_window)
+
+
+def test_window_close_drains_panel_workers(qapp, qtbot):
+    """Regression (PI-121 teardown SIGABRT): closing the top-level window must
+    drain the hosted panel's worker threads. Qt does not deliver ``closeEvent``
+    to a window's child widgets, so the window's ``closeEvent`` must call the
+    panel's ``drain_workers`` explicitly — otherwise ``WA_DeleteOnClose`` deletes
+    the panel while a worker QThread is live, aborting the process (the flaky
+    crash that surfaced running the full suite in one process).
+    """
+    from PySide6.QtWidgets import QWidget
+
+    class _DrainSpyPanel(QWidget):
+        def __init__(self):
+            super().__init__()
+            self.drained = False
+
+        def drain_workers(self):
+            self.drained = True
+
+    panel = _DrainSpyPanel()
+    window = StandaloneDetailWindow(panel, "Spy")
+    qtbot.addWidget(window)
+    window.show()
+    window.close()
+    assert panel.drained is True

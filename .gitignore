@@ -47,6 +47,8 @@ PRDs/generated/
 # Pre-migration DB backups (recovery points; renamed past the .db suffix so
 # the *.db rule above misses them) — e.g. engagements.db.pre-pi123-backup-*.
 *.pre-*backup*
+# Timestamped pre-migration backups — e.g. v2-unified.db.bak-20260612-pre0046.
+*.db.bak-*
 
 # v0.5 multi-engagement: per-engagement DBs and active-state files
 # (`*.db` above already gitignores engagements.db and the dogfood backup
@@ -70,3 +72,4 @@ crmbuilder-v2/data/oauth_secrets.env
 
 *.lock
 crmbuilder-v2/data/mcp.env
+crmbuilder-v2/data/crmbuilder.env

@@ -346,13 +346,26 @@ class ListDetailPanel(QWidget):
                 return True
         return False
 
-    def closeEvent(self, event):  # noqa: N802 (Qt naming)
-        """Wait for in-flight workers so subprocess threads don't outlive the widget."""
+    def drain_workers(self) -> None:
+        """Block until in-flight worker threads finish, so they never outlive the
+        widget (a QThread touching a deleted C++ widget aborts the process).
+
+        Exposed as a method (not just inlined in ``closeEvent``) because a panel
+        hosted inside a top-level window does **not** receive a ``closeEvent``
+        when that window closes — Qt delivers ``closeEvent`` only to the window,
+        not its children — so the host must call this explicitly before the
+        window's ``WA_DeleteOnClose`` deletes the panel. See
+        ``StandaloneDetailWindow.closeEvent`` (PI-121 teardown-crash fix).
+        """
         for worker in list(self._in_flight_workers):
             try:
                 worker.wait(2000)
             except Exception:
                 _log.exception("Worker.wait failed during panel teardown")
+
+    def closeEvent(self, event):  # noqa: N802 (Qt naming)
+        """Wait for in-flight workers so subprocess threads don't outlive the widget."""
+        self.drain_workers()
         super().closeEvent(event)
 
     # ------------------------------------------------------------------

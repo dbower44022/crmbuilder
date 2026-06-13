@@ -1,0 +1,221 @@
+"""Review surface data layer (requirements-provenance Phase 6).
+
+The data behind the topic-first review process (anchor §"How a review works"):
+
+- ``topic_review`` — a topic's requirement tree (top-down), each node annotated
+  with status, review_state, origin, provenance (the conversations it traces to),
+  and spine flags (planned / verified). Descent stops where a descendant re-links
+  to a sub-topic, per the topic-inheritance rule.
+- ``topic_readback_document`` — a plain-language render of that tree, the artifact
+  a PM reads top to bottom away from the app.
+- ``approval_queue`` — candidates awaiting activation, with what each still needs.
+- ``drift_queue`` — everything flagged ``needs_review`` by living drift.
+
+Engagement-scoped automatically via the ORM execute hook. The Qt panel and the
+recorded sign-off (Phase 6b) render/extend this layer; this is the testable
+substance underneath them.
+"""
+
+from __future__ import annotations
+
+from collections import defaultdict
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from crmbuilder_v2.access.models import Reference, Requirement
+
+
+def _refines_maps(session: Session) -> tuple[dict[str, list[str]], dict[str, str]]:
+    """``requirement_refines_requirement`` edges as children-of and parent-of maps."""
+    children_of: dict[str, list[str]] = defaultdict(list)
+    parent_of: dict[str, str] = {}
+    for child, parent in session.execute(
+        select(Reference.source_id, Reference.target_id).where(
+            Reference.source_type == "requirement",
+            Reference.target_type == "requirement",
+            Reference.relationship_kind == "requirement_refines_requirement",
+        )
+    ).all():
+        children_of[parent].append(child)
+        parent_of[child] = parent
+    return children_of, parent_of
+
+
+def _own_topic(session: Session) -> dict[str, str]:
+    """Each requirement's directly-linked topic identifier (first if several)."""
+    out: dict[str, str] = {}
+    for src, tgt in session.execute(
+        select(Reference.source_id, Reference.target_id).where(
+            Reference.source_type == "requirement",
+            Reference.target_type == "topic",
+            Reference.relationship_kind == "requirement_belongs_to_topic",
+        )
+    ).all():
+        out.setdefault(src, tgt)
+    return out
+
+
+def _defined_in(session: Session) -> dict[str, list[str]]:
+    out: dict[str, list[str]] = defaultdict(list)
+    for src, tgt in session.execute(
+        select(Reference.source_id, Reference.target_id).where(
+            Reference.source_type == "requirement",
+            Reference.target_type == "conversation",
+            Reference.relationship_kind == "requirement_defined_in_conversation",
+        )
+    ).all():
+        out[src].append(tgt)
+    return out
+
+
+def _ids_with(session: Session, *, side: str, kind: str, etype: str) -> set[str]:
+    col = Reference.source_id if side == "source" else Reference.target_id
+    type_col = Reference.source_type if side == "source" else Reference.target_type
+    return set(
+        session.scalars(
+            select(col).where(type_col == etype, Reference.relationship_kind == kind)
+        ).all()
+    )
+
+
+def topic_review(session: Session, topic_identifier: str) -> dict:
+    """A topic's requirement tree with provenance + spine annotations."""
+    reqs = {
+        r.requirement_identifier: r
+        for r in session.scalars(
+            select(Requirement).where(Requirement.requirement_deleted_at.is_(None))
+        ).all()
+    }
+    children_of, parent_of = _refines_maps(session)
+    own_topic = _own_topic(session)
+    defined_in = _defined_in(session)
+    planned = _ids_with(
+        session, side="target", kind="planning_item_implements_requirement",
+        etype="requirement",
+    )
+    verified = _ids_with(
+        session, side="source", kind="requirement_verified_by_test_spec",
+        etype="requirement",
+    )
+
+    # Members = requirements that resolve to this topic: those directly linked,
+    # plus descendants that have not re-linked to a different (sub)topic.
+    members: set[str] = set()
+
+    def _collect(rid: str) -> None:
+        if rid in members or rid not in reqs:
+            return
+        members.add(rid)
+        for child in children_of.get(rid, []):
+            child_topic = own_topic.get(child)
+            if child_topic is not None and child_topic != topic_identifier:
+                continue
+            _collect(child)
+
+    for rid, topic in own_topic.items():
+        if topic == topic_identifier and rid in reqs:
+            _collect(rid)
+
+    def _node(rid: str) -> dict:
+        r = reqs[rid]
+        return {
+            "identifier": rid,
+            "name": r.requirement_name,
+            "status": r.requirement_status,
+            "review_state": r.requirement_review_state,
+            "origin": r.requirement_origin,
+            "priority": r.requirement_priority,
+            "acceptance_summary": r.requirement_acceptance_summary,
+            "defined_in_conversations": defined_in.get(rid, []),
+            "planned": rid in planned,
+            "verified": rid in verified,
+            "children": [
+                _node(c) for c in sorted(children_of.get(rid, [])) if c in members
+            ],
+        }
+
+    roots = sorted(m for m in members if parent_of.get(m) not in members)
+    return {"topic": topic_identifier, "requirements": [_node(r) for r in roots]}
+
+
+def topic_readback_document(session: Session, topic_identifier: str) -> str:
+    """A plain-language render of a topic's requirement tree for human review."""
+    review = topic_review(session, topic_identifier)
+    lines = [f"# Requirements review — topic {topic_identifier}", ""]
+    if not review["requirements"]:
+        lines.append("_No requirements are linked to this topic yet._")
+        return "\n".join(lines)
+
+    def _render(node: dict, depth: int) -> None:
+        indent = "  " * depth
+        flags = []
+        if node["review_state"] == "needs_review":
+            flags.append("NEEDS REVIEW")
+        if node["status"] == "confirmed" and not node["planned"]:
+            flags.append("unbuilt")
+        if node["status"] == "confirmed" and not node["verified"]:
+            flags.append("unverified")
+        suffix = f"  _({', '.join(flags)})_" if flags else ""
+        lines.append(
+            f"{indent}- **{node['identifier']}** [{node['status']}] "
+            f"{node['name']}{suffix}"
+        )
+        lines.append(f"{indent}  - _acceptance:_ {node['acceptance_summary']}")
+        if node["defined_in_conversations"]:
+            lines.append(
+                f"{indent}  - _defined in:_ "
+                f"{', '.join(node['defined_in_conversations'])}"
+            )
+        for child in node["children"]:
+            _render(child, depth + 1)
+
+    for root in review["requirements"]:
+        _render(root, 0)
+    return "\n".join(lines)
+
+
+def approval_queue(session: Session) -> list[dict]:
+    """Candidate requirements awaiting activation, with what each still needs."""
+    from crmbuilder_v2.access.repositories.requirement import _resolves_via_ancestry
+
+    out = []
+    for r in session.scalars(
+        select(Requirement).where(
+            Requirement.requirement_status == "candidate",
+            Requirement.requirement_deleted_at.is_(None),
+        )
+    ).all():
+        rid = r.requirement_identifier
+        out.append(
+            {
+                "identifier": rid,
+                "name": r.requirement_name,
+                "origin": r.requirement_origin,
+                "has_provenance": _resolves_via_ancestry(
+                    session, rid, "requirement_defined_in_conversation"
+                ),
+                "has_topic": _resolves_via_ancestry(
+                    session, rid, "requirement_belongs_to_topic"
+                ),
+            }
+        )
+    return out
+
+
+def drift_queue(session: Session) -> list[dict]:
+    """Requirements flagged ``needs_review`` by living drift."""
+    return [
+        {
+            "identifier": r.requirement_identifier,
+            "name": r.requirement_name,
+            "status": r.requirement_status,
+            "origin": r.requirement_origin,
+        }
+        for r in session.scalars(
+            select(Requirement).where(
+                Requirement.requirement_review_state == "needs_review",
+                Requirement.requirement_deleted_at.is_(None),
+            )
+        ).all()
+    ]

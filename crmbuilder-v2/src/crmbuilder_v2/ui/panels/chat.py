@@ -55,6 +55,7 @@ from crmbuilder_v2.ui.chat.widgets import (
 )
 from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.widgets.form_helpers import primary_button
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.chat")
 
@@ -348,7 +349,7 @@ class ChatPanel(QWidget):
             )
 
     def _on_confirm_write(self, name: str, args_json: str) -> None:
-        box = QMessageBox(self)
+        box = CopyableMessageBox(self)
         box.setWindowTitle("Confirm write")
         box.setIcon(QMessageBox.Icon.Question)
         box.setText(f"Claude wants to call the write tool {name}.")
@@ -422,7 +423,7 @@ class ChatPanel(QWidget):
             self._refresh_conversation_list()
 
     def _delete_conversation(self, chat_id: str, title: str) -> None:
-        confirm = QMessageBox(self)
+        confirm = CopyableMessageBox(self)
         confirm.setWindowTitle("Delete chat")
         confirm.setIcon(QMessageBox.Icon.Warning)
         confirm.setText(f"Delete the chat “{title}”?")
@@ -457,7 +458,7 @@ class ChatPanel(QWidget):
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(persistence.to_markdown(session))
         except OSError as exc:
-            QMessageBox.warning(self, "Export failed", str(exc))
+            CopyableMessageBox.warning(self, "Export failed", str(exc))
 
     def _render_session(self) -> None:
         """Rebuild the transcript widgets from the active session's history."""

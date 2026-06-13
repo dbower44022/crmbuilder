@@ -9,7 +9,7 @@ from __future__ import annotations
 import dataclasses
 import sqlite3
 
-from PySide6.QtCore import Qt, QThread, QUrl, Signal
+from PySide6.QtCore import Qt, QThread, QTimer, QUrl, Signal
 from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -257,6 +257,23 @@ class InstancesEntry(QWidget):
         self._detail_default.toggled.connect(self._on_default_toggled)
         detail_layout.addRow("", self._detail_default)
 
+        # Transient "Saved" confirmation. There is no Save button — edits
+        # commit on focus-out — so this flashes briefly to make each
+        # auto-save visible, then hides itself.
+        self._saved_label = QLabel("")
+        self._saved_label.setStyleSheet(
+            "color: #4CAF50; font-size: 12px; font-weight: bold;"
+        )
+        self._saved_label.setVisible(False)
+        detail_layout.addRow("", self._saved_label)
+
+        self._saved_timer = QTimer(self)
+        self._saved_timer.setSingleShot(True)
+        self._saved_timer.setInterval(1600)
+        self._saved_timer.timeout.connect(
+            lambda: self._saved_label.setVisible(False)
+        )
+
         # Connection test result label
         self._test_result_label = QLabel("")
         self._test_result_label.setWordWrap(True)
@@ -478,6 +495,9 @@ class InstancesEntry(QWidget):
             self._detail_desc.setText(detail.description or "")
             self._detail_default.setChecked(detail.is_default)
             self._test_result_label.setVisible(False)
+            # Clear any lingering "Saved" flash from the previous row.
+            self._saved_timer.stop()
+            self._saved_label.setVisible(False)
         finally:
             self._loading_detail = False
         self._loaded_detail = detail
@@ -543,6 +563,15 @@ class InstancesEntry(QWidget):
         ):
             return  # Nothing changed — no write.
 
+        # A change to any connection field invalidates the last cached
+        # connection-test result — the recorded status no longer reflects
+        # what these credentials would do.
+        connection_changed = (
+            url != prev.url
+            or username != prev.username
+            or password != prev.password
+        )
+
         update_instance(
             self._conn,
             self._selected_id,
@@ -564,6 +593,14 @@ class InstancesEntry(QWidget):
             description=description,
         )
         self._sync_row_cells(self._selected_id, name, url)
+        if connection_changed:
+            # Reset the stale status so the table stops claiming
+            # "Connected" against credentials that just changed.
+            self._update_status_cell(
+                self._selected_id,
+                "no_url" if not url else "not_tested",
+            )
+        self._flash_saved()
         self.instance_created.emit()
 
     def _on_default_toggled(self, checked: bool) -> None:
@@ -599,7 +636,18 @@ class InstancesEntry(QWidget):
 
         set_default_instance(self._conn, self._selected_id)
         self.refresh(self._conn)
+        self._flash_saved()
         self.instance_created.emit()
+
+    def _flash_saved(self) -> None:
+        """Briefly show a 'Saved' confirmation after an auto-save.
+
+        Restarts the hide timer on each call, so rapid successive saves
+        keep the indicator visible rather than flickering.
+        """
+        self._saved_label.setText("Saved ✓")
+        self._saved_label.setVisible(True)
+        self._saved_timer.start()
 
     def _sync_row_cells(self, instance_id: int, name: str, url: str | None) -> None:
         """Reflect saved Name/URL edits in the in-memory row and table cells.

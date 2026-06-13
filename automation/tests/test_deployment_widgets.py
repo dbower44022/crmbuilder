@@ -5,6 +5,14 @@ per-client database containing zero, one, and multiple instances.
 
 These tests require PySide6 and are skipped if the display is not
 available (e.g. headless CI without Xvfb).
+
+Visibility is asserted with ``isVisibleTo(w)`` rather than ``isVisible()``:
+the entry widgets are constructed but never shown as top-level windows, so
+``isVisible()`` is always False (it requires the whole ancestor chain to be
+shown) and would make positive assertions fail and negative ones pass
+trivially. ``isVisibleTo(w)`` answers "would this be visible if the top-level
+``w`` were shown", which is the show/hide contract these tests verify — without
+popping up a window.
 """
 
 from __future__ import annotations
@@ -80,15 +88,15 @@ class TestInstancesEntry:
         from automation.ui.deployment.instances_entry import InstancesEntry
         w = InstancesEntry()
         w.refresh(empty_db)
-        assert w._empty_label.isVisible()
-        assert not w._splitter.isVisible()
+        assert w._empty_label.isVisibleTo(w)
+        assert not w._splitter.isVisibleTo(w)
 
     def test_renders_single(self, qapp, single_db):
         from automation.ui.deployment.instances_entry import InstancesEntry
         w = InstancesEntry()
         w.refresh(single_db)
-        assert not w._empty_label.isVisible()
-        assert w._splitter.isVisible()
+        assert not w._empty_label.isVisibleTo(w)
+        assert w._splitter.isVisibleTo(w)
         assert w._table.rowCount() == 1
 
     def test_renders_multiple(self, qapp, multi_db):
@@ -162,6 +170,86 @@ class TestInstancesEntry:
         assert w._detail_default.isChecked()
         assert load_instances(single_db)[0].is_default is True
 
+    def test_editing_field_flashes_saved_indicator(self, qapp, single_db):
+        """An auto-save shows the transient 'Saved' confirmation."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+        assert not w._saved_label.isVisibleTo(w) or w._saved_label.text() == ""
+
+        w._detail_desc.setText("a note")
+        w._detail_desc.editingFinished.emit()
+
+        assert w._saved_label.text() == "Saved ✓"
+        assert w._saved_timer.isActive()
+
+    def test_no_op_edit_does_not_flash_saved(self, qapp, single_db):
+        """Focus-out with no change writes nothing and shows no confirmation."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+
+        w._detail_desc.editingFinished.emit()  # unchanged
+
+        assert not w._saved_timer.isActive()
+
+    def test_connection_field_edit_resets_status(self, qapp, single_db):
+        """Changing the URL clears a stale 'connected' status."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+        # Simulate a prior successful connection test.
+        w._status_cache[w._selected_id] = "connected"
+
+        w._detail_url.setText("https://moved.example.com")
+        w._detail_url.editingFinished.emit()
+
+        assert w._status_cache[w._selected_id] == "not_tested"
+
+    def test_clearing_url_sets_no_url_status(self, qapp, single_db):
+        """Blanking the URL reports 'no_url' rather than a stale status."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+        w._status_cache[w._selected_id] = "connected"
+
+        w._detail_url.setText("")
+        w._detail_url.editingFinished.emit()
+
+        assert w._status_cache[w._selected_id] == "no_url"
+
+    def test_non_connection_edit_preserves_status(self, qapp, single_db):
+        """Editing Description leaves a known connection status intact."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+        w._status_cache[w._selected_id] = "connected"
+
+        w._detail_desc.setText("just a note")
+        w._detail_desc.editingFinished.emit()
+
+        assert w._status_cache[w._selected_id] == "connected"
+
+    def test_row_change_clears_saved_flash(self, qapp, multi_db):
+        """Switching instances stops/hides a lingering 'Saved' flash."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(multi_db)
+        w._table.setCurrentCell(0, 0)
+        w._detail_desc.setText("note")
+        w._detail_desc.editingFinished.emit()
+        assert w._saved_timer.isActive()
+
+        w._table.setCurrentCell(1, 0)  # switch rows
+
+        assert not w._saved_timer.isActive()
+        assert not w._saved_label.isVisibleTo(w)
+
     def test_no_save_button(self, qapp, single_db):
         """The explicit Save Changes button is gone — edits auto-save."""
         from automation.ui.deployment.instances_entry import InstancesEntry
@@ -175,7 +263,7 @@ class TestDeployEntry:
         from automation.ui.deployment.deploy_entry import DeployEntry
         w = DeployEntry()
         w.refresh(empty_db, None, has_instances=False)
-        assert w._empty_label.isVisible()
+        assert w._empty_label.isVisibleTo(w)
 
     def test_renders_no_runs(self, qapp, single_db):
         from automation.ui.deployment.deploy_entry import DeployEntry
@@ -183,7 +271,7 @@ class TestDeployEntry:
         inst = load_instances(single_db)[0]
         w = DeployEntry()
         w.refresh(single_db, inst, has_instances=True)
-        assert w._empty_label.isVisible()
+        assert w._empty_label.isVisibleTo(w)
 
     def test_renders_with_runs(self, qapp, single_db):
         from automation.ui.deployment.deploy_entry import DeployEntry
@@ -199,7 +287,7 @@ class TestDeployEntry:
         single_db.commit()
         w = DeployEntry()
         w.refresh(single_db, inst, has_instances=True)
-        assert w._table.isVisible()
+        assert w._table.isVisibleTo(w)
         assert w._table.rowCount() == 1
 
 
@@ -208,7 +296,7 @@ class TestConfigureEntry:
         from automation.ui.deployment.configure_entry import ConfigureEntry
         w = ConfigureEntry()
         w.refresh(empty_db, None, None, has_instances=False)
-        assert w._empty_label.isVisible()
+        assert w._empty_label.isVisibleTo(w)
 
     def test_renders_no_yaml(self, qapp, single_db, tmp_path):
         from automation.ui.deployment.configure_entry import ConfigureEntry
@@ -216,7 +304,7 @@ class TestConfigureEntry:
         inst = load_instances(single_db)[0]
         w = ConfigureEntry()
         w.refresh(single_db, inst, str(tmp_path), has_instances=True)
-        assert w._empty_label.isVisible()
+        assert w._empty_label.isVisibleTo(w)
 
     def test_renders_with_yaml(self, qapp, single_db, tmp_path):
         from automation.ui.deployment.configure_entry import ConfigureEntry
@@ -227,7 +315,7 @@ class TestConfigureEntry:
         (programs / "contacts.yaml").write_text("entities: []")
         w = ConfigureEntry()
         w.refresh(single_db, inst, str(tmp_path), has_instances=True)
-        assert w._table.isVisible()
+        assert w._table.isVisibleTo(w)
         assert w._table.rowCount() == 1
 
 
@@ -236,7 +324,7 @@ class TestVerifyEntry:
         from automation.ui.deployment.verify_entry import VerifyEntry
         w = VerifyEntry()
         w.refresh(empty_db, None, has_instances=False)
-        assert not w._run_btn.isVisible()
+        assert not w._run_btn.isVisibleTo(w)
 
     def test_renders_with_instance(self, qapp, single_db):
         from automation.ui.deployment.deployment_logic import load_instances
@@ -244,7 +332,7 @@ class TestVerifyEntry:
         inst = load_instances(single_db)[0]
         w = VerifyEntry()
         w.refresh(single_db, inst, has_instances=True)
-        assert w._run_btn.isVisible()
+        assert w._run_btn.isVisibleTo(w)
 
 
 class TestOutputEntry:
@@ -252,7 +340,7 @@ class TestOutputEntry:
         from automation.ui.deployment.output_entry import OutputEntry
         w = OutputEntry()
         w.refresh(empty_db, None, has_instances=False)
-        assert w._empty_label.isVisible()
+        assert w._empty_label.isVisibleTo(w)
 
     def test_renders_with_instance(self, qapp, single_db):
         from automation.ui.deployment.deployment_logic import load_instances
@@ -260,7 +348,7 @@ class TestOutputEntry:
         inst = load_instances(single_db)[0]
         w = OutputEntry()
         w.refresh(single_db, inst, has_instances=True)
-        assert w._log_view.isVisible()
+        assert w._log_view.isVisibleTo(w)
 
     def test_append_line(self, qapp, single_db):
         from automation.ui.deployment.deployment_logic import load_instances

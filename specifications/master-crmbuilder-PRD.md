@@ -4,9 +4,9 @@
 
 | Field | Value |
 |-------|-------|
-| Version | 0.2 (draft) |
-| Last Updated | 06-11-26 |
-| Status | Phase 1 drafted (v0.1); Phase 1.5 (Existing System Baseline) and the Phase 3 baseline-triage section drafted (v0.2). Remaining phases placeholder. |
+| Version | 0.4 (draft) |
+| Last Updated | 06-12-26 |
+| Status | Phase 1 drafted, executed against the CRMBuilder dogfood, refined (v0.3). Phase 1.5 drafted (v0.2), built, and validated against the CBM test instance. Phase 2 drafted (v0.3). Phase 3 fully drafted (v0.4: interview reconciliation + the v0.2 baseline triage as two streams of one phase). Remaining phases placeholder. |
 | Audience | Anyone running the CRMBuilder process for a client engagement (consultant, AI session, or future maintainer) |
 | Governs | The entire process for using the V2 storage system to capture the complete definition of a product, from initial requirements through deployed functional application |
 | Does not govern | Detailed V2 internals beyond what Phase 1 needs (schema, API, MCP, UI surfaces have their own component PRDs referenced here as they're consolidated in) |
@@ -17,6 +17,8 @@
 |---------|------|-------------|
 | 0.1 | 05-26-26 | Initial draft. Orientation, two-layer mental model, phase sequence overview, Phase 1 (Business Context Capture) spec, the "what to do first" mini-guide for Phase 1. All other phases listed as placeholders to be drafted iteratively as the engagement reaches each one. |
 | 0.2 | 06-11-26 | Added Phase 1.5 (Existing System Baseline) — the Audit function repurposed as a requirements input: existing systems are audited and data-profiled into *candidate* methodology records with provenance and utilization evidence. Added the Phase 3 baseline-triage section (keep / transform / drop dispositions, migration mapping capture, baseline-vs-interview conflict reconciliation); the remainder of Phase 3 stays placeholder. |
+| 0.3 | 06-12-26 | Phase 1 refined from its first dogfood execution (SES-166 against CRMBuilder, PI-160): tier respecced to process level, store-assigned identifiers replace legacy code schemes, cross-domain services carried transitionally in charter scope (service entity type is PI-161), new Capture Mechanics subsection (lifecycle status at capture, charter occupancy, product-venture interview variant). Phase 2 (Domain Discovery) drafted to runnable: per-domain SME discovery into candidate records, with the Phase 1.5 Baseline Report integrated as the post-unprompted-account probe queue and a no-confirmation rule (reconciliation is Phase 3's job). Phase 1.5 validated against the CBM test instance on 06-12-26 (first live run). |
+| 0.4 | 06-12-26 | Phase 3 completed as a two-stream phase: new Stream A (interview reconciliation — cross-domain dedup, cross-stream matching against baseline candidates before any disposition, persona reconciliation, conflict resolution, evidence-led confirmation session) joins the v0.2 baseline triage as Stream B, under whole-phase completion criteria (every candidate terminal, no duplicate confirmed records, no silent conflict absorption). Stream B's two stale v0.2 notes updated: the `rejected` lifecycle state and the migration-mapping record type now exist (built by the Existing System Baseline project), and methodology-layer conflicts reuse the live `finding` record. |
 
 ---
 
@@ -69,10 +71,10 @@ The process is sequenced across phases. Each phase has a defined purpose, input,
 
 | Phase | Name | Status in this PRD |
 |-------|------|---------------------|
-| 1 | Business Context Capture | **Drafted** (v0.1) |
-| 1.5 | Existing System Baseline | **Drafted** (v0.2) — conditional; runs only when the client has one or more existing systems |
-| 2 | Domain Discovery | Placeholder — drafted before Phase 2 runs |
-| 3 | Inventory Reconciliation | **Partially drafted** (v0.2) — baseline-triage section only; the interview-derived inventory reconciliation remains placeholder |
+| 1 | Business Context Capture | **Drafted, executed, refined** (v0.1 → dogfood SES-166 → v0.3) |
+| 1.5 | Existing System Baseline | **Drafted** (v0.2), **validated live** against the CBM test instance 06-12-26 — conditional; runs only when the client has one or more existing systems |
+| 2 | Domain Discovery | **Drafted** (v0.3) |
+| 3 | Inventory Reconciliation | **Drafted** (v0.4) — Stream A interview reconciliation + Stream B baseline triage (v0.2) as one phase |
 | 4 | Domain Overview and Process Definition | Placeholder |
 | 5 | Entity PRDs | Placeholder |
 | 6 | Cross-Domain Service Definition | Placeholder |
@@ -107,7 +109,7 @@ Capture the foundational business context of the client: what the organization d
 ### Phase-Specific Rules
 
 - **Business language only.** No product names, no implementation technologies. Integration needs are described by function ("bulk email communication") not by product.
-- **Identifiers assigned during the conversation.** Personas use `PER-NNN`. Domains use two-letter codes (`MN`, `MR`, etc.). Processes use `{DOMAIN}-{PROCESS}` (e.g., `MN-INTAKE`). Confirm each at assignment; identifiers are permanent once assigned.
+- **Identifiers assigned during the conversation.** All methodology records use their store-assigned identifiers (`PER-NNN`, `DOM-NNN`, `PROC-NNN`). The legacy two-letter domain codes (`MN`, `MR`, etc.) and `{DOMAIN}-{PROCESS}` process codes are optional informal short names, recordable in the record's name or notes — they are not schema fields (v0.3, dogfood finding). Confirm each human-readable name at assignment; identifiers are permanent once assigned and never discussed with the stakeholder.
 - **No entity field-level detail.** The Phase 1 capture does not define entities, fields, or data structures. Entity-level detail comes in Phase 5.
 - **Don't over-engineer.** Resist proposing data structures or field definitions during the interview.
 - **Watch for scope discoveries.** If the administrator describes something that doesn't fit any domain being discussed, flag it immediately rather than force-fitting. New domains can be added; better to discover now than during Phase 2.
@@ -131,14 +133,21 @@ As the interview proceeds, records are written to V2 in real time (via MCP-conne
 | What is captured | V2 record type | Layer | Notes |
 |---|---|---|---|
 | Strategic vision (mission, why a CRM) | Charter (versioned) | Governance | Charter's `mission`, `objectives`, `scope` fields populated |
-| Personas | Persona records | Methodology | Each with identifier, responsibilities, primary domains |
-| Domains | Domain records | Methodology | Each with two-letter code, purpose, tier |
-| Processes (high-level) | Process records | Methodology | Each with name, parent domain, one-line description, tier |
-| Cross-domain services | Cross-Domain Service records | Methodology | Each with purpose, capabilities |
+| Personas | Persona records | Methodology | Each with identifier, responsibilities, primary domains (`persona_scopes_to_domain` edges) |
+| Domains | Domain records | Methodology | Each with purpose and description. **Tier lives at process level, not on domains** (v0.3): the schema carries no domain tier, and the dogfood showed tiering misfits domains that are sequential lifecycle stages. A domain-level tier ruling, when one is made (e.g. "everything is launch-core"), is recorded as a Decision |
+| Processes (high-level) | Process records | Methodology | Each with name, purpose, and mandatory parent domain; tier via `process_classification` (mission_critical / supporting / deferred) |
+| Cross-domain services | *Transitional:* charter scope text | Methodology | The service entity type does not exist yet (PI-161). Until it lands, capture each service's name and one-line purpose in the charter's scope section; backfill service records when the type ships |
 | Scope determinations | Decision records (`DEC-NNN`) | Governance | Each with rationale |
 | Deferred work | Planning Item records (`PI-NNN`) | Governance | Each with `item_type: pending_work` |
 | Conceptual relationships | Reference records (`REF-NNNN`) | Governance | Universal references table |
 | The interview itself | Session record (`SES-NNN`) | Governance | `topics_covered` opens with verbatim seed prompt |
+
+### Capture Mechanics (v0.3, codified from the first dogfood run)
+
+- **Lifecycle status at capture.** Interview-captured methodology records are created at `candidate` status as they emerge in conversation, and transitioned to `confirmed` after the stakeholder approves the end-of-session read-back (conduct charter §6.3). A record the read-back skipped or the stakeholder questioned stays `candidate`.
+- **The engagement charter is THE charter.** `PUT /charter` versions are a single line: whatever charter content existed before Phase 1 (e.g., a build-project charter from earlier work) is superseded by the Phase 1 version and remains recoverable in version history. There is no second charter slot; the two-layer test's "project building the thing" content lives in the *new* version's framing, not in a parallel record.
+- **Product-venture variant.** When the client is a product or venture rather than an operating organization (the dogfood case): Topic 1's "describe your organization" becomes "describe the venture — what it does, who it's for, and where it is in its life"; and when the domains that emerge are *sequential lifecycle stages* of one journey, do not ask the stakeholder to tier them against each other — ask the launch-scope question instead ("does the whole pipeline need to be working software, or are there stages you'd do by hand at first?") and record the answer as a Decision.
+- **Validated as-is:** process records require their parent domain at creation; the store enforces it and the interview flow supports it naturally.
 
 ### Output
 
@@ -159,7 +168,7 @@ A rendered Master PRD document artifact may be generated from these records via 
 - Charter exists at version ≥ 1
 - Every persona is attached to at least one domain
 - Every domain has at least one process (placeholder process records are acceptable; they are refined in Phase 4)
-- Every cross-domain service has a purpose and at least one capability listed
+- Every cross-domain service has a name and purpose captured (in charter scope text until the service entity type lands — PI-161)
 - The Session record's status is `Complete` and the close-out payload has been applied
 - The consultant (or Doug, for CRMBuilder dogfood) has signed off on Phase 1
 
@@ -244,11 +253,48 @@ Phase 1.5 is **mechanical**: it is automated capture, not an interview. No stake
 - EspoCRM is the only source adapter. The spreadsheet adapter (CSV/Sheet profiler proposing entity/field candidates) is the planned second source, since for small organizations the "existing system" is most often a spreadsheet.
 - Provenance reference kinds (e.g., a dedicated `observed_in` relationship) may be added to the vocabulary; until then `wrote_record` from the deposit event is the provenance trail.
 
-## 8. Phase 3 — Inventory Reconciliation (partial: Baseline Triage)
+## 8. Phase 3 — Inventory Reconciliation
 
-> Only the baseline-triage section of Phase 3 is drafted here. The interview-derived inventory reconciliation (reconciling Phase 2's Domain Discovery Report into the durable Entity and Persona Inventories) remains placeholder and is drafted before Phase 3 runs. When the client had no existing system (Phase 1.5 skipped), this section does not apply.
+### Purpose
 
-### Purpose of the Triage Section
+Reconcile everything proposed so far into the engagement's confirmed inventories. Phase 3 is the confirmation gate at the end of the discovery front half: Phase 2's per-domain interview candidates and Phase 1.5's baseline candidates converge here, and every candidate leaves at a terminal disposition — `confirmed` into the inventory, `rejected` with recorded rationale, or `deferred`. Nothing downstream (process definition, entity PRDs, generation) builds on an unreconciled candidate.
+
+Phase 3 runs as **two streams in one phase**: Stream A reconciles the interview-derived candidates; Stream B is the baseline triage (drafted at v0.2, below). When the client had no existing system, Stream B does not apply.
+
+### Inputs
+
+- Phase 2 complete for every in-scope domain: candidate entities, personas, and processes with domain edges, plus the logged conflict queue
+- When Phase 1.5 ran: the baseline candidates with utilization evidence, the Baseline Report, and Phase 2's recorded probe reactions
+- Phase 1's confirmed frame (charter, domains, personas)
+
+### Stream A — Interview Reconciliation
+
+1. **Cross-domain deduplication.** The same real-world thing discovered under different names in different domains ("member" in one session, "mentor" in another) merges into one record. Each merge is a Decision; where two shapes genuinely coexist, the `entity_variant_of_entity` edge records the relationship instead.
+2. **Cross-stream matching (when Phase 1.5 ran).** Before any disposition, match interview candidates against baseline candidates by name and meaning. A match merges into a single record carrying both kinds of support — the SME's language *and* the utilization evidence. Dispositions then happen once per real-world thing, in Stream B's disposition vocabulary, with both streams' evidence in hand.
+3. **Persona reconciliation.** New Phase 2 persona candidates reconcile against the Phase 1 set (usually merges into it). Where a persona is itself tracked as data, the `persona_realized_as_entity` edge records it.
+4. **Conflict resolution.** Work the queue Phase 2 logged through the scope-change protocol. Every conflict resolves by a Decision, or becomes a Planning Item when it needs research the session can't do.
+5. **Confirmation session.** Evidence-led walk of the reconciled inventory with the stakeholder (administrator-as-proxy acceptable): confirm, reject, or defer each candidate. The conduct charter's triage rules below (lead with evidence, no default dispositions) apply to this walk identically.
+
+### Captured V2 Records (Stream A)
+
+| What is captured | V2 record type | Notes |
+|---|---|---|
+| Confirmations | `candidate → confirmed` transitions | The inventory is the set of confirmed records, queryable per domain |
+| Rejections / deferrals | `candidate → rejected` / `deferred` transitions + Decision per rejection | The `rejected` terminal state exists in the lifecycle (built by PRJ-022) |
+| Merges and variants | Surviving record + `entity_variant_of_entity` edges + Decisions | Merged-away candidates are rejected with the merge Decision as rationale |
+| Persona realizations | `persona_realized_as_entity` edges | |
+| Conflict resolutions | Decision records (or Planning Items) | One per queued conflict — none absorbed silently |
+| The reconciliation session(s) | Session + conversation records | Per the session lifecycle |
+
+### Completion Criteria (whole phase, both streams)
+
+- Every candidate from every stream is at a terminal disposition — no record remains at `candidate` when Phase 3 closes
+- No two confirmed records name the same real-world thing (every merge recorded as a Decision)
+- Every queued conflict is resolved by a Decision or carried as an explicit Planning Item
+- Every keep/transform disposition in Stream B has its migration mapping recorded
+- The confirmed inventories are queryable per domain: entities and personas with domain edges, processes with classifications
+
+### Stream B — Baseline Triage (drafted v0.2)
 
 Give every Phase 1.5 baseline candidate a deliberate, stakeholder-confirmed disposition, so the confirmed inventory reflects decisions rather than inheritance. Triage is where the old system's gravity is broken: nothing carries forward by default, and nothing is dropped silently.
 
@@ -279,7 +325,7 @@ Triage is a different interview type from elicitation: the material already exis
 
 Every *keep* and *transform* creates a data-migration obligation, recorded at triage time while the knowledge is fresh and the stakeholder is present: source entity/field → target entity/field, plus transform rules for transforms (type changes, value mappings for enums, merges, splits). These mappings are the input to migration planning and eventually compile into executable migration via the data-import machinery. A keep/transform without a recorded mapping is incomplete triage.
 
-> Mechanics gap (v0.2): the migration-mapping record type does not yet exist in the V2 schema. Until it does, mappings are captured in a structured section of the triage session's deliverable and backfilled when the record type lands.
+> Mechanics (updated v0.4): the migration-mapping record type **exists** — built by the Existing System Baseline project and served at `/migration-mappings` — so mappings are recorded directly at triage time. (The v0.2 draft flagged this as a pending schema decision; it has since shipped.)
 
 ### Captured V2 Records (Triage)
 
@@ -292,7 +338,7 @@ Every *keep* and *transform* creates a data-migration obligation, recorded at tr
 | Migration mappings | Migration-mapping records (pending schema) | Methodology | One per keep/transform |
 | The triage session(s) | Session records (`SES-NNN`) | Governance | One per domain batch, per the session lifecycle |
 
-> Vocabulary note (v0.2): the delivery layer already has a `finding` record (type `conflict`, with resolution methods) for "two sources disagree." Whether methodology-layer baseline-vs-interview conflicts reuse `finding` or get their own record is an open schema decision; reuse is the working preference to keep one vocabulary for disagreement across the framework.
+> Vocabulary note (updated v0.4): the delivery layer's `finding` record (type `conflict`, with resolution methods and the `finding_resolved_by` → Decision edge) is live and proven in use. Methodology-layer baseline-vs-interview conflicts reuse it — one vocabulary for "two sources disagree" across the framework. A finding raised in Phase 2/3 resolves by Decision exactly as a reconciliation finding does in delivery.
 
 ### Completion Criteria (Triage Section)
 
@@ -301,6 +347,66 @@ Every *keep* and *transform* creates a data-migration obligation, recorded at tr
 - Every drop has a Decision record with rationale
 - Every baseline-vs-interview conflict raised during triage is resolved by a Decision, or carried as an explicit Planning Item
 - No baseline candidate remains at `candidate` status when Phase 3 closes
+
+## 9. Phase 2 — Domain Discovery
+
+### Purpose
+
+Deepen each in-scope domain from Phase 1's sketch into a discovered candidate model: the entities the domain's work touches, the personas who do that work, and the processes it runs — captured from the SMEs' own language as candidate methodology records. Phase 2 is discovery, not definition: candidates are proposed here and reconciled in Phase 3; fields and entity detail wait for Phase 5.
+
+When Phase 1.5 ran, Phase 2 is also where the **baseline meets the stakeholder for the first time** — as probes, after their unprompted account, never as the opening frame.
+
+### Inputs
+
+- Phase 1 complete: confirmed Charter, Domain, Persona, and anchor Process records
+- The Baseline Report(s) from Phase 1.5, when it ran — specifically the gaps-and-ghosts list and the per-domain candidate groupings
+- One or more SMEs per in-scope domain (administrator-as-proxy acceptable per the kickoff protocol's Variant A; the conduct charter governs either way)
+- Conduct documents (charter, kickoff, question library)
+
+### Phase-Specific Rules
+
+- **One domain per session.** A discovery session covers one domain. Multiple sessions per domain are fine; one session spanning domains is not — coverage tracking and the transcript both degrade.
+- **Unprompted account first (anchoring discipline).** Each session opens with the SME's own walkthrough of the domain's work. Baseline material stays unmentioned until the AI judges the unprompted account captured. Then baseline probes run (see Activity). This is the same rule stated in Phase 1.5; Phase 2 is where it executes.
+- **Candidates, not commitments.** Everything captured lands at `candidate` status. Phase 2 sessions do not confirm records — confirmation is Phase 3's job, where cross-domain reconciliation and baseline triage happen together. (This differs from Phase 1, whose read-back confirms: Phase 1's records are the engagement's frame; Phase 2's records are raw discovery that needs reconciliation.)
+- **Entities are nouns the SME actually said.** A candidate entity requires the SME having named the thing (or confirmed a probe about it). Per conduct charter §11.6.b, "organizations like this usually track X" is not a basis for a candidate.
+- **No field-level detail.** When an SME volunteers fields ("we track their email and renewal date"), capture the volunteered items in the entity's notes verbatim and move on — do not elicit more. Field definition is Phase 5.
+- **Process handoffs are discovery gold.** When a process leaves the domain ("then accounting takes over"), record the handoff (`process_hands_off_to_process` once both ends exist; notes until then) — these become the cross-domain seams Phase 3 reconciles.
+
+### Activity
+
+Per in-scope domain, one session:
+
+1. **Kickoff** per the protocol (full Variant B for a first-time SME; one line for Variant A).
+2. **Unprompted walkthrough.** "Walk me through the work of [domain] — what happens, who does it, what do you keep track of?" Probe per the conduct charter; capture candidate entities, personas, and processes as they are named.
+3. **Baseline probes** (when Phase 1.5 ran). Work the domain's slice of the gaps-and-ghosts list and any baseline candidates the SME did not mention. Use the report's probe seeds as advisory wording — adapted, never verbatim, never leading. Record the SME's reaction in the candidate's notes: it is evidence for Phase 3 triage, not a disposition (no keep/transform/drop decisions in Phase 2).
+4. **Conflict capture.** When the SME's account contradicts the baseline ("we don't track that" vs. a field at 87% population) or contradicts Phase 1 (a process that fits no domain), apply the scope-change protocol (conduct charter §8): name it, log it, continue under the stated assumption. These conflicts are Phase 3's queue.
+5. **Close** with the end-of-section summary (not a confirming read-back — candidates stay candidates) and the session lifecycle (conversation summary, session complete).
+
+### Captured V2 Records
+
+| What is captured | V2 record type | Status at capture | Notes |
+|---|---|---|---|
+| Things the domain tracks | Entity records (`ENT-NNN`) | `candidate` | With kind where evident; `entity_scopes_to_domain` edge; volunteered field mentions in notes |
+| People who do the work | Persona records (`PER-NNN`) | `candidate` | New ones only — Phase 1 personas are settled; `persona_scopes_to_domain` edges either way |
+| Workflows the domain runs | Process records (`PROC-NNN`) | mission_critical / supporting / deferred via classification | New processes under the domain; Phase 1 anchor processes enriched (steps/triggers/outcomes fields), not duplicated |
+| Baseline probe reactions | Notes on the probed candidate | — | Evidence for Phase 3 triage; no disposition recorded |
+| Baseline/upstream conflicts | Decision or Planning Item per the scope-change protocol | — | Phase 3's reconciliation queue |
+| The session | Session + conversation records | `complete` | One per domain; `session_belongs_to_project` |
+
+### Output
+
+- Per in-scope domain: candidate entities, personas, and processes with domain edges, capturing the SME's account in the SME's language
+- The worked baseline-probe record: every gaps-and-ghosts item for the domain either probed (reaction noted) or explicitly deferred with a reason
+- The Phase 3 queue: logged conflicts and scope changes
+- A rendered Domain Discovery Report per domain remains optional until the rendering pipeline exists; the records are canonical
+
+### Completion Criteria
+
+- Every in-scope domain has at least one completed discovery session
+- Every candidate entity and new persona carries a domain edge and attributable SME language (name/description/notes traceable to what was said)
+- When Phase 1.5 ran: every gaps-and-ghosts item assigned to the domain is probed or explicitly deferred — none silently dropped
+- All discovered conflicts are logged as Decisions or Planning Items — none absorbed silently
+- No Phase 2 record was transitioned to `confirmed` (a Phase 2 session that confirmed anything is a process violation; confirmation is Phase 3)
 
 ---
 
@@ -329,7 +435,7 @@ The CBM (Cleveland Business Mentors) engagement begins only after the process is
 
 ## Notes on This Draft
 
-This is v0.2. It captures Phase 1 as a runnable specification (v0.1), plus Phase 1.5 and the Phase 3 baseline-triage section (v0.2), plus the orientation needed to read the document. Phase 1.5 is drafted ahead of its build: the audit → V2 deposit path, data profiler, and catalog normalizer it specifies do not exist yet (see §7 Known Limitations); the spec defines what they must do.
+This is v0.3. Phase 1 has now been through one full Part III loop: drafted (v0.1), executed against the CRMBuilder dogfood (SES-166, 06-12-26), and refined from the run's six findings (PI-160). Phase 1.5's specified components were built (PRJ-022) and the phase ran live against the CBM test instance the same day — its Baseline Report is the concrete input Phase 2's draft is designed against. Phase 2 is drafted and awaits its own dogfood execution.
 
 Source materials drawn upon, all retained as reference material with transitional status headers until subsumed:
 
@@ -355,5 +461,18 @@ Gaps and questions added at v0.2 (Phase 1.5 and triage):
 - **Finding reuse vs. a methodology-layer conflict record** for baseline-vs-interview disagreements is undecided; reuse of the delivery layer's `finding` is the working preference.
 - **Source adapters beyond EspoCRM** (spreadsheet first) are future work; Phase 1.5 currently assumes an EspoCRM source.
 - **Where evidence lives on candidate records** — a structured evidence column/child table vs. free-text notes — is a schema decision; the spec requires evidence to be structured enough for triage queries ("all fields under 5% population").
+
+Gaps and questions added at v0.3:
+
+- **The cross-domain service entity type remains unbuilt** (PI-161); Phase 1 carries services in charter scope text transitionally.
+- **Phase 2's dogfood target is awkward**: CRMBuilder's Phase 1 domains are sequential pipeline stages whose "SMEs" are all the same administrator — Phase 2's per-domain SME discovery will exercise the mechanics but not the multi-SME dynamics. CBM (post-process-definition) is where Phase 2's conduct rules get a real test.
+- **The Domain Discovery Report renderer does not exist**; the records are canonical and the report is optional until the rendering pipeline lands.
+- ~~Phase 3 needs its other half drafted~~ — done at v0.4 (Stream A interview reconciliation).
+
+Gaps and questions added at v0.4:
+
+- **Stream A's cross-stream matching is manual judgment.** Matching interview candidates to baseline candidates by "name and meaning" has no tooling support yet — a candidate-matching assist (even name-similarity ordering in the confirmation walk) is a quality-of-life build item once Phase 3 runs for real.
+- **The inventory render** (confirmed entities/personas per domain as a reviewable document) waits on the rendering pipeline, like the other renders.
+- **Phases 1.5 + 2 + 3 are now a complete discovery front-half on paper.** The next dogfood milestone is running 2 → 3 end to end; the next CBM milestone is the same sequence with the already-deposited baseline. Phase 4+ (process definition onward) remains the placeholder frontier.
 
 These gaps are expected and will be closed by running the phases against CRMBuilder and CBM, observing what's missing, and refining.
