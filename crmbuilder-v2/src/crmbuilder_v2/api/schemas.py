@@ -610,6 +610,9 @@ class RequirementCreateIn(_Base):
     requirement_notes: str | None = None
     requirement_status: str | None = None
     requirement_identifier: str | None = None
+    # Requirements-provenance Phase 5: how the requirement came to be —
+    # ``human_defined`` (default when omitted) or ``ai_derived``.
+    requirement_origin: str | None = None
 
 
 class RequirementReplaceIn(_Base):
@@ -642,6 +645,17 @@ class RequirementPatchIn(_Base):
     requirement_priority: str | None = None
     requirement_notes: str | None = None
     requirement_status: str | None = None
+
+
+class ReviewSignoffCreateIn(_Base):
+    """POST /review/signoffs body — record a topic review attestation.
+
+    The server snapshots the topic's current requirement set; the body carries
+    only the topic, who reviewed, and the attestation text."""
+
+    signoff_topic_identifier: str
+    signoff_reviewer: str
+    signoff_attestation: str
 
 
 # ---------- Migration mappings (methodology entity, WTK-107) ----------

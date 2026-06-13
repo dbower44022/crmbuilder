@@ -58,8 +58,10 @@ def _load_migration_module():
 #   - ``utilization_evidence`` — PI-153 baseline-candidate evidence (WTK-088).
 #   - ``migration_mappings`` — WTK-106 Phase 3 migration-mapping record
 #     (created scoped-from-birth by migration 0048).
+#   - ``review_signoffs`` — requirements-provenance Phase 6 review attestation
+#     (created scoped-from-birth by migration 0051).
 _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
-    {"findings", "utilization_evidence", "migration_mappings"}
+    {"findings", "utilization_evidence", "migration_mappings", "review_signoffs"}
 )
 
 

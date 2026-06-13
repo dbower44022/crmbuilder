@@ -51,6 +51,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access import readability
 from crmbuilder_v2.access._helpers import (
     get_by_identifier,
     next_prefixed_identifier,
@@ -64,9 +65,10 @@ from crmbuilder_v2.access.exceptions import (
     StatusTransitionError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.models import Requirement
+from crmbuilder_v2.access.models import Reference, Requirement
 from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
+    REQUIREMENT_ORIGINS,
     REQUIREMENT_PRIORITIES,
     REQUIREMENT_STATUS_TRANSITIONS,
     REQUIREMENT_STATUSES,
@@ -147,6 +149,23 @@ def _require_priority(priority: object) -> str:
             ]
         )
     return priority  # type: ignore[return-value]
+
+
+def _require_origin(origin: object) -> str:
+    """Validate ``requirement_origin``; default to ``human_defined`` when omitted."""
+    if origin is None:
+        return "human_defined"
+    if origin not in REQUIREMENT_ORIGINS:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "requirement_origin",
+                    "invalid_value",
+                    f"must be one of {sorted(REQUIREMENT_ORIGINS)}",
+                )
+            ]
+        )
+    return origin  # type: ignore[return-value]
 
 
 def _check_transition(current: str, requested: str) -> None:
@@ -338,6 +357,7 @@ def create_requirement(
     notes: str | None = None,
     status: str | None = None,
     identifier: str | None = None,
+    origin: str | None = None,
 ) -> dict:
     """Create a requirement.
 
@@ -361,6 +381,7 @@ def create_requirement(
     if status is None:
         status = "candidate"
     _require_status(status)
+    origin = _require_origin(origin)
     _reject_duplicate_name(session, name)
 
     if identifier is None:
@@ -379,6 +400,8 @@ def create_requirement(
         session.add(row)
         session.flush()
 
+    row.requirement_origin = origin
+    session.flush()
     after = to_dict(row)
     emit(
         session,
@@ -467,7 +490,12 @@ def update_requirement(
     row.requirement_acceptance_summary = acceptance_summary
     row.requirement_priority = priority
     row.requirement_notes = notes
+    content_changed = any(
+        before.get(f) != getattr(row, f) for f in _CONTENT_FIELDS
+    )
     session.flush()
+    if content_changed:
+        flag_descendants_needs_review(session, identifier)
 
     after = to_dict(row)
     emit(
@@ -479,6 +507,260 @@ def update_requirement(
         after=after,
     )
     return after
+
+
+# ---------------------------------------------------------------------------
+# Requirements-provenance model (Phase 2) — decision-outcome flips.
+#
+# A decision resolves a requirement three ways (anchor §"the decision outcomes"):
+#   - deliver  -> activate_by_decision  (candidate/deferred -> confirmed)
+#   - change   -> reopen_by_decision    (gated reopen -> candidate + needs_review)
+#   - decline  -> the existing _rejection path (rejected_by_decision edge + flip)
+# These are invoked atomically by references.create when the corresponding
+# requirement->decision edge is created, mirroring the PI-030 `resolves` flip.
+# ---------------------------------------------------------------------------
+
+
+def _resolves_via_ancestry(
+    session: Session,
+    identifier: str,
+    kind: str,
+    _seen: set[str] | None = None,
+) -> bool:
+    """True if the requirement carries an outbound edge of ``kind``, or
+    inherits one through an ancestor up the ``requirement_refines_requirement``
+    (child -> parent) chain.
+
+    Used for both activation gates: provenance
+    (``requirement_defined_in_conversation``) so the requirement is rooted in a
+    conversation, and topic (``requirement_belongs_to_topic``) so it is
+    reachable under a topic for review. The visited-set bound tolerates an
+    accidental cycle in the parent edges.
+    """
+    seen = _seen if _seen is not None else set()
+    if identifier in seen:
+        return False
+    seen.add(identifier)
+    own = session.scalar(
+        select(func.count(Reference.id)).where(
+            Reference.source_type == _ENTITY_TYPE,
+            Reference.source_id == identifier,
+            Reference.relationship_kind == kind,
+        )
+    )
+    if own and own > 0:
+        return True
+    parents = session.scalars(
+        select(Reference.target_id).where(
+            Reference.source_type == _ENTITY_TYPE,
+            Reference.source_id == identifier,
+            Reference.target_type == _ENTITY_TYPE,
+            Reference.relationship_kind == "requirement_refines_requirement",
+        )
+    ).all()
+    return any(_resolves_via_ancestry(session, p, kind, seen) for p in parents)
+
+
+def activate_by_decision(session: Session, identifier: str) -> dict:
+    """Deliver outcome (A1): a decision approves a requirement for delivery.
+
+    Flips ``candidate`` / ``deferred`` -> ``confirmed`` and stamps
+    ``requirement_approved_at``, but only if the requirement both (a) is rooted
+    in a conversation and (b) resolves to a topic — each via its own edge or an
+    ancestor's. (a) is the no-orphan-capability rule (you can't activate an
+    unrooted requirement); (b) makes it reachable under a topic, so it can't be
+    activated without first being reviewable (review is topic-first). Both
+    enforced at activation per decisions A1 + topic-gate. Idempotent if already
+    ``confirmed``; a ``rejected`` requirement cannot be approved.
+    """
+    row = _get_row(session, identifier)
+    if row.requirement_status == "confirmed":
+        return to_dict(row)
+    if row.requirement_status == "rejected":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "requirement_status",
+                    "invalid_transition",
+                    "a rejected requirement cannot be approved for delivery",
+                )
+            ]
+        )
+    readability.validate_requirement_readability(
+        row.requirement_name,
+        row.requirement_description,
+        row.requirement_acceptance_summary,
+    )
+    if not _resolves_via_ancestry(
+        session, identifier, "requirement_defined_in_conversation"
+    ):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "relationship",
+                    "provenance_required",
+                    f"requirement {identifier} cannot be activated without "
+                    "provenance: it (or an ancestor) needs a "
+                    "requirement_defined_in_conversation edge",
+                )
+            ]
+        )
+    if not _resolves_via_ancestry(
+        session, identifier, "requirement_belongs_to_topic"
+    ):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "relationship",
+                    "topic_required",
+                    f"requirement {identifier} cannot be activated without a "
+                    "topic: it (or an ancestor) needs a "
+                    "requirement_belongs_to_topic edge so it is reachable for "
+                    "review",
+                )
+            ]
+        )
+    before = to_dict(row)
+    row.requirement_status = "confirmed"
+    row.requirement_approved_at = datetime.now(UTC)
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+def reopen_by_decision(session: Session, identifier: str) -> dict:
+    """Change outcome (B1): a decision requires the requirement to change.
+
+    Gated reopen — returns the requirement to ``candidate`` and flags it
+    ``needs_review``, clearing any prior approval. This is the one path
+    permitted to regress out of ``confirmed`` / ``deferred``; the normal
+    one-way propose-verify gate (``_check_transition``) still governs manual
+    moves. A ``rejected`` (terminal) requirement is not reopened — that would
+    be a new requirement, not a change.
+    """
+    row = _get_row(session, identifier)
+    if row.requirement_status == "rejected":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "requirement_status",
+                    "invalid_transition",
+                    "a rejected requirement is terminal; a change decision "
+                    "cannot reopen it (create a new requirement instead)",
+                )
+            ]
+        )
+    before = to_dict(row)
+    row.requirement_status = "candidate"
+    row.requirement_review_state = "needs_review"
+    row.requirement_approved_at = None
+    session.flush()
+    flag_descendants_needs_review(session, identifier)
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+# ---------------------------------------------------------------------------
+# Living drift (Phase 4) — propagate needs_review down the requirement tree.
+#
+# When a requirement's meaning changes (a content edit, or a change-decision
+# reopen), every descendant down the refines-chain is flagged needs_review,
+# because each was derived from a now-changed ancestor. An AI-derived descendant
+# that was active additionally re-opens for re-approval (anchor §"living drift").
+# ---------------------------------------------------------------------------
+
+_CONTENT_FIELDS = (
+    "requirement_name",
+    "requirement_description",
+    "requirement_acceptance_summary",
+)
+
+
+def _child_ids(session: Session, identifier: str) -> list[str]:
+    """Identifiers of the requirements that refine ``identifier`` (its children)."""
+    return list(
+        session.scalars(
+            select(Reference.source_id).where(
+                Reference.source_type == _ENTITY_TYPE,
+                Reference.target_type == _ENTITY_TYPE,
+                Reference.target_id == identifier,
+                Reference.relationship_kind == "requirement_refines_requirement",
+            )
+        ).all()
+    )
+
+
+def _descendant_ids(
+    session: Session, identifier: str, _seen: set[str] | None = None
+) -> list[str]:
+    """All descendants down the refines-chain, depth-first, cycle-bounded."""
+    seen = _seen if _seen is not None else set()
+    out: list[str] = []
+    for child in _child_ids(session, identifier):
+        if child in seen:
+            continue
+        seen.add(child)
+        out.append(child)
+        out.extend(_descendant_ids(session, child, seen))
+    return out
+
+
+def flag_descendants_needs_review(session: Session, identifier: str) -> list[str]:
+    """Flag every descendant of ``identifier`` for review (living drift).
+
+    Each descendant down the refines-chain is set ``review_state = needs_review``
+    (the drift flag). A descendant that was AI-derived AND currently ``confirmed``
+    additionally re-opens to ``candidate`` with its approval cleared: its basis
+    changed, so the human must re-approve it. Soft-deleted / missing descendants
+    are skipped. Returns the identifiers actually changed.
+    """
+    affected: list[str] = []
+    for desc_id in _descendant_ids(session, identifier):
+        row = get_by_identifier(
+            session, Requirement, Requirement.requirement_identifier, desc_id
+        )
+        if row is None or row.requirement_deleted_at is not None:
+            continue
+        before = to_dict(row)
+        changed = False
+        if row.requirement_review_state != "needs_review":
+            row.requirement_review_state = "needs_review"
+            changed = True
+        if (
+            row.requirement_origin == "ai_derived"
+            and row.requirement_status == "confirmed"
+        ):
+            row.requirement_status = "candidate"
+            row.requirement_approved_at = None
+            changed = True
+        if changed:
+            session.flush()
+            emit(
+                session,
+                entity_type=_ENTITY_TYPE,
+                entity_identifier=desc_id,
+                operation="update",
+                before=before,
+                after=to_dict(row),
+            )
+            affected.append(desc_id)
+    return affected
 
 
 def patch_requirement(session: Session, identifier: str, **fields) -> dict:
@@ -551,7 +833,12 @@ def patch_requirement(session: Session, identifier: str, **fields) -> dict:
             current_status=row.requirement_status,
         )
 
+    content_changed = any(
+        before.get(f) != getattr(row, f) for f in _CONTENT_FIELDS
+    )
     session.flush()
+    if content_changed:
+        flag_descendants_needs_review(session, identifier)
     after = to_dict(row)
     emit(
         session,
