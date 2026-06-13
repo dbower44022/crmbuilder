@@ -120,7 +120,9 @@ def detect_drift(
 
     # --- diff each type ---
     report.differences += diff_fields(field_prov, live_fields)
-    report.differences += diff_relationships(rel_prov, live_rels)
+    rel_diffs = diff_relationships(rel_prov, live_rels)
+    _attach_relationship_insert_bodies(rel_diffs)
+    report.differences += rel_diffs
     layout_diffs = diff_layouts(
         layout_desired, live_layouts, source_files=layout_files
     )
@@ -134,6 +136,20 @@ def detect_drift(
     report.differences += team_diffs
 
     return report
+
+
+def _attach_relationship_insert_bodies(diffs: list[Difference]) -> None:
+    """Reconstruct each CRM_ONLY relationship's captured dict into its YAML
+    ``relationships:`` mapping (``full_crm_block``) so whole-item capture applies."""
+    from dataclasses import replace
+
+    from espo_impl.core.reconcile.reconstruct import relationship_to_yaml
+
+    for i, diff in enumerate(diffs):
+        if diff.category is DiffCategory.CRM_ONLY and diff.full_crm_block is not None:
+            diffs[i] = replace(
+                diff, full_crm_block=relationship_to_yaml(diff.full_crm_block)
+            )
 
 
 def _attach_security_insert_bodies(
@@ -178,25 +194,25 @@ def _attach_security_insert_bodies(
 def _attach_layout_write_bodies(layout_diffs, cap, specs) -> None:
     """Reverse-map each CHANGED layout's live payload to its YAML body in place.
 
-    A layout CHANGED diff carries the raw API payload as ``crm_value``; the
+    Both a CHANGED diff (drift in a declared layout) and a CRM_ONLY diff (a layout
+    type the YAML never declared) carry the raw API payload as ``crm_value``; the
     reconciler writes ``full_crm_block``. We populate it with the YAML-shaped body
-    (natural field names, panels:/columns: structure) so layout drift is
-    applicable. CRM_ONLY/YAML_ONLY layout diffs stay report-only. ``Difference``
-    is frozen, so we replace each entry with an updated copy.
+    (natural field names, panels:/columns: structure) so layout drift is applicable
+    and a new layout type is captureable. YAML_ONLY layouts stay report-only.
+    ``Difference`` is frozen, so we replace each entry with an updated copy.
     """
     from dataclasses import replace
 
-    has_changed = any(
-        d.config_type is ConfigType.LAYOUT and d.category is DiffCategory.CHANGED
+    writeable = {DiffCategory.CHANGED, DiffCategory.CRM_ONLY}
+    if not any(
+        d.config_type is ConfigType.LAYOUT and d.category in writeable
         for d in layout_diffs
-    )
-    if not has_changed:
+    ):
         return
     custom_names = cap.custom_field_api_names(specs)
     for i, diff in enumerate(layout_diffs):
         if not (
-            diff.config_type is ConfigType.LAYOUT
-            and diff.category is DiffCategory.CHANGED
+            diff.config_type is ConfigType.LAYOUT and diff.category in writeable
         ):
             continue
         body = reverse_layout_payload(

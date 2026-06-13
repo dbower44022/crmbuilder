@@ -154,7 +154,11 @@ def apply_reconciliation(
         # collide on the same end-of-block offset, and a missing block must be
         # created exactly once). Handled here, ahead of the per-diff pass.
         handled: set[int] = set()
-        for block_key, ct in (("roles", ConfigType.ROLE), ("teams", ConfigType.TEAM)):
+        for block_key, ct in (
+            ("roles", ConfigType.ROLE),
+            ("teams", ConfigType.TEAM),
+            ("relationships", ConfigType.RELATIONSHIP),
+        ):
             group = [
                 d for d in diffs
                 if d.config_type is ct
@@ -167,6 +171,27 @@ def apply_reconciliation(
                 doc.insert_or_create_top_level_block(
                     block_key, [d.full_crm_block for d in group]
                 )
+            except (KeyError, ValueError) as exc:
+                fr.not_applied += [(d, f"error: {exc}") for d in group]
+            else:
+                fr.applied += group
+            handled.update(id(d) for d in group)
+
+        # CRM-only layout types: insert under each entity's layout: map (batched
+        # per entity, creating layout: if absent).
+        layout_co = [
+            d for d in diffs
+            if d.config_type is ConfigType.LAYOUT
+            and d.category is DiffCategory.CRM_ONLY
+            and d.full_crm_block is not None
+        ]
+        by_entity: dict[str, dict] = {}
+        for d in layout_co:
+            by_entity.setdefault(d.entity, {})[d.locator.layout_type] = d.full_crm_block
+        for entity, bodies in by_entity.items():
+            group = [d for d in layout_co if d.entity == entity]
+            try:
+                doc.insert_layout_blocks(entity, bodies)
             except (KeyError, ValueError) as exc:
                 fr.not_applied += [(d, f"error: {exc}") for d in group]
             else:

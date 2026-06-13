@@ -142,3 +142,75 @@ def test_captured_role_reparses_via_config_loader(tmp_path):
     assert "Reviewer" in names
     role = next(r for r in program.roles if r.name == "Reviewer")
     assert role.scope_access["Account"].read == "all"
+
+
+_WITH_ENTITY = '''\
+content_version: "1.0.0"
+entities:
+  Session:
+    fields:
+      - name: x
+        type: varchar
+        label: "X"
+'''
+
+
+def _rel_crm_only(link, entity, src, block):
+    from espo_impl.core.reconcile.locators import RelationshipLocator
+    return Difference(
+        config_type=ConfigType.RELATIONSHIP, category=DiffCategory.CRM_ONLY, entity=entity,
+        locator=RelationshipLocator(entity, link), full_crm_block=block, source_file=src,
+    )
+
+
+def _layout_crm_only(ltype, entity, src, body):
+    from espo_impl.core.reconcile.locators import LayoutLocator
+    return Difference(
+        config_type=ConfigType.LAYOUT, category=DiffCategory.CRM_ONLY, entity=entity,
+        locator=LayoutLocator(entity, ltype), full_crm_block=body, source_file=src,
+    )
+
+
+def test_relationship_crm_only_creates_block(tmp_path):
+    f = tmp_path / "MN-Session.yaml"
+    f.write_text(_NO_SECURITY)
+    block = {"name": "sessionMentors", "entity": "Session", "entityForeign": "Contact",
+             "linkType": "manyToMany", "link": "mentors", "linkForeign": "sessions",
+             "label": "Mentors", "labelForeign": "Sessions"}
+    result = apply_reconciliation([_rel_crm_only("mentors", "Session", f, block)])
+    assert len(result.files[0].applied) == 1
+    data = _reparse(f.read_text())
+    assert data["relationships"][0]["link"] == "mentors"
+    assert data["relationships"][0]["linkType"] == "manyToMany"
+
+
+def test_layout_crm_only_creates_layout_map(tmp_path):
+    f = tmp_path / "MN-Session.yaml"
+    f.write_text(_WITH_ENTITY)  # entity exists, no layout: block
+    body = {"columns": [{"field": "name", "width": 30}, {"field": "x"}]}
+    result = apply_reconciliation([_layout_crm_only("list", "Session", f, body)])
+    assert len(result.files[0].applied) == 1
+    data = _reparse(f.read_text())
+    cols = data["entities"]["Session"]["layout"]["list"]["columns"]
+    assert cols == [{"field": "name", "width": 30}, {"field": "x"}]
+    # the original fields block is intact
+    assert data["entities"]["Session"]["fields"][0]["name"] == "x"
+
+
+def test_layout_crm_only_appends_to_existing_layout(tmp_path):
+    body_src = _WITH_ENTITY.rstrip() + "\n    layout:\n      detail:\n        panels:\n          - label: \"Main\"\n"
+    f = tmp_path / "MN-Session.yaml"
+    f.write_text(body_src)
+    body = {"columns": [{"field": "name"}]}
+    apply_reconciliation([_layout_crm_only("list", "Session", f, body)])
+    layout = _reparse(f.read_text())["entities"]["Session"]["layout"]
+    assert "detail" in layout and "list" in layout  # both present
+
+
+def test_layout_crm_only_missing_entity_errors(tmp_path):
+    f = tmp_path / "MN-Session.yaml"
+    f.write_text(_WITH_ENTITY)
+    body = {"columns": [{"field": "name"}]}
+    result = apply_reconciliation([_layout_crm_only("list", "Ghost", f, body)])
+    fr = result.files[0]
+    assert fr.applied == [] and "error:" in fr.not_applied[0][1]

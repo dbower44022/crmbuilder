@@ -236,6 +236,11 @@ class LiveStateCapture:
         live: dict[str, dict[str, dict[str, Any]]] = {}
         for rel in audit._discover_relationships(stubs, report):
             live.setdefault(rel.entity, {})[rel.link] = {
+                # name/entity are not compared (diff_relationships uses
+                # _REL_COMPARE_PROPS) but are carried so a CRM-only relationship
+                # can be reconstructed into a full YAML mapping for capture.
+                "name": rel.name,
+                "entity": rel.entity,
                 "link_type": rel.link_type,
                 "entity_foreign": rel.entity_foreign,
                 "link": rel.link,

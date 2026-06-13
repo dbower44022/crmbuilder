@@ -288,6 +288,47 @@ class YamlDocument:
         prefix = "" if (eof > 0 and self._text[eof - 1] == "\n") else "\n"
         self._edits.append(_Edit(eof, eof, prefix + "\n" + block))
 
+    def insert_layout_blocks(self, entity: str, ltype_bodies: dict) -> None:
+        """Insert new layout-type blocks under ``entities[entity].layout``.
+
+        Creates the ``layout:`` map if the entity has none. All types go in a
+        single splice (batched, like the top-level block insert). Each body is the
+        YAML shape (``{panels: ...}`` / ``{columns: ...}`` / list / dict) from the
+        layout reverse-mapper. Raises :class:`KeyError` if the entity is absent
+        from this file (the chosen target must contain it).
+        """
+        if not ltype_bodies:
+            return
+        entities = self.data.get("entities") or {}
+        if entity not in entities:
+            raise KeyError(f"entity {entity!r} not found in this file")
+        entity_map = entities[entity]
+
+        def _types(ltype_indent: int) -> str:
+            pad = " " * ltype_indent
+            return "".join(
+                f"{pad}{lt}:\n" + self.render_block_body(body, ltype_indent + 2)
+                for lt, body in ltype_bodies.items()
+            )
+
+        if "layout" in entity_map:
+            key_line, key_col = entity_map.lc.key("layout")
+            rendered = _types(key_col + 2)
+        else:
+            key_line, key_col = entities.lc.key(entity)
+            layout_indent = key_col + 2
+            rendered = f"{' ' * layout_indent}layout:\n" + _types(layout_indent + 2)
+
+        last = self._block_last_content_line(key_line, key_col)
+        insert_at = (
+            self._line_starts[last + 1]
+            if last + 1 < len(self._line_starts)
+            else len(self._text)
+        )
+        if insert_at > 0 and self._text[insert_at - 1] != "\n":
+            rendered = "\n" + rendered
+        self._edits.append(_Edit(insert_at, insert_at, rendered))
+
     def render_block_body(self, value, indent: int) -> str:
         """Render a Python value as an indented YAML block body (no key line)."""
         buf = io.StringIO()
