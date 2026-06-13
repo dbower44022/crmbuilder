@@ -490,6 +490,18 @@ def create(
                 before=wt_before,
                 after=wt_after,
             )
+    # Requirements-provenance model (Phase 2): atomic edge + requirement flip
+    # for the two decision-outcome edges (mirror of the `resolves` flip above;
+    # decline is the existing `rejected_by_decision` path). Approve activates
+    # the requirement (provenance-gated, A1); change reopens it (gated, B1). A
+    # guard that raises (e.g. activating an unrooted requirement) rolls back the
+    # whole transaction, so no edge lands without its flip succeeding.
+    if relationship == "requirement_approved_by_decision":
+        from crmbuilder_v2.access.repositories import requirement as _req
+        _req.activate_by_decision(session, source_id)
+    elif relationship == "requirement_changed_by_decision":
+        from crmbuilder_v2.access.repositories import requirement as _req
+        _req.reopen_by_decision(session, source_id)
     emit(
         session,
         entity_type=_ENTITY_TYPE,

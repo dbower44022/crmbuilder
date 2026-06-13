@@ -64,7 +64,7 @@ from crmbuilder_v2.access.exceptions import (
     StatusTransitionError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.models import Requirement
+from crmbuilder_v2.access.models import Reference, Requirement
 from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     REQUIREMENT_PRIORITIES,
@@ -469,6 +469,142 @@ def update_requirement(
     row.requirement_notes = notes
     session.flush()
 
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+# ---------------------------------------------------------------------------
+# Requirements-provenance model (Phase 2) — decision-outcome flips.
+#
+# A decision resolves a requirement three ways (anchor §"the decision outcomes"):
+#   - deliver  -> activate_by_decision  (candidate/deferred -> confirmed)
+#   - change   -> reopen_by_decision    (gated reopen -> candidate + needs_review)
+#   - decline  -> the existing _rejection path (rejected_by_decision edge + flip)
+# These are invoked atomically by references.create when the corresponding
+# requirement->decision edge is created, mirroring the PI-030 `resolves` flip.
+# ---------------------------------------------------------------------------
+
+
+def _has_conversation_provenance(
+    session: Session, identifier: str, _seen: set[str] | None = None
+) -> bool:
+    """True if the requirement is rooted in a conversation.
+
+    Rooted means it carries its own ``requirement_defined_in_conversation``
+    edge, or inherits one through an ancestor up the
+    ``requirement_refines_requirement`` (child -> parent) chain. The
+    visited-set bound tolerates an accidental cycle in the parent edges.
+    """
+    seen = _seen if _seen is not None else set()
+    if identifier in seen:
+        return False
+    seen.add(identifier)
+    own = session.scalar(
+        select(func.count(Reference.id)).where(
+            Reference.source_type == _ENTITY_TYPE,
+            Reference.source_id == identifier,
+            Reference.relationship_kind == "requirement_defined_in_conversation",
+        )
+    )
+    if own and own > 0:
+        return True
+    parents = session.scalars(
+        select(Reference.target_id).where(
+            Reference.source_type == _ENTITY_TYPE,
+            Reference.source_id == identifier,
+            Reference.target_type == _ENTITY_TYPE,
+            Reference.relationship_kind == "requirement_refines_requirement",
+        )
+    ).all()
+    return any(_has_conversation_provenance(session, p, seen) for p in parents)
+
+
+def activate_by_decision(session: Session, identifier: str) -> dict:
+    """Deliver outcome (A1): a decision approves a requirement for delivery.
+
+    Flips ``candidate`` / ``deferred`` -> ``confirmed`` and stamps
+    ``requirement_approved_at``, but only if the requirement is rooted in a
+    conversation (its own or an inherited provenance edge) — an unrooted
+    requirement cannot go active (the no-orphan-capability rule, enforced at
+    activation per decision A1). Idempotent if already ``confirmed``; a
+    ``rejected`` requirement cannot be approved.
+    """
+    row = _get_row(session, identifier)
+    if row.requirement_status == "confirmed":
+        return to_dict(row)
+    if row.requirement_status == "rejected":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "requirement_status",
+                    "invalid_transition",
+                    "a rejected requirement cannot be approved for delivery",
+                )
+            ]
+        )
+    if not _has_conversation_provenance(session, identifier):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "relationship",
+                    "provenance_required",
+                    f"requirement {identifier} cannot be activated without "
+                    "provenance: it (or an ancestor) needs a "
+                    "requirement_defined_in_conversation edge",
+                )
+            ]
+        )
+    before = to_dict(row)
+    row.requirement_status = "confirmed"
+    row.requirement_approved_at = datetime.now(UTC)
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+def reopen_by_decision(session: Session, identifier: str) -> dict:
+    """Change outcome (B1): a decision requires the requirement to change.
+
+    Gated reopen — returns the requirement to ``candidate`` and flags it
+    ``needs_review``, clearing any prior approval. This is the one path
+    permitted to regress out of ``confirmed`` / ``deferred``; the normal
+    one-way propose-verify gate (``_check_transition``) still governs manual
+    moves. A ``rejected`` (terminal) requirement is not reopened — that would
+    be a new requirement, not a change.
+    """
+    row = _get_row(session, identifier)
+    if row.requirement_status == "rejected":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "requirement_status",
+                    "invalid_transition",
+                    "a rejected requirement is terminal; a change decision "
+                    "cannot reopen it (create a new requirement instead)",
+                )
+            ]
+        )
+    before = to_dict(row)
+    row.requirement_status = "candidate"
+    row.requirement_review_state = "needs_review"
+    row.requirement_approved_at = None
+    session.flush()
     after = to_dict(row)
     emit(
         session,
