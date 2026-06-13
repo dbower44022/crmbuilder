@@ -58,9 +58,17 @@ def sources_dir() -> Path:
 
 
 class Settings(BaseSettings):
+    # A gitignored, repo-rooted ``data/crmbuilder.env`` supplies durable
+    # ``CRMBUILDER_V2_*`` defaults that survive restarts — read on every
+    # process start regardless of launcher (standalone ``crmbuilder-v2-api`` or
+    # the desktop UI's spawned API subprocess), so a setting like
+    # ``CRMBUILDER_V2_PROVENANCE_BASELINE`` persists without polluting the
+    # shell. Real environment variables still take precedence over the file
+    # (so tests/CI override per the conftest), and unknown keys are ignored.
     model_config = SettingsConfigDict(
         env_prefix="CRMBUILDER_V2_",
-        env_file=None,
+        env_file=str(_repo_root() / "crmbuilder-v2" / "data" / "crmbuilder.env"),
+        extra="ignore",
         case_sensitive=False,
     )
 

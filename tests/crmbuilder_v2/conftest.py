@@ -167,6 +167,11 @@ def v2_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     db = tmp_path / "v2.db"
     monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(db))
     monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "true")
+    # Hermetic coverage baseline: a deployment may set a durable
+    # CRMBUILDER_V2_PROVENANCE_BASELINE in data/crmbuilder.env; force it empty
+    # for tests (a real env var overrides the file) so the coverage report's
+    # default-cutoff behavior is deterministic regardless of the local machine.
+    monkeypatch.setenv("CRMBUILDER_V2_PROVENANCE_BASELINE", "")
     # PI-alpha: when a test Postgres is configured, route the engine at it
     # (``database_url`` takes precedence over ``db_path`` in ``Settings``). The
     # schema is created once and each test starts from a per-table DELETE rather

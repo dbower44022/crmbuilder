@@ -72,3 +72,4 @@ crmbuilder-v2/data/oauth_secrets.env
 
 *.lock
 crmbuilder-v2/data/mcp.env
+crmbuilder-v2/data/crmbuilder.env
