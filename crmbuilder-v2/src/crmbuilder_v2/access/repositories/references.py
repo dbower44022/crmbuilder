@@ -403,6 +403,31 @@ def create(
                 ]
             )
 
+    # Requirements-provenance model (Phase 2): a conversation addresses exactly
+    # one topic. Reject a second outgoing `conversation_belongs_to_topic` edge
+    # from the same conversation (mirrors the field_belongs_to_entity 1:1 guard
+    # above). This is what keeps a topic's requirement aggregation clean.
+    if relationship == "conversation_belongs_to_topic":
+        existing_count = session.scalar(
+            select(func.count(Reference.id)).where(
+                Reference.source_type == "conversation",
+                Reference.source_id == source_id,
+                Reference.relationship_kind == "conversation_belongs_to_topic",
+            )
+        )
+        if existing_count and existing_count > 0:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "relationship",
+                        "cardinality_violation",
+                        f"conversation {source_id} already belongs to a topic; "
+                        "a conversation addresses exactly one topic (delete the "
+                        "existing edge first to re-home it)",
+                    )
+                ]
+            )
+
     row = Reference(
         reference_identifier=next_reference_identifier(session),
         source_type=source_type,

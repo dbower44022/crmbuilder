@@ -26,6 +26,32 @@ def test_create_and_list(client):
     assert len(rows) == 1
 
 
+def _add_conversation_topic_ref(client, cid="CNV-001", tid="TOP-001"):
+    return client.post(
+        "/references",
+        json={
+            "source_type": "conversation",
+            "source_id": cid,
+            "target_type": "topic",
+            "target_id": tid,
+            "relationship": "conversation_belongs_to_topic",
+        },
+    )
+
+
+def test_conversation_belongs_to_topic_is_exactly_one(client):
+    # Requirements-provenance Phase 2: a conversation addresses exactly one topic.
+    first = _add_conversation_topic_ref(client, "CNV-001", "TOP-001")
+    assert first.status_code == 201, first.text
+    # A second topic for the same conversation is rejected (cardinality).
+    second = _add_conversation_topic_ref(client, "CNV-001", "TOP-002")
+    assert second.status_code == 422, second.text
+    assert "exactly one topic" in second.text
+    # A different conversation may still bind a topic.
+    other = _add_conversation_topic_ref(client, "CNV-002", "TOP-001")
+    assert other.status_code == 201, other.text
+
+
 def test_list_from_to_touching(client):
     _add_session_decision_ref(client, did="DEC-001")
     _add_session_decision_ref(client, did="DEC-002")
