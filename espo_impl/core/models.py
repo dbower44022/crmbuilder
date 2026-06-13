@@ -937,6 +937,16 @@ class ProgramContext:
     :param team_count_by_name: Mapping of team name to the number
         of times it appears across the batch. A value > 1 marks a
         cross-batch duplicate.
+    :param server_fields_by_entity: Mapping of entity natural name to
+        the set of field names already present on the live target
+        instance (discovered via the Metadata API at Configure time),
+        keyed and normalised to the same natural form as
+        ``fields_by_entity`` — custom fields with their ``c`` prefix
+        stripped. Lets a field reference resolve against a field that
+        was created by an earlier deploy or by a sibling YAML not in
+        the current batch, instead of being rejected. Empty when no
+        instance is connected or discovery failed (batch-only
+        behaviour).
     """
 
     fields_by_entity: dict[str, frozenset[str]]
@@ -948,16 +958,28 @@ class ProgramContext:
     team_names: frozenset[str] = frozenset()
     role_count_by_name: dict[str, int] = field(default_factory=dict)
     team_count_by_name: dict[str, int] = field(default_factory=dict)
+    server_fields_by_entity: dict[str, frozenset[str]] = field(
+        default_factory=dict
+    )
 
     def field_names_for(self, entity_name: str) -> frozenset[str]:
-        """Return the union of declared field names for ``entity_name``.
+        """Return the union of known field names for ``entity_name``.
+
+        Combines fields declared anywhere in the deploy batch with
+        fields already present on the live target instance (when an
+        instance was connected at Configure time). The server-side
+        union is why a reference to a field deployed by an earlier
+        run — or by a YAML outside this batch — resolves instead of
+        being rejected.
 
         :param entity_name: Entity natural name.
         :returns: Frozenset of field names, or an empty frozenset if
-            no program in this context declares any fields for the
-            named entity.
+            neither the batch nor the live instance contributes any
+            fields for the named entity.
         """
-        return self.fields_by_entity.get(entity_name, frozenset())
+        return self.fields_by_entity.get(
+            entity_name, frozenset()
+        ) | self.server_fields_by_entity.get(entity_name, frozenset())
 
     def field_categories_for(self, entity_name: str) -> frozenset[str]:
         """Return the union of declared field categories for ``entity_name``.
@@ -977,7 +999,11 @@ class ProgramContext:
         return self.categories_by_entity.get(entity_name, frozenset())
 
     @classmethod
-    def from_programs(cls, programs: list["ProgramFile"]) -> "ProgramContext":
+    def from_programs(
+        cls,
+        programs: list["ProgramFile"],
+        server_fields_by_entity: dict[str, frozenset[str]] | None = None,
+    ) -> "ProgramContext":
         """Build a context from a list of parsed programs.
 
         Iterates every entity in every program and unions field
@@ -991,6 +1017,12 @@ class ProgramContext:
         ``count > 1``.
 
         :param programs: List of parsed programs to union.
+        :param server_fields_by_entity: Optional mapping of entity
+            natural name to field names already present on the live
+            target instance (natural form, ``c`` prefix stripped). When
+            supplied, references to these fields resolve during
+            validation even if no YAML in the batch declares them. None
+            or empty preserves batch-only behaviour.
         :returns: New ``ProgramContext``.
         """
         fields_by_entity: dict[str, set[str]] = defaultdict(set)
@@ -1023,6 +1055,7 @@ class ProgramContext:
             team_names=frozenset(team_counts.keys()),
             role_count_by_name=dict(role_counts),
             team_count_by_name=dict(team_counts),
+            server_fields_by_entity=dict(server_fields_by_entity or {}),
         )
 
 

@@ -946,6 +946,76 @@ def test_validate_tab_category_unknown_in_batch_still_errors(
     ), f"Expected category not-found error in: {errors}"
 
 
+def test_program_context_field_names_for_unions_server_fields():
+    """field_names_for unions batch-declared fields with fields already
+    present on the live instance, and resolves an entity known only on
+    the server side."""
+    from espo_impl.core.models import ProgramContext
+
+    ctx = ProgramContext(
+        fields_by_entity={"Account": frozenset({"localField"})},
+        server_fields_by_entity={"Account": frozenset({"serverField"})},
+    )
+    names = ctx.field_names_for("Account")
+    assert "localField" in names
+    assert "serverField" in names
+
+    # An entity that appears only on the server still resolves.
+    ctx2 = ProgramContext(
+        fields_by_entity={},
+        server_fields_by_entity={"Contact": frozenset({"deployedOnly"})},
+    )
+    assert ctx2.field_names_for("Contact") == frozenset({"deployedOnly"})
+
+
+def test_validate_resolves_field_present_on_server(loader, tmp_path):
+    """A savedView column referencing a field that exists on the live
+    instance — declared by no YAML in the batch — hard-fails batch-only
+    but validates clean once the server-field union is supplied. This is
+    the fix for the FU-Account -> accountType (deployed by CR-Account)
+    rejection.
+    """
+    from espo_impl.core.models import ProgramContext
+
+    path = _write(tmp_path, "FU-Account.yaml", """\
+        version: "1.1"
+        description: "FU domain — Account saved view over a deployed field"
+        entities:
+          Account:
+            fields:
+              - name: fundraisingStage
+                type: enum
+                label: "Fundraising Stage"
+                options:
+                  - Prospect
+                  - Active
+            savedViews:
+              - id: by-type
+                name: "By Account Type"
+                filter:
+                  - { field: fundraisingStage, op: equals, value: Active }
+                columns: [name, accountType]
+    """)
+    program = loader.load_program(path)
+
+    # Batch-only: accountType is declared nowhere -> hard reject.
+    ctx_batch = ProgramContext.from_programs([program])
+    errors_batch = loader.validate_program_with_context(program, ctx_batch)
+    assert any(
+        "accountType" in e and "not found" in e for e in errors_batch
+    ), f"Expected accountType not-found error in: {errors_batch}"
+
+    # Field present on the live instance -> reference resolves clean.
+    ctx_server = ProgramContext.from_programs(
+        [program],
+        server_fields_by_entity={"Account": frozenset({"accountType"})},
+    )
+    errors_server = loader.validate_program_with_context(program, ctx_server)
+    assert not any(
+        "accountType" in e for e in errors_server
+    ), f"Server-side field should resolve, got: {errors_server}"
+
+
 def test_program_context_categories_for_entity(loader, tmp_path):
     """ProgramContext.field_categories_for unions categories across
     sibling YAMLs by entity. PI-019.

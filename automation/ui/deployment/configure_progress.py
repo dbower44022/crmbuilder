@@ -227,7 +227,20 @@ class ConfigureProgressDialog(QDialog):
         # workflow conditions. Without a cross-file context, the
         # validator rejects every YAML that references a field declared
         # by a sibling.
-        context = ProgramContext.from_programs([p for _, p in parsed])
+        #
+        # Additionally union in the fields already present on the live
+        # target instance, so a reference to a field deployed by an
+        # earlier run (or by a YAML not in this batch) resolves instead
+        # of being rejected. Best-effort: a discovery failure leaves
+        # batch-only behaviour intact.
+        batch_entities = {
+            entity.name for _, p in parsed for entity in p.entities
+        }
+        server_fields = self._discover_server_fields(batch_entities)
+        context = ProgramContext.from_programs(
+            [p for _, p in parsed],
+            server_fields_by_entity=server_fields,
+        )
 
         # Pass 2: validate each program against the shared context.
         for f, program in parsed:
@@ -296,6 +309,52 @@ class ConfigureProgressDialog(QDialog):
             return
 
         self._run_next()
+
+    def _discover_server_fields(
+        self, entity_names: set[str]
+    ) -> dict[str, frozenset[str]]:
+        """Read fields already on the live instance for ``entity_names``.
+
+        Lets the validator resolve references to fields created by an
+        earlier deploy or by a YAML outside this batch. Best-effort and
+        non-fatal: any failure logs a warning and returns ``{}``, so
+        validation falls back to the deploy batch alone.
+
+        :param entity_names: Natural names of the batch's entities.
+        :returns: Mapping of entity natural name to its live field-name
+            set, or an empty dict when no instance fields were read.
+        """
+        if not entity_names or self._profile is None:
+            return {}
+        try:
+            from espo_impl.core.api_client import EspoAdminClient
+            from espo_impl.core.reconcile.live_state import (
+                gather_server_fields,
+            )
+
+            client = EspoAdminClient(self._profile, timeout=15)
+            server_fields, warnings = gather_server_fields(
+                client, entity_names
+            )
+        except Exception as exc:  # network/parse failure is non-fatal
+            self._append_log(
+                f"Live field discovery failed ({exc}); validating "
+                "against the deploy batch only.",
+                "warning",
+            )
+            return {}
+
+        for w in warnings:
+            self._append_log(w, "warning")
+        if server_fields:
+            total = sum(len(v) for v in server_fields.values())
+            self._append_log(
+                f"Resolved {total} existing field(s) across "
+                f"{len(server_fields)} entity(ies) from the live instance "
+                "for cross-batch validation.",
+                "info",
+            )
+        return server_fields
 
     def _record_validation_failure(
         self, file_info: YamlFileInfo, errors: list[str]

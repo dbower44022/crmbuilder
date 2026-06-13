@@ -60,7 +60,7 @@ def test_native_inclusion_toggle():
 def test_http_error_warns_and_omits_entity():
     client = _FakeClient({"CGhost": (500, None)})
 
-    live, warnings = cap_result = LiveStateCapture(client).capture_fields(
+    live, warnings = LiveStateCapture(client).capture_fields(
         [EntitySpec("Ghost", "CGhost", "Base")]
     )
 
@@ -74,3 +74,71 @@ def test_default_resolver_uses_fallback_name():
     live, _ = LiveStateCapture(client).capture_fields([EntitySpec("Session", "CSession")])
     # No resolver supplied -> label falls back to the yaml field name.
     assert live["Session"]["topic"]["label"] == "topic"
+
+
+# --- gather_server_fields (validation-side discovery) ----------------------
+
+class _FakeScopeClient:
+    """Fake exposing the two methods gather_server_fields needs."""
+
+    def __init__(self, scopes, fields, scopes_status=200):
+        self._scopes = scopes
+        self._fields = fields
+        self._scopes_status = scopes_status
+
+    def get_all_scopes(self):
+        return (self._scopes_status, self._scopes)
+
+    def get_entity_field_list(self, espo_name):
+        return self._fields.get(espo_name, (404, None))
+
+
+def test_gather_server_fields_maps_strips_and_warns_unmapped():
+    from espo_impl.core.reconcile.live_state import gather_server_fields
+
+    client = _FakeScopeClient(
+        scopes={
+            "Account": {"type": "Company"},
+            "CEngagement": {"type": "Base"},
+        },
+        fields={
+            "Account": (200, {
+                "cAccountType": {"type": "enum", "isCustom": True},
+                "name": {"type": "varchar"},
+                _SYS: {"type": "varchar"},
+            }),
+            "CEngagement": (200, {
+                "cStage": {"type": "enum", "isCustom": True},
+            }),
+        },
+    )
+
+    server_fields, warnings = gather_server_fields(
+        client, ["Account", "Engagement", "Ghost"]
+    )
+
+    # Native entity: custom field c-prefix stripped to natural form.
+    assert "accountType" in server_fields["Account"]
+    assert "name" in server_fields["Account"]
+    assert _SYS not in server_fields["Account"]          # system skipped
+    # Custom entity (CEngagement) keyed back to its natural YAML name.
+    assert server_fields["Engagement"] == frozenset({"stage"})
+    # Entity absent from the live instance is reported, not fatal.
+    assert any("Ghost" in w for w in warnings)
+    assert "Ghost" not in server_fields
+
+
+def test_gather_server_fields_empty_input():
+    from espo_impl.core.reconcile.live_state import gather_server_fields
+
+    client = _FakeScopeClient(scopes={}, fields={})
+    assert gather_server_fields(client, []) == ({}, [])
+
+
+def test_gather_server_fields_scopes_read_failure_is_nonfatal():
+    from espo_impl.core.reconcile.live_state import gather_server_fields
+
+    client = _FakeScopeClient(scopes=None, fields={}, scopes_status=503)
+    server_fields, warnings = gather_server_fields(client, ["Account"])
+    assert server_fields == {}
+    assert warnings and "scopes" in warnings[0].lower()
