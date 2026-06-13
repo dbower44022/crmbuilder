@@ -1418,7 +1418,7 @@ CHANGE_LOG_OPERATIONS: frozenset[str] = frozenset({"insert", "update", "delete"}
 # `ck_changelog_entity_type` and its migrations derive from this set so the
 # CHECK cannot drift from the models.
 CHANGE_LOG_ENTITY_TYPES: frozenset[str] = ENTITY_TYPES | frozenset(
-    {"reference", "utilization_evidence"}
+    {"reference", "utilization_evidence", "review_signoff"}
 )
 
 CHANGE_LOG_ACTORS: frozenset[str] = frozenset(

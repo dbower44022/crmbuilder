@@ -647,6 +647,17 @@ class RequirementPatchIn(_Base):
     requirement_status: str | None = None
 
 
+class ReviewSignoffCreateIn(_Base):
+    """POST /review/signoffs body — record a topic review attestation.
+
+    The server snapshots the topic's current requirement set; the body carries
+    only the topic, who reviewed, and the attestation text."""
+
+    signoff_topic_identifier: str
+    signoff_reviewer: str
+    signoff_attestation: str
+
+
 # ---------- Migration mappings (methodology entity, WTK-107) ----------
 
 

@@ -2668,6 +2668,38 @@ class ChangeLog(EngagementScopedMixin, Base):
     )
 
 
+class ReviewSignoff(EngagementScopedMixin, Base):
+    """Recorded review attestation (requirements-provenance Phase 6).
+
+    "Reviewed, not reviewable": a PM's dated, on-the-record statement that a
+    topic's requirement set matched intent at review time. Append-only — an
+    attestation is history, never edited — so it joins the mechanical/append-only
+    family alongside ``utilization_evidence`` (integer surrogate PK, no prefixed
+    identifier, no ``_updated_at`` / ``_deleted_at``).
+    ``signoff_reviewed_requirements`` snapshots the (identifier, status) pairs
+    attested, so later drift away from that snapshot is detectable.
+    """
+
+    __tablename__ = "review_signoffs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    signoff_topic_identifier: Mapped[str] = mapped_column(
+        String(64), nullable=False
+    )
+    signoff_reviewer: Mapped[str] = mapped_column(Text, nullable=False)
+    signoff_attestation: Mapped[str] = mapped_column(Text, nullable=False)
+    signoff_reviewed_requirements: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False, default=list
+    )
+    signoff_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_review_signoffs_topic", "signoff_topic_identifier"),
+    )
+
+
 class UtilizationEvidence(EngagementScopedMixin, Base):
     """Append-only utilization-evidence snapshot for one baseline candidate.
 

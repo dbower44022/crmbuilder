@@ -9,8 +9,10 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from crmbuilder_v2.access import review
-from crmbuilder_v2.api.deps import readonly_session
+from crmbuilder_v2.access.repositories import review_signoffs
+from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
+from crmbuilder_v2.api.schemas import ReviewSignoffCreateIn
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -46,3 +48,24 @@ def drift_queue():
     """Requirements flagged needs_review by living drift."""
     with readonly_session() as s:
         return ok(review.drift_queue(s))
+
+
+@router.post("/signoffs", status_code=201)
+def create_signoff(body: ReviewSignoffCreateIn):
+    """Record a sign-off attestation for a topic's requirement set."""
+    with writable_session() as s:
+        return ok(
+            review_signoffs.create(
+                s,
+                topic_identifier=body.signoff_topic_identifier,
+                reviewer=body.signoff_reviewer,
+                attestation=body.signoff_attestation,
+            )
+        )
+
+
+@router.get("/signoffs")
+def list_signoffs(topic: str | None = None):
+    """List sign-offs, newest first, optionally filtered to one topic."""
+    with readonly_session() as s:
+        return ok(review_signoffs.list_signoffs(s, topic_identifier=topic))
