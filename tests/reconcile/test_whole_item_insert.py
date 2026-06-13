@@ -99,6 +99,31 @@ def test_reconciler_captures_roles_and_teams_into_new_blocks(tmp_path):
     assert mentor["system_permissions"]["export"] is True
 
 
+def test_not_set_permission_is_representable_and_round_trips(tmp_path):
+    # EspoCRM 'not-set' is admitted by the schema (SCOPE_ACCESS_VALUES) so a role
+    # using it captures and re-parses faithfully (no semantic remap).
+    from espo_impl.core.config_loader import ConfigLoader
+    from espo_impl.core.reconcile.reconstruct import role_representability_issue
+
+    block = {
+        "name": "Standard User",
+        "scope_access": {"Account": {"create": False, "read": "not-set",
+                                     "edit": "no", "delete": "no", "stream": "not-set"}},
+        "system_permissions": {"assignment_permission": "not-set",
+                               "user_permission": "not-set", "export": False,
+                               "mass_update": False, "portal": False},
+    }
+    assert role_representability_issue(block) is None  # no longer flagged
+
+    f = tmp_path / "security.yaml"
+    f.write_text(_NO_SECURITY)
+    apply_reconciliation([_role_crm_only("Standard User", f, block)])
+
+    role = next(r for r in ConfigLoader().load_program(f).roles if r.name == "Standard User")
+    assert role.system_permissions.user_permission == "not-set"
+    assert role.scope_access["Account"].read == "not-set"
+
+
 def test_captured_role_reparses_via_config_loader(tmp_path):
     # The inserted role must load through the real ConfigLoader as a RoleDefinition.
     from espo_impl.core.config_loader import ConfigLoader

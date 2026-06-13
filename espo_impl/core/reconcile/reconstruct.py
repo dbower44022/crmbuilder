@@ -12,14 +12,13 @@ from __future__ import annotations
 from typing import Any
 
 from espo_impl.core.audit_manager import AuditManager
+#: Permission/scope values the YAML role schema can represent. Mirrors
+#: :data:`SCOPE_ACCESS_VALUES` (incl. EspoCRM ``not-set``, admitted by the schema
+#: for faithful round-trip). The guard still rejects any value outside this set so
+#: capture never writes YAML that won't re-parse.
+from espo_impl.core.models import SCOPE_ACCESS_VALUES as _VALID_SCOPE
 
 _AUDIT = AuditManager(client=None)
-
-#: Permission/scope values the YAML role schema can represent. EspoCRM also uses
-#: 'not-set' (no explicit restriction), which is NOT in this set — a role using it
-#: cannot be faithfully captured until the schema is extended (see
-#: :func:`role_representability_issue`).
-_VALID_SCOPE = {"all", "team", "own", "no"}
 
 
 def role_to_yaml(role_view) -> dict[str, Any]:

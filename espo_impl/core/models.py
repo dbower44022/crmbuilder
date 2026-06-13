@@ -266,8 +266,10 @@ VALID_ON_MATCH_VALUES: set[str] = {"block", "warn"}
 
 # Scope-style action vocabulary used by scope_access read/edit/delete/stream
 # (Section 12.3) and by system_permissions assignment_permission /
-# user_permission (Section 12.4).
-SCOPE_ACCESS_VALUES: frozenset[str] = frozenset({"all", "team", "own", "no"})
+# user_permission (Section 12.4). ``not-set`` mirrors EspoCRM's value for "no
+# explicit restriction" — admitted so a live role using it round-trips through
+# YAML faithfully (audit/reconcile capture -> deploy -> re-audit stays a no-op).
+SCOPE_ACCESS_VALUES: frozenset[str] = frozenset({"all", "team", "own", "no", "not-set"})
 
 # v1.3 system-permissions key enumeration (Section 12.4). Two scope-style
 # keys take SCOPE_ACCESS_VALUES; four flag-style keys take bool.

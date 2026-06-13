@@ -1902,7 +1902,7 @@ class ConfigLoader:
             return value
         raise ValueError(
             f"{prefix}.{key}: must be one of 'all', 'team', 'own', "
-            f"'no' (got {value!r})"
+            f"'no', 'not-set' (got {value!r})"
         )
 
     def _parse_scope_access(
