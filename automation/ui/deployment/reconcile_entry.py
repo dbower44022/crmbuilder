@@ -364,15 +364,16 @@ class ReconcileEntry(QWidget):
             if diff.source_file is not None:
                 accepted.append(diff)
             elif (
-                diff.config_type is ConfigType.FIELD
-                and diff.category is DiffCategory.CRM_ONLY
+                diff.category is DiffCategory.CRM_ONLY
+                and diff.full_crm_block is not None
             ):
+                # Captureable CRM-only item (field/role/team/...): ask where it goes.
                 target = self._ask_target_file(diff)
                 if target is None:  # user cancelled this addition
                     continue
                 accepted.append(replace(diff, source_file=target))
             else:
-                report_only.append(diff)  # CRM-only non-field: no write path in v1
+                report_only.append(diff)  # no v1 write path (or not representable)
 
         if report_only:
             self._on_output_line(
@@ -395,10 +396,16 @@ class ReconcileEntry(QWidget):
     def _ask_target_file(self, diff) -> Path | None:
         """Ask which program file a CRM-only addition should be written to."""
         names = [str(p) for p in self._program_files]
+        kind = diff.config_type.value
+        what = (
+            f"{kind} '{_locator_name(diff)}'"
+            if kind in ("role", "team")
+            else f"{diff.entity}.{_locator_name(diff)}"
+        )
         choice, ok = QInputDialog.getItem(
             self,
             "Choose target file",
-            f"Add {diff.entity}.{_locator_name(diff)} to which file?",
+            f"Add {what} to which file?",
             names,
             0,
             False,
