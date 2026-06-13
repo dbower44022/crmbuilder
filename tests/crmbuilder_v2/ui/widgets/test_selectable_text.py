@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from crmbuilder_v2.ui.widgets import selectable_text
 from crmbuilder_v2.ui.widgets.selectable_text import (
     SELECTABLE_TEXT_FLAGS,
     CopyableMessageBox,
@@ -11,7 +12,7 @@ from crmbuilder_v2.ui.widgets.selectable_text import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QLabel, QMessageBox
+from PySide6.QtWidgets import QLabel, QMessageBox, QTextEdit
 
 
 def test_make_selectable_sets_exactly_the_two_flags(qapp, qtbot):
@@ -111,3 +112,60 @@ def test_copy_to_clipboard_round_trips(qapp, qtbot):
     clipboard = QGuiApplication.clipboard()
     assert clipboard is not None
     assert clipboard.text() == "copied payload"
+
+
+def test_copy_to_clipboard_returns_false_without_clipboard(
+    qapp, qtbot, monkeypatch
+):
+    # Exercise the guarded branch: a headless process can have no
+    # clipboard, in which case the helper reports failure rather than
+    # raising.
+    class _NoClipboard:
+        @staticmethod
+        def clipboard():
+            return None
+
+    monkeypatch.setattr(selectable_text, "QGuiApplication", _NoClipboard)
+    assert copy_to_clipboard("dropped payload") is False
+
+
+def test_copyable_message_box_detailed_text_pane_is_selectable(qapp, qtbot):
+    # The detailed-text pane is a read-only QTextEdit; an operator must
+    # be able to drag-select and Ctrl+C the diagnostic payload it holds.
+    box = CopyableMessageBox()
+    qtbot.addWidget(box)
+    box.setText("main message")
+    box.setDetailedText("detailed diagnostic payload")
+    panes = box.findChildren(QTextEdit)
+    assert len(panes) == 1
+    pane = panes[0]
+    assert pane.isReadOnly()
+    assert pane.textInteractionFlags() & Qt.TextInteractionFlag.TextSelectableByMouse
+
+
+def test_make_selectable_leaves_raw_qmessagebox_informative_mouse_only(
+    qapp, qtbot
+):
+    # Documents the QMessageBox caveat in make_selectable's docstring:
+    # the box-level flags don't reach the informative-text label, which
+    # Qt creates mouse-only from the style hint. CopyableMessageBox is
+    # the fix — the contrast that justifies the subclass.
+    raw = QMessageBox()
+    qtbot.addWidget(raw)
+    raw.setText("main message")
+    make_selectable(raw)
+    raw.setInformativeText("informative message")
+    raw_label = raw.findChild(QLabel, "qt_msgbox_informativelabel")
+    assert raw_label is not None
+    raw_flags = raw_label.textInteractionFlags()
+    assert raw_flags & Qt.TextInteractionFlag.TextSelectableByMouse
+    assert (raw_flags & SELECTABLE_TEXT_FLAGS) != SELECTABLE_TEXT_FLAGS
+
+    box = CopyableMessageBox()
+    qtbot.addWidget(box)
+    box.setText("main message")
+    box.setInformativeText("informative message")
+    box_label = box.findChild(QLabel, "qt_msgbox_informativelabel")
+    assert box_label is not None
+    box_flags = box_label.textInteractionFlags()
+    assert (box_flags & SELECTABLE_TEXT_FLAGS) == SELECTABLE_TEXT_FLAGS
