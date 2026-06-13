@@ -162,6 +162,86 @@ class TestInstancesEntry:
         assert w._detail_default.isChecked()
         assert load_instances(single_db)[0].is_default is True
 
+    def test_editing_field_flashes_saved_indicator(self, qapp, single_db):
+        """An auto-save shows the transient 'Saved' confirmation."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+        assert not w._saved_label.isVisible() or w._saved_label.text() == ""
+
+        w._detail_desc.setText("a note")
+        w._detail_desc.editingFinished.emit()
+
+        assert w._saved_label.text() == "Saved ✓"
+        assert w._saved_timer.isActive()
+
+    def test_no_op_edit_does_not_flash_saved(self, qapp, single_db):
+        """Focus-out with no change writes nothing and shows no confirmation."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+
+        w._detail_desc.editingFinished.emit()  # unchanged
+
+        assert not w._saved_timer.isActive()
+
+    def test_connection_field_edit_resets_status(self, qapp, single_db):
+        """Changing the URL clears a stale 'connected' status."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+        # Simulate a prior successful connection test.
+        w._status_cache[w._selected_id] = "connected"
+
+        w._detail_url.setText("https://moved.example.com")
+        w._detail_url.editingFinished.emit()
+
+        assert w._status_cache[w._selected_id] == "not_tested"
+
+    def test_clearing_url_sets_no_url_status(self, qapp, single_db):
+        """Blanking the URL reports 'no_url' rather than a stale status."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+        w._status_cache[w._selected_id] = "connected"
+
+        w._detail_url.setText("")
+        w._detail_url.editingFinished.emit()
+
+        assert w._status_cache[w._selected_id] == "no_url"
+
+    def test_non_connection_edit_preserves_status(self, qapp, single_db):
+        """Editing Description leaves a known connection status intact."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(single_db)
+        w._table.setCurrentCell(0, 0)
+        w._status_cache[w._selected_id] = "connected"
+
+        w._detail_desc.setText("just a note")
+        w._detail_desc.editingFinished.emit()
+
+        assert w._status_cache[w._selected_id] == "connected"
+
+    def test_row_change_clears_saved_flash(self, qapp, multi_db):
+        """Switching instances stops/hides a lingering 'Saved' flash."""
+        from automation.ui.deployment.instances_entry import InstancesEntry
+        w = InstancesEntry()
+        w.refresh(multi_db)
+        w._table.setCurrentCell(0, 0)
+        w._detail_desc.setText("note")
+        w._detail_desc.editingFinished.emit()
+        assert w._saved_timer.isActive()
+
+        w._table.setCurrentCell(1, 0)  # switch rows
+
+        assert not w._saved_timer.isActive()
+        assert not w._saved_label.isVisible()
+
     def test_no_save_button(self, qapp, single_db):
         """The explicit Save Changes button is gone — edits auto-save."""
         from automation.ui.deployment.instances_entry import InstancesEntry
