@@ -262,6 +262,17 @@ REQUIREMENT_PRIORITIES: frozenset[str] = frozenset(
     {"must", "should", "could", "wont"}
 )
 
+# Requirements-provenance model (requirements-provenance-and-review-anchor.md,
+# Phase 1). ``requirement_origin`` records how a requirement came to be: defined
+# directly with a human, or derived by an AI agent (and therefore gated on human
+# approval before it can go active). Legacy rows predating the model carry NULL.
+REQUIREMENT_ORIGINS: frozenset[str] = frozenset({"human_defined", "ai_derived"})
+
+# ``requirement_review_state`` is the living-drift flag: ``needs_review`` is
+# raised on a requirement whose parent, governing decision, or downstream
+# changed, and cleared when a human re-validates it. Defaults to ``current``.
+REQUIREMENT_REVIEW_STATES: frozenset[str] = frozenset({"current", "needs_review"})
+
 # Methodology entity `manual_config` lifecycle (PI-004 cohort, v0.5+).
 # **Four-status lifecycle** per ``manual_config.md`` §3.4 — explicit
 # deviation from the cross-spec three-status default. Adds a terminal
@@ -893,6 +904,27 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # agreement are access-layer enforcement, not pair-rule concerns.
         "migration_mapping_migrates_from_record",
         "migration_mapping_migrates_to_record",
+        # Requirements-provenance model (requirements-provenance-build-
+        # translation.md, Phase 1). Six edges that make the requirement tree,
+        # its provenance, and its decision outcomes first-class:
+        #   - `requirement_refines_requirement` (requirement → requirement;
+        #     child → parent decomposition — the hierarchy).
+        #   - `requirement_defined_in_conversation` (requirement → conversation;
+        #     provenance — carries the session transitively, since a
+        #     conversation belongs to exactly one session).
+        #   - `requirement_belongs_to_topic` (requirement → topic; the
+        #     organizational link, inherited down the requirement tree).
+        #   - `conversation_belongs_to_topic` (conversation → topic; exactly
+        #     one, enforced at the access layer).
+        #   - `requirement_approved_by_decision` / `requirement_changed_by_decision`
+        #     (requirement → decision; the deliver and change outcomes — decline
+        #     reuses the existing `rejected_by_decision`).
+        "requirement_refines_requirement",
+        "requirement_defined_in_conversation",
+        "requirement_belongs_to_topic",
+        "conversation_belongs_to_topic",
+        "requirement_approved_by_decision",
+        "requirement_changed_by_decision",
     }
 )
 
@@ -1300,6 +1332,22 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         "migration_mapping",
     ) and target_type == "decision":
         kinds.add("rejected_by_decision")
+    # Requirements-provenance model (Phase 1). Hierarchy, provenance, topic
+    # organization, and the deliver/change decision-outcome edges. Decline
+    # reuses the `rejected_by_decision` clause above. The same-type `supersedes`
+    # clause already admits (requirement, requirement); `requirement_refines_requirement`
+    # joins it for the child → parent decomposition edge.
+    if source_type == "requirement" and target_type == "requirement":
+        kinds.add("requirement_refines_requirement")
+    if source_type == "requirement" and target_type == "conversation":
+        kinds.add("requirement_defined_in_conversation")
+    if source_type == "requirement" and target_type == "topic":
+        kinds.add("requirement_belongs_to_topic")
+    if source_type == "conversation" and target_type == "topic":
+        kinds.add("conversation_belongs_to_topic")
+    if source_type == "requirement" and target_type == "decision":
+        kinds.add("requirement_approved_by_decision")
+        kinds.add("requirement_changed_by_decision")
     return frozenset(kinds)
 
 

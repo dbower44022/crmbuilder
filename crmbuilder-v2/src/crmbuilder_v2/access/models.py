@@ -82,7 +82,9 @@ from crmbuilder_v2.access.vocab import (
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
     REGISTRY_STATUSES,
+    REQUIREMENT_ORIGINS,
     REQUIREMENT_PRIORITIES,
+    REQUIREMENT_REVIEW_STATES,
     REQUIREMENT_STATUSES,
     RISK_IMPACTS,
     RISK_PROBABILITIES,
@@ -912,6 +914,21 @@ class Requirement(EngagementScopedPKMixin, Base):
     requirement_deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Requirements-provenance model (Phase 1). ``origin`` records how the
+    # requirement came to be (NULL for legacy rows predating the model);
+    # ``review_state`` is the living-drift flag; ``approved_at`` stamps the
+    # human approval that takes it active. The parent edge, provenance edge,
+    # topic edge, and decision-outcome edges all live in ``refs`` as
+    # relationship kinds, not FK columns.
+    requirement_origin: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )
+    requirement_review_state: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="current"
+    )
+    requirement_approved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         # ``^REQ-\d{3}$`` expressed as a SQLite GLOB pattern.
@@ -926,6 +943,14 @@ class Requirement(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _check_in("requirement_priority", REQUIREMENT_PRIORITIES),
             name="ck_requirement_priority",
+        ),
+        CheckConstraint(
+            _check_in("requirement_origin", REQUIREMENT_ORIGINS),
+            name="ck_requirement_origin",
+        ),
+        CheckConstraint(
+            _check_in("requirement_review_state", REQUIREMENT_REVIEW_STATES),
+            name="ck_requirement_review_state",
         ),
         Index(
             "ix_requirements_requirement_status", "requirement_status"
