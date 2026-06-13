@@ -30,8 +30,9 @@ def master_conn(tmp_path):
     db_path = tmp_path / "master.db"
     c = run_master_migrations(str(db_path))
     c.execute(
-        "INSERT INTO Client (name, code, description, database_path) "
-        "VALUES ('Test', 'TST', 'Test org', '/tmp/test.db')"
+        "INSERT INTO Client (name, code, description, database_path, project_folder) "
+        "VALUES (?, ?, ?, ?, ?)",
+        ("Test", "TST", "Test org", "/tmp/test.db", str(tmp_path / "project")),
     )
     c.commit()
     yield c

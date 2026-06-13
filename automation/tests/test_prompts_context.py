@@ -22,9 +22,10 @@ def master_conn(tmp_path):
     c = run_master_migrations(str(db_path))
     c.execute(
         "INSERT INTO Client (name, code, description, database_path, "
-        "organization_overview, crm_platform) VALUES (?, ?, ?, ?, ?, ?)",
+        "organization_overview, crm_platform, project_folder) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
         ("Test Org", "TO", "A test organization", "/tmp/test.db",
-         "Test org overview narrative", "EspoCRM"),
+         "Test org overview narrative", "EspoCRM", str(tmp_path / "project")),
     )
     c.commit()
     yield c

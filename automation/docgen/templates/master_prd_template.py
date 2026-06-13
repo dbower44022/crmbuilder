@@ -294,7 +294,9 @@ def _render_domain_processing_order(doc, domains: list[dict]) -> None:
         identifier = d.get("identifier") or ""
         name = d.get("name", "")
         code = d.get("code", "")
-        desc = d.get("description", "")
+        # `.get(..., "")` still yields None when the column is NULL (the
+        # default only applies to a missing key), so coerce with `or ""`.
+        desc = d.get("description") or ""
         # Truncate description for the ordered list
         short_desc = desc[:120] + "..." if len(desc) > 120 else desc
         label = f"{identifier}: {name} ({code})" if identifier else f"{name} ({code})"

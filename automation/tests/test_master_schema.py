@@ -26,8 +26,8 @@ class TestClientTable:
 
     def test_create_client(self, master_db):
         master_db.execute(
-            "INSERT INTO Client (name, code, database_path) "
-            "VALUES ('Cleveland Business Mentors', 'CBM', '/data/cbm.db')"
+            "INSERT INTO Client (name, code, database_path, project_folder) "
+            "VALUES ('Cleveland Business Mentors', 'CBM', '/data/cbm.db', '/data/cbm-proj')"
         )
         master_db.commit()
         row = master_db.execute("SELECT * FROM Client WHERE code = 'CBM'").fetchone()
@@ -56,20 +56,22 @@ class TestClientTable:
 
     def test_code_unique(self, master_db):
         master_db.execute(
-            "INSERT INTO Client (name, code, database_path) "
-            "VALUES ('Org A', 'DUP', '/data/a.db')"
+            "INSERT INTO Client (name, code, database_path, project_folder) "
+            "VALUES ('Org A', 'DUP', '/data/a.db', '/data/a-proj')"
         )
         master_db.commit()
         with pytest.raises(sqlite3.IntegrityError):
+            # Distinct project_folder so the violation is specifically the
+            # duplicate code, not a project_folder UNIQUE collision.
             master_db.execute(
-                "INSERT INTO Client (name, code, database_path) "
-                "VALUES ('Org B', 'DUP', '/data/b.db')"
+                "INSERT INTO Client (name, code, database_path, project_folder) "
+                "VALUES ('Org B', 'DUP', '/data/b.db', '/data/b-proj')"
             )
 
     def test_optional_fields_nullable(self, master_db):
         master_db.execute(
-            "INSERT INTO Client (name, code, database_path) "
-            "VALUES ('Org', 'ORG', '/data/org.db')"
+            "INSERT INTO Client (name, code, database_path, project_folder) "
+            "VALUES ('Org', 'ORG', '/data/org.db', '/data/org-proj')"
         )
         master_db.commit()
         row = master_db.execute(
@@ -81,9 +83,9 @@ class TestClientTable:
     def test_organization_overview_and_crm_platform(self, master_db):
         master_db.execute(
             "INSERT INTO Client (name, code, database_path, "
-            "organization_overview, crm_platform) "
+            "organization_overview, crm_platform, project_folder) "
             "VALUES ('Org', 'ORG', '/data/org.db', "
-            "'A nonprofit...', 'EspoCRM')"
+            "'A nonprofit...', 'EspoCRM', '/data/org-proj')"
         )
         master_db.commit()
         row = master_db.execute(
@@ -94,8 +96,8 @@ class TestClientTable:
 
     def test_timestamps_default(self, master_db):
         master_db.execute(
-            "INSERT INTO Client (name, code, database_path) "
-            "VALUES ('Org', 'ORG', '/data/org.db')"
+            "INSERT INTO Client (name, code, database_path, project_folder) "
+            "VALUES ('Org', 'ORG', '/data/org.db', '/data/org-proj')"
         )
         master_db.commit()
         row = master_db.execute(

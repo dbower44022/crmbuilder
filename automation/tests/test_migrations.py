@@ -37,15 +37,16 @@ class TestMasterMigrations:
         row = conn.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()
-        assert row[0] == 1
+        # Highest master migration version currently applied.
+        assert row[0] == 3
         conn.close()
 
     def test_idempotent(self, tmp_path):
         db_path = tmp_path / "master.db"
         conn1 = run_master_migrations(str(db_path))
         conn1.execute(
-            "INSERT INTO Client (name, code, database_path) "
-            "VALUES ('Test', 'TST', '/test.db')"
+            "INSERT INTO Client (name, code, database_path, project_folder) "
+            "VALUES ('Test', 'TST', '/test.db', '/test-proj')"
         )
         conn1.commit()
         conn1.close()
@@ -56,7 +57,8 @@ class TestMasterMigrations:
         versions = conn2.execute(
             "SELECT COUNT(*) FROM schema_version"
         ).fetchone()
-        assert versions[0] == 1
+        # One row per master migration version; re-running adds none.
+        assert versions[0] == 3
         conn2.close()
 
     def test_foreign_keys_enabled(self, tmp_path):
@@ -75,7 +77,8 @@ class TestClientMigrations:
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' "
             "AND name NOT LIKE 'sqlite_%' AND name != 'schema_version'"
         ).fetchone()
-        assert tables[0] == 25
+        # Total client tables created by the current migration chain.
+        assert tables[0] == 34
         conn.close()
 
     def test_records_version(self, tmp_path):
@@ -84,7 +87,8 @@ class TestClientMigrations:
         row = conn.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()
-        assert row[0] == 2
+        # Highest client migration version currently applied.
+        assert row[0] == 16
         conn.close()
 
     def test_idempotent(self, tmp_path):
@@ -102,7 +106,8 @@ class TestClientMigrations:
         versions = conn2.execute(
             "SELECT COUNT(*) FROM schema_version"
         ).fetchone()
-        assert versions[0] == 2
+        # One row per client migration version; re-running adds none.
+        assert versions[0] == 16
         conn2.close()
 
     def test_foreign_keys_enabled(self, tmp_path):
@@ -131,5 +136,6 @@ class TestClientMigrations:
         versions = conn.execute(
             "SELECT COUNT(*) FROM schema_version"
         ).fetchone()
-        assert versions[0] == 2
+        # Re-running migrations must not add duplicate version rows.
+        assert versions[0] == 16
         conn.close()
