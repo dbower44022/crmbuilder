@@ -40,6 +40,7 @@ from crmbuilder_v2.ui.panels._governance_helpers import (
 )
 from crmbuilder_v2.ui.widgets.form_helpers import primary_button
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.charter")
@@ -148,7 +149,7 @@ class CharterPanel(VersionedPanel):
             self.refresh()
 
     def _on_make_current(self, version: int) -> None:
-        confirm = QMessageBox(self)
+        confirm = CopyableMessageBox(self)
         confirm.setWindowTitle("Make Current")
         confirm.setText(
             f"Make charter version {version} the current version?"

@@ -34,6 +34,7 @@ from crmbuilder_v2.ui.main_window import MainWindow
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.splash import Splash
 from crmbuilder_v2.ui.styling import TOKENS, apply_stylesheet
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _APP_NAME = "CRMBuilder v2"
 _LOG_DIR = Path("~/.crmbuilder-v2").expanduser()
@@ -246,7 +247,7 @@ def _preselect_engagement(window: MainWindow, log: logging.Logger) -> None:
 def _show_spawn_failure_dialog(
     parent: MainWindow | None, stderr_text: str
 ) -> None:
-    box = QMessageBox(parent)
+    box = CopyableMessageBox(parent)
     box.setIcon(QMessageBox.Icon.Critical)
     box.setWindowTitle("Storage server failed to start")
     box.setText(
