@@ -105,3 +105,41 @@ def test_confirmed_requirement_with_a_plan_is_not_unbuilt(client):
     cov = _coverage(client)
     unbuilt = [u["requirement_identifier"] for u in cov["unbuilt_requirements"]]
     assert rid not in unbuilt
+
+
+# -- baseline cutoff ------------------------------------------------------
+
+
+def test_no_cutoff_reports_all_gaps_as_live(client):
+    _pi(client, "PI-001")
+    cov = _coverage(client)
+    # Default (no cutoff): the orphan is live and baseline is empty.
+    assert "PI-001" in [o["identifier"] for o in cov["orphan_planning_items"]]
+    assert cov["baseline_since"] is None
+    assert cov["baseline_summary"]["orphan_planning_items"] == 0
+
+
+def test_future_cutoff_moves_existing_gaps_to_baseline(client):
+    _pi(client, "PI-001")
+    # A cutoff in the future => every existing record is pre-cutoff baseline.
+    r = client.get("/coverage/capabilities", params={"since": "2999-01-01"})
+    assert r.status_code == 200, r.text
+    cov = r.json()["data"]
+    assert cov["orphan_planning_items"] == []  # none are "live"
+    assert cov["summary"]["orphan_planning_items"] == 0
+    assert cov["baseline_summary"]["orphan_planning_items"] >= 1
+    assert cov["baseline_since"].startswith("2999-01-01")
+
+
+def test_past_cutoff_keeps_gaps_live(client):
+    _pi(client, "PI-001")
+    r = client.get("/coverage/capabilities", params={"since": "2000-01-01"})
+    assert r.status_code == 200, r.text
+    cov = r.json()["data"]
+    assert "PI-001" in [o["identifier"] for o in cov["orphan_planning_items"]]
+    assert cov["baseline_summary"]["orphan_planning_items"] == 0
+
+
+def test_malformed_cutoff_is_rejected(client):
+    r = client.get("/coverage/capabilities", params={"since": "not-a-date"})
+    assert r.status_code == 422, r.text

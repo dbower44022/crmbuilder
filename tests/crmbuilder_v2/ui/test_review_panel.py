@@ -83,8 +83,8 @@ def test_refresh_loads_topics_and_queues(review_client, qtbot):
     )
     # Coverage tab always has the three group rows.
     assert panel._coverage_tree.topLevelItemCount() == 3
-    # The coverage summary line is populated.
-    assert "Orphan planning items" in panel._coverage_summary.text()
+    # The coverage summary line is populated (live-gaps split wording).
+    assert "Live gaps:" in panel._coverage_summary.text()
 
 
 def test_signoff_round_trips_through_panel(review_client, qtbot):

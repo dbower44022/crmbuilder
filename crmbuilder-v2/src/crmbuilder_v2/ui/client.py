@@ -2769,9 +2769,21 @@ class StorageClient:
             op="create_signoff",
         )
 
-    def capability_coverage(self) -> dict[str, Any]:
-        """The bidirectional no-orphan-capability coverage-gaps report."""
+    def capability_coverage(self, since: str | None = None) -> dict[str, Any]:
+        """The bidirectional no-orphan-capability coverage-gaps report.
+
+        ``since`` is an optional ISO-8601 baseline cutoff: gaps on records
+        created before it are reported as legacy ``baseline_summary`` debt
+        rather than live gaps. Omitted => the server's configured default
+        (``CRMBUILDER_V2_PROVENANCE_BASELINE``), or no cutoff if unset.
+        """
+        # ``None`` omits the param (server default applies); an empty string is
+        # sent verbatim (``?since=``) to force *no* cutoff even when a default
+        # is configured; a date string requests that cutoff.
+        path = "/coverage/capabilities"
+        if since is not None:
+            path += f"?since={since}"
         return self._expect_dict(
-            self._request("GET", "/coverage/capabilities"),
+            self._request("GET", path),
             op="capability_coverage",
         )

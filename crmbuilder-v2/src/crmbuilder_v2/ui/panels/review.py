@@ -26,9 +26,11 @@ import logging
 from functools import partial
 from typing import Any
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
+    QDateEdit,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -89,6 +91,12 @@ class ReviewPanel(ListDetailPanel):
         self._current_topic_id: str | None = None
         self._populating_combo = False
         self._dialogs: list[QWidget] = []
+        # Coverage baseline cutoff. ``None`` => let the server apply its
+        # configured default; ``""`` => force no cutoff (count every gap as
+        # live); a date string => that cutoff. The control is synced from the
+        # first response once, then drives subsequent fetches.
+        self._coverage_since: str | None = None
+        self._coverage_control_synced = False
         super().__init__(client, parent)
 
     # -- ListDetailPanel abstract hooks (unused; layout is fully custom) ----
@@ -230,6 +238,23 @@ class ReviewPanel(ListDetailPanel):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
+
+        # Baseline cutoff control — most gaps are pre-model legacy debt; the
+        # cutoff hides records created before the model went live so the tree
+        # shows only live (post-cutoff) gaps.
+        controls = QHBoxLayout()
+        self._baseline_checkbox = QCheckBox("Exclude pre-model baseline before")
+        self._baseline_checkbox.toggled.connect(self._on_coverage_cutoff_changed)
+        controls.addWidget(self._baseline_checkbox)
+        self._baseline_date = QDateEdit()
+        self._baseline_date.setCalendarPopup(True)
+        self._baseline_date.setDisplayFormat("yyyy-MM-dd")
+        self._baseline_date.setDate(QDate.currentDate())
+        self._baseline_date.dateChanged.connect(self._on_coverage_cutoff_changed)
+        controls.addWidget(self._baseline_date)
+        controls.addStretch(1)
+        layout.addLayout(controls)
+
         self._coverage_summary = QLabel("")
         self._coverage_summary.setWordWrap(True)
         layout.addWidget(self._coverage_summary)
@@ -246,6 +271,24 @@ class ReviewPanel(ListDetailPanel):
         self._coverage_tree.setAlternatingRowColors(True)
         layout.addWidget(self._coverage_tree)
         return page
+
+    def _on_coverage_cutoff_changed(self, *_args) -> None:
+        # User-driven change: checked => the chosen date; unchecked => force no
+        # cutoff (empty string, distinct from None "use server default").
+        if not self._coverage_control_synced:
+            return  # still syncing the control from the first response
+        if self._baseline_checkbox.isChecked():
+            self._coverage_since = self._baseline_date.date().toString("yyyy-MM-dd")
+        else:
+            self._coverage_since = ""
+        self._reload_coverage()
+
+    def _reload_coverage(self) -> None:
+        self._run(
+            lambda: self._client.capability_coverage(self._coverage_since),
+            on_success=lambda r: self._fill_coverage(r if isinstance(r, dict) else {}),
+            on_error=self._on_error,
+        )
 
     @staticmethod
     def _placeholder(text: str) -> QWidget:
@@ -269,7 +312,7 @@ class ReviewPanel(ListDetailPanel):
             "topics": self._client.list_topics(),
             "approval": self._client.review_approval_queue(),
             "drift": self._client.review_drift_queue(),
-            "coverage": self._client.capability_coverage(),
+            "coverage": self._client.capability_coverage(self._coverage_since),
         }
 
     def _on_overview(self, result: Any) -> None:
@@ -504,13 +547,28 @@ class ReviewPanel(ListDetailPanel):
 
     def _fill_coverage(self, coverage: dict[str, Any]) -> None:
         self._coverage_tree.clear()
+        self._sync_coverage_control(coverage.get("baseline_since"))
         summary = coverage.get("summary") or {}
-        self._coverage_summary.setText(
-            f"Orphan planning items: {summary.get('orphan_planning_items', 0)}  ·  "
-            f"Unbuilt requirements: {summary.get('unbuilt_requirements', 0)}  ·  "
-            f"Conversations without a requirement: "
+        baseline = coverage.get("baseline_summary") or {}
+        live_total = sum(summary.values()) if summary else 0
+        baseline_total = sum(baseline.values()) if baseline else 0
+        since = coverage.get("baseline_since")
+        live_line = (
+            f"Live gaps: {live_total}  —  "
+            f"orphan planning items {summary.get('orphan_planning_items', 0)} · "
+            f"unbuilt requirements {summary.get('unbuilt_requirements', 0)} · "
+            f"conversations without a requirement "
             f"{summary.get('conversations_without_requirement', 0)}"
         )
+        if since:
+            live_line += (
+                f"\nPre-model baseline (before {since[:10]}), excluded: "
+                f"{baseline_total}  —  "
+                f"PIs {baseline.get('orphan_planning_items', 0)} · "
+                f"reqs {baseline.get('unbuilt_requirements', 0)} · "
+                f"convs {baseline.get('conversations_without_requirement', 0)}"
+            )
+        self._coverage_summary.setText(live_line)
 
         def _group(title: str, rows: list[dict[str, Any]], id_key: str, detail_keys):
             parent = QTreeWidgetItem(self._coverage_tree, [f"{title} ({len(rows)})", ""])
@@ -541,6 +599,32 @@ class ReviewPanel(ListDetailPanel):
         )
         total = sum(summary.values()) if summary else 0
         self._tab_count("Coverage gaps", total)
+
+    def _sync_coverage_control(self, baseline_since: Any) -> None:
+        """Initialize the cutoff control from the server's effective cutoff once.
+
+        Synced from the first coverage response so the control reflects the
+        configured default; thereafter the user's choice drives fetches and we
+        never overwrite it. Signals are blocked so the programmatic set does
+        not trigger a redundant re-fetch.
+        """
+        if self._coverage_control_synced:
+            return
+        self._baseline_checkbox.blockSignals(True)
+        self._baseline_date.blockSignals(True)
+        try:
+            if baseline_since:
+                day = QDate.fromString(str(baseline_since)[:10], "yyyy-MM-dd")
+                if day.isValid():
+                    self._baseline_date.setDate(day)
+                self._baseline_checkbox.setChecked(True)
+                self._coverage_since = str(baseline_since)[:10]
+            else:
+                self._baseline_checkbox.setChecked(False)
+        finally:
+            self._baseline_checkbox.blockSignals(False)
+            self._baseline_date.blockSignals(False)
+        self._coverage_control_synced = True
 
     def _tab_count(self, base_label: str, count: int) -> None:
         """Annotate a queue tab's title with its row count."""
