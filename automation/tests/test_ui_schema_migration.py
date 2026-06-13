@@ -93,11 +93,11 @@ class TestActionRequiredMigration:
         conn2 = run_client_migrations(str(db_path))
         cols = _get_column_names(conn2, "ChangeImpact")
         assert "action_required" in cols
-        # Version should still be 2
+        # Version should be the current client migration head.
         row = conn2.execute(
             "SELECT MAX(version) FROM schema_version"
         ).fetchone()
-        assert row[0] == 2
+        assert row[0] == 16
         conn2.close()
 
     def test_existing_data_preserved(self, tmp_path):

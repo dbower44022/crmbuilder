@@ -264,6 +264,10 @@ class TestRequiredColumnsDriftDetection:
     EXCLUDED_TABLES = frozenset({
         "WorkItem", "Dependency", "AISession", "ChangeLog",
         "ChangeImpact", "GenerationLog", "schema_version",
+        # Deployment / L2 tables — populated by the deployment wizard,
+        # not the document import processor.
+        "Instance", "DeploymentRun", "InstanceDeployConfig",
+        "ExtensionLicense", "ExtensionInstall",
     })
 
     def test_all_not_null_columns_are_in_required_columns(self):

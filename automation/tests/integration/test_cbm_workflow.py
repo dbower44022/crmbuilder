@@ -2,7 +2,18 @@
 
 from __future__ import annotations
 
+import pytest
+
 from automation.workflow.engine import WorkflowEngine
+
+# Depends on the legacy CBM importer populating WorkItem rows, but that
+# importer is deprecated (migrated to Path B; produces an empty skeleton —
+# see CLAUDE.md "Known Limitations"), so these workflow queries find no data.
+pytestmark = pytest.mark.skip(
+    reason="Legacy CBM importer deprecated (migrated to Path B); produces an "
+    "empty skeleton. Re-enable after the planned Path B re-run. "
+    "See CLAUDE.md 'Known Limitations'."
+)
 
 
 class TestCBMWorkflow:

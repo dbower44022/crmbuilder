@@ -4,6 +4,17 @@ from __future__ import annotations
 
 import pytest
 
+# The legacy CBM bootstrap importer is deprecated: every concrete import
+# method was migrated to Path B and now warns-and-skips, so import_all()
+# produces only an empty work-item skeleton (see CLAUDE.md "Known
+# Limitations"). These integration tests assert the pre-migration populated
+# state and cannot pass until the planned full Path B re-run lands.
+pytestmark = pytest.mark.skip(
+    reason="Legacy CBM importer deprecated (migrated to Path B); produces an "
+    "empty skeleton. Re-enable after the planned Path B re-run. "
+    "See CLAUDE.md 'Known Limitations'."
+)
+
 _MASTER_PRD_SKIP = pytest.mark.skip(
     reason="Path A master PRD migrated to Path B — "
     "data from master PRD import (personas, domains) no longer populated"

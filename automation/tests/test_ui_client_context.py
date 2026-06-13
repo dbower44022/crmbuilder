@@ -89,12 +89,12 @@ class TestLoadClients:
         db_path = tmp_path / "master.db"
         conn = run_master_migrations(str(db_path))
         conn.execute(
-            "INSERT INTO Client (name, code, database_path) "
-            "VALUES ('Zebra Corp', 'ZEB', '/tmp/zeb.db')"
+            "INSERT INTO Client (name, code, database_path, project_folder) "
+            "VALUES ('Zebra Corp', 'ZEB', '/tmp/zeb.db', '/tmp/zeb-proj')"
         )
         conn.execute(
-            "INSERT INTO Client (name, code, database_path) "
-            "VALUES ('Alpha Inc', 'ALP', '/tmp/alp.db')"
+            "INSERT INTO Client (name, code, database_path, project_folder) "
+            "VALUES ('Alpha Inc', 'ALP', '/tmp/alp.db', '/tmp/alp-proj')"
         )
         conn.commit()
         conn.close()

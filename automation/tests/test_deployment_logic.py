@@ -224,7 +224,7 @@ class TestPhaseWorkItem:
     def test_entry_to_work_item_type_mapping(self):
         assert ENTRY_TO_WORK_ITEM_TYPE["Deploy"] == "crm_deployment"
         assert ENTRY_TO_WORK_ITEM_TYPE["Configure"] == "crm_configuration"
-        assert ENTRY_TO_WORK_ITEM_TYPE["Verify"] == "verification"
+        assert ENTRY_TO_WORK_ITEM_TYPE["Run History"] == "verification"
         assert "Instances" not in ENTRY_TO_WORK_ITEM_TYPE
         assert "Output" not in ENTRY_TO_WORK_ITEM_TYPE
 
