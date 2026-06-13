@@ -58,6 +58,7 @@ from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.panels.requirements import RequirementsPanel
+from crmbuilder_v2.ui.panels.review import ReviewPanel
 from crmbuilder_v2.ui.panels.risks import RisksPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.panels.status import StatusPanel
@@ -216,6 +217,9 @@ def build_panel(
         return WorkstreamsPanel(client)
     if label == "Work Tasks":
         return WorkTasksPanel(client)
+    # requirements-provenance Phase 6b: topic-first review surface.
+    if label == "Requirements Review":
+        return ReviewPanel(client)
     placeholder = QLabel(f"Panel for {label} — not yet implemented.")
     placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
     placeholder.setObjectName(f"placeholder_{label.lower().replace(' ', '_')}")

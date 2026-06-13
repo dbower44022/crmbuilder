@@ -50,6 +50,9 @@ EXPECTED_ENTRIES = (
     # Governance group after Commits.
     "Workstreams",
     "Work Tasks",
+    # requirements-provenance Phase 6b: topic-first review surface,
+    # appended to the Governance group after Work Tasks.
+    "Requirements Review",
     # Methodology group — Domains landed in UI v0.4 slice B,
     # Entities in slice C, Processes in slice D, CRM Candidates in slice E,
     # Personas in v0.5+ (PI-003), Fields in v0.5+ (PI-004 first slice),
