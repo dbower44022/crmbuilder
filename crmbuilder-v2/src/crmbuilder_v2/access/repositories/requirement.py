@@ -493,15 +493,21 @@ def update_requirement(
 # ---------------------------------------------------------------------------
 
 
-def _has_conversation_provenance(
-    session: Session, identifier: str, _seen: set[str] | None = None
+def _resolves_via_ancestry(
+    session: Session,
+    identifier: str,
+    kind: str,
+    _seen: set[str] | None = None,
 ) -> bool:
-    """True if the requirement is rooted in a conversation.
+    """True if the requirement carries an outbound edge of ``kind``, or
+    inherits one through an ancestor up the ``requirement_refines_requirement``
+    (child -> parent) chain.
 
-    Rooted means it carries its own ``requirement_defined_in_conversation``
-    edge, or inherits one through an ancestor up the
-    ``requirement_refines_requirement`` (child -> parent) chain. The
-    visited-set bound tolerates an accidental cycle in the parent edges.
+    Used for both activation gates: provenance
+    (``requirement_defined_in_conversation``) so the requirement is rooted in a
+    conversation, and topic (``requirement_belongs_to_topic``) so it is
+    reachable under a topic for review. The visited-set bound tolerates an
+    accidental cycle in the parent edges.
     """
     seen = _seen if _seen is not None else set()
     if identifier in seen:
@@ -511,7 +517,7 @@ def _has_conversation_provenance(
         select(func.count(Reference.id)).where(
             Reference.source_type == _ENTITY_TYPE,
             Reference.source_id == identifier,
-            Reference.relationship_kind == "requirement_defined_in_conversation",
+            Reference.relationship_kind == kind,
         )
     )
     if own and own > 0:
@@ -524,18 +530,20 @@ def _has_conversation_provenance(
             Reference.relationship_kind == "requirement_refines_requirement",
         )
     ).all()
-    return any(_has_conversation_provenance(session, p, seen) for p in parents)
+    return any(_resolves_via_ancestry(session, p, kind, seen) for p in parents)
 
 
 def activate_by_decision(session: Session, identifier: str) -> dict:
     """Deliver outcome (A1): a decision approves a requirement for delivery.
 
     Flips ``candidate`` / ``deferred`` -> ``confirmed`` and stamps
-    ``requirement_approved_at``, but only if the requirement is rooted in a
-    conversation (its own or an inherited provenance edge) — an unrooted
-    requirement cannot go active (the no-orphan-capability rule, enforced at
-    activation per decision A1). Idempotent if already ``confirmed``; a
-    ``rejected`` requirement cannot be approved.
+    ``requirement_approved_at``, but only if the requirement both (a) is rooted
+    in a conversation and (b) resolves to a topic — each via its own edge or an
+    ancestor's. (a) is the no-orphan-capability rule (you can't activate an
+    unrooted requirement); (b) makes it reachable under a topic, so it can't be
+    activated without first being reviewable (review is topic-first). Both
+    enforced at activation per decisions A1 + topic-gate. Idempotent if already
+    ``confirmed``; a ``rejected`` requirement cannot be approved.
     """
     row = _get_row(session, identifier)
     if row.requirement_status == "confirmed":
@@ -550,7 +558,9 @@ def activate_by_decision(session: Session, identifier: str) -> dict:
                 )
             ]
         )
-    if not _has_conversation_provenance(session, identifier):
+    if not _resolves_via_ancestry(
+        session, identifier, "requirement_defined_in_conversation"
+    ):
         raise UnprocessableError(
             [
                 FieldError(
@@ -559,6 +569,21 @@ def activate_by_decision(session: Session, identifier: str) -> dict:
                     f"requirement {identifier} cannot be activated without "
                     "provenance: it (or an ancestor) needs a "
                     "requirement_defined_in_conversation edge",
+                )
+            ]
+        )
+    if not _resolves_via_ancestry(
+        session, identifier, "requirement_belongs_to_topic"
+    ):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "relationship",
+                    "topic_required",
+                    f"requirement {identifier} cannot be activated without a "
+                    "topic: it (or an ancestor) needs a "
+                    "requirement_belongs_to_topic edge so it is reachable for "
+                    "review",
                 )
             ]
         )

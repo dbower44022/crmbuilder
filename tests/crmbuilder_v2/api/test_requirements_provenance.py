@@ -47,6 +47,11 @@ def _provenance(client, rid, cid="CNV-001"):
                 "requirement_defined_in_conversation")
 
 
+def _topic(client, rid, tid="TOP-001"):
+    return _ref(client, "requirement", rid, "topic", tid,
+                "requirement_belongs_to_topic")
+
+
 def _approve(client, rid, did="DEC-001"):
     return _ref(client, "requirement", rid, "decision", did,
                 "requirement_approved_by_decision")
@@ -55,6 +60,7 @@ def _approve(client, rid, did="DEC-001"):
 def test_approve_activates_rooted_requirement(client):
     rid = _make(client)["requirement_identifier"]
     assert _provenance(client, rid).status_code == 201
+    assert _topic(client, rid).status_code == 201
     assert _approve(client, rid).status_code == 201
     rec = client.get(f"/requirements/{rid}").json()["data"]
     assert rec["requirement_status"] == "confirmed"
@@ -63,6 +69,7 @@ def test_approve_activates_rooted_requirement(client):
 
 def test_approve_without_provenance_is_rejected_and_rolls_back(client):
     rid = _make(client)["requirement_identifier"]
+    assert _topic(client, rid).status_code == 201  # has a topic but no provenance
     resp = _approve(client, rid)
     assert resp.status_code == 422, resp.text
     assert "provenance" in resp.text
@@ -72,18 +79,29 @@ def test_approve_without_provenance_is_rejected_and_rolls_back(client):
     assert rec["requirement_approved_at"] is None
     edges = client.get(f"/references/from/requirement/{rid}").json()["data"]
     assert all(
-        e["relationship_kind"] != "requirement_approved_by_decision" for e in edges
+        e["relationship"] != "requirement_approved_by_decision" for e in edges
     )
 
 
-def test_approve_inherits_provenance_through_parent(client):
+def test_approve_without_topic_is_rejected(client):
+    rid = _make(client)["requirement_identifier"]
+    assert _provenance(client, rid).status_code == 201  # rooted but no topic
+    resp = _approve(client, rid)
+    assert resp.status_code == 422, resp.text
+    assert "topic" in resp.text
+    rec = client.get(f"/requirements/{rid}").json()["data"]
+    assert rec["requirement_status"] == "candidate"
+
+
+def test_approve_inherits_provenance_and_topic_through_parent(client):
     pid = _make(client, requirement_name="Parent capability")["requirement_identifier"]
     cid = _make(client, requirement_name="Child capability")["requirement_identifier"]
     assert _provenance(client, pid).status_code == 201
+    assert _topic(client, pid).status_code == 201
     # child refines parent (child -> parent)
     assert _ref(client, "requirement", cid, "requirement", pid,
                 "requirement_refines_requirement").status_code == 201
-    # the child has no own provenance edge, but inherits the parent's
+    # the child has no own provenance/topic edges, but inherits the parent's
     assert _approve(client, cid).status_code == 201
     rec = client.get(f"/requirements/{cid}").json()["data"]
     assert rec["requirement_status"] == "confirmed"
@@ -92,6 +110,7 @@ def test_approve_inherits_provenance_through_parent(client):
 def test_change_decision_reopens_confirmed_requirement(client):
     rid = _make(client)["requirement_identifier"]
     _provenance(client, rid)
+    _topic(client, rid)
     _approve(client, rid)
     assert client.get(f"/requirements/{rid}").json()["data"]["requirement_status"] == "confirmed"
     # a change decision reopens it: back to candidate + needs_review, approval cleared
