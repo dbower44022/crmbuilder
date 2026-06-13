@@ -158,6 +158,36 @@ The human review surface is delivered **two ways**:
 
 ---
 
+## How a review works
+
+Review is organized **by topic** — a topic aggregates a whole capability, so it
+is the unit a PM reviews, never a flat requirement list.
+
+Per topic:
+
+1. Pick the topic from the topic tree (the navigable map).
+2. Read its requirement tree top-down. The broad top levels are human-readable;
+   descend only as far as needed. A leaf is validated by *where it hangs*, not
+   by reading it.
+3. Trace anything in question to its provenance — open the requirement, jump to
+   the conversation that defined it, judge faithfulness or drift.
+4. Read across the spine for the topic to see where each requirement sits and
+   whether the downstream stages match.
+5. Sign off — a recorded attestation that the topic's set matches intent.
+
+Three cross-topic queues support it: the **approval queue** (candidates awaiting
+activation), the **drift queue** (everything flagged `needs_review`), and the
+**coverage-gaps report** (dropped intents, unbuilt requirements, unrequested
+capabilities).
+
+Because approval happens *during* a topic review, a requirement must resolve to
+a topic — its own edge or an ancestor's — before it can be activated. An item
+unreachable under a topic could never have been reviewed, so it must not be able
+to go active. (This is why activation is gated on topic resolution as well as
+provenance.)
+
+---
+
 ## Readability is load-bearing
 
 If what is presented is too hard to read, the human approves it anyway. A rubber
