@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
+from crmbuilder_v2.ui.widgets.selectable_text import SELECTABLE_TEXT_FLAGS
+from PySide6.QtWidgets import QLabel
 
 
 def test_error_dialog_without_detail_has_no_disclosure(qtbot):
@@ -48,6 +50,19 @@ def test_error_dialog_without_action_has_no_action_button(qtbot):
     dialog = ErrorDialog(title="t", message="m")
     qtbot.addWidget(dialog)
     assert dialog.findChild(object, "error_action_button") is None
+
+
+def test_error_dialog_title_and_message_are_selectable(qtbot):
+    """PI-124 (WTK-144): the header and message text are copyable."""
+    dialog = ErrorDialog(
+        title="Could not save",
+        message="Something went wrong.",
+    )
+    qtbot.addWidget(dialog)
+    labels = {label.text(): label for label in dialog.findChildren(QLabel)}
+    for text in ("Could not save", "Something went wrong."):
+        flags = labels[text].textInteractionFlags()
+        assert flags & SELECTABLE_TEXT_FLAGS == SELECTABLE_TEXT_FLAGS
 
 
 def test_error_dialog_action_button_invokes_callback_and_closes(qtbot):
