@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
+import crmbuilder_v2.ui as _ui_pkg
 import pytest
 from crmbuilder_v2.ui.widgets import selectable_text
 from crmbuilder_v2.ui.widgets.selectable_text import (
@@ -169,3 +173,29 @@ def test_make_selectable_leaves_raw_qmessagebox_informative_mouse_only(
     assert box_label is not None
     box_flags = box_label.textInteractionFlags()
     assert (box_flags & SELECTABLE_TEXT_FLAGS) == SELECTABLE_TEXT_FLAGS
+
+
+# Raw popups whose text isn't selectable defeat the PI-124 mechanism, so
+# the WTK-145 sweep routes every crmbuilder_v2 popup through
+# CopyableMessageBox. This guard keeps a new raw QMessageBox from slipping
+# back in. ``selectable_text`` itself is exempt — it subclasses QMessageBox
+# to define the replacement.
+_RAW_INSTANTIATION = re.compile(r"QMessageBox\(")
+_RAW_STATIC_CALL = re.compile(
+    r"QMessageBox\.(information|warning|critical|question)\("
+)
+
+
+def test_no_raw_qmessagebox_popups_in_v2_ui():
+    ui_root = Path(_ui_pkg.__file__).parent
+    offenders: list[str] = []
+    for path in ui_root.rglob("*.py"):
+        if path.name == "selectable_text.py":
+            continue
+        source = path.read_text(encoding="utf-8")
+        if _RAW_INSTANTIATION.search(source) or _RAW_STATIC_CALL.search(source):
+            offenders.append(str(path.relative_to(ui_root)))
+    assert not offenders, (
+        "Raw QMessageBox popups must route through CopyableMessageBox "
+        f"(PI-124 / WTK-145); offending files: {offenders}"
+    )

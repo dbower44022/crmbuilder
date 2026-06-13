@@ -53,6 +53,7 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
     required_label,
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.work_tickets")
 
@@ -289,7 +290,7 @@ class WorkTicketsPanel(ListDetailPanel):
         identifier = record.get("work_ticket_identifier") or ""
         if not identifier:
             return
-        confirm = QMessageBox(self)
+        confirm = CopyableMessageBox(self)
         confirm.setWindowTitle("Restore work ticket")
         confirm.setText(f"Restore {identifier}?")
         confirm.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)

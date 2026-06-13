@@ -66,6 +66,7 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
     required_label,
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.requirements")
 
@@ -485,7 +486,7 @@ class RequirementsPanel(ListDetailPanel):
         name = record.get("requirement_name") or ""
         if not identifier:
             return
-        confirm = QMessageBox(self)
+        confirm = CopyableMessageBox(self)
         confirm.setWindowTitle("Restore requirement")
         confirm.setText(
             f"Restore {identifier} — {name or '(unnamed)'}?\n\n"

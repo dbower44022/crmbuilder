@@ -56,6 +56,7 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
     required_label,
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.decisions")
 
@@ -375,7 +376,7 @@ class DecisionsPanel(ListDetailPanel):
         title = record.get("title") or ""
         if not identifier:
             return
-        confirm = QMessageBox(self)
+        confirm = CopyableMessageBox(self)
         confirm.setWindowTitle("Restore decision")
         confirm.setText(
             f"Restore {identifier} — {title or '(untitled)'}?\n\n"
