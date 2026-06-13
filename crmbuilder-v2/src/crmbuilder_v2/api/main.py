@@ -35,6 +35,7 @@ from crmbuilder_v2.api.routers import (
     close_out_payloads,
     commits,
     conversations,
+    coverage,
     crm_candidates,
     decisions,
     deposit_events,
@@ -154,6 +155,8 @@ def create_app() -> FastAPI:
     app.include_router(manual_configs.router)
     app.include_router(test_specs.router)
     app.include_router(references.router)
+    # Requirements-provenance Phase 3 — no-orphan-capability coverage report.
+    app.include_router(coverage.router)
     app.include_router(orientation.router)
     app.include_router(catalog.router)
     # Governance entities (UI v0.7), in project order.

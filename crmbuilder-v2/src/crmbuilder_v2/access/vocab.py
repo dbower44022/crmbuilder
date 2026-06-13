@@ -925,6 +925,11 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "conversation_belongs_to_topic",
         "requirement_approved_by_decision",
         "requirement_changed_by_decision",
+        # Requirements-provenance Phase 3 (no-orphan-capability): a planning item
+        # implements (realizes) a requirement — the "planned" stage of the spine.
+        # A planning item with no such edge is planned/built work with no
+        # requirement above it (the coverage report's orphan check).
+        "planning_item_implements_requirement",
     }
 )
 
@@ -1348,6 +1353,8 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     if source_type == "requirement" and target_type == "decision":
         kinds.add("requirement_approved_by_decision")
         kinds.add("requirement_changed_by_decision")
+    if source_type == "planning_item" and target_type == "requirement":
+        kinds.add("planning_item_implements_requirement")
     return frozenset(kinds)
 
 
