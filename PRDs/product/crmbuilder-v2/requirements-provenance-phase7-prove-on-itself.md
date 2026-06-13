@@ -1,6 +1,8 @@
 # Requirements Provenance — Phase 7: Prove It On Itself
 
-**Status:** draft, 2026-06-13. The capstone of the requirements-provenance
+**Status:** executed, 2026-06-13 — the engine held its own founding requirement.
+See the **Execution record** at the foot of this document for the identifier map,
+gate results, and verification read-backs. The capstone of the requirements-provenance
 rebuild (anchor: `requirements-provenance-and-review-anchor.md`; engine merged to
 `main` in PR #4). The anchor's own rule: *the founding requirement becomes the
 first record created under the new process — a top-level, human-defined
@@ -134,3 +136,58 @@ Phase 7 is complete.
   a sufficient first set; the tree can deepen later).
 - Which planning items to link (the PR #4 phase commits map naturally to plan
   items; create or reuse).
+
+---
+
+## Execution record (2026-06-13)
+
+Run against the **CRMBUILDER** engagement (ENG-001), in real time via direct API
+POSTs (DEC-383). The live DB was first migrated `0048 → 0051` and the API
+restarted from current code; the records were then created bottom-rooted so each
+gate was genuinely exercised.
+
+**Identifier map**
+
+| Role | Identifier |
+|---|---|
+| Topic | `TOP-087` — Requirements Capture, Documentation & Organization |
+| Session (this design dialogue, `complete`) | `SES-169` → `session_belongs_to_project` `PRJ-023` |
+| Conversation (provenance root) | `CNV-071` → `_belongs_to_session` `SES-169`, `_belongs_to_topic` `TOP-087` |
+| Decision (approving) | `DEC-415` → `decided_in` `SES-169` |
+| Founding requirement (`human_defined`, confirmed) | `REQ-108` |
+| Child requirements (all confirmed) | `REQ-109` … `REQ-114` |
+| Plan links (one per built phase) | `PI-162` … `PI-167`, each `planning_item_implements_requirement` → its child |
+| Sign-off | id `1`, reviewer Doug, snapshot of 7 requirements |
+
+**Gate results**
+
+| Gate | Result |
+|---|---|
+| Provenance root + topic reachability | `REQ-108` activated `candidate → confirmed` only after the conversation **and** topic edges resolved. |
+| Readability at approval | the founding + six child statements passed the readability gate at approval. |
+| Decision resolves (deliver) | the `requirement_approved_by_decision` edge flipped each requirement to `confirmed`. |
+| Hierarchy + inheritance | `REQ-109…114` `refines` `REQ-108` and activated by inheriting its provenance + topic through ancestry. |
+| No orphan capability | `PI-162…167` are **not** orphans; coverage shows them linked. |
+| Living drift | built and unit-tested in Phase 4; **not** re-triggered here so the just-recorded sign-off stays current (drift queue: 0). |
+| Review surface + sign-off | the topic tree, the read-back document, and the recorded sign-off all read true. |
+
+**Verification read-backs** (all true)
+
+- `GET /review/topics/TOP-087` → one root (`REQ-108`) with its six children, all `confirmed`.
+- `GET /review/topics/TOP-087/document` → reads cleanly top to bottom, with `_defined in: CNV-071_`.
+- `GET /coverage/capabilities?since=2026-06-13` → `orphan_planning_items: 0`; the six plan links are non-orphan.
+- `GET /review/signoffs?topic=TOP-087` → the sign-off, snapshotting the 7-requirement set.
+
+**Notes**
+
+- The founding requirement `REQ-108` shows as the single live "unbuilt requirement"
+  with a today baseline cutoff: it is an umbrella realized through its six children
+  (each carrying a plan link), not built directly. This is a faithful modeling
+  artifact, not a real gap.
+- Combined with the coverage baseline cutoff, the live (post-model) coverage signal
+  for ENG-001 is now `orphan_planning_items: 0`, `unbuilt_requirements: 1`
+  (the umbrella above), `conversations_without_requirement: 2` (today's authoring
+  conversations, which legitimately produced no requirement) — down from 427
+  pre-model gaps.
+
+Phase 7 is complete: the engine cleanly holds its own founding requirement.
