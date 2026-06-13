@@ -2712,3 +2712,66 @@ class StorageClient:
             self._request("GET", f"/work-tasks/{identifier}"),
             op="get_work_task",
         )
+
+    # ------------------------------------------------------------------
+    # Review surface (requirements-provenance Phase 6). Read-only topic
+    # review tree + read-back document + the three review queues, plus the
+    # one write the Requirements Review panel does — recording a sign-off.
+    # See ``api/routers/review.py`` and ``api/routers/coverage.py``.
+    # ------------------------------------------------------------------
+
+    def topic_review(self, topic_identifier: str) -> dict[str, Any]:
+        """A topic's requirement tree with provenance + spine annotations.
+
+        Returns ``{"topic": <id>, "requirements": [node, ...]}`` where each
+        node carries ``identifier``, ``name``, ``status``, ``review_state``,
+        ``origin``, ``priority``, ``acceptance_summary``,
+        ``defined_in_conversations``, ``planned``, ``verified``, ``children``.
+        """
+        return self._expect_dict(
+            self._request("GET", f"/review/topics/{topic_identifier}"),
+            op="topic_review",
+        )
+
+    def topic_review_document(self, topic_identifier: str) -> dict[str, Any]:
+        """The plain-language read-back document for a topic's tree.
+
+        Returns ``{"topic": <id>, "document": <markdown str>}``.
+        """
+        return self._expect_dict(
+            self._request("GET", f"/review/topics/{topic_identifier}/document"),
+            op="topic_review_document",
+        )
+
+    def review_approval_queue(self) -> list[dict[str, Any]]:
+        """Candidate requirements awaiting activation, with what each needs."""
+        return self._expect_list(self._request("GET", "/review/approval-queue"))
+
+    def review_drift_queue(self) -> list[dict[str, Any]]:
+        """Requirements flagged ``needs_review`` by living drift."""
+        return self._expect_list(self._request("GET", "/review/drift-queue"))
+
+    def list_signoffs(self, topic_identifier: str | None = None) -> list[dict[str, Any]]:
+        """List sign-offs, newest first, optionally filtered to one topic."""
+        path = "/review/signoffs"
+        if topic_identifier:
+            path += f"?topic={topic_identifier}"
+        return self._expect_list(self._request("GET", path))
+
+    def create_signoff(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Record a topic review sign-off (the panel's one write).
+
+        ``body`` keys: ``signoff_topic_identifier``, ``signoff_reviewer``,
+        ``signoff_attestation``.
+        """
+        return self._expect_dict(
+            self._request("POST", "/review/signoffs", json_body=body),
+            op="create_signoff",
+        )
+
+    def capability_coverage(self) -> dict[str, Any]:
+        """The bidirectional no-orphan-capability coverage-gaps report."""
+        return self._expect_dict(
+            self._request("GET", "/coverage/capabilities"),
+            op="capability_coverage",
+        )

@@ -87,6 +87,11 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # execution), appended after Commits in the Governance group.
             "Workstreams",
             "Work Tasks",
+            # requirements-provenance Phase 6b: the topic-first review
+            # surface (requirement tree + read-back document + queues +
+            # sign-off). A read-only review/monitoring panel, so it lives
+            # in Governance.
+            "Requirements Review",
         ),
     ),
     (
