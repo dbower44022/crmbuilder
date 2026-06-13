@@ -467,7 +467,12 @@ def update_requirement(
     row.requirement_acceptance_summary = acceptance_summary
     row.requirement_priority = priority
     row.requirement_notes = notes
+    content_changed = any(
+        before.get(f) != getattr(row, f) for f in _CONTENT_FIELDS
+    )
     session.flush()
+    if content_changed:
+        flag_descendants_needs_review(session, identifier)
 
     after = to_dict(row)
     emit(
@@ -630,6 +635,7 @@ def reopen_by_decision(session: Session, identifier: str) -> dict:
     row.requirement_review_state = "needs_review"
     row.requirement_approved_at = None
     session.flush()
+    flag_descendants_needs_review(session, identifier)
     after = to_dict(row)
     emit(
         session,
@@ -640,6 +646,93 @@ def reopen_by_decision(session: Session, identifier: str) -> dict:
         after=after,
     )
     return after
+
+
+# ---------------------------------------------------------------------------
+# Living drift (Phase 4) — propagate needs_review down the requirement tree.
+#
+# When a requirement's meaning changes (a content edit, or a change-decision
+# reopen), every descendant down the refines-chain is flagged needs_review,
+# because each was derived from a now-changed ancestor. An AI-derived descendant
+# that was active additionally re-opens for re-approval (anchor §"living drift").
+# ---------------------------------------------------------------------------
+
+_CONTENT_FIELDS = (
+    "requirement_name",
+    "requirement_description",
+    "requirement_acceptance_summary",
+)
+
+
+def _child_ids(session: Session, identifier: str) -> list[str]:
+    """Identifiers of the requirements that refine ``identifier`` (its children)."""
+    return list(
+        session.scalars(
+            select(Reference.source_id).where(
+                Reference.source_type == _ENTITY_TYPE,
+                Reference.target_type == _ENTITY_TYPE,
+                Reference.target_id == identifier,
+                Reference.relationship_kind == "requirement_refines_requirement",
+            )
+        ).all()
+    )
+
+
+def _descendant_ids(
+    session: Session, identifier: str, _seen: set[str] | None = None
+) -> list[str]:
+    """All descendants down the refines-chain, depth-first, cycle-bounded."""
+    seen = _seen if _seen is not None else set()
+    out: list[str] = []
+    for child in _child_ids(session, identifier):
+        if child in seen:
+            continue
+        seen.add(child)
+        out.append(child)
+        out.extend(_descendant_ids(session, child, seen))
+    return out
+
+
+def flag_descendants_needs_review(session: Session, identifier: str) -> list[str]:
+    """Flag every descendant of ``identifier`` for review (living drift).
+
+    Each descendant down the refines-chain is set ``review_state = needs_review``
+    (the drift flag). A descendant that was AI-derived AND currently ``confirmed``
+    additionally re-opens to ``candidate`` with its approval cleared: its basis
+    changed, so the human must re-approve it. Soft-deleted / missing descendants
+    are skipped. Returns the identifiers actually changed.
+    """
+    affected: list[str] = []
+    for desc_id in _descendant_ids(session, identifier):
+        row = get_by_identifier(
+            session, Requirement, Requirement.requirement_identifier, desc_id
+        )
+        if row is None or row.requirement_deleted_at is not None:
+            continue
+        before = to_dict(row)
+        changed = False
+        if row.requirement_review_state != "needs_review":
+            row.requirement_review_state = "needs_review"
+            changed = True
+        if (
+            row.requirement_origin == "ai_derived"
+            and row.requirement_status == "confirmed"
+        ):
+            row.requirement_status = "candidate"
+            row.requirement_approved_at = None
+            changed = True
+        if changed:
+            session.flush()
+            emit(
+                session,
+                entity_type=_ENTITY_TYPE,
+                entity_identifier=desc_id,
+                operation="update",
+                before=before,
+                after=to_dict(row),
+            )
+            affected.append(desc_id)
+    return affected
 
 
 def patch_requirement(session: Session, identifier: str, **fields) -> dict:
@@ -712,7 +805,12 @@ def patch_requirement(session: Session, identifier: str, **fields) -> dict:
             current_status=row.requirement_status,
         )
 
+    content_changed = any(
+        before.get(f) != getattr(row, f) for f in _CONTENT_FIELDS
+    )
     session.flush()
+    if content_changed:
+        flag_descendants_needs_review(session, identifier)
     after = to_dict(row)
     emit(
         session,
