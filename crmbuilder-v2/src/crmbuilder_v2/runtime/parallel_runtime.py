@@ -430,11 +430,15 @@ class ParallelCoordinatingRuntime:
             executor.submit(self._worker, assignment)
 
     # --- the worker thread: create worktree, spawn agent, prep result ---
-    def _worker(self, assignment: _ResolvedAssignment) -> None:
+    def _spawn_one(self, assignment: _ResolvedAssignment) -> _AgentRun:
+        """Spawn one agent for ``assignment`` and collect its result by reading
+        the task + branch back. Factored out of :meth:`_worker` so the
+        integration step can re-spawn synchronously for a per-agent retry."""
         cfg = self.config
         spawned_at = time.time()
         # Git worktree metadata mutations are serialized; the long agent spawn
-        # is NOT — that is where the real parallelism lives.
+        # is NOT — that is where the real parallelism lives. Worktree.create
+        # deletes any stale same-named branch, so a re-spawn starts clean.
         with self._repo_lock:
             worktree = Worktree(
                 repo_root=cfg.repo_root,
@@ -463,22 +467,37 @@ class ParallelCoordinatingRuntime:
         )
         with self._repo_lock:
             has_commits = worktree.has_commits_beyond(cfg.base_branch)
-        self._completed.put(
-            _AgentRun(
-                assignment=assignment,
-                worktree=worktree,
-                returncode=returncode,
-                refreshed_task=refreshed,
-                has_commits=has_commits,
-                spawned_at=spawned_at,
-                finished_at=finished_at,
-            )
+        return _AgentRun(
+            assignment=assignment,
+            worktree=worktree,
+            returncode=returncode,
+            refreshed_task=refreshed,
+            has_commits=has_commits,
+            spawned_at=spawned_at,
+            finished_at=finished_at,
         )
+
+    def _worker(self, assignment: _ResolvedAssignment) -> None:
+        self._completed.put(self._spawn_one(assignment))
 
     # --- integrate one completed agent (main thread, serialized) --------
     def _integrate(self, run: _AgentRun) -> TaskReport:
         a = run.assignment
         verdict = verify_result(run.refreshed_task, run.has_commits)
+        if verdict in (VerifyOutcome.NOT_COMPLETE, VerifyOutcome.NO_COMMITS):
+            # Per-agent retry: an agent that exits without driving its task to
+            # Complete (or with an empty branch) is most often a transient agent
+            # incompletion — not bad work the gate should reject. Re-spawn the
+            # agent ONCE before failing the task (which would roll the whole
+            # all-or-nothing phase back). A genuine test failure (TESTS_FAILED)
+            # or merge conflict is NOT retried here — only incompletion.
+            self.log(
+                f"  [{a.work_task_id}] incomplete ({verdict.value}) "
+                "— retrying agent once"
+            )
+            run.worktree.remove()
+            run = self._spawn_one(a)
+            verdict = verify_result(run.refreshed_task, run.has_commits)
         verify_log_path = None
         if verdict is VerifyOutcome.OK:
             # PI-147: run the affected test package before merging. The

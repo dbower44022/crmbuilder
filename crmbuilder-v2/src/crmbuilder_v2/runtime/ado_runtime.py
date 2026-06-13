@@ -538,6 +538,16 @@ class AdoRuntime:
                 self.scope_runner(cfg, ws, step.phase_type or "")
                 after = self._phase_status(ws)  # verify by result
                 if after not in ("Ready", "Not Applicable"):
+                    # Per-agent retry: a scoping agent that exits leaving the
+                    # phase 'Planned' is most often a transient agent
+                    # incompletion, not an unscopable phase — re-spawn once
+                    # before pausing for a person.
+                    self.log(
+                        f"  {ws} still {after!r} after scoping — retrying once"
+                    )
+                    self.scope_runner(cfg, ws, step.phase_type or "")
+                    after = self._phase_status(ws)
+                if after not in ("Ready", "Not Applicable"):
                     report.status = "paused"
                     report.reason = (
                         f"scoping did not complete phase {ws} (still {after!r}); "

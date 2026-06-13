@@ -348,6 +348,30 @@ def test_pauses_when_scoping_does_not_complete():
     assert report.status == "paused" and "scope" in report.reason.lower()
 
 
+def test_scoping_retries_once_then_succeeds():
+    # Per-agent retry: a scoping agent that leaves the phase 'Planned' on the
+    # first attempt is re-spawned once; if the retry drives it Ready, the driver
+    # proceeds instead of pausing (the dominant transient-incompletion case).
+    world = _World(1)
+    world.pi_status = "In Progress"
+    world.decomposed = True
+    calls = {"n": 0}
+
+    def _flaky_scope(cfg, ws, phase_type):
+        calls["n"] += 1
+        if calls["n"] >= 2:  # the retry succeeds
+            world.phase_status[ws] = "Ready"
+        # first attempt leaves the phase Planned
+
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool, scope_runner=_flaky_scope, gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status == "complete"
+    assert calls["n"] == 2  # scoped once, retried once → succeeded
+
+
 def test_develop_gate_holds_on_open_blocking_finding():
     world = _World(2)
     world.pi_status = "In Progress"
