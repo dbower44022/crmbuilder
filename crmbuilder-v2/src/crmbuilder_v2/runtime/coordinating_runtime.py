@@ -212,6 +212,15 @@ def run_pytest(worktree_path: str, target: str, *, timeout: int = 1800) -> TestR
     )
 
 
+def _is_harness_crash(returncode: int) -> bool:
+    """True if a test run was killed by a signal (a flaky harness crash) rather
+    than producing a pytest result. A signal-kill exits ``128 + N`` (e.g. 134
+    SIGABRT, 139 SIGSEGV); pytest's own exit codes are 0-5. A crash is treated
+    as transient (retry once), distinct from a real ``rc=1`` test failure
+    (PI-147 crash-tolerance follow-up)."""
+    return returncode >= 128
+
+
 def pause_reason_for(
     work_task: dict, workstream: dict | None = None
 ) -> str | None:
@@ -715,6 +724,17 @@ class CoordinatingRuntime:
         target = select_test_target(touched)
         runner = self.test_runner_fn or run_pytest
         result = runner(worktree.path, target)
+        if not result.passed and _is_harness_crash(result.returncode):
+            # A signal-kill exit (SIGSEGV 139 / SIGABRT 134) is a flaky Qt /
+            # test-harness crash, not a real regression — the v2 UI suite has
+            # intermittent worker-thread teardown crashes under offscreen. Retry
+            # the run ONCE; only a second crash (or a real rc=1 failure) blocks
+            # the merge, so a transient crash no longer rolls back good work.
+            self.log(
+                f"  affected-tests: {target} crashed (rc={result.returncode}) "
+                "— retrying once (transient harness crash, not a test failure)"
+            )
+            result = runner(worktree.path, target)
         log_path = None
         if not result.passed:
             log_path = self._persist_verify_output(work_task_id, result, worktree)
