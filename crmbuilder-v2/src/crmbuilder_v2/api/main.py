@@ -59,6 +59,7 @@ from crmbuilder_v2.api.routers import (
     references,
     registry,
     requirements,
+    review,
     risks,
     sessions,
     status,
@@ -157,6 +158,8 @@ def create_app() -> FastAPI:
     app.include_router(references.router)
     # Requirements-provenance Phase 3 — no-orphan-capability coverage report.
     app.include_router(coverage.router)
+    # Requirements-provenance Phase 6 — review surface data layer.
+    app.include_router(review.router)
     app.include_router(orientation.router)
     app.include_router(catalog.router)
     # Governance entities (UI v0.7), in project order.
