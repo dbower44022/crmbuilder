@@ -45,6 +45,10 @@ def _make_client(**method_returns: Any) -> MagicMock:
     # discovery loops don't hang on AttributeError.
     for name, value in method_returns.items():
         getattr(client, name).return_value = value
+    # Field-level dynamic-logic discovery (PI-170) runs by default inside
+    # run_audit and reads clientDefs; default it to empty unless overridden.
+    if "get_client_defs" not in method_returns:
+        client.get_client_defs.return_value = (200, {})
     return client
 
 
@@ -960,8 +964,14 @@ def test_run_audit_writes_filteredTabs_block_in_entity_yaml(tmp_path: Path):
 
 def test_run_audit_no_filtered_tab_discovery_when_disabled(tmp_path: Path):
     """include_filtered_tabs=False — no clientDefs / ReportFilter
-    API calls and no filteredTabs block in any YAML."""
-    options = AuditOptions(include_filtered_tabs=False)
+    API calls and no filteredTabs block in any YAML.
+
+    Field-level dynamic logic (PI-170) also reads clientDefs, so it is
+    disabled here to isolate the filtered-tab behavior under test.
+    """
+    options = AuditOptions(
+        include_filtered_tabs=False, include_field_dynamic_logic=False
+    )
     client = _make_client(
         get_all_scopes=(200, {
             "CEngagement": {

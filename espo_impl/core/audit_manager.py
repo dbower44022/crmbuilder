@@ -46,6 +46,24 @@ logger = logging.getLogger(__name__)
 # Callback signature: (message: str, color: str) -> None
 ProgressCallback = Callable[[str, str], None]
 
+# EspoCRM dynamic-logic conditionGroup operator → YAML condition-expression
+# operator (REQ-123 / PI-170). Types that carry a value map straight to the
+# §11 operator vocabulary; the four value-less / boolean types are translated
+# (isEmpty→isNull, isNotEmpty→isNotNull, isTrue→equals true, isFalse→equals
+# false). Any type not handled here poisons the field's dynamic logic (it is
+# omitted with a warning rather than mis-translated).
+_DYNAMIC_LOGIC_OP_MAP: dict[str, str] = {
+    "equals": "equals",
+    "notEquals": "notEquals",
+    "contains": "contains",
+    "in": "in",
+    "notIn": "notIn",
+    "greaterThan": "greaterThan",
+    "lessThan": "lessThan",
+    "greaterThanOrEquals": "greaterThanOrEqual",
+    "lessThanOrEquals": "lessThanOrEqual",
+}
+
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -76,6 +94,10 @@ class AuditOptions:
     :param include_native_fields: Include native fields (normally excluded).
     :param include_security: Discover roles and teams (DEC-180).
     :param include_filtered_tabs: Discover filtered tabs (DEC-180).
+    :param include_field_dynamic_logic: Capture field-level conditional
+        requirement / visibility (requiredWhen / visibleWhen) from
+        clientDefs dynamic logic (REQ-123 / PI-170). Default on, matching
+        the DEC-180 full-configuration round-trip precedent.
     :param include_data_profile: Run the pass-2 data profiler after
         schema discovery, writing ``utilization-profile.json`` to the
         output directory (WTK-096). Default on, matching the DEC-180
@@ -103,6 +125,7 @@ class AuditOptions:
     include_native_fields: bool = False
     include_security: bool = True
     include_filtered_tabs: bool = True
+    include_field_dynamic_logic: bool = True
     include_data_profile: bool = True
     selected_entities: set[str] | None = None
 
@@ -522,6 +545,9 @@ class AuditManager:
                 "white",
             )
             self._extract_fields(entity, report)
+
+            if self._options.include_field_dynamic_logic:
+                self._apply_field_dynamic_logic(entity, report)
 
             for layout_type in self._layout_types_to_extract():
                 self._extract_layout(entity, layout_type, report)
@@ -1152,6 +1178,169 @@ class AuditManager:
                 }
         # Complex logic — return as-is
         return dlv
+
+    # ------------------------------------------------------------------
+    # Field-level dynamic logic (requiredWhen / visibleWhen) — PI-170
+    # ------------------------------------------------------------------
+
+    def _apply_field_dynamic_logic(
+        self, entity: EntityAuditResult, report: AuditReport
+    ) -> None:
+        """Attach field-level requiredWhen / visibleWhen to captured fields.
+
+        Reads ``clientDefs.{Entity}.dynamicLogic.fields`` and reverse-maps
+        each field's ``required`` and ``visible`` condition group into the
+        YAML condition-expression form (the inverse of the deploy side's
+        ``render_condition`` → ``dynamicLogicRequired`` / ``dynamicLogicVisible``).
+        The ``readOnly`` dynamic-logic kind is intentionally skipped — the
+        YAML field schema has no ``readOnlyWhen`` counterpart.
+
+        Only fields already captured by :meth:`_extract_fields` receive the
+        logic (matched by API name); dynamic logic on excluded native or
+        system fields is ignored. A condition group that uses an operator
+        outside the §11 vocabulary is omitted with a warning rather than
+        mis-translated, mirroring the filtered-tab poison-on-unknown rule.
+
+        :param entity: Entity whose fields to annotate.
+        :param report: For warning accumulation.
+        """
+        status, client_defs = self._client.get_client_defs(entity.espo_name)
+        if status != 200 or not isinstance(client_defs, dict):
+            return
+        dynamic_logic = client_defs.get("dynamicLogic")
+        if not isinstance(dynamic_logic, dict):
+            return
+        fields_logic = dynamic_logic.get("fields")
+        if not isinstance(fields_logic, dict) or not fields_logic:
+            return
+
+        custom_names = self._custom_field_names.get(entity.espo_name, set())
+        by_api_name = {f.api_name: f for f in entity.fields}
+
+        for api_name, rules in fields_logic.items():
+            field_result = by_api_name.get(api_name)
+            if field_result is None or not isinstance(rules, dict):
+                continue
+            for kind, yaml_key in (("required", "requiredWhen"),
+                                   ("visible", "visibleWhen")):
+                spec = rules.get(kind)
+                if not isinstance(spec, dict):
+                    continue
+                condition_group = spec.get("conditionGroup")
+                context = f"{entity.yaml_name}.{field_result.yaml_name}.{yaml_key}"
+                node = self._reverse_dynamic_logic_group(
+                    condition_group, custom_names, report, context,
+                )
+                if node is not None:
+                    field_result.properties[yaml_key] = render_condition(node)
+
+    def _reverse_dynamic_logic_group(
+        self,
+        condition_group: Any,
+        custom_names: set[str],
+        report: AuditReport,
+        context: str,
+    ) -> ConditionNode | None:
+        """Reverse an EspoCRM dynamic-logic conditionGroup to an AST root.
+
+        Multiple top-level items are an implicit ``and`` (EspoCRM's
+        default), so they wrap in an :class:`AllNode`; a single item
+        unwraps to its bare node. Returns ``None`` (the field's dynamic
+        logic is then skipped) when the group is empty or contains any
+        operator outside the §11 vocabulary.
+
+        :param condition_group: The ``conditionGroup`` list from clientDefs.
+        :param custom_names: Custom field API names, for name reversal.
+        :param report: For warning accumulation.
+        :param context: Label (entity.field.kind) for warning attribution.
+        :returns: Root AST node, or ``None``.
+        """
+        if not isinstance(condition_group, list) or not condition_group:
+            return None
+        converted: list[ConditionNode] = []
+        for item in condition_group:
+            node = self._reverse_dynamic_logic_item(
+                item, custom_names, report, context,
+            )
+            if node is None:
+                return None
+            converted.append(node)
+        if len(converted) == 1:
+            return converted[0]
+        return AllNode(children=converted)
+
+    def _reverse_dynamic_logic_item(
+        self,
+        item: Any,
+        custom_names: set[str],
+        report: AuditReport,
+        context: str,
+    ) -> ConditionNode | None:
+        """Reverse a single dynamic-logic condition item to an AST node.
+
+        Handles ``and`` / ``or`` groups (children under ``value``), the
+        value-less ``isEmpty`` / ``isNotEmpty`` (→ ``isNull`` / ``isNotNull``)
+        and boolean ``isTrue`` / ``isFalse`` (→ ``equals`` true / false)
+        types, and the value-carrying operators in
+        :data:`_DYNAMIC_LOGIC_OP_MAP`. Returns ``None`` for any unknown
+        type so the caller drops the whole field's logic.
+        """
+        if not isinstance(item, dict):
+            return None
+        item_type = item.get("type")
+        if item_type == "and":
+            return self._reverse_dynamic_logic_subgroup(
+                item, custom_names, report, context, AllNode,
+            )
+        if item_type == "or":
+            return self._reverse_dynamic_logic_subgroup(
+                item, custom_names, report, context, AnyNode,
+            )
+
+        attribute = item.get("attribute")
+        if not isinstance(attribute, str) or not attribute:
+            return None
+        field = self._reverse_field_name(attribute, custom_names)
+
+        if item_type == "isEmpty":
+            return LeafClause(field=field, op="isNull")
+        if item_type == "isNotEmpty":
+            return LeafClause(field=field, op="isNotNull")
+        if item_type == "isTrue":
+            return LeafClause(field=field, op="equals", value=True)
+        if item_type == "isFalse":
+            return LeafClause(field=field, op="equals", value=False)
+
+        mapped = _DYNAMIC_LOGIC_OP_MAP.get(item_type)
+        if mapped is None:
+            report.warnings.append(
+                f"{context}: dynamic logic uses unsupported condition type "
+                f"'{item_type}'; field logic omitted from YAML output"
+            )
+            return None
+        return LeafClause(field=field, op=mapped, value=item.get("value"))
+
+    def _reverse_dynamic_logic_subgroup(
+        self,
+        item: dict,
+        custom_names: set[str],
+        report: AuditReport,
+        context: str,
+        node_cls: type,
+    ) -> ConditionNode | None:
+        """Reverse an ``and`` / ``or`` dynamic-logic group to a node."""
+        children_data = item.get("value", [])
+        if not isinstance(children_data, list) or not children_data:
+            return None
+        children: list[ConditionNode] = []
+        for child in children_data:
+            child_node = self._reverse_dynamic_logic_item(
+                child, custom_names, report, context,
+            )
+            if child_node is None:
+                return None
+            children.append(child_node)
+        return node_cls(children=children)
 
     # ------------------------------------------------------------------
     # Relationship discovery
