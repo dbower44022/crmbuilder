@@ -624,6 +624,24 @@ class StorageClient:
         """
         return self._request("DELETE", f"/planning-items/{identifier}")
 
+    def approve_dispatch_planning_item(self, identifier: str) -> dict[str, Any]:
+        """POST /planning-items/{identifier}/approve-dispatch (PI-183).
+
+        Records a human approval for an ``ado_with_approval`` item — the only
+        write path for ``dispatch_approved`` (REQ-155). Idempotent. Returns the
+        updated record dict. Raises ``NotFoundError`` on 404.
+        """
+        result = self._request(
+            "POST", f"/planning-items/{identifier}/approve-dispatch"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for approve_dispatch_planning_item",
+            )
+        return result
+
     # ------------------------------------------------------------------
     # Domains (methodology entity — UI v0.4 slice B)
     # ------------------------------------------------------------------

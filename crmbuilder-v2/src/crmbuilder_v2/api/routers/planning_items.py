@@ -80,6 +80,16 @@ def dispatch(identifier: str):
         return ok(pm.dispatch_planning_item(s, identifier))
 
 
+@router.post("/{identifier}/approve-dispatch", status_code=201)
+def approve_dispatch(identifier: str):
+    """Record a human approval for an ``ado_with_approval`` Planning Item
+    (PI-183 / DEC-424). Flips ``dispatch_approved`` to True — the only write
+    path for that flag — so the PM dispatcher treats the item as eligible.
+    Idempotent; 404 if the item does not exist."""
+    with writable_session() as s:
+        return ok(planning_items.approve_dispatch(s, identifier))
+
+
 @router.get("/{identifier}/phase-overview")
 def phase_overview(identifier: str):
     """The PI Lead's execution-state view (ADO §3.2-3.4): every phase

@@ -124,3 +124,91 @@ def test_backlog_unknown_project_raises(v2_env):
 def test_dispatch_unknown_pi_raises(v2_env):
     with session_scope() as s, pytest.raises(NotFoundError):
         pm.dispatch_planning_item(s, "PI-999")
+
+
+# --- PI-183: execution_mode gate ------------------------------------------
+
+
+def test_interactive_pi_never_eligible_and_dispatch_conflicts(v2_env):
+    """REQ-153: an interactive PI is excluded from eligible, listed in the
+    interactive partition (any status), and dispatch hard-refuses it."""
+    with session_scope() as s:
+        pid = _project(s, ident="PRJ-980")
+        _pi(s, "PI-980", pid)  # ado default -> eligible
+        _pi(s, "PI-981", pid)
+        planning_items.update(s, "PI-981", execution_mode="interactive")
+        b = pm.project_backlog(s, pid)
+    assert b["eligible"] == ["PI-980"]
+    assert b["interactive"] == ["PI-981"]
+    by_id = {i["identifier"]: i for i in b["planning_items"]}
+    assert by_id["PI-981"]["execution_mode"] == "interactive"
+    assert by_id["PI-981"]["eligible"] is False
+    with session_scope() as s, pytest.raises(ConflictError):
+        pm.dispatch_planning_item(s, "PI-981")
+
+
+def test_ado_with_approval_pending_until_approved(v2_env):
+    """REQ-155: an unapproved ado_with_approval PI is in pending_approval, not
+    eligible, and dispatch refuses it; approving makes it eligible."""
+    with session_scope() as s:
+        pid = _project(s, ident="PRJ-981")
+        _pi(s, "PI-982", pid)
+        planning_items.update(s, "PI-982", execution_mode="ado_with_approval")
+        b = pm.project_backlog(s, pid)
+        assert b["eligible"] == []
+        assert b["pending_approval"] == ["PI-982"]
+    with session_scope() as s, pytest.raises(ConflictError):
+        pm.dispatch_planning_item(s, "PI-982")
+    # Approve (direct row flip stands in for the approve-dispatch endpoint).
+    with session_scope() as s:
+        planning_items.get(s, "PI-982")
+        from crmbuilder_v2.access.models import PlanningItem
+        from sqlalchemy import select
+        row = s.scalar(select(PlanningItem).where(PlanningItem.identifier == "PI-982"))
+        row.dispatch_approved = True
+        s.flush()
+        b = pm.project_backlog(s, pid)
+        assert b["eligible"] == ["PI-982"]
+        assert b["pending_approval"] == []
+
+
+def test_pi_inherits_more_restrictive_project_mode(v2_env):
+    """REQ-152: a PI in an interactive Project is interactive even when the PI's
+    own mode is the default ado — the more restrictive project mode wins."""
+    with session_scope() as s:
+        projects.create_project(
+            s, identifier="PRJ-982", name="Locked", purpose="p",
+            description="d", execution_mode="interactive",
+        )
+        _pi(s, "PI-983", "PRJ-982")  # PI itself defaults to ado
+        b = pm.project_backlog(s, "PRJ-982")
+    by_id = {i["identifier"]: i for i in b["planning_items"]}
+    assert by_id["PI-983"]["execution_mode"] == "interactive"
+    assert b["eligible"] == []
+    assert b["interactive"] == ["PI-983"]
+
+
+def test_pi_cannot_loosen_below_project_mode(v2_env):
+    """A PI cannot escape its Project's gate by setting a less restrictive mode:
+    interactive Project + ado_with_approval PI still resolves to interactive."""
+    with session_scope() as s:
+        projects.create_project(
+            s, identifier="PRJ-983", name="Locked2", purpose="p",
+            description="d", execution_mode="interactive",
+        )
+        _pi(s, "PI-984", "PRJ-983")
+        planning_items.update(s, "PI-984", execution_mode="ado_with_approval")
+        b = pm.project_backlog(s, "PRJ-983")
+    by_id = {i["identifier"]: i for i in b["planning_items"]}
+    assert by_id["PI-984"]["execution_mode"] == "interactive"
+
+
+def test_dispatch_approved_is_not_a_general_updatable_field(v2_env):
+    """REQ-155: dispatch_approved cannot be set through the generic PI update."""
+    from crmbuilder_v2.access.exceptions import ValidationError
+
+    with session_scope() as s:
+        pid = _project(s, ident="PRJ-984")
+        _pi(s, "PI-985", pid)
+        with pytest.raises(ValidationError):
+            planning_items.update(s, "PI-985", dispatch_approved=True)

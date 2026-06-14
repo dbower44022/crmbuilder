@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access._helpers import (
     get_by_identifier,
     next_prefixed_identifier,
+    require_in,
     to_dict,
 )
 from crmbuilder_v2.access.change_log import emit
@@ -34,6 +35,8 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.models import Project
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.vocab import (
+    DEFAULT_EXECUTION_MODE,
+    EXECUTION_MODES,
     PROJECT_STATUS_TRANSITIONS,
     PROJECT_STATUSES,
 )
@@ -43,7 +46,7 @@ _IDENTIFIER_PREFIX = "PRJ"
 _IDENTIFIER_RE = re.compile(r"^PRJ-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 _PATCHABLE_FIELDS = frozenset(
-    {"name", "purpose", "description", "notes", "status"}
+    {"name", "purpose", "description", "notes", "status", "execution_mode"}
 )
 
 # status value -> per-status lifecycle timestamp column.
@@ -137,7 +140,9 @@ def next_project_identifier(session: Session) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _new_row(identifier, name, purpose, description, notes, status) -> Project:
+def _new_row(
+    identifier, name, purpose, description, notes, status, execution_mode
+) -> Project:
     return Project(
         project_identifier=identifier,
         project_name=name,
@@ -145,15 +150,20 @@ def _new_row(identifier, name, purpose, description, notes, status) -> Project:
         project_description=description,
         project_notes=notes,
         project_status=status,
+        project_execution_mode=execution_mode,
     )
 
 
-def _insert_with_autoassign(session, name, purpose, description, notes, status):
+def _insert_with_autoassign(
+    session, name, purpose, description, notes, status, execution_mode
+):
     candidate = next_project_identifier(session)
     last_error: IntegrityError | None = None
     for _ in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
-        row = _new_row(candidate, name, purpose, description, notes, status)
+        row = _new_row(
+            candidate, name, purpose, description, notes, status, execution_mode
+        )
         session.add(row)
         try:
             session.flush()
@@ -181,6 +191,7 @@ def create_project(
     identifier: str | None = None,
     references: list[dict] | None = None,
     timestamps: dict | None = None,
+    execution_mode: str = DEFAULT_EXECUTION_MODE,
 ) -> dict:
     """Create a workstream.
 
@@ -198,11 +209,12 @@ def create_project(
     if status is None:
         status = "planned"
     _require_status(status)
+    require_in(execution_mode, EXECUTION_MODES, field="execution_mode")
     _reject_duplicate_name(session, name)
 
     if identifier is None:
         row = _insert_with_autoassign(
-            session, name, purpose, description, notes, status
+            session, name, purpose, description, notes, status, execution_mode
         )
     else:
         gov.require_identifier_format(
@@ -211,7 +223,9 @@ def create_project(
         )
         if get_by_identifier(session, Project, Project.project_identifier, identifier) is not None:
             raise ConflictError(f"workstream {identifier!r} already exists")
-        row = _new_row(identifier, name, purpose, description, notes, status)
+        row = _new_row(
+            identifier, name, purpose, description, notes, status, execution_mode
+        )
         session.add(row)
         session.flush()
 
@@ -247,6 +261,7 @@ def update_project(
     notes: str | None = None,
     status: str | None = None,
     references: list[dict] | None = None,
+    execution_mode: str | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
     if project_identifier is not None and project_identifier != identifier:
@@ -276,6 +291,10 @@ def update_project(
         )
         row.project_status = status
         gov.set_status_timestamp(row, status, _STATUS_TIMESTAMP)
+
+    if execution_mode is not None:
+        require_in(execution_mode, EXECUTION_MODES, field="execution_mode")
+        row.project_execution_mode = execution_mode
 
     row.project_name = name
     row.project_purpose = purpose
@@ -330,6 +349,10 @@ def patch_project(
         )
     if "notes" in fields:
         row.project_notes = fields["notes"]
+    if "execution_mode" in fields:
+        row.project_execution_mode = require_in(
+            fields["execution_mode"], EXECUTION_MODES, field="execution_mode"
+        )
     if "status" in fields:
         status = _require_status(fields["status"])
         if status != row.project_status:
