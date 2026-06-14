@@ -18,13 +18,42 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from crmbuilder_v2.adapters.base import Deferral
+from crmbuilder_v2.adapters.base import Deferral, ProgramArtifact
 from crmbuilder_v2.adapters.espocrm.conditions import (
     CompileError,
     compile_condition,
 )
 
 ENGINE = "espocrm"
+
+# §8 neutral ``automation_trigger`` → EspoCRM v1.1 workflow trigger event
+# (schema §5.8). ``scheduled`` / ``manual`` have no v1.1 event value and route
+# the whole automation to a deferral.
+_TRIGGER_TO_EVENT: dict[str, str] = {
+    "on_create": "onCreate",
+    "on_update": "onUpdate",
+    "on_delete": "onDelete",
+}
+
+# §8 neutral ``dedup_rule`` normalization token → EspoCRM ``normalize:`` value
+# (schema §5.5: ``none`` / ``lowercase-trim`` / ``case-fold-trim`` / ``e164``).
+# ``trim`` (no pure-trim value) and ``digits_only`` have no EspoCRM normalize
+# value → the token is dropped to a deferral (the field stays a match field,
+# unnormalized).
+_NORMALIZE_TOKEN_TO_VALUE: dict[str, str] = {
+    "case_fold": "case-fold-trim",
+    "lowercase": "lowercase-trim",
+    "e164": "e164",
+}
+
+# §8 neutral ``automation_actions[].type`` → EspoCRM v1.1 workflow action.
+# Only ``set_field`` has a clean field+value v1.1 mapping (``setField``); the
+# others (``send_notification`` needs a template+recipient the neutral record
+# does not carry; ``create_record`` / ``update_related`` / ``webhook`` have no
+# v1.1 action) route the individual action to a deferral.
+_ACTION_TYPE_TO_WORKFLOW: dict[str, str] = {
+    "set_field": "setField",
+}
 
 # §8 neutral ``association_cardinality`` → EspoCRM relationship ``linkType``.
 # The neutral model expresses a relationship from the source's perspective,
@@ -111,6 +140,7 @@ class GenerationModel:
     engagement: str | None
     programs: list[EntityProgram] = field(default_factory=list)
     deferrals: list[Deferral] = field(default_factory=list)
+    companions: list[ProgramArtifact] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -458,6 +488,7 @@ class _EntityBuild:
     program: EntityProgram
     payload_by_field_id: dict[str, dict]
     ref_map: dict[str, str]
+    entity_block: dict
 
 
 def _build_entity_program(
@@ -544,6 +575,7 @@ def _build_entity_program(
         ),
         payload_by_field_id=payload_by_field_id,
         ref_map=ref_map,
+        entity_block=entity_block,
     )
 
 
@@ -821,6 +853,551 @@ def _apply_associations(
 
 
 # ---------------------------------------------------------------------------
+# Composite constructs (design §8, schema §5.5–§5.8) — slice 3
+# views → savedViews: / automations → workflows: / dedup_rules →
+# duplicateChecks: / message_templates → emailTemplates:
+# ---------------------------------------------------------------------------
+
+_PLACEHOLDER_RE = re.compile(r"\{\{.*?\}\}")
+
+
+def _slug_id(identifier: str) -> str:
+    """A stable, lower-case block ``id`` from a design identifier (unique by
+    construction — identifiers are unique, and each block validates its ids
+    only within its own block)."""
+    return identifier.lower()
+
+
+def _strict_resolver(ref_map: dict[str, str]):
+    """A condition reference resolver that raises :class:`CompileError` when a
+    referenced field was not emitted on the entity — so a condition touching a
+    deferred/candidate field routes its owner to a deferral rather than
+    emitting a field reference ``validate_program`` would reject."""
+
+    def _resolve(ref: str) -> str:
+        internal = ref_map.get(ref)
+        if internal is None:
+            raise CompileError(f"field reference {ref!r} not emitted on the entity")
+        return internal
+
+    return _resolve
+
+
+def _resolve_all(refs: list, ref_map: dict[str, str]) -> list[str] | None:
+    """Resolve every field reference to its emitted internal name, or ``None``
+    if any reference is not an emitted field on the entity."""
+    out: list[str] = []
+    for ref in refs:
+        internal = ref_map.get(ref)
+        if internal is None:
+            return None
+        out.append(internal)
+    return out
+
+
+def _strip_placeholders(text: str) -> str:
+    """Remove ``{{...}}`` merge placeholders from free text. The adapter
+    regenerates a deterministic, validated merge-field section, so neutral
+    placeholders (which need not match the emitted internal names) are dropped
+    rather than risk an unvalidatable stray placeholder."""
+    return _PLACEHOLDER_RE.sub("", text)
+
+
+def _apply_views(
+    views: list[dict],
+    builds: dict[str, _EntityBuild],
+    confirmed_entity_ids: set[str],
+    entity_name_by_id: dict[str, str],
+    index: dict[tuple[str, str, str], object],
+    deferrals: list[Deferral],
+) -> None:
+    """Attach a ``savedViews:`` block to each owning entity's program.
+
+    ``filter`` is required by the schema; a view with no neutral filter, a
+    filter touching a non-emitted field, or an owning entity that is not
+    emitted routes to a deferral. ``columns`` / ``orderBy`` are optional and
+    omitted (with a note) when they reference a non-emitted field.
+    """
+    for view in sorted(views, key=lambda v: v["view_identifier"]):
+        if view.get("view_status") != "confirmed":
+            continue
+        vid = view["view_identifier"]
+        vname = view.get("view_name", "")
+        eid = view.get("view_entity")
+        if eid not in confirmed_entity_ids:
+            deferrals.append(
+                Deferral(
+                    kind="view",
+                    identifier=vid,
+                    name=vname,
+                    parent=entity_name_by_id.get(eid, eid),
+                    detail=(
+                        "owning entity is not confirmed/emitted — savedView "
+                        "not rendered"
+                    ),
+                )
+            )
+            continue
+        build = builds[eid]
+        ename = build.program.entity_name
+
+        raw_filter = view.get("view_filter")
+        if raw_filter is None:
+            deferrals.append(
+                Deferral(
+                    kind="view",
+                    identifier=vid,
+                    name=vname,
+                    parent=ename,
+                    detail=(
+                        "savedViews requires a filter (schema §5.6); this view "
+                        "carries no neutral filter — configure via the EspoCRM "
+                        "admin UI"
+                    ),
+                )
+            )
+            continue
+        try:
+            compiled_filter = compile_condition(raw_filter, _strict_resolver(build.ref_map))
+        except CompileError as exc:
+            deferrals.append(
+                Deferral(
+                    kind="view",
+                    identifier=vid,
+                    name=vname,
+                    parent=ename,
+                    detail=f"filter not compilable to EspoCRM form: {exc}",
+                )
+            )
+            continue
+
+        item: dict = {
+            "id": _slug_id(vid),
+            "name": str(_override(index, "view", vid, "name", vname) or vid),
+        }
+        description = view.get("view_description")
+        if description:
+            item["description"] = str(description)
+
+        columns = view.get("view_columns") or []
+        resolved_cols = _resolve_all(columns, build.ref_map)
+        if columns and resolved_cols is not None:
+            item["columns"] = resolved_cols
+        elif columns:
+            deferrals.append(
+                Deferral(
+                    kind="view",
+                    identifier=vid,
+                    name=vname,
+                    parent=ename,
+                    detail=(
+                        "one or more columns reference a field not emitted on "
+                        "the entity — columns omitted (CRM defaults used)"
+                    ),
+                )
+            )
+
+        item["filter"] = compiled_filter
+
+        sort_field = view.get("view_sort_field")
+        if sort_field:
+            internal = build.ref_map.get(sort_field)
+            if internal is not None:
+                direction = view.get("view_sort_direction") or "asc"
+                item["orderBy"] = {"field": internal, "direction": direction}
+            else:
+                deferrals.append(
+                    Deferral(
+                        kind="view",
+                        identifier=vid,
+                        name=vname,
+                        parent=ename,
+                        detail=(
+                            "sort field is not emitted on the entity — orderBy "
+                            "omitted"
+                        ),
+                    )
+                )
+
+        build.entity_block.setdefault("savedViews", []).append(item)
+
+
+def _build_workflow_action(
+    action: dict,
+    build: _EntityBuild,
+    deferrals: list[Deferral],
+    aid: str,
+    aname: str,
+    idx: int,
+) -> dict | None:
+    """Map one neutral automation action to a v1.1 workflow action, or route
+    it to a deferral. Only ``set_field`` (→ ``setField``) maps cleanly."""
+    atype = action.get("type")
+    if _ACTION_TYPE_TO_WORKFLOW.get(atype) == "setField":
+        field_ref = action.get("field")
+        internal = build.ref_map.get(field_ref) if field_ref else None
+        value = action.get("value")
+        if internal is None or value is None:
+            deferrals.append(
+                Deferral(
+                    kind="workflow_action",
+                    identifier=aid,
+                    name=aname,
+                    parent=build.program.entity_name,
+                    detail=(
+                        f"action[{idx}] set_field not rendered (field not "
+                        "emitted or value missing) — configure via the admin UI"
+                    ),
+                )
+            )
+            return None
+        return {"type": "setField", "field": internal, "value": value}
+    deferrals.append(
+        Deferral(
+            kind="workflow_action",
+            identifier=aid,
+            name=aname,
+            parent=build.program.entity_name,
+            detail=(
+                f"action[{idx}] type {atype!r} has no EspoCRM v1.1 workflow "
+                "action — configure via the admin UI"
+            ),
+        )
+    )
+    return None
+
+
+def _apply_automations(
+    automations: list[dict],
+    builds: dict[str, _EntityBuild],
+    confirmed_entity_ids: set[str],
+    entity_name_by_id: dict[str, str],
+    index: dict[tuple[str, str, str], object],
+    deferrals: list[Deferral],
+) -> None:
+    """Attach a ``workflows:`` block to each owning entity's program.
+
+    A ``scheduled`` / ``manual`` trigger (no v1.1 event), an automation whose
+    actions all defer, or an owning entity that is not emitted routes to a
+    deferral. The ``where`` gate is dropped (with a note) when it touches a
+    non-emitted field, leaving the workflow rendered without the extra gate.
+    """
+    for auto in sorted(automations, key=lambda a: a["automation_identifier"]):
+        if auto.get("automation_status") != "confirmed":
+            continue
+        aid = auto["automation_identifier"]
+        aname = auto.get("automation_name", "")
+        eid = auto.get("automation_entity")
+        if eid not in confirmed_entity_ids:
+            deferrals.append(
+                Deferral(
+                    kind="automation",
+                    identifier=aid,
+                    name=aname,
+                    parent=entity_name_by_id.get(eid, eid),
+                    detail=(
+                        "owning entity is not confirmed/emitted — workflow not "
+                        "rendered"
+                    ),
+                )
+            )
+            continue
+        event = _TRIGGER_TO_EVENT.get(auto.get("automation_trigger"))
+        if event is None:
+            deferrals.append(
+                Deferral(
+                    kind="automation",
+                    identifier=aid,
+                    name=aname,
+                    parent=builds[eid].program.entity_name,
+                    detail=(
+                        f"trigger {auto.get('automation_trigger')!r} has no "
+                        "EspoCRM v1.1 workflow event (scheduled/manual) — "
+                        "configure via the admin UI"
+                    ),
+                )
+            )
+            continue
+        build = builds[eid]
+
+        emitted_actions: list[dict] = []
+        for idx, action in enumerate(auto.get("automation_actions") or []):
+            built = _build_workflow_action(action, build, deferrals, aid, aname, idx)
+            if built is not None:
+                emitted_actions.append(built)
+        if not emitted_actions:
+            deferrals.append(
+                Deferral(
+                    kind="automation",
+                    identifier=aid,
+                    name=aname,
+                    parent=build.program.entity_name,
+                    detail=(
+                        "no action maps to a v1.1 workflow action — workflow "
+                        "not rendered"
+                    ),
+                )
+            )
+            continue
+
+        item: dict = {
+            "id": _slug_id(aid),
+            "name": str(_override(index, "automation", aid, "name", aname) or aid),
+        }
+        description = auto.get("automation_description")
+        if description:
+            item["description"] = str(description)
+        item["trigger"] = {"event": event}
+
+        raw_cond = auto.get("automation_condition")
+        if raw_cond is not None:
+            try:
+                item["where"] = compile_condition(raw_cond, _strict_resolver(build.ref_map))
+            except CompileError as exc:
+                deferrals.append(
+                    Deferral(
+                        kind="automation",
+                        identifier=aid,
+                        name=aname,
+                        parent=build.program.entity_name,
+                        detail=(
+                            f"where gate not emitted ({exc}) — workflow fires "
+                            "without the additional condition"
+                        ),
+                    )
+                )
+
+        item["actions"] = emitted_actions
+        build.entity_block.setdefault("workflows", []).append(item)
+
+
+def _apply_dedup_rules(
+    dedup_rules: list[dict],
+    builds: dict[str, _EntityBuild],
+    confirmed_entity_ids: set[str],
+    entity_name_by_id: dict[str, str],
+    index: dict[tuple[str, str, str], object],
+    deferrals: list[Deferral],
+) -> None:
+    """Attach a ``duplicateChecks:`` block to each owning entity's program.
+
+    A rule whose match fields are not all emitted, or whose owning entity is
+    not emitted, routes to a deferral. A normalization token with no EspoCRM
+    value (``trim`` / ``digits_only``) is dropped (the field stays a match
+    field, unnormalized) with a note.
+    """
+    for dr in sorted(dedup_rules, key=lambda d: d["dedup_rule_identifier"]):
+        if dr.get("dedup_rule_status") != "confirmed":
+            continue
+        did = dr["dedup_rule_identifier"]
+        dname = dr.get("dedup_rule_name", "")
+        eid = dr.get("dedup_rule_entity")
+        if eid not in confirmed_entity_ids:
+            deferrals.append(
+                Deferral(
+                    kind="dedup_rule",
+                    identifier=did,
+                    name=dname,
+                    parent=entity_name_by_id.get(eid, eid),
+                    detail=(
+                        "owning entity is not confirmed/emitted — "
+                        "duplicateCheck not rendered"
+                    ),
+                )
+            )
+            continue
+        build = builds[eid]
+        ename = build.program.entity_name
+
+        match_fields = dr.get("dedup_rule_match_fields") or []
+        resolved = _resolve_all(match_fields, build.ref_map)
+        if not match_fields or resolved is None:
+            deferrals.append(
+                Deferral(
+                    kind="dedup_rule",
+                    identifier=did,
+                    name=dname,
+                    parent=ename,
+                    detail=(
+                        "one or more match fields reference a field not emitted "
+                        "on the entity — duplicateCheck not rendered"
+                    ),
+                )
+            )
+            continue
+        resolved_set = set(resolved)
+
+        item: dict = {"id": _slug_id(did), "fields": resolved}
+
+        normalize = dr.get("dedup_rule_normalize") or {}
+        norm_out: dict[str, str] = {}
+        for fref, token in sorted(normalize.items()):
+            internal = build.ref_map.get(fref)
+            espo_value = _NORMALIZE_TOKEN_TO_VALUE.get(token)
+            if internal is None or internal not in resolved_set or espo_value is None:
+                deferrals.append(
+                    Deferral(
+                        kind="dedup_normalize",
+                        identifier=did,
+                        name=dname,
+                        parent=ename,
+                        detail=(
+                            f"normalize {fref!r} -> {token!r} not expressible "
+                            "in EspoCRM — that field is compared unnormalized"
+                        ),
+                    )
+                )
+                continue
+            norm_out[internal] = espo_value
+        if norm_out:
+            item["normalize"] = norm_out
+
+        on_match = dr.get("dedup_rule_on_match")
+        item["onMatch"] = on_match
+        message = dr.get("dedup_rule_message")
+        if on_match == "block":
+            item["message"] = (
+                str(message)
+                if message
+                else f"A duplicate {ename} record already exists."
+            )
+        elif message:
+            item["message"] = str(message)
+
+        build.entity_block.setdefault("duplicateChecks", []).append(item)
+
+
+def _apply_message_templates(
+    message_templates: list[dict],
+    builds: dict[str, _EntityBuild],
+    confirmed_entity_ids: set[str],
+    entity_name_by_id: dict[str, str],
+    index: dict[tuple[str, str, str], object],
+    deferrals: list[Deferral],
+    companions: list[ProgramArtifact],
+) -> None:
+    """Attach an ``emailTemplates:`` block to each owning entity's program and
+    collect each template's ``bodyFile`` companion.
+
+    Only ``email``-channel templates with a confirmed owning entity and at
+    least one merge field resolving to an emitted field are rendered (the
+    schema requires a non-empty, fully-used ``mergeFields`` list); everything
+    else routes to a deferral. The subject and body are sanitized of stray
+    placeholders and a deterministic, validated merge-field section is
+    regenerated, so the block passes ``validate_program``'s placeholder rules.
+    """
+    for mt in sorted(
+        message_templates, key=lambda m: m["message_template_identifier"]
+    ):
+        if mt.get("message_template_status") != "confirmed":
+            continue
+        mid = mt["message_template_identifier"]
+        mname = mt.get("message_template_name", "")
+        channel = mt.get("message_template_channel")
+        eid = mt.get("message_template_entity")
+
+        if channel != "email":
+            deferrals.append(
+                Deferral(
+                    kind="message_template",
+                    identifier=mid,
+                    name=mname,
+                    parent=entity_name_by_id.get(eid, eid),
+                    detail=(
+                        f"channel {channel!r} does not map to emailTemplates "
+                        "(only the email channel does) — configure via the "
+                        "admin UI"
+                    ),
+                )
+            )
+            continue
+        if eid is None or eid not in confirmed_entity_ids:
+            deferrals.append(
+                Deferral(
+                    kind="message_template",
+                    identifier=mid,
+                    name=mname,
+                    parent=entity_name_by_id.get(eid, eid),
+                    detail=(
+                        "no confirmed owning entity — an emailTemplate has no "
+                        "home program; configure via the admin UI"
+                    ),
+                )
+            )
+            continue
+        build = builds[eid]
+        ename = build.program.entity_name
+
+        merge_internal: list[str] = []
+        for mf in mt.get("message_template_merge_fields") or []:
+            internal = build.ref_map.get(mf)
+            if internal is None:
+                deferrals.append(
+                    Deferral(
+                        kind="message_template",
+                        identifier=mid,
+                        name=mname,
+                        parent=ename,
+                        detail=(
+                            f"merge field {mf!r} is not an emitted field — "
+                            "dropped from the template"
+                        ),
+                    )
+                )
+            elif internal not in merge_internal:
+                merge_internal.append(internal)
+        merge_internal.sort()
+        if not merge_internal:
+            deferrals.append(
+                Deferral(
+                    kind="message_template",
+                    identifier=mid,
+                    name=mname,
+                    parent=ename,
+                    detail=(
+                        "no merge field resolves to an emitted field; "
+                        "emailTemplates requires a non-empty, used mergeFields "
+                        "list — configure via the admin UI"
+                    ),
+                )
+            )
+            continue
+
+        tid = _slug_id(mid)
+        name = str(_override(index, "message_template", mid, "name", mname) or mid)
+
+        subject_raw = mt.get("message_template_subject")
+        subject = _strip_placeholders(str(subject_raw)).strip() if subject_raw else ""
+        if not subject:
+            subject = _strip_placeholders(name).strip() or "Notification"
+
+        body_clean = _strip_placeholders(
+            str(mt.get("message_template_body") or "")
+        ).rstrip()
+        merge_lines = "\n".join(f"{{{{{m}}}}}" for m in merge_internal)
+        merge_section = f"<!-- merge fields (generated) -->\n{merge_lines}\n"
+        body_content = (
+            f"{body_clean}\n\n{merge_section}" if body_clean else merge_section
+        )
+        body_file = f"templates/{tid}.html"
+
+        item: dict = {"id": tid, "name": name}
+        description = mt.get("message_template_description")
+        if description:
+            item["description"] = str(description)
+        item["entity"] = ename
+        item["subject"] = subject
+        item["bodyFile"] = body_file
+        item["mergeFields"] = merge_internal
+        audience = mt.get("message_template_audience")
+        if audience:
+            item["audience"] = str(audience)
+
+        build.entity_block.setdefault("emailTemplates", []).append(item)
+        companions.append(ProgramArtifact(filename=body_file, content=body_content))
+
+
+# ---------------------------------------------------------------------------
 # Top-level build
 # ---------------------------------------------------------------------------
 
@@ -832,6 +1409,10 @@ def build_program_model(
     *,
     associations: list[dict] | None = None,
     rules: list[dict] | None = None,
+    views: list[dict] | None = None,
+    automations: list[dict] | None = None,
+    dedup_rules: list[dict] | None = None,
+    message_templates: list[dict] | None = None,
     rendered_at: str,
     engagement: str | None = None,
 ) -> GenerationModel:
@@ -846,9 +1427,22 @@ def build_program_model(
     ``association`` records whose both endpoints are emitted) and field-level
     ``requiredWhen`` / ``visibleWhen`` (from ``confirmed`` field ``rule``
     records). ``valid_when`` and entity-subject rules route to deferrals.
+
+    Slice 3 adds the four remaining composite constructs as entity-level
+    blocks on each owning entity's program: ``view`` → ``savedViews:``,
+    ``automation`` → ``workflows:``, ``dedup_rule`` → ``duplicateChecks:``
+    (all three deploy-``NOT_SUPPORTED`` but schema-valid — captured in the
+    artifact and noted in MANUAL-CONFIG), and ``message_template`` →
+    ``emailTemplates:`` (deployable; its ``bodyFile`` body is emitted as a
+    companion artifact). Only ``confirmed`` records whose owning entity is
+    emitted are rendered; the rest route to deferrals.
     """
     associations = associations or []
     rules = rules or []
+    views = views or []
+    automations = automations or []
+    dedup_rules = dedup_rules or []
+    message_templates = message_templates or []
     index = _override_index(overrides)
 
     confirmed_entities = sorted(
@@ -899,28 +1493,34 @@ def build_program_model(
         deferrals,
     )
 
-    programs = [builds[e["entity_identifier"]].program for e in confirmed_entities]
-
-    # Remaining composite constructs are still out of scope (slices 2-3) —
-    # one standing deferral keeps the companion honest about the gap.
-    deferrals.append(
-        Deferral(
-            kind="composite_constructs",
-            identifier="-",
-            name="views, automations, dedup, templates",
-            parent=None,
-            detail=(
-                "the savedViews:/duplicateChecks:/workflows:/emailTemplates: "
-                "blocks are generated by later adapter slices; relationships: "
-                "and requiredWhen/visibleWhen are emitted in this slice"
-            ),
-        )
+    # Slice 3: the four remaining composite constructs as entity-level blocks.
+    companions: list[ProgramArtifact] = []
+    _apply_dedup_rules(
+        dedup_rules, builds, confirmed_entity_ids, entity_name_by_id, index, deferrals
     )
+    _apply_views(
+        views, builds, confirmed_entity_ids, entity_name_by_id, index, deferrals
+    )
+    _apply_message_templates(
+        message_templates,
+        builds,
+        confirmed_entity_ids,
+        entity_name_by_id,
+        index,
+        deferrals,
+        companions,
+    )
+    _apply_automations(
+        automations, builds, confirmed_entity_ids, entity_name_by_id, index, deferrals
+    )
+
+    programs = [builds[e["entity_identifier"]].program for e in confirmed_entities]
 
     return GenerationModel(
         engine=ENGINE,
         rendered_at=rendered_at,
         engagement=engagement,
         programs=programs,
+        companions=companions,
         deferrals=deferrals,
     )

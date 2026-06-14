@@ -61,6 +61,11 @@ class GenerationResult:
     programs: list[ProgramArtifact] = field(default_factory=list)
     manual_config: ProgramArtifact | None = None
     deferrals: list[Deferral] = field(default_factory=list)
+    companions: list[ProgramArtifact] = field(default_factory=list)
+    """Non-program support files the artifact set depends on (slice 3): e.g.
+    the ``templates/<id>.html`` bodies an ``emailTemplates:`` block references
+    via ``bodyFile:``. Written alongside the programs and materialized into
+    the same directory at self-check so ``validate_program`` resolves them."""
 
 
 @runtime_checkable
@@ -84,6 +89,10 @@ class CrmAdapter(Protocol):
         *,
         associations: list[dict] | None = None,
         rules: list[dict] | None = None,
+        views: list[dict] | None = None,
+        automations: list[dict] | None = None,
+        dedup_rules: list[dict] | None = None,
+        message_templates: list[dict] | None = None,
         rendered_at: str,
         engagement: str | None = None,
     ) -> GenerationResult:
@@ -98,6 +107,14 @@ class CrmAdapter(Protocol):
             ``relationships:`` block source).
         :param rules: ``rule`` design records (slice 2 — the field-level
             ``requiredWhen`` / ``visibleWhen`` source).
+        :param views: ``view`` design records (slice 3 — the ``savedViews:``
+            block source).
+        :param automations: ``automation`` design records (slice 3 — the
+            ``workflows:`` block source).
+        :param dedup_rules: ``dedup_rule`` design records (slice 3 — the
+            ``duplicateChecks:`` block source).
+        :param message_templates: ``message_template`` design records (slice
+            3 — the ``emailTemplates:`` block source).
         :param rendered_at: injected ISO timestamp (determinism — never
             read the clock inside the pure build).
         :param engagement: the source engagement label, for provenance.

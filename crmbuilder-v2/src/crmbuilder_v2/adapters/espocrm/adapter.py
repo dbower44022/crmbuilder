@@ -74,6 +74,10 @@ class EspoCrmAdapter(CrmAdapter):
         *,
         associations: list[dict] | None = None,
         rules: list[dict] | None = None,
+        views: list[dict] | None = None,
+        automations: list[dict] | None = None,
+        dedup_rules: list[dict] | None = None,
+        message_templates: list[dict] | None = None,
         rendered_at: str,
         engagement: str | None = None,
     ) -> GenerationResult:
@@ -89,6 +93,10 @@ class EspoCrmAdapter(CrmAdapter):
             overrides,
             associations=associations,
             rules=rules,
+            views=views,
+            automations=automations,
+            dedup_rules=dedup_rules,
+            message_templates=message_templates,
             rendered_at=rendered_at,
             engagement=engagement,
         )
@@ -109,6 +117,7 @@ class EspoCrmAdapter(CrmAdapter):
             programs=programs,
             manual_config=manual,
             deferrals=list(model.deferrals),
+            companions=list(model.companions),
         )
 
     def self_check(self, result: GenerationResult) -> dict[str, list[str]]:
@@ -117,12 +126,27 @@ class EspoCrmAdapter(CrmAdapter):
         Returns ``{filename: [errors]}`` for any program with errors
         (empty dict == all clean). The MANUAL-CONFIG companion is Markdown
         and is not validated.
+
+        Programs and their companion support files (the ``emailTemplates``
+        ``bodyFile`` HTML bodies) are materialized into one temp directory
+        before validation so ``bodyFile:`` references resolve to a real file
+        — the same on-disk layout the operator deploys.
         """
+        from espo_impl.core.config_loader import ConfigLoader
+
         failures: dict[str, list[str]] = {}
-        for artifact in result.programs:
-            errors = validate_yaml_text(artifact.content)
-            if errors:
-                failures[artifact.filename] = errors
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            for artifact in (*result.companions, *result.programs):
+                target = root / artifact.filename
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(artifact.content, encoding="utf-8")
+            loader = ConfigLoader()
+            for artifact in result.programs:
+                program = loader.load_program(root / artifact.filename)
+                errors = loader.validate_program(program)
+                if errors:
+                    failures[artifact.filename] = errors
         return failures
 
     def run(
@@ -144,12 +168,20 @@ class EspoCrmAdapter(CrmAdapter):
         overrides = client.list_engine_overrides()
         associations = client.list_associations()
         rules = client.list_rules()
+        views = client.list_views()
+        automations = client.list_automations()
+        dedup_rules = client.list_dedup_rules()
+        message_templates = client.list_message_templates()
         result = self.generate(
             entities,
             fields,
             overrides,
             associations=associations,
             rules=rules,
+            views=views,
+            automations=automations,
+            dedup_rules=dedup_rules,
+            message_templates=message_templates,
             rendered_at=rendered_at,
             engagement=engagement,
         )
@@ -179,6 +211,8 @@ def _atomic_write(path: Path, content: str) -> None:
 
 
 def _write_artifacts(result: GenerationResult, output_dir: Path) -> None:
+    for artifact in result.companions:
+        _atomic_write(output_dir / artifact.filename, artifact.content)
     for artifact in result.programs:
         _atomic_write(output_dir / artifact.filename, artifact.content)
     if result.manual_config is not None:
@@ -248,6 +282,10 @@ def main(argv: list[str] | None = None) -> int:
     for artifact in result.programs:
         print(f"  - {artifact.filename}")
     print(f"manual-config: {MANUAL_CONFIG_FILENAME}")
+    if result.companions:
+        print(f"companions: {len(result.companions)}")
+        for artifact in result.companions:
+            print(f"  - {artifact.filename}")
     print(f"deferrals: {_deferral_summary(result.deferrals)}")
     return 0
 

@@ -16,10 +16,14 @@ from __future__ import annotations
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import (
     association,
+    automation,
+    dedup_rule,
     engine_override,
     entity,
     field,
+    message_template,
     rule,
+    view,
 )
 from crmbuilder_v2.adapters.espocrm.adapter import EspoCrmAdapter, validate_yaml_text
 from crmbuilder_v2.adapters.espocrm.client import DesignClient
@@ -57,6 +61,22 @@ class AccessDesignClient(DesignClient):
     def list_rules(self) -> list[dict]:
         with session_scope() as s:
             return rule.list_rules(s)
+
+    def list_views(self) -> list[dict]:
+        with session_scope() as s:
+            return view.list_views(s)
+
+    def list_automations(self) -> list[dict]:
+        with session_scope() as s:
+            return automation.list_automations(s)
+
+    def list_dedup_rules(self) -> list[dict]:
+        with session_scope() as s:
+            return dedup_rule.list_dedup_rules(s)
+
+    def list_message_templates(self) -> list[dict]:
+        with session_scope() as s:
+            return message_template.list_message_templates(s)
 
 
 def _seed() -> None:
@@ -197,16 +217,17 @@ def test_adapter_generates_valid_byte_stable_yaml(v2_env, tmp_path):
     assert result2.programs[0].content == program.content
     assert result2.manual_config.content == result.manual_config.content
 
-    # MANUAL-CONFIG lists the deferred reference field + the standing
-    # composite-constructs note.
+    # MANUAL-CONFIG lists the deferred reference field. (Slice 3 emits the
+    # composite-construct blocks, so the standing composite-constructs note
+    # from slices 1–2 is gone — no views/automations/dedup/templates seeded
+    # here means no such block and no deferral.)
     manual = (tmp_path / "MANUAL-CONFIG.md").read_text(encoding="utf-8")
     assert "referring_partner" in manual or "referringPartner" in manual.lower() \
         or "Reference fields" in manual
     assert "Reference fields" in manual
-    assert "Composite constructs" in manual
     kinds = {d.kind for d in result.deferrals}
     assert "reference_field" in kinds
-    assert "composite_constructs" in kinds
+    assert "composite_constructs" not in kinds
 
 
 def test_adapter_yaml_has_expected_field_types(v2_env, tmp_path):
@@ -420,3 +441,203 @@ def test_manytomany_association_has_relation_name(v2_env, tmp_path):
     assert rel.link_type == "manyToMany"
     assert rel.relation_name  # required for manyToMany
     assert rel.link == "mentors" and rel.link_foreign == "tags"
+
+
+# ---------------------------------------------------------------------------
+# Slice 3 — composite construct blocks (savedViews / workflows /
+# duplicateChecks / emailTemplates) + the bodyFile companion
+# ---------------------------------------------------------------------------
+
+
+def _seed_slice3() -> None:
+    with session_scope() as s:
+        app = entity.create_entity(
+            s,
+            name="Mentor Application",
+            description="An application submitted by a prospective mentor",
+            kind="person",
+            status="confirmed",
+        )
+        app_id = app["entity_identifier"]
+
+        status_field = field.create_field(
+            s,
+            field_belongs_to_entity_identifier=app_id,
+            name="application_status",
+            description="where the application is",
+            type="enum",
+            status="confirmed",
+            options=[
+                {"option_value": "submitted", "option_order": 1},
+                {"option_value": "approved", "option_order": 2},
+            ],
+        )
+        status_fid = status_field["field_identifier"]
+        approver_field = field.create_field(
+            s,
+            field_belongs_to_entity_identifier=app_id,
+            name="approver_name",
+            description="who approved it",
+            type="text",
+            status="confirmed",
+        )
+        approver_fid = approver_field["field_identifier"]
+        email_field = field.create_field(
+            s,
+            field_belongs_to_entity_identifier=app_id,
+            name="contact_email",
+            description="primary email",
+            type="text",
+            status="confirmed",
+            format="email",
+        )
+        email_fid = email_field["field_identifier"]
+
+        # A confirmed view: columns + filter + sort, all on emitted fields.
+        view.create_view(
+            s,
+            name="Approved applications",
+            entity=app_id,
+            columns=[approver_fid, status_fid],
+            filter={"field": status_fid, "op": "eq", "value": "approved"},
+            sort_field=status_fid,
+            sort_direction="desc",
+            status="confirmed",
+        )
+
+        # A confirmed dedup rule: match on email, normalized lowercase, block.
+        dedup_rule.create_dedup_rule(
+            s,
+            name="No duplicate email",
+            entity=app_id,
+            match_fields=[email_fid],
+            normalize={email_fid: "lowercase"},
+            on_match="block",
+            message="A Mentor Application with this email already exists.",
+            status="confirmed",
+        )
+
+        # A confirmed automation: on_update + condition + a set_field action.
+        automation.create_automation(
+            s,
+            name="Stamp approver on approval",
+            entity=app_id,
+            trigger="on_update",
+            condition={"field": status_fid, "op": "eq", "value": "approved"},
+            actions=[
+                {"type": "set_field", "field": approver_fid, "value": "system"}
+            ],
+            status="confirmed",
+        )
+        # A scheduled automation → no v1.1 event → deferred.
+        automation.create_automation(
+            s,
+            name="Nightly sweep",
+            entity=app_id,
+            trigger="scheduled",
+            actions=[{"type": "set_field", "field": approver_fid, "value": "x"}],
+            status="confirmed",
+        )
+
+        # A confirmed email message template → emailTemplates + bodyFile.
+        message_template.create_message_template(
+            s,
+            name="Application received",
+            entity=app_id,
+            channel="email",
+            subject="Thanks for applying",
+            body="We received your application and will be in touch.",
+            merge_fields=[email_fid],
+            status="confirmed",
+        )
+        # A non-email template → deferred (only email maps to emailTemplates).
+        message_template.create_message_template(
+            s,
+            name="SMS nudge",
+            entity=app_id,
+            channel="sms",
+            body="Reminder: finish your application.",
+            status="confirmed",
+        )
+
+
+def test_adapter_emits_composite_construct_blocks(v2_env, tmp_path):
+    _seed_slice3()
+    adapter = EspoCrmAdapter()
+    result = adapter.run(
+        AccessDesignClient(), tmp_path, rendered_at=RENDERED_AT, engagement="ENG-004"
+    )
+
+    # Hard bar: every emitted program passes validate_program() with zero
+    # errors — WITH the four new blocks present and the body file written.
+    assert adapter.self_check(result) == {}
+
+    program = result.programs[0]
+    written = (tmp_path / program.filename).read_text(encoding="utf-8")
+    # The savedViews/duplicateChecks/workflows/emailTemplates blocks are all
+    # present in the deployable YAML.
+    assert "savedViews:" in written
+    assert "duplicateChecks:" in written
+    assert "workflows:" in written
+    assert "emailTemplates:" in written
+
+    # Re-validate the WRITTEN file (companion bodyFile present on disk).
+    from espo_impl.core.config_loader import ConfigLoader
+
+    loader = ConfigLoader()
+    prog = loader.load_program(tmp_path / program.filename)
+    ent = prog.entities[0]
+    assert loader.validate_program(prog) == []
+    assert len(ent.saved_views) == 1
+    assert len(ent.duplicate_checks) == 1
+    assert len(ent.workflows) == 1
+    assert len(ent.email_templates) == 1
+
+    # savedView: filter compiled, columns + sort resolved to internal names.
+    sv = ent.saved_views[0]
+    assert sv.columns == ["approverName", "applicationStatus"]
+    assert sv.filter is not None
+
+    # duplicateCheck: block + normalized email.
+    dc = ent.duplicate_checks[0]
+    assert dc.fields == ["contactEmail"]
+    assert dc.onMatch == "block"
+    assert dc.normalize == {"contactEmail": "lowercase-trim"}
+
+    # workflow: onUpdate + a setField action.
+    wf = ent.workflows[0]
+    assert wf.trigger.event == "onUpdate"
+    assert wf.actions[0].type == "setField"
+    assert wf.actions[0].field == "approverName"
+
+    # emailTemplate: bodyFile companion written to disk and uses the merge field.
+    et = ent.email_templates[0]
+    assert et.body_file == "templates/msg-001.html"
+    body_path = tmp_path / "templates" / "msg-001.html"
+    assert body_path.exists()
+    body = body_path.read_text(encoding="utf-8")
+    assert "{{contactEmail}}" in body
+    assert et.merge_fields == ["contactEmail"]
+
+    # MANUAL-CONFIG documents the deploy-NOT_SUPPORTED treatment of
+    # savedViews / duplicateChecks / workflows.
+    manual = (tmp_path / "MANUAL-CONFIG.md").read_text(encoding="utf-8")
+    assert "NOT_SUPPORTED" in manual
+    assert "savedViews" in manual
+    assert "duplicateChecks" in manual
+    assert "workflows" in manual
+
+    # Deferrals: the scheduled automation and the SMS (non-email) template.
+    kinds = {d.kind for d in result.deferrals}
+    assert "automation" in kinds  # the scheduled one
+    assert "message_template" in kinds  # the SMS one
+
+    # Determinism: a second run is byte-identical for programs AND companions.
+    result2 = adapter.run(
+        AccessDesignClient(), tmp_path / "again", rendered_at=RENDERED_AT,
+        engagement="ENG-004",
+    )
+    assert result2.programs[0].content == program.content
+    assert {c.filename: c.content for c in result2.companions} == {
+        c.filename: c.content for c in result.companions
+    }

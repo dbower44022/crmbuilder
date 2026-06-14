@@ -49,6 +49,22 @@ class DesignClient:
         """Field/entity rule records carrying a neutral condition AST."""
         raise NotImplementedError
 
+    def list_views(self) -> list[dict]:
+        """View records — the ``savedViews:`` block source (slice 3)."""
+        raise NotImplementedError
+
+    def list_automations(self) -> list[dict]:
+        """Automation records — the ``workflows:`` block source (slice 3)."""
+        raise NotImplementedError
+
+    def list_dedup_rules(self) -> list[dict]:
+        """Dedup-rule records — the ``duplicateChecks:`` source (slice 3)."""
+        raise NotImplementedError
+
+    def list_message_templates(self) -> list[dict]:
+        """Message-template records — the ``emailTemplates:`` source (slice 3)."""
+        raise NotImplementedError
+
 
 class RestDesignClient(DesignClient):
     """REST client of the live V2 API — GET requests only.
@@ -110,3 +126,15 @@ class RestDesignClient(DesignClient):
 
     def list_rules(self) -> list[dict]:
         return self._get("/rules")
+
+    def list_views(self) -> list[dict]:
+        return self._get("/views")
+
+    def list_automations(self) -> list[dict]:
+        return self._get("/automations")
+
+    def list_dedup_rules(self) -> list[dict]:
+        return self._get("/dedup-rules")
+
+    def list_message_templates(self) -> list[dict]:
+        return self._get("/message-templates")

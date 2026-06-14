@@ -63,10 +63,22 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
     out.append("# Manual Configuration Required — EspoCRM export")
     out.append("")
     out.append(
-        "Engine-neutral design intent that the EspoCRM adapter (PI-191 "
-        "slice 1) did not emit into the deployable YAML. Configure each "
-        "item via the EspoCRM admin UI, or wait for the adapter slice that "
-        "captures it."
+        "Engine-neutral design intent that the EspoCRM adapter (PI-191) did "
+        "not emit into the deployable YAML, or that the deploy engine treats "
+        "as manual configuration. Configure each item via the EspoCRM admin "
+        "UI."
+    )
+    out.append("")
+    out.append(
+        "**Deploy NOT_SUPPORTED (schema-valid, manual-config at deploy):** the "
+        "`savedViews:`, `duplicateChecks:`, and `workflows:` blocks generated "
+        "from `view` / `dedup_rule` / `automation` records are emitted into "
+        "the program YAML and pass `validate_program()`, but EspoCRM exposes "
+        "no public REST write path for them — the Configure run reports each "
+        "as `NOT_SUPPORTED` and the operator applies it via the admin UI. The "
+        "`emailTemplates:` block (from `message_template` records) is a real "
+        "deployable block; its `bodyFile` bodies are written under "
+        "`templates/`."
     )
     out.append("")
     out.append(f"- **Engagement:** {model.engagement or '—'}")
@@ -88,6 +100,12 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
         "association": "Associations not rendered as relationships",
         "field_rule": "Field rules not emitted (valid_when / unrenderable)",
         "entity_rule": "Entity-subject rules",
+        "view": "Views not rendered as savedViews",
+        "automation": "Automations not rendered as workflows",
+        "workflow_action": "Workflow actions not rendered",
+        "dedup_rule": "Dedup rules not rendered as duplicateChecks",
+        "dedup_normalize": "Dedup normalization tokens not expressible",
+        "message_template": "Message templates not rendered as emailTemplates",
         "composite_constructs": "Composite constructs (later slices)",
     }
     for kind in sorted(by_kind):

@@ -385,7 +385,9 @@ def test_field_attribute_and_default_sort_deferred():
     assert any("tooltip" in d for d in attr_kinds)
     assert any("unique" in d for d in attr_kinds)
     assert any(d.kind == "entity_default_sort" for d in model.deferrals)
-    assert any(d.kind == "composite_constructs" for d in model.deferrals)
+    # Slice 3 emits the composite-construct blocks, so the standing
+    # composite_constructs deferral no longer exists.
+    assert not any(d.kind == "composite_constructs" for d in model.deferrals)
 
 
 def test_scope_filter_excludes_non_confirmed():
@@ -632,3 +634,271 @@ def test_emit_is_byte_stable():
     mc1 = emit_manual_config_md(m1, rendered_at=RENDERED_AT)
     mc2 = emit_manual_config_md(m2, rendered_at=RENDERED_AT)
     assert mc1 == mc2
+
+
+# ---------------------------------------------------------------------------
+# Slice 3 — views/automations/dedup_rules/message_templates → config blocks
+# ---------------------------------------------------------------------------
+
+
+def _view(identifier="VEW-001", name="Active", entity="ENT-001", **over):
+    base = {
+        "view_identifier": identifier,
+        "view_name": name,
+        "view_entity": entity,
+        "view_columns": ["FLD-001"],
+        "view_filter": {"field": "FLD-001", "op": "eq", "value": "x"},
+        "view_sort_field": None,
+        "view_sort_direction": None,
+        "view_description": None,
+        "view_notes": None,
+        "view_status": "confirmed",
+    }
+    base.update(over)
+    return base
+
+
+def _automation(identifier="AUT-001", name="Stamp", entity="ENT-001", **over):
+    base = {
+        "automation_identifier": identifier,
+        "automation_name": name,
+        "automation_entity": entity,
+        "automation_trigger": "on_update",
+        "automation_condition": None,
+        "automation_actions": [
+            {"type": "set_field", "field": "FLD-001", "value": "done"}
+        ],
+        "automation_description": None,
+        "automation_notes": None,
+        "automation_status": "confirmed",
+    }
+    base.update(over)
+    return base
+
+
+def _dedup(identifier="DUP-001", name="No dup email", entity="ENT-001", **over):
+    base = {
+        "dedup_rule_identifier": identifier,
+        "dedup_rule_name": name,
+        "dedup_rule_entity": entity,
+        "dedup_rule_match_fields": ["FLD-001"],
+        "dedup_rule_normalize": None,
+        "dedup_rule_on_match": "block",
+        "dedup_rule_message": "Already exists",
+        "dedup_rule_description": None,
+        "dedup_rule_notes": None,
+        "dedup_rule_status": "confirmed",
+    }
+    base.update(over)
+    return base
+
+
+def _message(identifier="MSG-001", name="Welcome", entity="ENT-001", **over):
+    base = {
+        "message_template_identifier": identifier,
+        "message_template_name": name,
+        "message_template_entity": entity,
+        "message_template_channel": "email",
+        "message_template_subject": "Hello {{whoever}}",
+        "message_template_body": "Welcome to the program.",
+        "message_template_merge_fields": ["FLD-001"],
+        "message_template_audience": None,
+        "message_template_description": None,
+        "message_template_notes": None,
+        "message_template_status": "confirmed",
+    }
+    base.update(over)
+    return base
+
+
+def _build(**kw):
+    return build_program_model(
+        kw.pop("entities", [_entity()]),
+        kw.pop("fields", [_field(name="mentor_status", type="text")]),
+        kw.pop("overrides", []),
+        rendered_at=RENDERED_AT,
+        **kw,
+    )
+
+
+def test_view_compiles_filter_columns_and_sort():
+    model = _build(
+        views=[
+            _view(
+                view_columns=["FLD-001"],
+                view_filter={"field": "FLD-001", "op": "eq", "value": "x"},
+                view_sort_field="FLD-001",
+                view_sort_direction="desc",
+            )
+        ]
+    )
+    block = _only_entity_block(model)
+    sv = block["savedViews"][0]
+    assert sv["id"] == "vew-001"
+    assert sv["name"] == "Active"
+    assert sv["columns"] == ["mentorStatus"]
+    # neutral op 'eq' compiled to the EspoCRM 'equals'; ref to internal name
+    assert sv["filter"] == {"field": "mentorStatus", "op": "equals", "value": "x"}
+    assert sv["orderBy"] == {"field": "mentorStatus", "direction": "desc"}
+
+
+def test_view_without_filter_defers():
+    model = _build(views=[_view(view_filter=None)])
+    block = _only_entity_block(model)
+    assert "savedViews" not in block
+    assert any(d.kind == "view" for d in model.deferrals)
+
+
+def test_view_filter_on_unemitted_field_defers():
+    # condition references a field that is not emitted → defer (never emit a
+    # field reference validate_program would reject).
+    model = _build(
+        views=[_view(view_filter={"field": "FLD-404", "op": "eq", "value": "x"})]
+    )
+    block = _only_entity_block(model)
+    assert "savedViews" not in block
+    assert any(d.kind == "view" for d in model.deferrals)
+
+
+def test_automation_trigger_and_action_mapping():
+    model = _build(
+        automations=[
+            _automation(
+                automation_trigger="on_update",
+                automation_condition={"field": "FLD-001", "op": "eq", "value": "x"},
+                automation_actions=[
+                    {"type": "set_field", "field": "FLD-001", "value": "done"}
+                ],
+            )
+        ]
+    )
+    wf = _only_entity_block(model)["workflows"][0]
+    assert wf["id"] == "aut-001"
+    assert wf["trigger"] == {"event": "onUpdate"}
+    assert wf["where"] == {"field": "mentorStatus", "op": "equals", "value": "x"}
+    assert wf["actions"] == [
+        {"type": "setField", "field": "mentorStatus", "value": "done"}
+    ]
+
+
+def test_automation_scheduled_trigger_defers():
+    model = _build(automations=[_automation(automation_trigger="scheduled")])
+    block = _only_entity_block(model)
+    assert "workflows" not in block
+    assert any(d.kind == "automation" for d in model.deferrals)
+
+
+def test_automation_unmappable_action_defers_whole_workflow():
+    model = _build(
+        automations=[_automation(automation_actions=[{"type": "webhook"}])]
+    )
+    block = _only_entity_block(model)
+    assert "workflows" not in block
+    assert any(d.kind == "workflow_action" for d in model.deferrals)
+    assert any(d.kind == "automation" for d in model.deferrals)
+
+
+def test_dedup_onmatch_and_normalize_mapping():
+    model = _build(
+        dedup_rules=[
+            _dedup(
+                dedup_rule_on_match="block",
+                dedup_rule_message="Dup!",
+                dedup_rule_normalize={"FLD-001": "lowercase"},
+            )
+        ]
+    )
+    dc = _only_entity_block(model)["duplicateChecks"][0]
+    assert dc["id"] == "dup-001"
+    assert dc["fields"] == ["mentorStatus"]
+    assert dc["onMatch"] == "block"
+    assert dc["message"] == "Dup!"
+    # neutral 'lowercase' → EspoCRM 'lowercase-trim'
+    assert dc["normalize"] == {"mentorStatus": "lowercase-trim"}
+
+
+def test_dedup_block_without_message_gets_default():
+    model = _build(dedup_rules=[_dedup(dedup_rule_message=None)])
+    dc = _only_entity_block(model)["duplicateChecks"][0]
+    assert dc["onMatch"] == "block"
+    assert dc["message"]  # synthesized non-empty message for block
+
+
+def test_dedup_unmappable_normalize_token_drops_with_note():
+    model = _build(
+        dedup_rules=[_dedup(dedup_rule_normalize={"FLD-001": "digits_only"})]
+    )
+    dc = _only_entity_block(model)["duplicateChecks"][0]
+    assert "normalize" not in dc  # digits_only has no EspoCRM value → dropped
+    assert any(d.kind == "dedup_normalize" for d in model.deferrals)
+
+
+def test_message_template_emits_block_and_companion_body():
+    model = _build(
+        message_templates=[
+            _message(
+                message_template_subject="Hi {{x}}",
+                message_template_body="Body text {{y}}.",
+                message_template_merge_fields=["FLD-001"],
+            )
+        ]
+    )
+    et = _only_entity_block(model)["emailTemplates"][0]
+    assert et["id"] == "msg-001"
+    assert et["entity"] == "Mentor Application"
+    # stray neutral placeholders stripped from subject
+    assert "{{" not in et["subject"]
+    assert et["bodyFile"] == "templates/msg-001.html"
+    assert et["mergeFields"] == ["mentorStatus"]
+    # one companion body file emitted, using exactly the merge field
+    assert len(model.companions) == 1
+    comp = model.companions[0]
+    assert comp.filename == "templates/msg-001.html"
+    assert "{{mentorStatus}}" in comp.content
+    assert "{{x}}" not in comp.content and "{{y}}" not in comp.content
+
+
+def test_message_template_non_email_channel_defers():
+    model = _build(message_templates=[_message(message_template_channel="sms")])
+    block = _only_entity_block(model)
+    assert "emailTemplates" not in block
+    assert not model.companions
+    assert any(d.kind == "message_template" for d in model.deferrals)
+
+
+def test_message_template_null_entity_defers():
+    model = _build(message_templates=[_message(message_template_entity=None)])
+    assert not model.companions
+    assert any(d.kind == "message_template" for d in model.deferrals)
+
+
+def test_message_template_no_resolvable_merge_field_defers():
+    model = _build(
+        message_templates=[_message(message_template_merge_fields=["FLD-404"])]
+    )
+    block = _only_entity_block(model)
+    assert "emailTemplates" not in block
+    assert any(d.kind == "message_template" for d in model.deferrals)
+
+
+def test_composite_block_override_applies():
+    model = _build(
+        views=[_view()],
+        overrides=[
+            {
+                "override_target_engine": "espocrm",
+                "override_subject_type": "view",
+                "override_subject_identifier": "VEW-001",
+                "override_attribute": "name",
+                "override_value": "Pinned Name",
+            }
+        ],
+    )
+    sv = _only_entity_block(model)["savedViews"][0]
+    assert sv["name"] == "Pinned Name"
+
+
+def test_record_for_unconfirmed_entity_defers():
+    # entity ENT-002 is not in the confirmed set → its view defers.
+    model = _build(views=[_view(entity="ENT-002")])
+    assert any(d.kind == "view" for d in model.deferrals)
