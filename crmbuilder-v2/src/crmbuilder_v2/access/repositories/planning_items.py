@@ -26,9 +26,11 @@ from crmbuilder_v2.access.exceptions import (
     ValidationError,
 )
 from crmbuilder_v2.access.models import PlanningItem
-from crmbuilder_v2.access.repositories.engagement_areas import valid_area_names
 from crmbuilder_v2.access.repositories._governance import check_transition
+from crmbuilder_v2.access.repositories.engagement_areas import valid_area_names
 from crmbuilder_v2.access.vocab import (
+    DEFAULT_EXECUTION_MODE,
+    EXECUTION_MODES,
     PLANNING_ITEM_STATUS_TRANSITIONS,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -73,6 +75,9 @@ _UPDATABLE_FIELDS = frozenset(
         "resolution_reference",
         "executive_summary",
         "area",
+        # PI-183: a PI's own execution_mode is editable; dispatch_approved is
+        # NOT (REQ-155 — its only write path is approve-dispatch).
+        "execution_mode",
     }
 )
 
@@ -103,6 +108,7 @@ def _new_planning_item_row(
     resolution_reference: str | None,
     executive_summary: str,
     area: list[str] | None,
+    execution_mode: str,
 ) -> PlanningItem:
     return PlanningItem(
         identifier=identifier,
@@ -113,6 +119,7 @@ def _new_planning_item_row(
         resolution_reference=resolution_reference,
         executive_summary=executive_summary,
         area=area,
+        execution_mode=execution_mode,
     )
 
 
@@ -125,6 +132,7 @@ def _insert_with_autoassign(
     resolution_reference: str | None,
     executive_summary: str,
     area: list[str] | None,
+    execution_mode: str,
 ) -> PlanningItem:
     """Insert a planning_item with a server-assigned identifier (PI-002)."""
     candidate = compute_next_identifier(session)
@@ -140,6 +148,7 @@ def _insert_with_autoassign(
             resolution_reference,
             executive_summary,
             area,
+            execution_mode,
         )
         session.add(row)
         try:
@@ -168,6 +177,7 @@ def create(
     resolution_reference: str | None = None,
     executive_summary: str,
     area: list[str] | None = None,
+    execution_mode: str = DEFAULT_EXECUTION_MODE,
 ) -> dict:
     """Create a planning_item.
 
@@ -187,6 +197,7 @@ def create(
     require_string(title, field="title")
     require_in(item_type, PLANNING_ITEM_TYPES, field="item_type")
     require_in(status, PLANNING_ITEM_STATUSES, field="status")
+    require_in(execution_mode, EXECUTION_MODES, field="execution_mode")
     executive_summary = validate_required_length(
         executive_summary,
         field="executive_summary",
@@ -205,6 +216,7 @@ def create(
             resolution_reference,
             executive_summary,
             area,
+            execution_mode,
         )
     else:
         _require_identifier_format(identifier)
@@ -224,6 +236,7 @@ def create(
             resolution_reference,
             executive_summary,
             area,
+            execution_mode,
         )
         session.add(row)
         session.flush()
@@ -259,6 +272,8 @@ def update(session: Session, identifier: str, **fields) -> dict:
         )
     if "item_type" in fields:
         require_in(fields["item_type"], PLANNING_ITEM_TYPES, field="item_type")
+    if "execution_mode" in fields:
+        require_in(fields["execution_mode"], EXECUTION_MODES, field="execution_mode")
     if "status" in fields:
         require_in(fields["status"], PLANNING_ITEM_STATUSES, field="status")
         check_transition(
