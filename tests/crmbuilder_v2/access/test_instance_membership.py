@@ -375,3 +375,85 @@ def test_reconcile_associations_idempotent(v2_env):
         assert len(association_repo.list_associations(s)) == 1
         assert len(mb.list_memberships(
             s, instance_identifier=iid, member_type="association")) == 1
+
+
+# --- native-entity support (PI-192) ----------------------------------------
+
+
+def _native(stream=False):
+    return {"entity": True, "customizable": True, "isCustom": False, "stream": stream}
+
+
+def test_reconcile_entities_includes_customized_native_only(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {"Account": _native(), "Contact": _native()},
+            fields={
+                # Account carries a custom field -> customized native.
+                "Account": {"website": {"type": "url"},
+                            "cRegion": {"isCustom": True, "type": "enum"}},
+                # Contact has only native base fields -> NOT customized.
+                "Contact": {"firstName": {"type": "varchar"}},
+            },
+        )
+        summary = reconcile_entities(s, instance_identifier=iid, client=client)
+        names = {e["entity_name"] for e in entity_repo.list_entities(s)}
+        assert "Account" in names      # customized native -> created
+        assert "Contact" not in names  # bare native -> skipped
+        assert summary["created"] == 1
+        rows = mb.list_memberships(s, instance_identifier=iid, member_type="entity")
+        assert len(rows) == 1 and rows[0]["state"] == "present"
+
+
+def test_reconcile_native_entity_custom_fields(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {"Account": _native()},
+            fields={"Account": {
+                "website": {"type": "url"},  # native base -> skipped
+                "cRegion": {"isCustom": True, "type": "enum", "required": True},
+            }},
+        )
+        reconcile_entities(s, instance_identifier=iid, client=client)
+        fsummary = reconcile_fields(s, instance_identifier=iid, client=client)
+        assert fsummary["created"] == 1  # only the custom field
+        acct = [e for e in entity_repo.list_entities(s)
+                if e["entity_name"] == "Account"][0]
+        flds = {f["field_name"] for f in
+                field_repo.list_fields(s, entity_identifier=acct["entity_identifier"])}
+        assert flds == {"region"}  # strip_field_c_prefix("cRegion") == "region"
+
+
+def test_reconcile_association_to_customized_native_endpoint(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {"CEngagement": _custom(), "Account": _native()},
+            fields={"Account": {"cRegion": {"isCustom": True, "type": "enum"}}},
+            links={"CEngagement": {"account": {"type": "hasMany", "entity": "Account"}}},
+        )
+        reconcile_entities(s, instance_identifier=iid, client=client)  # +Engagement +Account
+        asummary = reconcile_associations(s, instance_identifier=iid, client=client)
+        assert asummary["created"] == 1
+        a = association_repo.list_associations(s)[0]
+        ent = {e["entity_name"]: e["entity_identifier"]
+               for e in entity_repo.list_entities(s)}
+        assert a["association_source_entity"] == ent["Engagement"]
+        assert a["association_target_entity"] == ent["Account"]
+
+
+def test_reconcile_association_to_uncustomized_native_skipped(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        # Account has no custom field -> no canonical record -> link skipped.
+        client = _FakeClient(
+            {"CEngagement": _custom(), "Account": _native()},
+            fields={"Account": {"website": {"type": "url"}}},
+            links={"CEngagement": {"account": {"type": "hasMany", "entity": "Account"}}},
+        )
+        reconcile_entities(s, instance_identifier=iid, client=client)
+        asummary = reconcile_associations(s, instance_identifier=iid, client=client)
+        assert asummary["created"] == 0
+        assert association_repo.list_associations(s) == []

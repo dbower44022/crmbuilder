@@ -38,6 +38,7 @@ from crmbuilder_v2.introspect.audit_utils import (
     strip_entity_c_prefix,
     strip_field_c_prefix,
 )
+from crmbuilder_v2.introspect.native_entity_types import get_base_type
 
 
 class _ScopesClient(Protocol):
@@ -131,17 +132,40 @@ def _entity_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict
     return override
 
 
+def _has_custom_field(
+    client: _FieldsClient, scope_name: str, base_type: str | None
+) -> bool:
+    """Whether an entity scope carries at least one custom field (PI-192).
+
+    Used to decide if a **native** entity is "customized" — and therefore worth
+    a canonical record — without creating a bare record for every native entity
+    in the instance's catalog.
+    """
+    f_status, fields_meta = client.get_entity_field_list(scope_name)
+    if f_status != 200 or not isinstance(fields_meta, dict):
+        return False
+    return any(
+        isinstance(fm, dict)
+        and classify_field(fn, fm, base_type) is FieldClass.CUSTOM
+        for fn, fm in fields_meta.items()
+    )
+
+
 def reconcile_entities(
     session: Session,
     *,
     instance_identifier: str,
-    client: _ScopesClient,
+    client: _FieldsClient,
 ) -> dict:
-    """Reconcile an instance's custom entities into the canonical inventory.
+    """Reconcile an instance's entities into the canonical inventory.
 
-    :param session: An active writable session (engagement scope set).
-    :param instance_identifier: The ``INST-NNN`` being audited.
-    :param client: An introspection client exposing ``get_all_scopes``.
+    Covers **custom** entities and **native** entities that carry custom design
+    (≥1 custom field — PI-192). A bare native entity (no customization) gets no
+    canonical record, keeping the inventory focused on what the engagement
+    actually customized. Native parents created here let the field / association
+    reconcile attach to them. ``get_entity_field_list`` is used to detect a
+    customized native entity, so the client must expose it.
+
     :returns: A summary dict ``{seen, created, present, drifted, absent}``.
     :raises ReconcileError: If the scopes call fails or returns a non-dict body.
     """
@@ -161,19 +185,29 @@ def reconcile_entities(
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
             continue
-        if classify_entity(scope_name, scope_meta) is not EntityClass.CUSTOM:
+        entity_class = classify_entity(scope_name, scope_meta)
+        if entity_class is EntityClass.CUSTOM:
+            is_native = False
+        elif entity_class is EntityClass.NATIVE and _has_custom_field(
+            client, scope_name, get_base_type(scope_name)
+        ):
+            is_native = True
+        else:
             continue
+
         summary["seen"] += 1
         neutral = strip_entity_c_prefix(scope_name)
         audited = _audited_entity_attrs(scope_meta)
 
         match = canonical.get(neutral)
         if match is None:
+            origin = "Native EspoCRM entity" if is_native else "Discovered"
             created = entity_repo.create_entity(
                 session,
                 name=neutral,
                 description=(
-                    f"Discovered by auditing instance {instance_identifier}."
+                    f"{origin} discovered by auditing instance "
+                    f"{instance_identifier}."
                 ),
                 track_activity=audited["entity_track_activity"],
             )
@@ -238,13 +272,16 @@ def reconcile_fields(
     instance_identifier: str,
     client: _FieldsClient,
 ) -> dict:
-    """Reconcile an instance's custom fields (on custom entities) into the inventory.
+    """Reconcile an instance's custom fields into the canonical inventory.
 
-    Slice 2a: custom fields on **custom** entities. The parent canonical entity
-    is matched by neutral name (ensured if entity reconcile has not run). Custom
-    fields on native entities are a later slice (they need native parent
-    entity records). Same create → match-by-(entity, neutral name) → drift →
-    absent → membership pattern as :func:`reconcile_entities`.
+    Covers custom fields on **custom** and **native** entities (PI-192) — native
+    fields are classified against the parent's base type
+    (``get_base_type``) so native base fields (e.g. ``website``) are skipped and
+    only the custom additions reconcile. An entity with no custom fields is
+    skipped (no empty native parent is created). The parent canonical entity is
+    matched by neutral name (ensured if entity reconcile has not run). Same
+    create → match-by-(entity, neutral name) → drift → absent → membership
+    pattern as :func:`reconcile_entities`.
 
     :returns: A summary ``{seen, created, present, drifted, absent}``.
     :raises ReconcileError: If the scopes call fails or returns a non-dict body.
@@ -266,16 +303,42 @@ def reconcile_fields(
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
             continue
-        if classify_entity(scope_name, scope_meta) is not EntityClass.CUSTOM:
+        entity_class = classify_entity(scope_name, scope_meta)
+        if entity_class is EntityClass.CUSTOM:
+            base_type = None
+        elif entity_class is EntityClass.NATIVE:
+            base_type = get_base_type(scope_name)
+        else:
             continue
+
+        f_status, fields_meta = client.get_entity_field_list(scope_name)
+        if f_status != 200 or not isinstance(fields_meta, dict):
+            # Skip this entity's fields rather than abort the whole audit.
+            continue
+        custom_fields = [
+            (fn, fm)
+            for fn, fm in fields_meta.items()
+            if isinstance(fm, dict)
+            and classify_field(fn, fm, base_type) is FieldClass.CUSTOM
+        ]
+        if not custom_fields:
+            # Nothing to reconcile; don't create an empty (native) parent.
+            continue
+
         neutral_entity = strip_entity_c_prefix(scope_name)
         parent_id = ent_by_name.get(neutral_entity)
         if parent_id is None:
+            origin = (
+                "Native EspoCRM entity"
+                if entity_class is EntityClass.NATIVE
+                else "Discovered"
+            )
             parent = entity_repo.create_entity(
                 session,
                 name=neutral_entity,
                 description=(
-                    f"Discovered by auditing instance {instance_identifier}."
+                    f"{origin} discovered by auditing instance "
+                    f"{instance_identifier}."
                 ),
             )
             parent_id = parent["entity_identifier"]
@@ -286,16 +349,7 @@ def reconcile_fields(
             for f in field_repo.list_fields(session, entity_identifier=parent_id)
         }
 
-        f_status, fields_meta = client.get_entity_field_list(scope_name)
-        if f_status != 200 or not isinstance(fields_meta, dict):
-            # Skip this entity's fields rather than abort the whole audit.
-            continue
-
-        for field_name, field_meta in fields_meta.items():
-            if not isinstance(field_meta, dict):
-                continue
-            if classify_field(field_name, field_meta) is not FieldClass.CUSTOM:
-                continue
+        for field_name, field_meta in custom_fields:
             summary["seen"] += 1
             neutral_field = strip_field_c_prefix(field_name)
             audited = _audited_field_attrs(field_meta)
@@ -350,15 +404,17 @@ def reconcile_associations(
     instance_identifier: str,
     client: _LinksClient,
 ) -> dict:
-    """Reconcile an instance's custom-to-custom relationships into the inventory.
+    """Reconcile an instance's relationships into the inventory.
 
-    Slice 2b: relationships where **both** endpoints are custom entities present
-    in the canonical inventory reconcile to ``association`` records (DEC-433).
-    Links to native / non-canonical entities are skipped (a later slice, once
-    native entity records exist). Only the owning side of each relationship is
-    processed (``_LINK_CARDINALITY``); ``manyMany`` is de-duplicated by its
-    shared ``relationName``. Same create -> match-by-neutral-name -> drift ->
-    absent -> membership pattern as the entity / field reconcile.
+    Relationships where **both** endpoints are present in the canonical
+    inventory reconcile to ``association`` records (DEC-433). "Present" means
+    custom, or native entities that carry custom design (PI-192) — both have
+    canonical records by the time this runs. Links to uncustomized native /
+    non-canonical entities are skipped (those entities have no canonical record
+    to anchor the edge). Only the owning side of each relationship is processed
+    (``_LINK_CARDINALITY``); ``manyMany`` is de-duplicated by its shared
+    ``relationName``. Same create -> match-by-neutral-name -> drift -> absent ->
+    membership pattern as the entity / field reconcile.
 
     :returns: A summary ``{seen, created, present, drifted, absent}``.
     :raises ReconcileError: If the scopes call fails or returns a non-dict body.
@@ -385,8 +441,10 @@ def reconcile_associations(
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
             continue
-        if classify_entity(scope_name, scope_meta) is not EntityClass.CUSTOM:
-            continue
+        # Read links from any canonical entity — custom or customized-native
+        # (PI-192). Non-canonical scopes (uncustomized native, system) have no
+        # canonical record and are skipped; endpoints likewise resolve only to
+        # canonical entities.
         source_id = ent_by_name.get(strip_entity_c_prefix(scope_name))
         if source_id is None:
             continue
