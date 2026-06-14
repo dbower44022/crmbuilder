@@ -80,12 +80,15 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
         by_kind.setdefault(d.kind, []).append(d)
 
     _titles = {
-        "reference_field": "Reference fields (become associations — slice 2)",
+        "reference_field": "Reference fields (covered by association records)",
         "derived_field": "Derived / formula fields (later slice)",
         "unmapped_field": "Unmapped fields",
         "field_attribute": "Field attributes with no deploy-validated YAML key",
         "entity_default_sort": "Entity default-sort intent",
-        "composite_constructs": "Composite constructs (slices 2-3)",
+        "association": "Associations not rendered as relationships",
+        "field_rule": "Field rules not emitted (valid_when / unrenderable)",
+        "entity_rule": "Entity-subject rules",
+        "composite_constructs": "Composite constructs (later slices)",
     }
     for kind in sorted(by_kind):
         rows = sorted(by_kind[kind], key=lambda d: (d.identifier, d.detail))

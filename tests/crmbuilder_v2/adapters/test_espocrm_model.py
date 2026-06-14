@@ -64,11 +64,64 @@ def _field(identifier="FLD-001", name="mentor_status", type="text", parent="ENT-
     return base
 
 
+def _assoc(
+    identifier="ASN-001",
+    name="rel",
+    source="ENT-001",
+    target="ENT-002",
+    cardinality="one_to_many",
+    status="confirmed",
+    source_role=None,
+    target_role=None,
+    description=None,
+):
+    return {
+        "association_identifier": identifier,
+        "association_name": name,
+        "association_source_entity": source,
+        "association_target_entity": target,
+        "association_cardinality": cardinality,
+        "association_source_role": source_role,
+        "association_target_role": target_role,
+        "association_description": description,
+        "association_notes": None,
+        "association_status": status,
+    }
+
+
+def _rule(
+    identifier="RUL-001",
+    name="gate",
+    subject_type="field",
+    subject="FLD-001",
+    effect="required_when",
+    condition=None,
+    status="confirmed",
+):
+    return {
+        "rule_identifier": identifier,
+        "rule_name": name,
+        "rule_subject_type": subject_type,
+        "rule_subject_identifier": subject,
+        "rule_effect": effect,
+        "rule_condition": condition or {"field": "FLD-002", "op": "eq", "value": "x"},
+        "rule_message": None,
+        "rule_status": status,
+    }
+
+
 def _only_entity_block(model):
     assert len(model.programs) == 1
     program = model.programs[0].program
     name = model.programs[0].entity_name
     return program["entities"][name]
+
+
+def _program_for(model, entity_name):
+    for p in model.programs:
+        if p.entity_name == entity_name:
+            return p.program
+    raise AssertionError(f"no program for {entity_name}")
 
 
 # ---------------------------------------------------------------------------
@@ -357,6 +410,215 @@ def test_scope_filter_excludes_non_confirmed():
 # ---------------------------------------------------------------------------
 # Emit determinism
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# Associations → relationships: block (slice 2)
+# ---------------------------------------------------------------------------
+
+
+def _two_entities():
+    return [
+        _entity(identifier="ENT-001", name="Sponsor Org"),
+        _entity(identifier="ENT-002", name="Mentor Application"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "cardinality,link_type",
+    [
+        ("one_to_one", "oneToOne"),
+        ("one_to_many", "oneToMany"),
+        ("many_to_many", "manyToMany"),
+    ],
+)
+def test_cardinality_to_link_type(cardinality, link_type):
+    model = build_program_model(
+        _two_entities(),
+        [],
+        [],
+        associations=[_assoc(cardinality=cardinality)],
+        rendered_at=RENDERED_AT,
+    )
+    rels = _program_for(model, "Sponsor Org")["relationships"]
+    assert len(rels) == 1
+    rel = rels[0]
+    assert rel["linkType"] == link_type
+    assert rel["entity"] == "Sponsor Org"
+    assert rel["entityForeign"] == "Mentor Application"
+    # Required keys for validate_program.
+    for key in ("name", "link", "linkForeign", "label", "labelForeign"):
+        assert rel[key]
+    if link_type == "manyToMany":
+        assert rel["relationName"]
+
+
+def test_link_names_derive_singular_plural_by_cardinality():
+    model = build_program_model(
+        _two_entities(), [], [],
+        associations=[_assoc(cardinality="one_to_many")],
+        rendered_at=RENDERED_AT,
+    )
+    rel = _program_for(model, "Sponsor Org")["relationships"][0]
+    # source is the "one", reaches many targets → plural; target reaches one
+    # source → singular.
+    assert rel["link"] == "mentorApplications"
+    assert rel["linkForeign"] == "sponsorOrg"
+
+
+def test_link_names_use_roles_when_present():
+    model = build_program_model(
+        _two_entities(), [], [],
+        associations=[
+            _assoc(
+                source_role="primary sponsor",
+                target_role="funded applications",
+            )
+        ],
+        rendered_at=RENDERED_AT,
+    )
+    rel = _program_for(model, "Sponsor Org")["relationships"][0]
+    assert rel["link"] == "primarySponsor"
+    assert rel["linkForeign"] == "fundedApplications"
+
+
+def test_association_link_overrides():
+    overrides = [
+        {
+            "override_target_engine": "espocrm",
+            "override_subject_type": "association",
+            "override_subject_identifier": "ASN-001",
+            "override_attribute": "link_name_source",
+            "override_value": "sponsoredApps",
+        },
+        {
+            "override_target_engine": "espocrm",
+            "override_subject_type": "association",
+            "override_subject_identifier": "ASN-001",
+            "override_attribute": "link_type",
+            "override_value": "manyToMany",
+        },
+    ]
+    model = build_program_model(
+        _two_entities(), [], overrides,
+        associations=[_assoc(cardinality="one_to_many")],
+        rendered_at=RENDERED_AT,
+    )
+    rel = _program_for(model, "Sponsor Org")["relationships"][0]
+    assert rel["link"] == "sponsoredApps"
+    assert rel["linkType"] == "manyToMany"
+
+
+def test_non_confirmed_or_dangling_association_deferred():
+    model = build_program_model(
+        _two_entities(), [], [],
+        associations=[
+            _assoc(identifier="ASN-001", status="candidate"),
+            _assoc(identifier="ASN-002", target="ENT-099"),  # dangling endpoint
+        ],
+        rendered_at=RENDERED_AT,
+    )
+    # The candidate is skipped silently; the dangling one is a deferral.
+    assert "relationships" not in _program_for(model, "Sponsor Org")
+    assoc_defers = [d for d in model.deferrals if d.kind == "association"]
+    assert {d.identifier for d in assoc_defers} == {"ASN-002"}
+
+
+# ---------------------------------------------------------------------------
+# Rules → requiredWhen / visibleWhen (slice 2)
+# ---------------------------------------------------------------------------
+
+
+def test_required_when_rule_attaches_and_drops_required():
+    fields = [
+        _field(identifier="FLD-001", name="approver", type="text", field_required=True),
+        _field(identifier="FLD-002", name="status", type="text"),
+    ]
+    rule = _rule(
+        subject="FLD-001",
+        effect="required_when",
+        condition={"field": "FLD-002", "op": "eq", "value": "approved"},
+    )
+    model = build_program_model(
+        [_entity()], fields, [], rules=[rule], rendered_at=RENDERED_AT
+    )
+    fmap = {f["name"]: f for f in _only_entity_block(model)["fields"]}
+    approver = fmap["approver"]
+    assert approver["requiredWhen"] == {
+        "field": "status", "op": "equals", "value": "approved",
+    }
+    # required: true is dropped — it is mutually exclusive with requiredWhen.
+    assert "required" not in approver
+
+
+def test_visible_when_rule_attaches():
+    fields = [
+        _field(identifier="FLD-001", name="approver", type="text"),
+        _field(identifier="FLD-002", name="status", type="text"),
+    ]
+    rule = _rule(
+        subject="FLD-001",
+        effect="visible_when",
+        condition={"field": "FLD-002", "op": "is_not_empty"},
+    )
+    model = build_program_model(
+        [_entity()], fields, [], rules=[rule], rendered_at=RENDERED_AT
+    )
+    fmap = {f["name"]: f for f in _only_entity_block(model)["fields"]}
+    assert fmap["approver"]["visibleWhen"] == {"field": "status", "op": "isNotNull"}
+
+
+def test_valid_when_rule_deferred():
+    rule = _rule(subject="FLD-001", effect="valid_when",
+                 condition={"field": "FLD-001", "op": "is_not_empty"})
+    model = build_program_model(
+        [_entity()], [_field(identifier="FLD-001", name="approver")], [],
+        rules=[rule], rendered_at=RENDERED_AT,
+    )
+    assert "requiredWhen" not in _only_entity_block(model)["fields"][0]
+    assert any(d.kind == "field_rule" for d in model.deferrals)
+
+
+def test_entity_subject_rule_deferred():
+    rule = _rule(subject_type="entity", subject="ENT-001", effect="valid_when",
+                 condition={"field": "FLD-001", "op": "is_not_empty"})
+    model = build_program_model(
+        [_entity()], [_field(identifier="FLD-001", name="approver")], [],
+        rules=[rule], rendered_at=RENDERED_AT,
+    )
+    assert any(d.kind == "entity_rule" for d in model.deferrals)
+
+
+def test_rule_for_unemitted_field_deferred():
+    # Subject field is a deferred reference field → no payload to attach to.
+    rule = _rule(subject="FLD-001", effect="required_when",
+                 condition={"field": "FLD-002", "op": "eq", "value": "x"})
+    model = build_program_model(
+        [_entity()],
+        [
+            _field(identifier="FLD-001", name="account", type="reference"),
+            _field(identifier="FLD-002", name="status", type="text"),
+        ],
+        [],
+        rules=[rule],
+        rendered_at=RENDERED_AT,
+    )
+    assert any(d.kind == "field_rule" for d in model.deferrals)
+
+
+def test_candidate_rule_skipped_silently():
+    rule = _rule(subject="FLD-001", status="candidate")
+    model = build_program_model(
+        [_entity()],
+        [_field(identifier="FLD-001", name="approver"),
+         _field(identifier="FLD-002", name="status")],
+        [],
+        rules=[rule],
+        rendered_at=RENDERED_AT,
+    )
+    fmap = {f["name"]: f for f in _only_entity_block(model)["fields"]}
+    assert "requiredWhen" not in fmap["approver"]
+    assert not any(d.kind == "field_rule" for d in model.deferrals)
 
 
 def test_emit_is_byte_stable():

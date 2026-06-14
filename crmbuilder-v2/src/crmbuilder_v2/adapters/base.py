@@ -82,6 +82,8 @@ class CrmAdapter(Protocol):
         fields: list[dict],
         overrides: list[dict],
         *,
+        associations: list[dict] | None = None,
+        rules: list[dict] | None = None,
         rendered_at: str,
         engagement: str | None = None,
     ) -> GenerationResult:
@@ -92,6 +94,10 @@ class CrmAdapter(Protocol):
             embedded ``field_options`` and a ``parent_entity_identifier``.
         :param overrides: ``engine_override`` records (all engines; the
             adapter merges only the ones scoped to ``self.engine``).
+        :param associations: ``association`` design records (slice 2 — the
+            ``relationships:`` block source).
+        :param rules: ``rule`` design records (slice 2 — the field-level
+            ``requiredWhen`` / ``visibleWhen`` source).
         :param rendered_at: injected ISO timestamp (determinism — never
             read the clock inside the pure build).
         :param engagement: the source engagement label, for provenance.

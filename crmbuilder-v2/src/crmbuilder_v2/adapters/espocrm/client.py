@@ -41,6 +41,14 @@ class DesignClient:
     def list_engine_overrides(self) -> list[dict]:
         raise NotImplementedError
 
+    def list_associations(self) -> list[dict]:
+        """Association records — the ``relationships:`` block source."""
+        raise NotImplementedError
+
+    def list_rules(self) -> list[dict]:
+        """Field/entity rule records carrying a neutral condition AST."""
+        raise NotImplementedError
+
 
 class RestDesignClient(DesignClient):
     """REST client of the live V2 API — GET requests only.
@@ -96,3 +104,9 @@ class RestDesignClient(DesignClient):
 
     def list_engine_overrides(self) -> list[dict]:
         return self._get("/engine-overrides")
+
+    def list_associations(self) -> list[dict]:
+        return self._get("/associations")
+
+    def list_rules(self) -> list[dict]:
+        return self._get("/rules")

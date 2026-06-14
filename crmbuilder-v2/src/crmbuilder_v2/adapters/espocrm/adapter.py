@@ -72,6 +72,8 @@ class EspoCrmAdapter(CrmAdapter):
         fields: list[dict],
         overrides: list[dict],
         *,
+        associations: list[dict] | None = None,
+        rules: list[dict] | None = None,
         rendered_at: str,
         engagement: str | None = None,
     ) -> GenerationResult:
@@ -85,6 +87,8 @@ class EspoCrmAdapter(CrmAdapter):
             entities,
             fields,
             overrides,
+            associations=associations,
+            rules=rules,
             rendered_at=rendered_at,
             engagement=engagement,
         )
@@ -138,10 +142,14 @@ class EspoCrmAdapter(CrmAdapter):
         entities = client.list_entities()
         fields = client.list_fields()
         overrides = client.list_engine_overrides()
+        associations = client.list_associations()
+        rules = client.list_rules()
         result = self.generate(
             entities,
             fields,
             overrides,
+            associations=associations,
+            rules=rules,
             rendered_at=rendered_at,
             engagement=engagement,
         )

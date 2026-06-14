@@ -19,8 +19,24 @@ import re
 from dataclasses import dataclass, field
 
 from crmbuilder_v2.adapters.base import Deferral
+from crmbuilder_v2.adapters.espocrm.conditions import (
+    CompileError,
+    compile_condition,
+)
 
 ENGINE = "espocrm"
+
+# §8 neutral ``association_cardinality`` → EspoCRM relationship ``linkType``.
+# The neutral model expresses a relationship from the source's perspective,
+# so ``one_to_many`` means "one source relates to many targets". EspoCRM's
+# inverse ``manyToOne`` is captured by the same single declaration (the
+# ``linkForeign`` names the foreign side) — no separate inverse row is
+# emitted (schema §8.2).
+_CARDINALITY_TO_LINK_TYPE: dict[str, str] = {
+    "one_to_one": "oneToOne",
+    "one_to_many": "oneToMany",
+    "many_to_many": "manyToMany",
+}
 
 # §6 entity-kind → EspoCRM base ``type``. NULL/transaction/other → Base.
 _KIND_TO_TYPE: dict[str, str] = {
@@ -133,6 +149,24 @@ def derive_label(name: str) -> str:
 def pluralize(name: str) -> str:
     """Naive pluralization for the default plural label (design §6)."""
     return f"{name}s"
+
+
+def camel_singular(entity_name: str) -> str:
+    """lowerCamelCase singular link-name stem from an entity name
+    (``Mentor Application`` → ``mentorApplication``)."""
+    return derive_internal_name(entity_name)
+
+
+def camel_plural(entity_name: str) -> str:
+    """lowerCamelCase plural link-name from an entity name
+    (``Mentor Application`` → ``mentorApplications``). The trailing ``s``
+    keeps the ``^[a-z][a-zA-Z0-9]*$`` field-name rule."""
+    return f"{camel_singular(entity_name)}s"
+
+
+def _role_link_name(role: str) -> str:
+    """lowerCamelCase a declared association role into a link name."""
+    return derive_internal_name(role)
 
 
 def _filename_for(entity_name: str, entity_identifier: str, taken: set[str]) -> str:
@@ -289,8 +323,10 @@ def _build_field(
                 name=fname,
                 parent=parent_name,
                 detail=(
-                    "reference field — becomes a relationships: link "
-                    "(association construct, adapter slice 2); not emitted"
+                    "reference field — relationship links are generated from "
+                    "association records (slice 2). This field is covered if "
+                    "an association exists for its entity pair; if none does, "
+                    "create the association or configure the link manually"
                 ),
             )
         )
@@ -413,13 +449,24 @@ def _entity_type(entity_row: dict) -> str:
     return _KIND_TO_TYPE.get(entity_row.get("entity_kind"), "Base")
 
 
+@dataclass
+class _EntityBuild:
+    """Internal: an :class:`EntityProgram` plus the lookups slice-2
+    post-processing needs — the live field-payload dicts (so rules can be
+    attached in place) and the condition field-reference resolver map."""
+
+    program: EntityProgram
+    payload_by_field_id: dict[str, dict]
+    ref_map: dict[str, str]
+
+
 def _build_entity_program(
     entity_row: dict,
     field_rows: list[dict],
     index: dict[tuple[str, str, str], object],
     deferrals: list[Deferral],
     taken_filenames: set[str],
-) -> EntityProgram:
+) -> _EntityBuild:
     eid = entity_row["entity_identifier"]
     ename = entity_row.get("entity_name", "")
 
@@ -445,10 +492,19 @@ def _build_entity_program(
     }
 
     field_blocks: list[FieldBlock] = []
+    payload_by_field_id: dict[str, dict] = {}
+    ref_map: dict[str, str] = {}
     for field_row in sorted(field_rows, key=lambda f: f["field_identifier"]):
         block = _build_field(field_row, index, deferrals, ename)
         if block is not None:
             field_blocks.append(block)
+            payload_by_field_id[block.field_identifier] = block.payload
+            internal_name = block.payload["name"]
+            # Resolve a condition reference by FLD-NNN or by business name.
+            ref_map[block.field_identifier] = internal_name
+            fname = field_row.get("field_name")
+            if fname:
+                ref_map[fname] = internal_name
     if field_blocks:
         entity_block["fields"] = [b.payload for b in field_blocks]
 
@@ -479,12 +535,289 @@ def _build_entity_program(
         "content_version": "1.0.0",
         "entities": {ename: entity_block},
     }
-    return EntityProgram(
-        entity_identifier=eid,
-        entity_name=ename,
-        filename=_filename_for(ename, eid, taken_filenames),
-        program=program,
+    return _EntityBuild(
+        program=EntityProgram(
+            entity_identifier=eid,
+            entity_name=ename,
+            filename=_filename_for(ename, eid, taken_filenames),
+            program=program,
+        ),
+        payload_by_field_id=payload_by_field_id,
+        ref_map=ref_map,
     )
+
+
+# ---------------------------------------------------------------------------
+# Rules → requiredWhen / visibleWhen (design §8, schema §6.1.1 / §11)
+# ---------------------------------------------------------------------------
+
+# Field-effect → the EspoCRM field-level YAML key it maps to. ``valid_when``
+# has no field-level deploy-validated key → it is deferred to MANUAL-CONFIG.
+_RULE_EFFECT_TO_KEY: dict[str, str] = {
+    "required_when": "requiredWhen",
+    "visible_when": "visibleWhen",
+}
+
+
+def _apply_field_rules(
+    rules: list[dict],
+    builds: dict[str, _EntityBuild],
+    field_entity: dict[str, str],
+    deferrals: list[Deferral],
+) -> None:
+    """Compile each confirmed field ``rule`` to ``requiredWhen`` /
+    ``visibleWhen`` and attach it to its subject field's payload.
+
+    Routes to a deferral (never emits invalid YAML) when: the effect has no
+    field-level key (``valid_when``); the subject is an entity, not a field;
+    the subject field was not emitted (deferred/unmapped, or its parent
+    entity is not confirmed); or the condition cannot be compiled.
+    """
+    for rule in sorted(rules, key=lambda r: r["rule_identifier"]):
+        if rule.get("rule_status") != "confirmed":
+            continue
+        rid = rule["rule_identifier"]
+        rname = rule.get("rule_name", "")
+        subject_type = rule.get("rule_subject_type")
+        effect = rule.get("rule_effect")
+
+        if subject_type == "entity":
+            deferrals.append(
+                Deferral(
+                    kind="entity_rule",
+                    identifier=rid,
+                    name=rname,
+                    parent=rule.get("rule_subject_identifier"),
+                    detail=(
+                        f"entity-subject rule (effect {effect}) — no clean "
+                        "entity-level YAML mapping; configure via the EspoCRM "
+                        "admin UI"
+                    ),
+                )
+            )
+            continue
+
+        key = _RULE_EFFECT_TO_KEY.get(effect)
+        if key is None:
+            deferrals.append(
+                Deferral(
+                    kind="field_rule",
+                    identifier=rid,
+                    name=rname,
+                    parent=rule.get("rule_subject_identifier"),
+                    detail=(
+                        f"rule effect {effect!r} has no field-level EspoCRM "
+                        "YAML key (valid_when is a record-validation "
+                        "invariant) — configure via the EspoCRM admin UI"
+                    ),
+                )
+            )
+            continue
+
+        subject_fid = rule.get("rule_subject_identifier")
+        eid = field_entity.get(subject_fid)
+        build = builds.get(eid) if eid is not None else None
+        payload = (
+            build.payload_by_field_id.get(subject_fid)
+            if build is not None
+            else None
+        )
+        if payload is None:
+            deferrals.append(
+                Deferral(
+                    kind="field_rule",
+                    identifier=rid,
+                    name=rname,
+                    parent=subject_fid,
+                    detail=(
+                        f"{key} target field {subject_fid} was not emitted "
+                        "(deferred/unmapped field or non-confirmed entity) — "
+                        "rule not attached"
+                    ),
+                )
+            )
+            continue
+
+        def _resolve(ref: str, _map: dict[str, str] = build.ref_map) -> str:
+            return _map.get(ref) or derive_internal_name(ref)
+
+        try:
+            compiled = compile_condition(rule.get("rule_condition"), _resolve)
+        except CompileError as exc:
+            deferrals.append(
+                Deferral(
+                    kind="field_rule",
+                    identifier=rid,
+                    name=rname,
+                    parent=subject_fid,
+                    detail=f"condition not compilable to EspoCRM form: {exc}",
+                )
+            )
+            continue
+
+        # ``required: true`` is mutually exclusive with both requiredWhen and
+        # visibleWhen at deploy validation — a conditional gate supersedes the
+        # unconditional flag, so drop it when a condition is attached.
+        payload.pop("required", None)
+        payload[key] = compiled
+
+
+# ---------------------------------------------------------------------------
+# Associations → relationships: block (design §8, schema §8)
+# ---------------------------------------------------------------------------
+
+
+def _link_names(
+    assoc: dict,
+    source_name: str,
+    target_name: str,
+    cardinality: str,
+    index: dict[tuple[str, str, str], object],
+) -> tuple[str, str]:
+    """Derive the (``link``, ``linkForeign``) names for one association.
+
+    A declared role wins; otherwise the link is named after the entity it
+    reaches, plural when it reaches many and singular when it reaches one
+    (schema §8.2 — e.g. ``Dues → mentor`` / ``Contact → duesRecords``).
+    Both are overridable via ``engine_override`` (``link_name_source`` /
+    ``link_name_target``).
+    """
+    source_role = assoc.get("association_source_role")
+    target_role = assoc.get("association_target_role")
+
+    # The source-side link reaches the target; the target-side link reaches
+    # the source. "Many" reached → plural; "one" reached → singular.
+    if cardinality == "many_to_many":
+        link_default = camel_plural(target_name)
+        foreign_default = camel_plural(source_name)
+    elif cardinality == "one_to_many":
+        # source is the "one" → reaches many targets; target reaches one source
+        link_default = camel_plural(target_name)
+        foreign_default = camel_singular(source_name)
+    else:  # one_to_one
+        link_default = camel_singular(target_name)
+        foreign_default = camel_singular(source_name)
+
+    if source_role:
+        link_default = _role_link_name(source_role)
+    if target_role:
+        foreign_default = _role_link_name(target_role)
+
+    aid = assoc["association_identifier"]
+    link = str(_override(index, "association", aid, "link_name_source", link_default))
+    foreign = str(
+        _override(index, "association", aid, "link_name_target", foreign_default)
+    )
+    return link, foreign
+
+
+def _build_relationship(
+    assoc: dict,
+    entity_name_by_id: dict[str, str],
+    index: dict[tuple[str, str, str], object],
+    deferrals: list[Deferral],
+) -> tuple[str, dict] | None:
+    """Build one EspoCRM ``relationships:`` entry from an ``association``.
+
+    Returns ``(source_entity_identifier, relationship_dict)`` so the caller
+    can place the entry in the source entity's program file, or ``None`` if
+    the cardinality has no EspoCRM mapping (routed to a deferral).
+    """
+    aid = assoc["association_identifier"]
+    aname = assoc.get("association_name", "")
+    source_id = assoc.get("association_source_entity")
+    target_id = assoc.get("association_target_entity")
+    source_name = entity_name_by_id[source_id]
+    target_name = entity_name_by_id[target_id]
+
+    cardinality = assoc.get("association_cardinality")
+    link_type_default = _CARDINALITY_TO_LINK_TYPE.get(cardinality)
+    if link_type_default is None:
+        deferrals.append(
+            Deferral(
+                kind="association",
+                identifier=aid,
+                name=aname,
+                parent=source_name,
+                detail=(
+                    f"cardinality {cardinality!r} has no EspoCRM linkType "
+                    "mapping — configure the relationship via the admin UI"
+                ),
+            )
+        )
+        return None
+    link_type = str(
+        _override(index, "association", aid, "link_type", link_type_default)
+    )
+
+    link, foreign = _link_names(assoc, source_name, target_name, cardinality, index)
+
+    rel: dict = {
+        "name": derive_internal_name(aname),
+        "description": str(
+            assoc.get("association_description")
+            or f"{source_name} ↔ {target_name} ({aid})"
+        ),
+        "entity": source_name,
+        "entityForeign": target_name,
+        "linkType": link_type,
+        "link": link,
+        "linkForeign": foreign,
+        "label": derive_label(target_name),
+        "labelForeign": derive_label(source_name),
+    }
+    if link_type == "manyToMany":
+        rel["relationName"] = derive_internal_name(f"{source_name} {target_name}")
+    return source_id, rel
+
+
+def _apply_associations(
+    associations: list[dict],
+    builds: dict[str, _EntityBuild],
+    entity_name_by_id: dict[str, str],
+    confirmed_entity_ids: set[str],
+    index: dict[tuple[str, str, str], object],
+    deferrals: list[Deferral],
+) -> set[str]:
+    """Attach a ``relationships:`` block to each source entity's program.
+
+    Only confirmed associations whose *both* endpoints are confirmed (and so
+    emitted) are rendered. Returns the set of entity identifiers that take
+    part in at least one emitted relationship (used to annotate deferred
+    reference fields).
+    """
+    participating: set[str] = set()
+    for assoc in sorted(associations, key=lambda a: a["association_identifier"]):
+        if assoc.get("association_status") != "confirmed":
+            continue
+        source_id = assoc.get("association_source_entity")
+        target_id = assoc.get("association_target_entity")
+        if source_id not in confirmed_entity_ids or (
+            target_id not in confirmed_entity_ids
+        ):
+            # An endpoint is not in the emitted set → no home program.
+            deferrals.append(
+                Deferral(
+                    kind="association",
+                    identifier=assoc["association_identifier"],
+                    name=assoc.get("association_name", ""),
+                    parent=entity_name_by_id.get(source_id, source_id),
+                    detail=(
+                        "an endpoint entity is not confirmed/emitted — "
+                        "relationship not rendered"
+                    ),
+                )
+            )
+            continue
+        built = _build_relationship(assoc, entity_name_by_id, index, deferrals)
+        if built is None:
+            continue
+        owner_id, rel = built
+        program = builds[owner_id].program.program
+        program.setdefault("relationships", []).append(rel)
+        participating.add(source_id)
+        participating.add(target_id)
+    return participating
 
 
 # ---------------------------------------------------------------------------
@@ -497,6 +830,8 @@ def build_program_model(
     fields: list[dict],
     overrides: list[dict],
     *,
+    associations: list[dict] | None = None,
+    rules: list[dict] | None = None,
     rendered_at: str,
     engagement: str | None = None,
 ) -> GenerationModel:
@@ -506,7 +841,14 @@ def build_program_model(
     ``confirmed`` entities and their ``confirmed`` fields are emitted;
     every candidate/deferred/rejected record is skipped silently (it is
     not a deferral — it is unfinished design).
+
+    Slice 2 adds the ``relationships:`` block (from ``confirmed``
+    ``association`` records whose both endpoints are emitted) and field-level
+    ``requiredWhen`` / ``visibleWhen`` (from ``confirmed`` field ``rule``
+    records). ``valid_when`` and entity-subject rules route to deferrals.
     """
+    associations = associations or []
+    rules = rules or []
     index = _override_index(overrides)
 
     confirmed_entities = sorted(
@@ -514,8 +856,13 @@ def build_program_model(
         key=lambda e: e["entity_identifier"],
     )
     confirmed_entity_ids = {e["entity_identifier"] for e in confirmed_entities}
+    entity_name_by_id = {
+        e["entity_identifier"]: e.get("entity_name", "")
+        for e in confirmed_entities
+    }
 
     fields_by_parent: dict[str, list[dict]] = {}
+    field_entity: dict[str, str] = {}
     for field_row in fields:
         if field_row.get("field_status") != "confirmed":
             continue
@@ -525,33 +872,47 @@ def build_program_model(
             # no home program — skip with the parent (not a deferral).
             continue
         fields_by_parent.setdefault(parent, []).append(field_row)
+        field_entity[field_row["field_identifier"]] = parent
 
     deferrals: list[Deferral] = []
     taken_filenames: set[str] = set()
-    programs: list[EntityProgram] = []
+    builds: dict[str, _EntityBuild] = {}
     for entity_row in confirmed_entities:
-        programs.append(
-            _build_entity_program(
-                entity_row,
-                fields_by_parent.get(entity_row["entity_identifier"], []),
-                index,
-                deferrals,
-                taken_filenames,
-            )
+        build = _build_entity_program(
+            entity_row,
+            fields_by_parent.get(entity_row["entity_identifier"], []),
+            index,
+            deferrals,
+            taken_filenames,
         )
+        builds[entity_row["entity_identifier"]] = build
 
-    # Composite constructs are out of scope for slice 1 — one standing
-    # deferral records the whole class so the companion is honest about it.
+    # Slice 2: field rules → requiredWhen/visibleWhen (mutate field payloads),
+    # then associations → relationships: blocks on the source programs.
+    _apply_field_rules(rules, builds, field_entity, deferrals)
+    _apply_associations(
+        associations,
+        builds,
+        entity_name_by_id,
+        confirmed_entity_ids,
+        index,
+        deferrals,
+    )
+
+    programs = [builds[e["entity_identifier"]].program for e in confirmed_entities]
+
+    # Remaining composite constructs are still out of scope (slices 2-3) —
+    # one standing deferral keeps the companion honest about the gap.
     deferrals.append(
         Deferral(
             kind="composite_constructs",
             identifier="-",
-            name="associations, rules, views, automations, dedup, templates",
+            name="views, automations, dedup, templates",
             parent=None,
             detail=(
-                "the relationships:/savedViews:/duplicateChecks:/workflows:/"
-                "emailTemplates: blocks are generated by adapter slices 2-3; "
-                "not emitted in this slice"
+                "the savedViews:/duplicateChecks:/workflows:/emailTemplates: "
+                "blocks are generated by later adapter slices; relationships: "
+                "and requiredWhen/visibleWhen are emitted in this slice"
             ),
         )
     )
