@@ -419,3 +419,39 @@ def release_planning_item(
         after=after,
     )
     return after
+
+
+# ---------------------------------------------------------------------------
+# PI-183 — ADO execution_mode approval (dispatch_approved)
+# ---------------------------------------------------------------------------
+
+
+def approve_dispatch(session: Session, identifier: str) -> dict:
+    """Record a human approval for an ``ado_with_approval`` planning_item.
+
+    Sets ``dispatch_approved`` to True so the PM dispatcher will treat the item
+    as eligible (REQ-155). This is the *only* write path for the flag — it is
+    deliberately excluded from the generic ``update`` field set (DEC-424). The
+    flip is recorded in the change_log. Idempotent: approving an
+    already-approved item returns it unchanged.
+    """
+    row = session.scalar(
+        select(PlanningItem).where(PlanningItem.identifier == identifier)
+    )
+    if row is None:
+        raise NotFoundError(_ENTITY_TYPE, identifier)
+    if row.dispatch_approved:
+        return to_dict(row)
+    before = to_dict(row)
+    row.dispatch_approved = True
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after

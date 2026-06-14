@@ -162,6 +162,7 @@ class PlanningItemCreateIn(_Base):
     resolution_reference: str | None = None
     executive_summary: str  # PI-074; required since PI-075 (NOT NULL)
     area: list[str] | None = None  # PI-076
+    execution_mode: str = "ado"  # PI-183; ADO risk gate, defaults to ado
 
 
 class PlanningItemUpdateIn(_Base):
@@ -172,6 +173,7 @@ class PlanningItemUpdateIn(_Base):
     resolution_reference: str | None = None
     executive_summary: str | None = None  # PI-074
     area: list[str] | None = None  # PI-076
+    execution_mode: str | None = None  # PI-183
 
 
 class PlanningItemClaimIn(_Base):
@@ -1269,6 +1271,7 @@ class ProjectCreateIn(_Base):
     project_description: str
     project_notes: str | None = None
     project_status: str | None = None
+    project_execution_mode: str | None = None  # PI-183; ADO risk gate
     project_identifier: str | None = None
     references: list[GovernanceEdgeIn] | None = None
     timestamps: dict[str, Any] | None = None
@@ -1281,6 +1284,7 @@ class ProjectReplaceIn(_Base):
     project_description: str
     project_notes: str | None = None
     project_status: str
+    project_execution_mode: str | None = None  # PI-183
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -1290,6 +1294,7 @@ class ProjectPatchIn(_Base):
     project_description: str | None = None
     project_notes: str | None = None
     project_status: str | None = None
+    project_execution_mode: str | None = None  # PI-183
     references: list[GovernanceEdgeIn] | None = None
 
 

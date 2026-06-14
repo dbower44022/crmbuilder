@@ -85,6 +85,7 @@ def create(body: ProjectCreateIn):
                 description=body.project_description,
                 notes=body.project_notes,
                 status=body.project_status or "planned",
+                execution_mode=body.project_execution_mode or "ado",
                 identifier=body.project_identifier,
                 references=_edges(body),
                 timestamps=body.timestamps,
@@ -105,6 +106,7 @@ def replace(identifier: str, body: ProjectReplaceIn):
                 description=body.project_description,
                 notes=body.project_notes,
                 status=body.project_status,
+                execution_mode=body.project_execution_mode,
                 references=_edges(body),
             )
         )
