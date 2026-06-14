@@ -197,3 +197,91 @@ async def test_create_field_unknown_parent_raises(mcp_server):
                 "type": "text",
             },
         )
+
+
+# ---------------------------------------------------------------------------
+# PRJ-025 PI-182 — intrinsic design-intent attributes + options
+# ---------------------------------------------------------------------------
+
+
+async def test_create_entity_with_intrinsics(mcp_server):
+    created = await _call(
+        mcp_server,
+        "create_entity",
+        {
+            "name": "SortedEntity",
+            "description": "d",
+            "default_sort_field": "createdAt",
+            "default_sort_direction": "desc",
+            "track_activity": True,
+        },
+    )
+    assert created["entity_default_sort_field"] == "createdAt"
+    assert created["entity_default_sort_direction"] == "desc"
+    assert created["entity_track_activity"] is True
+
+
+async def test_create_field_with_intrinsics_and_options(mcp_server):
+    entity = await _call(
+        mcp_server,
+        "create_entity",
+        {"name": "OptionHost", "description": "d"},
+    )
+    ent_id = entity["entity_identifier"]
+    field = await _call(
+        mcp_server,
+        "create_field",
+        {
+            "entity_identifier": ent_id,
+            "name": "stage",
+            "description": "pipeline stage",
+            "type": "enum",
+            "tooltip": "pick a stage",
+            "format": "multiline",
+            "read_only": True,
+            "unique": True,
+            "max_length": 64,
+            "options": [
+                {"option_value": "lead", "option_label": "Lead"},
+                {"option_value": "won"},
+            ],
+        },
+    )
+    assert field["field_tooltip"] == "pick a stage"
+    assert field["field_format"] == "multiline"
+    assert field["field_read_only"] is True
+    assert field["field_unique"] is True
+    assert field["field_max_length"] == 64
+    assert [o["option_value"] for o in field["field_options"]] == ["lead", "won"]
+
+
+async def test_update_field_replaces_options(mcp_server):
+    entity = await _call(
+        mcp_server,
+        "create_entity",
+        {"name": "OptionHost2", "description": "d"},
+    )
+    ent_id = entity["entity_identifier"]
+    field = await _call(
+        mcp_server,
+        "create_field",
+        {
+            "entity_identifier": ent_id,
+            "name": "stage",
+            "description": "d",
+            "type": "enum",
+            "options": [{"option_value": "a"}],
+        },
+    )
+    fld_id = field["field_identifier"]
+    updated = await _call(
+        mcp_server,
+        "update_field",
+        {
+            "identifier": fld_id,
+            "tooltip": "updated help",
+            "options": [{"option_value": "x"}, {"option_value": "y"}],
+        },
+    )
+    assert updated["field_tooltip"] == "updated help"
+    assert [o["option_value"] for o in updated["field_options"]] == ["x", "y"]

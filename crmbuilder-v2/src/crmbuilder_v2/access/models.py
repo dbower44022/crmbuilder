@@ -758,6 +758,21 @@ class Entity(EngagementScopedPKMixin, Base):
     entity_kind: Mapped[str | None] = mapped_column(Text, nullable=True)
     entity_description: Mapped[str] = mapped_column(Text, nullable=False)
     entity_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # PRJ-025 PI-182 — intrinsic engine-neutral design intent (§6).
+    # ``entity_default_sort_field`` names the field the entity sorts by;
+    # ``entity_default_sort_direction`` is asc/desc (validated against
+    # ENTITY_SORT_DIRECTIONS at the access layer when present).
+    # ``entity_track_activity`` is the neutral "track activity feed"
+    # intent (EspoCRM ``settings.stream``; HubSpot timeline always-on).
+    entity_default_sort_field: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    entity_default_sort_direction: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    entity_track_activity: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     entity_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -788,6 +803,11 @@ class Entity(EngagementScopedPKMixin, Base):
         CheckConstraint(
             f"entity_kind IS NULL OR {_check_in('entity_kind', ENTITY_KINDS)}",
             name="ck_entity_kind",
+        ),
+        # PRJ-025 PI-182 — neutral track-activity flag domain CHECK.
+        CheckConstraint(
+            _BooleanDomainCheck("entity_track_activity"),
+            name="ck_entity_track_activity_boolean",
         ),
         Index("ix_entities_entity_status", "entity_status"),
         Index("ix_entities_entity_deleted_at", "entity_deleted_at"),
@@ -830,6 +850,30 @@ class Field(EngagementScopedPKMixin, Base):
     field_status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="candidate"
     )
+    # PRJ-025 PI-182 — intrinsic engine-neutral design intent (§7). All
+    # neutral: no EspoCRM/HubSpot specifics. Free-text bound/default
+    # values are stored as the authored string (adapters coerce per
+    # engine). ``field_format`` / ``field_numeric_scale`` are validated
+    # against FIELD_FORMATS / FIELD_NUMERIC_SCALES at the access layer
+    # when present. Enum/multi_enum option values live in the
+    # ``field_options`` child collection, not here.
+    field_tooltip: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_usage_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_format: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_numeric_scale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_max_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    field_min: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_max: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_read_only: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    field_unique: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    field_externally_populated: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     field_previous_parent_entity_identifier: Mapped[str | None] = (
         mapped_column(String(32), nullable=True)
     )
@@ -864,9 +908,75 @@ class Field(EngagementScopedPKMixin, Base):
             _BooleanDomainCheck("field_required"),
             name="ck_field_required_boolean",
         ),
+        # PRJ-025 PI-182 — the three new neutral boolean flags share the
+        # same dialect-rendering domain CHECK as ``field_required``.
+        CheckConstraint(
+            _BooleanDomainCheck("field_read_only"),
+            name="ck_field_read_only_boolean",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("field_unique"),
+            name="ck_field_unique_boolean",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("field_externally_populated"),
+            name="ck_field_externally_populated_boolean",
+        ),
         Index("ix_fields_field_status", "field_status"),
         Index("ix_fields_field_type", "field_type"),
         Index("ix_fields_field_deleted_at", "field_deleted_at"),
+    )
+
+
+class FieldOption(EngagementScopedMixin, Base):
+    """Child of ``fields`` — one allowed enum/multi_enum option value.
+
+    PRJ-025 PI-182 (design §7 "allowed values (enum)" / §8 ``field_option``).
+    A plain child collection of ``field``, **not** a prefixed-identifier
+    governance entity and **not** a ``change_log`` entity type — its
+    contents are captured in the parent field's change-log payload. Option
+    rows are engagement-scoped exactly like their parent field
+    (``EngagementScopedMixin`` supplies ``engagement_id`` + the
+    write-stamp / read-filter coverage); the composite FK to the parent's
+    ``(engagement_id, field_identifier)`` PK is declared in
+    ``__table_args__`` (the parent PK is composite under PI-123), mirroring
+    ``ReferenceBookVersion``.
+
+    Ordering is explicit via ``option_order`` (the business display order,
+    which both EspoCRM ``options:`` and HubSpot enumeration ``options``
+    consume). ``option_label`` is the optional human label; ``option_value``
+    is the stored value and is unique within a field (per engagement).
+    """
+
+    __tablename__ = "field_options"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # FK to the parent's composite PK ``(engagement_id, field_identifier)``
+    # is declared as a ForeignKeyConstraint in __table_args__; the column
+    # itself carries no single-column FK.
+    field_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    option_value: Mapped[str] = mapped_column(Text, nullable=False)
+    option_label: Mapped[str | None] = mapped_column(Text, nullable=True)
+    option_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "field_identifier"],
+            ["fields.engagement_id", "fields.field_identifier"],
+            ondelete="CASCADE",
+            name="fk_field_options_parent",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "field_identifier",
+            "option_value",
+            name="uq_field_option_value",
+        ),
+        Index(
+            "ix_field_options_parent",
+            "engagement_id",
+            "field_identifier",
+        ),
     )
 
 

@@ -50,7 +50,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -67,9 +67,11 @@ from crmbuilder_v2.access.exceptions import (
     StatusTransitionError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.models import Entity, Field, Reference
+from crmbuilder_v2.access.models import Entity, Field, FieldOption, Reference
 from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
+    FIELD_FORMATS,
+    FIELD_NUMERIC_SCALES,
     FIELD_STATUS_TRANSITIONS,
     FIELD_STATUSES,
     FIELD_TYPES,
@@ -84,11 +86,36 @@ _IDENTIFIER_RE = re.compile(r"^FLD-\d{3}$")
 # burst; exhausting it indicates a genuine fault, surfaced as a 409.
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 
+# PRJ-025 PI-182 — intrinsic engine-neutral design-intent attributes
+# (§7). Each maps an unprefixed repo kwarg (the form the router forwards)
+# to its ``field_*`` column. ``format`` / ``numeric_scale`` are
+# enum-validated; ``max_length`` is integer-coerced; the three booleans
+# are coerced via ``bool``; the rest are stored as the authored string.
+_INTRINSIC_COLUMN_BY_KWARG: dict[str, str] = {
+    "tooltip": "field_tooltip",
+    "usage_summary": "field_usage_summary",
+    "default_value": "field_default_value",
+    "format": "field_format",
+    "numeric_scale": "field_numeric_scale",
+    "max_length": "field_max_length",
+    "min": "field_min",
+    "max": "field_max",
+    "read_only": "field_read_only",
+    "unique": "field_unique",
+    "externally_populated": "field_externally_populated",
+}
+_INTRINSIC_BOOL_KWARGS = frozenset(
+    {"read_only", "unique", "externally_populated"}
+)
+
 # Fields accepted by :func:`patch_field`. The identifier, timestamps,
 # and the parent-entity stash column are not patchable. Re-parenting
 # is not allowed via PATCH (spec §3.5.4); use explicit edge management.
+# ``options`` (the field_options child set) is handled out-of-band.
 _PATCHABLE_FIELDS = frozenset(
     {"name", "description", "type", "required", "notes", "status"}
+    | set(_INTRINSIC_COLUMN_BY_KWARG)
+    | {"options"}
 )
 
 
@@ -145,6 +172,209 @@ def _require_type(field_type: object) -> str:
             ]
         )
     return field_type  # type: ignore[return-value]
+
+
+def _require_enum_or_none(
+    value: object, allowed: frozenset[str], field: str
+) -> str | None:
+    """Return ``value`` if it is in ``allowed``; ``None`` for null/empty.
+
+    Used for the optional ``field_format`` / ``field_numeric_scale``
+    neutral tokens (PRJ-025 §7) — validated only when present.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    if value not in allowed:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    field,
+                    "invalid_value",
+                    f"must be null or one of {sorted(allowed)}",
+                )
+            ]
+        )
+    return value  # type: ignore[return-value]
+
+
+def _coerce_int_or_none(value: object, field: str) -> int | None:
+    """Coerce a non-null ``field_max_length`` to ``int`` or raise 422."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise UnprocessableError(
+            [FieldError(field, "invalid_value", "must be an integer or null")]
+        )
+    return value
+
+
+def _coerce_intrinsic(kwarg: str, value: object) -> object:
+    """Validate one intrinsic kwarg, returning the storable column value."""
+    if kwarg in _INTRINSIC_BOOL_KWARGS:
+        return bool(value)
+    if kwarg == "format":
+        return _require_enum_or_none(value, FIELD_FORMATS, "field_format")
+    if kwarg == "numeric_scale":
+        return _require_enum_or_none(
+            value, FIELD_NUMERIC_SCALES, "field_numeric_scale"
+        )
+    if kwarg == "max_length":
+        return _coerce_int_or_none(value, "field_max_length")
+    # Remaining text-valued intrinsics are stored as the authored string;
+    # ``None`` clears.
+    if value is not None and not isinstance(value, str):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    _INTRINSIC_COLUMN_BY_KWARG[kwarg],
+                    "invalid_value",
+                    "must be a string or null",
+                )
+            ]
+        )
+    return value
+
+
+def _validate_intrinsic_kwargs(provided: dict) -> dict:
+    """Reject any kwarg that is not a recognised intrinsic, else echo it.
+
+    Value validation happens later in :func:`_apply_intrinsics`; this is
+    the guard that turns a typo'd ``**intrinsics`` key into a 422 rather
+    than a silently-ignored field.
+    """
+    unknown = set(provided) - set(_INTRINSIC_COLUMN_BY_KWARG)
+    if unknown:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "fields",
+                    "unknown_field",
+                    f"unknown field attributes: {sorted(unknown)}",
+                )
+            ]
+        )
+    return provided
+
+
+def _apply_intrinsics(row: Field, provided: dict) -> None:
+    """Validate + assign the intrinsic kwargs present in ``provided``."""
+    for kwarg, column in _INTRINSIC_COLUMN_BY_KWARG.items():
+        if kwarg in provided:
+            setattr(row, column, _coerce_intrinsic(kwarg, provided[kwarg]))
+
+
+def _load_options(session: Session, field_identifier: str) -> list[dict]:
+    """Return a field's option set ordered by ``option_order`` then id."""
+    rows = session.scalars(
+        select(FieldOption)
+        .where(FieldOption.field_identifier == field_identifier)
+        .order_by(FieldOption.option_order, FieldOption.id)
+    ).all()
+    return [
+        {
+            "option_value": r.option_value,
+            "option_label": r.option_label,
+            "option_order": r.option_order,
+        }
+        for r in rows
+    ]
+
+
+def _field_to_dict(session: Session, row: Field) -> dict:
+    """Serialise a field row with its embedded ordered option set.
+
+    The ``field_options`` collection is surfaced inline so GET returns it
+    and the change-log ``before`` / ``after`` payloads capture it (the
+    collection is not a ``change_log`` entity type of its own).
+    """
+    out = to_dict(row)
+    out["field_options"] = _load_options(session, row.field_identifier)
+    return out
+
+
+def _replace_options(
+    session: Session, field_identifier: str, options: list
+) -> None:
+    """Replace a field's entire option set with ``options`` (ordered).
+
+    Each option is ``{"option_value": str, "option_label": str|None,
+    "option_order": int|None}``; ``option_order`` defaults to the list
+    index. An empty list clears the set. Duplicate ``option_value`` (the
+    DB unique key) is rejected with a 422 before touching the DB.
+    """
+    if not isinstance(options, list):
+        raise UnprocessableError(
+            [FieldError("field_options", "invalid_value", "must be a list")]
+        )
+    seen: set[str] = set()
+    normalized: list[tuple[str, str | None, int]] = []
+    for idx, opt in enumerate(options):
+        if not isinstance(opt, dict):
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "field_options",
+                        "invalid_item",
+                        "each option must be an object",
+                    )
+                ]
+            )
+        value = opt.get("option_value")
+        if not isinstance(value, str) or not value.strip():
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "field_options.option_value",
+                        "missing_or_empty",
+                        "each option requires a non-empty option_value",
+                    )
+                ]
+            )
+        value = value.strip()
+        if value in seen:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "field_options.option_value",
+                        "duplicate",
+                        f"duplicate option_value {value!r}",
+                    )
+                ]
+            )
+        seen.add(value)
+        label = opt.get("option_label")
+        if label is not None and not isinstance(label, str):
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "field_options.option_label",
+                        "invalid_value",
+                        "option_label must be a string or null",
+                    )
+                ]
+            )
+        order = opt.get("option_order")
+        order = idx if order is None else int(order)
+        normalized.append((value, label, order))
+
+    session.execute(
+        delete(FieldOption).where(
+            FieldOption.field_identifier == field_identifier
+        )
+    )
+    session.flush()
+    for value, label, order in normalized:
+        session.add(
+            FieldOption(
+                field_identifier=field_identifier,
+                option_value=value,
+                option_label=label,
+                option_order=order,
+            )
+        )
+    session.flush()
 
 
 def _check_transition(current: str, requested: str) -> None:
@@ -316,7 +546,7 @@ def list_fields(
     else:
         if not include_deleted:
             stmt = stmt.where(Field.field_deleted_at.is_(None))
-    return [to_dict(r) for r in session.scalars(stmt).all()]
+    return [_field_to_dict(session, r) for r in session.scalars(stmt).all()]
 
 
 def get_field(
@@ -332,7 +562,7 @@ def get_field(
         return None
     if row.field_deleted_at is not None and not include_deleted:
         return None
-    return to_dict(row)
+    return _field_to_dict(session, row)
 
 
 def next_field_identifier(session: Session) -> str:
@@ -358,8 +588,9 @@ def _new_field_row(
     required: bool,
     notes: str | None,
     status: str,
+    intrinsics: dict | None = None,
 ) -> Field:
-    return Field(
+    row = Field(
         field_identifier=identifier,
         field_name=name,
         field_description=description,
@@ -368,6 +599,9 @@ def _new_field_row(
         field_notes=notes,
         field_status=status,
     )
+    if intrinsics:
+        _apply_intrinsics(row, intrinsics)
+    return row
 
 
 def _insert_with_autoassign(
@@ -378,6 +612,7 @@ def _insert_with_autoassign(
     required: bool,
     notes: str | None,
     status: str,
+    intrinsics: dict | None = None,
 ) -> Field:
     """Insert a field with a server-assigned identifier, collision-safe.
 
@@ -392,7 +627,14 @@ def _insert_with_autoassign(
     for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
         row = _new_field_row(
-            candidate, name, description, field_type, required, notes, status
+            candidate,
+            name,
+            description,
+            field_type,
+            required,
+            notes,
+            status,
+            intrinsics,
         )
         session.add(row)
         try:
@@ -421,6 +663,8 @@ def create_field(
     notes: str | None = None,
     status: str | None = None,
     identifier: str | None = None,
+    options: list | None = None,
+    **intrinsics,
 ) -> dict:
     """Create a field atomically with its parent-entity edge.
 
@@ -442,6 +686,12 @@ def create_field(
        ``None``).
     8. Create the ``field_belongs_to_entity`` edge via the references
        repository (re-imported locally to avoid an import cycle).
+
+    PRJ-025 PI-182: ``**intrinsics`` accepts the §7 neutral design-intent
+    kwargs (``tooltip``, ``format``, ``read_only``, …) and ``options`` an
+    optional ordered enum/multi_enum option set that, when supplied,
+    populates the ``field_options`` child collection in the same
+    transaction.
     """
     name = _require_nonempty(name, field="field_name")
     description = _require_nonempty(description, field="field_description")
@@ -452,6 +702,7 @@ def create_field(
     if required is None:
         required = False
     required = bool(required)
+    intrinsics = _validate_intrinsic_kwargs(intrinsics)
 
     _require_live_entity(session, field_belongs_to_entity_identifier)
     _reject_duplicate_name_within_entity(
@@ -460,17 +711,22 @@ def create_field(
 
     if identifier is None:
         row = _insert_with_autoassign(
-            session, name, description, field_type, required, notes, status
+            session, name, description, field_type, required, notes, status,
+            intrinsics,
         )
     else:
         _require_identifier_format(identifier)
         if get_by_identifier(session, Field, Field.field_identifier, identifier) is not None:
             raise ConflictError(f"field {identifier!r} already exists")
         row = _new_field_row(
-            identifier, name, description, field_type, required, notes, status
+            identifier, name, description, field_type, required, notes, status,
+            intrinsics,
         )
         session.add(row)
         session.flush()
+
+    if options is not None:
+        _replace_options(session, row.field_identifier, options)
 
     # Create the mandatory parent-entity edge in the same transaction.
     # Imported locally to avoid a module-load cycle (references.py does
@@ -487,7 +743,7 @@ def create_field(
         relationship="field_belongs_to_entity",
     )
 
-    after = to_dict(row)
+    after = _field_to_dict(session, row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,
@@ -511,6 +767,8 @@ def update_field(
     notes: str | None = None,
     status: str,
     rejected_by_decision: str | None = None,
+    options: list | None = None,
+    **intrinsics,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -521,6 +779,13 @@ def update_field(
     wholesale (``None`` clears). A ``status`` change is
     transition-validated. The parent entity cannot be changed via PUT
     (spec §3.5.4).
+
+    PRJ-025 PI-182: the §7 intrinsic ``**intrinsics`` are replaced
+    wholesale (PUT semantics — an omitted scalar deserialises to its
+    default and clears). ``options`` is the exception: ``None`` leaves
+    the existing option set untouched and a list (including ``[]``)
+    replaces it — a child collection is not silently wiped on an
+    unrelated PUT.
     """
     row = _get_row(session, identifier)
     if field_identifier is not None and field_identifier != identifier:
@@ -533,7 +798,8 @@ def update_field(
                 )
             ]
         )
-    before = to_dict(row)
+    before = _field_to_dict(session, row)
+    intrinsics = _validate_intrinsic_kwargs(intrinsics)
 
     name = _require_nonempty(name, field="field_name")
     description = _require_nonempty(description, field="field_description")
@@ -571,9 +837,13 @@ def update_field(
     row.field_type = field_type
     row.field_required = bool(required)
     row.field_notes = notes
+    _apply_intrinsics(row, intrinsics)
     session.flush()
 
-    after = to_dict(row)
+    if options is not None:
+        _replace_options(session, identifier, options)
+
+    after = _field_to_dict(session, row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,
@@ -589,13 +859,20 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
     """Partial update (PATCH). Only the supplied fields are touched.
 
     Recognised keys: ``name``, ``description``, ``type``, ``required``,
-    ``notes``, ``status``, ``rejected_by_decision``. A ``status`` change
-    is transition-validated; a move to ``rejected`` requires either the
-    ``rejected_by_decision`` key (atomic edge + flip, PI-153 §3.4) or a
-    pre-existing ``rejected_by_decision`` edge. Parent-entity
-    reparenting is not allowed via PATCH (spec §3.5.4).
+    ``notes``, ``status``, ``rejected_by_decision``, the PRJ-025 PI-182
+    §7 intrinsics (``tooltip``, ``usage_summary``, ``default_value``,
+    ``format``, ``numeric_scale``, ``max_length``, ``min``, ``max``,
+    ``read_only``, ``unique``, ``externally_populated``), and ``options``
+    (the enum option set — provided replaces it, omitted leaves it
+    unchanged). A ``status`` change is transition-validated; a move to
+    ``rejected`` requires either the ``rejected_by_decision`` key (atomic
+    edge + flip, PI-153 §3.4) or a pre-existing ``rejected_by_decision``
+    edge. Parent-entity reparenting is not allowed via PATCH (spec §3.5.4).
     """
     rejected_by_decision = fields.pop("rejected_by_decision", None)
+    # ``options`` only replaces the set when a list is supplied; an
+    # omitted or explicit-null value leaves the existing set untouched.
+    options = fields.pop("options", None)
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
         raise UnprocessableError(
@@ -608,7 +885,7 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
             ]
         )
     row = _get_row(session, identifier)
-    before = to_dict(row)
+    before = _field_to_dict(session, row)
 
     if "name" in fields:
         name = _require_nonempty(fields["name"], field="field_name")
@@ -651,8 +928,17 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
             current_status=row.field_status,
         )
 
+    # Intrinsic §7 attributes — only the supplied keys are touched.
+    _apply_intrinsics(
+        row, {k: fields[k] for k in _INTRINSIC_COLUMN_BY_KWARG if k in fields}
+    )
+
     session.flush()
-    after = to_dict(row)
+
+    if isinstance(options, list):
+        _replace_options(session, identifier, options)
+
+    after = _field_to_dict(session, row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,
@@ -683,8 +969,8 @@ def delete_field(session: Session, identifier: str) -> dict:
     """
     row = _get_row(session, identifier)
     if row.field_deleted_at is not None:
-        return to_dict(row)
-    before = to_dict(row)
+        return _field_to_dict(session, row)
+    before = _field_to_dict(session, row)
 
     parent = _resolve_parent_entity_identifier(session, identifier)
     row.field_deleted_at = datetime.now(UTC)
@@ -704,7 +990,7 @@ def delete_field(session: Session, identifier: str) -> dict:
             _skip_cardinality_check=True,
         )
 
-    after = to_dict(row)
+    after = _field_to_dict(session, row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,
@@ -763,7 +1049,7 @@ def restore_field(session: Session, identifier: str) -> dict:
                 ]
             )
 
-    before = to_dict(row)
+    before = _field_to_dict(session, row)
     row.field_deleted_at = None
     row.field_previous_parent_entity_identifier = None
     session.flush()
@@ -780,7 +1066,7 @@ def restore_field(session: Session, identifier: str) -> dict:
             relationship="field_belongs_to_entity",
         )
 
-    after = to_dict(row)
+    after = _field_to_dict(session, row)
     emit(
         session,
         entity_type=_ENTITY_TYPE,

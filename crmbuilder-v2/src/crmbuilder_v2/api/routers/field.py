@@ -44,6 +44,37 @@ router = APIRouter(prefix="/fields", tags=["fields"])
 # strips when forwarding a PATCH body.
 _FIELD_PREFIX = "field_"
 
+# PRJ-025 PI-182 — the §7 intrinsic body keys (``field_*``) and the
+# unprefixed repo kwarg each forwards to on create / replace.
+_INTRINSIC_BODY_TO_KWARG = {
+    "field_tooltip": "tooltip",
+    "field_usage_summary": "usage_summary",
+    "field_default_value": "default_value",
+    "field_format": "format",
+    "field_numeric_scale": "numeric_scale",
+    "field_max_length": "max_length",
+    "field_min": "min",
+    "field_max": "max",
+    "field_read_only": "read_only",
+    "field_unique": "unique",
+    "field_externally_populated": "externally_populated",
+}
+
+
+def _intrinsic_kwargs(body) -> dict:
+    """Pull the §7 intrinsic body fields into their repo kwargs."""
+    return {
+        kwarg: getattr(body, body_key)
+        for body_key, kwarg in _INTRINSIC_BODY_TO_KWARG.items()
+    }
+
+
+def _options_arg(body) -> list | None:
+    """Serialise ``field_options`` to a list of dicts, or ``None``."""
+    if body.field_options is None:
+        return None
+    return [opt.model_dump() for opt in body.field_options]
+
 
 @router.get("")
 def list_all(
@@ -115,6 +146,8 @@ def create(body: FieldCreateIn):
                 notes=body.field_notes,
                 status=body.field_status,
                 identifier=body.field_identifier,
+                options=_options_arg(body),
+                **_intrinsic_kwargs(body),
             )
         )
 
@@ -133,6 +166,8 @@ def replace(identifier: str, body: FieldReplaceIn):
                 required=body.field_required,
                 notes=body.field_notes,
                 status=body.field_status,
+                options=_options_arg(body),
+                **_intrinsic_kwargs(body),
             )
         )
 

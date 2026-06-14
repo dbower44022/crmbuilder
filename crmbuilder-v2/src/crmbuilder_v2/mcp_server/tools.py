@@ -894,6 +894,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         status: str | None = None,
         kind: str | None = None,
         identifier: str | None = None,
+        default_sort_field: str | None = None,
+        default_sort_direction: str | None = None,
+        track_activity: bool | None = None,
     ) -> Any:
         """Create an entity (methodology) record.
 
@@ -901,6 +904,11 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         ``candidate`` server-side; ``kind`` is optional (operators may
         defer classification to Phase 3). Identifier is server-assigned
         (ENT-NNN) when omitted.
+
+        PRJ-025 PI-182 — engine-neutral design intent (all optional):
+        ``default_sort_field`` (the field the entity sorts by) +
+        ``default_sort_direction`` (``asc``/``desc``), and
+        ``track_activity`` (whether to track an activity feed).
 
         Domain affiliations are NOT inlined here — attach them with a
         separate ``add_reference`` call using the
@@ -915,6 +923,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 entity_status=status,
                 entity_kind=kind,
                 entity_identifier=identifier,
+                entity_default_sort_field=default_sort_field,
+                entity_default_sort_direction=default_sort_direction,
+                entity_track_activity=track_activity,
             ).items()
             if v is not None
         }
@@ -927,10 +938,17 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         notes: str | None = None,
         status: str | None = None,
         kind: str | None = None,
+        default_sort_field: str | None = None,
+        default_sort_direction: str | None = None,
+        track_activity: bool | None = None,
     ) -> Any:
         """Update fields on an entity record (PATCH). Pass only the fields
         to change. Lifecycle status transitions are validated by the
-        access layer (e.g. candidate → confirmed)."""
+        access layer (e.g. candidate → confirmed).
+
+        PRJ-025 PI-182 — the engine-neutral design-intent attributes
+        ``default_sort_field`` / ``default_sort_direction`` (asc/desc) /
+        ``track_activity`` are settable here too."""
         body = {
             f"entity_{k}": v
             for k, v in dict(
@@ -939,6 +957,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 notes=notes,
                 status=status,
                 kind=kind,
+                default_sort_field=default_sort_field,
+                default_sort_direction=default_sort_direction,
+                track_activity=track_activity,
             ).items()
             if v is not None
         }
@@ -999,6 +1020,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         notes: str | None = None,
         status: str | None = None,
         identifier: str | None = None,
+        tooltip: str | None = None,
+        usage_summary: str | None = None,
+        default_value: str | None = None,
+        format: str | None = None,
+        numeric_scale: str | None = None,
+        max_length: int | None = None,
+        min: str | None = None,
+        max: str | None = None,
+        read_only: bool | None = None,
+        unique: bool | None = None,
+        externally_populated: bool | None = None,
+        options: list | None = None,
     ) -> Any:
         """Create a field (methodology) record under a parent entity.
 
@@ -1010,6 +1043,17 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
 
         ``status`` defaults to ``candidate`` and ``required`` to ``False``
         server-side. Identifier is server-assigned (FLD-NNN) when omitted.
+
+        PRJ-025 PI-182 — engine-neutral design intent (all optional):
+        ``tooltip`` (inline help), ``usage_summary`` (doc intent),
+        ``default_value``, ``format`` (email/phone/url/percent/currency/
+        date/datetime/time/multiline), ``numeric_scale`` (integer/decimal),
+        ``max_length``, ``min``, ``max``, and the booleans ``read_only`` /
+        ``unique`` / ``externally_populated``. ``options`` is an ordered
+        list of enum/multi_enum options, each
+        ``{"option_value": str, "option_label": str|None,
+        "option_order": int|None}`` — supplying it populates the field's
+        option set.
         """
         body = {
             k: v
@@ -1022,6 +1066,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 field_notes=notes,
                 field_status=status,
                 field_identifier=identifier,
+                field_tooltip=tooltip,
+                field_usage_summary=usage_summary,
+                field_default_value=default_value,
+                field_format=format,
+                field_numeric_scale=numeric_scale,
+                field_max_length=max_length,
+                field_min=min,
+                field_max=max,
+                field_read_only=read_only,
+                field_unique=unique,
+                field_externally_populated=externally_populated,
+                field_options=options,
             ).items()
             if v is not None
         }
@@ -1035,10 +1091,28 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         required: bool | None = None,
         notes: str | None = None,
         status: str | None = None,
+        tooltip: str | None = None,
+        usage_summary: str | None = None,
+        default_value: str | None = None,
+        format: str | None = None,
+        numeric_scale: str | None = None,
+        max_length: int | None = None,
+        min: str | None = None,
+        max: str | None = None,
+        read_only: bool | None = None,
+        unique: bool | None = None,
+        externally_populated: bool | None = None,
+        options: list | None = None,
     ) -> Any:
         """Update fields on a field record (PATCH). Pass only the fields to
         change. Does NOT re-parent — re-parenting requires DELETE of the
-        old ``field_belongs_to_entity`` edge then a new ``add_reference``."""
+        old ``field_belongs_to_entity`` edge then a new ``add_reference``.
+
+        PRJ-025 PI-182 — the engine-neutral design-intent attributes
+        (``tooltip``, ``usage_summary``, ``default_value``, ``format``,
+        ``numeric_scale``, ``max_length``, ``min``, ``max``, ``read_only``,
+        ``unique``, ``externally_populated``) are settable here. Supplying
+        ``options`` (a list) replaces the field's enum option set."""
         body = {
             f"field_{k}": v
             for k, v in dict(
@@ -1048,6 +1122,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 required=required,
                 notes=notes,
                 status=status,
+                tooltip=tooltip,
+                usage_summary=usage_summary,
+                default_value=default_value,
+                format=format,
+                numeric_scale=numeric_scale,
+                max_length=max_length,
+                min=min,
+                max=max,
+                read_only=read_only,
+                unique=unique,
+                externally_populated=externally_populated,
+                options=options,
             ).items()
             if v is not None
         }

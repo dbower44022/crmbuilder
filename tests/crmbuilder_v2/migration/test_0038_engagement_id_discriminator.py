@@ -62,8 +62,17 @@ def _load_migration_module():
 #     (created scoped-from-birth by migration 0051).
 #   - ``services`` — PI-161 cross-domain service record (created
 #     scoped-from-birth by migration 0052).
+#   - ``field_options`` — PRJ-025 PI-182 enum option child collection
+#     (created scoped-from-birth by migration 0053).
 _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
-    {"findings", "utilization_evidence", "migration_mappings", "review_signoffs", "services"}
+    {
+        "findings",
+        "utilization_evidence",
+        "migration_mappings",
+        "review_signoffs",
+        "services",
+        "field_options",
+    }
 )
 
 

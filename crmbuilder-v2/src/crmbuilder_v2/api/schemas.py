@@ -451,6 +451,10 @@ class EntityCreateIn(_Base):
     entity_status: str | None = None
     entity_kind: str | None = None
     entity_identifier: str | None = None
+    # PRJ-025 PI-182 — intrinsic engine-neutral design intent (§6).
+    entity_default_sort_field: str | None = None
+    entity_default_sort_direction: str | None = None
+    entity_track_activity: bool | None = None
 
 
 class EntityReplaceIn(_Base):
@@ -459,7 +463,9 @@ class EntityReplaceIn(_Base):
     ``entity_identifier`` is optional; when present it must match the
     path identifier (mismatch → 422). ``entity_kind`` is replaced
     wholesale (omitted-from-body deserialises to ``None`` and clears
-    the field); operators wanting partial update should use PATCH."""
+    the field); operators wanting partial update should use PATCH. The
+    PRJ-025 PI-182 §6 intrinsics replace wholesale under the same
+    semantics."""
 
     entity_identifier: str | None = None
     entity_name: str
@@ -467,6 +473,9 @@ class EntityReplaceIn(_Base):
     entity_notes: str | None = None
     entity_status: str
     entity_kind: str | None = None
+    entity_default_sort_field: str | None = None
+    entity_default_sort_direction: str | None = None
+    entity_track_activity: bool | None = None
 
 
 class EntityPatchIn(_Base):
@@ -475,14 +484,17 @@ class EntityPatchIn(_Base):
     Routers consume this with ``model_dump(exclude_unset=True)`` so an
     explicit ``entity_notes: null`` (clear the field) is distinguished
     from an omitted ``entity_notes`` (leave unchanged). Same semantics
-    apply to ``entity_kind`` (PI-010 / DEC-292): null clears, omitted
-    leaves unchanged."""
+    apply to ``entity_kind`` (PI-010 / DEC-292) and the PRJ-025 PI-182
+    §6 intrinsics: null clears, omitted leaves unchanged."""
 
     entity_name: str | None = None
     entity_description: str | None = None
     entity_notes: str | None = None
     entity_status: str | None = None
     entity_kind: str | None = None
+    entity_default_sort_field: str | None = None
+    entity_default_sort_direction: str | None = None
+    entity_track_activity: bool | None = None
 
 
 # ---------- Personas (methodology entity, v0.5+) ----------
@@ -538,6 +550,18 @@ class PersonaPatchIn(_Base):
 # ---------- Fields (methodology entity, v0.5+ PI-004 first slice) ----------
 
 
+class FieldOptionIn(_Base):
+    """One enum/multi_enum option value (PRJ-025 PI-182, §8 field_option).
+
+    ``option_order`` defaults to the list position when omitted. A
+    field's ``field_options`` list, when supplied, replaces its entire
+    option set; ``option_value`` is unique within the field."""
+
+    option_value: str
+    option_label: str | None = None
+    option_order: int | None = None
+
+
 class FieldCreateIn(_Base):
     """POST /fields body.
 
@@ -548,7 +572,8 @@ class FieldCreateIn(_Base):
     layer creates the field row, the ``field_belongs_to_entity`` edge,
     and the change-log emit in one transaction per ``field.md`` §3.5.4.
     This is the one deviation from the cross-spec decomposed-references
-    default."""
+    default. The PRJ-025 PI-182 §7 intrinsics + ``field_options`` are
+    optional."""
 
     field_name: str
     field_description: str
@@ -558,6 +583,19 @@ class FieldCreateIn(_Base):
     field_notes: str | None = None
     field_status: str | None = None
     field_identifier: str | None = None
+    # PRJ-025 PI-182 — intrinsic engine-neutral design intent (§7).
+    field_tooltip: str | None = None
+    field_usage_summary: str | None = None
+    field_default_value: str | None = None
+    field_format: str | None = None
+    field_numeric_scale: str | None = None
+    field_max_length: int | None = None
+    field_min: str | None = None
+    field_max: str | None = None
+    field_read_only: bool | None = None
+    field_unique: bool | None = None
+    field_externally_populated: bool | None = None
+    field_options: list[FieldOptionIn] | None = None
 
 
 class FieldReplaceIn(_Base):
@@ -566,7 +604,9 @@ class FieldReplaceIn(_Base):
     Does NOT accept ``field_belongs_to_entity_identifier`` — re-parenting
     requires explicit edge management per ``field.md`` §3.5.4 (DELETE
     the old edge, POST the new edge). PI-053 tracks the future
-    convenience endpoint."""
+    convenience endpoint. The PRJ-025 PI-182 §7 scalar intrinsics
+    replace wholesale; ``field_options`` replaces the set only when a
+    list is supplied (omitted/null leaves it unchanged)."""
 
     field_identifier: str | None = None
     field_name: str
@@ -575,6 +615,18 @@ class FieldReplaceIn(_Base):
     field_required: bool
     field_notes: str | None = None
     field_status: str
+    field_tooltip: str | None = None
+    field_usage_summary: str | None = None
+    field_default_value: str | None = None
+    field_format: str | None = None
+    field_numeric_scale: str | None = None
+    field_max_length: int | None = None
+    field_min: str | None = None
+    field_max: str | None = None
+    field_read_only: bool | None = None
+    field_unique: bool | None = None
+    field_externally_populated: bool | None = None
+    field_options: list[FieldOptionIn] | None = None
 
 
 class FieldPatchIn(_Base):
@@ -583,7 +635,10 @@ class FieldPatchIn(_Base):
     Routers consume this with ``model_dump(exclude_unset=True)`` so an
     explicit ``field_notes: null`` (clear) is distinguished from an
     omitted ``field_notes`` (leave unchanged). Does NOT accept
-    ``field_belongs_to_entity_identifier`` for the same reason as PUT."""
+    ``field_belongs_to_entity_identifier`` for the same reason as PUT.
+    The PRJ-025 PI-182 §7 intrinsics follow the same omitted-vs-null
+    semantics; ``field_options`` replaces the set when a list is
+    supplied (omitted/null leaves it unchanged)."""
 
     field_name: str | None = None
     field_description: str | None = None
@@ -591,6 +646,18 @@ class FieldPatchIn(_Base):
     field_required: bool | None = None
     field_notes: str | None = None
     field_status: str | None = None
+    field_tooltip: str | None = None
+    field_usage_summary: str | None = None
+    field_default_value: str | None = None
+    field_format: str | None = None
+    field_numeric_scale: str | None = None
+    field_max_length: int | None = None
+    field_min: str | None = None
+    field_max: str | None = None
+    field_read_only: bool | None = None
+    field_unique: bool | None = None
+    field_externally_populated: bool | None = None
+    field_options: list[FieldOptionIn] | None = None
 
 
 # ---------- Requirements (methodology entity, PI-004 cohort, v0.5+) ----------

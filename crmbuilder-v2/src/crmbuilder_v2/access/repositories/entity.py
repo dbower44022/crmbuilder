@@ -59,6 +59,7 @@ from crmbuilder_v2.access.models import Entity
 from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     ENTITY_KINDS,
+    ENTITY_SORT_DIRECTIONS,
     ENTITY_STATUS_TRANSITIONS,
     ENTITY_STATUSES,
 )
@@ -74,9 +75,19 @@ _MAX_AUTOASSIGN_ATTEMPTS = 50
 
 # Fields accepted by :func:`patch_entity`. The identifier and the
 # timestamps are not patchable. v0.5+ PI-010 adds ``kind`` per
-# ``entity.md`` v1.1 §3.2.3 / DEC-292.
+# ``entity.md`` v1.1 §3.2.3 / DEC-292. PRJ-025 PI-182 adds the three
+# intrinsic engine-neutral design-intent attributes (§6).
 _PATCHABLE_FIELDS = frozenset(
-    {"name", "description", "notes", "status", "kind"}
+    {
+        "name",
+        "description",
+        "notes",
+        "status",
+        "kind",
+        "default_sort_field",
+        "default_sort_direction",
+        "track_activity",
+    }
 )
 
 
@@ -144,6 +155,47 @@ def _coerce_kind(kind: object) -> str | None:
             ]
         )
     return kind  # type: ignore[return-value]
+
+
+def _coerce_sort_direction(value: object) -> str | None:
+    """Validate ``entity_default_sort_direction`` (PRJ-025 §6).
+
+    ``None`` / empty clears; otherwise must be a member of
+    :data:`ENTITY_SORT_DIRECTIONS`.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    if value not in ENTITY_SORT_DIRECTIONS:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "entity_default_sort_direction",
+                    "invalid_value",
+                    f"must be null or one of {sorted(ENTITY_SORT_DIRECTIONS)}",
+                )
+            ]
+        )
+    return value  # type: ignore[return-value]
+
+
+def _coerce_sort_field(value: object) -> str | None:
+    """Normalise ``entity_default_sort_field`` — store the authored string."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "entity_default_sort_field",
+                    "invalid_value",
+                    "must be a string or null",
+                )
+            ]
+        )
+    value = value.strip()
+    return value or None
 
 
 def _check_transition(current: str, requested: str) -> None:
@@ -259,6 +311,9 @@ def _new_entity_row(
     notes: str | None,
     status: str,
     kind: str | None,
+    default_sort_field: str | None = None,
+    default_sort_direction: str | None = None,
+    track_activity: bool = False,
 ) -> Entity:
     return Entity(
         entity_identifier=identifier,
@@ -267,6 +322,9 @@ def _new_entity_row(
         entity_notes=notes,
         entity_status=status,
         entity_kind=kind,
+        entity_default_sort_field=default_sort_field,
+        entity_default_sort_direction=default_sort_direction,
+        entity_track_activity=track_activity,
     )
 
 
@@ -277,6 +335,9 @@ def _insert_with_autoassign(
     notes: str | None,
     status: str,
     kind: str | None,
+    default_sort_field: str | None = None,
+    default_sort_direction: str | None = None,
+    track_activity: bool = False,
 ) -> Entity:
     """Insert an entity with a server-assigned identifier, collision-safe.
 
@@ -292,7 +353,15 @@ def _insert_with_autoassign(
     for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
         row = _new_entity_row(
-            candidate, name, description, notes, status, kind
+            candidate,
+            name,
+            description,
+            notes,
+            status,
+            kind,
+            default_sort_field,
+            default_sort_direction,
+            track_activity,
         )
         session.add(row)
         try:
@@ -322,6 +391,9 @@ def create_entity(
     status: str = "candidate",
     kind: str | None = None,
     identifier: str | None = None,
+    default_sort_field: str | None = None,
+    default_sort_direction: str | None = None,
+    track_activity: bool | None = None,
 ) -> dict:
     """Create an entity.
 
@@ -332,6 +404,11 @@ def create_entity(
     ``kind`` is optional per ``entity.md`` v1.1 §3.2.3 / DEC-292 —
     operators may defer classification when Phase 1 surfaces an
     entity before its kind is settled.
+
+    PRJ-025 PI-182: ``default_sort_field`` / ``default_sort_direction``
+    (asc/desc) carry the §6 default-sort intent; ``track_activity`` the
+    neutral activity-feed intent. All optional and default to
+    null/null/False.
     """
     name = _require_nonempty(name, field="entity_name")
     description = _require_nonempty(description, field="entity_description")
@@ -339,18 +416,23 @@ def create_entity(
         status = "candidate"
     _require_status(status)
     kind = _coerce_kind(kind)
+    default_sort_field = _coerce_sort_field(default_sort_field)
+    default_sort_direction = _coerce_sort_direction(default_sort_direction)
+    track_activity = bool(track_activity)
     _reject_duplicate_name(session, name)
 
     if identifier is None:
         row = _insert_with_autoassign(
-            session, name, description, notes, status, kind
+            session, name, description, notes, status, kind,
+            default_sort_field, default_sort_direction, track_activity,
         )
     else:
         _require_identifier_format(identifier)
         if get_by_identifier(session, Entity, Entity.entity_identifier, identifier) is not None:
             raise ConflictError(f"entity {identifier!r} already exists")
         row = _new_entity_row(
-            identifier, name, description, notes, status, kind
+            identifier, name, description, notes, status, kind,
+            default_sort_field, default_sort_direction, track_activity,
         )
         session.add(row)
         session.flush()
@@ -378,6 +460,9 @@ def update_entity(
     status: str | None = None,
     kind: str | None = None,
     rejected_by_decision: str | None = None,
+    default_sort_field: str | None = None,
+    default_sort_direction: str | None = None,
+    track_activity: bool | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -390,6 +475,11 @@ def update_entity(
     semantics; omitted-from-body deserialises to ``None`` and likewise
     clears the field — operators wanting partial update should use
     PATCH.
+
+    PRJ-025 PI-182: the §6 intrinsics
+    (``default_sort_field`` / ``default_sort_direction`` /
+    ``track_activity``) are replaced wholesale under the same PUT
+    semantics (omitted deserialises to null/null/False).
     """
     row = _get_row(session, identifier)
     if entity_identifier is not None and entity_identifier != identifier:
@@ -433,6 +523,11 @@ def update_entity(
     row.entity_description = description
     row.entity_notes = notes
     row.entity_kind = _coerce_kind(kind)
+    row.entity_default_sort_field = _coerce_sort_field(default_sort_field)
+    row.entity_default_sort_direction = _coerce_sort_direction(
+        default_sort_direction
+    )
+    row.entity_track_activity = bool(track_activity)
     session.flush()
 
     after = to_dict(row)
@@ -451,12 +546,14 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
     """Partial update (PATCH). Only the supplied fields are touched.
 
     Recognised keys: ``name``, ``description``, ``notes``, ``status``,
-    ``kind``, ``rejected_by_decision``. A ``status`` change is
-    transition-validated; a move to ``rejected`` requires either the
-    ``rejected_by_decision`` key (atomic edge + flip, PI-153 §3.4) or a
-    pre-existing ``rejected_by_decision`` edge. A ``kind`` of ``None``
-    or an empty string clears the field; otherwise the value must be a
-    member of :data:`ENTITY_KINDS`.
+    ``kind``, ``rejected_by_decision``, and the PRJ-025 PI-182 §6
+    intrinsics (``default_sort_field``, ``default_sort_direction``,
+    ``track_activity``). A ``status`` change is transition-validated; a
+    move to ``rejected`` requires either the ``rejected_by_decision``
+    key (atomic edge + flip, PI-153 §3.4) or a pre-existing
+    ``rejected_by_decision`` edge. A ``kind`` of ``None`` or an empty
+    string clears the field; otherwise the value must be a member of
+    :data:`ENTITY_KINDS`.
     """
     rejected_by_decision = fields.pop("rejected_by_decision", None)
     unknown = set(fields) - _PATCHABLE_FIELDS
@@ -509,6 +606,16 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
         )
     if "kind" in fields:
         row.entity_kind = _coerce_kind(fields["kind"])
+    if "default_sort_field" in fields:
+        row.entity_default_sort_field = _coerce_sort_field(
+            fields["default_sort_field"]
+        )
+    if "default_sort_direction" in fields:
+        row.entity_default_sort_direction = _coerce_sort_direction(
+            fields["default_sort_direction"]
+        )
+    if "track_activity" in fields:
+        row.entity_track_activity = bool(fields["track_activity"])
 
     session.flush()
     after = to_dict(row)

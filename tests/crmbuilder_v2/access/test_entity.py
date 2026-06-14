@@ -38,6 +38,10 @@ _EXPECTED_COLUMNS = {
     "entity_kind": "TEXT",
     "entity_description": "TEXT",
     "entity_notes": "TEXT",
+    # PRJ-025 PI-182 — intrinsic engine-neutral design intent (§6).
+    "entity_default_sort_field": "TEXT",
+    "entity_default_sort_direction": "TEXT",
+    "entity_track_activity": "BOOLEAN",
     "entity_created_at": "DATETIME",
     "entity_updated_at": "DATETIME",
     "entity_deleted_at": "DATETIME",

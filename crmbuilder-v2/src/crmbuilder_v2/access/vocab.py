@@ -186,6 +186,12 @@ ENTITY_KINDS: frozenset[str] = frozenset(
     {"person", "organization", "event", "transaction", "other"}
 )
 
+# Engine-neutral entity default-sort direction (PRJ-025 PI-182, design
+# §6 ``entity_default_sort``). Nullable on the column; validated only
+# when present. Maps to EspoCRM entityDefs ``order`` and a HubSpot
+# default-list sort direction.
+ENTITY_SORT_DIRECTIONS: frozenset[str] = frozenset({"asc", "desc"})
+
 # Methodology entity `persona` lifecycle (v0.5+, persona.md §3.4).
 # Mirrors `domain` / `entity` exactly — three-status propose-verify
 # lifecycle with one-way gate out of `candidate`.
@@ -234,6 +240,31 @@ FIELD_TYPES: frozenset[str] = frozenset(
         "derived",
     }
 )
+
+# Engine-neutral field value-format token (PRJ-025 PI-182, design §7
+# ``field_format``). Orthogonal to the semantic ``field_type`` shape: a
+# ``text`` field may carry an ``email``/``phone``/``url`` format, a
+# ``number`` field a ``percent``/``currency`` format, etc. Nullable on
+# the column; validated only when present. Adapters map the token to the
+# engine's display/validation mechanics.
+FIELD_FORMATS: frozenset[str] = frozenset(
+    {
+        "email",
+        "phone",
+        "url",
+        "percent",
+        "currency",
+        "date",
+        "datetime",
+        "time",
+        "multiline",
+    }
+)
+
+# Engine-neutral numeric scale (PRJ-025 PI-182, design §5/§7). Carried on
+# a ``number`` field so adapters need not guess integer vs decimal.
+# Nullable on the column; validated only when present.
+FIELD_NUMERIC_SCALES: frozenset[str] = frozenset({"integer", "decimal"})
 
 # Methodology entity `requirement` lifecycle (PI-004 cohort, v0.5+).
 # Three-status propose-verify mirroring ``domain`` / ``entity`` per
