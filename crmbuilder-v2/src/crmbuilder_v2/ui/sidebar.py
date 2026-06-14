@@ -87,6 +87,9 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # execution), appended after Commits in the Governance group.
             "Workstreams",
             "Work Tasks",
+            # PI-186 (PRJ-027): CRM-connection instances (audit/pull source +
+            # publish/push target). Appended in the Governance group.
+            "Instances",
             # requirements-provenance Phase 6b: the topic-first review
             # surface (requirement tree + read-back document + queues +
             # sign-off). A read-only review/monitoring panel, so it lives

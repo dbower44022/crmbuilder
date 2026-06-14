@@ -398,6 +398,23 @@ SERVICE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "rejected": frozenset(),
 }
 
+# ---------------------------------------------------------------------------
+# Instance entity (PI-186 — PRJ-027). One engagement-scoped connection to a
+# live CRM system. See prj-027-multi-instance-audit-inventory-architecture.md
+# §3. The vendor selects the introspection/adapter driver (espocrm first; the
+# seam admits more later). The role mirrors the V1 InstanceRole: a source to
+# read/audit, a target to write/publish, or both. Connection secrets are never
+# stored here — only opaque keyring references (REQ-157).
+# ---------------------------------------------------------------------------
+
+INSTANCE_VENDORS: frozenset[str] = frozenset({"espocrm"})
+
+INSTANCE_ROLES: frozenset[str] = frozenset({"source", "target", "both"})
+
+INSTANCE_AUTH_METHODS: frozenset[str] = frozenset({"api_key", "hmac"})
+
+INSTANCE_STATUSES: frozenset[str] = frozenset({"active", "disabled"})
+
 # Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
 # PRD v0.2 §8 named set. Per-kind rule-object schema validation (required
 # keys, level applicability, conditional-key consistency — invariant I9)
@@ -1071,6 +1088,11 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # cross-domain service — a capability not owned by any single
         # business domain (SVC-). See methodology-schema-specs/service.md.
         "service",
+        # PI-186 entity (PRJ-027). One engagement-scoped connection to a live
+        # CRM system (INST-). Audit (pull) reads its structure into the
+        # canonical inventory; publish (push, PRJ-025) writes design to it. See
+        # prj-027-multi-instance-audit-inventory-architecture.md §3.
+        "instance",
     }
 )
 

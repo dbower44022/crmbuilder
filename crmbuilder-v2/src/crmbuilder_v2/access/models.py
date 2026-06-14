@@ -66,6 +66,10 @@ from crmbuilder_v2.access.vocab import (
     FINDING_SEVERITIES,
     FINDING_STATUSES,
     FINDING_TYPES,
+    INSTANCE_AUTH_METHODS,
+    INSTANCE_ROLES,
+    INSTANCE_STATUSES,
+    INSTANCE_VENDORS,
     LEARNING_CATEGORIES,
     LEARNING_STATUSES,
     LEARNING_TIERS,
@@ -1532,6 +1536,91 @@ class Service(EngagementScopedPKMixin, Base):
         ),
         Index("ix_services_service_status", "service_status"),
         Index("ix_services_service_deleted_at", "service_deleted_at"),
+    )
+
+
+class Instance(EngagementScopedPKMixin, Base):
+    """PI-186 entity (PRJ-027) — one engagement-scoped connection to a live CRM.
+
+    An engagement defines one or more instances (identifier ``INST-NNN``), each
+    pointing at a real CRM system. Audit (pull) reverse-engineers a source
+    instance's structure into the canonical engine-neutral inventory; publish
+    (push, PRJ-025) writes design to a target instance. See
+    ``prj-027-multi-instance-audit-inventory-architecture.md`` §3.
+
+    Parent-prefix field naming (DEC-046); the prefixed-string identifier is the
+    primary key (no integer surrogate), matching the methodology/governance
+    entity precedent. ``instance_vendor`` selects the introspection/adapter
+    driver. ``instance_role`` mirrors the V1 ``InstanceRole``: a ``source`` to
+    read from, a ``target`` to write to, or ``both``.
+
+    **Secrets are never stored on this row** (REQ-157). The two ``*_secret_ref``
+    columns hold only opaque ``crmbuilder:{uuid}`` keyring references resolved at
+    connection time via :mod:`crmbuilder_v2.secrets`; the plaintext values live
+    in the OS keyring. ``instance_secret_ref`` carries the API key or password;
+    ``instance_secret_key_ref`` carries the HMAC secret key when
+    ``instance_auth_method`` is ``hmac``.
+    """
+
+    __tablename__ = "instances"
+
+    instance_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    instance_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    instance_vendor: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="espocrm"
+    )
+    instance_url: Mapped[str] = mapped_column(Text, nullable=False)
+    instance_role: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="both"
+    )
+    instance_auth_method: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="api_key"
+    )
+    instance_secret_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    instance_secret_key_ref: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    instance_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    instance_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    instance_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    instance_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    instance_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^INST-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("instance_identifier", ["INST"]),
+            name="ck_instance_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("instance_vendor", INSTANCE_VENDORS),
+            name="ck_instance_vendor",
+        ),
+        CheckConstraint(
+            _check_in("instance_role", INSTANCE_ROLES),
+            name="ck_instance_role",
+        ),
+        CheckConstraint(
+            _check_in("instance_auth_method", INSTANCE_AUTH_METHODS),
+            name="ck_instance_auth_method",
+        ),
+        CheckConstraint(
+            _check_in("instance_status", INSTANCE_STATUSES),
+            name="ck_instance_status",
+        ),
+        Index("ix_instances_instance_status", "instance_status"),
+        Index("ix_instances_instance_deleted_at", "instance_deleted_at"),
     )
 
 

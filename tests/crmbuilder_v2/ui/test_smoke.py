@@ -50,6 +50,9 @@ EXPECTED_ENTRIES = (
     # Governance group after Commits.
     "Workstreams",
     "Work Tasks",
+    # PI-186 (PRJ-027): CRM-connection instances, appended to the
+    # Governance group after Work Tasks.
+    "Instances",
     # requirements-provenance Phase 6b: topic-first review surface,
     # appended to the Governance group after Work Tasks.
     "Requirements Review",

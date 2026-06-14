@@ -1392,6 +1392,53 @@ class FindingPatchIn(_Base):
     references: list[GovernanceEdgeIn] | None = None
 
 
+# --- Instance (CRM connection, PI-186 / PRJ-027) ---------------------------
+# ``secret`` / ``secret_key`` are write-only plaintext inputs: the router
+# stores them in the OS keyring and persists only the opaque reference
+# (REQ-157). They are never echoed back. The keyring references are exposed on
+# read responses as ``instance_secret_ref`` / ``instance_secret_key_ref`` (opaque).
+class InstanceCreateIn(_Base):
+    instance_name: str
+    instance_url: str
+    instance_vendor: str | None = None
+    instance_role: str | None = None
+    instance_auth_method: str | None = None
+    secret: str | None = None
+    secret_key: str | None = None
+    instance_status: str | None = None
+    instance_notes: str | None = None
+    instance_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class InstanceReplaceIn(_Base):
+    instance_identifier: str | None = None
+    instance_name: str
+    instance_url: str
+    instance_vendor: str | None = None
+    instance_role: str | None = None
+    instance_auth_method: str | None = None
+    secret: str | None = None
+    secret_key: str | None = None
+    instance_status: str | None = None
+    instance_notes: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class InstancePatchIn(_Base):
+    instance_name: str | None = None
+    instance_url: str | None = None
+    instance_vendor: str | None = None
+    instance_role: str | None = None
+    instance_auth_method: str | None = None
+    secret: str | None = None
+    secret_key: str | None = None
+    instance_status: str | None = None
+    instance_notes: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
 # --- Work Task (single-area unit, PI-112 Phase 4b) -------------------------
 class WorkTaskCreateIn(_Base):
     work_task_title: str

@@ -47,6 +47,7 @@ from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
 from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
 from crmbuilder_v2.ui.panels.domains import DomainsPanel
+from crmbuilder_v2.ui.panels.instances import InstancesPanel
 from crmbuilder_v2.ui.panels.engagements import EngagementsPanel
 from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
@@ -136,6 +137,8 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "work_task": "Work Tasks",
     # PI-061: glossary term entity.
     "term": "Glossary",
+    # PI-186 (PRJ-027): CRM-connection instance.
+    "instance": "Instances",
 }
 
 
@@ -218,6 +221,9 @@ def build_panel(
         return WorkstreamsPanel(client)
     if label == "Work Tasks":
         return WorkTasksPanel(client)
+    # PI-186 (PRJ-027): CRM-connection instances.
+    if label == "Instances":
+        return InstancesPanel(client)
     # requirements-provenance Phase 6b: topic-first review surface.
     if label == "Requirements Review":
         return ReviewPanel(client)
