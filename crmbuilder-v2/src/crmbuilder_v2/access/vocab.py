@@ -472,6 +472,107 @@ OVERRIDE_SUBJECT_TYPES: frozenset[str] = frozenset(
     {"entity", "field", "association"}
 )
 
+# ---------------------------------------------------------------------------
+# Condition-carrying design records (PRJ-025 PI-189 slice 2). The
+# engine-neutral ``rule`` (a required-when / visible-when / valid-when gate on
+# a field or entity), ``view`` (a list of columns + a filter + a sort), and
+# ``automation`` (a trigger + an optional condition + ordered actions). All
+# three hold a neutral condition AST validated by
+# ``crmbuilder_v2.access.conditions.validate_condition``. See
+# ``engine-neutral-design-model-and-adapters.md`` §8.
+# ---------------------------------------------------------------------------
+
+# The closed set of leaf operators a neutral condition clause may use
+# (PI-189 slice 2). A leaf is ``{"field": ..., "op": <one of these>,
+# "value": ...}``; ``is_empty`` / ``is_not_empty`` carry no ``value``. The
+# adapter maps each to the target engine's operator (EspoCRM ``where`` /
+# HubSpot filter operators).
+NEUTRAL_CONDITION_OPS: frozenset[str] = frozenset(
+    {
+        "eq",
+        "ne",
+        "gt",
+        "lt",
+        "gte",
+        "lte",
+        "in",
+        "contains",
+        "is_empty",
+        "is_not_empty",
+    }
+)
+
+# The design construct a ``rule`` governs (PI-189). A rule applies to one
+# ``field`` (its required/visible/valid gate) or one ``entity`` (an
+# entity-level validity gate). ``rule_subject_identifier`` is the FLD-NNN or
+# ENT-NNN, validated live and matched against this type at the access layer.
+RULE_SUBJECT_TYPES: frozenset[str] = frozenset({"field", "entity"})
+
+# The behaviour a ``rule`` controls (PI-189). ``required_when`` /
+# ``visible_when`` gate a field; ``valid_when`` asserts a validity invariant
+# (the ``rule_message`` surfaces to the user when it fails).
+RULE_EFFECTS: frozenset[str] = frozenset(
+    {"required_when", "visible_when", "valid_when"}
+)
+
+# Methodology entity ``rule`` lifecycle (PI-189) — the standard four-status
+# propose-verify lifecycle, identical to ``entity`` / ``association``.
+RULE_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+RULE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
+# Methodology entity ``view`` lifecycle (PI-189) — same four-status
+# propose-verify lifecycle.
+VIEW_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+VIEW_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
+# The event that fires an ``automation`` (PI-189). Maps to the EspoCRM
+# Workflow / BPM trigger and a HubSpot workflow enrollment trigger.
+AUTOMATION_TRIGGERS: frozenset[str] = frozenset(
+    {"on_create", "on_update", "on_delete", "scheduled", "manual"}
+)
+
+# The kinds of action an ``automation`` may take (PI-189). Each entry in
+# ``automation_actions`` is an object carrying a ``"type"`` in this set; the
+# adapter renders each into the target engine's action vocabulary.
+AUTOMATION_ACTION_TYPES: frozenset[str] = frozenset(
+    {
+        "set_field",
+        "send_notification",
+        "create_record",
+        "update_related",
+        "webhook",
+    }
+)
+
+# Methodology entity ``automation`` lifecycle (PI-189) — same four-status
+# propose-verify lifecycle.
+AUTOMATION_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+AUTOMATION_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
 # Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
 # PRD v0.2 §8 named set. Per-kind rule-object schema validation (required
 # keys, level applicability, conditional-key consistency — invariant I9)
@@ -1127,6 +1228,15 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # engine-neutral-design-model-and-adapters.md §8, §9.
         "association",
         "engine_override",
+        # PRJ-025 PI-189 slice 2 condition-carrying design records.
+        # ``rule`` (RUL-) is a required/visible/valid gate on a field or
+        # entity; ``view`` (VEW-) is a list of columns + filter + sort;
+        # ``automation`` (AUT-) is a trigger + condition + ordered actions.
+        # Each holds a neutral condition AST. See
+        # engine-neutral-design-model-and-adapters.md §8.
+        "rule",
+        "view",
+        "automation",
     }
 )
 

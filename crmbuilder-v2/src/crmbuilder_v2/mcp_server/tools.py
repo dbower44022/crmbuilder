@@ -1385,6 +1385,360 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
             await http.post(f"/engine-overrides/{identifier}/restore")
         )
 
+    # --- Rules (condition-carrying design record, PRJ-025 PI-189) ---
+    # A rule (RUL-NNN) is a required/visible/valid gate on a field or entity,
+    # carrying a neutral condition AST. The subject (FLD-NNN / ENT-NNN) is
+    # validated to exist, be live, and match the subject_type.
+
+    async def get_rule(identifier: str, include_deleted: bool = False) -> Any:
+        """Return one rule (condition-carrying design) record by its RUL-NNN id."""
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(
+            await http.get(f"/rules/{identifier}", params=params)
+        )
+
+    async def list_rules(
+        subject_type: str | None = None,
+        subject_identifier: str | None = None,
+        effect: str | None = None,
+        include_deleted: bool = False,
+    ) -> Any:
+        """List rule records.
+
+        Filter ``subject_type`` (field / entity), ``subject_identifier`` (the
+        FLD/ENT id), and/or ``effect`` (required_when / visible_when /
+        valid_when). Pass ``include_deleted=true`` to include soft-deleted rows.
+        """
+        params = {
+            k: v
+            for k, v in dict(
+                subject_type=subject_type,
+                subject_identifier=subject_identifier,
+                effect=effect,
+                include_deleted="true" if include_deleted else None,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.get("/rules", params=params or None))
+
+    async def create_rule(
+        name: str,
+        subject_type: str,
+        subject_identifier: str,
+        effect: str,
+        condition: Any,
+        message: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create a rule (engine-neutral required/visible/valid gate).
+
+        Required: ``name``, ``subject_type`` (field / entity),
+        ``subject_identifier`` (the FLD/ENT id, validated live and type-matched),
+        ``effect`` (required_when / visible_when / valid_when), and
+        ``condition`` (a neutral condition AST: a leaf
+        ``{"field":..., "op":..., "value":...}`` or a group
+        ``{"all":[...]}`` / ``{"any":[...]}``). ``message`` is the user-facing
+        validation message for a valid_when rule. ``status`` defaults to
+        ``candidate``; identifier is server-assigned (RUL-NNN) when omitted.
+        """
+        body = {
+            k: v
+            for k, v in dict(
+                rule_name=name,
+                rule_subject_type=subject_type,
+                rule_subject_identifier=subject_identifier,
+                rule_effect=effect,
+                rule_condition=condition,
+                rule_message=message,
+                rule_description=description,
+                rule_notes=notes,
+                rule_status=status,
+                rule_identifier=identifier,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.post("/rules", json=body))
+
+    async def update_rule(
+        identifier: str,
+        name: str | None = None,
+        subject_type: str | None = None,
+        subject_identifier: str | None = None,
+        effect: str | None = None,
+        condition: Any | None = None,
+        message: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+    ) -> Any:
+        """Update fields on a rule record (PATCH). Pass only the fields to
+        change. A subject change is re-validated; a condition change is
+        re-validated as a neutral AST; a status change is transition-validated."""
+        body = {
+            f"rule_{k}": v
+            for k, v in dict(
+                name=name,
+                subject_type=subject_type,
+                subject_identifier=subject_identifier,
+                effect=effect,
+                condition=condition,
+                message=message,
+                description=description,
+                notes=notes,
+                status=status,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.patch(f"/rules/{identifier}", json=body))
+
+    async def delete_rule(identifier: str) -> Any:
+        """Soft-delete a rule record (idempotent)."""
+        return await _unwrap(await http.delete(f"/rules/{identifier}"))
+
+    async def restore_rule(identifier: str) -> Any:
+        """Restore a soft-deleted rule record."""
+        return await _unwrap(await http.post(f"/rules/{identifier}/restore"))
+
+    # --- Views (condition-carrying design record, PRJ-025 PI-189) ---
+    # A view (VEW-NNN) is the engine-neutral description of a list view: an
+    # ordered list of column field references, an optional neutral-condition
+    # filter, and a default sort.
+
+    async def get_view(identifier: str, include_deleted: bool = False) -> Any:
+        """Return one view (condition-carrying design) record by its VEW-NNN id."""
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(
+            await http.get(f"/views/{identifier}", params=params)
+        )
+
+    async def list_views(
+        entity: str | None = None, include_deleted: bool = False
+    ) -> Any:
+        """List view records.
+
+        Filter ``entity`` (the ENT-NNN listed). Pass ``include_deleted=true``
+        to include soft-deleted rows.
+        """
+        params = {
+            k: v
+            for k, v in dict(
+                entity=entity,
+                include_deleted="true" if include_deleted else None,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.get("/views", params=params or None))
+
+    async def create_view(
+        name: str,
+        entity: str,
+        columns: list,
+        filter: Any | None = None,
+        sort_field: str | None = None,
+        sort_direction: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create a view (engine-neutral list view).
+
+        Required: ``name``, ``entity`` (the ENT-NNN listed, validated live),
+        and ``columns`` (a non-empty ordered list of field references — field
+        names or FLD-NNN). ``filter`` is an optional neutral condition AST;
+        ``sort_field`` / ``sort_direction`` (asc / desc) set the default sort.
+        ``status`` defaults to ``candidate``; identifier is server-assigned
+        (VEW-NNN) when omitted.
+        """
+        body: dict[str, Any] = {
+            "view_name": name,
+            "view_entity": entity,
+            "view_columns": columns,
+        }
+        body.update(
+            {
+                k: v
+                for k, v in dict(
+                    view_filter=filter,
+                    view_sort_field=sort_field,
+                    view_sort_direction=sort_direction,
+                    view_description=description,
+                    view_notes=notes,
+                    view_status=status,
+                    view_identifier=identifier,
+                ).items()
+                if v is not None
+            }
+        )
+        return await _unwrap(await http.post("/views", json=body))
+
+    async def update_view(
+        identifier: str,
+        name: str | None = None,
+        entity: str | None = None,
+        columns: list | None = None,
+        filter: Any | None = None,
+        sort_field: str | None = None,
+        sort_direction: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+    ) -> Any:
+        """Update fields on a view record (PATCH). Pass only the fields to
+        change. An entity change is re-validated; a filter change is
+        re-validated as a neutral AST; a status change is transition-validated."""
+        body = {
+            f"view_{k}": v
+            for k, v in dict(
+                name=name,
+                entity=entity,
+                columns=columns,
+                filter=filter,
+                sort_field=sort_field,
+                sort_direction=sort_direction,
+                description=description,
+                notes=notes,
+                status=status,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.patch(f"/views/{identifier}", json=body))
+
+    async def delete_view(identifier: str) -> Any:
+        """Soft-delete a view record (idempotent)."""
+        return await _unwrap(await http.delete(f"/views/{identifier}"))
+
+    async def restore_view(identifier: str) -> Any:
+        """Restore a soft-deleted view record."""
+        return await _unwrap(await http.post(f"/views/{identifier}/restore"))
+
+    # --- Automations (condition-carrying design record, PRJ-025 PI-189) ---
+    # An automation (AUT-NNN) is the engine-neutral description of a workflow
+    # on one entity: a trigger, an optional neutral-condition gate, and an
+    # ordered list of typed action objects.
+
+    async def get_automation(
+        identifier: str, include_deleted: bool = False
+    ) -> Any:
+        """Return one automation (condition-carrying design) record by its
+        AUT-NNN identifier."""
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(
+            await http.get(f"/automations/{identifier}", params=params)
+        )
+
+    async def list_automations(
+        entity: str | None = None,
+        trigger: str | None = None,
+        include_deleted: bool = False,
+    ) -> Any:
+        """List automation records.
+
+        Filter ``entity`` (the ENT-NNN) and/or ``trigger`` (on_create /
+        on_update / on_delete / scheduled / manual). Pass
+        ``include_deleted=true`` to include soft-deleted rows.
+        """
+        params = {
+            k: v
+            for k, v in dict(
+                entity=entity,
+                trigger=trigger,
+                include_deleted="true" if include_deleted else None,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.get("/automations", params=params or None)
+        )
+
+    async def create_automation(
+        name: str,
+        entity: str,
+        trigger: str,
+        actions: list,
+        condition: Any | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create an automation (engine-neutral workflow).
+
+        Required: ``name``, ``entity`` (the ENT-NNN, validated live),
+        ``trigger`` (on_create / on_update / on_delete / scheduled / manual),
+        and ``actions`` (a non-empty ordered list of objects each with a
+        ``"type"`` in set_field / send_notification / create_record /
+        update_related / webhook). ``condition`` is an optional neutral
+        condition AST. ``status`` defaults to ``candidate``; identifier is
+        server-assigned (AUT-NNN) when omitted.
+        """
+        body: dict[str, Any] = {
+            "automation_name": name,
+            "automation_entity": entity,
+            "automation_trigger": trigger,
+            "automation_actions": actions,
+        }
+        body.update(
+            {
+                k: v
+                for k, v in dict(
+                    automation_condition=condition,
+                    automation_description=description,
+                    automation_notes=notes,
+                    automation_status=status,
+                    automation_identifier=identifier,
+                ).items()
+                if v is not None
+            }
+        )
+        return await _unwrap(await http.post("/automations", json=body))
+
+    async def update_automation(
+        identifier: str,
+        name: str | None = None,
+        entity: str | None = None,
+        trigger: str | None = None,
+        actions: list | None = None,
+        condition: Any | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+    ) -> Any:
+        """Update fields on an automation record (PATCH). Pass only the fields
+        to change. An entity change is re-validated; a condition change is
+        re-validated as a neutral AST; an actions change re-validates each
+        action's type; a status change is transition-validated."""
+        body = {
+            f"automation_{k}": v
+            for k, v in dict(
+                name=name,
+                entity=entity,
+                trigger=trigger,
+                actions=actions,
+                condition=condition,
+                description=description,
+                notes=notes,
+                status=status,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.patch(f"/automations/{identifier}", json=body)
+        )
+
+    async def delete_automation(identifier: str) -> Any:
+        """Soft-delete an automation record (idempotent)."""
+        return await _unwrap(await http.delete(f"/automations/{identifier}"))
+
+    async def restore_automation(identifier: str) -> Any:
+        """Restore a soft-deleted automation record."""
+        return await _unwrap(
+            await http.post(f"/automations/{identifier}/restore")
+        )
+
     # Declaration-ordered surface. Adding a tool = define it above and
     # append it here; both the MCP server and the chat dispatcher pick it
     # up automatically.
@@ -1473,6 +1827,24 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         update_engine_override,
         delete_engine_override,
         restore_engine_override,
+        get_rule,
+        list_rules,
+        create_rule,
+        update_rule,
+        delete_rule,
+        restore_rule,
+        get_view,
+        list_views,
+        create_view,
+        update_view,
+        delete_view,
+        restore_view,
+        get_automation,
+        list_automations,
+        create_automation,
+        update_automation,
+        delete_automation,
+        restore_automation,
     ]
     return [
         ToolDefinition(

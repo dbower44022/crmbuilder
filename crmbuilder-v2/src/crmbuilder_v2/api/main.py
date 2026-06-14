@@ -31,6 +31,7 @@ from crmbuilder_v2.api.principal_middleware import PrincipalMiddleware
 from crmbuilder_v2.api.routers import (
     admin,
     associations,
+    automations,
     catalog,
     charter,
     close_out_payloads,
@@ -63,12 +64,14 @@ from crmbuilder_v2.api.routers import (
     requirements,
     review,
     risks,
+    rules,
     sessions,
     status,
     terms,
     test_specs,
     topics,
     utilization_evidence,
+    views,
     work_tasks,
     work_tickets,
     workstreams,
@@ -178,6 +181,9 @@ def create_app() -> FastAPI:
     app.include_router(migration_mappings.router)
     app.include_router(associations.router)
     app.include_router(engine_overrides.router)
+    app.include_router(rules.router)
+    app.include_router(views.router)
+    app.include_router(automations.router)
     app.include_router(commits.router)
     # Agent Profile Registry (PI-122).
     app.include_router(registry.agent_profiles_router)

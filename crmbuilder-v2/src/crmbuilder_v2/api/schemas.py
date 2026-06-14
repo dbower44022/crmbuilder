@@ -905,6 +905,173 @@ class EngineOverridePatchIn(_Base):
     override_notes: str | None = None
 
 
+# ---------- Rules (condition-carrying design record, PRJ-025 PI-189) ---------
+
+
+class RuleCreateIn(_Base):
+    """POST /rules body (engine-neutral-design-model §8).
+
+    ``rule_identifier`` is server-assigned when omitted; ``rule_status``
+    defaults to ``candidate`` server-side. ``rule_subject_identifier`` (an
+    ``FLD-NNN`` / ``ENT-NNN``) is validated live and matched against
+    ``rule_subject_type`` at the access layer. ``rule_condition`` is a neutral
+    condition AST validated before persistence."""
+
+    rule_name: str
+    rule_subject_type: str
+    rule_subject_identifier: str
+    rule_effect: str
+    rule_condition: object
+    rule_message: str | None = None
+    rule_description: str | None = None
+    rule_notes: str | None = None
+    rule_status: str | None = None
+    rule_identifier: str | None = None
+
+
+class RuleReplaceIn(_Base):
+    """PUT /rules/{identifier} body — full replace."""
+
+    rule_identifier: str | None = None
+    rule_name: str
+    rule_subject_type: str
+    rule_subject_identifier: str
+    rule_effect: str
+    rule_condition: object
+    rule_message: str | None = None
+    rule_description: str | None = None
+    rule_notes: str | None = None
+    rule_status: str
+
+
+class RulePatchIn(_Base):
+    """PATCH /rules/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit null (clear) is distinguished from an omitted key (leave
+    unchanged)."""
+
+    rule_name: str | None = None
+    rule_subject_type: str | None = None
+    rule_subject_identifier: str | None = None
+    rule_effect: str | None = None
+    rule_condition: object | None = None
+    rule_message: str | None = None
+    rule_description: str | None = None
+    rule_notes: str | None = None
+    rule_status: str | None = None
+
+
+# ---------- Views (condition-carrying design record, PRJ-025 PI-189) ---------
+
+
+class ViewCreateIn(_Base):
+    """POST /views body (engine-neutral-design-model §8).
+
+    ``view_identifier`` is server-assigned when omitted; ``view_status``
+    defaults to ``candidate`` server-side. ``view_entity`` (an ``ENT-NNN``) is
+    validated live; ``view_columns`` is a non-empty ordered list of field
+    references; ``view_filter`` (when present) is a neutral condition AST."""
+
+    view_name: str
+    view_entity: str
+    view_columns: list
+    view_filter: object | None = None
+    view_sort_field: str | None = None
+    view_sort_direction: str | None = None
+    view_description: str | None = None
+    view_notes: str | None = None
+    view_status: str | None = None
+    view_identifier: str | None = None
+
+
+class ViewReplaceIn(_Base):
+    """PUT /views/{identifier} body — full replace."""
+
+    view_identifier: str | None = None
+    view_name: str
+    view_entity: str
+    view_columns: list
+    view_filter: object | None = None
+    view_sort_field: str | None = None
+    view_sort_direction: str | None = None
+    view_description: str | None = None
+    view_notes: str | None = None
+    view_status: str
+
+
+class ViewPatchIn(_Base):
+    """PATCH /views/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit null (clear) is distinguished from an omitted key (leave
+    unchanged)."""
+
+    view_name: str | None = None
+    view_entity: str | None = None
+    view_columns: list | None = None
+    view_filter: object | None = None
+    view_sort_field: str | None = None
+    view_sort_direction: str | None = None
+    view_description: str | None = None
+    view_notes: str | None = None
+    view_status: str | None = None
+
+
+# ------- Automations (condition-carrying design record, PRJ-025 PI-189) ------
+
+
+class AutomationCreateIn(_Base):
+    """POST /automations body (engine-neutral-design-model §8).
+
+    ``automation_identifier`` is server-assigned when omitted;
+    ``automation_status`` defaults to ``candidate`` server-side.
+    ``automation_entity`` (an ``ENT-NNN``) is validated live;
+    ``automation_actions`` is a non-empty list of typed action objects;
+    ``automation_condition`` (when present) is a neutral condition AST."""
+
+    automation_name: str
+    automation_entity: str
+    automation_trigger: str
+    automation_actions: list
+    automation_condition: object | None = None
+    automation_description: str | None = None
+    automation_notes: str | None = None
+    automation_status: str | None = None
+    automation_identifier: str | None = None
+
+
+class AutomationReplaceIn(_Base):
+    """PUT /automations/{identifier} body — full replace."""
+
+    automation_identifier: str | None = None
+    automation_name: str
+    automation_entity: str
+    automation_trigger: str
+    automation_actions: list
+    automation_condition: object | None = None
+    automation_description: str | None = None
+    automation_notes: str | None = None
+    automation_status: str
+
+
+class AutomationPatchIn(_Base):
+    """PATCH /automations/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit null (clear) is distinguished from an omitted key (leave
+    unchanged)."""
+
+    automation_name: str | None = None
+    automation_entity: str | None = None
+    automation_trigger: str | None = None
+    automation_actions: list | None = None
+    automation_condition: object | None = None
+    automation_description: str | None = None
+    automation_notes: str | None = None
+    automation_status: str | None = None
+
+
 # ---------- Processes (methodology entity, UI v0.4 slice D) ----------
 
 

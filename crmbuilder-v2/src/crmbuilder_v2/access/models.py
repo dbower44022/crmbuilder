@@ -38,6 +38,8 @@ from crmbuilder_v2.access.vocab import (
     AGENT_PROFILE_TIERS,
     ASSOCIATION_CARDINALITIES,
     ASSOCIATION_STATUSES,
+    AUTOMATION_STATUSES,
+    AUTOMATION_TRIGGERS,
     CATALOG_ATTRIBUTE_TYPES,
     CATALOG_DATA_MODEL_ROLES,
     CATALOG_ENTRY_KINDS,
@@ -92,7 +94,10 @@ from crmbuilder_v2.access.vocab import (
     RISK_IMPACTS,
     RISK_PROBABILITIES,
     RISK_STATUSES,
+    RULE_EFFECTS,
     RULE_ENFORCEMENT_MODES,
+    RULE_STATUSES,
+    RULE_SUBJECT_TYPES,
     SERVICE_STATUSES,
     SESSION_MEDIUMS,
     SESSION_STATUSES,
@@ -101,6 +106,7 @@ from crmbuilder_v2.access.vocab import (
     TERM_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
+    VIEW_STATUSES,
     WORK_TASK_STATUSES,
     WORK_TICKET_KINDS,
     WORK_TICKET_STATUSES,
@@ -1800,6 +1806,228 @@ class EngineOverride(EngagementScopedPKMixin, Base):
         ),
         Index(
             "ix_engine_overrides_override_deleted_at", "override_deleted_at"
+        ),
+    )
+
+
+class Rule(EngagementScopedPKMixin, Base):
+    """Condition-carrying design record — one required/visible/valid gate.
+
+    PRJ-025 PI-189 slice 2, per ``engine-neutral-design-model-and-adapters.md``
+    §8. A ``rule`` (``RUL-NNN``) governs one design construct — a ``field``
+    (its required-when / visible-when gate) or an ``entity`` (a valid-when
+    invariant). ``rule_condition`` is a neutral condition AST (validated at the
+    access layer by ``conditions.validate_condition``); ``rule_message`` is the
+    user-facing validation message a ``valid_when`` rule surfaces on failure.
+
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``rule_identifier``. The subject is carried as a
+    plain ``FLD-NNN`` / ``ENT-NNN`` string column (not a ``refs`` edge) — the
+    access layer validates it exists, is live, and matches ``rule_subject_type``
+    at write time. The standard four-status propose-verify lifecycle gates the
+    record exactly as ``entity`` / ``association`` does.
+    """
+
+    __tablename__ = "rules"
+
+    rule_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    rule_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    rule_subject_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    rule_subject_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    rule_effect: Mapped[str] = mapped_column(String(32), nullable=False)
+    rule_condition: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
+    rule_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rule_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rule_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rule_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    rule_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    rule_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    rule_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^RUL-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("rule_identifier", ["RUL"]),
+            name="ck_rule_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("rule_subject_type", RULE_SUBJECT_TYPES),
+            name="ck_rule_subject_type",
+        ),
+        CheckConstraint(
+            _check_in("rule_effect", RULE_EFFECTS),
+            name="ck_rule_effect",
+        ),
+        CheckConstraint(
+            _check_in("rule_status", RULE_STATUSES),
+            name="ck_rule_status",
+        ),
+        Index("ix_rules_rule_status", "rule_status"),
+        Index(
+            "ix_rules_rule_subject",
+            "rule_subject_type",
+            "rule_subject_identifier",
+        ),
+        Index("ix_rules_rule_deleted_at", "rule_deleted_at"),
+    )
+
+
+class View(EngagementScopedPKMixin, Base):
+    """Condition-carrying design record — one list view of an entity.
+
+    PRJ-025 PI-189 slice 2, per ``engine-neutral-design-model-and-adapters.md``
+    §8. A ``view`` (``VEW-NNN``) is the engine-neutral description of a list
+    view: ``view_columns`` is a non-empty ordered list of field references
+    (field names or ``FLD-NNN``), ``view_filter`` an optional neutral condition
+    AST, and ``view_sort_field`` / ``view_sort_direction`` the default sort. It
+    renders into an EspoCRM saved-list / layout and a HubSpot list/view.
+
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``view_identifier``. ``view_entity`` is a plain
+    ``ENT-NNN`` string column validated to exist and be live at write time.
+    The standard four-status propose-verify lifecycle gates the record.
+    """
+
+    __tablename__ = "views"
+
+    view_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    view_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    view_entity: Mapped[str] = mapped_column(String(32), nullable=False)
+    view_columns: Mapped[list] = mapped_column(JSONColumn, nullable=False)
+    view_filter: Mapped[dict | None] = mapped_column(JSONColumn, nullable=True)
+    view_sort_field: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    view_sort_direction: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )
+    view_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    view_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    view_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    view_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    view_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    view_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^VEW-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("view_identifier", ["VEW"]),
+            name="ck_view_identifier_format",
+        ),
+        # ``view_columns`` is NOT NULL and must be a non-empty JSON array.
+        CheckConstraint(
+            _NonEmptyJsonArrayCheck("view_columns"),
+            name="ck_view_columns_nonempty",
+        ),
+        CheckConstraint(
+            _check_in("view_status", VIEW_STATUSES),
+            name="ck_view_status",
+        ),
+        Index("ix_views_view_status", "view_status"),
+        Index("ix_views_view_entity", "view_entity"),
+        Index("ix_views_view_deleted_at", "view_deleted_at"),
+    )
+
+
+class Automation(EngagementScopedPKMixin, Base):
+    """Condition-carrying design record — one trigger/condition/action rule.
+
+    PRJ-025 PI-189 slice 2, per ``engine-neutral-design-model-and-adapters.md``
+    §8. An ``automation`` (``AUT-NNN``) is the engine-neutral description of a
+    workflow on one entity: ``automation_trigger`` is the firing event, the
+    optional ``automation_condition`` a neutral condition AST that further
+    gates it, and ``automation_actions`` a non-empty ordered list of action
+    objects (each with a ``"type"`` in ``AUTOMATION_ACTION_TYPES``). It renders
+    into an EspoCRM Workflow / BPM flow and a HubSpot workflow.
+
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``automation_identifier``. ``automation_entity``
+    is a plain ``ENT-NNN`` string column validated to exist and be live at
+    write time. The standard four-status propose-verify lifecycle gates it.
+    """
+
+    __tablename__ = "automations"
+
+    automation_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    automation_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    automation_entity: Mapped[str] = mapped_column(String(32), nullable=False)
+    automation_trigger: Mapped[str] = mapped_column(String(32), nullable=False)
+    automation_condition: Mapped[dict | None] = mapped_column(
+        JSONColumn, nullable=True
+    )
+    automation_actions: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False
+    )
+    automation_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    automation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    automation_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    automation_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    automation_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    automation_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^AUT-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("automation_identifier", ["AUT"]),
+            name="ck_automation_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("automation_trigger", AUTOMATION_TRIGGERS),
+            name="ck_automation_trigger",
+        ),
+        # ``automation_actions`` is NOT NULL and must be a non-empty JSON
+        # array (per-action ``type`` membership is access-layer enforced).
+        CheckConstraint(
+            _NonEmptyJsonArrayCheck("automation_actions"),
+            name="ck_automation_actions_nonempty",
+        ),
+        CheckConstraint(
+            _check_in("automation_status", AUTOMATION_STATUSES),
+            name="ck_automation_status",
+        ),
+        Index("ix_automations_automation_status", "automation_status"),
+        Index("ix_automations_automation_entity", "automation_entity"),
+        Index(
+            "ix_automations_automation_deleted_at", "automation_deleted_at"
         ),
     )
 
