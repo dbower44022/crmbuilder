@@ -429,6 +429,49 @@ SERVICE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "rejected": frozenset(),
 }
 
+# ---------------------------------------------------------------------------
+# Composite design-record vocab (PRJ-025 PI-189 slice 1). The engine-neutral
+# ``association`` (an entity-to-entity link, driving the EspoCRM
+# ``relationships:`` block) and ``engine_override`` (the sparse per-engine
+# override layer the adapter consumes). See
+# ``engine-neutral-design-model-and-adapters.md`` §8, §9.
+# ---------------------------------------------------------------------------
+
+# Engine-neutral cardinality of one ``association`` (PI-189). Maps to the
+# EspoCRM relationship ``type`` (``oneToOne`` / ``oneToMany`` /
+# ``manyToMany``) and a HubSpot association cardinality.
+ASSOCIATION_CARDINALITIES: frozenset[str] = frozenset(
+    {"one_to_one", "one_to_many", "many_to_many"}
+)
+
+# Methodology entity ``association`` lifecycle (PI-189). The standard
+# four-status propose-verify lifecycle, identical to ``entity`` / ``service``
+# — one-way gate out of ``candidate``; ``confirmed ⇄ deferred`` free
+# movement; ``rejected`` reachable from ``candidate`` and ``deferred`` only;
+# terminal ``rejected``.
+ASSOCIATION_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+ASSOCIATION_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
+# Target engines an ``engine_override`` may scope to (PI-189). The closed set
+# of CRM engines the engine-neutral model knows how to render. Deliberately
+# small; extended as new adapters land.
+TARGET_ENGINES: frozenset[str] = frozenset({"espocrm", "hubspot"})
+
+# The design-record kinds an ``engine_override`` may target (PI-189). One of
+# the three engine-neutral composite/intrinsic constructs whose rendering an
+# override may sparsely adjust per engine.
+OVERRIDE_SUBJECT_TYPES: frozenset[str] = frozenset(
+    {"entity", "field", "association"}
+)
+
 # Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
 # PRD v0.2 §8 named set. Per-kind rule-object schema validation (required
 # keys, level applicability, conditional-key consistency — invariant I9)
@@ -1077,6 +1120,13 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # cross-domain service — a capability not owned by any single
         # business domain (SVC-). See methodology-schema-specs/service.md.
         "service",
+        # PRJ-025 PI-189 slice 1 composite design records. ``association``
+        # (ASN-) models an entity-to-entity link (the EspoCRM
+        # ``relationships:`` block); ``engine_override`` (OVR-) is the sparse
+        # per-engine override layer the adapter consumes. See
+        # engine-neutral-design-model-and-adapters.md §8, §9.
+        "association",
+        "engine_override",
     }
 )
 

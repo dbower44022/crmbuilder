@@ -1149,6 +1149,242 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
             await http.post(f"/fields/{identifier}/restore")
         )
 
+    # --- Associations (composite design record, PRJ-025 PI-189) ---
+    # An association (ASN-NNN) is the engine-neutral description of an
+    # entity-to-entity link — the construct the EspoCRM adapter renders into
+    # the `relationships:` block. Both endpoints are ENT-NNN identifiers
+    # validated to exist and be live in the active engagement.
+
+    async def get_association(
+        identifier: str, include_deleted: bool = False
+    ) -> Any:
+        """Return one association (composite design) record by its ASN-NNN id."""
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(
+            await http.get(f"/associations/{identifier}", params=params)
+        )
+
+    async def list_associations(
+        source_entity: str | None = None,
+        target_entity: str | None = None,
+        include_deleted: bool = False,
+    ) -> Any:
+        """List association records.
+
+        Filter ``source_entity`` / ``target_entity`` (each ENT-NNN) narrows
+        on the endpoint columns. Pass ``include_deleted=true`` to include
+        soft-deleted rows.
+        """
+        params = {
+            k: v
+            for k, v in dict(
+                source_entity=source_entity,
+                target_entity=target_entity,
+                include_deleted="true" if include_deleted else None,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.get("/associations", params=params or None)
+        )
+
+    async def create_association(
+        name: str,
+        source_entity: str,
+        target_entity: str,
+        cardinality: str,
+        source_role: str | None = None,
+        target_role: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create an association (engine-neutral entity-to-entity link).
+
+        Required: ``name``, ``source_entity`` / ``target_entity`` (both
+        ENT-NNN, validated live), ``cardinality`` (one_to_one / one_to_many /
+        many_to_many). ``status`` defaults to ``candidate`` server-side.
+        Identifier is server-assigned (ASN-NNN) when omitted. ``source_role`` /
+        ``target_role`` name the two sides of the link (e.g. "mentor").
+        """
+        body = {
+            k: v
+            for k, v in dict(
+                association_name=name,
+                association_source_entity=source_entity,
+                association_target_entity=target_entity,
+                association_cardinality=cardinality,
+                association_source_role=source_role,
+                association_target_role=target_role,
+                association_description=description,
+                association_notes=notes,
+                association_status=status,
+                association_identifier=identifier,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.post("/associations", json=body))
+
+    async def update_association(
+        identifier: str,
+        name: str | None = None,
+        source_entity: str | None = None,
+        target_entity: str | None = None,
+        cardinality: str | None = None,
+        source_role: str | None = None,
+        target_role: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+    ) -> Any:
+        """Update fields on an association record (PATCH). Pass only the
+        fields to change. Endpoint changes are re-validated against live
+        entities; a status change is transition-validated."""
+        body = {
+            f"association_{k}": v
+            for k, v in dict(
+                name=name,
+                source_entity=source_entity,
+                target_entity=target_entity,
+                cardinality=cardinality,
+                source_role=source_role,
+                target_role=target_role,
+                description=description,
+                notes=notes,
+                status=status,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.patch(f"/associations/{identifier}", json=body)
+        )
+
+    async def delete_association(identifier: str) -> Any:
+        """Soft-delete an association record (idempotent)."""
+        return await _unwrap(await http.delete(f"/associations/{identifier}"))
+
+    async def restore_association(identifier: str) -> Any:
+        """Restore a soft-deleted association record."""
+        return await _unwrap(
+            await http.post(f"/associations/{identifier}/restore")
+        )
+
+    # --- Engine overrides (composite design record, PRJ-025 PI-189) ---
+    # An engine_override (OVR-NNN) is the sparse per-engine escape hatch that
+    # adjusts how one design construct (entity / field / association) renders
+    # for one target engine. No status lifecycle. The (target_engine,
+    # subject_type, subject_identifier, attribute) tuple is unique.
+
+    async def get_engine_override(
+        identifier: str, include_deleted: bool = False
+    ) -> Any:
+        """Return one engine_override record by its OVR-NNN identifier."""
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(
+            await http.get(f"/engine-overrides/{identifier}", params=params)
+        )
+
+    async def list_engine_overrides(
+        target_engine: str | None = None,
+        subject_type: str | None = None,
+        subject_identifier: str | None = None,
+        include_deleted: bool = False,
+    ) -> Any:
+        """List engine_override records.
+
+        Filter by ``target_engine`` (espocrm / hubspot), ``subject_type``
+        (entity / field / association), and/or ``subject_identifier``. Pass
+        ``include_deleted=true`` to include soft-deleted rows.
+        """
+        params = {
+            k: v
+            for k, v in dict(
+                target_engine=target_engine,
+                subject_type=subject_type,
+                subject_identifier=subject_identifier,
+                include_deleted="true" if include_deleted else None,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.get("/engine-overrides", params=params or None)
+        )
+
+    async def create_engine_override(
+        target_engine: str,
+        subject_type: str,
+        subject_identifier: str,
+        attribute: str,
+        value: Any | None = None,
+        notes: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create an engine_override (sparse per-engine override).
+
+        Required: ``target_engine`` (espocrm / hubspot), ``subject_type``
+        (entity / field / association), ``subject_identifier`` (the ENT/FLD/
+        ASN id being overridden), ``attribute`` (e.g. "internal_name",
+        "formula", "enum_style"). ``value`` is free JSON stored verbatim. The
+        (engine, subject_type, subject_identifier, attribute) tuple is unique;
+        a duplicate is refused. Identifier is server-assigned (OVR-NNN) when
+        omitted.
+        """
+        body = {
+            k: v
+            for k, v in dict(
+                override_target_engine=target_engine,
+                override_subject_type=subject_type,
+                override_subject_identifier=subject_identifier,
+                override_attribute=attribute,
+                override_value=value,
+                override_notes=notes,
+                override_identifier=identifier,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.post("/engine-overrides", json=body))
+
+    async def update_engine_override(
+        identifier: str,
+        target_engine: str | None = None,
+        subject_type: str | None = None,
+        subject_identifier: str | None = None,
+        attribute: str | None = None,
+        value: Any | None = None,
+        notes: str | None = None,
+    ) -> Any:
+        """Update fields on an engine_override record (PATCH). Pass only the
+        fields to change. The uniqueness tuple is re-checked when any of its
+        members change."""
+        body = {
+            f"override_{k}": v
+            for k, v in dict(
+                target_engine=target_engine,
+                subject_type=subject_type,
+                subject_identifier=subject_identifier,
+                attribute=attribute,
+                value=value,
+                notes=notes,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.patch(f"/engine-overrides/{identifier}", json=body)
+        )
+
+    async def delete_engine_override(identifier: str) -> Any:
+        """Soft-delete an engine_override record (idempotent)."""
+        return await _unwrap(
+            await http.delete(f"/engine-overrides/{identifier}")
+        )
+
+    async def restore_engine_override(identifier: str) -> Any:
+        """Restore a soft-deleted engine_override record."""
+        return await _unwrap(
+            await http.post(f"/engine-overrides/{identifier}/restore")
+        )
+
     # Declaration-ordered surface. Adding a tool = define it above and
     # append it here; both the MCP server and the chat dispatcher pick it
     # up automatically.
@@ -1225,6 +1461,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         update_field,
         delete_field,
         restore_field,
+        get_association,
+        list_associations,
+        create_association,
+        update_association,
+        delete_association,
+        restore_association,
+        get_engine_override,
+        list_engine_overrides,
+        create_engine_override,
+        update_engine_override,
+        delete_engine_override,
+        restore_engine_override,
     ]
     return [
         ToolDefinition(

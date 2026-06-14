@@ -72,6 +72,9 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "review_signoffs",
         "services",
         "field_options",
+        # PRJ-025 PI-189 slice 1 composite design records.
+        "associations",
+        "engine_overrides",
     }
 )
 

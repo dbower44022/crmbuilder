@@ -78,6 +78,11 @@ _SPECS: dict[str, _Spec] = {
     # PI-161 (service.md): one cross-domain service; client-language name in
     # the title slot.
     "service": _Spec(models.Service, "service_identifier", "service_name", "service_status", "service_created_at", "service_updated_at"),
+    # PRJ-025 PI-189: composite design records. ``association`` carries a name;
+    # ``engine_override`` has no name or status — the overridden attribute is
+    # the most informative single column for the title slot.
+    "association": _Spec(models.Association, "association_identifier", "association_name", "association_status", "association_created_at", "association_updated_at"),
+    "engine_override": _Spec(models.EngineOverride, "override_identifier", "override_attribute", None, "override_created_at", "override_updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),

@@ -30,6 +30,7 @@ from crmbuilder_v2.api.errors import (
 from crmbuilder_v2.api.principal_middleware import PrincipalMiddleware
 from crmbuilder_v2.api.routers import (
     admin,
+    associations,
     catalog,
     charter,
     close_out_payloads,
@@ -41,6 +42,7 @@ from crmbuilder_v2.api.routers import (
     deposit_events,
     domains,
     engagements,
+    engine_overrides,
     entities,
     field,
     findings,
@@ -174,6 +176,8 @@ def create_app() -> FastAPI:
     app.include_router(deposit_events.router)
     app.include_router(utilization_evidence.router)
     app.include_router(migration_mappings.router)
+    app.include_router(associations.router)
+    app.include_router(engine_overrides.router)
     app.include_router(commits.router)
     # Agent Profile Registry (PI-122).
     app.include_router(registry.agent_profiles_router)

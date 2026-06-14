@@ -801,6 +801,110 @@ class MigrationMappingPatchIn(_Base):
     rejected_by_decision: str | None = None
 
 
+# ---------- Associations (composite design record, PRJ-025 PI-189) ----------
+
+
+class AssociationCreateIn(_Base):
+    """POST /associations body (engine-neutral-design-model §8).
+
+    ``association_identifier`` is server-assigned when omitted;
+    ``association_status`` defaults to ``candidate`` server-side. Both
+    endpoint entities (``association_source_entity`` /
+    ``association_target_entity``, each an ``ENT-NNN``) are required and are
+    validated to exist and be live at the access layer."""
+
+    association_name: str
+    association_source_entity: str
+    association_target_entity: str
+    association_cardinality: str
+    association_source_role: str | None = None
+    association_target_role: str | None = None
+    association_description: str | None = None
+    association_notes: str | None = None
+    association_status: str | None = None
+    association_identifier: str | None = None
+
+
+class AssociationReplaceIn(_Base):
+    """PUT /associations/{identifier} body — full replace."""
+
+    association_identifier: str | None = None
+    association_name: str
+    association_source_entity: str
+    association_target_entity: str
+    association_cardinality: str
+    association_source_role: str | None = None
+    association_target_role: str | None = None
+    association_description: str | None = None
+    association_notes: str | None = None
+    association_status: str
+
+
+class AssociationPatchIn(_Base):
+    """PATCH /associations/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit null (clear) is distinguished from an omitted key (leave
+    unchanged)."""
+
+    association_name: str | None = None
+    association_source_entity: str | None = None
+    association_target_entity: str | None = None
+    association_cardinality: str | None = None
+    association_source_role: str | None = None
+    association_target_role: str | None = None
+    association_description: str | None = None
+    association_notes: str | None = None
+    association_status: str | None = None
+
+
+# ---------- Engine overrides (composite design record, PRJ-025 PI-189) -------
+
+
+class EngineOverrideCreateIn(_Base):
+    """POST /engine-overrides body (engine-neutral-design-model §9).
+
+    ``override_identifier`` is server-assigned when omitted. The
+    ``(target_engine, subject_type, subject_identifier, attribute)`` tuple is
+    unique per engagement; a duplicate is refused 409. ``override_value`` is
+    free JSON (scalar, list, or object) stored verbatim."""
+
+    override_target_engine: str
+    override_subject_type: str
+    override_subject_identifier: str
+    override_attribute: str
+    override_value: object | None = None
+    override_notes: str | None = None
+    override_identifier: str | None = None
+
+
+class EngineOverrideReplaceIn(_Base):
+    """PUT /engine-overrides/{identifier} body — full replace."""
+
+    override_identifier: str | None = None
+    override_target_engine: str
+    override_subject_type: str
+    override_subject_identifier: str
+    override_attribute: str
+    override_value: object | None = None
+    override_notes: str | None = None
+
+
+class EngineOverridePatchIn(_Base):
+    """PATCH /engine-overrides/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit null (clear) is distinguished from an omitted key (leave
+    unchanged)."""
+
+    override_target_engine: str | None = None
+    override_subject_type: str | None = None
+    override_subject_identifier: str | None = None
+    override_attribute: str | None = None
+    override_value: object | None = None
+    override_notes: str | None = None
+
+
 # ---------- Processes (methodology entity, UI v0.4 slice D) ----------
 
 

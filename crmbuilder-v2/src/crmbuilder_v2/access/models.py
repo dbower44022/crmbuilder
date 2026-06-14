@@ -36,6 +36,8 @@ from sqlalchemy.sql.expression import ColumnElement
 
 from crmbuilder_v2.access.vocab import (
     AGENT_PROFILE_TIERS,
+    ASSOCIATION_CARDINALITIES,
+    ASSOCIATION_STATUSES,
     CATALOG_ATTRIBUTE_TYPES,
     CATALOG_DATA_MODEL_ROLES,
     CATALOG_ENTRY_KINDS,
@@ -73,6 +75,7 @@ from crmbuilder_v2.access.vocab import (
     MIGRATION_MAPPING_DISPOSITIONS,
     MIGRATION_MAPPING_LEVELS,
     MIGRATION_MAPPING_STATUSES,
+    OVERRIDE_SUBJECT_TYPES,
     PERSONA_STATUSES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -94,6 +97,7 @@ from crmbuilder_v2.access.vocab import (
     SESSION_MEDIUMS,
     SESSION_STATUSES,
     SKILL_KINDS,
+    TARGET_ENGINES,
     TERM_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
@@ -1619,6 +1623,184 @@ class Service(EngagementScopedPKMixin, Base):
         ),
         Index("ix_services_service_status", "service_status"),
         Index("ix_services_service_deleted_at", "service_deleted_at"),
+    )
+
+
+class Association(EngagementScopedPKMixin, Base):
+    """Composite design record — one engine-neutral entity-to-entity link.
+
+    PRJ-025 PI-189 slice 1, per ``engine-neutral-design-model-and-adapters.md``
+    §8. An association is the engine-neutral description of a relationship
+    between two design ``entity`` records; it is the construct the EspoCRM
+    adapter renders into the ``relationships:`` block (the biggest YAML gap)
+    and a HubSpot adapter renders into an association definition.
+
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``association_identifier`` (format ``ASN-NNN``)
+    — no integer surrogate, matching ``entity`` / ``field`` / ``service``.
+    The source and target entities are carried as plain ``ENT-NNN`` string
+    columns (not ``refs`` edges) — the association *is* the relationship, so
+    the access layer validates both endpoints exist and are live at write
+    time rather than holding an FK. The standard four-status propose-verify
+    lifecycle gates the record exactly as ``entity`` does.
+    """
+
+    __tablename__ = "associations"
+
+    association_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    association_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    association_source_entity: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    association_target_entity: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    association_cardinality: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    association_source_role: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    association_target_role: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    association_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    association_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    association_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    association_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    association_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    association_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^ASN-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("association_identifier", ["ASN"]),
+            name="ck_association_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("association_cardinality", ASSOCIATION_CARDINALITIES),
+            name="ck_association_cardinality",
+        ),
+        CheckConstraint(
+            _check_in("association_status", ASSOCIATION_STATUSES),
+            name="ck_association_status",
+        ),
+        Index("ix_associations_association_status", "association_status"),
+        Index(
+            "ix_associations_association_source_entity",
+            "association_source_entity",
+        ),
+        Index(
+            "ix_associations_association_target_entity",
+            "association_target_entity",
+        ),
+        Index(
+            "ix_associations_association_deleted_at", "association_deleted_at"
+        ),
+    )
+
+
+class EngineOverride(EngagementScopedPKMixin, Base):
+    """Composite design record — one sparse per-engine override.
+
+    PRJ-025 PI-189 slice 1, per ``engine-neutral-design-model-and-adapters.md``
+    §9. The engine-neutral model is authoritative; an ``engine_override`` is
+    the thin escape hatch that adjusts how one design construct
+    (``entity`` / ``field`` / ``association``) renders for one target engine —
+    e.g. pinning an EspoCRM ``internal_name``, a ``formula`` body, or an enum
+    rendering style. The adapter consumes the override layer when rendering;
+    absent an override the neutral default applies.
+
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``override_identifier`` (format ``OVR-NNN``).
+    There is **no status lifecycle** — an override either exists or it does
+    not. The ``(engagement_id, target_engine, subject_type, subject_identifier,
+    attribute)`` tuple is unique: one override per engine per construct per
+    attribute. ``override_value`` is dialect-portable JSON (``JSONColumn``),
+    so a scalar, list, or object value renders as JSONB on Postgres.
+    """
+
+    __tablename__ = "engine_overrides"
+
+    override_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    override_target_engine: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    override_subject_type: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    override_subject_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    override_attribute: Mapped[str] = mapped_column(String(64), nullable=False)
+    override_value: Mapped[object | None] = mapped_column(
+        JSONColumn, nullable=True
+    )
+    override_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    override_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    override_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    override_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^OVR-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("override_identifier", ["OVR"]),
+            name="ck_engine_override_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("override_target_engine", TARGET_ENGINES),
+            name="ck_engine_override_target_engine",
+        ),
+        CheckConstraint(
+            _check_in("override_subject_type", OVERRIDE_SUBJECT_TYPES),
+            name="ck_engine_override_subject_type",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "override_target_engine",
+            "override_subject_type",
+            "override_subject_identifier",
+            "override_attribute",
+            name="uq_engine_override_target",
+        ),
+        Index(
+            "ix_engine_overrides_override_subject",
+            "override_subject_type",
+            "override_subject_identifier",
+        ),
+        Index(
+            "ix_engine_overrides_override_target_engine",
+            "override_target_engine",
+        ),
+        Index(
+            "ix_engine_overrides_override_deleted_at", "override_deleted_at"
+        ),
     )
 
 
