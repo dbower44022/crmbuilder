@@ -865,6 +865,204 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
             body["scope"] = scope
         return await _unwrap(await http.post("/learnings/capture", json=body))
 
+    # ---------- Entities (methodology entity, PI-181) ----------
+    # The `entity` methodology record (ENT-NNN). Domain affiliations are
+    # NOT inlined on create/update — attach them via `add_reference` with
+    # the `entity_scopes_to_domain` relationship kind (entity.md §3.5.4).
+
+    async def get_entity(
+        identifier: str, include_deleted: bool = False
+    ) -> Any:
+        """Return one entity (methodology) record by its ENT-NNN identifier."""
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(
+            await http.get(f"/entities/{identifier}", params=params)
+        )
+
+    async def list_entities(include_deleted: bool = False) -> Any:
+        """List all entity (methodology) records in identifier order.
+
+        Pass ``include_deleted=true`` to include soft-deleted rows.
+        """
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(await http.get("/entities", params=params))
+
+    async def create_entity(
+        name: str,
+        description: str,
+        notes: str | None = None,
+        status: str | None = None,
+        kind: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create an entity (methodology) record.
+
+        Required: ``name``, ``description``. ``status`` defaults to
+        ``candidate`` server-side; ``kind`` is optional (operators may
+        defer classification to Phase 3). Identifier is server-assigned
+        (ENT-NNN) when omitted.
+
+        Domain affiliations are NOT inlined here — attach them with a
+        separate ``add_reference`` call using the
+        ``entity_scopes_to_domain`` relationship kind.
+        """
+        body = {
+            k: v
+            for k, v in dict(
+                entity_name=name,
+                entity_description=description,
+                entity_notes=notes,
+                entity_status=status,
+                entity_kind=kind,
+                entity_identifier=identifier,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.post("/entities", json=body))
+
+    async def update_entity(
+        identifier: str,
+        name: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        kind: str | None = None,
+    ) -> Any:
+        """Update fields on an entity record (PATCH). Pass only the fields
+        to change. Lifecycle status transitions are validated by the
+        access layer (e.g. candidate → confirmed)."""
+        body = {
+            f"entity_{k}": v
+            for k, v in dict(
+                name=name,
+                description=description,
+                notes=notes,
+                status=status,
+                kind=kind,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.patch(f"/entities/{identifier}", json=body))
+
+    async def delete_entity(identifier: str) -> Any:
+        """Soft-delete an entity record (idempotent)."""
+        return await _unwrap(await http.delete(f"/entities/{identifier}"))
+
+    async def restore_entity(identifier: str) -> Any:
+        """Restore a soft-deleted entity record."""
+        return await _unwrap(
+            await http.post(f"/entities/{identifier}/restore")
+        )
+
+    # ---------- Fields (methodology entity, PI-181) ----------
+    # The `field` methodology record (FLD-NNN). Per field.md §3.5.4 the
+    # mandatory `field_belongs_to_entity` parent edge is established
+    # atomically by `create_field` via the `entity_identifier` arg — the
+    # access layer writes the field row + the edge in one transaction.
+    # PUT/PATCH do NOT re-parent; move a field with DELETE+add_reference.
+
+    async def get_field(
+        identifier: str, include_deleted: bool = False
+    ) -> Any:
+        """Return one field (methodology) record by its FLD-NNN identifier."""
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(
+            await http.get(f"/fields/{identifier}", params=params)
+        )
+
+    async def list_fields(
+        entity_identifier: str | None = None,
+        include_deleted: bool = False,
+    ) -> Any:
+        """List field (methodology) records.
+
+        Filter ``entity_identifier`` (ENT-NNN) returns only the fields
+        whose live ``field_belongs_to_entity`` edge points to that entity.
+        Pass ``include_deleted=true`` to include soft-deleted rows.
+        """
+        params = {
+            k: v
+            for k, v in dict(
+                entity_identifier=entity_identifier,
+                include_deleted="true" if include_deleted else None,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.get("/fields", params=params or None))
+
+    async def create_field(
+        entity_identifier: str,
+        name: str,
+        description: str,
+        type: str,
+        required: bool | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create a field (methodology) record under a parent entity.
+
+        Required: ``entity_identifier`` (the parent ENT-NNN), ``name``,
+        ``description``, ``type``. The ``entity_identifier`` establishes
+        the mandatory ``field_belongs_to_entity`` edge atomically with the
+        field row (field.md §3.5.4) — no separate reference call is needed
+        to parent a new field.
+
+        ``status`` defaults to ``candidate`` and ``required`` to ``False``
+        server-side. Identifier is server-assigned (FLD-NNN) when omitted.
+        """
+        body = {
+            k: v
+            for k, v in dict(
+                field_belongs_to_entity_identifier=entity_identifier,
+                field_name=name,
+                field_description=description,
+                field_type=type,
+                field_required=required,
+                field_notes=notes,
+                field_status=status,
+                field_identifier=identifier,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.post("/fields", json=body))
+
+    async def update_field(
+        identifier: str,
+        name: str | None = None,
+        description: str | None = None,
+        type: str | None = None,
+        required: bool | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+    ) -> Any:
+        """Update fields on a field record (PATCH). Pass only the fields to
+        change. Does NOT re-parent — re-parenting requires DELETE of the
+        old ``field_belongs_to_entity`` edge then a new ``add_reference``."""
+        body = {
+            f"field_{k}": v
+            for k, v in dict(
+                name=name,
+                description=description,
+                type=type,
+                required=required,
+                notes=notes,
+                status=status,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(await http.patch(f"/fields/{identifier}", json=body))
+
+    async def delete_field(identifier: str) -> Any:
+        """Soft-delete a field record (idempotent)."""
+        return await _unwrap(await http.delete(f"/fields/{identifier}"))
+
+    async def restore_field(identifier: str) -> Any:
+        """Restore a soft-deleted field record."""
+        return await _unwrap(
+            await http.post(f"/fields/{identifier}/restore")
+        )
+
     # Declaration-ordered surface. Adding a tool = define it above and
     # append it here; both the MCP server and the chat dispatcher pick it
     # up automatically.
@@ -929,6 +1127,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         catalog_get_entity,
         catalog_get_cross_system_map,
         catalog_gap_check,
+        get_entity,
+        list_entities,
+        create_entity,
+        update_entity,
+        delete_entity,
+        restore_entity,
+        get_field,
+        list_fields,
+        create_field,
+        update_field,
+        delete_field,
+        restore_field,
     ]
     return [
         ToolDefinition(
