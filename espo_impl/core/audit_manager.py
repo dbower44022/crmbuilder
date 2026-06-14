@@ -870,6 +870,32 @@ class AuditManager:
             if meta.get("maxLength") is not None:
                 props["maxLength"] = meta["maxLength"]
 
+            # Foreign field — mirrors a scalar from a linked entity
+            # (Section 6.8 / REQ-121 / PI-169). Capture the link it reads
+            # through and the linked-entity field it mirrors so the field
+            # re-deploys. Values are emitted verbatim: the deploy side
+            # re-applies the c-prefix on the relationship the link points
+            # at, so a verbatim reference stays consistent across the
+            # round-trip. Foreign fields are read-only mirrors, so any
+            # stray ``required`` flag is dropped — the deploy validator
+            # rejects ``required: true`` on a foreign field.
+            if field_type == "foreign":
+                props.pop("required", None)
+                link = meta.get("link")
+                foreign_field = meta.get("field")
+                if link:
+                    props["link"] = link
+                if foreign_field:
+                    props["field"] = foreign_field
+                if not link or not foreign_field:
+                    msg = (
+                        f"{entity.yaml_name}.{yaml_name}: foreign field is "
+                        f"missing link/field in metadata; emitted YAML will "
+                        f"need manual completion before re-deploy"
+                    )
+                    report.warnings.append(msg)
+                    self._cb(f"[AUDIT]    WARNING: {msg}", "yellow")
+
             entity.fields.append(FieldAuditResult(
                 yaml_name=yaml_name,
                 api_name=api_name,
