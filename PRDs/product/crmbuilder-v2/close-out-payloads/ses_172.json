@@ -1,0 +1,136 @@
+{
+  "label": "PRJ-015 UI usability batch build-closure (REQ-131..138 / PI-172..179)",
+  "session": {
+    "session_identifier": "SES-172",
+    "session_title": "PRJ-015 UI usability enhancements \u2014 planning & requirements",
+    "session_medium": "chat",
+    "session_medium_metadata": {},
+    "session_participants": [],
+    "session_status": "complete",
+    "session_executive_summary": "Delivered the eight PRJ-015 desktop-UI usability enhancements: an owning-entity column on the Fields grid and entity name in the field detail, a dedicated fields grid on the entity detail, hover-to-reveal full text on truncating read-only fields with a wrapping project purpose, a client-side search box on every list panel, a filterable/collapsible sidebar, inline lifecycle status actions, and a back/forward cross-record navigation trail. Built on branch pi-ui-usability (seven feature commits, full UI suite 992 passed), merged to main, with PI-172..179 resolved.",
+    "session_description": "Design + build session for the PRJ-015 UI usability batch."
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-078",
+    "conversation_title": "Desktop UI usability enhancements \u2014 requirements definition",
+    "conversation_purpose": "Define the requirements for the eight desktop-UI usability enhancements so each traces to the human conversation that established it.",
+    "conversation_description": "Doug specified four field/entity/project-detail improvements; four broader themes were added; all eight were worded as requirements and then built and delivered.",
+    "conversation_status": "complete",
+    "conversation_summary": "Eight enhancements agreed, built, tested (UI suite 992 passed), and merged to main; PI-172..179 resolved.",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-078",
+        "target_type": "session",
+        "target_id": "SES-172",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "7c386c2627c72dd04c70f335b9fd84926447c455",
+      "commit_message_first_line": "feat(v2-ui): reveal full text on truncating read-only fields; wrap project purpose (REQ-134/PI-175)",
+      "commit_message_full": "feat(v2-ui): reveal full text on truncating read-only fields; wrap project purpose (REQ-134/PI-175)\n\nread_only_line now mirrors its full value into the tooltip so any short\nread-only field reveals its content on hover across all panels;\nread_only_text wraps to widget width and tooltips too. Project detail's\npurpose field switches to the wrapping read_only_text so it no longer\ntruncates.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T01:16:54-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "b1682d38c69768f76cca3b74891a08894c28bdf4"
+      ],
+      "commit_files_changed_count": 3
+    },
+    {
+      "commit_sha": "2a1695b5d953607bf23e0d1912a490adf0e7977d",
+      "commit_message_first_line": "feat(v2-ui): show owning entity on Fields grid + name in field detail (REQ-131,132/PI-172,173)",
+      "commit_message_full": "feat(v2-ui): show owning entity on Fields grid + name in field detail (REQ-131,132/PI-172,173)\n\nThe Fields list gains an Entity column populated with each field's owning\nentity name (resolved on the worker thread via one bulk references read +\none entities read, with a soft-delete stash fallback). The field detail\nview's parent-entity row now shows the entity name together with its\nidentifier instead of the bare identifier.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T01:20:04-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "7c386c2627c72dd04c70f335b9fd84926447c455"
+      ],
+      "commit_files_changed_count": 2
+    },
+    {
+      "commit_sha": "1b91bc3fb571a31edd6f91738b00ec6e9c3c57b7",
+      "commit_message_first_line": "feat(v2-ui): dedicated fields grid on the entity detail (REQ-133/PI-174)",
+      "commit_message_full": "feat(v2-ui): dedicated fields grid on the entity detail (REQ-133/PI-174)\n\nAdds an EntityFieldsGridSection (a third GridContract over the shared grid,\nmirroring WorkTaskGridSection) listing each of an entity's fields with\nidentifier, name, data type, required flag, and status. The entities panel\njoins the inbound field_belongs_to_entity edges to the field records on the\nworker thread and renders the grid above References. Both entity-detail\ngrids get distinct object names so callers can disambiguate.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T01:24:26-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "2a1695b5d953607bf23e0d1912a490adf0e7977d"
+      ],
+      "commit_files_changed_count": 4
+    },
+    {
+      "commit_sha": "b3c0a289c132367c25fe205da3164d20e2719505",
+      "commit_message_first_line": "feat(v2-ui): client-side search box on every list panel (REQ-135/PI-176)",
+      "commit_message_full": "feat(v2-ui): client-side search box on every list panel (REQ-135/PI-176)\n\nListDetailPanel gains a debounced toolbar search (LinkFilterInput) that\nnarrows the master list across the visible columns of the already-loaded\nrecords \u2014 zero backend, propagates to every table-backed panel. _records\nis now the filtered view of _all_records; the status label shows\n\"N of M records\" while filtering; navigation clears an active search so a\nhidden target stays reachable. TopicsPanel (tree model) and ReferencesPanel\n(own filter strip) opt out via _search_enabled=False.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T01:55:19-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "1b91bc3fb571a31edd6f91738b00ec6e9c3c57b7"
+      ],
+      "commit_files_changed_count": 4
+    },
+    {
+      "commit_sha": "b256ae8a1f6e23a97071b0c57644959caaaeb512",
+      "commit_message_first_line": "feat(v2-ui): sidebar filter + collapsible groups (REQ-136/PI-177)",
+      "commit_message_full": "feat(v2-ui): sidebar filter + collapsible groups (REQ-136/PI-177)\n\nThe sidebar gains filter_entries() (hide non-matching entries, and headers\nwhose entries all hide) and clickable group headers that collapse/expand\ntheir entries; an active filter overrides collapse so matches always show.\nA \"Filter navigation\u2026\" box above the sidebar list (in the sidebar column,\nboth engagement and non-engagement layouts) drives it. Headers are now\nenabled-but-not-selectable so clicks toggle without ever taking selection.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T01:55:19-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "b3c0a289c132367c25fe205da3164d20e2719505"
+      ],
+      "commit_files_changed_count": 3
+    },
+    {
+      "commit_sha": "971d76ce1223b43ba5e965e24ea7295f7deb20bb",
+      "commit_message_first_line": "feat(v2-ui): inline lifecycle status actions from the list (REQ-137/PI-178)",
+      "commit_message_full": "feat(v2-ui): inline lifecycle status actions from the list (REQ-137/PI-178)\n\nListDetailPanel gains a _status_action_spec hook + _append_status_menu helper\nthat adds a \"Set status\" context-menu submenu of valid next states, applied\nwithout opening the edit dialog. Wired for Sessions (patch_session) and\nPlanning Items (update_planning_item), each offering only the transitions its\nlifecycle vocab permits; other panels can opt in by implementing the hook.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T01:55:19-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "b256ae8a1f6e23a97071b0c57644959caaaeb512"
+      ],
+      "commit_files_changed_count": 5
+    },
+    {
+      "commit_sha": "de9ac78387c7518360b33e9a57e696a0bb3b098c",
+      "commit_message_first_line": "feat(v2-ui): back/forward cross-record navigation trail (REQ-138/PI-179)",
+      "commit_message_full": "feat(v2-ui): back/forward cross-record navigation trail (REQ-138/PI-179)\n\nFollowing a reference (the navigation router) now records the originating\n(sidebar entry, selected identifier) on a back stack; a new Go menu with\nBack/Forward actions (Alt+Left / Alt+Right) steps through the trail and\nreturns the user to where they came from. A fresh jump clears the forward\nstack; actions enable/disable with stack state. Inbound references were\nalready one-click navigable via the references grid.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T01:55:20-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "971d76ce1223b43ba5e965e24ea7295f7deb20bb"
+      ],
+      "commit_files_changed_count": 2
+    }
+  ],
+  "decisions": [],
+  "references": [],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

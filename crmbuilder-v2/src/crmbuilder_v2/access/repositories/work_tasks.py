@@ -334,6 +334,17 @@ def claim_work_task(session: Session, identifier: str, *, claimed_by: str) -> di
             [FieldError("claimed_by", "required", "claimed_by is required")]
         )
     row = _get_row(session, identifier)
+    # PI-190 / REQ-165: an interactive PI is ADO-invisible at every tier — its
+    # Work Tasks must not be claimed for ADO execution (DEC-425). Lazy import to
+    # keep this low-level repo free of a module-level dependency on pm.
+    from crmbuilder_v2.access.repositories import pm as _pm
+
+    if _pm.work_task_is_ado_interactive(session, identifier):
+        raise ConflictError(
+            f"work_task {identifier!r} belongs to an execution_mode "
+            f"'interactive' planning item; the ADO must not claim it — "
+            f"interactive work is executed by a human."
+        )
     if row.work_task_claimed_by is not None:
         if row.work_task_claimed_by == claimed_by:
             return to_dict(row)

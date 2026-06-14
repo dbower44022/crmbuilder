@@ -34,6 +34,7 @@ _EXPECTED_COLUMNS = {
     "project_completed_at",
     "project_cancelled_at",
     "project_superseded_at",
+    "project_execution_mode",
     "engagement_id",
 }
 

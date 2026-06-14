@@ -180,6 +180,63 @@ def test_references_section_present_on_detail_pane(qtbot):
     assert section is not None
 
 
+def _approval_record(approved: bool) -> dict[str, Any]:
+    rec = _stub_record("PI-700")
+    rec["execution_mode"] = "ado_with_approval"
+    rec["dispatch_approved"] = approved
+    return rec
+
+
+def test_approve_dispatch_button_shown_for_unapproved_item(qtbot):
+    record = _approval_record(approved=False)
+    client = build_client(_planning_only_handler([record]))
+    panel = PlanningItemsPanel(client)
+    qtbot.addWidget(panel)
+
+    panel.refresh()
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=2000)
+    panel._select_row(0)
+    qtbot.waitUntil(
+        lambda: panel._detail_stack.currentWidget() is not panel._loading_detail
+        and panel._detail_stack.currentWidget() is not panel._empty_detail,
+        timeout=2000,
+    )
+    detail = panel._detail_stack.currentWidget()
+    assert detail.findChild(QPushButton, "approve_dispatch_button") is not None
+
+
+def test_approve_dispatch_button_absent_once_approved(qtbot):
+    record = _approval_record(approved=True)
+    client = build_client(_planning_only_handler([record]))
+    panel = PlanningItemsPanel(client)
+    qtbot.addWidget(panel)
+
+    panel.refresh()
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=2000)
+    panel._select_row(0)
+    qtbot.waitUntil(
+        lambda: panel._detail_stack.currentWidget() is not panel._loading_detail
+        and panel._detail_stack.currentWidget() is not panel._empty_detail,
+        timeout=2000,
+    )
+    detail = panel._detail_stack.currentWidget()
+    assert detail.findChild(QPushButton, "approve_dispatch_button") is None
+
+
+def test_approve_dispatch_click_calls_client_and_refreshes(qtbot, monkeypatch):
+    record = _approval_record(approved=False)
+    client = MagicMock()
+    panel = PlanningItemsPanel(client)
+    qtbot.addWidget(panel)
+    refreshed: dict[str, bool] = {}
+    monkeypatch.setattr(panel, "refresh", lambda: refreshed.setdefault("yes", True))
+
+    panel._on_approve_dispatch_clicked(record)
+
+    client.approve_dispatch_planning_item.assert_called_once_with("PI-700")
+    assert refreshed.get("yes") is True
+
+
 def test_edit_click_fetches_fresh_record_and_opens_edit_dialog(qtbot, monkeypatch):
     record = _stub_record()
     fresh = dict(record)

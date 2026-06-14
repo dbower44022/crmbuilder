@@ -624,6 +624,24 @@ class StorageClient:
         """
         return self._request("DELETE", f"/planning-items/{identifier}")
 
+    def approve_dispatch_planning_item(self, identifier: str) -> dict[str, Any]:
+        """POST /planning-items/{identifier}/approve-dispatch (PI-183).
+
+        Records a human approval for an ``ado_with_approval`` item — the only
+        write path for ``dispatch_approved`` (REQ-155). Idempotent. Returns the
+        updated record dict. Raises ``NotFoundError`` on 404.
+        """
+        result = self._request(
+            "POST", f"/planning-items/{identifier}/approve-dispatch"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for approve_dispatch_planning_item",
+            )
+        return result
+
     # ------------------------------------------------------------------
     # Domains (methodology entity — UI v0.4 slice B)
     # ------------------------------------------------------------------
@@ -1949,6 +1967,118 @@ class StorageClient:
                 "Expected {'next': str} body for "
                 "next_crm_candidate_identifier"
             ),
+        )
+
+    # ------------------------------------------------------------------
+    # Instances (CRM connections; PI-186 / PRJ-027)
+    # ------------------------------------------------------------------
+
+    def list_instances(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return all instances as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/instances.py``. With
+        ``include_deleted=True`` soft-deleted records are included.
+        """
+        path = "/instances"
+        if include_deleted:
+            path = "/instances?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_instance(self, identifier: str) -> dict[str, Any]:
+        """Return a single instance by identifier (e.g. ``"INST-001"``)."""
+        result = self._request("GET", f"/instances/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_instance",
+            )
+        return result
+
+    def create_instance(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /instances. Returns the created record dict.
+
+        The body uses the parent-prefixed field names plus the write-only
+        plaintext ``secret`` / ``secret_key`` inputs (stored in the keyring
+        server-side, never echoed). ``instance_identifier`` is server-assigned
+        when omitted.
+        """
+        result = self._request("POST", "/instances", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_instance",
+            )
+        return result
+
+    def update_instance(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /instances/{identifier} — full record replace.
+
+        An omitted ``secret`` preserves the existing one (the router reads the
+        current record); supplying a new plaintext rotates it.
+        """
+        result = self._request(
+            "PUT", f"/instances/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_instance",
+            )
+        return result
+
+    def patch_instance(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /instances/{identifier} — partial update.
+
+        Body should contain only changed fields. A ``secret`` / ``secret_key``
+        present in the body rotates that keyring reference.
+        """
+        result = self._request(
+            "PATCH", f"/instances/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_instance",
+            )
+        return result
+
+    def delete_instance(self, identifier: str) -> Any:
+        """DELETE /instances/{identifier}. Soft-deletes; idempotent."""
+        return self._request("DELETE", f"/instances/{identifier}")
+
+    def restore_instance(self, identifier: str) -> dict[str, Any]:
+        """POST /instances/{identifier}/restore. Clears the soft-delete."""
+        result = self._request("POST", f"/instances/{identifier}/restore")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_instance",
+            )
+        return result
+
+    def next_instance_identifier(self) -> str:
+        """GET /instances/next-identifier. Returns the next ``INST-NNN``."""
+        result = self._request("GET", "/instances/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message="Expected {'next': str} body for next_instance_identifier",
         )
 
     # ------------------------------------------------------------------

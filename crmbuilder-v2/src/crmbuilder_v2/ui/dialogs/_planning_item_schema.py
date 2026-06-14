@@ -12,6 +12,7 @@ import re
 from copy import deepcopy
 
 from crmbuilder_v2.access.vocab import (
+    EXECUTION_MODES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
 )
@@ -61,6 +62,17 @@ _PLANNING_ITEM_FIELDS_TEMPLATE: list[FieldSchema] = [
         required=True,
         vocab=PLANNING_ITEM_STATUSES,
         default="Draft",
+    ),
+    # PI-183: the ADO execution_mode gate. A PI's own mode; its effective mode
+    # is the more restrictive of this and its Project's. dispatch_approved is
+    # NOT here — it is set only via the Approve Dispatch action (REQ-155).
+    FieldSchema(
+        key="execution_mode",
+        label="Execution Mode",
+        widget="combo",
+        required=True,
+        vocab=EXECUTION_MODES,
+        default="ado",
     ),
     FieldSchema(
         key="resolution_reference",

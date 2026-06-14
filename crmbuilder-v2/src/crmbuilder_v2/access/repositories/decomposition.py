@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.exceptions import ConflictError
 from crmbuilder_v2.access.repositories import (
     planning_items,
+    pm,
     references,
     workstreams,
 )
@@ -70,6 +71,15 @@ def decompose_planning_item(
     """
     # PI must exist — get() raises NotFoundError otherwise.
     pi = planning_items.get(session, pi_identifier)
+
+    # PI-190 / REQ-165: an interactive PI is ADO-invisible at every tier — the
+    # ADO must not even structurally decompose it (DEC-425).
+    if pm.is_ado_interactive(session, pi_identifier):
+        raise ConflictError(
+            f"planning item {pi_identifier!r} is execution_mode 'interactive'; "
+            f"the ADO must not decompose it — it is executed by a human and "
+            f"resolved manually."
+        )
 
     already = existing_phase_workstreams(session, pi_identifier)
     if already:

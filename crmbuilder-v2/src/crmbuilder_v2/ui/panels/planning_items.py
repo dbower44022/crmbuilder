@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from crmbuilder_v2.access.vocab import PLANNING_ITEM_STATUS_TRANSITIONS
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.dialogs.planning_item_create import PlanningItemCreateDialog
@@ -220,6 +221,19 @@ class PlanningItemsPanel(ListDetailPanel):
             lambda _checked=False, r=record: self._on_delete_clicked(r)
         )
         button_strip_layout.addWidget(delete_btn)
+        # PI-183 / DEC-424: an Approve Dispatch action for an ado_with_approval
+        # item awaiting a human approval signal. Shown only when relevant — a
+        # plain ✓ label once approved (no disabled buttons).
+        if (record.get("execution_mode") or "") == "ado_with_approval":
+            if record.get("dispatch_approved"):
+                button_strip_layout.addWidget(_label("✓ Dispatch approved", dim=True))
+            else:
+                approve_btn = primary_button("Approve Dispatch")
+                approve_btn.setObjectName("approve_dispatch_button")
+                approve_btn.clicked.connect(
+                    lambda _checked=False, r=record: self._on_approve_dispatch_clicked(r)
+                )
+                button_strip_layout.addWidget(approve_btn)
         button_strip_layout.addStretch(1)
         outer.addWidget(button_strip)
 
@@ -240,6 +254,16 @@ class PlanningItemsPanel(ListDetailPanel):
         form.addRow(
             required_label("Status"), _label(record.get("status") or "")
         )
+        # PI-183: the ADO execution_mode gate + approval flag.
+        form.addRow(
+            required_label("Execution Mode"),
+            _label(record.get("execution_mode") or "ado"),
+        )
+        if (record.get("execution_mode") or "") == "ado_with_approval":
+            form.addRow(
+                "Dispatch Approved",
+                _label("Yes" if record.get("dispatch_approved") else "No", dim=True),
+            )
         resolution_ref = record.get("resolution_reference")
         form.addRow(
             "Resolution Reference",
@@ -381,7 +405,44 @@ class PlanningItemsPanel(ListDetailPanel):
         delete_action.triggered.connect(
             lambda _checked=False, r=record: self._on_delete_clicked(r)
         )
+        # REQ-137 (PI-178): inline lifecycle transitions from the list.
+        self._append_status_menu(menu, record)
         return menu
+
+    def _status_action_spec(self, record):
+        current = record.get("status") or "Draft"
+        next_states = sorted(
+            PLANNING_ITEM_STATUS_TRANSITIONS.get(current, frozenset())
+        )
+        return (
+            current,
+            next_states,
+            lambda s, r=record: self._apply_status_transition(r, s),
+        )
+
+    def _apply_status_transition(self, record, new_status: str) -> None:
+        identifier = record.get("identifier")
+        if not identifier:
+            return
+        try:
+            self._client.update_planning_item(
+                identifier, {"status": new_status}
+            )
+        except NotFoundError:
+            self.refresh()
+            return
+        except StorageConnectionError as exc:
+            self.connection_lost.emit(str(exc))
+            return
+        except StorageClientError as exc:
+            ErrorDialog(
+                title="Could not update status",
+                message="The status change could not be applied.",
+                detail=str(exc),
+                parent=self,
+            ).exec()
+            return
+        self.refresh()
 
     # ------------------------------------------------------------------
     # Write-surface click handlers (v0.2 slice C)
@@ -431,3 +492,29 @@ class PlanningItemsPanel(ListDetailPanel):
         dialog = PlanningItemDeleteDialog(self._client, identifier, title, self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.refresh()
+
+    def _on_approve_dispatch_clicked(self, record: dict[str, Any]) -> None:
+        """PI-183 / DEC-424: record a human approval for an ado_with_approval
+        item so the ADO dispatcher may dispatch it (REQ-155)."""
+        identifier = record.get("identifier") or ""
+        if not identifier:
+            return
+        try:
+            self._client.approve_dispatch_planning_item(identifier)
+        except NotFoundError:
+            self.refresh()
+            return
+        except StorageConnectionError as exc:
+            _log.warning("Connection lost approving dispatch for %s: %s", identifier, exc)
+            self.connection_lost.emit(str(exc))
+            return
+        except StorageClientError as exc:
+            _log.warning("Domain error approving dispatch for %s: %s", identifier, exc)
+            ErrorDialog(
+                title="Could not approve dispatch",
+                message="Could not record the dispatch approval for this item.",
+                detail=str(exc),
+                parent=self,
+            ).exec()
+            return
+        self.refresh()

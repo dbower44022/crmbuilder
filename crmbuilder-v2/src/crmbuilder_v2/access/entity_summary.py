@@ -92,6 +92,9 @@ _SPECS: dict[str, _Spec] = {
     # name and the four-status propose-verify lifecycle.
     "dedup_rule": _Spec(models.DedupRule, "dedup_rule_identifier", "dedup_rule_name", "dedup_rule_status", "dedup_rule_created_at", "dedup_rule_updated_at"),
     "message_template": _Spec(models.MessageTemplate, "message_template_identifier", "message_template_name", "message_template_status", "message_template_created_at", "message_template_updated_at"),
+    # PI-186 (PRJ-027): one CRM-connection instance; the connection name in
+    # the title slot.
+    "instance": _Spec(models.Instance, "instance_identifier", "instance_name", "instance_status", "instance_created_at", "instance_updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),

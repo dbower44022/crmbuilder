@@ -55,6 +55,7 @@ from crmbuilder_v2.ui.exceptions import (
     StorageConnectionError,
 )
 from crmbuilder_v2.ui.widgets.form_helpers import icon_button
+from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
 from crmbuilder_v2.ui.widgets.master_pane_delegate import MasterPaneDelegate
 from crmbuilder_v2.ui.workers import run_in_thread
 
@@ -184,6 +185,13 @@ class ListDetailPanel(QWidget):
     # ``_filter_strip_widget``. Used by the slice-E ReferencesPanel.
     _has_detail_pane: ClassVar[bool] = True
 
+    # REQ-135 (PI-176): a debounced toolbar search box that narrows the master
+    # list client-side across the visible columns of the already-loaded
+    # records. On by default for every list panel; subclasses whose master view
+    # is not the default ``_RecordTableModel`` (the tree-backed TopicsPanel) or
+    # that already carry their own filter strip (ReferencesPanel) set ``False``.
+    _search_enabled: ClassVar[bool] = True
+
     # v0.6 slice B: master-pane delegate (DEC-093). Default is the
     # shared :class:`MasterPaneDelegate`; the Topics panel overrides
     # to :class:`MasterPaneTreeDelegate`. Centralized registration in
@@ -199,6 +207,11 @@ class ListDetailPanel(QWidget):
         self.setObjectName("listDetailPanel")
         self._client = client
         self._records: list[dict[str, Any]] = []
+        # REQ-135 (PI-176): the full post-processed record set; ``_records`` is
+        # the currently-displayed (search-filtered) view of it.
+        self._all_records: list[dict[str, Any]] = []
+        self._search_text: str = ""
+        self._search_input: LinkFilterInput | None = None
         self._refresh_counter = 0
         self._detail_counter = 0
         self._in_flight_workers: list[Any] = []
@@ -301,6 +314,62 @@ class ListDetailPanel(QWidget):
         self._in_flight_workers.append(worker)
         worker.finished.connect(self._on_worker_finished)
 
+    # ------------------------------------------------------------------
+    # Client-side search (REQ-135 / PI-176)
+    # ------------------------------------------------------------------
+
+    def _filtered_records(self) -> list[dict[str, Any]]:
+        """The current search-filtered view of ``self._all_records``.
+
+        Matches the (case-insensitive) query as a substring of the
+        concatenated visible-column values. An empty query returns the
+        full set.
+        """
+        query = self._search_text.strip().lower()
+        if not query:
+            return list(self._all_records)
+        fields = [spec.field for spec in self.list_columns()]
+        matched: list[dict[str, Any]] = []
+        for record in self._all_records:
+            haystack = " ".join(
+                str(record.get(field) or "") for field in fields
+            ).lower()
+            if query in haystack:
+                matched.append(record)
+        return matched
+
+    def _update_count_status(self) -> None:
+        total = len(self._all_records)
+        shown = len(self._records)
+        if self._search_text.strip() and shown != total:
+            self._status_label.setText(f"{shown} of {total} records")
+        else:
+            self._status_label.setText(f"{total} records")
+
+    def _on_search_changed(self, text: str) -> None:
+        self._search_text = text
+        prior_selected_id = self._currently_selected_identifier()
+        self._records = self._filtered_records()
+        self._model.set_records(self._records)
+        self._update_count_status()
+        if prior_selected_id is not None and self._select_by_identifier(
+            prior_selected_id
+        ):
+            return
+        self._show_empty_detail()
+
+    def _clear_search(self) -> None:
+        """Reset the search box and restore the full list (no debounce)."""
+        self._search_text = ""
+        if self._search_input is not None:
+            self._search_input.blockSignals(True)
+            self._search_input.clear()
+            self._search_input.blockSignals(False)
+        self._records = self._filtered_records()
+        if hasattr(self._model, "set_records"):
+            self._model.set_records(self._records)
+        self._update_count_status()
+
     def set_enabled_state(self, enabled: bool) -> None:
         """Enable/disable the entire panel surface.
 
@@ -326,6 +395,10 @@ class ListDetailPanel(QWidget):
         a custom selection path (e.g., a tree panel addressing items
         by an identifier→item map rather than by row index).
         """
+        # REQ-135 (PI-176): clear any active search so a navigation target the
+        # filter currently hides becomes selectable.
+        if self._search_text:
+            self._clear_search()
         if self._select_by_identifier(identifier):
             return True
         self._pending_select_identifier = identifier
@@ -439,6 +512,39 @@ class ListDetailPanel(QWidget):
         menu has no actions.
         """
         return QMenu(self)
+
+    def _status_action_spec(
+        self, record: dict[str, Any]
+    ) -> tuple[str, list[str], Callable[[str], None]] | None:
+        """Lifecycle status quick-action spec, or ``None`` (REQ-137 / PI-178).
+
+        Subclasses whose entity has a lifecycle status return
+        ``(current_status, [valid_next_state, ...], apply_fn)`` where
+        ``apply_fn(new_state)`` performs the transition and refreshes. The
+        base :meth:`_append_status_menu` turns it into a "Set status" submenu
+        so a status can be advanced from the list without the edit dialog.
+        Default returns ``None`` (no status actions).
+        """
+        return None
+
+    def _append_status_menu(
+        self, menu: QMenu, record: dict[str, Any] | None
+    ) -> None:
+        """Append a "Set status" submenu of valid next states, if any."""
+        if record is None:
+            return
+        spec = self._status_action_spec(record)
+        if not spec:
+            return
+        _current, next_states, apply_fn = spec
+        if not next_states:
+            return
+        submenu = menu.addMenu("Set status")
+        for state in next_states:
+            action = submenu.addAction(state)
+            action.triggered.connect(
+                lambda _checked=False, s=state: apply_fn(s)
+            )
 
     def _record_at_index(
         self, index: QModelIndex
@@ -601,6 +707,15 @@ class ListDetailPanel(QWidget):
         self._refresh_button.clicked.connect(self.refresh)
         layout.addWidget(self._refresh_button)
 
+        # REQ-135 (PI-176): debounced client-side search over the loaded rows.
+        if self._search_enabled:
+            self._search_input = LinkFilterInput(
+                object_name="master_search_input", max_width=240
+            )
+            self._search_input.setPlaceholderText("Search…")
+            self._search_input.filterChanged.connect(self._on_search_changed)
+            layout.addWidget(self._search_input)
+
         self._status_label = QLabel("")
         layout.addWidget(self._status_label)
 
@@ -628,7 +743,9 @@ class ListDetailPanel(QWidget):
         # blow the user's selection away on every refresh.
         prior_selected_id = self._currently_selected_identifier()
         raw = list(result) if isinstance(result, list) else []
-        self._records = self._post_process_records(raw)
+        # REQ-135 (PI-176): keep the full set; display the search-filtered view.
+        self._all_records = self._post_process_records(raw)
+        self._records = self._filtered_records()
         self._model.set_records(self._records)
         # Header sizing: stretch the last column; the rest use the spec width
         # or resize to contents.
@@ -638,7 +755,7 @@ class ListDetailPanel(QWidget):
                 header.setSectionResizeMode(
                     col_idx, QHeaderView.ResizeMode.Stretch
                 )
-        self._status_label.setText(f"{len(self._records)} records")
+        self._update_count_status()
         # Decide which row to select after the refresh:
         #   1. An explicit pending identifier (from cross-panel navigation
         #      that arrived after the refresh started).

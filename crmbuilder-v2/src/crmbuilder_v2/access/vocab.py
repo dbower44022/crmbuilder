@@ -624,6 +624,21 @@ MESSAGE_TEMPLATE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"confirmed", "rejected"}),
     "rejected": frozenset(),
 }
+# Instance entity (PI-186 — PRJ-027). One engagement-scoped connection to a
+# live CRM system. See prj-027-multi-instance-audit-inventory-architecture.md
+# §3. The vendor selects the introspection/adapter driver (espocrm first; the
+# seam admits more later). The role mirrors the V1 InstanceRole: a source to
+# read/audit, a target to write/publish, or both. Connection secrets are never
+# stored here — only opaque keyring references (REQ-157).
+# ---------------------------------------------------------------------------
+
+INSTANCE_VENDORS: frozenset[str] = frozenset({"espocrm"})
+
+INSTANCE_ROLES: frozenset[str] = frozenset({"source", "target", "both"})
+
+INSTANCE_AUTH_METHODS: frozenset[str] = frozenset({"api_key", "hmac"})
+
+INSTANCE_STATUSES: frozenset[str] = frozenset({"active", "disabled"})
 
 # Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
 # PRD v0.2 §8 named set. Per-kind rule-object schema validation (required
@@ -755,6 +770,31 @@ PROJECT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "cancelled": frozenset(),
     "superseded": frozenset(),
 }
+
+# ADO execution_mode (PRJ-026 / PI-183, DEC-423..425). The structural risk gate
+# on a Project and a Planning Item that controls whether the ADO Project Manager
+# dispatcher may touch it — replacing the fragile "don't point the ADO there"
+# convention with an enforced field.
+#   - ``ado``               — the dispatcher may claim/dispatch freely.
+#   - ``ado_with_approval`` — dispatchable only after a human records approval
+#                             (the ``dispatch_approved`` flag on the PI).
+#   - ``interactive``       — never dispatched by the ADO; a human executes and
+#                             closes it directly.
+# Default is ``ado``. A Planning Item's *effective* mode is the more restrictive
+# of its own value and its parent Project's (see ``EXECUTION_MODE_RANK`` and
+# ``effective_execution_mode`` in the access layer).
+EXECUTION_MODES: frozenset[str] = frozenset(
+    {"ado", "ado_with_approval", "interactive"}
+)
+# Restrictiveness ordering — higher rank wins when resolving a PI's effective
+# mode against its Project's. ``ado`` is least restrictive (free dispatch);
+# ``interactive`` is most (never dispatched).
+EXECUTION_MODE_RANK: dict[str, int] = {
+    "ado": 0,
+    "ado_with_approval": 1,
+    "interactive": 2,
+}
+DEFAULT_EXECUTION_MODE = "ado"
 
 # `workstream` (delivery phase) — PI-112 Phase 4, DEC-343/DEC-349. The NEW
 # meaning of "Workstream": a single delivery phase of one Planning Item (the
@@ -1297,6 +1337,11 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # engine-neutral-design-model-and-adapters.md §8.
         "dedup_rule",
         "message_template",
+        # PI-186 entity (PRJ-027). One engagement-scoped connection to a live
+        # CRM system (INST-). Audit (pull) reads its structure into the
+        # canonical inventory; publish (push, PRJ-025) writes design to it. See
+        # prj-027-multi-instance-audit-inventory-architecture.md §3.
+        "instance",
     }
 )
 

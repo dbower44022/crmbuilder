@@ -32,14 +32,108 @@ from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
 from crmbuilder_v2.access.repositories import planning_items, projects, references
+from crmbuilder_v2.access.vocab import DEFAULT_EXECUTION_MODE, EXECUTION_MODE_RANK
 
 _BELONGS_PROJECT = "planning_item_belongs_to_project"
+_WS_BELONGS_PI = "workstream_belongs_to_planning_item"
+_WT_BELONGS_WS = "work_task_belongs_to_workstream"
 _BLOCKED_BY = "blocked_by"
 _RESOLVED = "Resolved"
 # PI statuses a PM may dispatch (not yet started), actively-worked, and terminal.
 _STARTABLE = frozenset({"Draft", "Decomposed", "Ready"})
 _IN_FLIGHT = frozenset({"In Progress", "In Review"})
 _TERMINAL = frozenset({"Resolved", "Cancelled"})
+_INTERACTIVE = "interactive"
+_ADO_WITH_APPROVAL = "ado_with_approval"
+
+
+def _effective_mode(pi: dict, project_mode: str) -> str:
+    """The PI's effective execution_mode: the more restrictive of its own value
+    and its parent Project's (PI-183 / DEC-423, REQ-152). ``ado`` is least
+    restrictive, ``interactive`` most. A PI can tighten the gate, never loosen
+    it below its Project's."""
+    pi_mode = pi.get("execution_mode") or DEFAULT_EXECUTION_MODE
+    project_mode = project_mode or DEFAULT_EXECUTION_MODE
+    return max((pi_mode, project_mode), key=lambda m: EXECUTION_MODE_RANK[m])
+
+
+def _is_dispatchable(mode: str, dispatch_approved: bool) -> bool:
+    """True if the ADO dispatcher may dispatch an item with this effective mode.
+
+    ``interactive`` is never dispatchable (REQ-153); ``ado_with_approval`` only
+    once a human has recorded approval (REQ-155); ``ado`` always."""
+    if mode == _INTERACTIVE:
+        return False
+    if mode == _ADO_WITH_APPROVAL:
+        return bool(dispatch_approved)
+    return True
+
+
+def _project_of(session: Session, pi_identifier: str) -> str | None:
+    edges = references.list_references(
+        session, source_type="planning_item", source_id=pi_identifier,
+        target_type="project", relationship_kind=_BELONGS_PROJECT,
+    )
+    return edges[0]["target_id"] if edges else None
+
+
+def _project_mode(session: Session, project_id: str | None) -> str:
+    if project_id is None:
+        return DEFAULT_EXECUTION_MODE
+    project = projects.get_project(session, project_id)
+    if project is None:
+        return DEFAULT_EXECUTION_MODE
+    return project.get("project_execution_mode") or DEFAULT_EXECUTION_MODE
+
+
+# --- PI-190: shared effective-mode resolvers for the all-tier ADO gate -------
+# These let the decompose / scope / phase-start / work-task substrate enforce
+# the same execution_mode gate the PM dispatcher does, so an interactive PI is
+# ADO-invisible at every tier (REQ-165 / DEC-425), not only at dispatch.
+
+
+def effective_execution_mode(session: Session, pi_identifier: str) -> str:
+    """The effective execution_mode of a Planning Item — the more restrictive of
+    its own value and its parent Project's. Raises NotFoundError if absent."""
+    pi = planning_items.get(session, pi_identifier)
+    return _effective_mode(pi, _project_mode(session, _project_of(session, pi_identifier)))
+
+
+def is_ado_interactive(session: Session, pi_identifier: str) -> bool:
+    """True if the PI's effective execution_mode is ``interactive`` — i.e. the
+    ADO must not touch it at any tier."""
+    return effective_execution_mode(session, pi_identifier) == _INTERACTIVE
+
+
+def _pi_of_workstream(session: Session, workstream_id: str) -> str | None:
+    edges = references.list_references(
+        session, source_type="workstream", source_id=workstream_id,
+        target_type="planning_item", relationship_kind=_WS_BELONGS_PI,
+    )
+    return edges[0]["target_id"] if edges else None
+
+
+def _workstream_of_work_task(session: Session, work_task_id: str) -> str | None:
+    edges = references.list_references(
+        session, source_type="work_task", source_id=work_task_id,
+        target_type="workstream", relationship_kind=_WT_BELONGS_WS,
+    )
+    return edges[0]["target_id"] if edges else None
+
+
+def workstream_is_ado_interactive(session: Session, workstream_id: str) -> bool:
+    """True if the Workstream's parent Planning Item is effective-interactive.
+    False when the parent PI cannot be resolved (no edge) — fail open at this
+    backstop tier; the PI-level gate is the primary guarantee."""
+    pi = _pi_of_workstream(session, workstream_id)
+    return pi is not None and is_ado_interactive(session, pi)
+
+
+def work_task_is_ado_interactive(session: Session, work_task_id: str) -> bool:
+    """True if the Work Task's parent Planning Item (work_task → workstream → PI)
+    is effective-interactive."""
+    ws = _workstream_of_work_task(session, work_task_id)
+    return ws is not None and workstream_is_ado_interactive(session, ws)
 
 
 def _safe_pi(session: Session, identifier: str) -> dict | None:
@@ -94,8 +188,10 @@ def project_backlog(session: Session, project_id: str) -> dict:
 
     :raises NotFoundError: the Project does not exist.
     """
-    if projects.get_project(session, project_id) is None:
+    project = projects.get_project(session, project_id)
+    if project is None:
         raise NotFoundError("project", project_id)
+    project_mode = project.get("project_execution_mode") or DEFAULT_EXECUTION_MODE
 
     pis = _project_planning_items(session, project_id)
     status_cache = {p["identifier"]: p["status"] for p in pis}
@@ -105,26 +201,49 @@ def project_backlog(session: Session, project_id: str) -> dict:
         pid = pi["identifier"]
         unresolved = _unresolved_blockers(session, pid, status_cache)
         status = pi["status"]
-        eligible = status in _STARTABLE and not unresolved
+        mode = _effective_mode(pi, project_mode)
+        approved = bool(pi.get("dispatch_approved"))
+        startable = status in _STARTABLE and not unresolved
+        # PI-183: eligibility now also respects the execution_mode gate —
+        # interactive is never eligible (REQ-153), ado_with_approval only when
+        # approved (REQ-155).
+        eligible = startable and _is_dispatchable(mode, approved)
+        interactive = mode == _INTERACTIVE
+        pending_approval = (
+            startable and mode == _ADO_WITH_APPROVAL and not approved
+        )
         items.append({
             "identifier": pid,
             "title": pi.get("title"),
             "status": status,
             "blocked_by": _blocked_by(session, pid),
             "unresolved_blockers": unresolved,
+            "execution_mode": mode,
+            "dispatch_approved": approved,
             "eligible": eligible,
             "in_flight": status in _IN_FLIGHT,
             "terminal": status in _TERMINAL,
+            "interactive": interactive,
+            "pending_approval": pending_approval,
         })
 
     return {
         "project": project_id,
+        "project_execution_mode": project_mode,
         "planning_items": items,
         "eligible": [i["identifier"] for i in items if i["eligible"]],
         "in_flight": [i["identifier"] for i in items if i["in_flight"]],
         "blocked": [
             i["identifier"] for i in items
             if i["unresolved_blockers"] and not i["terminal"] and not i["in_flight"]
+        ],
+        # PI-183 / DEC-425: interactive items (any status) the operator must
+        # run by hand — never dispatched by the ADO.
+        "interactive": [i["identifier"] for i in items if i["interactive"]],
+        # PI-183 / DEC-424: ado_with_approval items otherwise ready but held
+        # pending a human approve-dispatch signal.
+        "pending_approval": [
+            i["identifier"] for i in items if i["pending_approval"]
         ],
         "resolved": [i["identifier"] for i in items if i["status"] == _RESOLVED],
         "all_resolved": bool(items) and all(i["terminal"] for i in items),
@@ -142,8 +261,9 @@ def dispatch_planning_item(session: Session, pi_identifier: str) -> dict:
     """Hand an eligible PI to a Lead: transition it to ``In Progress``.
 
     :raises NotFoundError: the PI does not exist.
-    :raises ConflictError: the PI is already started/terminal, or a
-        ``blocked_by`` predecessor is not yet ``Resolved``.
+    :raises ConflictError: the PI is already started/terminal, a ``blocked_by``
+        predecessor is not yet ``Resolved``, or its effective execution_mode
+        forbids ADO dispatch (interactive, or unapproved ado_with_approval).
     """
     pi = planning_items.get(session, pi_identifier)  # raises if absent
     status = pi["status"]
@@ -157,5 +277,21 @@ def dispatch_planning_item(session: Session, pi_identifier: str) -> dict:
         raise ConflictError(
             f"planning item {pi_identifier!r} is blocked_by unresolved PI(s) "
             f"{unresolved}; they must be Resolved before a Lead is dispatched."
+        )
+    # PI-183: the execution_mode gate — the structural backstop that keeps the
+    # ADO out of human-only and unapproved work even if a caller bypasses the
+    # eligibility query.
+    mode = _effective_mode(pi, _project_mode(session, _project_of(session, pi_identifier)))
+    if mode == _INTERACTIVE:
+        raise ConflictError(
+            f"planning item {pi_identifier!r} is execution_mode 'interactive'; "
+            f"it must be executed by a human and is never dispatched by the ADO."
+        )
+    if mode == _ADO_WITH_APPROVAL and not bool(pi.get("dispatch_approved")):
+        raise ConflictError(
+            f"planning item {pi_identifier!r} is execution_mode "
+            f"'ado_with_approval' and not yet approved; a human must approve "
+            f"dispatch (POST /planning-items/{pi_identifier}/approve-dispatch) "
+            f"before a Lead is dispatched."
         )
     return planning_items.update(session, pi_identifier, status="In Progress")

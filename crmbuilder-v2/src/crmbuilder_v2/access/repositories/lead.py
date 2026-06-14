@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
 from crmbuilder_v2.access.repositories import (
     planning_items,
+    pm,
     references,
     workstreams,
 )
@@ -170,6 +171,14 @@ def start_phase(session: Session, workstream_id: str) -> dict:
         terminal.
     """
     ws = _require_workstream(session, workstream_id)
+    # PI-190 / REQ-165: an interactive PI is ADO-invisible at every tier — the
+    # ADO must not open a phase of it for execution (DEC-425).
+    if pm.workstream_is_ado_interactive(session, workstream_id):
+        raise ConflictError(
+            f"workstream {workstream_id!r} belongs to an execution_mode "
+            f"'interactive' planning item; the ADO must not start its phases — "
+            f"interactive work is executed by a human."
+        )
     if ws["workstream_status"] != "Ready":
         raise ConflictError(
             f"workstream {workstream_id!r} is {ws['workstream_status']!r}, not "

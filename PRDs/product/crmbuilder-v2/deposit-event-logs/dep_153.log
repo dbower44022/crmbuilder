@@ -1,0 +1,27 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_172.json
+Label:  PRJ-015 UI usability batch build-closure (REQ-131..138 / PI-172..179)
+Deposit event: DEP-153
+
+Close-out payload validation: 0 error(s), 2 warning(s).
+  [WARN]  identifier_heads: SES-172 is at-or-below the live head (SES head's next free slot is SES-175). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: CNV-078 is at-or-below the live head (CNV head's next free slot is CNV-082). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+
+=== conversation (1 record) ===
+  · POST conversation  CNV-078 already present (HTTP 409) — skipping
+
+=== session (1 record) ===
+  · POST session  <unidentified record> already present (HTTP 409) — skipping
+
+=== commits (7 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+✓ All 9 operations complete.
+
+✓ Recorded apply as deposit_event DEP-153 (HTTP 201).

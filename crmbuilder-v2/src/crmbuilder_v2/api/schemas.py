@@ -162,6 +162,7 @@ class PlanningItemCreateIn(_Base):
     resolution_reference: str | None = None
     executive_summary: str  # PI-074; required since PI-075 (NOT NULL)
     area: list[str] | None = None  # PI-076
+    execution_mode: str = "ado"  # PI-183; ADO risk gate, defaults to ado
 
 
 class PlanningItemUpdateIn(_Base):
@@ -172,6 +173,7 @@ class PlanningItemUpdateIn(_Base):
     resolution_reference: str | None = None
     executive_summary: str | None = None  # PI-074
     area: list[str] | None = None  # PI-076
+    execution_mode: str | None = None  # PI-183
 
 
 class PlanningItemClaimIn(_Base):
@@ -1726,6 +1728,7 @@ class ProjectCreateIn(_Base):
     project_description: str
     project_notes: str | None = None
     project_status: str | None = None
+    project_execution_mode: str | None = None  # PI-183; ADO risk gate
     project_identifier: str | None = None
     references: list[GovernanceEdgeIn] | None = None
     timestamps: dict[str, Any] | None = None
@@ -1738,6 +1741,7 @@ class ProjectReplaceIn(_Base):
     project_description: str
     project_notes: str | None = None
     project_status: str
+    project_execution_mode: str | None = None  # PI-183
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -1747,6 +1751,7 @@ class ProjectPatchIn(_Base):
     project_description: str | None = None
     project_notes: str | None = None
     project_status: str | None = None
+    project_execution_mode: str | None = None  # PI-183
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -1841,6 +1846,53 @@ class FindingPatchIn(_Base):
     finding_resolution: str | None = None
     finding_resolution_method: str | None = None
     finding_notes: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+# --- Instance (CRM connection, PI-186 / PRJ-027) ---------------------------
+# ``secret`` / ``secret_key`` are write-only plaintext inputs: the router
+# stores them in the OS keyring and persists only the opaque reference
+# (REQ-157). They are never echoed back. The keyring references are exposed on
+# read responses as ``instance_secret_ref`` / ``instance_secret_key_ref`` (opaque).
+class InstanceCreateIn(_Base):
+    instance_name: str
+    instance_url: str
+    instance_vendor: str | None = None
+    instance_role: str | None = None
+    instance_auth_method: str | None = None
+    secret: str | None = None
+    secret_key: str | None = None
+    instance_status: str | None = None
+    instance_notes: str | None = None
+    instance_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+    timestamps: dict[str, Any] | None = None
+
+
+class InstanceReplaceIn(_Base):
+    instance_identifier: str | None = None
+    instance_name: str
+    instance_url: str
+    instance_vendor: str | None = None
+    instance_role: str | None = None
+    instance_auth_method: str | None = None
+    secret: str | None = None
+    secret_key: str | None = None
+    instance_status: str | None = None
+    instance_notes: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class InstancePatchIn(_Base):
+    instance_name: str | None = None
+    instance_url: str | None = None
+    instance_vendor: str | None = None
+    instance_role: str | None = None
+    instance_auth_method: str | None = None
+    secret: str | None = None
+    secret_key: str | None = None
+    instance_status: str | None = None
+    instance_notes: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 

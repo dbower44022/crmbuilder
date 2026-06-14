@@ -54,6 +54,15 @@ _TERMINAL_PHASE = frozenset({"Complete", "Not Applicable"})
 
 # A PI in one of these statuses can still be dispatched (handed to a Lead).
 _STARTABLE = frozenset({"Draft", "Decomposed", "Ready"})
+# PI-190 / REQ-165: execution_mode gate at the per-PI runtime entry. The
+# project loop already filters via backlog["eligible"], but the single-PI
+# driver can be pointed at any PI directly — so it re-checks the effective mode
+# and skips+logs interactive / unapproved approval-gated items rather than 409ing
+# at dispatch/decompose. Rank mirrors access.vocab.EXECUTION_MODE_RANK; the
+# runtime stays HTTP-only (no access import) by design.
+_INTERACTIVE = "interactive"
+_ADO_WITH_APPROVAL = "ado_with_approval"
+_EXECUTION_MODE_RANK = {"ado": 0, "ado_with_approval": 1, "interactive": 2}
 # Where the driver parks a PI once every phase is terminal: execution is done,
 # final Resolved is a governance closure act (the resolves edge), not the
 # driver's call.
@@ -448,6 +457,54 @@ class AdoRuntime:
     def _pi(self) -> dict:
         return self._get(f"/planning-items/{self.config.planning_item}")  # type: ignore[return-value]
 
+    def _project_mode(self) -> str:
+        """The parent Project's execution_mode, via the belongs-to-project edge.
+        The references list endpoint ignores the relationship filter, so the
+        edges are filtered client-side. Fails open to ``ado`` on any read error:
+        this runtime guard is a convenience over the access-layer gates, which
+        remain the real enforcement, so a missed project read never lets an
+        interactive PI actually be worked (dispatch/decompose still 409)."""
+        try:
+            edges = self._get(
+                f"/references?source_id={self.config.planning_item}"
+                "&relationship=planning_item_belongs_to_project"
+            )
+            proj_id = None
+            if isinstance(edges, list):
+                for e in edges:
+                    if (e.get("relationship") == "planning_item_belongs_to_project"
+                            and e.get("target_type") == "project"):
+                        proj_id = e.get("target_id")
+                        break
+            if not proj_id:
+                return "ado"
+            proj = self._get(f"/projects/{proj_id}")
+            mode = proj.get("project_execution_mode") if isinstance(proj, dict) else None
+            return mode or "ado"
+        except Exception:
+            return "ado"
+
+    def _effective_mode(self, pi: dict) -> str:
+        """The PI's effective execution_mode — the more restrictive of its own
+        value and its Project's (mirrors pm._effective_mode)."""
+        pi_mode = pi.get("execution_mode") or "ado"
+        return max((pi_mode, self._project_mode()),
+                   key=lambda m: _EXECUTION_MODE_RANK.get(m, 0))
+
+    def _execution_gate(self, pi: dict) -> tuple[str, str] | None:
+        """Return ``(report_status, message)`` if this PI is not the ADO's to
+        run (PI-190 / REQ-165), else ``None``. Interactive items are never run;
+        ado_with_approval items wait for a human approve-dispatch signal."""
+        mode = self._effective_mode(pi)
+        pid = self.config.planning_item
+        if mode == _INTERACTIVE:
+            return ("interactive", f"⏸ {pid} is execution_mode 'interactive' — "
+                    f"left for a human; the ADO does not run it.")
+        if mode == _ADO_WITH_APPROVAL and not pi.get("dispatch_approved"):
+            return ("pending_approval", f"⏸ {pid} is 'ado_with_approval' and not "
+                    f"yet approved — left pending a human approve-dispatch.")
+        return None
+
     def _overview(self) -> dict:
         return self._get(
             f"/planning-items/{self.config.planning_item}/phase-overview"
@@ -474,8 +531,19 @@ class AdoRuntime:
         pi = cfg.planning_item
         report = AdoRunReport(planning_item=pi)
 
+        # 0. execution_mode gate (PI-190 / REQ-165): if this PI is interactive or
+        # an unapproved approval-gated item, the ADO must not run it — skip
+        # cleanly and tell the operator (the access-layer gates would otherwise
+        # 409 at dispatch/decompose).
+        pi_record = self._pi()
+        gate = self._execution_gate(pi_record)
+        if gate is not None:
+            report.status, report.reason = gate
+            self.log(gate[1])
+            return report
+
         # 1. ensure dispatched (idempotent: only a startable PI is dispatched).
-        status = self._pi()["status"]
+        status = pi_record["status"]
         if status in _STARTABLE:
             if cfg.dry_run:
                 self.log(f"▶ would dispatch {pi} ({status} → In Progress)")

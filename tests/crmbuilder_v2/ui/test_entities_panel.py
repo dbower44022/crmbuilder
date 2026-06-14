@@ -492,7 +492,9 @@ def test_reference_round_trip_visible_from_both_sides(qtbot, entity_client):
     # cell value rather than a QLabel link.
     from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 
-    section = detail.findChild(ReferencesSection)
+    # PRJ-015: the entity detail now also holds a dedicated fields grid (a
+    # ReferencesSection subclass), so address the references grid by name.
+    section = detail.findChild(ReferencesSection, "entity_references_section")
     assert section is not None
     proxy = section._proxy
     cells = [
