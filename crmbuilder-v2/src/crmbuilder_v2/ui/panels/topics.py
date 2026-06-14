@@ -131,6 +131,12 @@ class _LucideChevronTreeView(QTreeView):
 class TopicsPanel(ListDetailPanel):
     """Topics panel — QTreeView master + write surface (v0.2 slice D)."""
 
+    # REQ-135 (PI-176): the master view is a QTreeView over a custom
+    # QStandardItemModel (not the base _RecordTableModel), so the base
+    # toolbar search — which re-filters _RecordTableModel rows — does not
+    # apply here. Topic filtering would need a tree-aware pass; out of scope.
+    _search_enabled = False
+
     # v0.6 slice B (DEC-093): use the tree-aware master-pane delegate
     # so chevron painting (drawBranches override on the tree view)
     # composes cleanly with the inherited row-state vocabulary.

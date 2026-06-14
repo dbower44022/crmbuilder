@@ -37,6 +37,7 @@ from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.detail_window_manager import DetailWindowManager
 from crmbuilder_v2.ui.exceptions import StorageConnectionError
+from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
 from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.chat import ChatPanel
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
@@ -250,6 +251,11 @@ class MainWindow(QMainWindow):
         self._crash_banner = CrashBanner()
         self._pages_by_entry: dict[str, int] = {}
         self._stale_entries: set[str] = set()
+        # REQ-138 (PI-179): cross-record navigation history. Following a
+        # reference pushes the originating (entry, identifier) onto the back
+        # stack so the user can step back to where they came from.
+        self._nav_back: list[tuple[str, str | None]] = []
+        self._nav_forward: list[tuple[str, str | None]] = []
         # Tracks whether the storage API is currently reachable. Used by
         # ``_on_sidebar_selected`` to gate the on-select refresh so that
         # the synchronous ``setCurrentRow`` during ``__init__`` does not
@@ -313,6 +319,12 @@ class MainWindow(QMainWindow):
         content_layout = QHBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
+        # REQ-136 (PI-177): a filter box above the sidebar list narrows its
+        # entries as the user types. Owned here (the sidebar itself is a
+        # QListWidget; the input sits above it in the sidebar column).
+        self._sidebar_search = LinkFilterInput(object_name="sidebar_search_input")
+        self._sidebar_search.setPlaceholderText("Filter navigation…")
+        self._sidebar_search.filterChanged.connect(self._sidebar.filter_entries)
         # v0.5 slice D: the top-strip is the first child of the sidebar
         # column when an active_context is provided; the sidebar list
         # follows below it.
@@ -328,11 +340,19 @@ class MainWindow(QMainWindow):
             self._top_strip = EngagementTopStrip(self._active_context)
             self._top_strip.clicked.connect(self._on_top_strip_clicked)
             sidebar_layout.addWidget(self._top_strip)
+            sidebar_layout.addWidget(self._sidebar_search)
             sidebar_layout.addWidget(self._sidebar, stretch=1)
             sidebar_col.setFixedWidth(self._sidebar.width())
             content_layout.addWidget(sidebar_col)
         else:
-            content_layout.addWidget(self._sidebar)
+            sidebar_col = QWidget()
+            sidebar_layout = QVBoxLayout(sidebar_col)
+            sidebar_layout.setContentsMargins(0, 0, 0, 0)
+            sidebar_layout.setSpacing(0)
+            sidebar_layout.addWidget(self._sidebar_search)
+            sidebar_layout.addWidget(self._sidebar, stretch=1)
+            sidebar_col.setFixedWidth(self._sidebar.width())
+            content_layout.addWidget(sidebar_col)
         content_layout.addWidget(self._stack, stretch=1)
         self._content_widget = content_widget
 
@@ -549,17 +569,65 @@ class MainWindow(QMainWindow):
                 identifier,
             )
             return
-        index = self._pages_by_entry[label]
-        target = self._stack.widget(index)
-        # Switch the sidebar selection so it visually matches the swap;
-        # this also routes through ``_on_sidebar_selected`` which sets
-        # the stack page.
         if label not in SIDEBAR_ENTRIES:
             _log.warning("Sidebar entry %s missing from SIDEBAR_ENTRIES", label)
             return
+        # REQ-138 (PI-179): record where we are so Back can return here, and
+        # a new jump invalidates the forward stack.
+        origin = self._current_location()
+        if origin is not None:
+            self._nav_back.append(origin)
+            self._nav_forward.clear()
+            self._update_nav_actions()
+        self._go_to(label, identifier)
+
+    def _current_location(self) -> tuple[str, str | None] | None:
+        """The current (sidebar entry, selected record identifier), if any."""
+        entry = self._sidebar.current_text()
+        if not entry or entry not in self._pages_by_entry:
+            return None
+        page = self._stack.widget(self._pages_by_entry[entry])
+        identifier: str | None = None
+        if isinstance(page, ListDetailPanel):
+            identifier = page._currently_selected_identifier()
+        return (entry, identifier)
+
+    def _go_to(self, label: str, identifier: str | None) -> None:
+        """Swap to ``label``'s panel and select ``identifier`` (no history)."""
+        if label not in self._pages_by_entry:
+            return
+        target = self._stack.widget(self._pages_by_entry[label])
         self._sidebar.select_entry(label)
-        if isinstance(target, ListDetailPanel):
+        if identifier and isinstance(target, ListDetailPanel):
             target.select_record_by_identifier(identifier)
+
+    def navigate_back(self) -> None:
+        if not self._nav_back:
+            return
+        here = self._current_location()
+        target = self._nav_back.pop()
+        if here is not None:
+            self._nav_forward.append(here)
+        self._go_to(target[0], target[1])
+        self._update_nav_actions()
+
+    def navigate_forward(self) -> None:
+        if not self._nav_forward:
+            return
+        here = self._current_location()
+        target = self._nav_forward.pop()
+        if here is not None:
+            self._nav_back.append(here)
+        self._go_to(target[0], target[1])
+        self._update_nav_actions()
+
+    def _update_nav_actions(self) -> None:
+        back = getattr(self, "_back_action", None)
+        if back is not None:
+            back.setEnabled(bool(self._nav_back))
+        fwd = getattr(self, "_forward_action", None)
+        if fwd is not None:
+            fwd.setEnabled(bool(self._nav_forward))
 
     def _on_open_requested(self, entity_type: str, identifier: str) -> None:
         """Spawn a standalone non-modal detail window for a related record.
@@ -589,6 +657,22 @@ class MainWindow(QMainWindow):
         quit_action.setShortcut("Ctrl+Q")
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
+
+        # REQ-138 (PI-179): Back/Forward through the cross-record navigation
+        # trail (also Alt+Left / Alt+Right).
+        go_menu = menu_bar.addMenu("&Go")
+        back_action = QAction("&Back", self)
+        back_action.setShortcut("Alt+Left")
+        back_action.triggered.connect(self.navigate_back)
+        back_action.setEnabled(False)
+        go_menu.addAction(back_action)
+        self._back_action = back_action
+        forward_action = QAction("&Forward", self)
+        forward_action.setShortcut("Alt+Right")
+        forward_action.triggered.connect(self.navigate_forward)
+        forward_action.setEnabled(False)
+        go_menu.addAction(forward_action)
+        self._forward_action = forward_action
 
         help_menu = menu_bar.addMenu("&Help")
         connection_action = QAction("&Connection Info…", self)

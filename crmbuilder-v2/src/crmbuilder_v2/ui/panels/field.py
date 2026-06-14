@@ -172,19 +172,42 @@ class FieldsPanel(ListDetailPanel):
         records = self._client.list_fields(
             include_deleted=self._include_deleted
         )
-        # PI-108: formatted Created synthetic column for the master pane.
+        # REQ-131 (PI-172): join each field to its owning entity's name so the
+        # master grid can show it. One bulk references read + one entities read
+        # on this worker thread (not per-field). Soft-deleted fields have no
+        # live edge — fall back to the stashed previous-parent identifier.
+        entity_names = {
+            e.get("entity_identifier"): (e.get("entity_name") or "")
+            for e in self._client.list_entities(include_deleted=True)
+        }
+        field_to_entity: dict[str, str] = {}
+        for ref in self._client.list_references():
+            if (
+                ref.get("relationship") == "field_belongs_to_entity"
+                and ref.get("source_type") == "field"
+            ):
+                field_to_entity[ref.get("source_id")] = ref.get("target_id") or ""
         for r in records:
+            eid = (
+                field_to_entity.get(r.get("field_identifier"))
+                or r.get("field_previous_parent_entity_identifier")
+                or ""
+            )
+            r["parent_entity_identifier"] = eid
+            r["parent_entity_name"] = entity_names.get(eid, "")
+            # PI-108: formatted Created synthetic column for the master pane.
             r["created_at_display"] = format_timestamp(r.get("field_created_at"))
         return records
 
     def list_columns(self) -> list[ColumnSpec]:
-        # Per field.md §3.6.2: six columns; entity-grouping deferred
-        # (flat identifier-sorted list in v1).
+        # REQ-131 (PI-172) adds the owning-entity-name column. (The
+        # field.md §3.6.2 entity *grouping* view remains deferred.)
         return [
             ColumnSpec(
                 field="field_identifier", title="Identifier", width=120
             ),
             ColumnSpec(field="field_name", title="Name"),
+            ColumnSpec(field="parent_entity_name", title="Entity", width=160),
             ColumnSpec(field="field_type", title="Type", width=110),
             ColumnSpec(field="field_status", title="Status", width=110),
             ColumnSpec(
@@ -205,6 +228,7 @@ class FieldsPanel(ListDetailPanel):
             return {
                 "references": {"as_source": [], "as_target": []},
                 "parent_entity_identifier": "",
+                "parent_entity_name": "",
             }
         refs = self._client.list_references_touching("field", identifier)
         parent_id = ""
@@ -219,9 +243,21 @@ class FieldsPanel(ListDetailPanel):
             parent_id = (
                 record.get("field_previous_parent_entity_identifier") or ""
             )
+        # REQ-132 (PI-173): resolve the entity's name so the detail pane can
+        # show the human name alongside the identifier. Degrade to "" if the
+        # entity can't be read (e.g. hard-deleted).
+        parent_name = ""
+        if parent_id:
+            try:
+                parent_name = (
+                    self._client.get_entity(parent_id).get("entity_name") or ""
+                )
+            except Exception:  # noqa: BLE001 — name is best-effort
+                parent_name = ""
         return {
             "references": refs,
             "parent_entity_identifier": parent_id,
+            "parent_entity_name": parent_name,
         }
 
     def render_detail(
@@ -291,8 +327,17 @@ class FieldsPanel(ListDetailPanel):
         # Field 3: parent entity (rendered outside ReferencesSection per
         # spec §3.6.3 — the mandatory 1:1 edge is conceptually part of
         # the field's identity, not a peer relationship).
+        # REQ-132 (PI-173): show the entity's name together with its
+        # identifier, not the bare identifier.
         parent_id = extras.get("parent_entity_identifier") or ""
-        parent_label = QLabel(parent_id or "—")
+        parent_name = extras.get("parent_entity_name") or ""
+        if parent_name and parent_id:
+            parent_text = f"{parent_name} ({parent_id})"
+        elif parent_id:
+            parent_text = parent_id
+        else:
+            parent_text = "—"
+        parent_label = QLabel(parent_text)
         parent_label.setObjectName("field_parent_entity_value")
         parent_label.setTextInteractionFlags(
             Qt.TextInteractionFlag.TextSelectableByMouse

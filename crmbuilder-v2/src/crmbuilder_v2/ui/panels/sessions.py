@@ -309,11 +309,50 @@ class SessionsPanel(ListDetailPanel):
             delete_action.triggered.connect(
                 lambda _c=False, r=record: self._on_delete_clicked(r)
             )
+        # REQ-137 (PI-178): inline lifecycle transitions from the list.
+        self._append_status_menu(menu, record)
         copy_id_action = menu.addAction("Copy identifier")
         copy_id_action.triggered.connect(
             lambda _c=False, r=record: self._copy_identifier(r)
         )
         return menu
+
+    def _status_action_spec(self, record):
+        if record.get("session_deleted_at") is not None:
+            return None
+        current = record.get("session_status") or "planned"
+        next_states = sorted(
+            SESSION_STATUS_TRANSITIONS.get(current, frozenset())
+        )
+        return (
+            current,
+            next_states,
+            lambda s, r=record: self._apply_status_transition(r, s),
+        )
+
+    def _apply_status_transition(self, record, new_status: str) -> None:
+        identifier = record.get("session_identifier")
+        if not identifier:
+            return
+        try:
+            self._client.patch_session(
+                identifier, {"session_status": new_status}
+            )
+        except NotFoundError:
+            self.refresh()
+            return
+        except StorageConnectionError as exc:
+            self.connection_lost.emit(str(exc))
+            return
+        except StorageClientError as exc:
+            ErrorDialog(
+                title="Could not update status",
+                message="The status change could not be applied.",
+                detail=str(exc),
+                parent=self,
+            ).exec()
+            return
+        self.refresh()
 
     # ------------------------------------------------------------------
     # Action handlers

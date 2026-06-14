@@ -65,7 +65,10 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
     primary_button,
     required_label,
 )
-from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
+from crmbuilder_v2.ui.widgets.references_section import (
+    EntityFieldsGridSection,
+    ReferencesSection,
+)
 from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.entities")
@@ -169,12 +172,41 @@ class EntitiesPanel(ListDetailPanel):
     def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
         identifier = record.get("entity_identifier")
         if not identifier:
-            return {"references": {"as_source": [], "as_target": []}}
-        return {
-            "references": self._client.list_references_touching(
-                "entity", identifier
-            ),
-        }
+            return {"references": {"as_source": [], "as_target": []}, "field_rows": []}
+        refs = self._client.list_references_touching("entity", identifier)
+        # REQ-133 (PI-174): build the dedicated fields-grid rows by joining the
+        # inbound field_belongs_to_entity edges to the field records (one
+        # list_fields read on this worker thread) for data type / required /
+        # status.
+        field_ids = [
+            r.get("source_id")
+            for r in refs.get("as_target", [])
+            if r.get("relationship") == "field_belongs_to_entity"
+        ]
+        field_rows: list[dict[str, Any]] = []
+        if field_ids:
+            fields_by_id = {
+                f.get("field_identifier"): f for f in self._client.list_fields()
+            }
+            for fid in sorted(field_ids):
+                f = fields_by_id.get(fid)
+                if f is None:
+                    continue
+                name = f.get("field_name") or ""
+                field_rows.append(
+                    {
+                        "identifier": fid,
+                        "name": name,
+                        "field_type": f.get("field_type") or "",
+                        "required": "yes" if f.get("field_required") else "no",
+                        "status": f.get("field_status") or "",
+                        # bookkeeping for navigation / preview
+                        "other_type": "field",
+                        "other_id": fid,
+                        "title": name,
+                    }
+                )
+        return {"references": refs, "field_rows": field_rows}
 
     def render_detail(
         self, record: dict[str, Any], extras: dict[str, Any]
@@ -312,6 +344,21 @@ class EntitiesPanel(ListDetailPanel):
 
         outer.addWidget(_separator())
 
+        # REQ-133 (PI-174): a dedicated fields grid listing this entity's
+        # fields with their data type, required flag, and status — separate
+        # from the references grid below.
+        fields_section = EntityFieldsGridSection(
+            "entity",
+            identifier,
+            extras.get("field_rows") or [],
+            client=self._client,
+        )
+        fields_section.setObjectName("entity_fields_section")
+        self._wire_link_section(fields_section)
+        outer.addWidget(fields_section)
+
+        outer.addWidget(_separator())
+
         # Field 6: the shared ReferencesSection. The first methodology
         # panel to render *outgoing* edges — ``entity_scopes_to_domain``
         # affiliations attached from the "Add reference" affordance. The
@@ -322,6 +369,7 @@ class EntitiesPanel(ListDetailPanel):
             extras.get("references") or {},
             client=self._client,
         )
+        references_section.setObjectName("entity_references_section")
         self._wire_link_section(references_section)
         references_section.references_changed.connect(self.refresh)
         outer.addWidget(references_section)
