@@ -217,6 +217,47 @@ def test_planning_item_inline_status_apply(qtbot, api_client):
     assert api_client.get_planning_item(pid)["status"] == target
 
 
+# ----------------------------------------------------------------------
+# H — REQ-138 / PI-179: cross-record navigation with a back/forward trail.
+# ----------------------------------------------------------------------
+
+
+def test_nav_back_forward_trail(qtbot, client_stub, lifecycle_stub):
+    from crmbuilder_v2.ui.main_window import MainWindow
+
+    window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
+    qtbot.addWidget(window)
+    assert window._sidebar.current_text() == "Decisions"
+    assert window._back_action.isEnabled() is False
+
+    # Follow a reference to a session.
+    window._on_navigate_requested("session", "SES-001")
+    assert window._sidebar.current_text() == "Sessions"
+    assert window._back_action.isEnabled() is True
+
+    # Step back to where we came from.
+    window.navigate_back()
+    assert window._sidebar.current_text() == "Decisions"
+    assert window._forward_action.isEnabled() is True
+
+    # Step forward again.
+    window.navigate_forward()
+    assert window._sidebar.current_text() == "Sessions"
+
+
+def test_new_jump_clears_forward_stack(qtbot, client_stub, lifecycle_stub):
+    from crmbuilder_v2.ui.main_window import MainWindow
+
+    window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
+    qtbot.addWidget(window)
+    window._on_navigate_requested("session", "SES-001")
+    window.navigate_back()
+    assert window._nav_forward  # forward populated
+    window._on_navigate_requested("risk", "RSK-001")
+    assert window._nav_forward == []
+    assert window._forward_action.isEnabled() is False
+
+
 def test_read_only_line_sets_full_value_tooltip(qapp):
     long = "x" * 300
     w = gh.read_only_line(long)
