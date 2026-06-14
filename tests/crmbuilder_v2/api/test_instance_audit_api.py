@@ -61,6 +61,21 @@ class _FakeClient:
             return (200, {"dueses": {"type": "hasMany", "entity": "CDues"}})
         return (200, {"engagement": {"type": "belongsTo", "entity": "CEngagement"}})
 
+    def get_layout(self, entity, layout_type):
+        # CEngagement detail layout only; other types/entities have none.
+        if entity == "CEngagement" and layout_type == "detail":
+            return (200, {"rows": [["name"]]})
+        return (404, None)
+
+    def get_roles(self):
+        return (200, {"list": [
+            {"name": "Mentor", "data": {"Contact": "yes"},
+             "assignmentPermission": "team"},
+        ]})
+
+    def get_teams(self):
+        return (200, {"list": [{"name": "Coordinators", "description": "Ops"}]})
+
 
 def _create(client, **over):
     body = {
@@ -88,11 +103,18 @@ def test_audit_reconciles_and_lists_memberships(client, monkeypatch):
     # One custom-to-custom relationship reconciled.
     assert summary["associations"]["created"] == 1
     assert summary["associations"]["present"] == 1
-    # Memberships listed: 2 entities + 2 fields + 1 association.
+    # One detail layout, one role, one team.
+    assert summary["layouts"]["created"] == 1
+    assert summary["roles"]["created"] == 1
+    assert summary["teams"]["created"] == 1
+    # Memberships: 2 entities + 2 fields + 1 association + 1 layout + 1 role + 1 team.
     rows = client.get(f"/instances/{iid}/memberships").json()["data"]
-    assert len(rows) == 5
+    assert len(rows) == 8
     types = sorted(row["member_type"] for row in rows)
-    assert types == ["association", "entity", "entity", "field", "field"]
+    assert types == [
+        "association", "entity", "entity", "field", "field",
+        "layout", "role", "team",
+    ]
     assert all(row["state"] == "present" for row in rows)
     # Filter by member_type.
     only_fields = client.get(
@@ -141,7 +163,8 @@ def test_publish_plan_target_needs_everything(client, monkeypatch):
     ]
     tgt_plan = client.get(f"/instances/{tgt}/publish-plan").json()["data"]
     assert tgt_plan["target_instance"] == tgt
-    assert tgt_plan["item_count"] == 5  # 2 entities + 2 fields + 1 association
+    # 2 entities + 2 fields + 1 association + 1 layout + 1 role + 1 team.
+    assert tgt_plan["item_count"] == 8
     assert all(it["reason"] == "never_audited" for it in tgt_plan["items"])
 
 

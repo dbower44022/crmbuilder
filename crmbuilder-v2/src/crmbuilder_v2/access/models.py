@@ -78,6 +78,10 @@ from crmbuilder_v2.access.vocab import (
     INSTANCE_ROLES,
     INSTANCE_STATUSES,
     INSTANCE_VENDORS,
+    LAYOUT_STATUSES,
+    LAYOUT_TYPES,
+    ROLE_STATUSES,
+    TEAM_STATUSES,
     LEARNING_CATEGORIES,
     LEARNING_STATUSES,
     LEARNING_TIERS,
@@ -2394,6 +2398,144 @@ class InstanceMembership(EngagementScopedMixin, Base):
             "member_type",
             "member_identifier",
         ),
+    )
+
+
+class Layout(EngagementScopedPKMixin, Base):
+    """PI-193 (PRJ-027) — one engine-neutral layout of an entity (``LAY-NNN``).
+
+    A net-new design family: a detail/list/etc. layout captured by audit and
+    publishable. ``layout_entity_identifier`` is the parent canonical entity
+    (soft reference, no FK — reconcile manages it); ``layout_content`` is the
+    neutral layout structure (panels/rows/columns) as JSON. Reconcile matches by
+    (entity, type) and records drift as a sparse override on the membership row.
+    """
+
+    __tablename__ = "layouts"
+
+    layout_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    layout_entity_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    layout_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    layout_content: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    layout_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    layout_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    layout_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    layout_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    layout_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("layout_identifier", ["LAY"]),
+            name="ck_layout_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("layout_type", LAYOUT_TYPES), name="ck_layout_type"
+        ),
+        CheckConstraint(
+            _check_in("layout_status", LAYOUT_STATUSES), name="ck_layout_status"
+        ),
+        Index("ix_layouts_layout_entity", "layout_entity_identifier"),
+        Index("ix_layouts_layout_status", "layout_status"),
+        Index("ix_layouts_layout_deleted_at", "layout_deleted_at"),
+    )
+
+
+class Role(EngagementScopedPKMixin, Base):
+    """PI-194 (PRJ-027) — one engine-neutral security role (``ROL-NNN``).
+
+    A net-new design family: a role's scope-access matrix and system permissions
+    captured by audit and publishable. ``role_scope_access`` / ``role_system_
+    permissions`` are JSON. Reconcile matches by name and records drift as a
+    sparse override on the membership row.
+    """
+
+    __tablename__ = "roles"
+
+    role_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    role_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    role_scope_access: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    role_system_permissions: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    role_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    role_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    role_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    role_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    role_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    role_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("role_identifier", ["ROL"]),
+            name="ck_role_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("role_status", ROLE_STATUSES), name="ck_role_status"
+        ),
+        Index("ix_roles_role_status", "role_status"),
+        Index("ix_roles_role_deleted_at", "role_deleted_at"),
+    )
+
+
+class Team(EngagementScopedPKMixin, Base):
+    """PI-194 (PRJ-027) — one engine-neutral security team (``TM-NNN``).
+
+    A net-new design family: a team name + description captured by audit and
+    publishable. Reconcile matches by name and records drift as a sparse
+    override on the membership row.
+    """
+
+    __tablename__ = "teams"
+
+    team_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    team_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    team_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    team_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    team_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    team_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    team_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    team_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("team_identifier", ["TM"]),
+            name="ck_team_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("team_status", TEAM_STATUSES), name="ck_team_status"
+        ),
+        Index("ix_teams_team_status", "team_status"),
+        Index("ix_teams_team_deleted_at", "team_deleted_at"),
     )
 
 

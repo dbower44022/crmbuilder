@@ -38,6 +38,9 @@ from crmbuilder_v2.introspect.reconcile import (
     reconcile_associations,
     reconcile_entities,
     reconcile_fields,
+    reconcile_layouts,
+    reconcile_roles,
+    reconcile_teams,
 )
 
 router = APIRouter(prefix="/instances", tags=["instances"])
@@ -276,10 +279,26 @@ def audit(identifier: str):
             associations = reconcile_associations(
                 s, instance_identifier=identifier, client=client
             )
+            layouts = reconcile_layouts(
+                s, instance_identifier=identifier, client=client
+            )
+            roles = reconcile_roles(
+                s, instance_identifier=identifier, client=client
+            )
+            teams = reconcile_teams(
+                s, instance_identifier=identifier, client=client
+            )
         except ReconcileError as exc:
             raise UnprocessableError(
                 [FieldError("audit", "introspection_failed", str(exc))]
             ) from exc
         return ok(
-            {"entities": entities, "fields": fields, "associations": associations}
+            {
+                "entities": entities,
+                "fields": fields,
+                "associations": associations,
+                "layouts": layouts,
+                "roles": roles,
+                "teams": teams,
+            }
         )

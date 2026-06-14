@@ -657,8 +657,32 @@ INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
 )
 
 # The canonical design-object kinds a membership row can describe (DEC-433).
+# Extended by PI-193 (layout) and PI-194 (role, team) as those families land.
 INSTANCE_MEMBERSHIP_MEMBER_TYPES: frozenset[str] = frozenset(
-    {"entity", "field", "association"}
+    {"entity", "field", "association", "layout", "role", "team"}
+)
+
+# ---------------------------------------------------------------------------
+# Layout design family (PI-193 — PRJ-027). One detail/list/etc. layout of an
+# entity, audit-captured and publishable. Reconcile-populated; full ENTITY_TYPE.
+# ---------------------------------------------------------------------------
+LAYOUT_TYPES: frozenset[str] = frozenset(
+    {"detail", "list", "detail_small", "list_small", "kanban", "mass_update"}
+)
+LAYOUT_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+# ---------------------------------------------------------------------------
+# Security design family (PI-194 — PRJ-027). Roles (scope-access matrices +
+# system permissions) and teams. Net-new engine-neutral design records,
+# reconcile-populated; full ENTITY_TYPEs.
+# ---------------------------------------------------------------------------
+ROLE_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+TEAM_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
 )
 
 # Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
@@ -1363,6 +1387,11 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # canonical inventory; publish (push, PRJ-025) writes design to it. See
         # prj-027-multi-instance-audit-inventory-architecture.md §3.
         "instance",
+        # PI-193 (PRJ-027) net-new layout design family (LAY-).
+        "layout",
+        # PI-194 (PRJ-027) net-new security design families (ROL-, TM-).
+        "role",
+        "team",
     }
 )
 
