@@ -302,6 +302,28 @@ class EntitiesPanel(ListDetailPanel):
         kind_row.addRow(QLabel("Kind"), kind_label)
         outer.addLayout(kind_row)
 
+        # PRJ-025 PI-182 §6: engine-neutral default-sort + activity intent,
+        # rendered read-only.
+        intrinsic_row = QFormLayout()
+        intrinsic_row.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        sort_field_value = _read_only_line(
+            record.get("entity_default_sort_field") or "", placeholder="—"
+        )
+        sort_field_value.setObjectName("entity_default_sort_field_value")
+        intrinsic_row.addRow(QLabel("Default sort field"), sort_field_value)
+        sort_dir_value = _read_only_line(
+            record.get("entity_default_sort_direction") or "", placeholder="—"
+        )
+        sort_dir_value.setObjectName("entity_default_sort_direction_value")
+        intrinsic_row.addRow(QLabel("Default sort direction"), sort_dir_value)
+        outer.addLayout(intrinsic_row)
+
+        track_checkbox = QCheckBox("Track activity feed")
+        track_checkbox.setObjectName("entity_track_activity_value")
+        track_checkbox.setChecked(bool(record.get("entity_track_activity")))
+        track_checkbox.setEnabled(False)
+        outer.addWidget(track_checkbox)
+
         # PI-108: created / last-edited audit timestamps.
         outer.addWidget(_separator())
         outer.addWidget(

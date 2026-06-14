@@ -469,6 +469,11 @@ class EntityCrudDialog(QDialog):
             )
         body_layout.addLayout(self._form)
 
+        # Hook for subclasses that need richer, non-schema content (e.g.
+        # the field dialog's grouped intrinsic inputs + field_options
+        # editor) inserted between the schema form and the button row.
+        self._build_extra_body_content(body_layout)
+
         button_row = QHBoxLayout()
         button_row.addStretch(1)
         self._cancel_btn = QPushButton("Cancel")
@@ -570,6 +575,20 @@ class EntityCrudDialog(QDialog):
     def hideEvent(self, event):  # noqa: N802 — Qt naming
         _backdrop_detach(self)
         super().hideEvent(event)
+
+    # ------------------------------------------------------------------
+    # Extra body content hook
+    # ------------------------------------------------------------------
+
+    def _build_extra_body_content(self, body_layout: QVBoxLayout) -> None:
+        """Insert subclass-specific widgets between the form and buttons.
+
+        Default no-op. Subclasses (e.g. the field create/edit dialogs)
+        override to add grouped non-schema content such as the intrinsic
+        constraint inputs and the ``field_options`` collection editor.
+        Called once during ``__init__`` after the schema form is built
+        and ``self._client`` / ``self._record`` / ``self._mode`` are set.
+        """
 
     # ------------------------------------------------------------------
     # Widget construction

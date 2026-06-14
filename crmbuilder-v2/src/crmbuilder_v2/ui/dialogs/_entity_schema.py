@@ -26,6 +26,7 @@ from copy import deepcopy
 
 from crmbuilder_v2.access.vocab import (
     ENTITY_KINDS,
+    ENTITY_SORT_DIRECTIONS,
     ENTITY_STATUS_TRANSITIONS,
     ENTITY_STATUSES,
 )
@@ -41,6 +42,15 @@ _DESCRIPTION_PLACEHOLDER = (
 # the blank option clears `entity_kind` to NULL. The repository's
 # `_coerce_kind` normalises "" to None on its way through.
 _KIND_CHOICES: list[str] = [""] + sorted(ENTITY_KINDS)
+
+# PRJ-025 PI-182 §6 intrinsics. The blank sentinel clears the optional
+# sort direction to NULL (the repository's `_coerce_sort_direction`
+# normalises "" to None). ``entity_track_activity`` is a boolean modelled
+# as a string combo — the EntityCrudDialog base only supports string
+# widgets, so `entity_crud.py` coerces "true"/"false" to a Python bool on
+# the way out, mirroring the established `field_required` pattern.
+_SORT_DIRECTION_CHOICES: list[str] = [""] + sorted(ENTITY_SORT_DIRECTIONS)
+_TRACK_ACTIVITY_CHOICES = ("false", "true")
 
 
 def status_choices(current: str | None) -> list[str]:
@@ -102,6 +112,28 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         vocab=frozenset(_KIND_CHOICES),
         default="",
         compute_options=lambda _state: list(_KIND_CHOICES),
+    ),
+    # PRJ-025 PI-182 §6 — engine-neutral default-sort + activity intent.
+    FieldSchema(
+        key="entity_default_sort_field",
+        label="Default sort field",
+        widget="line",
+        placeholder="Field the list view sorts by, by default",
+    ),
+    FieldSchema(
+        key="entity_default_sort_direction",
+        label="Default sort direction",
+        widget="combo",
+        vocab=frozenset(_SORT_DIRECTION_CHOICES),
+        default="",
+        compute_options=lambda _state: list(_SORT_DIRECTION_CHOICES),
+    ),
+    FieldSchema(
+        key="entity_track_activity",
+        label="Track activity feed",
+        widget="combo",
+        vocab=frozenset(_TRACK_ACTIVITY_CHOICES),
+        default="false",
     ),
 ]
 

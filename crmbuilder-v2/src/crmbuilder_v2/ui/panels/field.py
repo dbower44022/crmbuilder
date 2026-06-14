@@ -125,6 +125,83 @@ def _separator() -> QFrame:
     return line
 
 
+# PRJ-025 PI-182 §7 — (label, record-key) pairs rendered read-only in the
+# field detail pane's design-intent section.
+_INTRINSIC_DISPLAY_ROWS: tuple[tuple[str, str], ...] = (
+    ("Tooltip", "field_tooltip"),
+    ("Usage summary", "field_usage_summary"),
+    ("Default value", "field_default_value"),
+    ("Format", "field_format"),
+    ("Numeric scale", "field_numeric_scale"),
+    ("Max length", "field_max_length"),
+    ("Min", "field_min"),
+    ("Max", "field_max"),
+)
+_INTRINSIC_BOOL_ROWS: tuple[tuple[str, str], ...] = (
+    ("Read-only", "field_read_only"),
+    ("Unique", "field_unique"),
+    ("Externally populated", "field_externally_populated"),
+)
+
+
+def _design_intent_section(record: dict[str, Any]) -> CollapsibleSection:
+    """Read-only render of the §7 intrinsics + the field_options set."""
+    inner = QWidget()
+    layout = QVBoxLayout(inner)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(6)
+
+    form = QFormLayout()
+    form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+    form.setFieldGrowthPolicy(
+        QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+    )
+    for label, key in _INTRINSIC_DISPLAY_ROWS:
+        raw = record.get(key)
+        value_widget = _read_only_line(
+            "" if raw is None else str(raw), placeholder="—"
+        )
+        value_widget.setObjectName(f"{key}_value")
+        form.addRow(label, value_widget)
+    layout.addLayout(form)
+
+    for label, key in _INTRINSIC_BOOL_ROWS:
+        checkbox = QCheckBox(label)
+        checkbox.setObjectName(f"{key}_value")
+        checkbox.setChecked(bool(record.get(key)))
+        checkbox.setEnabled(False)
+        layout.addWidget(checkbox)
+
+    options = record.get("field_options") or []
+    options_label = QLabel("Options (enum / multi-enum)")
+    options_label.setObjectName("field_options_heading")
+    layout.addWidget(options_label)
+    if options:
+        ordered = sorted(
+            options, key=lambda o: (o.get("option_order") is None, o.get("option_order"))
+        )
+        for opt in ordered:
+            value = opt.get("option_value") or ""
+            opt_label = opt.get("option_label")
+            text = f"• {value}" + (f" — {opt_label}" if opt_label else "")
+            row_label = QLabel(text)
+            row_label.setObjectName("field_option_row")
+            row_label.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            layout.addWidget(row_label)
+    else:
+        empty_label = QLabel("(none)")
+        empty_label.setObjectName("field_options_empty")
+        layout.addWidget(empty_label)
+
+    section = CollapsibleSection(
+        "Constraints, display & options", inner, expanded=False
+    )
+    section.setObjectName("field_intrinsics_section")
+    return section
+
+
 def _resolve_parent_entity_identifier(client, field_identifier: str) -> str:
     """Look up the live ``field_belongs_to_entity`` edge's target.
 
@@ -363,6 +440,10 @@ class FieldsPanel(ListDetailPanel):
         status_layout.addWidget(status_hint)
         status_row.addRow(required_label("Status"), status_container)
         outer.addLayout(status_row)
+
+        # PRJ-025 PI-182 §7: engine-neutral design-intent intrinsics +
+        # the field_options set, read-only, under a collapsible header.
+        outer.addWidget(_design_intent_section(record))
 
         # PI-108: created / last-edited audit timestamps.
         outer.addWidget(_separator())

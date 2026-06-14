@@ -802,6 +802,11 @@ class StorageClient:
         ``entity_scopes_to_domain`` kind. Raises ``RequestShapeError``
         on 422 (identifier-format / name-uniqueness / status-enum),
         ``ConflictError`` on 409 (explicit-identifier collision).
+
+        PRJ-025 PI-182: the optional §6 intrinsics
+        (``entity_default_sort_field``, ``entity_default_sort_direction``,
+        ``entity_track_activity``) are forwarded verbatim — ``body`` is
+        passed straight through.
         """
         result = self._request("POST", "/entities", json_body=body)
         if not isinstance(result, dict):
@@ -1532,7 +1537,9 @@ class StorageClient:
 
         Raises ``NotFoundError`` if the field does not exist (or is
         soft-deleted — the API 404s soft-deleted rows by default).
-        Per ``field.md`` §3.5.1.
+        Per ``field.md`` §3.5.1. The PRJ-025 PI-182 ``field_options``
+        child collection is embedded server-side and surfaced here as
+        the record's ``field_options`` key.
         """
         result = self._request("GET", f"/fields/{identifier}")
         if not isinstance(result, dict):
@@ -1562,6 +1569,11 @@ class StorageClient:
         per-entity name uniqueness / status-enum / type-enum /
         invalid-parent-entity), ``ConflictError`` on 409
         (explicit-identifier collision).
+
+        PRJ-025 PI-182: the optional §7 scalar intrinsics
+        (``field_tooltip``, ``field_format``, ``field_max_length``,
+        ``field_read_only`` …) and the ``field_options`` list are
+        forwarded verbatim — ``body`` is passed straight through.
         """
         result = self._request("POST", "/fields", json_body=body)
         if not isinstance(result, dict):

@@ -37,6 +37,20 @@ from crmbuilder_v2.ui.dialogs._entity_schema import entity_fields
 _IDENTIFIER_FIELD = "entity_identifier"
 
 
+def _coerce_track_activity(body: dict[str, Any]) -> dict[str, Any]:
+    """Convert ``entity_track_activity`` string ("true"/"false") to bool.
+
+    The PRJ-025 PI-182 §6 ``entity_track_activity`` intrinsic is modelled
+    as a string combo (the EntityCrudDialog base only supports string
+    widgets); the access layer expects a Python bool. Mirrors the
+    ``field_required`` coercion in ``field_crud.py``."""
+    if "entity_track_activity" in body:
+        value = body["entity_track_activity"]
+        if isinstance(value, str):
+            body["entity_track_activity"] = value.strip().lower() == "true"
+    return body
+
+
 class EntityCreateDialog(EntityCrudDialog):
     """Modal create-entity dialog. Per ``entity.md`` section 3.6.4."""
 
@@ -55,6 +69,9 @@ class EntityCreateDialog(EntityCrudDialog):
             parent=parent,
         )
 
+    def _build_create_body(self) -> dict[str, Any]:  # type: ignore[override]
+        return _coerce_track_activity(super()._build_create_body())
+
     def created_identifier(self) -> str | None:
         """Identifier of the newly created entity, or None if not accepted."""
         return self.saved_identifier()
@@ -71,16 +88,23 @@ class EntityEditDialog(EntityCrudDialog):
     ) -> None:
         identifier = str(record.get(_IDENTIFIER_FIELD) or "")
         title = f"Edit {identifier}" if identifier else "Edit entity"
+        normalised = dict(record)
+        raw = normalised.get("entity_track_activity")
+        if isinstance(raw, bool):
+            normalised["entity_track_activity"] = "true" if raw else "false"
         super().__init__(
             client,
             entity_fields(include_identifier=True),
             mode="edit",
             title=title,
             update_method=client.patch_entity,
-            record=record,
+            record=normalised,
             identifier_field=_IDENTIFIER_FIELD,
             parent=parent,
         )
+
+    def _build_edit_diff(self) -> dict[str, Any]:  # type: ignore[override]
+        return _coerce_track_activity(super()._build_edit_diff())
 
 
 class EntityDeleteDialog(EntityCrudDeleteDialog):

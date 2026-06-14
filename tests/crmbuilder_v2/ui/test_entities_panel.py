@@ -251,6 +251,10 @@ def test_detail_pane_renders_seven_fields_in_order(qtbot, entity_client):
         # PI-010 / DEC-292: entity_kind read-only label, "(unclassified)"
         # when NULL.
         "entity_kind_value",
+        # PRJ-025 PI-182 §6: engine-neutral default-sort + activity intent.
+        "entity_default_sort_field_value",
+        "entity_default_sort_direction_value",
+        "entity_track_activity_value",
     ]
 
     # Identifier is a read-only label; name a read-only line editor;
