@@ -90,6 +90,7 @@ from crmbuilder_v2.access.vocab import (
     RISK_PROBABILITIES,
     RISK_STATUSES,
     RULE_ENFORCEMENT_MODES,
+    SERVICE_STATUSES,
     SESSION_MEDIUMS,
     SESSION_STATUSES,
     SKILL_KINDS,
@@ -1438,6 +1439,76 @@ class MigrationMapping(EngagementScopedPKMixin, Base):
             "ix_migration_mappings_migration_mapping_deleted_at",
             "migration_mapping_deleted_at",
         ),
+    )
+
+
+class Service(EngagementScopedPKMixin, Base):
+    """Methodology entity — one cross-domain service in the target system.
+
+    PI-161 storage layer per the WTK-132 design spec
+    (``methodology-schema-specs/service.md`` §3.2). A cross-domain service is
+    a capability the CRM system provides that is not owned by any single
+    business domain (document storage, notifications, user accounts, AI agent
+    orchestration — the four surfaced by the first dogfood run, SES-166).
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``service_identifier`` (format ``SVC-NNN``) —
+    no integer surrogate ``id`` column, matching ``persona`` /
+    ``migration_mapping``.
+
+    No FK column. Both relationship kinds live in ``refs`` as references-entity
+    edges (DEC-006), mirroring ``persona`` exactly: inbound
+    ``process_consumes_service`` (process → service — which business processes
+    depend on the service, the empirical content of "cross-domain") and
+    outbound ``service_owns_entity`` (service → entity — the entities the
+    service owns, per the PRD's Phase 1 capture item). Neither edge is
+    mandatory, so a plain create suffices — no atomic row+edges POST machinery.
+    Deliberately there is **no** ``service_scopes_to_domain`` kind (spec
+    §3.3.2): a cross-domain service is not domain-bound and its effective
+    domain coverage is derivable by joining its consuming processes to their
+    parent domains.
+
+    "Any entities it may own" is relational data, not prose — there is no
+    ``service_owned_entities`` text column. At Phase 1 capture time, before
+    any entity records exist, ownership intent is prose in ``service_notes``;
+    the ``service_owns_entity`` edge is attached when Phase 2/3 surfaces the
+    candidate entity (spec §3.2.2).
+    """
+
+    __tablename__ = "services"
+
+    service_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    service_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    service_purpose: Mapped[str] = mapped_column(Text, nullable=False)
+    service_capabilities: Mapped[str | None] = mapped_column(Text, nullable=True)
+    service_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    service_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    service_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    service_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    service_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^SVC-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("service_identifier", ["SVC"]),
+            name="ck_service_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("service_status", SERVICE_STATUSES),
+            name="ck_service_status",
+        ),
+        Index("ix_services_service_status", "service_status"),
+        Index("ix_services_service_deleted_at", "service_deleted_at"),
     )
 
 

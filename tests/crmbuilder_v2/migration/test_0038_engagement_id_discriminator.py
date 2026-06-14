@@ -60,8 +60,10 @@ def _load_migration_module():
 #     (created scoped-from-birth by migration 0048).
 #   - ``review_signoffs`` — requirements-provenance Phase 6 review attestation
 #     (created scoped-from-birth by migration 0051).
+#   - ``services`` — PI-161 cross-domain service record (created
+#     scoped-from-birth by migration 0052).
 _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
-    {"findings", "utilization_evidence", "migration_mappings", "review_signoffs"}
+    {"findings", "utilization_evidence", "migration_mappings", "review_signoffs", "services"}
 )
 
 

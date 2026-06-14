@@ -75,6 +75,9 @@ _SPECS: dict[str, _Spec] = {
     # the literal source entity name is the most informative single column
     # for the title slot.
     "migration_mapping": _Spec(models.MigrationMapping, "migration_mapping_identifier", "migration_mapping_source_entity_name", "migration_mapping_status", "migration_mapping_created_at", "migration_mapping_updated_at"),
+    # PI-161 (service.md): one cross-domain service; client-language name in
+    # the title slot.
+    "service": _Spec(models.Service, "service_identifier", "service_name", "service_status", "service_created_at", "service_updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),
