@@ -20,10 +20,12 @@ subtree follows three ownership rules:
    QObject may outlive the function that created it unless the test
    holds it.
 
-The ``pytest_runtest_teardown`` hook below is the deterministic
-counterpart: it drains ``DeferredDelete`` events inside each test's own
-teardown, so destruction never drifts across test boundaries into a
-later test's event processing (the SIGSEGV window PI-159 closes).
+The deterministic widget-reclamation counterpart — a forced GC plus a
+``DeferredDelete`` drain after every test — lives in the **repo-root**
+``tests/conftest.py`` (PI-159 follow-up), so it covers the whole suite
+rather than just this subtree: the SIGSEGV actually surfaced in *non-UI*
+tests' event processing (pytest-qt's ``qapp`` is session-scoped and
+persists once created), which a subtree-scoped hook could never reach.
 """
 
 from __future__ import annotations
@@ -39,27 +41,6 @@ import httpx  # noqa: E402
 import pytest  # noqa: E402
 from crmbuilder_v2.ui.client import StorageClient  # noqa: E402
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle  # noqa: E402
-from PySide6.QtCore import QEvent  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
-
-
-@pytest.hookimpl(trylast=True)
-def pytest_runtest_teardown(item):
-    """Drain deferred deletions inside the test that posted them.
-
-    pytest-qt's teardown closes then ``deleteLater()``s every registered
-    widget; ``DeferredDelete`` delivery rules can defer the actual
-    destruction into a *later* test's event processing, where a paint on
-    a half-destructed widget segfaults. Runs ``trylast`` so it executes
-    after fixture finalization (where pytest-qt posts the deletions); the
-    bounded double pass settles deletions that themselves post more.
-    """
-    app = QApplication.instance()
-    if app is None:
-        return
-    for _ in range(2):
-        app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
-        app.processEvents()
 
 
 @pytest.fixture
