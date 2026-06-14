@@ -76,6 +76,11 @@ class AuditOptions:
     :param include_native_fields: Include native fields (normally excluded).
     :param include_security: Discover roles and teams (DEC-180).
     :param include_filtered_tabs: Discover filtered tabs (DEC-180).
+    :param include_formula_scripts: Capture entity-level EspoCRM formula
+        scripts verbatim into a ``formulaScript:`` block (REQ-122 /
+        Option A). Capture only — EspoCRM has no REST write path for
+        entity formulas, so re-applying them on the target is manual.
+        Default on, matching the DEC-180 full-configuration precedent.
     :param include_data_profile: Run the pass-2 data profiler after
         schema discovery, writing ``utilization-profile.json`` to the
         output directory (WTK-096). Default on, matching the DEC-180
@@ -103,6 +108,7 @@ class AuditOptions:
     include_native_fields: bool = False
     include_security: bool = True
     include_filtered_tabs: bool = True
+    include_formula_scripts: bool = True
     include_data_profile: bool = True
     selected_entities: set[str] | None = None
 
@@ -163,6 +169,9 @@ class EntityAuditResult:
     fields: list[FieldAuditResult] = field(default_factory=list)
     layouts: list[LayoutAuditResult] = field(default_factory=list)
     filtered_tabs: list["FilteredTabAuditResult"] = field(default_factory=list)
+    # Entity-level EspoCRM formula scripts captured verbatim (REQ-122 /
+    # Option A): {scriptKey: script}, e.g. {"beforeSaveCustomScript": "..."}.
+    formula_scripts: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -522,6 +531,9 @@ class AuditManager:
                 "white",
             )
             self._extract_fields(entity, report)
+
+            if self._options.include_formula_scripts:
+                self._apply_formula_scripts(entity, report)
 
             for layout_type in self._layout_types_to_extract():
                 self._extract_layout(entity, layout_type, report)
@@ -1742,6 +1754,43 @@ class AuditManager:
     # YAML generation
     # ------------------------------------------------------------------
 
+    def _apply_formula_scripts(
+        self, entity: EntityAuditResult, report: AuditReport
+    ) -> None:
+        """Capture an entity's EspoCRM formula scripts verbatim (REQ-122).
+
+        Reads ``Metadata?key=formula.{Entity}`` and stores every non-empty
+        script string (e.g. ``beforeSaveCustomScript``,
+        ``beforeSaveApiScript``) on the entity as ``formula_scripts``. The
+        block round-trips as documentation/data only: EspoCRM exposes no
+        REST write path for entity formulas (the field-level ``formula``
+        attribute is silently dropped and ``updateEntity`` does not persist
+        one), so re-applying captured formulas on the target is manual,
+        like saved views and workflows. Sentinel/parse-failure bodies and
+        empty scripts are ignored.
+
+        :param entity: Entity to capture formulas for.
+        :param report: Unused today; kept for signature symmetry / future
+            warning accumulation.
+        """
+        status, body = self._client.get_entity_formula(entity.espo_name)
+        if status != 200 or not isinstance(body, dict):
+            return
+        scripts = {
+            key: value
+            for key, value in body.items()
+            if isinstance(value, str) and value.strip() and not key.startswith("_")
+        }
+        if not scripts:
+            return
+        entity.formula_scripts = scripts
+        self._cb(
+            f"[AUDIT]    {entity.yaml_name} — captured {len(scripts)} formula "
+            f"script(s) as formulaScript:; re-apply is manual (EspoCRM has no "
+            f"REST write path for entity formulas)",
+            "yellow",
+        )
+
     def _write_yaml_files(
         self,
         entities: list[EntityAuditResult],
@@ -1761,7 +1810,12 @@ class AuditManager:
 
         # One file per entity
         for entity in entities:
-            if not entity.fields and not entity.layouts and not entity.filtered_tabs:
+            if (
+                not entity.fields
+                and not entity.layouts
+                and not entity.filtered_tabs
+                and not entity.formula_scripts
+            ):
                 continue
 
             yaml_dict = self._build_entity_yaml(entity)
@@ -1853,6 +1907,11 @@ class AuditManager:
                 self._filtered_tab_to_yaml_dict(t)
                 for t in entity.filtered_tabs
             ]
+
+        # Entity formula scripts (REQ-122 / Option A) — captured verbatim;
+        # re-apply is manual (no EspoCRM REST write path for entity formulas).
+        if entity.formula_scripts:
+            entity_block["formulaScript"] = dict(entity.formula_scripts)
 
         return {
             "version": "1.0",

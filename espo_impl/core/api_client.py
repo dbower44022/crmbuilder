@@ -723,6 +723,22 @@ class EspoAdminClient:
 
     # --- Team management ---
 
+    def get_entity_formula(
+        self, entity: str
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Fetch an entity's formula metadata (REQ-122 audit capture).
+
+        Returns the ``formula.{Entity}`` metadata block, which holds the
+        entity-level formula scripts (``beforeSaveCustomScript``,
+        ``beforeSaveApiScript``, …). Entities without a formula return an
+        empty / parse-failure body, which the audit treats as "no formula".
+
+        :param entity: EspoCRM entity name (e.g. ``CMentorProfile``).
+        :returns: Tuple of (status_code, formula dict or None).
+        """
+        url = f"{self.profile.api_url}/Metadata?key=formula.{entity}"
+        return self._request("GET", url)
+
     def get_teams(
         self,
     ) -> tuple[int, dict[str, Any] | None]:

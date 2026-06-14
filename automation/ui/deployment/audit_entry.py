@@ -195,6 +195,10 @@ class AuditEntry(QWidget):
         self._cb_filtered_tabs.setChecked(True)
         scope_layout.addWidget(self._cb_filtered_tabs)
 
+        self._cb_formula_scripts = QCheckBox("Entity formula scripts")
+        self._cb_formula_scripts.setChecked(True)
+        scope_layout.addWidget(self._cb_formula_scripts)
+
         content_layout.addWidget(scope_group)
 
         # Last audit info
@@ -508,6 +512,7 @@ class AuditEntry(QWidget):
             include_native_fields=self._cb_include_native.isChecked(),
             include_security=self._cb_security.isChecked(),
             include_filtered_tabs=self._cb_filtered_tabs.isChecked(),
+            include_formula_scripts=self._cb_formula_scripts.isChecked(),
             selected_entities=selected,
         )
 

@@ -45,6 +45,10 @@ def _make_client(**method_returns: Any) -> MagicMock:
     # discovery loops don't hang on AttributeError.
     for name, value in method_returns.items():
         getattr(client, name).return_value = value
+    # Entity formula-script capture (REQ-122) runs by default inside
+    # run_audit; default it to "no formula" unless the test overrides it.
+    if "get_entity_formula" not in method_returns:
+        client.get_entity_formula.return_value = (200, {})
     return client
 
 
