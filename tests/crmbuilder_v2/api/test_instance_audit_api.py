@@ -51,6 +51,13 @@ class _FakeClient:
             "cStatus": {"type": "enum", "isCustom": True, "required": True},
         })
 
+    def get_all_links(self, entity):
+        # CEngagement has a custom-to-custom hasMany to CDues; CDues' reciprocal
+        # belongsTo is skipped.
+        if entity == "CEngagement":
+            return (200, {"dueses": {"type": "hasMany", "entity": "CDues"}})
+        return (200, {"engagement": {"type": "belongsTo", "entity": "CEngagement"}})
+
 
 def _create(client, **over):
     body = {
@@ -75,11 +82,14 @@ def test_audit_reconciles_and_lists_memberships(client, monkeypatch):
     # One custom field per custom entity reconciled.
     assert summary["fields"]["created"] == 2
     assert summary["fields"]["present"] == 2
-    # Memberships listed: 2 entities + 2 fields.
+    # One custom-to-custom relationship reconciled.
+    assert summary["associations"]["created"] == 1
+    assert summary["associations"]["present"] == 1
+    # Memberships listed: 2 entities + 2 fields + 1 association.
     rows = client.get(f"/instances/{iid}/memberships").json()["data"]
-    assert len(rows) == 4
+    assert len(rows) == 5
     types = sorted(row["member_type"] for row in rows)
-    assert types == ["entity", "entity", "field", "field"]
+    assert types == ["association", "entity", "entity", "field", "field"]
     assert all(row["state"] == "present" for row in rows)
     # Filter by member_type.
     only_fields = client.get(

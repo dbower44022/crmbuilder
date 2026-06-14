@@ -31,6 +31,7 @@ from crmbuilder_v2.api.schemas import (
 from crmbuilder_v2.introspect.espo_client import EspoIntrospectionClient
 from crmbuilder_v2.introspect.reconcile import (
     ReconcileError,
+    reconcile_associations,
     reconcile_entities,
     reconcile_fields,
 )
@@ -199,8 +200,8 @@ def list_memberships(
 def audit(identifier: str):
     """Audit (pull) this instance, reconciling its structure into the inventory.
 
-    Reconciles custom entities then their custom fields (PI-185 slices 1-2a;
-    associations are a later slice). Builds an introspection client from the
+    Reconciles custom entities, then their custom fields, then custom-to-custom
+    relationships (PI-185 slices 1-2b). Builds an introspection client from the
     instance's stored connection + keyring secret, then runs the reconcile
     engine. Returns the per-object-type reconcile summary.
     """
@@ -246,8 +247,13 @@ def audit(identifier: str):
             fields = reconcile_fields(
                 s, instance_identifier=identifier, client=client
             )
+            associations = reconcile_associations(
+                s, instance_identifier=identifier, client=client
+            )
         except ReconcileError as exc:
             raise UnprocessableError(
                 [FieldError("audit", "introspection_failed", str(exc))]
             ) from exc
-        return ok({"entities": entities, "fields": fields})
+        return ok(
+            {"entities": entities, "fields": fields, "associations": associations}
+        )

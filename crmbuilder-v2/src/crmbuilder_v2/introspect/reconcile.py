@@ -26,6 +26,7 @@ from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
@@ -49,6 +50,26 @@ class _FieldsClient(_ScopesClient, Protocol):
     """Adds the per-entity field listing the field reconcile needs."""
 
     def get_entity_field_list(self, entity: str) -> tuple[int, dict | None]: ...
+
+
+class _LinksClient(_ScopesClient, Protocol):
+    """Adds the per-entity link listing the association reconcile needs."""
+
+    def get_all_links(self, entity: str) -> tuple[int, dict | None]: ...
+
+
+# EspoCRM link ``type`` -> engine-neutral cardinality (DEC-433). Only the
+# "owning" side of each relationship is processed; the reciprocal
+# ``belongsTo`` and the polymorphic ``belongsToParent`` / ``hasChildren`` are
+# skipped (absent from this map) so each relationship reconciles once. Note the
+# neutral set has no ``many_to_one`` — a ``manyToOne`` is modeled as
+# ``one_to_many`` from the "one" (owning) side, which is exactly the ``hasMany``
+# side we process.
+_LINK_CARDINALITY: dict[str, str] = {
+    "manyMany": "many_to_many",
+    "hasMany": "one_to_many",
+    "hasOne": "one_to_one",
+}
 
 
 # EspoCRM concrete field type -> engine-neutral FIELD_TYPE (DEC-431 normalize
@@ -317,6 +338,126 @@ def reconcile_fields(
         session,
         instance_identifier=instance_identifier,
         member_type="field",
+        present_member_identifiers=seen_ids,
+        last_audited_at=stamp,
+    )
+    return summary
+
+
+def reconcile_associations(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _LinksClient,
+) -> dict:
+    """Reconcile an instance's custom-to-custom relationships into the inventory.
+
+    Slice 2b: relationships where **both** endpoints are custom entities present
+    in the canonical inventory reconcile to ``association`` records (DEC-433).
+    Links to native / non-canonical entities are skipped (a later slice, once
+    native entity records exist). Only the owning side of each relationship is
+    processed (``_LINK_CARDINALITY``); ``manyMany`` is de-duplicated by its
+    shared ``relationName``. Same create -> match-by-neutral-name -> drift ->
+    absent -> membership pattern as the entity / field reconcile.
+
+    :returns: A summary ``{seen, created, present, drifted, absent}``.
+    :raises ReconcileError: If the scopes call fails or returns a non-dict body.
+    """
+    status, scopes = client.get_all_scopes()
+    if status != 200 or not isinstance(scopes, dict):
+        raise ReconcileError(
+            f"get_all_scopes returned status={status}; expected 200 + dict body"
+        )
+
+    ent_by_name = {
+        row["entity_name"]: row["entity_identifier"]
+        for row in entity_repo.list_entities(session)
+    }
+    canon = {
+        a["association_name"]: a
+        for a in association_repo.list_associations(session)
+    }
+    stamp = datetime.now(UTC)
+    summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
+    seen_ids: set[str] = set()
+    seen_relation_names: set[str] = set()
+
+    for scope_name, scope_meta in scopes.items():
+        if not isinstance(scope_meta, dict):
+            continue
+        if classify_entity(scope_name, scope_meta) is not EntityClass.CUSTOM:
+            continue
+        source_id = ent_by_name.get(strip_entity_c_prefix(scope_name))
+        if source_id is None:
+            continue
+
+        l_status, links = client.get_all_links(scope_name)
+        if l_status != 200 or not isinstance(links, dict):
+            continue
+
+        for link_name, link_meta in links.items():
+            if not isinstance(link_meta, dict):
+                continue
+            cardinality = _LINK_CARDINALITY.get(str(link_meta.get("type")))
+            if cardinality is None:
+                continue
+            foreign_scope = link_meta.get("entity")
+            if not foreign_scope:
+                continue
+            target_id = ent_by_name.get(strip_entity_c_prefix(foreign_scope))
+            if target_id is None:
+                # Endpoint is native / not in the canonical inventory — skip.
+                continue
+
+            if cardinality == "many_to_many":
+                relation_name = link_meta.get("relationName") or link_name
+                if relation_name in seen_relation_names:
+                    continue
+                seen_relation_names.add(relation_name)
+                assoc_name = relation_name
+            else:
+                assoc_name = link_name
+
+            summary["seen"] += 1
+            match = canon.get(assoc_name)
+            if match is None:
+                created = association_repo.create_association(
+                    session,
+                    name=assoc_name,
+                    source_entity=source_id,
+                    target_entity=target_id,
+                    cardinality=cardinality,
+                )
+                canon[assoc_name] = created
+                member_id = created["association_identifier"]
+                summary["created"] += 1
+                state, override = "present", None
+            else:
+                member_id = match["association_identifier"]
+                override = (
+                    {"association_cardinality": cardinality}
+                    if match.get("association_cardinality") != cardinality
+                    else {}
+                )
+                state = "drifted" if override else "present"
+                override = override or None
+
+            membership_repo.upsert_membership(
+                session,
+                instance_identifier=instance_identifier,
+                member_type="association",
+                member_identifier=member_id,
+                state=state,
+                override=override,
+                last_audited_at=stamp,
+            )
+            seen_ids.add(member_id)
+            summary[state] += 1
+
+    summary["absent"] = membership_repo.mark_absent_missing(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="association",
         present_member_identifiers=seen_ids,
         last_audited_at=stamp,
     )

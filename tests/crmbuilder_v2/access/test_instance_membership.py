@@ -11,23 +11,26 @@ from __future__ import annotations
 import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import UnprocessableError
+from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as mb
 from crmbuilder_v2.access.repositories import instances as inst_repo
 from crmbuilder_v2.introspect.reconcile import (
     ReconcileError,
+    reconcile_associations,
     reconcile_entities,
     reconcile_fields,
 )
 
 
 class _FakeClient:
-    """Minimal introspection client: canned scopes + per-entity field lists."""
+    """Minimal introspection client: scopes + per-entity field/link lists."""
 
-    def __init__(self, scopes, fields=None, status=200):
+    def __init__(self, scopes, fields=None, links=None, status=200):
         self._scopes = scopes
         self._fields = fields or {}
+        self._links = links or {}
         self._status = status
 
     def get_all_scopes(self):
@@ -35,6 +38,9 @@ class _FakeClient:
 
     def get_entity_field_list(self, entity):
         return (200, self._fields.get(entity, {}))
+
+    def get_all_links(self, entity):
+        return (200, self._links.get(entity, {}))
 
 
 def _custom(stream=False):
@@ -267,3 +273,105 @@ def test_reconcile_fields_idempotent(v2_env):
         assert len(field_repo.list_fields(s)) == before
         assert len(mb.list_memberships(
             s, instance_identifier=iid, member_type="field")) == 1
+
+
+# --- association reconcile (slice 2b) --------------------------------------
+
+
+def _two_custom_entities(s):
+    """Create canonical Engagement + Dues entities (custom-to-custom endpoints)."""
+    entity_repo.create_entity(s, name="Engagement", description="x")
+    entity_repo.create_entity(s, name="Dues", description="x")
+
+
+def test_reconcile_associations_creates_custom_to_custom(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        _two_custom_entities(s)
+        client = _FakeClient(
+            {"CEngagement": _custom(), "CDues": _custom()},
+            links={
+                "CEngagement": {
+                    "dueses": {"type": "hasMany", "entity": "CDues"},
+                    # link to a native entity -> skipped (not canonical)
+                    "accounts": {"type": "hasMany", "entity": "Account"},
+                },
+                "CDues": {  # reciprocal belongsTo -> skipped
+                    "engagement": {"type": "belongsTo", "entity": "CEngagement"},
+                },
+            },
+        )
+        summary = reconcile_associations(s, instance_identifier=iid, client=client)
+        assert summary["seen"] == 1  # only the custom-to-custom hasMany
+        assert summary["created"] == 1
+        assert summary["present"] == 1
+        assoc = association_repo.list_associations(s)
+        assert len(assoc) == 1
+        a = assoc[0]
+        assert a["association_name"] == "dueses"
+        assert a["association_cardinality"] == "one_to_many"
+        ent = {e["entity_name"]: e["entity_identifier"]
+               for e in entity_repo.list_entities(s)}
+        assert a["association_source_entity"] == ent["Engagement"]
+        assert a["association_target_entity"] == ent["Dues"]
+        rows = mb.list_memberships(
+            s, instance_identifier=iid, member_type="association")
+        assert len(rows) == 1 and rows[0]["state"] == "present"
+
+
+def test_reconcile_associations_manymany_deduped(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        _two_custom_entities(s)
+        mm = {"type": "manyMany", "relationName": "engagementDues"}
+        client = _FakeClient(
+            {"CEngagement": _custom(), "CDues": _custom()},
+            links={
+                "CEngagement": {"dueses": {**mm, "entity": "CDues"}},
+                "CDues": {"engagements": {**mm, "entity": "CEngagement"}},
+            },
+        )
+        summary = reconcile_associations(s, instance_identifier=iid, client=client)
+        # The shared relationName de-duplicates the two sides to one association.
+        assert summary["created"] == 1
+        assoc = association_repo.list_associations(s)
+        assert len(assoc) == 1
+        assert assoc[0]["association_name"] == "engagementDues"
+        assert assoc[0]["association_cardinality"] == "many_to_many"
+
+
+def test_reconcile_associations_drift(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        _two_custom_entities(s)
+        ent = {e["entity_name"]: e["entity_identifier"]
+               for e in entity_repo.list_entities(s)}
+        association_repo.create_association(
+            s, name="dueses", source_entity=ent["Engagement"],
+            target_entity=ent["Dues"], cardinality="one_to_one",
+        )
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            links={"CEngagement": {"dueses": {"type": "hasMany", "entity": "CDues"}}},
+        )
+        summary = reconcile_associations(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 0 and summary["drifted"] == 1
+        row = mb.list_memberships(
+            s, instance_identifier=iid, member_type="association")[0]
+        assert row["state"] == "drifted"
+        assert row["override"] == {"association_cardinality": "one_to_many"}
+
+
+def test_reconcile_associations_idempotent(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        _two_custom_entities(s)
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            links={"CEngagement": {"dueses": {"type": "hasMany", "entity": "CDues"}}},
+        )
+        reconcile_associations(s, instance_identifier=iid, client=client)
+        reconcile_associations(s, instance_identifier=iid, client=client)
+        assert len(association_repo.list_associations(s)) == 1
+        assert len(mb.list_memberships(
+            s, instance_identifier=iid, member_type="association")) == 1
