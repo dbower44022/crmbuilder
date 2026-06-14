@@ -35,6 +35,8 @@ from crmbuilder_v2.access.repositories import planning_items, projects, referenc
 from crmbuilder_v2.access.vocab import DEFAULT_EXECUTION_MODE, EXECUTION_MODE_RANK
 
 _BELONGS_PROJECT = "planning_item_belongs_to_project"
+_WS_BELONGS_PI = "workstream_belongs_to_planning_item"
+_WT_BELONGS_WS = "work_task_belongs_to_workstream"
 _BLOCKED_BY = "blocked_by"
 _RESOLVED = "Resolved"
 # PI statuses a PM may dispatch (not yet started), actively-worked, and terminal.
@@ -82,6 +84,56 @@ def _project_mode(session: Session, project_id: str | None) -> str:
     if project is None:
         return DEFAULT_EXECUTION_MODE
     return project.get("project_execution_mode") or DEFAULT_EXECUTION_MODE
+
+
+# --- PI-190: shared effective-mode resolvers for the all-tier ADO gate -------
+# These let the decompose / scope / phase-start / work-task substrate enforce
+# the same execution_mode gate the PM dispatcher does, so an interactive PI is
+# ADO-invisible at every tier (REQ-165 / DEC-425), not only at dispatch.
+
+
+def effective_execution_mode(session: Session, pi_identifier: str) -> str:
+    """The effective execution_mode of a Planning Item — the more restrictive of
+    its own value and its parent Project's. Raises NotFoundError if absent."""
+    pi = planning_items.get(session, pi_identifier)
+    return _effective_mode(pi, _project_mode(session, _project_of(session, pi_identifier)))
+
+
+def is_ado_interactive(session: Session, pi_identifier: str) -> bool:
+    """True if the PI's effective execution_mode is ``interactive`` — i.e. the
+    ADO must not touch it at any tier."""
+    return effective_execution_mode(session, pi_identifier) == _INTERACTIVE
+
+
+def _pi_of_workstream(session: Session, workstream_id: str) -> str | None:
+    edges = references.list_references(
+        session, source_type="workstream", source_id=workstream_id,
+        target_type="planning_item", relationship_kind=_WS_BELONGS_PI,
+    )
+    return edges[0]["target_id"] if edges else None
+
+
+def _workstream_of_work_task(session: Session, work_task_id: str) -> str | None:
+    edges = references.list_references(
+        session, source_type="work_task", source_id=work_task_id,
+        target_type="workstream", relationship_kind=_WT_BELONGS_WS,
+    )
+    return edges[0]["target_id"] if edges else None
+
+
+def workstream_is_ado_interactive(session: Session, workstream_id: str) -> bool:
+    """True if the Workstream's parent Planning Item is effective-interactive.
+    False when the parent PI cannot be resolved (no edge) — fail open at this
+    backstop tier; the PI-level gate is the primary guarantee."""
+    pi = _pi_of_workstream(session, workstream_id)
+    return pi is not None and is_ado_interactive(session, pi)
+
+
+def work_task_is_ado_interactive(session: Session, work_task_id: str) -> bool:
+    """True if the Work Task's parent Planning Item (work_task → workstream → PI)
+    is effective-interactive."""
+    ws = _workstream_of_work_task(session, work_task_id)
+    return ws is not None and workstream_is_ado_interactive(session, ws)
 
 
 def _safe_pi(session: Session, identifier: str) -> dict | None:

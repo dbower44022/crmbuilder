@@ -898,3 +898,56 @@ def test_pm_stops_at_chain_boundary_without_resolve_on_complete():
     assert [d["planning_item"] for d in report.driven] == ["PI-1"]
     assert report.blocked_remaining == ["PI-2"]
     assert report.all_resolved is False
+
+
+# --------------------------------------------------------------------------
+# PI-190 / REQ-165 — per-PI runtime guard: the single-PI driver re-checks the
+# effective execution_mode and skips+logs interactive / unapproved items
+# rather than 409ing at dispatch/decompose (the project loop already filters
+# via backlog["eligible"], but the per-PI entry can be pointed at any PI).
+# --------------------------------------------------------------------------
+
+
+def test_run_skips_interactive_pi_without_dispatch(monkeypatch):
+    world = _World(1)
+    world.pi_status = "Draft"
+    driver = _FakeDriver(world, config=_cfg())
+    monkeypatch.setattr(
+        driver, "_pi", lambda: {"status": "Draft", "execution_mode": "interactive"}
+    )
+    report = driver.run()
+    assert report.status == "interactive"
+    assert "/planning-items/PI-900/dispatch" not in world.calls
+    assert world.decomposed is False
+
+
+def test_run_skips_unapproved_ado_with_approval_pi(monkeypatch):
+    world = _World(1)
+    world.pi_status = "Draft"
+    driver = _FakeDriver(world, config=_cfg())
+    monkeypatch.setattr(
+        driver, "_pi",
+        lambda: {"status": "Draft", "execution_mode": "ado_with_approval",
+                 "dispatch_approved": False},
+    )
+    report = driver.run()
+    assert report.status == "pending_approval"
+    assert "/planning-items/PI-900/dispatch" not in world.calls
+
+
+def test_run_proceeds_for_approved_ado_with_approval_pi(monkeypatch):
+    world = _World(1)
+    world.pi_status = "Draft"
+    driver = _FakeDriver(
+        world, config=_cfg(dry_run=True),
+        pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world),
+        gate_checker=_open_gate,
+    )
+    monkeypatch.setattr(
+        driver, "_pi",
+        lambda: {"status": "Draft", "execution_mode": "ado_with_approval",
+                 "dispatch_approved": True},
+    )
+    report = driver.run()
+    # approved → not gated; dry-run proceeds past the gate to planning.
+    assert report.status == "dry_run"
