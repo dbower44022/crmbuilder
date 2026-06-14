@@ -513,6 +513,39 @@ class ListDetailPanel(QWidget):
         """
         return QMenu(self)
 
+    def _status_action_spec(
+        self, record: dict[str, Any]
+    ) -> tuple[str, list[str], Callable[[str], None]] | None:
+        """Lifecycle status quick-action spec, or ``None`` (REQ-137 / PI-178).
+
+        Subclasses whose entity has a lifecycle status return
+        ``(current_status, [valid_next_state, ...], apply_fn)`` where
+        ``apply_fn(new_state)`` performs the transition and refreshes. The
+        base :meth:`_append_status_menu` turns it into a "Set status" submenu
+        so a status can be advanced from the list without the edit dialog.
+        Default returns ``None`` (no status actions).
+        """
+        return None
+
+    def _append_status_menu(
+        self, menu: QMenu, record: dict[str, Any] | None
+    ) -> None:
+        """Append a "Set status" submenu of valid next states, if any."""
+        if record is None:
+            return
+        spec = self._status_action_spec(record)
+        if not spec:
+            return
+        _current, next_states, apply_fn = spec
+        if not next_states:
+            return
+        submenu = menu.addMenu("Set status")
+        for state in next_states:
+            action = submenu.addAction(state)
+            action.triggered.connect(
+                lambda _checked=False, s=state: apply_fn(s)
+            )
+
     def _record_at_index(
         self, index: QModelIndex
     ) -> dict[str, Any] | None:

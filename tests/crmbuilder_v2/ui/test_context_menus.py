@@ -135,10 +135,12 @@ def test_sessions_context_menu_row(qtbot, client_stub):
     record = {"session_identifier": "SES-008", "session_title": "v0.3 planning"}
     index = _seed_table_records(panel, [record])
     menu = panel._build_context_menu(index)
+    # REQ-137 (PI-178) adds the inline "Set status" submenu before Copy.
     assert _action_labels(menu) == [
         "New session",
         "Edit",
         "Delete",
+        "Set status",
         "Copy identifier",
     ]
 
@@ -205,7 +207,8 @@ def test_planning_items_context_menu_row(qtbot, client_stub):
     }
     index = _seed_table_records(panel, [record])
     menu = panel._build_context_menu(index)
-    assert _action_labels(menu) == ["Edit", "Delete"]
+    # REQ-137 (PI-178) adds the inline "Set status" submenu after Delete.
+    assert _action_labels(menu) == ["Edit", "Delete", "Set status"]
 
 
 # ---------------------------------------------------------------------------

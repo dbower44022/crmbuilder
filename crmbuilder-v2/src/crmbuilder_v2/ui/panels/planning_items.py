@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from crmbuilder_v2.access.vocab import PLANNING_ITEM_STATUS_TRANSITIONS
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.dialogs.planning_item_create import PlanningItemCreateDialog
@@ -381,7 +382,44 @@ class PlanningItemsPanel(ListDetailPanel):
         delete_action.triggered.connect(
             lambda _checked=False, r=record: self._on_delete_clicked(r)
         )
+        # REQ-137 (PI-178): inline lifecycle transitions from the list.
+        self._append_status_menu(menu, record)
         return menu
+
+    def _status_action_spec(self, record):
+        current = record.get("status") or "Draft"
+        next_states = sorted(
+            PLANNING_ITEM_STATUS_TRANSITIONS.get(current, frozenset())
+        )
+        return (
+            current,
+            next_states,
+            lambda s, r=record: self._apply_status_transition(r, s),
+        )
+
+    def _apply_status_transition(self, record, new_status: str) -> None:
+        identifier = record.get("identifier")
+        if not identifier:
+            return
+        try:
+            self._client.update_planning_item(
+                identifier, {"status": new_status}
+            )
+        except NotFoundError:
+            self.refresh()
+            return
+        except StorageConnectionError as exc:
+            self.connection_lost.emit(str(exc))
+            return
+        except StorageClientError as exc:
+            ErrorDialog(
+                title="Could not update status",
+                message="The status change could not be applied.",
+                detail=str(exc),
+                parent=self,
+            ).exec()
+            return
+        self.refresh()
 
     # ------------------------------------------------------------------
     # Write-surface click handlers (v0.2 slice C)

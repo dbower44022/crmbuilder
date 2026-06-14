@@ -149,6 +149,74 @@ def test_sidebar_header_click_toggles_collapse(qtbot):
     assert not sb.is_group_collapsed("Governance")
 
 
+# ----------------------------------------------------------------------
+# G — REQ-137 / PI-178: advance lifecycle status from the list.
+# ----------------------------------------------------------------------
+
+
+def test_session_status_spec(qtbot, client_stub):
+    from crmbuilder_v2.ui.panels.sessions import SessionsPanel
+
+    panel = SessionsPanel(client_stub)
+    qtbot.addWidget(panel)
+    spec = panel._status_action_spec(
+        {"session_status": "planned", "session_identifier": "SES-1"}
+    )
+    assert spec is not None
+    assert spec[0] == "planned"
+    assert len(spec[1]) > 0
+    # Deleted sessions offer no transitions.
+    assert (
+        panel._status_action_spec(
+            {
+                "session_status": "planned",
+                "session_deleted_at": "2026-01-01",
+                "session_identifier": "SES-1",
+            }
+        )
+        is None
+    )
+
+
+def test_planning_item_status_menu_present(qtbot, client_stub):
+    from PySide6.QtCore import QModelIndex
+
+    from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
+
+    panel = PlanningItemsPanel(client_stub)
+    qtbot.addWidget(panel)
+    spec = panel._status_action_spec({"status": "Draft", "identifier": "PI-1"})
+    assert spec is not None and spec[0] == "Draft" and len(spec[1]) > 0
+    # The base helper builds a "Set status" submenu from the spec.
+    menu = panel._build_context_menu(QModelIndex())  # invalid → no record
+    assert menu is not None
+
+
+def test_planning_item_inline_status_apply(qtbot, api_client):
+    from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
+
+    pi = api_client.create_planning_item(
+        {
+            "title": "Inline status PI",
+            "item_type": "pending_work",
+            "status": "Draft",
+            "executive_summary": "z" * 200,
+        }
+    )
+    pid = pi["identifier"]
+    panel = PlanningItemsPanel(api_client)
+    qtbot.addWidget(panel)
+    panel.refresh()
+    qtbot.waitUntil(
+        lambda: any(r["identifier"] == pid for r in panel._records),
+        timeout=3000,
+    )
+    rec = next(r for r in panel._records if r["identifier"] == pid)
+    target = panel._status_action_spec(rec)[1][0]
+    panel._apply_status_transition(rec, target)
+    assert api_client.get_planning_item(pid)["status"] == target
+
+
 def test_read_only_line_sets_full_value_tooltip(qapp):
     long = "x" * 300
     w = gh.read_only_line(long)
