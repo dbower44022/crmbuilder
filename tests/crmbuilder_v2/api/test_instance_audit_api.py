@@ -43,6 +43,14 @@ class _FakeClient:
             "Account": {"entity": True, "customizable": True, "isCustom": False},
         })
 
+    def get_entity_field_list(self, entity):
+        # Each custom entity exposes one native base field (skipped) and one
+        # custom field (reconciled).
+        return (200, {
+            "name": {"type": "varchar"},
+            "cStatus": {"type": "enum", "isCustom": True, "required": True},
+        })
+
 
 def _create(client, **over):
     body = {
@@ -62,12 +70,22 @@ def test_audit_reconciles_and_lists_memberships(client, monkeypatch):
     r = client.post(f"/instances/{iid}/audit")
     assert r.status_code == 200, r.text
     summary = r.json()["data"]
-    assert summary["created"] == 2 and summary["present"] == 2
-    # Memberships listed.
+    assert summary["entities"]["created"] == 2
+    assert summary["entities"]["present"] == 2
+    # One custom field per custom entity reconciled.
+    assert summary["fields"]["created"] == 2
+    assert summary["fields"]["present"] == 2
+    # Memberships listed: 2 entities + 2 fields.
     rows = client.get(f"/instances/{iid}/memberships").json()["data"]
-    assert len(rows) == 2
-    assert all(row["member_type"] == "entity" for row in rows)
+    assert len(rows) == 4
+    types = sorted(row["member_type"] for row in rows)
+    assert types == ["entity", "entity", "field", "field"]
     assert all(row["state"] == "present" for row in rows)
+    # Filter by member_type.
+    only_fields = client.get(
+        f"/instances/{iid}/memberships", params={"member_type": "field"}
+    ).json()["data"]
+    assert len(only_fields) == 2
 
 
 def test_audit_target_role_rejected(client, monkeypatch):

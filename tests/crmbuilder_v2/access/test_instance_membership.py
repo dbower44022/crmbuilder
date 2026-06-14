@@ -12,20 +12,29 @@ import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import UnprocessableError
 from crmbuilder_v2.access.repositories import entity as entity_repo
+from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as mb
 from crmbuilder_v2.access.repositories import instances as inst_repo
-from crmbuilder_v2.introspect.reconcile import ReconcileError, reconcile_entities
+from crmbuilder_v2.introspect.reconcile import (
+    ReconcileError,
+    reconcile_entities,
+    reconcile_fields,
+)
 
 
 class _FakeClient:
-    """Minimal introspection client: returns a canned scopes payload."""
+    """Minimal introspection client: canned scopes + per-entity field lists."""
 
-    def __init__(self, scopes, status=200):
+    def __init__(self, scopes, fields=None, status=200):
         self._scopes = scopes
+        self._fields = fields or {}
         self._status = status
 
     def get_all_scopes(self):
         return (self._status, self._scopes)
+
+    def get_entity_field_list(self, entity):
+        return (200, self._fields.get(entity, {}))
 
 
 def _custom(stream=False):
@@ -188,3 +197,73 @@ def test_reconcile_raises_on_bad_response(v2_env):
             reconcile_entities(
                 s, instance_identifier=iid, client=_FakeClient(None, status=500)
             )
+
+
+# --- field reconcile (slice 2a) --------------------------------------------
+
+
+def _field(ftype, *, required=False, custom=True):
+    return {"type": ftype, "required": required, "isCustom": custom}
+
+
+def test_reconcile_fields_creates_under_parent(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            fields={"CEngagement": {
+                "name": {"type": "varchar"},  # native base -> skipped
+                "cStatus": _field("enum", required=True),
+                "cAmount": _field("currency"),
+            }},
+        )
+        summary = reconcile_fields(s, instance_identifier=iid, client=client)
+        assert summary["seen"] == 2
+        assert summary["created"] == 2
+        assert summary["present"] == 2
+        # Parent entity ensured + fields created with neutral names + mapped type.
+        ent = [e for e in entity_repo.list_entities(s)
+               if e["entity_name"] == "Engagement"][0]
+        flds = {f["field_name"]: f for f in
+                field_repo.list_fields(s, entity_identifier=ent["entity_identifier"])}
+        # Neutral field names are lowercase-first (cStatus -> status).
+        assert set(flds) == {"status", "amount"}
+        assert flds["status"]["field_type"] == "enum"
+        assert flds["status"]["field_required"] is True
+        assert flds["amount"]["field_type"] == "money"
+        rows = mb.list_memberships(s, instance_identifier=iid, member_type="field")
+        assert len(rows) == 2 and all(r["state"] == "present" for r in rows)
+
+
+def test_reconcile_fields_drift_with_override(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        ent = entity_repo.create_entity(s, name="Engagement", description="x")
+        field_repo.create_field(
+            s, field_belongs_to_entity_identifier=ent["entity_identifier"],
+            name="status", description="x", type="text", required=False,
+        )
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            fields={"CEngagement": {"cStatus": _field("enum", required=True)}},
+        )
+        summary = reconcile_fields(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 0 and summary["drifted"] == 1
+        row = mb.list_memberships(s, instance_identifier=iid, member_type="field")[0]
+        assert row["state"] == "drifted"
+        assert row["override"] == {"field_type": "enum", "field_required": True}
+
+
+def test_reconcile_fields_idempotent(v2_env):
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            fields={"CEngagement": {"cStatus": _field("enum")}},
+        )
+        reconcile_fields(s, instance_identifier=iid, client=client)
+        before = len(field_repo.list_fields(s))
+        reconcile_fields(s, instance_identifier=iid, client=client)
+        assert len(field_repo.list_fields(s)) == before
+        assert len(mb.list_memberships(
+            s, instance_identifier=iid, member_type="field")) == 1

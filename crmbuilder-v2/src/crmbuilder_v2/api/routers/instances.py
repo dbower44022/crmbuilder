@@ -29,7 +29,11 @@ from crmbuilder_v2.api.schemas import (
     InstanceReplaceIn,
 )
 from crmbuilder_v2.introspect.espo_client import EspoIntrospectionClient
-from crmbuilder_v2.introspect.reconcile import ReconcileError, reconcile_entities
+from crmbuilder_v2.introspect.reconcile import (
+    ReconcileError,
+    reconcile_entities,
+    reconcile_fields,
+)
 
 router = APIRouter(prefix="/instances", tags=["instances"])
 _FIELD_PREFIX = "instance_"
@@ -195,9 +199,10 @@ def list_memberships(
 def audit(identifier: str):
     """Audit (pull) this instance, reconciling its structure into the inventory.
 
-    First slice: reconciles custom entities (PI-185). Builds an introspection
-    client from the instance's stored connection + keyring secret, then runs the
-    reconcile engine. Returns the reconcile summary.
+    Reconciles custom entities then their custom fields (PI-185 slices 1-2a;
+    associations are a later slice). Builds an introspection client from the
+    instance's stored connection + keyring secret, then runs the reconcile
+    engine. Returns the per-object-type reconcile summary.
     """
     with writable_session() as s:
         rec = instances.get_instance(s, identifier)
@@ -235,11 +240,14 @@ def audit(identifier: str):
             auth_method=rec.get("instance_auth_method") or "api_key",
         )
         try:
-            summary = reconcile_entities(
+            entities = reconcile_entities(
+                s, instance_identifier=identifier, client=client
+            )
+            fields = reconcile_fields(
                 s, instance_identifier=identifier, client=client
             )
         except ReconcileError as exc:
             raise UnprocessableError(
                 [FieldError("audit", "introspection_failed", str(exc))]
             ) from exc
-        return ok(summary)
+        return ok({"entities": entities, "fields": fields})
