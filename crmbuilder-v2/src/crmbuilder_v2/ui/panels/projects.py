@@ -171,7 +171,10 @@ class ProjectsPanel(ListDetailPanel):
         ident_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         form.addRow("Identifier", ident_label)
         form.addRow(required_label("Name"), read_only_line(record.get("project_name") or ""))
-        form.addRow(required_label("Purpose"), read_only_line(
+        # REQ-134 (PI-175): purpose is short but frequently overruns a single
+        # line; render it as a wrapping read-only text field so it shows in
+        # full rather than truncating (and the helper adds a hover tooltip).
+        form.addRow(required_label("Purpose"), read_only_text(
             record.get("project_purpose") or "", placeholder="One sentence"))
         form.addRow(required_label("Description"), read_only_text(
             record.get("project_description") or "",

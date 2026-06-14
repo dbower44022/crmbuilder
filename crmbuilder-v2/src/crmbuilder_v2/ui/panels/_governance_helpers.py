@@ -44,6 +44,12 @@ def read_only_line(value: str, *, placeholder: str = "") -> QLineEdit:
     widget.setStyleSheet(READ_ONLY_STYLE)
     if placeholder:
         widget.setPlaceholderText(placeholder)
+    # REQ-134 (PI-175): a single-line read-only field truncates values too
+    # long for its width. Mirror the full value into the tooltip so the
+    # whole content is revealed on hover. Applies to every short read-only
+    # field across all panels that use this helper.
+    if value:
+        widget.setToolTip(value)
     return widget
 
 
@@ -53,8 +59,11 @@ def read_only_text(value: str, *, placeholder: str = "") -> QPlainTextEdit:
     widget.setReadOnly(True)
     widget.setStyleSheet(READ_ONLY_STYLE)
     widget.setMinimumHeight(LONG_TEXT_MIN_HEIGHT)
+    widget.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
     if placeholder:
         widget.setPlaceholderText(placeholder)
+    if value:
+        widget.setToolTip(value)
     return widget
 
 
