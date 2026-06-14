@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 
 from crmbuilder_v2.access.vocab import (
+    EXECUTION_MODES,
     PROJECT_STATUS_TRANSITIONS,
     PROJECT_STATUSES,
 )
@@ -52,6 +53,17 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         vocab=PROJECT_STATUSES,
         default="planned",
         compute_options=lambda state: status_choices(state.get("project_status")),
+    ),
+    # PI-183: the ADO execution_mode gate. interactive keeps the ADO out of this
+    # Project's Planning Items entirely; ado_with_approval requires per-item
+    # human approval; ado (default) dispatches freely.
+    FieldSchema(
+        key="project_execution_mode",
+        label="Execution Mode",
+        widget="combo",
+        required=True,
+        vocab=EXECUTION_MODES,
+        default="ado",
     ),
 ]
 

@@ -199,6 +199,12 @@ class ProjectsPanel(ListDetailPanel):
             status_combo.setCurrentIndex(idx)
         status_combo.setEnabled(False)
         status_row.addRow(required_label("Status"), status_combo)
+        # PI-183: the ADO execution_mode gate (read-only here; edit via the
+        # Edit dialog).
+        status_row.addRow(
+            "Execution mode",
+            read_only_line(record.get("project_execution_mode") or "ado"),
+        )
         outer.addLayout(status_row)
 
         # PI-108: created / last-edited audit timestamps.
