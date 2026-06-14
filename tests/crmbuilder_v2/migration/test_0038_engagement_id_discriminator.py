@@ -86,6 +86,10 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "instances",
         # PI-185 (PRJ-027) per-(object, instance) membership join.
         "instance_memberships",
+        # PI-193 / PI-194 (PRJ-027) net-new design families.
+        "layouts",
+        "roles",
+        "teams",
     }
 )
 

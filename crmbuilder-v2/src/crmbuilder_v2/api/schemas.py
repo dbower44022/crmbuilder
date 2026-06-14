@@ -1896,6 +1896,87 @@ class InstancePatchIn(_Base):
     references: list[GovernanceEdgeIn] | None = None
 
 
+# --- Layout (engine-neutral entity layout, PI-193 / PRJ-027) ---------------
+class LayoutCreateIn(_Base):
+    layout_entity_identifier: str
+    layout_type: str
+    layout_content: dict[str, Any] | None = None
+    layout_status: str | None = None
+    layout_notes: str | None = None
+    layout_identifier: str | None = None
+
+
+class LayoutReplaceIn(_Base):
+    layout_identifier: str | None = None
+    layout_entity_identifier: str
+    layout_type: str
+    layout_content: dict[str, Any] | None = None
+    layout_status: str
+    layout_notes: str | None = None
+
+
+class LayoutPatchIn(_Base):
+    layout_entity_identifier: str | None = None
+    layout_type: str | None = None
+    layout_content: dict[str, Any] | None = None
+    layout_status: str | None = None
+    layout_notes: str | None = None
+
+
+# --- Role (engine-neutral security role, PI-194 / PRJ-027) -----------------
+class RoleCreateIn(_Base):
+    role_name: str
+    role_scope_access: dict[str, Any] | None = None
+    role_system_permissions: dict[str, Any] | None = None
+    role_description: str | None = None
+    role_status: str | None = None
+    role_notes: str | None = None
+    role_identifier: str | None = None
+
+
+class RoleReplaceIn(_Base):
+    role_identifier: str | None = None
+    role_name: str
+    role_scope_access: dict[str, Any] | None = None
+    role_system_permissions: dict[str, Any] | None = None
+    role_description: str | None = None
+    role_status: str
+    role_notes: str | None = None
+
+
+class RolePatchIn(_Base):
+    role_name: str | None = None
+    role_scope_access: dict[str, Any] | None = None
+    role_system_permissions: dict[str, Any] | None = None
+    role_description: str | None = None
+    role_status: str | None = None
+    role_notes: str | None = None
+
+
+# --- Team (engine-neutral security team, PI-194 / PRJ-027) -----------------
+class TeamCreateIn(_Base):
+    team_name: str
+    team_description: str | None = None
+    team_status: str | None = None
+    team_notes: str | None = None
+    team_identifier: str | None = None
+
+
+class TeamReplaceIn(_Base):
+    team_identifier: str | None = None
+    team_name: str
+    team_description: str | None = None
+    team_status: str
+    team_notes: str | None = None
+
+
+class TeamPatchIn(_Base):
+    team_name: str | None = None
+    team_description: str | None = None
+    team_status: str | None = None
+    team_notes: str | None = None
+
+
 # --- Work Task (single-area unit, PI-112 Phase 4b) -------------------------
 class WorkTaskCreateIn(_Base):
     work_task_title: str

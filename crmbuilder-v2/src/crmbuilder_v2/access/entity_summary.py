@@ -95,6 +95,11 @@ _SPECS: dict[str, _Spec] = {
     # PI-186 (PRJ-027): one CRM-connection instance; the connection name in
     # the title slot.
     "instance": _Spec(models.Instance, "instance_identifier", "instance_name", "instance_status", "instance_created_at", "instance_updated_at"),
+    # PI-193/PI-194 (PRJ-027) design families. Layout has no name — the type is
+    # the most informative title slot.
+    "layout": _Spec(models.Layout, "layout_identifier", "layout_type", "layout_status", "layout_created_at", "layout_updated_at"),
+    "role": _Spec(models.Role, "role_identifier", "role_name", "role_status", "role_created_at", "role_updated_at"),
+    "team": _Spec(models.Team, "team_identifier", "team_name", "team_status", "team_created_at", "team_updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),

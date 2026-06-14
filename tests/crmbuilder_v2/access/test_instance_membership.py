@@ -27,10 +27,14 @@ from crmbuilder_v2.introspect.reconcile import (
 class _FakeClient:
     """Minimal introspection client: scopes + per-entity field/link lists."""
 
-    def __init__(self, scopes, fields=None, links=None, status=200):
+    def __init__(self, scopes, fields=None, links=None, layouts=None,
+                 roles=None, teams=None, status=200):
         self._scopes = scopes
         self._fields = fields or {}
         self._links = links or {}
+        self._layouts = layouts or {}  # {scope: {espo_layout_type: content}}
+        self._roles = roles or []
+        self._teams = teams or []
         self._status = status
 
     def get_all_scopes(self):
@@ -41,6 +45,16 @@ class _FakeClient:
 
     def get_all_links(self, entity):
         return (200, self._links.get(entity, {}))
+
+    def get_layout(self, entity, layout_type):
+        content = self._layouts.get(entity, {}).get(layout_type)
+        return (200, content) if content is not None else (404, None)
+
+    def get_roles(self):
+        return (200, {"list": self._roles})
+
+    def get_teams(self):
+        return (200, {"list": self._teams})
 
 
 def _custom(stream=False):
@@ -457,3 +471,80 @@ def test_reconcile_association_to_uncustomized_native_skipped(v2_env):
         asummary = reconcile_associations(s, instance_identifier=iid, client=client)
         assert asummary["created"] == 0
         assert association_repo.list_associations(s) == []
+
+
+# --- layout reconcile (PI-193) ---------------------------------------------
+
+
+def test_reconcile_layouts_create_and_drift(v2_env):
+    from crmbuilder_v2.access.repositories import layouts as layout_repo
+    from crmbuilder_v2.introspect.reconcile import reconcile_layouts
+    with session_scope() as s:
+        iid = _make_instance(s)
+        entity_repo.create_entity(s, name="Engagement", description="x")
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            layouts={"CEngagement": {"detail": {"rows": [["name"]]}}},
+        )
+        summary = reconcile_layouts(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 1 and summary["present"] == 1
+        lay = layout_repo.list_layouts(s)
+        assert len(lay) == 1
+        assert lay[0]["layout_type"] == "detail"
+        assert lay[0]["layout_content"] == {"rows": [["name"]]}
+        # Re-audit with changed content -> drift + override.
+        client2 = _FakeClient(
+            {"CEngagement": _custom()},
+            layouts={"CEngagement": {"detail": {"rows": [["name"], ["status"]]}}},
+        )
+        s2 = reconcile_layouts(s, instance_identifier=iid, client=client2)
+        assert s2["drifted"] == 1
+        row = mb.list_memberships(s, instance_identifier=iid, member_type="layout")[0]
+        assert row["state"] == "drifted"
+        assert row["override"]["layout_content"] == {"rows": [["name"], ["status"]]}
+
+
+# --- role / team reconcile (PI-194) ----------------------------------------
+
+
+def test_reconcile_roles_create_and_drift(v2_env):
+    from crmbuilder_v2.access.repositories import roles as role_repo
+    from crmbuilder_v2.introspect.reconcile import reconcile_roles
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {}, roles=[{"name": "Mentor", "data": {"Contact": "yes"},
+                        "assignmentPermission": "team"}],
+        )
+        summary = reconcile_roles(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 1
+        r = role_repo.list_roles(s)[0]
+        assert r["role_name"] == "Mentor"
+        assert r["role_scope_access"] == {"Contact": "yes"}
+        assert r["role_system_permissions"] == {"assignmentPermission": "team"}
+        # drift on scope access
+        client2 = _FakeClient(
+            {}, roles=[{"name": "Mentor", "data": {"Contact": "no"},
+                        "assignmentPermission": "team"}],
+        )
+        s2 = reconcile_roles(s, instance_identifier=iid, client=client2)
+        assert s2["drifted"] == 1
+        row = mb.list_memberships(s, instance_identifier=iid, member_type="role")[0]
+        assert row["override"]["role_scope_access"] == {"Contact": "no"}
+
+
+def test_reconcile_teams_create_and_absent(v2_env):
+    from crmbuilder_v2.access.repositories import teams as team_repo
+    from crmbuilder_v2.introspect.reconcile import reconcile_teams
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient({}, teams=[{"name": "Coordinators", "description": "Ops"}])
+        summary = reconcile_teams(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 1
+        t = team_repo.list_teams(s)[0]
+        assert t["team_name"] == "Coordinators" and t["team_description"] == "Ops"
+        # Re-audit with the team gone -> absent.
+        s2 = reconcile_teams(s, instance_identifier=iid, client=_FakeClient({}, teams=[]))
+        assert s2["absent"] == 1
+        row = mb.list_memberships(s, instance_identifier=iid, member_type="team")[0]
+        assert row["state"] == "absent"

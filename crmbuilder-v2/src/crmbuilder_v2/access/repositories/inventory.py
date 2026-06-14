@@ -20,6 +20,9 @@ from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
+from crmbuilder_v2.access.repositories import layouts as layout_repo
+from crmbuilder_v2.access.repositories import roles as role_repo
+from crmbuilder_v2.access.repositories import teams as team_repo
 
 # (member_type, canonical-list callable, identifier key, display-name key).
 _MEMBER_SOURCES = (
@@ -31,6 +34,9 @@ _MEMBER_SOURCES = (
         "association_identifier",
         "association_name",
     ),
+    ("layout", layout_repo.list_layouts, "layout_identifier", "layout_type"),
+    ("role", role_repo.list_roles, "role_identifier", "role_name"),
+    ("team", team_repo.list_teams, "team_identifier", "team_name"),
 )
 
 

@@ -30,6 +30,10 @@ from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
+from crmbuilder_v2.access.repositories import layouts as layout_repo
+from crmbuilder_v2.access.repositories import roles as role_repo
+from crmbuilder_v2.access.repositories import teams as team_repo
+from crmbuilder_v2.access.vocab import LAYOUT_TYPES
 from crmbuilder_v2.introspect.audit_utils import (
     EntityClass,
     FieldClass,
@@ -518,5 +522,225 @@ def reconcile_associations(
         member_type="association",
         present_member_identifiers=seen_ids,
         last_audited_at=stamp,
+    )
+    return summary
+
+
+# Neutral LAYOUT_TYPES -> EspoCRM layout-name used by get_layout.
+_LAYOUT_TYPE_TO_ESPO: dict[str, str] = {
+    "detail": "detail",
+    "list": "list",
+    "detail_small": "detailSmall",
+    "list_small": "listSmall",
+    "kanban": "kanban",
+    "mass_update": "massUpdate",
+}
+
+
+class _LayoutsClient(_ScopesClient, Protocol):
+    """Adds per-(entity, type) layout fetch the layout reconcile needs."""
+
+    def get_layout(self, entity: str, layout_type: str) -> tuple[int, Any]: ...
+
+
+class _SecurityClient(Protocol):
+    """The roles / teams listing the security reconcile needs."""
+
+    def get_roles(self) -> tuple[int, dict | None]: ...
+    def get_teams(self) -> tuple[int, dict | None]: ...
+
+
+def reconcile_layouts(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _LayoutsClient,
+) -> dict:
+    """Reconcile an instance's entity layouts into the inventory (PI-193).
+
+    For each canonical entity (custom or customized-native), fetches each layout
+    type and matches by (entity, type); content differences are recorded as a
+    sparse override. Entities must already be canonical (run after
+    :func:`reconcile_entities`). ``layout`` membership + absent sweep.
+
+    :returns: A summary ``{seen, created, present, drifted, absent}``.
+    :raises ReconcileError: If the scopes call fails or returns a non-dict body.
+    """
+    status, scopes = client.get_all_scopes()
+    if status != 200 or not isinstance(scopes, dict):
+        raise ReconcileError(
+            f"get_all_scopes returned status={status}; expected 200 + dict body"
+        )
+    ent_by_name = {
+        row["entity_name"]: row["entity_identifier"]
+        for row in entity_repo.list_entities(session)
+    }
+    stamp = datetime.now(UTC)
+    summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
+    seen_ids: set[str] = set()
+
+    for scope_name, scope_meta in scopes.items():
+        if not isinstance(scope_meta, dict):
+            continue
+        entity_id = ent_by_name.get(strip_entity_c_prefix(scope_name))
+        if entity_id is None:
+            continue  # not a canonical entity (uncustomized native / system)
+        for neutral_type in sorted(LAYOUT_TYPES):
+            l_status, content = client.get_layout(
+                scope_name, _LAYOUT_TYPE_TO_ESPO[neutral_type]
+            )
+            if l_status != 200 or content is None:
+                continue
+            summary["seen"] += 1
+            existing = layout_repo.list_layouts(
+                session, entity_identifier=entity_id, layout_type=neutral_type
+            )
+            match = existing[0] if existing else None
+            if match is None:
+                created = layout_repo.create_layout(
+                    session,
+                    entity_identifier=entity_id,
+                    layout_type=neutral_type,
+                    content=content,
+                )
+                member_id = created["layout_identifier"]
+                summary["created"] += 1
+                state, override = "present", None
+            else:
+                member_id = match["layout_identifier"]
+                if match.get("layout_content") != content:
+                    state, override = "drifted", {"layout_content": content}
+                else:
+                    state, override = "present", None
+            membership_repo.upsert_membership(
+                session, instance_identifier=instance_identifier,
+                member_type="layout", member_identifier=member_id,
+                state=state, override=override, last_audited_at=stamp,
+            )
+            seen_ids.add(member_id)
+            summary[state] += 1
+
+    summary["absent"] = membership_repo.mark_absent_missing(
+        session, instance_identifier=instance_identifier, member_type="layout",
+        present_member_identifiers=seen_ids, last_audited_at=stamp,
+    )
+    return summary
+
+
+def _rows_of(body: object) -> list[dict]:
+    """Extract the EspoCRM list-response rows (``{"list": [...]}``)."""
+    if isinstance(body, dict) and isinstance(body.get("list"), list):
+        return [r for r in body["list"] if isinstance(r, dict)]
+    return []
+
+
+def reconcile_roles(
+    session: Session, *, instance_identifier: str, client: _SecurityClient
+) -> dict:
+    """Reconcile an instance's security roles into the inventory (PI-194).
+
+    Matches by role name; scope-access matrix (EspoCRM ``data``) and system
+    permissions are captured, with differences recorded as a sparse override.
+    ``role`` membership + absent sweep.
+    """
+    status, body = client.get_roles()
+    if status != 200:
+        raise ReconcileError(f"get_roles returned status={status}")
+    canon = {r["role_name"]: r for r in role_repo.list_roles(session)}
+    stamp = datetime.now(UTC)
+    summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
+    seen_ids: set[str] = set()
+
+    for row in _rows_of(body):
+        name = row.get("name")
+        if not name:
+            continue
+        summary["seen"] += 1
+        scope_access = row.get("data")
+        system_permissions = {
+            k: v for k, v in row.items() if "Permission" in k
+        } or None
+        match = canon.get(name)
+        if match is None:
+            created = role_repo.create_role(
+                session, name=name, scope_access=scope_access,
+                system_permissions=system_permissions,
+            )
+            canon[name] = created
+            member_id = created["role_identifier"]
+            summary["created"] += 1
+            state, override = "present", None
+        else:
+            member_id = match["role_identifier"]
+            override = {}
+            if match.get("role_scope_access") != scope_access:
+                override["role_scope_access"] = scope_access
+            if match.get("role_system_permissions") != system_permissions:
+                override["role_system_permissions"] = system_permissions
+            state = "drifted" if override else "present"
+            override = override or None
+        membership_repo.upsert_membership(
+            session, instance_identifier=instance_identifier, member_type="role",
+            member_identifier=member_id, state=state, override=override,
+            last_audited_at=stamp,
+        )
+        seen_ids.add(member_id)
+        summary[state] += 1
+
+    summary["absent"] = membership_repo.mark_absent_missing(
+        session, instance_identifier=instance_identifier, member_type="role",
+        present_member_identifiers=seen_ids, last_audited_at=stamp,
+    )
+    return summary
+
+
+def reconcile_teams(
+    session: Session, *, instance_identifier: str, client: _SecurityClient
+) -> dict:
+    """Reconcile an instance's security teams into the inventory (PI-194).
+
+    Matches by team name; the description difference is recorded as a sparse
+    override. ``team`` membership + absent sweep.
+    """
+    status, body = client.get_teams()
+    if status != 200:
+        raise ReconcileError(f"get_teams returned status={status}")
+    canon = {t["team_name"]: t for t in team_repo.list_teams(session)}
+    stamp = datetime.now(UTC)
+    summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
+    seen_ids: set[str] = set()
+
+    for row in _rows_of(body):
+        name = row.get("name")
+        if not name:
+            continue
+        summary["seen"] += 1
+        description = row.get("description")
+        match = canon.get(name)
+        if match is None:
+            created = team_repo.create_team(
+                session, name=name, description=description
+            )
+            canon[name] = created
+            member_id = created["team_identifier"]
+            summary["created"] += 1
+            state, override = "present", None
+        else:
+            member_id = match["team_identifier"]
+            if (match.get("team_description") or None) != (description or None):
+                state, override = "drifted", {"team_description": description}
+            else:
+                state, override = "present", None
+        membership_repo.upsert_membership(
+            session, instance_identifier=instance_identifier, member_type="team",
+            member_identifier=member_id, state=state, override=override,
+            last_audited_at=stamp,
+        )
+        seen_ids.add(member_id)
+        summary[state] += 1
+
+    summary["absent"] = membership_repo.mark_absent_missing(
+        session, instance_identifier=instance_identifier, member_type="team",
+        present_member_identifiers=seen_ids, last_audited_at=stamp,
     )
     return summary
