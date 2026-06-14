@@ -44,12 +44,15 @@ class _FakeClient:
         })
 
     def get_entity_field_list(self, entity):
-        # Each custom entity exposes one native base field (skipped) and one
-        # custom field (reconciled).
-        return (200, {
-            "name": {"type": "varchar"},
-            "cStatus": {"type": "enum", "isCustom": True, "required": True},
-        })
+        # Custom entities expose a native base field (skipped) + a custom field
+        # (reconciled). The native Account exposes only base fields, so it is
+        # not a "customized native" entity and is left out of the inventory.
+        if entity in ("CEngagement", "CDues"):
+            return (200, {
+                "name": {"type": "varchar"},
+                "cStatus": {"type": "enum", "isCustom": True, "required": True},
+            })
+        return (200, {"name": {"type": "varchar"}})
 
     def get_all_links(self, entity):
         # CEngagement has a custom-to-custom hasMany to CDues; CDues' reciprocal
