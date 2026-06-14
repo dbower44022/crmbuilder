@@ -1977,6 +1977,33 @@ class TeamPatchIn(_Base):
     team_notes: str | None = None
 
 
+# --- Filtered tab (design family, PI-195 / PRJ-027) ------------------------
+class FilteredTabCreateIn(_Base):
+    filtered_tab_entity_identifier: str
+    filtered_tab_label: str
+    filtered_tab_filter: dict[str, Any] | None = None
+    filtered_tab_status: str | None = None
+    filtered_tab_notes: str | None = None
+    filtered_tab_identifier: str | None = None
+
+
+class FilteredTabReplaceIn(_Base):
+    filtered_tab_identifier: str | None = None
+    filtered_tab_entity_identifier: str
+    filtered_tab_label: str
+    filtered_tab_filter: dict[str, Any] | None = None
+    filtered_tab_status: str | None = None
+    filtered_tab_notes: str | None = None
+
+
+class FilteredTabPatchIn(_Base):
+    filtered_tab_entity_identifier: str | None = None
+    filtered_tab_label: str | None = None
+    filtered_tab_filter: dict[str, Any] | None = None
+    filtered_tab_status: str | None = None
+    filtered_tab_notes: str | None = None
+
+
 # --- Work Task (single-area unit, PI-112 Phase 4b) -------------------------
 class WorkTaskCreateIn(_Base):
     work_task_title: str

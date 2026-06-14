@@ -100,6 +100,7 @@ _SPECS: dict[str, _Spec] = {
     "layout": _Spec(models.Layout, "layout_identifier", "layout_type", "layout_status", "layout_created_at", "layout_updated_at"),
     "role": _Spec(models.Role, "role_identifier", "role_name", "role_status", "role_created_at", "role_updated_at"),
     "team": _Spec(models.Team, "team_identifier", "team_name", "team_status", "team_created_at", "team_updated_at"),
+    "filtered_tab": _Spec(models.FilteredTab, "filtered_tab_identifier", "filtered_tab_label", "filtered_tab_status", "filtered_tab_created_at", "filtered_tab_updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),

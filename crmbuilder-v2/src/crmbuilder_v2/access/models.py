@@ -68,6 +68,7 @@ from crmbuilder_v2.access.vocab import (
     EXECUTION_MODES,
     FIELD_STATUSES,
     FIELD_TYPES,
+    FILTERED_TAB_STATUSES,
     FINDING_RESOLUTION_METHODS,
     FINDING_SEVERITIES,
     FINDING_STATUSES,
@@ -80,8 +81,6 @@ from crmbuilder_v2.access.vocab import (
     INSTANCE_VENDORS,
     LAYOUT_STATUSES,
     LAYOUT_TYPES,
-    ROLE_STATUSES,
-    TEAM_STATUSES,
     LEARNING_CATEGORIES,
     LEARNING_STATUSES,
     LEARNING_TIERS,
@@ -108,6 +107,7 @@ from crmbuilder_v2.access.vocab import (
     RISK_IMPACTS,
     RISK_PROBABILITIES,
     RISK_STATUSES,
+    ROLE_STATUSES,
     RULE_EFFECTS,
     RULE_ENFORCEMENT_MODES,
     RULE_STATUSES,
@@ -117,6 +117,7 @@ from crmbuilder_v2.access.vocab import (
     SESSION_STATUSES,
     SKILL_KINDS,
     TARGET_ENGINES,
+    TEAM_STATUSES,
     TERM_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
@@ -2536,6 +2537,63 @@ class Team(EngagementScopedPKMixin, Base):
         ),
         Index("ix_teams_team_status", "team_status"),
         Index("ix_teams_team_deleted_at", "team_deleted_at"),
+    )
+
+
+class FilteredTab(EngagementScopedPKMixin, Base):
+    """PI-195 (PRJ-027) — one engine-neutral filtered tab (``FTB-NNN``).
+
+    A net-new design family: an entity-bound report-filter view (a filtered
+    navigation tab) captured by audit and publishable.
+    ``filtered_tab_entity_identifier`` is the parent canonical entity (soft
+    reference, reconcile-managed); ``filtered_tab_filter`` is the neutral
+    condition expression as JSON. Reconcile matches by (entity, label) and
+    records drift as a sparse override on the membership row.
+    """
+
+    __tablename__ = "filtered_tabs"
+
+    filtered_tab_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    filtered_tab_entity_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    filtered_tab_label: Mapped[str] = mapped_column(String(255), nullable=False)
+    filtered_tab_filter: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    filtered_tab_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    filtered_tab_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    filtered_tab_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    filtered_tab_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    filtered_tab_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("filtered_tab_identifier", ["FTB"]),
+            name="ck_filtered_tab_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("filtered_tab_status", FILTERED_TAB_STATUSES),
+            name="ck_filtered_tab_status",
+        ),
+        Index(
+            "ix_filtered_tabs_filtered_tab_entity",
+            "filtered_tab_entity_identifier",
+        ),
+        Index("ix_filtered_tabs_filtered_tab_status", "filtered_tab_status"),
+        Index(
+            "ix_filtered_tabs_filtered_tab_deleted_at", "filtered_tab_deleted_at"
+        ),
     )
 
 

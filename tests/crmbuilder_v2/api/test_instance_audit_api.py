@@ -76,6 +76,11 @@ class _FakeClient:
     def get_teams(self):
         return (200, {"list": [{"name": "Coordinators", "description": "Ops"}]})
 
+    def list_report_filters(self, entity_type):
+        if entity_type == "CEngagement":
+            return (200, {"list": [{"name": "Active", "data": {"status": "open"}}]})
+        return (404, None)
+
 
 def _create(client, **over):
     body = {
@@ -103,17 +108,18 @@ def test_audit_reconciles_and_lists_memberships(client, monkeypatch):
     # One custom-to-custom relationship reconciled.
     assert summary["associations"]["created"] == 1
     assert summary["associations"]["present"] == 1
-    # One detail layout, one role, one team.
+    # One detail layout, one role, one team, one filtered tab.
     assert summary["layouts"]["created"] == 1
     assert summary["roles"]["created"] == 1
     assert summary["teams"]["created"] == 1
-    # Memberships: 2 entities + 2 fields + 1 association + 1 layout + 1 role + 1 team.
+    assert summary["filtered_tabs"]["created"] == 1
+    # 2 entities + 2 fields + 1 association + 1 layout + 1 role + 1 team + 1 tab.
     rows = client.get(f"/instances/{iid}/memberships").json()["data"]
-    assert len(rows) == 8
+    assert len(rows) == 9
     types = sorted(row["member_type"] for row in rows)
     assert types == [
         "association", "entity", "entity", "field", "field",
-        "layout", "role", "team",
+        "filtered_tab", "layout", "role", "team",
     ]
     assert all(row["state"] == "present" for row in rows)
     # Filter by member_type.
@@ -163,8 +169,8 @@ def test_publish_plan_target_needs_everything(client, monkeypatch):
     ]
     tgt_plan = client.get(f"/instances/{tgt}/publish-plan").json()["data"]
     assert tgt_plan["target_instance"] == tgt
-    # 2 entities + 2 fields + 1 association + 1 layout + 1 role + 1 team.
-    assert tgt_plan["item_count"] == 8
+    # 2 entities + 2 fields + 1 assoc + 1 layout + 1 role + 1 team + 1 tab.
+    assert tgt_plan["item_count"] == 9
     assert all(it["reason"] == "never_audited" for it in tgt_plan["items"])
 
 

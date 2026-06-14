@@ -657,9 +657,18 @@ INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
 )
 
 # The canonical design-object kinds a membership row can describe (DEC-433).
-# Extended by PI-193 (layout) and PI-194 (role, team) as those families land.
+# Extended by PI-193 (layout), PI-194 (role, team), PI-195 (filtered_tab).
 INSTANCE_MEMBERSHIP_MEMBER_TYPES: frozenset[str] = frozenset(
-    {"entity", "field", "association", "layout", "role", "team"}
+    {"entity", "field", "association", "layout", "role", "team", "filtered_tab"}
+)
+
+# ---------------------------------------------------------------------------
+# Filtered-tab design family (PI-195 — PRJ-027). One entity-bound report-filter
+# view (a filtered navigation tab) + its condition expression. Net-new
+# engine-neutral design record, reconcile-populated; full ENTITY_TYPE.
+# ---------------------------------------------------------------------------
+FILTERED_TAB_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
 )
 
 # ---------------------------------------------------------------------------
@@ -1392,6 +1401,8 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # PI-194 (PRJ-027) net-new security design families (ROL-, TM-).
         "role",
         "team",
+        # PI-195 (PRJ-027) net-new filtered-tab design family (FTB-).
+        "filtered_tab",
     }
 )
 
