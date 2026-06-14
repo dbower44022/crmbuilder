@@ -50,6 +50,7 @@ crmbuilder-v2-deposit-audit = "crmbuilder_v2.transform.audit_deposit:main"
 crmbuilder-v2-render-baseline = "crmbuilder_v2.render.baseline_report:main"
 crmbuilder-v2-spreadsheet-profile = "crmbuilder_v2.adapters.spreadsheet:main"
 crmbuilder-v2-register-source = "crmbuilder_v2.adapters.source_store:main"
+crmbuilder-v2-export-espocrm = "crmbuilder_v2.adapters.espocrm.adapter:main"
 
 [build-system]
 requires = ["hatchling"]
