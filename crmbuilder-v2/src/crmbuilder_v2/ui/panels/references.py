@@ -76,6 +76,10 @@ class ReferencesPanel(ListDetailPanel):
     """Read-only list of every reference, with filters and click-navigation."""
 
     _has_detail_pane = False
+    # REQ-135 (PI-176): this panel already owns a free-text filter in its
+    # filter strip (plus source/target/relationship combos), so it opts out of
+    # the base toolbar search to avoid two competing filter inputs.
+    _search_enabled = False
 
     def __init__(self, *args, **kwargs):
         # The combobox widgets are created in ``_filter_strip_widget``

@@ -33,6 +33,64 @@ def api_client(v2_env) -> StorageClient:
 # ----------------------------------------------------------------------
 
 
+# ----------------------------------------------------------------------
+# E — REQ-135 / PI-176: every entity list is searchable client-side.
+# ----------------------------------------------------------------------
+
+
+def test_master_search_box_present(qtbot, client_stub):
+    panel = FieldsPanel(client_stub)
+    qtbot.addWidget(panel)
+    assert panel._search_input is not None
+
+
+def test_master_search_filters_rows(qtbot, api_client):
+    ent = _seed_entity(api_client, "Contact")
+    _seed_field(api_client, ent, "email")
+    _seed_field(api_client, ent, "phone")
+    _seed_field(api_client, ent, "mobilePhone")
+    panel = FieldsPanel(api_client)
+    qtbot.addWidget(panel)
+    panel.refresh()
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 3, timeout=3000)
+
+    panel._on_search_changed("phone")
+    assert panel._model.rowCount() == 2
+    assert {r["field_name"] for r in panel._records} == {"phone", "mobilePhone"}
+    assert "of" in panel._status_label.text()
+
+    # The owning-entity column is searchable too (synthetic visible column).
+    panel._on_search_changed("Contact")
+    assert panel._model.rowCount() == 3
+
+    # Clearing restores the full set.
+    panel._on_search_changed("")
+    assert panel._model.rowCount() == 3
+
+
+def test_navigation_clears_active_search(qtbot, api_client):
+    ent = _seed_entity(api_client, "Contact")
+    f1 = _seed_field(api_client, ent, "email")
+    _seed_field(api_client, ent, "phone")
+    panel = FieldsPanel(api_client)
+    qtbot.addWidget(panel)
+    panel.refresh()
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 2, timeout=3000)
+    panel._on_search_changed("phone")  # hides "email"
+    assert panel._model.rowCount() == 1
+    assert panel.select_record_by_identifier(f1["field_identifier"]) is True
+    assert panel._search_text == ""
+    assert panel._model.rowCount() == 2
+
+
+def test_search_disabled_where_incompatible():
+    from crmbuilder_v2.ui.panels.references import ReferencesPanel
+    from crmbuilder_v2.ui.panels.topics import TopicsPanel
+
+    assert TopicsPanel._search_enabled is False
+    assert ReferencesPanel._search_enabled is False
+
+
 def test_read_only_line_sets_full_value_tooltip(qapp):
     long = "x" * 300
     w = gh.read_only_line(long)
