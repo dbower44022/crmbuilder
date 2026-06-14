@@ -49,6 +49,10 @@ def _make_client(**method_returns: Any) -> MagicMock:
     # default it to an empty list unless the test overrides it.
     if "get_email_templates" not in method_returns:
         client.get_email_templates.return_value = (200, {"total": 0, "list": []})
+    # Field-level dynamic-logic discovery (PI-170) runs by default inside
+    # run_audit and reads clientDefs; default it to empty unless overridden.
+    if "get_client_defs" not in method_returns:
+        client.get_client_defs.return_value = (200, {})
     return client
 
 
@@ -964,8 +968,14 @@ def test_run_audit_writes_filteredTabs_block_in_entity_yaml(tmp_path: Path):
 
 def test_run_audit_no_filtered_tab_discovery_when_disabled(tmp_path: Path):
     """include_filtered_tabs=False — no clientDefs / ReportFilter
-    API calls and no filteredTabs block in any YAML."""
-    options = AuditOptions(include_filtered_tabs=False)
+    API calls and no filteredTabs block in any YAML.
+
+    Field-level dynamic logic (PI-170) also reads clientDefs, so it is
+    disabled here to isolate the filtered-tab behavior under test.
+    """
+    options = AuditOptions(
+        include_filtered_tabs=False, include_field_dynamic_logic=False
+    )
     client = _make_client(
         get_all_scopes=(200, {
             "CEngagement": {
