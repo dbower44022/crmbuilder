@@ -56,6 +56,8 @@ from crmbuilder_v2.access.vocab import (
     CONVERSATION_STATUSES,
     CRM_CANDIDATE_STATUSES,
     DECISION_STATUSES,
+    DEDUP_ON_MATCH,
+    DEDUP_RULE_STATUSES,
     DEPOSIT_EVENT_KINDS,
     DEPOSIT_EVENT_OUTCOMES,
     DOMAIN_STATUSES,
@@ -74,6 +76,7 @@ from crmbuilder_v2.access.vocab import (
     LEARNING_TIERS,
     MANUAL_CONFIG_CATEGORIES,
     MANUAL_CONFIG_STATUSES,
+    MESSAGE_TEMPLATE_STATUSES,
     MIGRATION_MAPPING_DISPOSITIONS,
     MIGRATION_MAPPING_LEVELS,
     MIGRATION_MAPPING_STATUSES,
@@ -2028,6 +2031,182 @@ class Automation(EngagementScopedPKMixin, Base):
         Index("ix_automations_automation_entity", "automation_entity"),
         Index(
             "ix_automations_automation_deleted_at", "automation_deleted_at"
+        ),
+    )
+
+
+class DedupRule(EngagementScopedPKMixin, Base):
+    """Dedup-and-template design record — one duplicate-detection rule.
+
+    PRJ-025 PI-189 slice 3, per ``engine-neutral-design-model-and-adapters.md``
+    §8. A ``dedup_rule`` (``DUP-NNN``) describes how to detect a duplicate of
+    one entity: ``dedup_rule_match_fields`` is a non-empty ordered list of
+    field references (field names or ``FLD-NNN``) compared across records,
+    ``dedup_rule_normalize`` an optional object mapping a field reference to a
+    normalization token (``NORMALIZE_TOKENS``) applied before comparison, and
+    ``dedup_rule_on_match`` the action (``block`` / ``warn``) taken when a
+    duplicate is found. It renders into an EspoCRM duplicate-check rule and a
+    HubSpot dedupe key.
+
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``dedup_rule_identifier``. ``dedup_rule_entity``
+    is a plain ``ENT-NNN`` string column validated to exist and be live at
+    write time. The standard four-status propose-verify lifecycle gates it.
+    """
+
+    __tablename__ = "dedup_rules"
+
+    dedup_rule_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    dedup_rule_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    dedup_rule_entity: Mapped[str] = mapped_column(String(32), nullable=False)
+    dedup_rule_match_fields: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False
+    )
+    dedup_rule_normalize: Mapped[dict | None] = mapped_column(
+        JSONColumn, nullable=True
+    )
+    dedup_rule_on_match: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    dedup_rule_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dedup_rule_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    dedup_rule_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dedup_rule_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    dedup_rule_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    dedup_rule_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    dedup_rule_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^DUP-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("dedup_rule_identifier", ["DUP"]),
+            name="ck_dedup_rule_identifier_format",
+        ),
+        # ``dedup_rule_match_fields`` is NOT NULL and must be a non-empty JSON
+        # array (per-element field-reference shape is access-layer enforced).
+        CheckConstraint(
+            _NonEmptyJsonArrayCheck("dedup_rule_match_fields"),
+            name="ck_dedup_rule_match_fields_nonempty",
+        ),
+        CheckConstraint(
+            _check_in("dedup_rule_on_match", DEDUP_ON_MATCH),
+            name="ck_dedup_rule_on_match",
+        ),
+        CheckConstraint(
+            _check_in("dedup_rule_status", DEDUP_RULE_STATUSES),
+            name="ck_dedup_rule_status",
+        ),
+        Index("ix_dedup_rules_dedup_rule_status", "dedup_rule_status"),
+        Index("ix_dedup_rules_dedup_rule_entity", "dedup_rule_entity"),
+        Index(
+            "ix_dedup_rules_dedup_rule_deleted_at", "dedup_rule_deleted_at"
+        ),
+    )
+
+
+class MessageTemplate(EngagementScopedPKMixin, Base):
+    """Dedup-and-template design record — one notification/message template.
+
+    PRJ-025 PI-189 slice 3, per ``engine-neutral-design-model-and-adapters.md``
+    §8. A ``message_template`` (``MSG-NNN``) is the engine-neutral description
+    of a communication: ``message_template_body`` (required) carries the body
+    content/intent and ``message_template_subject`` the subject line, both of
+    which may contain merge-field placeholders; ``message_template_merge_fields``
+    is an optional list of merge-field reference strings;
+    ``message_template_channel`` (``MESSAGE_CHANNELS``) and
+    ``message_template_audience`` (free text) are optional descriptors. The
+    optional ``message_template_entity`` names the ``ENT-NNN`` the template is
+    about. It renders into an EspoCRM email template / notification and a
+    HubSpot email / template.
+
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``message_template_identifier``. When present,
+    ``message_template_entity`` is validated to exist and be live at write
+    time. The standard four-status propose-verify lifecycle gates it.
+    """
+
+    __tablename__ = "message_templates"
+
+    message_template_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    message_template_name: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    message_template_entity: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    message_template_channel: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )
+    message_template_subject: Mapped[str | None] = mapped_column(
+        String(512), nullable=True
+    )
+    message_template_body: Mapped[str] = mapped_column(Text, nullable=False)
+    message_template_merge_fields: Mapped[list | None] = mapped_column(
+        JSONColumn, nullable=True
+    )
+    message_template_audience: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    message_template_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    message_template_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    message_template_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    message_template_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    message_template_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    message_template_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^MSG-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("message_template_identifier", ["MSG"]),
+            name="ck_message_template_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("message_template_status", MESSAGE_TEMPLATE_STATUSES),
+            name="ck_message_template_status",
+        ),
+        Index(
+            "ix_message_templates_message_template_status",
+            "message_template_status",
+        ),
+        Index(
+            "ix_message_templates_message_template_entity",
+            "message_template_entity",
+        ),
+        Index(
+            "ix_message_templates_message_template_deleted_at",
+            "message_template_deleted_at",
         ),
     )
 

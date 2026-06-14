@@ -573,6 +573,58 @@ AUTOMATION_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "rejected": frozenset(),
 }
 
+# ---------------------------------------------------------------------------
+# Dedup-and-template design records (PRJ-025 PI-189 slice 3). The
+# engine-neutral ``dedup_rule`` (a duplicate-detection rule on one entity —
+# match fields, per-field normalization, and an on-match action) and
+# ``message_template`` (a notification/communication template — channel,
+# subject, body, merge fields, audience). The final two of the seven composite
+# constructs. See ``engine-neutral-design-model-and-adapters.md`` §8.
+# ---------------------------------------------------------------------------
+
+# The per-field normalization tokens a ``dedup_rule`` may apply before
+# comparing two records (PI-189). ``dedup_rule_normalize`` maps a field
+# reference to one of these; the adapter renders each into the target engine's
+# normalization (EspoCRM duplicate-check whereClause / HubSpot dedupe key).
+NORMALIZE_TOKENS: frozenset[str] = frozenset(
+    {"case_fold", "trim", "lowercase", "e164", "digits_only"}
+)
+
+# What a ``dedup_rule`` does when a duplicate is detected (PI-189). ``block``
+# rejects the save; ``warn`` surfaces a non-blocking warning.
+DEDUP_ON_MATCH: frozenset[str] = frozenset({"block", "warn"})
+
+# Methodology entity ``dedup_rule`` lifecycle (PI-189) — the standard
+# four-status propose-verify lifecycle, identical to ``rule`` / ``view``.
+DEDUP_RULE_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+DEDUP_RULE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
+# The channel a ``message_template`` is delivered over (PI-189). Optional on
+# the record; when present it must be one of these. The adapter maps each into
+# the target engine's template / notification channel vocabulary.
+MESSAGE_CHANNELS: frozenset[str] = frozenset({"email", "sms", "in_app"})
+
+# Methodology entity ``message_template`` lifecycle (PI-189) — same four-status
+# propose-verify lifecycle.
+MESSAGE_TEMPLATE_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+MESSAGE_TEMPLATE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
 # Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
 # PRD v0.2 §8 named set. Per-kind rule-object schema validation (required
 # keys, level applicability, conditional-key consistency — invariant I9)
@@ -1237,6 +1289,14 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "rule",
         "view",
         "automation",
+        # PRJ-025 PI-189 slice 3 dedup-and-template design records.
+        # ``dedup_rule`` (DUP-) is a duplicate-detection rule on one entity
+        # (match fields + per-field normalization + on-match action);
+        # ``message_template`` (MSG-) is a notification/communication template
+        # (channel + subject + body + merge fields + audience). See
+        # engine-neutral-design-model-and-adapters.md §8.
+        "dedup_rule",
+        "message_template",
     }
 )
 

@@ -1072,6 +1072,125 @@ class AutomationPatchIn(_Base):
     automation_status: str | None = None
 
 
+# -------- Dedup rules (dedup-and-template design record, PRJ-025 PI-189) ------
+
+
+class DedupRuleCreateIn(_Base):
+    """POST /dedup-rules body (engine-neutral-design-model §8).
+
+    ``dedup_rule_identifier`` is server-assigned when omitted;
+    ``dedup_rule_status`` defaults to ``candidate`` server-side.
+    ``dedup_rule_entity`` (an ``ENT-NNN``) is validated live;
+    ``dedup_rule_match_fields`` is a non-empty list of field references;
+    ``dedup_rule_normalize`` (when present) maps a field reference to a
+    normalization token; ``dedup_rule_on_match`` is ``block`` / ``warn``."""
+
+    dedup_rule_name: str
+    dedup_rule_entity: str
+    dedup_rule_match_fields: list
+    dedup_rule_on_match: str
+    dedup_rule_normalize: object | None = None
+    dedup_rule_message: str | None = None
+    dedup_rule_description: str | None = None
+    dedup_rule_notes: str | None = None
+    dedup_rule_status: str | None = None
+    dedup_rule_identifier: str | None = None
+
+
+class DedupRuleReplaceIn(_Base):
+    """PUT /dedup-rules/{identifier} body — full replace."""
+
+    dedup_rule_identifier: str | None = None
+    dedup_rule_name: str
+    dedup_rule_entity: str
+    dedup_rule_match_fields: list
+    dedup_rule_on_match: str
+    dedup_rule_normalize: object | None = None
+    dedup_rule_message: str | None = None
+    dedup_rule_description: str | None = None
+    dedup_rule_notes: str | None = None
+    dedup_rule_status: str
+
+
+class DedupRulePatchIn(_Base):
+    """PATCH /dedup-rules/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit null (clear) is distinguished from an omitted key (leave
+    unchanged)."""
+
+    dedup_rule_name: str | None = None
+    dedup_rule_entity: str | None = None
+    dedup_rule_match_fields: list | None = None
+    dedup_rule_on_match: str | None = None
+    dedup_rule_normalize: object | None = None
+    dedup_rule_message: str | None = None
+    dedup_rule_description: str | None = None
+    dedup_rule_notes: str | None = None
+    dedup_rule_status: str | None = None
+
+
+# --- Message templates (dedup-and-template design record, PRJ-025 PI-189) ---
+
+
+class MessageTemplateCreateIn(_Base):
+    """POST /message-templates body (engine-neutral-design-model §8).
+
+    ``message_template_identifier`` is server-assigned when omitted;
+    ``message_template_status`` defaults to ``candidate`` server-side.
+    ``message_template_body`` is required (may carry merge-field placeholders);
+    ``message_template_channel`` (when present) is ``email`` / ``sms`` /
+    ``in_app``; ``message_template_entity`` (an optional ``ENT-NNN``) is
+    validated live when present."""
+
+    message_template_name: str
+    message_template_body: str
+    message_template_entity: str | None = None
+    message_template_channel: str | None = None
+    message_template_subject: str | None = None
+    message_template_merge_fields: list | None = None
+    message_template_audience: str | None = None
+    message_template_description: str | None = None
+    message_template_notes: str | None = None
+    message_template_status: str | None = None
+    message_template_identifier: str | None = None
+
+
+class MessageTemplateReplaceIn(_Base):
+    """PUT /message-templates/{identifier} body — full replace."""
+
+    message_template_identifier: str | None = None
+    message_template_name: str
+    message_template_body: str
+    message_template_entity: str | None = None
+    message_template_channel: str | None = None
+    message_template_subject: str | None = None
+    message_template_merge_fields: list | None = None
+    message_template_audience: str | None = None
+    message_template_description: str | None = None
+    message_template_notes: str | None = None
+    message_template_status: str
+
+
+class MessageTemplatePatchIn(_Base):
+    """PATCH /message-templates/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit null (clear) is distinguished from an omitted key (leave
+    unchanged)."""
+
+    message_template_name: str | None = None
+    message_template_body: str | None = None
+    message_template_entity: str | None = None
+    message_template_channel: str | None = None
+    message_template_subject: str | None = None
+    message_template_merge_fields: list | None = None
+    message_template_audience: str | None = None
+    message_template_description: str | None = None
+    message_template_notes: str | None = None
+    message_template_status: str | None = None
+
+
 # ---------- Processes (methodology entity, UI v0.4 slice D) ----------
 
 

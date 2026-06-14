@@ -1739,6 +1739,265 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
             await http.post(f"/automations/{identifier}/restore")
         )
 
+    # --- Dedup rules (dedup-and-template design record, PRJ-025 PI-189) ---
+    # A dedup_rule (DUP-NNN) is a duplicate-detection rule on one entity:
+    # match fields, an optional per-field normalization map, and an on-match
+    # action (block / warn).
+
+    async def get_dedup_rule(
+        identifier: str, include_deleted: bool = False
+    ) -> Any:
+        """Return one dedup_rule (dedup design) record by its DUP-NNN id."""
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(
+            await http.get(f"/dedup-rules/{identifier}", params=params)
+        )
+
+    async def list_dedup_rules(
+        entity: str | None = None, include_deleted: bool = False
+    ) -> Any:
+        """List dedup_rule records.
+
+        Filter ``entity`` (the ENT-NNN deduped). Pass ``include_deleted=true``
+        to include soft-deleted rows.
+        """
+        params = {
+            k: v
+            for k, v in dict(
+                entity=entity,
+                include_deleted="true" if include_deleted else None,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.get("/dedup-rules", params=params or None)
+        )
+
+    async def create_dedup_rule(
+        name: str,
+        entity: str,
+        match_fields: list,
+        on_match: str,
+        normalize: Any | None = None,
+        message: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create a dedup_rule (engine-neutral duplicate-detection rule).
+
+        Required: ``name``, ``entity`` (the ENT-NNN deduped, validated live),
+        ``match_fields`` (a non-empty list of field references — field names or
+        FLD-NNN), and ``on_match`` (``block`` or ``warn``). ``normalize`` is an
+        optional object mapping a field reference to a normalization token
+        (``case_fold`` / ``trim`` / ``lowercase`` / ``e164`` / ``digits_only``)
+        applied before comparison. ``message`` is the user-facing message for a
+        blocking match. ``status`` defaults to ``candidate``; identifier is
+        server-assigned (DUP-NNN) when omitted.
+        """
+        body: dict[str, Any] = {
+            "dedup_rule_name": name,
+            "dedup_rule_entity": entity,
+            "dedup_rule_match_fields": match_fields,
+            "dedup_rule_on_match": on_match,
+        }
+        body.update(
+            {
+                k: v
+                for k, v in dict(
+                    dedup_rule_normalize=normalize,
+                    dedup_rule_message=message,
+                    dedup_rule_description=description,
+                    dedup_rule_notes=notes,
+                    dedup_rule_status=status,
+                    dedup_rule_identifier=identifier,
+                ).items()
+                if v is not None
+            }
+        )
+        return await _unwrap(await http.post("/dedup-rules", json=body))
+
+    async def update_dedup_rule(
+        identifier: str,
+        name: str | None = None,
+        entity: str | None = None,
+        match_fields: list | None = None,
+        on_match: str | None = None,
+        normalize: Any | None = None,
+        message: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+    ) -> Any:
+        """Update fields on a dedup_rule record (PATCH). Pass only the fields
+        to change. An entity change is re-validated; a status change is
+        transition-validated."""
+        body = {
+            f"dedup_rule_{k}": v
+            for k, v in dict(
+                name=name,
+                entity=entity,
+                match_fields=match_fields,
+                on_match=on_match,
+                normalize=normalize,
+                message=message,
+                description=description,
+                notes=notes,
+                status=status,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.patch(f"/dedup-rules/{identifier}", json=body)
+        )
+
+    async def delete_dedup_rule(identifier: str) -> Any:
+        """Soft-delete a dedup_rule record (idempotent)."""
+        return await _unwrap(await http.delete(f"/dedup-rules/{identifier}"))
+
+    async def restore_dedup_rule(identifier: str) -> Any:
+        """Restore a soft-deleted dedup_rule record."""
+        return await _unwrap(
+            await http.post(f"/dedup-rules/{identifier}/restore")
+        )
+
+    # --- Message templates (dedup-and-template design record, PI-189) ---
+    # A message_template (MSG-NNN) is a notification/communication template:
+    # a required body, an optional subject (both may carry merge fields), an
+    # optional channel, merge-field list, audience, and subject entity.
+
+    async def get_message_template(
+        identifier: str, include_deleted: bool = False
+    ) -> Any:
+        """Return one message_template record by its MSG-NNN id."""
+        params = {"include_deleted": "true"} if include_deleted else None
+        return await _unwrap(
+            await http.get(f"/message-templates/{identifier}", params=params)
+        )
+
+    async def list_message_templates(
+        entity: str | None = None,
+        channel: str | None = None,
+        include_deleted: bool = False,
+    ) -> Any:
+        """List message_template records.
+
+        Filter ``entity`` (the ENT-NNN the template is about) and/or
+        ``channel`` (email / sms / in_app). Pass ``include_deleted=true`` to
+        include soft-deleted rows.
+        """
+        params = {
+            k: v
+            for k, v in dict(
+                entity=entity,
+                channel=channel,
+                include_deleted="true" if include_deleted else None,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.get("/message-templates", params=params or None)
+        )
+
+    async def create_message_template(
+        name: str,
+        body: str,
+        entity: str | None = None,
+        channel: str | None = None,
+        subject: str | None = None,
+        merge_fields: list | None = None,
+        audience: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create a message_template (engine-neutral notification template).
+
+        Required: ``name`` and ``body`` (the body content/intent — may contain
+        merge-field placeholders). ``subject`` (optional) may also contain
+        placeholders. ``channel`` is an optional email / sms / in_app;
+        ``merge_fields`` an optional list of merge-field reference strings;
+        ``audience`` free-text who-receives-it; ``entity`` an optional ENT-NNN
+        the template is about (validated live when present). ``status`` defaults
+        to ``candidate``; identifier is server-assigned (MSG-NNN) when omitted.
+        """
+        payload: dict[str, Any] = {
+            "message_template_name": name,
+            "message_template_body": body,
+        }
+        payload.update(
+            {
+                k: v
+                for k, v in dict(
+                    message_template_entity=entity,
+                    message_template_channel=channel,
+                    message_template_subject=subject,
+                    message_template_merge_fields=merge_fields,
+                    message_template_audience=audience,
+                    message_template_description=description,
+                    message_template_notes=notes,
+                    message_template_status=status,
+                    message_template_identifier=identifier,
+                ).items()
+                if v is not None
+            }
+        )
+        return await _unwrap(
+            await http.post("/message-templates", json=payload)
+        )
+
+    async def update_message_template(
+        identifier: str,
+        name: str | None = None,
+        body: str | None = None,
+        entity: str | None = None,
+        channel: str | None = None,
+        subject: str | None = None,
+        merge_fields: list | None = None,
+        audience: str | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+    ) -> Any:
+        """Update fields on a message_template record (PATCH). Pass only the
+        fields to change. An entity change is re-validated; a status change is
+        transition-validated."""
+        payload = {
+            f"message_template_{k}": v
+            for k, v in dict(
+                name=name,
+                body=body,
+                entity=entity,
+                channel=channel,
+                subject=subject,
+                merge_fields=merge_fields,
+                audience=audience,
+                description=description,
+                notes=notes,
+                status=status,
+            ).items()
+            if v is not None
+        }
+        return await _unwrap(
+            await http.patch(
+                f"/message-templates/{identifier}", json=payload
+            )
+        )
+
+    async def delete_message_template(identifier: str) -> Any:
+        """Soft-delete a message_template record (idempotent)."""
+        return await _unwrap(
+            await http.delete(f"/message-templates/{identifier}")
+        )
+
+    async def restore_message_template(identifier: str) -> Any:
+        """Restore a soft-deleted message_template record."""
+        return await _unwrap(
+            await http.post(f"/message-templates/{identifier}/restore")
+        )
+
     # Declaration-ordered surface. Adding a tool = define it above and
     # append it here; both the MCP server and the chat dispatcher pick it
     # up automatically.
@@ -1845,6 +2104,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         update_automation,
         delete_automation,
         restore_automation,
+        get_dedup_rule,
+        list_dedup_rules,
+        create_dedup_rule,
+        update_dedup_rule,
+        delete_dedup_rule,
+        restore_dedup_rule,
+        get_message_template,
+        list_message_templates,
+        create_message_template,
+        update_message_template,
+        delete_message_template,
+        restore_message_template,
     ]
     return [
         ToolDefinition(

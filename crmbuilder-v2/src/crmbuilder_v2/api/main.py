@@ -40,6 +40,7 @@ from crmbuilder_v2.api.routers import (
     coverage,
     crm_candidates,
     decisions,
+    dedup_rules,
     deposit_events,
     domains,
     engagements,
@@ -50,6 +51,7 @@ from crmbuilder_v2.api.routers import (
     health,
     identifiers,
     manual_configs,
+    message_templates,
     migration_mappings,
     orchestration,
     orientation,
@@ -184,6 +186,8 @@ def create_app() -> FastAPI:
     app.include_router(rules.router)
     app.include_router(views.router)
     app.include_router(automations.router)
+    app.include_router(dedup_rules.router)
+    app.include_router(message_templates.router)
     app.include_router(commits.router)
     # Agent Profile Registry (PI-122).
     app.include_router(registry.agent_profiles_router)

@@ -88,6 +88,10 @@ _SPECS: dict[str, _Spec] = {
     "rule": _Spec(models.Rule, "rule_identifier", "rule_name", "rule_status", "rule_created_at", "rule_updated_at"),
     "view": _Spec(models.View, "view_identifier", "view_name", "view_status", "view_created_at", "view_updated_at"),
     "automation": _Spec(models.Automation, "automation_identifier", "automation_name", "automation_status", "automation_created_at", "automation_updated_at"),
+    # PRJ-025 PI-189 slice 3: dedup-and-template design records. Each carries a
+    # name and the four-status propose-verify lifecycle.
+    "dedup_rule": _Spec(models.DedupRule, "dedup_rule_identifier", "dedup_rule_name", "dedup_rule_status", "dedup_rule_created_at", "dedup_rule_updated_at"),
+    "message_template": _Spec(models.MessageTemplate, "message_template_identifier", "message_template_name", "message_template_status", "message_template_created_at", "message_template_updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),
