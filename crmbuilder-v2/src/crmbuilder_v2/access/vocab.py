@@ -640,6 +640,27 @@ INSTANCE_AUTH_METHODS: frozenset[str] = frozenset({"api_key", "hmac"})
 
 INSTANCE_STATUSES: frozenset[str] = frozenset({"active", "disabled"})
 
+# ---------------------------------------------------------------------------
+# instance_membership join (PI-185 — PRJ-027). A lightweight engagement-scoped
+# child table (NOT a prefixed-identifier governance entity), one row per
+# (canonical design object, instance), recording whether the object is present,
+# drifted, or absent in that instance plus a sparse per-attribute override.
+# See prj-027-multi-instance-audit-inventory-architecture.md §5 + DEC-427/431/
+# 432/433.
+# ---------------------------------------------------------------------------
+
+# present = exists and matches the canonical design; drifted = exists but at
+# least one attribute differs (captured in the override); absent = a canonical
+# object not found in this instance's last audit.
+INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
+    {"present", "drifted", "absent"}
+)
+
+# The canonical design-object kinds a membership row can describe (DEC-433).
+INSTANCE_MEMBERSHIP_MEMBER_TYPES: frozenset[str] = frozenset(
+    {"entity", "field", "association"}
+)
+
 # Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
 # PRD v0.2 §8 named set. Per-kind rule-object schema validation (required
 # keys, level applicability, conditional-key consistency — invariant I9)
