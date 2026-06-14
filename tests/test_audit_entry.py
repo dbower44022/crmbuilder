@@ -425,7 +425,7 @@ def _stub_widget_for_start(
     for cb_name in (
         "_cb_custom_fields", "_cb_native_fields", "_cb_detail_layouts",
         "_cb_list_layouts", "_cb_relationships", "_cb_include_native",
-        "_cb_security", "_cb_filtered_tabs",
+        "_cb_security", "_cb_filtered_tabs", "_cb_email_templates",
     ):
         setattr(stub, cb_name, MagicMock(isChecked=MagicMock(return_value=True)))
     stub._update_last_audit_info = lambda: None

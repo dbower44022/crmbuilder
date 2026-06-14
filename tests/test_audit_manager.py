@@ -45,6 +45,10 @@ def _make_client(**method_returns: Any) -> MagicMock:
     # discovery loops don't hang on AttributeError.
     for name, value in method_returns.items():
         getattr(client, name).return_value = value
+    # Email-template discovery (PI-168) runs by default inside run_audit;
+    # default it to an empty list unless the test overrides it.
+    if "get_email_templates" not in method_returns:
+        client.get_email_templates.return_value = (200, {"total": 0, "list": []})
     return client
 
 

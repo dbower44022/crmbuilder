@@ -723,6 +723,34 @@ class EspoAdminClient:
 
     # --- Team management ---
 
+    def get_email_templates(
+        self, entity_espo_name: str,
+    ) -> tuple[int, dict[str, Any] | None]:
+        """List EmailTemplate records bound to an entity type.
+
+        Used by the audit to reverse-engineer the ``emailTemplates:``
+        block. Filters server-side by ``entityType`` and bulk-fetches
+        up to 200 templates in a single GET (sufficient for the
+        dogfood and pilot-client use cases; more would require
+        pagination, which is not implemented here). The query mirrors
+        the deploy-side
+        :meth:`espo_impl.core.email_template_manager.EmailTemplateManager._get_existing_templates`.
+
+        :param entity_espo_name: EspoCRM wire-name of the entity
+            (e.g. ``Contact``, ``CEngagement``).
+        :returns: Tuple of (status_code, response_json or None) with
+            the standard ``{"total": N, "list": [...]}`` shape on
+            success.
+        """
+        url = (
+            f"{self.profile.api_url}/EmailTemplate"
+            f"?where[0][type]=equals"
+            f"&where[0][attribute]=entityType"
+            f"&where[0][value]={entity_espo_name}"
+            f"&maxSize=200"
+        )
+        return self._request("GET", url)
+
     def get_teams(
         self,
     ) -> tuple[int, dict[str, Any] | None]:

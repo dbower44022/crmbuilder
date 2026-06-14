@@ -7,6 +7,7 @@ files in the same schema the configure engine consumes.
 
 import json
 import logging
+import re
 import sqlite3
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
@@ -76,6 +77,10 @@ class AuditOptions:
     :param include_native_fields: Include native fields (normally excluded).
     :param include_security: Discover roles and teams (DEC-180).
     :param include_filtered_tabs: Discover filtered tabs (DEC-180).
+    :param include_email_templates: Discover per-entity email templates
+        and emit an ``emailTemplates:`` block plus sidecar body files
+        (REQ-124 / PI-168). Default on, matching the DEC-180 precedent
+        that the audit's identity is full-configuration round-trip.
     :param include_data_profile: Run the pass-2 data profiler after
         schema discovery, writing ``utilization-profile.json`` to the
         output directory (WTK-096). Default on, matching the DEC-180
@@ -103,6 +108,7 @@ class AuditOptions:
     include_native_fields: bool = False
     include_security: bool = True
     include_filtered_tabs: bool = True
+    include_email_templates: bool = True
     include_data_profile: bool = True
     selected_entities: set[str] | None = None
 
@@ -163,6 +169,9 @@ class EntityAuditResult:
     fields: list[FieldAuditResult] = field(default_factory=list)
     layouts: list[LayoutAuditResult] = field(default_factory=list)
     filtered_tabs: list["FilteredTabAuditResult"] = field(default_factory=list)
+    email_templates: list["EmailTemplateAuditResult"] = field(
+        default_factory=list
+    )
 
 
 @dataclass
@@ -233,6 +242,34 @@ class FilteredTabAuditResult:
     filter: ConditionNode | None = None
     nav_order: int | None = None
     acl: str = "boolean"
+
+
+@dataclass
+class EmailTemplateAuditResult:
+    """Result of auditing a single email template.
+
+    Mirrors the YAML-side :class:`espo_impl.core.models.EmailTemplate`.
+    ``merge_fields`` are reverse-derived from the ``{{fieldName}}``
+    placeholders in the captured subject and body, matching the
+    placeholder grammar the deploy-side validator enforces, so the
+    emitted block re-deploys without hand-editing.
+
+    :param id: Stable identifier, slugified from the template name and
+        made unique within the entity (the deploy side matches
+        templates by ``name``, so this is YAML-local only).
+    :param name: Server-assigned template name.
+    :param subject: Subject line, possibly with ``{{field}}``
+        placeholders.
+    :param body: Raw HTML body captured from the source record; written
+        to a sidecar ``.html`` file and referenced via ``bodyFile``.
+    :param merge_fields: Field names used as ``{{...}}`` placeholders.
+    """
+
+    id: str
+    name: str
+    subject: str
+    body: str
+    merge_fields: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -544,6 +581,18 @@ class AuditManager:
             entity_count = sum(1 for e in entities if e.filtered_tabs)
             self._cb(
                 f"[AUDIT]    Found {total_tabs} filtered tabs across "
+                f"{entity_count} entities",
+                "cyan",
+            )
+
+        # Step 3.45: Discover email templates per entity (REQ-124 / PI-168)
+        if self._options.include_email_templates and entities:
+            self._cb("[AUDIT]    Discovering email templates ...", "cyan")
+            self._discover_email_templates(entities, report)
+            total_tmpl = sum(len(e.email_templates) for e in entities)
+            entity_count = sum(1 for e in entities if e.email_templates)
+            self._cb(
+                f"[AUDIT]    Found {total_tmpl} email templates across "
                 f"{entity_count} entities",
                 "cyan",
             )
@@ -1742,6 +1791,145 @@ class AuditManager:
     # YAML generation
     # ------------------------------------------------------------------
 
+    def _discover_email_templates(
+        self,
+        entities: list[EntityAuditResult],
+        report: AuditReport,
+    ) -> None:
+        """Discover email templates bound to each audited entity.
+
+        Inverse of
+        :class:`espo_impl.core.email_template_manager.EmailTemplateManager`
+        on the deploy side. For each entity, fetches EmailTemplate
+        records filtered by ``entityType`` and reverse-maps them into
+        :class:`EmailTemplateAuditResult` rows. ``mergeFields`` are
+        recovered from the ``{{fieldName}}`` placeholders present in the
+        subject and body, matching the deploy-side validator's grammar.
+
+        HTTP 404 from the EmailTemplate endpoint means the feature is
+        unavailable on the source; an informational log line is emitted
+        and that entity is skipped rather than treated as an error.
+        Mutates each :class:`EntityAuditResult.email_templates` in place.
+
+        :param entities: Audited entities to attach templates to.
+        :param report: For warning accumulation.
+        """
+        for entity in entities:
+            status, body = self._client.get_email_templates(entity.espo_name)
+            if status == 404:
+                self._cb(
+                    f"[AUDIT]    {entity.yaml_name} — EmailTemplate "
+                    f"unavailable on source (HTTP 404); skipped",
+                    "yellow",
+                )
+                continue
+            if status != 200 or not isinstance(body, dict):
+                report.warnings.append(
+                    f"Failed to fetch email templates for "
+                    f"{entity.yaml_name} (HTTP {status}); skipped"
+                )
+                continue
+
+            records = body.get("list", [])
+            if not isinstance(records, list):
+                continue
+
+            seen_ids: set[str] = set()
+            for rec in records:
+                if not isinstance(rec, dict):
+                    continue
+                name = str(rec.get("name") or "").strip()
+                if not name:
+                    continue
+                subject = str(rec.get("subject") or "")
+                tmpl_body = str(rec.get("body") or "")
+                tmpl_id = self._unique_template_id(name, seen_ids)
+                seen_ids.add(tmpl_id)
+                entity.email_templates.append(EmailTemplateAuditResult(
+                    id=tmpl_id,
+                    name=name,
+                    subject=subject,
+                    body=tmpl_body,
+                    merge_fields=self._extract_merge_fields(
+                        subject, tmpl_body
+                    ),
+                ))
+
+    @staticmethod
+    def _extract_merge_fields(subject: str, body: str) -> list[str]:
+        """Recover ``{{fieldName}}`` merge placeholders from text.
+
+        Matches the deploy-side validator grammar (``{{\\w+}}``). Dotted
+        or whitespace-bearing placeholders (e.g. ``{{Person.name}}``)
+        are intentionally ignored — the deploy schema only supports
+        simple single-field placeholders, and the validator's
+        placeholder check uses the same grammar, so the two stay
+        consistent. Returns the field names sorted for stable output.
+
+        :param subject: Template subject line.
+        :param body: Template HTML body.
+        :returns: Sorted unique placeholder field names.
+        """
+        found: set[str] = set()
+        for text in (subject, body):
+            for match in re.finditer(r"\{\{(\w+)\}\}", text):
+                found.add(match.group(1))
+        return sorted(found)
+
+    @staticmethod
+    def _slugify_template_name(name: str) -> str:
+        """Slugify a template name into a YAML-safe identifier."""
+        slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+        return slug or "template"
+
+    def _unique_template_id(self, name: str, seen: set[str]) -> str:
+        """Derive a per-entity-unique slug id from a template name.
+
+        :param name: Server-assigned template name.
+        :param seen: Ids already used within the same entity.
+        :returns: A slug not present in ``seen`` (suffixed ``-2``, ``-3``
+            … on collision).
+        """
+        base = self._slugify_template_name(name)
+        candidate = base
+        counter = 2
+        while candidate in seen:
+            candidate = f"{base}-{counter}"
+            counter += 1
+        return candidate
+
+    def _write_email_template_bodies(
+        self,
+        entity: EntityAuditResult,
+        output_dir: Path,
+        report: AuditReport,
+    ) -> None:
+        """Write each captured email-template body to a sidecar HTML file.
+
+        Files land under ``templates/<Entity>/<id>.html`` relative to
+        the output directory, matching the ``bodyFile`` paths emitted by
+        :meth:`_build_entity_yaml` (resolved relative to the entity YAML
+        on re-deploy).
+
+        :param entity: Entity whose templates to write.
+        :param output_dir: Audit output directory.
+        :param report: For error accumulation.
+        """
+        tmpl_dir = output_dir / "templates" / entity.yaml_name
+        try:
+            tmpl_dir.mkdir(parents=True, exist_ok=True)
+            for tmpl in entity.email_templates:
+                (tmpl_dir / f"{tmpl.id}.html").write_text(
+                    tmpl.body, encoding="utf-8"
+                )
+        except OSError as exc:
+            msg = (
+                f"Failed to write email-template bodies for "
+                f"{entity.yaml_name}: {exc}"
+            )
+            report.errors.append(msg)
+            self._cb(f"[AUDIT]    ERROR: {msg}", "red")
+
     def _write_yaml_files(
         self,
         entities: list[EntityAuditResult],
@@ -1761,8 +1949,16 @@ class AuditManager:
 
         # One file per entity
         for entity in entities:
-            if not entity.fields and not entity.layouts and not entity.filtered_tabs:
+            if (
+                not entity.fields
+                and not entity.layouts
+                and not entity.filtered_tabs
+                and not entity.email_templates
+            ):
                 continue
+
+            if entity.email_templates:
+                self._write_email_template_bodies(entity, output_dir, report)
 
             yaml_dict = self._build_entity_yaml(entity)
             file_path = output_dir / f"{entity.yaml_name}.yaml"
@@ -1852,6 +2048,21 @@ class AuditManager:
             entity_block["filteredTabs"] = [
                 self._filtered_tab_to_yaml_dict(t)
                 for t in entity.filtered_tabs
+            ]
+
+        # Email templates (REQ-124 / PI-168) — bodyFile points at the
+        # sidecar HTML written by _write_email_template_bodies.
+        if entity.email_templates:
+            entity_block["emailTemplates"] = [
+                {
+                    "id": tmpl.id,
+                    "name": tmpl.name,
+                    "entity": entity.yaml_name,
+                    "subject": tmpl.subject,
+                    "bodyFile": f"templates/{entity.yaml_name}/{tmpl.id}.html",
+                    "mergeFields": tmpl.merge_fields,
+                }
+                for tmpl in entity.email_templates
             ]
 
         return {
