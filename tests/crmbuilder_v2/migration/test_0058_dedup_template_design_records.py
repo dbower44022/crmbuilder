@@ -25,8 +25,8 @@ from sqlalchemy.exc import IntegrityError
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ALEMBIC_DIR = _REPO_ROOT / "crmbuilder-v2"
-_MIGRATION_DOWN = "0055_pi_189_condition_design_records"
-_MIGRATION_UP = "0056_pi_189_dedup_template_design_records"
+_MIGRATION_DOWN = "0057_pi_189_condition_design_records"
+_MIGRATION_UP = "0058_pi_189_dedup_template_design_records"
 _TABLES = ("dedup_rules", "message_templates")
 
 

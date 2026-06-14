@@ -45,8 +45,8 @@ from crmbuilder_v2.access.vocab import (
     _check_in,
 )
 
-revision: str = "0054_pi_189_composite_design_records"
-down_revision: str | None = "0053_pi_182_field_entity_intrinsic"
+revision: str = "0056_pi_189_composite_design_records"
+down_revision: str | None = "0055_pi_182_field_entity_intrinsic"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

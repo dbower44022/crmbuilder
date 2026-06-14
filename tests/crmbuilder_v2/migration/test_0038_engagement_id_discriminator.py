@@ -75,6 +75,15 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         # PRJ-025 PI-189 slice 1 composite design records.
         "associations",
         "engine_overrides",
+        # PRJ-025 PI-189 slice 2 condition-carrying design records.
+        "rules",
+        "views",
+        "automations",
+        # PRJ-025 PI-189 slice 3 dedup + template design records.
+        "dedup_rules",
+        "message_templates",
+        # PI-186 (PRJ-027) instance entity.
+        "instances",
     }
 )
 

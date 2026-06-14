@@ -21,8 +21,8 @@ from sqlalchemy import create_engine, inspect
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ALEMBIC_DIR = _REPO_ROOT / "crmbuilder-v2"
-_MIGRATION_0052 = "0052_pi_161_service_entity"
-_MIGRATION_0053 = "0053_pi_182_field_entity_intrinsic"
+_MIGRATION_0052 = "0054_pi_186_instance_entity"
+_MIGRATION_0053 = "0055_pi_182_field_entity_intrinsic"
 
 _NEW_FIELD_COLUMNS = {
     "field_tooltip",

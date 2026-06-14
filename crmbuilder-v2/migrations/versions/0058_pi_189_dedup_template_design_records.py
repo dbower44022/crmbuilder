@@ -1,22 +1,21 @@
-"""PI-189 slice 2 — rules + views + automations tables + entity-type
+"""PI-189 slice 3 — dedup_rules + message_templates tables + entity-type
 CHECK rebuilds.
 
-Implements the storage slice of the PRJ-025 PI-189 design
-(``engine-neutral-design-model-and-adapters.md`` §8) for the three
-condition-carrying design records:
+Implements the final storage slice of the PRJ-025 PI-189 design
+(``engine-neutral-design-model-and-adapters.md`` §8) for the two
+dedup-and-template design records:
 
-- creates the ``rules`` (``RUL-NNN``), ``views`` (``VEW-NNN``), and
-  ``automations`` (``AUT-NNN``) tables from the ORM ``__table__`` with
-  ``checkfirst`` (idempotent on the create_all-then-upgrade-head test path) —
-  each carries its identifier-format / domain / non-empty-JSON-array CHECKs
-  and indexes;
+- creates the ``dedup_rules`` (``DUP-NNN``) and ``message_templates``
+  (``MSG-NNN``) tables from the ORM ``__table__`` with ``checkfirst``
+  (idempotent on the create_all-then-upgrade-head test path) — each carries
+  its identifier-format / domain / non-empty-JSON-array CHECKs and indexes;
 - rebuilds ``ck_changelog_entity_type`` and the ``refs``
-  ``ck_ref_source_type`` / ``ck_ref_target_type`` CHECKs to admit the three
-  new entity types ``rule`` + ``view`` + ``automation`` (the known gotcha:
-  tests build via create_all and miss it; the live DB 500s without it — see
-  0034 / 0043 / 0045 / 0048 / 0052 / 0054).
+  ``ck_ref_source_type`` / ``ck_ref_target_type`` CHECKs to admit the two new
+  entity types ``dedup_rule`` + ``message_template`` (the known gotcha: tests
+  build via create_all and miss it; the live DB 500s without it — see
+  0034 / 0043 / 0045 / 0048 / 0052 / 0054 / 0055).
 
-Slice 2 adds **no** new relationship_kind — these records carry their subject
+Slice 3 adds **no** new relationship_kind — these records carry their subject
 and listed-entity as columns, not ``refs`` edges, so ``ck_ref_relationship``
 is left untouched. All CHECK predicates derive from the current vocab so they
 cannot drift from the models; the rebuilds are supersets, so no existing row
@@ -27,30 +26,30 @@ The ``change_log`` / ``refs`` tables carry only plain column indexes
 (``ix_refs_source`` / ``ix_refs_target``) — no expression indexes (those live
 on ``engagements``) — so the batch recreate round-trips their indexes via
 reflection with no manual restore needed (unlike 0040). Downgrade follows the
-0054 delete-then-rebuild posture: refs and change_log rows naming the new
+0055 delete-then-rebuild posture: refs and change_log rows naming the new
 types are deleted before the narrower CHECKs are restored, then the tables
 are dropped.
 
-SQLite chain head 0054 -> 0055.
+SQLite chain head 0055 -> 0056.
 """
 
 from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from crmbuilder_v2.access.models import Automation, Rule, View
+from crmbuilder_v2.access.models import DedupRule, MessageTemplate
 from crmbuilder_v2.access.vocab import (
     CHANGE_LOG_ENTITY_TYPES,
     ENTITY_TYPES,
     _check_in,
 )
 
-revision: str = "0055_pi_189_condition_design_records"
-down_revision: str | None = "0054_pi_189_composite_design_records"
+revision: str = "0058_pi_189_dedup_template_design_records"
+down_revision: str | None = "0057_pi_189_condition_design_records"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-_NEW_TYPES = frozenset({"rule", "view", "automation"})
+_NEW_TYPES = frozenset({"dedup_rule", "message_template"})
 
 _TYPES_NEW = ENTITY_TYPES
 _TYPES_OLD = ENTITY_TYPES - _NEW_TYPES
@@ -88,9 +87,8 @@ def _rebuild_entity_type_checks(
 
 def upgrade() -> None:
     bind = op.get_bind()
-    Rule.__table__.create(bind, checkfirst=True)
-    View.__table__.create(bind, checkfirst=True)
-    Automation.__table__.create(bind, checkfirst=True)
+    DedupRule.__table__.create(bind, checkfirst=True)
+    MessageTemplate.__table__.create(bind, checkfirst=True)
     _rebuild_entity_type_checks(_TYPES_NEW, _LOG_TYPES_NEW)
 
 
@@ -100,18 +98,16 @@ def downgrade() -> None:
     if "refs" in existing:
         op.execute(
             "DELETE FROM refs WHERE source_type IN "
-            "('rule', 'view', 'automation') "
-            "OR target_type IN ('rule', 'view', 'automation')"
+            "('dedup_rule', 'message_template') "
+            "OR target_type IN ('dedup_rule', 'message_template')"
         )
     if "change_log" in existing:
         op.execute(
             "DELETE FROM change_log WHERE entity_type IN "
-            "('rule', 'view', 'automation')"
+            "('dedup_rule', 'message_template')"
         )
     _rebuild_entity_type_checks(_TYPES_OLD, _LOG_TYPES_OLD)
-    if Automation.__tablename__ in _tables():
-        Automation.__table__.drop(bind)
-    if View.__tablename__ in _tables():
-        View.__table__.drop(bind)
-    if Rule.__tablename__ in _tables():
-        Rule.__table__.drop(bind)
+    if MessageTemplate.__tablename__ in _tables():
+        MessageTemplate.__table__.drop(bind)
+    if DedupRule.__tablename__ in _tables():
+        DedupRule.__table__.drop(bind)

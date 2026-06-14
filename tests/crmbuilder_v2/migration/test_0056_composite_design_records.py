@@ -25,8 +25,8 @@ from sqlalchemy.exc import IntegrityError
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ALEMBIC_DIR = _REPO_ROOT / "crmbuilder-v2"
-_MIGRATION_DOWN = "0053_pi_182_field_entity_intrinsic"
-_MIGRATION_UP = "0054_pi_189_composite_design_records"
+_MIGRATION_DOWN = "0055_pi_182_field_entity_intrinsic"
+_MIGRATION_UP = "0056_pi_189_composite_design_records"
 _TABLES = ("associations", "engine_overrides")
 
 

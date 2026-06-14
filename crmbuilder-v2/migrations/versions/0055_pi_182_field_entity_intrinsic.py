@@ -47,8 +47,8 @@ import sqlalchemy as sa
 from alembic import op
 from crmbuilder_v2.access.models import _BooleanDomainCheck
 
-revision: str = "0053_pi_182_field_entity_intrinsic"
-down_revision: str | None = "0052_pi_161_service_entity"
+revision: str = "0055_pi_182_field_entity_intrinsic"
+down_revision: str | None = "0054_pi_186_instance_entity"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
