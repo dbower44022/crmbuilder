@@ -156,6 +156,28 @@ _WORK_TASK_GROUP_OPTIONS: list[tuple[str, str]] = [
 ]
 
 
+# Entity-fields grid configuration (REQ-133 / PI-174). The same grid, a third
+# contract: five columns describing each field of an entity (identifier, name,
+# data type, required flag, status), no date columns, Name as the slack column.
+# Rows are built by the entities panel (joining the inbound
+# ``field_belongs_to_entity`` edges with fetched field records) and fed in
+# directly, so there is no ``_flatten`` step for this contract.
+_ENTITY_FIELDS_COLUMNS: list[tuple[str, str]] = [
+    ("Identifier", "identifier"),
+    ("Name", "name"),
+    ("Type", "field_type"),
+    ("Required", "required"),
+    ("Status", "status"),
+]
+
+_ENTITY_FIELDS_GROUP_OPTIONS: list[tuple[str, str]] = [
+    (_GROUP_NONE, ""),
+    ("Type", "field_type"),
+    ("Required", "required"),
+    ("Status", "status"),
+]
+
+
 def _references_row_menu(
     section: ReferencesSection, view: QWidget, row: dict[str, Any] | None
 ) -> QMenu | None:
@@ -291,6 +313,19 @@ _WORK_TASK_CONTRACT = GridContract(
     heading="",
     empty_text="No Work Tasks recorded.",
     preview_subtitle_key="area",
+    show_add_button=False,
+    row_menu=_work_task_row_menu,
+)
+
+
+_ENTITY_FIELDS_CONTRACT = GridContract(
+    columns=_ENTITY_FIELDS_COLUMNS,
+    datetime_keys=frozenset(),
+    group_options=_ENTITY_FIELDS_GROUP_OPTIONS,
+    stretch_column=1,
+    heading="Fields",
+    empty_text="No fields recorded.",
+    preview_subtitle_key="field_type",
     show_add_button=False,
     row_menu=_work_task_row_menu,
 )
@@ -996,6 +1031,38 @@ class WorkTaskGridSection(ReferencesSection):
             None,
             client=client,
             contract=_WORK_TASK_CONTRACT,
+            rows=rows,
+            parent=parent,
+        )
+
+
+class EntityFieldsGridSection(ReferencesSection):
+    """Entity-fields configuration of the grid (REQ-133 / PI-174).
+
+    A thin parameterization of :class:`ReferencesSection` — not a fork — that
+    drives the same grid (filter, sort/grouping, preview, drag-resize) with the
+    entity-fields column model and a read-only (no Delete) row menu. Rows are
+    pre-built by the entities panel (joining the inbound
+    ``field_belongs_to_entity`` edges with fetched field records for name, data
+    type, required flag, and status) and passed in directly, so this section
+    runs no references ``_flatten`` step and writes no edges.
+    """
+
+    def __init__(
+        self,
+        entity_type: str,
+        identifier: str,
+        rows: list[dict[str, Any]],
+        *,
+        client: StorageClient | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(
+            entity_type,
+            identifier,
+            None,
+            client=client,
+            contract=_ENTITY_FIELDS_CONTRACT,
             rows=rows,
             parent=parent,
         )

@@ -10,8 +10,10 @@ import pytest
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.panels import _governance_helpers as gh
+from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
 from crmbuilder_v2.ui.panels.projects import ProjectsPanel
+from crmbuilder_v2.ui.widgets.references_section import EntityFieldsGridSection
 from fastapi.testclient import TestClient
 from PySide6.QtWidgets import QLabel, QLineEdit, QPlainTextEdit
 
@@ -96,6 +98,37 @@ def test_fields_record_carries_owning_entity_name(qtbot, api_client):
 # ----------------------------------------------------------------------
 # B — REQ-132 / PI-173: Field detail shows parent entity name + identifier.
 # ----------------------------------------------------------------------
+
+
+# ----------------------------------------------------------------------
+# C — REQ-133 / PI-174: Entity detail lists its fields with data type.
+# ----------------------------------------------------------------------
+
+
+def test_entity_detail_lists_fields_with_type(qtbot, api_client):
+    ent_id = _seed_entity(api_client, "Contact")
+    _seed_field(api_client, ent_id, "email")  # field_type enum
+    api_client.create_field(
+        {
+            "field_name": "fullName",
+            "field_description": "d",
+            "field_type": "text",
+            "field_belongs_to_entity_identifier": ent_id,
+        }
+    )
+    panel = EntitiesPanel(api_client)
+    qtbot.addWidget(panel)
+    panel.refresh()
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=3000)
+    rec = panel._records[0]
+    extras = panel.fetch_detail_extras(rec)
+    rows = {r["name"]: r for r in extras["field_rows"]}
+    assert set(rows) == {"email", "fullName"}
+    assert rows["email"]["field_type"] == "enum"
+    assert rows["fullName"]["field_type"] == "text"
+    detail = panel.render_detail(rec, extras)
+    qtbot.addWidget(detail)
+    assert detail.findChild(EntityFieldsGridSection) is not None
 
 
 def test_field_detail_shows_entity_name_and_identifier(qtbot, api_client):
