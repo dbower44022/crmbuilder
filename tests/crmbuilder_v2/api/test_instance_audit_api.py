@@ -114,6 +114,39 @@ def test_audit_missing_credentials_rejected(client, monkeypatch):
     assert r.json()["errors"][0]["code"] == "missing_credentials"
 
 
+def test_membership_summary(client, monkeypatch):
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client)["instance_identifier"]
+    client.post(f"/instances/{iid}/audit")
+    summary = client.get(f"/instances/{iid}/membership-summary").json()["data"]
+    assert summary["entity"]["present"] == 2
+    assert summary["field"]["present"] == 2
+    assert summary["association"]["present"] == 1
+
+
+def test_publish_plan_target_needs_everything(client, monkeypatch):
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    # Audit a source -> canonical inventory populated, all present in source.
+    src = _create(client)["instance_identifier"]
+    client.post(f"/instances/{src}/audit")
+    src_plan = client.get(f"/instances/{src}/publish-plan").json()["data"]
+    assert src_plan["item_count"] == 0  # source already matches the canonical design
+
+    # A fresh target (never audited) needs the whole canonical design pushed.
+    tgt = _create(client, instance_name="tgt", instance_role="target")[
+        "instance_identifier"
+    ]
+    tgt_plan = client.get(f"/instances/{tgt}/publish-plan").json()["data"]
+    assert tgt_plan["target_instance"] == tgt
+    assert tgt_plan["item_count"] == 5  # 2 entities + 2 fields + 1 association
+    assert all(it["reason"] == "never_audited" for it in tgt_plan["items"])
+
+
+def test_publish_plan_and_summary_404(client):
+    assert client.get("/instances/INST-999/publish-plan").status_code == 404
+    assert client.get("/instances/INST-999/membership-summary").status_code == 404
+
+
 def test_audit_missing_instance_404(client):
     assert client.post("/instances/INST-999/audit").status_code == 404
     assert client.get("/instances/INST-999/memberships").status_code == 404

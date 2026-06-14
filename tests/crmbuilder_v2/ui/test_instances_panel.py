@@ -136,3 +136,43 @@ def test_edit_dialog_blank_secret_preserves(qtbot, instance_client):
     assert after["instance_name"] == "Renamed"
     assert after["instance_secret_ref"] == ref
     assert secrets.get_secret(ref) == "orig"
+
+
+def test_detail_renders_inventory_section(qtbot, instance_client):
+    from PySide6.QtWidgets import QLabel
+    row = _seed(instance_client, "Audited")
+    panel = InstancesPanel(instance_client)
+    qtbot.addWidget(panel)
+    fresh = instance_client.get_instance(row["instance_identifier"])
+    extras = {
+        "references": {"as_source": [], "as_target": []},
+        "membership_summary": {"entity": {"present": 3, "drifted": 1, "absent": 0}},
+        "publish_plan": {"item_count": 4},
+    }
+    detail = panel.render_detail(fresh, extras)
+    labels = {w.objectName(): w.text() for w in detail.findChildren(QLabel)
+              if w.objectName()}
+    assert "membership_summary_entity" in labels
+    assert "3 present" in labels["membership_summary_entity"]
+    assert "4 object" in labels["publish_plan_count"]
+
+
+def test_audit_button_visible_for_source_hidden_for_target(qtbot, instance_client):
+    from PySide6.QtWidgets import QPushButton
+    src = instance_client.get_instance(
+        _seed(instance_client, "src", instance_role="source")["instance_identifier"]
+    )
+    tgt = instance_client.get_instance(
+        _seed(instance_client, "tgt", instance_url="https://t", instance_role="target")[
+            "instance_identifier"
+        ]
+    )
+    panel = InstancesPanel(instance_client)
+    qtbot.addWidget(panel)
+    extras = {"references": {"as_source": [], "as_target": []}}
+    src_detail = panel.render_detail(src, extras)
+    tgt_detail = panel.render_detail(tgt, extras)
+    src_btns = [b.objectName() for b in src_detail.findChildren(QPushButton)]
+    tgt_btns = [b.objectName() for b in tgt_detail.findChildren(QPushButton)]
+    assert "audit_instance_button" in src_btns
+    assert "audit_instance_button" not in tgt_btns

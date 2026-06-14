@@ -56,6 +56,7 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
+from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.instances")
 
@@ -151,11 +152,23 @@ class InstancesPanel(ListDetailPanel):
         identifier = record.get("instance_identifier")
         if not identifier:
             return {"references": {"as_source": [], "as_target": []}}
-        return {
+        extras: dict[str, Any] = {
             "references": self._client.list_references_touching(
                 "instance", identifier
             ),
         }
+        # PI-188 inventory/drift surface: membership counts + publish-plan size.
+        # Reads degrade gracefully so a transient error never blanks the detail.
+        try:
+            extras["membership_summary"] = self._client.get_membership_summary(
+                identifier
+            )
+            extras["publish_plan"] = self._client.get_publish_plan(identifier)
+        except StorageClientError as exc:
+            _log.warning("inventory read failed for %s: %s", identifier, exc)
+            extras["membership_summary"] = {}
+            extras["publish_plan"] = {"item_count": 0}
+        return extras
 
     def render_detail(
         self, record: dict[str, Any], extras: dict[str, Any]
@@ -188,6 +201,14 @@ class InstancesPanel(ListDetailPanel):
             lambda _checked=False, r=record: self._on_edit_clicked(r)
         )
         strip_layout.addWidget(edit_btn)
+        # Audit (pull) — available for source/both instances that aren't deleted.
+        if not is_deleted and record.get("instance_role") != "target":
+            audit_btn = QPushButton("Audit now")
+            audit_btn.setObjectName("audit_instance_button")
+            audit_btn.clicked.connect(
+                lambda _checked=False, r=record: self._on_audit_clicked(r)
+            )
+            strip_layout.addWidget(audit_btn)
         if not is_deleted:
             delete_btn = destructive_button("Delete")
             delete_btn.setObjectName("delete_instance_button")
@@ -250,6 +271,10 @@ class InstancesPanel(ListDetailPanel):
         )
         notes_section.setObjectName("instance_notes_toggle")
         outer.addWidget(notes_section)
+
+        # PI-188: inventory / drift summary for this instance.
+        outer.addWidget(_separator())
+        outer.addWidget(self._membership_section(extras))
 
         outer.addWidget(_separator())
         outer.addWidget(
@@ -342,6 +367,88 @@ class InstancesPanel(ListDetailPanel):
                 self.select_record_by_identifier(new_id)
             else:
                 self.refresh()
+
+    def _membership_section(self, extras: dict[str, Any]) -> QWidget:
+        """Render the inventory/drift summary + publish-plan size (PI-188)."""
+        summary = extras.get("membership_summary") or {}
+        plan = extras.get("publish_plan") or {}
+        box = QWidget()
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(4)
+        lay.addWidget(_heading_label("Inventory & drift"))
+        if not summary:
+            empty = QLabel(
+                'No audit yet — click "Audit now" to reconcile this '
+                "instance into the canonical inventory."
+            )
+            empty.setObjectName("membership_empty")
+            empty.setWordWrap(True)
+            lay.addWidget(empty)
+        else:
+            for member_type in sorted(summary):
+                counts = summary[member_type]
+                lbl = QLabel(
+                    f"{member_type}: {counts.get('present', 0)} present, "
+                    f"{counts.get('drifted', 0)} drifted, "
+                    f"{counts.get('absent', 0)} absent"
+                )
+                lbl.setObjectName(f"membership_summary_{member_type}")
+                lay.addWidget(lbl)
+        plan_lbl = QLabel(
+            f"Publish plan: {plan.get('item_count', 0)} object(s) to push to "
+            "bring a target in line with the canonical design."
+        )
+        plan_lbl.setObjectName("publish_plan_count")
+        plan_lbl.setWordWrap(True)
+        lay.addWidget(plan_lbl)
+        return box
+
+    def _on_audit_clicked(self, record: dict[str, Any]) -> None:
+        identifier = record.get("instance_identifier")
+        if not identifier:
+            return
+        self._audit_worker = run_in_thread(
+            lambda: self._client.audit_instance(identifier),
+            on_success=lambda res: self._on_audit_done(identifier, res),
+            on_error=self._on_audit_error,
+            parent=self,
+        )
+
+    def _on_audit_done(self, identifier: str, summary: dict[str, Any]) -> None:
+        def _line(name: str, part: dict | None) -> str:
+            part = part or {}
+            return (
+                f"{name}: {part.get('created', 0)} created, "
+                f"{part.get('present', 0)} present, "
+                f"{part.get('drifted', 0)} drifted, "
+                f"{part.get('absent', 0)} absent"
+            )
+
+        msg = CopyableMessageBox(self)
+        msg.setWindowTitle("Audit complete")
+        msg.setText(
+            f"Audited {identifier}.\n\n"
+            + _line("Entities", summary.get("entities"))
+            + "\n"
+            + _line("Fields", summary.get("fields"))
+            + "\n"
+            + _line("Associations", summary.get("associations"))
+        )
+        msg.exec()
+        self.refresh()
+
+    def _on_audit_error(self, exc: Exception) -> None:
+        if isinstance(exc, StorageConnectionError):
+            self.connection_lost.emit(str(exc))
+            return
+        _log.warning("Audit failed: %s", exc)
+        ErrorDialog(
+            title="Audit failed",
+            message="The audit could not complete.",
+            detail=str(exc),
+            parent=self,
+        ).exec()
 
     def _on_edit_clicked(self, record: dict[str, Any]) -> None:
         identifier = record.get("instance_identifier")

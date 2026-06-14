@@ -20,7 +20,11 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.repositories import instance_membership, instances
+from crmbuilder_v2.access.repositories import (
+    instance_membership,
+    instances,
+    inventory,
+)
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
@@ -194,6 +198,28 @@ def list_memberships(
                 state=state,
             )
         )
+
+
+@router.get("/{identifier}/membership-summary")
+def membership_summary(identifier: str):
+    """Per-member-type present/drifted/absent counts for this instance (PI-188)."""
+    with readonly_session() as s:
+        if instances.get_instance(s, identifier, include_deleted=True) is None:
+            raise NotFoundError("instance", identifier)
+        return ok(inventory.membership_summary(s, instance_identifier=identifier))
+
+
+@router.get("/{identifier}/publish-plan")
+def publish_plan(identifier: str):
+    """The PRJ-025 publish handoff: canonical objects to push to this target.
+
+    Every canonical design object not already ``present`` in the target
+    (drifted / absent / never audited) — the set PRJ-025 generates and applies.
+    """
+    with readonly_session() as s:
+        if instances.get_instance(s, identifier, include_deleted=True) is None:
+            raise NotFoundError("instance", identifier)
+        return ok(inventory.publish_plan(s, instance_identifier=identifier))
 
 
 @router.post("/{identifier}/audit")
