@@ -53,6 +53,10 @@ def _make_client(**method_returns: Any) -> MagicMock:
     # run_audit and reads clientDefs; default it to empty unless overridden.
     if "get_client_defs" not in method_returns:
         client.get_client_defs.return_value = (200, {})
+    # Entity formula-script capture (REQ-122) runs by default inside
+    # run_audit; default it to "no formula" unless the test overrides it.
+    if "get_entity_formula" not in method_returns:
+        client.get_entity_formula.return_value = (200, {})
     return client
 
 

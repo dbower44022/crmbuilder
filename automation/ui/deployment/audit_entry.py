@@ -201,6 +201,9 @@ class AuditEntry(QWidget):
         self._cb_field_dynamic_logic = QCheckBox("Field dynamic logic")
         self._cb_field_dynamic_logic.setChecked(True)
         scope_layout.addWidget(self._cb_field_dynamic_logic)
+        self._cb_formula_scripts = QCheckBox("Entity formula scripts")
+        self._cb_formula_scripts.setChecked(True)
+        scope_layout.addWidget(self._cb_formula_scripts)
 
         content_layout.addWidget(scope_group)
 
@@ -517,6 +520,7 @@ class AuditEntry(QWidget):
             include_filtered_tabs=self._cb_filtered_tabs.isChecked(),
             include_email_templates=self._cb_email_templates.isChecked(),
             include_field_dynamic_logic=self._cb_field_dynamic_logic.isChecked(),
+            include_formula_scripts=self._cb_formula_scripts.isChecked(),
             selected_entities=selected,
         )
 
