@@ -37,6 +37,7 @@ from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.detail_window_manager import DetailWindowManager
 from crmbuilder_v2.ui.exceptions import StorageConnectionError
+from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
 from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.chat import ChatPanel
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
@@ -313,6 +314,12 @@ class MainWindow(QMainWindow):
         content_layout = QHBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
+        # REQ-136 (PI-177): a filter box above the sidebar list narrows its
+        # entries as the user types. Owned here (the sidebar itself is a
+        # QListWidget; the input sits above it in the sidebar column).
+        self._sidebar_search = LinkFilterInput(object_name="sidebar_search_input")
+        self._sidebar_search.setPlaceholderText("Filter navigation…")
+        self._sidebar_search.filterChanged.connect(self._sidebar.filter_entries)
         # v0.5 slice D: the top-strip is the first child of the sidebar
         # column when an active_context is provided; the sidebar list
         # follows below it.
@@ -328,11 +335,19 @@ class MainWindow(QMainWindow):
             self._top_strip = EngagementTopStrip(self._active_context)
             self._top_strip.clicked.connect(self._on_top_strip_clicked)
             sidebar_layout.addWidget(self._top_strip)
+            sidebar_layout.addWidget(self._sidebar_search)
             sidebar_layout.addWidget(self._sidebar, stretch=1)
             sidebar_col.setFixedWidth(self._sidebar.width())
             content_layout.addWidget(sidebar_col)
         else:
-            content_layout.addWidget(self._sidebar)
+            sidebar_col = QWidget()
+            sidebar_layout = QVBoxLayout(sidebar_col)
+            sidebar_layout.setContentsMargins(0, 0, 0, 0)
+            sidebar_layout.setSpacing(0)
+            sidebar_layout.addWidget(self._sidebar_search)
+            sidebar_layout.addWidget(self._sidebar, stretch=1)
+            sidebar_col.setFixedWidth(self._sidebar.width())
+            content_layout.addWidget(sidebar_col)
         content_layout.addWidget(self._stack, stretch=1)
         self._content_widget = content_widget
 

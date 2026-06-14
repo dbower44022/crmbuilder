@@ -260,16 +260,24 @@ class Sidebar(QListWidget):
             f"  padding-bottom: {t('space.4')};"
             f"}}"
         )
+        # REQ-136 (PI-177): filter text + collapsed-group state. Headers are
+        # clickable to toggle their group; the filter hides non-matching
+        # entries (and headers whose entries all hide).
+        self._filter_text: str = ""
+        self._collapsed_groups: set[str] = set()
         self.setItemDelegate(SidebarItemDelegate(self))
         self._build_items()
         self.currentTextChanged.connect(self._on_current_text_changed)
+        self.itemClicked.connect(self._on_item_clicked)
 
     def _build_items(self) -> None:
         """Populate the list with group headers and entry rows."""
         for group_index, (title, entries) in enumerate(SIDEBAR_GROUPS):
             header = QListWidgetItem(title)
             header.setData(_HEADER_ROLE, True)
-            header.setFlags(Qt.ItemFlag.NoItemFlags)
+            # REQ-136 (PI-177): headers are enabled (so a click toggles the
+            # group) but not selectable (selection never lands on a header).
+            header.setFlags(Qt.ItemFlag.ItemIsEnabled)
             header_font = QFont(self.font())
             header_font.setFamily(t("font.family.default"))
             header_font.setPixelSize(_px("font.size.caption"))
@@ -306,6 +314,72 @@ class Sidebar(QListWidget):
             and not current.data(_HEADER_ROLE)
         ):
             self.selection_changed.emit(text)
+
+    # ------------------------------------------------------------------
+    # Filter + collapse (REQ-136 / PI-177)
+    # ------------------------------------------------------------------
+
+    def _iter_groups(self) -> list[tuple[QListWidgetItem, list[QListWidgetItem]]]:
+        """Return ``[(header_item, [entry_items, ...]), ...]`` in display order."""
+        groups: list[tuple[QListWidgetItem, list[QListWidgetItem]]] = []
+        current_header: QListWidgetItem | None = None
+        current_entries: list[QListWidgetItem] = []
+        for row in range(self.count()):
+            item = self.item(row)
+            if item is None:
+                continue
+            if item.data(_HEADER_ROLE):
+                if current_header is not None:
+                    groups.append((current_header, current_entries))
+                current_header = item
+                current_entries = []
+            else:
+                current_entries.append(item)
+        if current_header is not None:
+            groups.append((current_header, current_entries))
+        return groups
+
+    def filter_entries(self, text: str) -> None:
+        """Narrow the sidebar to entries matching ``text`` (case-insensitive).
+
+        An active (non-empty) query overrides collapse state so every match
+        shows regardless of which group it's in, and a header hides when none
+        of its entries match. Clearing the query restores the collapse state.
+        """
+        self._filter_text = text or ""
+        self._apply_visibility()
+
+    def set_group_collapsed(self, title: str, collapsed: bool) -> None:
+        """Collapse or expand a group by its header title."""
+        if collapsed:
+            self._collapsed_groups.add(title)
+        else:
+            self._collapsed_groups.discard(title)
+        self._apply_visibility()
+
+    def is_group_collapsed(self, title: str) -> bool:
+        return title in self._collapsed_groups
+
+    def _apply_visibility(self) -> None:
+        query = self._filter_text.strip().lower()
+        for header_item, entries in self._iter_groups():
+            collapsed = header_item.text() in self._collapsed_groups
+            any_visible = False
+            for entry in entries:
+                if query:
+                    visible = query in entry.text().lower()
+                else:
+                    visible = not collapsed
+                entry.setHidden(not visible)
+                any_visible = any_visible or visible
+            # Hide a header only when filtering and nothing in it matches.
+            header_item.setHidden(bool(query) and not any_visible)
+
+    def _on_item_clicked(self, item: QListWidgetItem) -> None:
+        if item is None or not item.data(_HEADER_ROLE):
+            return
+        title = item.text()
+        self.set_group_collapsed(title, title not in self._collapsed_groups)
 
     def _is_header_text(self, text: str) -> bool:
         item = self._item_for_label(text)

@@ -91,6 +91,64 @@ def test_search_disabled_where_incompatible():
     assert ReferencesPanel._search_enabled is False
 
 
+# ----------------------------------------------------------------------
+# F — REQ-136 / PI-177: sidebar filter + collapsible groups.
+# ----------------------------------------------------------------------
+
+
+def test_sidebar_filter_hides_nonmatching(qtbot):
+    from crmbuilder_v2.ui.sidebar import Sidebar
+
+    sb = Sidebar()
+    qtbot.addWidget(sb)
+    sb.filter_entries("Decisions")
+    assert not sb._entry_for_label("Decisions").isHidden()
+    assert sb._entry_for_label("Risks").isHidden()
+    sb.filter_entries("")
+    assert not sb._entry_for_label("Risks").isHidden()
+
+
+def test_sidebar_group_collapse(qtbot):
+    from crmbuilder_v2.ui.sidebar import Sidebar
+
+    sb = Sidebar()
+    qtbot.addWidget(sb)
+    sb.set_group_collapsed("Governance", True)
+    assert sb.is_group_collapsed("Governance")
+    assert sb._entry_for_label("Decisions").isHidden()
+    sb.set_group_collapsed("Governance", False)
+    assert not sb._entry_for_label("Decisions").isHidden()
+
+
+def test_sidebar_filter_overrides_collapse(qtbot):
+    from crmbuilder_v2.ui.sidebar import Sidebar
+
+    sb = Sidebar()
+    qtbot.addWidget(sb)
+    sb.set_group_collapsed("Governance", True)
+    assert sb._entry_for_label("Decisions").isHidden()
+    sb.filter_entries("Decisions")
+    assert not sb._entry_for_label("Decisions").isHidden()
+    sb.filter_entries("")
+    assert sb._entry_for_label("Decisions").isHidden()
+
+
+def test_sidebar_header_click_toggles_collapse(qtbot):
+    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE, Sidebar
+
+    sb = Sidebar()
+    qtbot.addWidget(sb)
+    header = next(
+        sb.item(r)
+        for r in range(sb.count())
+        if sb.item(r).data(_HEADER_ROLE) and sb.item(r).text() == "Governance"
+    )
+    sb._on_item_clicked(header)
+    assert sb.is_group_collapsed("Governance")
+    sb._on_item_clicked(header)
+    assert not sb.is_group_collapsed("Governance")
+
+
 def test_read_only_line_sets_full_value_tooltip(qapp):
     long = "x" * 300
     w = gh.read_only_line(long)
