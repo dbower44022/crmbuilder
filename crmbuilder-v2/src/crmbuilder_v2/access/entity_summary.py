@@ -78,6 +78,9 @@ _SPECS: dict[str, _Spec] = {
     # PI-161 (service.md): one cross-domain service; client-language name in
     # the title slot.
     "service": _Spec(models.Service, "service_identifier", "service_name", "service_status", "service_created_at", "service_updated_at"),
+    # PI-186 (PRJ-027): one CRM-connection instance; the connection name in
+    # the title slot.
+    "instance": _Spec(models.Instance, "instance_identifier", "instance_name", "instance_status", "instance_created_at", "instance_updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),
