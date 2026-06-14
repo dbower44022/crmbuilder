@@ -529,6 +529,31 @@ PROJECT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "superseded": frozenset(),
 }
 
+# ADO execution_mode (PRJ-026 / PI-183, DEC-423..425). The structural risk gate
+# on a Project and a Planning Item that controls whether the ADO Project Manager
+# dispatcher may touch it — replacing the fragile "don't point the ADO there"
+# convention with an enforced field.
+#   - ``ado``               — the dispatcher may claim/dispatch freely.
+#   - ``ado_with_approval`` — dispatchable only after a human records approval
+#                             (the ``dispatch_approved`` flag on the PI).
+#   - ``interactive``       — never dispatched by the ADO; a human executes and
+#                             closes it directly.
+# Default is ``ado``. A Planning Item's *effective* mode is the more restrictive
+# of its own value and its parent Project's (see ``EXECUTION_MODE_RANK`` and
+# ``effective_execution_mode`` in the access layer).
+EXECUTION_MODES: frozenset[str] = frozenset(
+    {"ado", "ado_with_approval", "interactive"}
+)
+# Restrictiveness ordering — higher rank wins when resolving a PI's effective
+# mode against its Project's. ``ado`` is least restrictive (free dispatch);
+# ``interactive`` is most (never dispatched).
+EXECUTION_MODE_RANK: dict[str, int] = {
+    "ado": 0,
+    "ado_with_approval": 1,
+    "interactive": 2,
+}
+DEFAULT_EXECUTION_MODE = "ado"
+
 # `workstream` (delivery phase) — PI-112 Phase 4, DEC-343/DEC-349. The NEW
 # meaning of "Workstream": a single delivery phase of one Planning Item (the
 # old thematic container was renamed Project). The phase type is a controlled

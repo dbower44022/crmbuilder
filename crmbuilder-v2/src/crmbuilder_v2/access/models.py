@@ -59,6 +59,7 @@ from crmbuilder_v2.access.vocab import (
     ENTITY_STATUSES,
     ENTITY_TYPES,
     EVIDENCE_SUBJECT_TYPES,
+    EXECUTION_MODES,
     FIELD_STATUSES,
     FIELD_TYPES,
     FINDING_RESOLUTION_METHODS,
@@ -591,6 +592,20 @@ class PlanningItem(EngagementScopedMixin, Base):
     area: Mapped[list | None] = mapped_column(
         JSONColumnNoneAsNull, nullable=True
     )
+    # PI-183 / DEC-423: the ADO risk gate on this item. NOT NULL, defaults to
+    # ``ado``. A PI can only make itself *more* restrictive than its Project;
+    # its effective mode is the more restrictive of this value and its parent
+    # Project's ``project_execution_mode`` (resolved in the access layer).
+    execution_mode: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="ado", server_default="ado"
+    )
+    # PI-183 / DEC-424: human approval signal for an ``ado_with_approval`` item.
+    # The dispatcher treats such an item as eligible only when this is True.
+    # The only write path is POST /planning-items/{id}/approve-dispatch (DEC-424
+    # / REQ-155) — not a general field update. NOT NULL, defaults to False.
+    dispatch_approved: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     # PI-077: orchestrator claim. ``claimed_by`` holds the conversation
     # identifier (CONV-NNN) of the agent working the item; both columns
     # are NULL when the item is unclaimed and both set when claimed. The
@@ -625,6 +640,14 @@ class PlanningItem(EngagementScopedMixin, Base):
             "(claimed_by IS NULL AND claimed_at IS NULL) OR "
             "(claimed_by IS NOT NULL AND claimed_at IS NOT NULL)",
             name="ck_planning_claim_pairing",
+        ),
+        CheckConstraint(
+            _check_in("execution_mode", EXECUTION_MODES),
+            name="ck_planning_execution_mode",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("dispatch_approved"),
+            name="ck_planning_dispatch_approved",
         ),
         UniqueConstraint(
             "engagement_id", "identifier", name="uq_planning_engagement_identifier"
@@ -1602,6 +1625,13 @@ class Project(EngagementScopedPKMixin, Base):
     project_purpose: Mapped[str] = mapped_column(Text, nullable=False)
     project_description: Mapped[str] = mapped_column(Text, nullable=False)
     project_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # PI-183 / DEC-423: the ADO risk gate. Controls whether the ADO Project
+    # Manager dispatcher may dispatch this Project's Planning Items. A PI may
+    # override with a more restrictive value; its effective mode is resolved in
+    # the access layer. NOT NULL, defaults to ``ado`` (free dispatch).
+    project_execution_mode: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="ado", server_default="ado"
+    )
     project_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -1632,6 +1662,10 @@ class Project(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _check_in("project_status", PROJECT_STATUSES),
             name="ck_project_status",
+        ),
+        CheckConstraint(
+            _check_in("project_execution_mode", EXECUTION_MODES),
+            name="ck_project_execution_mode",
         ),
         Index("ix_projects_project_status", "project_status"),
         Index("ix_projects_project_deleted_at", "project_deleted_at"),
