@@ -73,6 +73,8 @@ from crmbuilder_v2.access.vocab import (
     FINDING_STATUSES,
     FINDING_TYPES,
     INSTANCE_AUTH_METHODS,
+    INSTANCE_MEMBERSHIP_MEMBER_TYPES,
+    INSTANCE_MEMBERSHIP_STATES,
     INSTANCE_ROLES,
     INSTANCE_STATUSES,
     INSTANCE_VENDORS,
@@ -2320,6 +2322,78 @@ class Instance(EngagementScopedPKMixin, Base):
         ),
         Index("ix_instances_instance_status", "instance_status"),
         Index("ix_instances_instance_deleted_at", "instance_deleted_at"),
+    )
+
+
+class InstanceMembership(EngagementScopedMixin, Base):
+    """PI-185 (PRJ-027) — the per-(canonical design object, instance) join.
+
+    A lightweight engagement-scoped child table (integer PK, **not** a
+    prefixed-identifier governance entity — no ``change_log`` / ``refs``
+    participation), mirroring ``FieldOption``. One row records whether a
+    canonical design object (``member_type`` ∈ {entity, field, association},
+    DEC-433) identified by ``member_identifier`` is ``present`` / ``drifted`` /
+    ``absent`` in a given ``instance`` (DEC-427), with a sparse per-attribute
+    ``override`` JSON capturing only the attributes whose audited value differs
+    from the canonical record (DEC-432). ``last_audited_at`` stamps when the
+    state was last observed. Reconcile upserts these rows idempotently
+    (uniqueness on engagement + instance + member). See §5 of
+    ``prj-027-multi-instance-audit-inventory-architecture.md``.
+    """
+
+    __tablename__ = "instance_memberships"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    instance_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    member_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    member_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    override: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    last_audited_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "instance_identifier"],
+            ["instances.engagement_id", "instances.instance_identifier"],
+            ondelete="CASCADE",
+            name="fk_instance_memberships_instance",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "instance_identifier",
+            "member_type",
+            "member_identifier",
+            name="uq_instance_membership",
+        ),
+        CheckConstraint(
+            _check_in("member_type", INSTANCE_MEMBERSHIP_MEMBER_TYPES),
+            name="ck_instance_membership_member_type",
+        ),
+        CheckConstraint(
+            _check_in("state", INSTANCE_MEMBERSHIP_STATES),
+            name="ck_instance_membership_state",
+        ),
+        Index(
+            "ix_instance_memberships_instance",
+            "engagement_id",
+            "instance_identifier",
+        ),
+        Index(
+            "ix_instance_memberships_member",
+            "engagement_id",
+            "member_type",
+            "member_identifier",
+        ),
     )
 
 

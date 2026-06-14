@@ -2081,6 +2081,53 @@ class StorageClient:
             message="Expected {'next': str} body for next_instance_identifier",
         )
 
+    # --- audit / inventory (PI-185 / PI-188) ---------------------------------
+
+    def audit_instance(self, identifier: str) -> dict[str, Any]:
+        """POST /instances/{id}/audit. Reconciles the instance; returns the summary.
+
+        The summary is ``{entities, fields, associations}``, each a
+        ``{seen, created, present, drifted, absent}`` dict.
+        """
+        result = self._request("POST", f"/instances/{identifier}/audit")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for audit_instance",
+            )
+        return result
+
+    def list_instance_memberships(
+        self,
+        identifier: str,
+        *,
+        member_type: str | None = None,
+        state: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /instances/{id}/memberships (optionally filtered)."""
+        path = f"/instances/{identifier}/memberships"
+        params = []
+        if member_type is not None:
+            params.append(f"member_type={member_type}")
+        if state is not None:
+            params.append(f"state={state}")
+        if params:
+            path = f"{path}?{'&'.join(params)}"
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_membership_summary(self, identifier: str) -> dict[str, Any]:
+        """GET /instances/{id}/membership-summary."""
+        result = self._request(
+            "GET", f"/instances/{identifier}/membership-summary"
+        )
+        return result if isinstance(result, dict) else {}
+
+    def get_publish_plan(self, identifier: str) -> dict[str, Any]:
+        """GET /instances/{id}/publish-plan (the PRJ-025 publish handoff)."""
+        result = self._request("GET", f"/instances/{identifier}/publish-plan")
+        return result if isinstance(result, dict) else {}
+
     # ------------------------------------------------------------------
     # Terms (glossary; PI-061)
     # ------------------------------------------------------------------

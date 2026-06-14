@@ -15,14 +15,29 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from crmbuilder_v2 import secrets
-from crmbuilder_v2.access.exceptions import NotFoundError
-from crmbuilder_v2.access.repositories import instances
+from crmbuilder_v2.access.exceptions import (
+    FieldError,
+    NotFoundError,
+    UnprocessableError,
+)
+from crmbuilder_v2.access.repositories import (
+    instance_membership,
+    instances,
+    inventory,
+)
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     InstanceCreateIn,
     InstancePatchIn,
     InstanceReplaceIn,
+)
+from crmbuilder_v2.introspect.espo_client import EspoIntrospectionClient
+from crmbuilder_v2.introspect.reconcile import (
+    ReconcileError,
+    reconcile_associations,
+    reconcile_entities,
+    reconcile_fields,
 )
 
 router = APIRouter(prefix="/instances", tags=["instances"])
@@ -165,3 +180,106 @@ def delete(identifier: str):
 def restore(identifier: str):
     with writable_session() as s:
         return ok(instances.restore_instance(s, identifier))
+
+
+@router.get("/{identifier}/memberships")
+def list_memberships(
+    identifier: str, member_type: str | None = None, state: str | None = None
+):
+    """Per-(object, instance) membership rows for this instance (PI-185)."""
+    with readonly_session() as s:
+        if instances.get_instance(s, identifier, include_deleted=True) is None:
+            raise NotFoundError("instance", identifier)
+        return ok(
+            instance_membership.list_memberships(
+                s,
+                instance_identifier=identifier,
+                member_type=member_type,
+                state=state,
+            )
+        )
+
+
+@router.get("/{identifier}/membership-summary")
+def membership_summary(identifier: str):
+    """Per-member-type present/drifted/absent counts for this instance (PI-188)."""
+    with readonly_session() as s:
+        if instances.get_instance(s, identifier, include_deleted=True) is None:
+            raise NotFoundError("instance", identifier)
+        return ok(inventory.membership_summary(s, instance_identifier=identifier))
+
+
+@router.get("/{identifier}/publish-plan")
+def publish_plan(identifier: str):
+    """The PRJ-025 publish handoff: canonical objects to push to this target.
+
+    Every canonical design object not already ``present`` in the target
+    (drifted / absent / never audited) — the set PRJ-025 generates and applies.
+    """
+    with readonly_session() as s:
+        if instances.get_instance(s, identifier, include_deleted=True) is None:
+            raise NotFoundError("instance", identifier)
+        return ok(inventory.publish_plan(s, instance_identifier=identifier))
+
+
+@router.post("/{identifier}/audit")
+def audit(identifier: str):
+    """Audit (pull) this instance, reconciling its structure into the inventory.
+
+    Reconciles custom entities, then their custom fields, then custom-to-custom
+    relationships (PI-185 slices 1-2b). Builds an introspection client from the
+    instance's stored connection + keyring secret, then runs the reconcile
+    engine. Returns the per-object-type reconcile summary.
+    """
+    with writable_session() as s:
+        rec = instances.get_instance(s, identifier)
+        if rec is None:
+            raise NotFoundError("instance", identifier)
+        if rec.get("instance_role") == "target":
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "instance_role",
+                        "not_auditable",
+                        "a target-only instance cannot be audited; set its "
+                        "role to source or both",
+                    )
+                ]
+            )
+        ref = rec.get("instance_secret_ref")
+        api_key = secrets.get_secret(ref) if ref else ""
+        if not api_key:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "secret",
+                        "missing_credentials",
+                        "instance has no stored credentials to authenticate the "
+                        "audit",
+                    )
+                ]
+            )
+        key_ref = rec.get("instance_secret_key_ref")
+        client = EspoIntrospectionClient(
+            base_url=rec["instance_url"],
+            api_key=api_key,
+            secret_key=secrets.get_secret(key_ref) if key_ref else None,
+            auth_method=rec.get("instance_auth_method") or "api_key",
+        )
+        try:
+            entities = reconcile_entities(
+                s, instance_identifier=identifier, client=client
+            )
+            fields = reconcile_fields(
+                s, instance_identifier=identifier, client=client
+            )
+            associations = reconcile_associations(
+                s, instance_identifier=identifier, client=client
+            )
+        except ReconcileError as exc:
+            raise UnprocessableError(
+                [FieldError("audit", "introspection_failed", str(exc))]
+            ) from exc
+        return ok(
+            {"entities": entities, "fields": fields, "associations": associations}
+        )

@@ -84,6 +84,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "message_templates",
         # PI-186 (PRJ-027) instance entity.
         "instances",
+        # PI-185 (PRJ-027) per-(object, instance) membership join.
+        "instance_memberships",
     }
 )
 
