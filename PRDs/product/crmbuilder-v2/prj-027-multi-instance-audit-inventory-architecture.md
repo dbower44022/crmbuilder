@@ -202,3 +202,94 @@ signs off in the Review panel.
   vs per-attribute)? Leaning per-attribute to keep overrides sparse.
 - **Relationship representation** — relationships as first-class inventory objects vs
   attributes of entities; affects membership rows for relationships.
+
+## 13. Structured instance deploy configuration (scoped follow-on)
+
+**Status:** Scoped 2026-06-15. Candidate requirement **REQ-172** queued for Review-panel
+approval; build **PI-201** (Draft). Provenance: **SES-191 / CNV-100 → TOP-091**; design
+**DEC-447**. Not part of the original PI-184 design — added when the V1→V2 instance
+migration surfaced that deploy/provisioning config had nowhere structured to live.
+
+### 13.1 Motivation
+
+The `instance` entity (§3, PI-186) deliberately models only the **REST-API audit/publish
+connection** (url, vendor, role, auth method, secret refs). V1 additionally carries a 1:1
+`InstanceDeployConfig` row per instance with **SSH/provisioning/hosting/version/backup**
+state used by the V1 deploy engine (deploy, upgrade, recovery, version badge). When the
+two live CBM instances were migrated into V2 (ENG-002, INST-001/002), that deploy config
+had no structured home and was parked as a JSON blob in `instance_notes` as a stopgap.
+This scope replaces the stopgap with a first-class structured store.
+
+### 13.2 Decision (DEC-447)
+
+A dedicated **engagement-scoped `instance_deploy_configs` table**, 1:1 with `instances`,
+**not** columns on `instances` (sparse — cloud/BYO instances have no deploy config) and
+**not** free-text JSON. It is a **non-governed child table** (plain integer PK, no
+`INST-`/`DEP-` style identifier, absent from the `refs` and `change_log` entity-type
+CHECKs), following the established `instance_memberships` pattern — so it needs **no vocab
+or CHECK-constraint extensions**. Secrets are keyring references per **REQ-157**, never
+plaintext.
+
+### 13.3 Table shape
+
+```
+instance_deploy_configs
+  id                          INTEGER PK
+  engagement_id               FK → engagements
+  instance_identifier         } composite FK → instances(engagement_id, instance_identifier)
+                              }   ON DELETE CASCADE; UNIQUE(engagement_id, instance_identifier) (1:1)
+  scenario                    self_hosted | cloud_hosted | bring_your_own   (CHECK)
+  -- SSH connection
+  ssh_host                    TEXT
+  ssh_port                    INTEGER  (default 22)
+  ssh_username                TEXT
+  ssh_auth_type               key | password   (CHECK)
+  ssh_key_path                TEXT        -- filesystem path, not a secret
+  ssh_passphrase_ref          VARCHAR(64) -- keyring ref, nullable
+  -- hosting / DNS
+  domain                      TEXT
+  letsencrypt_email           TEXT
+  admin_email                 TEXT
+  domain_registrar            TEXT
+  dns_provider                TEXT
+  droplet_id                  TEXT
+  db_root_password_ref        VARCHAR(64) -- keyring ref
+  -- version tracking
+  current_espocrm_version     TEXT
+  latest_espocrm_version      TEXT
+  last_upgrade_at             DATETIME
+  cert_expiry_date            DATE
+  -- backup state
+  backups_enabled             BOOLEAN
+  last_backup_paths           JSON        -- list[str]
+  -- password-manager pointers (optional)
+  proton_pass_admin_entry     TEXT
+  proton_pass_db_root_entry   TEXT
+  proton_pass_hosting_entry   TEXT
+  created_at / updated_at     DATETIME
+```
+
+Field set mirrors V1 `InstanceDeployConfig` 1:1. JSON column uses the
+`JSON().with_variant(JSONB(), "postgresql")` alias per PI-α; the boolean/CHECK idioms use
+the dialect-rendering constructs in `models.py`. SSH auth via a key uses `ssh_key_path`
+(a path, not sensitive); the optional SSH-key passphrase and the db-root password are the
+only secrets, stored as `crmbuilder:{uuid}` keyring refs (shared `crmbuilder` service,
+already V1-compatible).
+
+### 13.4 Build (PI-201)
+
+1. SQLAlchemy model + `access/repositories/instance_deploy_config.py` (get/upsert/delete,
+   secret-agnostic — refs only, per the §3 instance pattern).
+2. REST sub-resource on the instances router: `GET`/`PUT`/`DELETE
+   /instances/{id}/deploy-config` (router stores plaintext `db_root_password` /
+   `ssh_passphrase` into keyring, persists refs only — same boundary as `POST /instances`).
+3. Dialect-aware migration: SQLite `migrations/` + Postgres `migrations/pg/`.
+4. Desktop: deploy-config fields on the instance panel/dialog (self-hosted scenario only).
+5. **Backfill migration** from the `instance_notes` JSON written during the V1→V2 instance
+   migration (INST-001/002 in ENG-002), then **remove the JSON stopgap** from those notes.
+
+### 13.5 Relationship to PI-199
+
+PI-199 (secure connection-secret storage, REQ-157) and PI-201 share the keyring pattern;
+the db-root/SSH-passphrase secrets here reuse it. Independently schedulable — not
+`blocked_by` — but should land after or alongside PI-199 for a consistent secret surface.
