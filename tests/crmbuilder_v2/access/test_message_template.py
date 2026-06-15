@@ -31,9 +31,12 @@ _EXPECTED_COLUMNS = {
     "message_template_description": "TEXT",
     "message_template_notes": "TEXT",
     "message_template_status": "VARCHAR",
-    "message_template_created_at": "DATETIME",
-    "message_template_updated_at": "DATETIME",
-    "message_template_deleted_at": "DATETIME",
+    # DateTime(timezone=True) reflects as DATETIME on SQLite, TIMESTAMP on
+    # Postgres; this suite runs on both (CRMBUILDER_V2_TEST_PG_URL). str
+    # .startswith accepts a tuple of acceptable prefixes.
+    "message_template_created_at": ("DATETIME", "TIMESTAMP"),
+    "message_template_updated_at": ("DATETIME", "TIMESTAMP"),
+    "message_template_deleted_at": ("DATETIME", "TIMESTAMP"),
     "engagement_id": "VARCHAR",
 }
 

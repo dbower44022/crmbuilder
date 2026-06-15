@@ -31,9 +31,12 @@ _EXPECTED_COLUMNS = {
     "override_attribute": "VARCHAR",
     "override_value": "JSON",
     "override_notes": "TEXT",
-    "override_created_at": "DATETIME",
-    "override_updated_at": "DATETIME",
-    "override_deleted_at": "DATETIME",
+    # DateTime(timezone=True) reflects as DATETIME on SQLite, TIMESTAMP on
+    # Postgres; this suite runs on both (CRMBUILDER_V2_TEST_PG_URL). str
+    # .startswith accepts a tuple of acceptable prefixes.
+    "override_created_at": ("DATETIME", "TIMESTAMP"),
+    "override_updated_at": ("DATETIME", "TIMESTAMP"),
+    "override_deleted_at": ("DATETIME", "TIMESTAMP"),
     "engagement_id": "VARCHAR",
 }
 
