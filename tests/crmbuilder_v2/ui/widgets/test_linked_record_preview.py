@@ -874,6 +874,117 @@ def test_accelerators_intact_after_affordance_installed(qapp, qtbot, monkeypatch
     assert cards[-1].shown["focusable"] is True
 
 
+def test_all_three_triggers_open_same_record_and_coexist(
+    qapp, qtbot, monkeypatch
+):
+    """WTK-154 §6.2 / AC-5: the new affordance, the 400 ms hover-dwell, and the
+    Space key all coexist on the *same* row and resolve the *same* far-side
+    record — the affordance is purely additive, not a replacement of either
+    accelerator.
+    """
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    ctrl = section._preview
+    index = section._proxy.index(0, _COL_DIRECTION)
+    expected = section._row_at(index)["other_id"]
+
+    cards: list[_FakeCard] = []
+
+    def _factory(*_a, **_kw):
+        card = _FakeCard()
+        cards.append(card)
+        return card
+
+    monkeypatch.setattr(preview_mod, "LinkedRecordPreviewCard", _factory)
+
+    # Trigger 1 — the discoverable affordance (click).
+    ctrl._reveal_affordance(section._table, index)
+    ctrl._affordance.click()
+    assert cards[-1].shown["identifier"] == expected
+    assert cards[-1].shown["focusable"] is True  # pinned, like Space
+
+    # Trigger 2 — the 400 ms hover-dwell (transient).
+    ctrl._hover_view = section._table
+    ctrl._hover_index = QModelIndex(index)
+    ctrl._on_dwell_elapsed()
+    assert cards[-1].shown["identifier"] == expected
+    assert cards[-1].shown["focusable"] is False  # transient, unchanged
+
+    # Trigger 3 — the Space key (pinned).
+    section._table.setCurrentIndex(index)
+    ctrl._open_for_selection(section._table)
+    assert cards[-1].shown["identifier"] == expected
+    assert cards[-1].shown["focusable"] is True
+
+    # All three opened a card for the same record — coexisting, not exclusive.
+    assert len(cards) == 3
+
+
+def test_affordance_activates_on_keyboard_space(qapp, qtbot, monkeypatch):
+    """WTK-154 / AC-3: the revealed peek button is keyboard-operable — pressing
+    Space while it holds focus opens the same pinned card a click does, because
+    a real ``QPushButton`` maps Space to ``clicked`` natively. This is the
+    keyboard-only discovery+activation path the always-visible form could not
+    offer without inflating the tab order.
+    """
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    section.show()
+    qtbot.waitExposed(section)
+    ctrl = section._preview
+    index = section._proxy.index(0, _COL_DIRECTION)
+    expected = section._row_at(index)["other_id"]
+
+    cards: list[_FakeCard] = []
+
+    def _factory(*_a, **_kw):
+        card = _FakeCard()
+        cards.append(card)
+        return card
+
+    monkeypatch.setattr(preview_mod, "LinkedRecordPreviewCard", _factory)
+
+    ctrl._reveal_affordance(section._table, index)
+    aff = ctrl._affordance
+    aff.setFocus()
+    # Space on the focused button activates it (Qt-native for QPushButton),
+    # routing through the same _on_affordance_clicked → open_for_index path as a
+    # mouse click — so the keyboard and pointer paths share one open.
+    qtbot.keyClick(aff, Qt.Key.Key_Space)
+    assert cards, "keyboard activation opened no card"
+    assert cards[-1].shown["identifier"] == expected
+    assert cards[-1].shown["focusable"] is True
+
+
+def test_affordance_viewport_leave_starts_dismiss_grace(qapp, qtbot):
+    """WTK-154 / AC-7: leaving the row's viewport while the peek button is shown
+    starts the 200 ms grace (not an immediate hide), so the pointer can travel
+    from the row onto the overlaid button to click it; grace expiry then hides
+    the button alongside the card via ``dismiss``.
+    """
+    from PySide6.QtCore import QEvent
+
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    # Shown so the overlaid button is genuinely ``isVisible()`` (its ancestors
+    # are mapped) — ``_start_grace`` only graces while the button is visible.
+    section.show()
+    qtbot.waitExposed(section)
+    ctrl = section._preview
+    ctrl._reveal_affordance(
+        section._table, section._proxy.index(0, _COL_DIRECTION)
+    )
+    assert _affordance_visible(ctrl)
+    assert not ctrl._grace_timer.isActive()
+    # A real viewport Leave routes through the installed event filter → grace.
+    leave = QEvent(QEvent.Type.Leave)
+    ctrl.eventFilter(section._table.viewport(), leave)
+    assert ctrl._grace_timer.isActive()  # graced, not hidden instantly
+    # Grace expiry (its timeout is wired to dismiss) hides the button.
+    ctrl.dismiss()
+    assert not _affordance_visible(ctrl)
+
+
 # --- Consistent across all three surfaces -----------------------------------
 
 
