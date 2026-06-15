@@ -22,6 +22,7 @@ import pytest
 import uvicorn
 from crmbuilder_v2.runtime import coordinating_runtime as cr
 from crmbuilder_v2.runtime.coordinating_runtime import (
+    _TIMEOUT_RC,
     CoordinatingRuntime,
     MergeResult,
     MergeStatus,
@@ -30,6 +31,7 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     TestRunResult,
     VerifyOutcome,
     _is_harness_crash,
+    _safe_run_tests,
     interpret_merge,
     minimal_contract_prompt,
     operating_protocol,
@@ -117,6 +119,58 @@ def test_is_harness_crash_distinguishes_signal_from_test_failure():
     assert _is_harness_crash(1) is False  # a real pytest test failure
     assert _is_harness_crash(0) is False
     assert _is_harness_crash(5) is False  # pytest "no tests collected"
+    assert _is_harness_crash(_TIMEOUT_RC) is False  # a timeout fails, not retried
+
+
+def test_run_pytest_timeout_does_not_propagate(monkeypatch):
+    # A test run that overruns the deadline must become a failing result, not an
+    # unhandled exception that crashes the whole driver (the real 30-min incident).
+    import subprocess as _sp
+
+    from crmbuilder_v2.runtime import coordinating_runtime as cr
+
+    def _boom(*a, **k):
+        raise _sp.TimeoutExpired(cmd="pytest", timeout=1800, output="partial output")
+
+    monkeypatch.setattr(cr.subprocess, "run", _boom)
+    result = cr.run_pytest("/tmp/wt", "tests/crmbuilder_v2")
+    assert result.passed is False
+    assert result.returncode == _TIMEOUT_RC
+    assert "timed out" in result.output
+
+
+def test_safe_run_tests_never_propagates():
+    # Any runner exception (timeout or otherwise) becomes a failing result.
+    import subprocess as _sp
+
+    def _timeout_runner(wp, target):
+        raise _sp.TimeoutExpired(cmd="pytest", timeout=1800)
+
+    def _other_runner(wp, target):
+        raise RuntimeError("kaboom")
+
+    r1 = _safe_run_tests(_timeout_runner, "/tmp/wt", "tests/crmbuilder_v2")
+    assert r1.passed is False and r1.returncode == _TIMEOUT_RC
+
+    r2 = _safe_run_tests(_other_runner, "/tmp/wt", "tests/crmbuilder_v2")
+    assert r2.passed is False and r2.returncode == 1
+
+
+def test_affected_tests_timeout_fails_gracefully_no_retry(monkeypatch):
+    # End-to-end: a runner that times out yields TESTS_FAILED (driver continues),
+    # is NOT retried (timeout != crash), and never raises.
+    import subprocess as _sp
+
+    calls = {"n": 0}
+
+    def _timeout_runner(wp, target):
+        calls["n"] += 1
+        raise _sp.TimeoutExpired(cmd="pytest", timeout=1800)
+
+    rt = _runtime_for_affected_tests(monkeypatch, _timeout_runner)
+    verdict, _ = rt._run_affected_tests(_FakeWorktree(has_commits=True), "WTK-1")
+    assert verdict is VerifyOutcome.TESTS_FAILED
+    assert calls["n"] == 1  # a timeout is a failure, not a retryable crash
 
 
 class _StatefulRunner:

@@ -196,14 +196,29 @@ def run_pytest(worktree_path: str, target: str, *, timeout: int = 1800) -> TestR
     target that includes UI tests (including the ambiguous-change full-suite
     fallback) crashes mid-run and is mis-reported as a test failure.
     """
-    proc = subprocess.run(
-        ["uv", "run", "pytest", target, "-q"],
-        cwd=worktree_path,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
-    )
+    try:
+        proc = subprocess.run(
+            ["uv", "run", "pytest", target, "-q"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+        )
+    except subprocess.TimeoutExpired as exc:
+        # A test run that overruns the deadline must NOT propagate and crash the
+        # whole driver — it is a failed gate, not an exception. Return a failing
+        # result with the conventional timeout exit code (124); the partial
+        # output (if any) is captured for diagnosis.
+        partial = ""
+        if exc.output:
+            partial = exc.output if isinstance(exc.output, str) else exc.output.decode(errors="replace")
+        return TestRunResult(
+            passed=False,
+            returncode=_TIMEOUT_RC,
+            target=target,
+            output=(f"pytest timed out after {timeout}s\n" + partial)[-20_000:],
+        )
     return TestRunResult(
         passed=proc.returncode == 0,
         returncode=proc.returncode,
@@ -212,12 +227,46 @@ def run_pytest(worktree_path: str, target: str, *, timeout: int = 1800) -> TestR
     )
 
 
+# Synthetic exit code stamped on a test run that overran its deadline (see
+# run_pytest). Conventional "timed out" code (124, GNU `timeout`). A timeout is
+# treated as a real gate failure (TESTS_FAILED, NOT a retryable crash): re-running
+# would just burn another full timeout, and a solo ADO run completes the suite
+# well inside the deadline — a timeout means something is genuinely wrong (a hung
+# test, or load that should not exist when running alone), so surface it, don't
+# silently retry.
+_TIMEOUT_RC = 124
+
+
+def _safe_run_tests(
+    runner: TestRunnerFn, worktree_path: str, target: str
+) -> TestRunResult:
+    """Invoke a test runner, converting ANY exception into a failing result.
+
+    Defense in depth on top of ``run_pytest``'s own ``TimeoutExpired`` handling:
+    the test-gate must NEVER propagate an exception, because that crashes the
+    whole orchestrator with an unhandled traceback instead of failing the gate
+    gracefully (a real incident — a 30-min gate timeout took the driver down). A
+    runner exception becomes ``TESTS_FAILED`` (timeout → ``_TIMEOUT_RC``, else a
+    generic failure), so the phase rolls back and the workstream is flagged."""
+    try:
+        return runner(worktree_path, target)
+    except Exception as exc:  # noqa: BLE001 — the gate must never propagate
+        is_timeout = isinstance(exc, subprocess.TimeoutExpired)
+        return TestRunResult(
+            passed=False,
+            returncode=_TIMEOUT_RC if is_timeout else 1,
+            target=target,
+            output=f"test runner raised {type(exc).__name__}: {exc}"[-20_000:],
+        )
+
+
 def _is_harness_crash(returncode: int) -> bool:
     """True if a test run was killed by a signal (a flaky harness crash) rather
     than producing a pytest result. A signal-kill exits ``128 + N`` (e.g. 134
     SIGABRT, 139 SIGSEGV); pytest's own exit codes are 0-5. A crash is treated
     as transient (retry once), distinct from a real ``rc=1`` test failure
-    (PI-147 crash-tolerance follow-up)."""
+    (PI-147 crash-tolerance follow-up). A timeout (``_TIMEOUT_RC``) is
+    deliberately NOT a crash — it fails the gate without a costly retry."""
     return returncode >= 128
 
 
@@ -723,7 +772,7 @@ class CoordinatingRuntime:
         touched = worktree.changed_files(self.config.base_branch)
         target = select_test_target(touched)
         runner = self.test_runner_fn or run_pytest
-        result = runner(worktree.path, target)
+        result = _safe_run_tests(runner, worktree.path, target)
         if not result.passed and _is_harness_crash(result.returncode):
             # A signal-kill exit (SIGSEGV 139 / SIGABRT 134) is a flaky Qt /
             # test-harness crash, not a real regression — the v2 UI suite has
@@ -734,7 +783,7 @@ class CoordinatingRuntime:
                 f"  affected-tests: {target} crashed (rc={result.returncode}) "
                 "— retrying once (transient harness crash, not a test failure)"
             )
-            result = runner(worktree.path, target)
+            result = _safe_run_tests(runner, worktree.path, target)
         log_path = None
         if not result.passed:
             log_path = self._persist_verify_output(work_task_id, result, worktree)
