@@ -43,8 +43,21 @@ jobs:
           --health-retries 20
     env:
       CRMBUILDER_V2_TEST_PG_URL: postgresql+psycopg://crmb:crmb@localhost:5432/crmbuilder_v2
+      # No display on the runner; the pytest-qt plugin still imports
+      # PySide6.QtGui at pytest_configure, so pin offscreen before pytest runs.
+      QT_QPA_PLATFORM: offscreen
     steps:
       - uses: actions/checkout@v4
+      # pytest-qt's pytest_configure imports PySide6.QtGui at startup (even
+      # though this DB-only run never touches the UI suite), and libQt6Gui
+      # needs libEGL.so.1 et al., which ubuntu-latest doesn't ship — without
+      # these the run dies with an INTERNALERROR before collecting a single
+      # test, failing the non-UI suites too.
+      - name: Install Qt runtime system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon0 libdbus-1-3
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Sync dependencies
