@@ -85,8 +85,17 @@ def test_select_target_single_mirrored_subtree_ui():
     assert select_test_target([f"{_P}ui/widgets/foo.py"]) == "tests/crmbuilder_v2/ui"
 
 
-def test_select_target_two_subtrees_falls_back_to_full_suite():
+def test_select_target_two_mirrored_subtrees_runs_their_union():
+    # PI-200: two mirrored subtrees no longer fall back to the slow full suite —
+    # the gate runs just those two fast packages (union, sorted for determinism).
     target = select_test_target([f"{_P}runtime/a.py", f"{_P}ui/b.py"])
+    assert target == "tests/crmbuilder_v2/runtime tests/crmbuilder_v2/ui"
+
+
+def test_select_target_mirrored_plus_unmirrored_falls_back_to_full_suite():
+    # A mirrored subtree alongside one with no mirror package can't be localized
+    # to packages-only → conservative full suite (widen, never narrow).
+    target = select_test_target([f"{_P}runtime/a.py", f"{_P}brandnew/b.py"])
     assert target == "tests/crmbuilder_v2"
 
 
@@ -207,6 +216,57 @@ def test_run_pytest_timeout_does_not_propagate(monkeypatch):
     assert result.passed is False
     assert result.returncode == _TIMEOUT_RC
     assert "timed out" in result.output
+
+
+def test_run_pytest_splits_multi_package_target_into_separate_args(monkeypatch):
+    # PI-200: select_test_target may return several space-separated packages for
+    # a multi-subtree change — run_pytest must pass each as its own pytest path
+    # arg, not one bogus space-joined path.
+    from crmbuilder_v2.runtime import coordinating_runtime as cr
+
+    captured = {}
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def _fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        captured["timeout"] = kwargs.get("timeout")
+        return _Proc()
+
+    monkeypatch.setattr(cr.subprocess, "run", _fake_run)
+    result = cr.run_pytest(
+        "/tmp/wt", "tests/crmbuilder_v2/runtime tests/crmbuilder_v2/ui"
+    )
+    assert result.passed is True
+    assert captured["cmd"] == [
+        "uv", "run", "pytest",
+        "tests/crmbuilder_v2/runtime", "tests/crmbuilder_v2/ui",
+        "-q",
+    ]
+
+
+def test_run_pytest_default_timeout_is_raised_for_full_suite_backstop(monkeypatch):
+    # PI-200: the default deadline backstops the residual full-suite fallback,
+    # which outgrew the old 1800s kill — it must be larger than 1800s.
+    from crmbuilder_v2.runtime import coordinating_runtime as cr
+
+    captured = {}
+
+    class _Proc:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def _fake_run(cmd, **kwargs):
+        captured["timeout"] = kwargs.get("timeout")
+        return _Proc()
+
+    monkeypatch.setattr(cr.subprocess, "run", _fake_run)
+    cr.run_pytest("/tmp/wt", "tests/crmbuilder_v2")
+    assert captured["timeout"] > 1800
 
 
 def test_safe_run_tests_never_propagates():

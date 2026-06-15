@@ -175,16 +175,21 @@ def _subtree_of(path: str) -> str | None:
 
 
 def select_test_target(touched_paths: Iterable[str]) -> str:
-    """Map the files a task touched to the pytest target to run (PI-147).
+    """Map the files a task touched to the pytest target to run (PI-147, PI-200).
 
-    Returns the mirroring package ``tests/crmbuilder_v2/<sub>`` **iff** every
-    non-doc touched file resolves to the *same* mirrored subtree — counting both
-    source files and their mirror tests, so a feature plus its test stays
-    localized. Otherwise the full ``tests/crmbuilder_v2`` suite — the
-    conservative fallback for an ambiguous change (>1 subtree, a top-level module
-    with no mirror package, a path outside the src/test trees, or an empty set).
-    Doc-only paths are ignored for selection (they cannot affect a test outcome).
-    A localization miss widens coverage, never narrows it.
+    Returns the **union** of mirroring packages ``tests/crmbuilder_v2/<sub>``
+    (space-separated, sorted) **iff** every non-doc touched file resolves to a
+    *mirrored* subtree — counting both source files and their mirror tests, so a
+    feature plus its test stays localized. A change spanning several mirrored
+    subtrees runs just those fast packages, not the whole suite (PI-200: the
+    blunt full-suite fallback had grown past ``run_pytest``'s deadline, so any
+    multi-subtree change timed the gate out).
+
+    The full ``tests/crmbuilder_v2`` suite is reserved for a genuinely
+    *un-localizable* change: a top-level module with no mirror package, a path
+    outside the src/test trees, or a touched subtree with no mirror tests package
+    yet. Doc-only paths are ignored for selection (they cannot affect a test
+    outcome). A localization miss widens coverage, never narrows it.
     """
     subtrees: set[str] = set()
     for path in touched_paths:
@@ -194,11 +199,13 @@ def select_test_target(touched_paths: Iterable[str]) -> str:
         if sub is None:
             return _TEST_ROOT  # an un-localizable non-doc change → full suite
         subtrees.add(sub)
-    if len(subtrees) == 1:
-        (sub,) = tuple(subtrees)
-        if sub in _MIRRORED_SUBTREES:
-            return f"{_TEST_ROOT}/{sub}"
-    # Empty (all-doc — handled upstream), >1 subtree, or unmirrored → full suite.
+    # Every touched non-doc file localized to some subtree. If they ALL map to
+    # mirrored packages — one subtree or several — run the union of just those,
+    # never the whole suite. A single subtree yields the same one-package target
+    # as before; the change is the multi-subtree case (PI-200).
+    if subtrees and subtrees <= _MIRRORED_SUBTREES:
+        return " ".join(f"{_TEST_ROOT}/{sub}" for sub in sorted(subtrees))
+    # Empty (all-doc — handled upstream) or an unmirrored subtree → full suite.
     return _TEST_ROOT
 
 
@@ -219,22 +226,29 @@ class TestRunResult:
 TestRunnerFn = Callable[[str, str], TestRunResult]  # (worktree_path, pytest_target)
 
 
-def run_pytest(worktree_path: str, target: str, *, timeout: int = 1800) -> TestRunResult:
-    """Default test runner: ``uv run pytest <target> -q`` from the worktree root.
+def run_pytest(worktree_path: str, target: str, *, timeout: int = 3600) -> TestRunResult:
+    """Default test runner: ``uv run pytest <target…> -q`` from the worktree root.
 
     The repo's tests run from the repo root (there is no
     ``crmbuilder-v2/pyproject.toml`` — v2 is bundled into the root distribution),
-    so the worktree root *is* the correct cwd and ``target`` is a repo-root
-    relative path.
+    so the worktree root *is* the correct cwd and ``target`` is one or more
+    space-separated repo-root-relative paths (``select_test_target`` returns the
+    union of mirrored packages for a multi-subtree change), split here into
+    separate pytest path arguments.
 
     Runs headless: forces ``QT_QPA_PLATFORM=offscreen`` so the PySide6 UI tests
     do not SIGABRT (rc 134) when the ADO worker has no display — otherwise any
-    target that includes UI tests (including the ambiguous-change full-suite
+    target that includes UI tests (including the un-localizable full-suite
     fallback) crashes mid-run and is mis-reported as a test failure.
+
+    The ``timeout`` default is the backstop for the residual full-suite fallback:
+    that suite has grown past 1800s (PI-200 — a solo run reached 92% at the old
+    30-min kill), so the deadline is 3600s to let a genuinely un-localizable
+    change complete rather than fail its gate purely on wall-clock.
     """
     try:
         proc = subprocess.run(
-            ["uv", "run", "pytest", target, "-q"],
+            ["uv", "run", "pytest", *target.split(), "-q"],
             cwd=worktree_path,
             capture_output=True,
             text=True,
