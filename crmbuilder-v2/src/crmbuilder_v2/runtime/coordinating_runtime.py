@@ -166,6 +166,33 @@ def select_test_target(touched_paths: Iterable[str]) -> str:
     return _TEST_ROOT
 
 
+# Documentation-only file shapes: a change touching ONLY these cannot alter any
+# Python test outcome, so the test-gate is skipped for it (PI-147 follow-up). A
+# Design-phase Work Task that writes only a spec .md was otherwise mapped to the
+# full-suite fallback by select_test_target ("path outside the src tree") — pure
+# waste, and now a 30-min timeout. Kept deliberately narrow: docs only.
+_DOC_ONLY_SUFFIXES = (".md", ".rst", ".txt")
+_DOC_ONLY_DIRS = ("PRDs/", "docs/")
+
+
+def is_doc_only_change(touched_paths: Iterable[str]) -> bool:
+    """True iff EVERY touched path is documentation (a ``.md``/``.rst``/``.txt``
+    file, or anything under ``PRDs/`` / ``docs/``) — i.e. nothing that could
+    affect a test outcome. An EMPTY/unknown touched set returns ``False`` so the
+    normal conservative full-suite fallback still runs (we only skip when we are
+    sure the change is doc-only)."""
+    paths = list(touched_paths)
+    if not paths:
+        return False
+    for p in paths:
+        if p.endswith(_DOC_ONLY_SUFFIXES):
+            continue
+        if any(p == d.rstrip("/") or p.startswith(d) for d in _DOC_ONLY_DIRS):
+            continue
+        return False  # a non-doc file → not doc-only
+    return True
+
+
 @dataclass
 class TestRunResult:
     """Outcome of running a pytest target in a worktree (PI-147)."""
@@ -770,6 +797,15 @@ class CoordinatingRuntime:
         integrations.
         """
         touched = worktree.changed_files(self.config.base_branch)
+        if is_doc_only_change(touched):
+            # A doc-only change (e.g. a Design-phase spec .md) cannot break any
+            # test — skip the gate rather than run (and now time out) the full
+            # suite for nothing. Verifies vacuously OK, nothing to persist.
+            self.log(
+                "  affected-tests: doc-only change (no testable source) "
+                "— skipping the test gate"
+            )
+            return VerifyOutcome.OK, None
         target = select_test_target(touched)
         runner = self.test_runner_fn or run_pytest
         result = _safe_run_tests(runner, worktree.path, target)

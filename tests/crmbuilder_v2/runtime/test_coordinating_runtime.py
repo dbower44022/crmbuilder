@@ -33,6 +33,7 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     _is_harness_crash,
     _safe_run_tests,
     interpret_merge,
+    is_doc_only_change,
     minimal_contract_prompt,
     operating_protocol,
     pause_reason_for,
@@ -104,6 +105,46 @@ def test_select_target_empty_falls_back():
 def test_select_target_unmirrored_subtree_falls_back():
     # A real src subtree with no mirroring tests package (e.g. a future one).
     assert select_test_target([f"{_P}brandnew/x.py"]) == "tests/crmbuilder_v2"
+
+
+# --------------------------------------------------------------------------
+# Doc-only change → skip the test gate (a .md spec cannot break tests)
+# --------------------------------------------------------------------------
+
+
+def test_is_doc_only_change_true_for_docs():
+    assert is_doc_only_change(["PRDs/product/crmbuilder-v2/pi-148-design.md"]) is True
+    assert is_doc_only_change(["docs/whatever.rst", "notes.txt"]) is True
+    assert is_doc_only_change([f"{_P}ui/x.md"]) is True  # a .md anywhere
+
+
+def test_is_doc_only_change_false_for_code_or_mixed_or_empty():
+    assert is_doc_only_change([f"{_P}ui/foo.py"]) is False
+    assert is_doc_only_change(["spec.md", f"{_P}runtime/x.py"]) is False  # mixed
+    assert is_doc_only_change([]) is False  # unknown → not doc-only (run the gate)
+    assert is_doc_only_change(["pyproject.toml"]) is False  # config can affect tests
+
+
+def test_affected_tests_skips_gate_for_doc_only(monkeypatch):
+    # PI-148 case: a Design Work Task that writes only a spec .md must NOT run
+    # (and time out) the full suite — the gate is skipped, verdict OK, no run.
+    class _DocWorktree:
+        path = "/tmp/fake-doc-wt"
+
+        def changed_files(self, base_ref):
+            return ["PRDs/product/crmbuilder-v2/pi-148-design.md"]
+
+    called = {"n": 0}
+
+    def _runner(wp, target):
+        called["n"] += 1
+        return TestRunResult(passed=True, returncode=0, target=target)
+
+    rt = _runtime_for_affected_tests(monkeypatch, _runner)
+    verdict, log_path = rt._run_affected_tests(_DocWorktree(), "WTK-1")
+    assert verdict is VerifyOutcome.OK
+    assert log_path is None
+    assert called["n"] == 0  # the test runner was never invoked
 
 
 # --------------------------------------------------------------------------
