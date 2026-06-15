@@ -607,6 +607,9 @@ class ReferencesPanel(ListDetailPanel):
             self._record_at_index,
             self._client,
             self._preview_target,
+            # The panel is column-aware: anchor the peek button on the hovered
+            # Source/Target cell, not the whole row (§3.2 / §4.3).
+            cell_anchored=True,
         )
         self._preview.attach_view(self._table)
         if self._tree is not None:

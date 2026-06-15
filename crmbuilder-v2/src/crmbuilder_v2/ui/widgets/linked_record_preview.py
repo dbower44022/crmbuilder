@@ -19,15 +19,21 @@ resolver (``ReferencesSection._row_at`` / ``ReferencesPanel._record_at_index``),
 so it composes with any sort / grouping / filter state and **never** mutates a
 model (§3.7–§3.8 of the design).
 
-Two reusable classes:
+Three reusable classes:
 
 - :class:`LinkedRecordPreviewCard` — the floating inspector widget. Renders a
   header + always-available fields instantly, then has its type-specific grid
   filled by an optional background enrichment read.
-- :class:`PreviewController` — wires hover dwell + keyboard activation,
-  anchoring, dismiss-on-reorder/regroup/refilter, and the enrichment read into
-  a host view, reusing the host's injected resolver + field extractor. One
-  controller serves both the flat table and the grouped tree of a surface.
+- :class:`PreviewAffordance` — the discoverable per-row *peek* button
+  (PI-148 / WTK-153). A single reused, focusable eye-icon ``QPushButton`` the
+  controller reveals on the hovered/focused row and repositions to its trailing
+  edge; clicking it opens the *same* card as the 400 ms hover-dwell and the
+  Space key, so the preview is findable without being documented.
+- :class:`PreviewController` — wires hover dwell + keyboard activation, the
+  discoverable affordance, anchoring, dismiss-on-reorder/regroup/refilter, and
+  the enrichment read into a host view, reusing the host's injected resolver +
+  field extractor. One controller serves both the flat table and the grouped
+  tree of a surface.
 
 Enrichment uses only the **existing** per-type read
 ``StorageClient.get_<type>(identifier)`` on a background ``Worker`` — no new
@@ -45,6 +51,7 @@ from PySide6.QtCore import (
     QModelIndex,
     QObject,
     QPoint,
+    QRect,
     Qt,
     QTimer,
 )
@@ -54,12 +61,14 @@ from PySide6.QtWidgets import (
     QApplication,
     QGridLayout,
     QLabel,
+    QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
 from crmbuilder_v2.ui.exceptions import NotFoundError
 from crmbuilder_v2.ui.styling import t
+from crmbuilder_v2.ui.widgets.form_helpers import icon_button
 from crmbuilder_v2.ui.widgets.references_section import _fmt_dt
 from crmbuilder_v2.ui.workers import run_in_thread
 
@@ -67,6 +76,11 @@ _DASH = "—"
 
 # Fixed comfortable card width; height sizes to content (§3.3).
 _CARD_WIDTH = 360
+
+# Inset (px) of the peek button from the trailing edge of its anchor rect, so
+# the glyph never overlaps a vertical scrollbar or the sort-precedence header
+# glyphs (§3.2).
+_AFFORDANCE_INSET = 4
 
 # Per-type key-field map (§4.1). ``entity_type`` → ordered ``(label,
 # record_key)`` pairs naming up to three *type-specific* fields to surface in
@@ -350,6 +364,62 @@ class LinkedRecordPreviewCard(QWidget):
         self.move(x, y)
 
 
+class PreviewAffordance(QPushButton):
+    """The discoverable per-row *peek* button (PI-148 / WTK-153, §4.1).
+
+    One reused, focusable eye-icon ``QPushButton`` — the controller lazily
+    creates a single instance and repositions/reparents it to whichever
+    attached view's row (or, on the standalone panel, endpoint cell) is active,
+    so there is never more than one on screen and the tab order is not inflated
+    by N per-row buttons. Chrome is the shared ``form_helpers.icon_button``
+    Icon-only ``28×28`` category (``color.neutral.700``, required tooltip), so
+    it needs no new design token; the only new asset is the bundled Lucide
+    ``eye`` glyph.
+
+    A real button (not a delegate-painted glyph) is natively focusable,
+    tab-reachable, tooltip-bearing, and keyboard-activatable — every §3.5
+    accessibility requirement for free.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        # Borrow the Icon-only chrome (eye glyph, 28×28, neutral.700, tooltip)
+        # from the shared factory by configuring ``self`` — keeps the styling
+        # single-sourced rather than duplicating it here.
+        icon_button("eye", tooltip="Preview", button=self)
+        self.hide()
+
+    def show_at(
+        self,
+        view: QAbstractItemView,
+        *,
+        viewport_rect: QRect,
+        identifier: str,
+    ) -> None:
+        """Reparent onto ``view``'s viewport, label, position, and reveal.
+
+        ``viewport_rect`` is the anchor rect *in viewport coordinates* (the row
+        band on the grids, the hovered endpoint cell on the standalone panel);
+        the button is moved to its trailing edge, vertically centered, inset by
+        :data:`_AFFORDANCE_INSET`. ``identifier`` drives the ``accessibleName``
+        (*"Preview PI-118"*) so a screen reader announces a named control.
+        """
+        viewport = view.viewport()
+        if self.parentWidget() is not viewport:
+            self.setParent(viewport)
+        self.setAccessibleName(f"Preview {identifier}")
+        size = self.size()
+        x = viewport_rect.right() - size.width() - _AFFORDANCE_INSET
+        y = viewport_rect.center().y() - size.height() // 2
+        self.move(max(0, x), max(0, y))
+        self.show()
+        self.raise_()
+
+    def hide_affordance(self) -> None:
+        """Hide the button (kept around for reuse; not deleted, per §4.1)."""
+        self.hide()
+
+
 class PreviewController(QObject):
     """Wires hover + keyboard activation, anchoring, dismissal, and enrichment.
 
@@ -389,6 +459,7 @@ class PreviewController(QObject):
             [dict[str, Any], int], tuple[str, str, str | None, str | None] | None
         ],
         *,
+        cell_anchored: bool = False,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent or host)
@@ -396,10 +467,21 @@ class PreviewController(QObject):
         self._resolver = resolver
         self._client = client
         self._extractor = extractor
+        # Row-trailing placement (grids) vs. hovered-cell placement (the
+        # column-aware standalone panel, where the glyph sits on the Source /
+        # Target cell being pointed at). §3.2.
+        self._cell_anchored = cell_anchored
 
         self._views: list[QAbstractItemView] = []
         self._card: LinkedRecordPreviewCard | None = None
         self._pinned = False  # current card was keyboard-pinned
+
+        # The discoverable peek button (PI-148): one reused instance, plus the
+        # (view, index) it is currently shown for so a click opens exactly that
+        # row's — and on the panel, that cell's column's — record.
+        self._affordance: PreviewAffordance | None = None
+        self._affordance_view: QAbstractItemView | None = None
+        self._affordance_index = QModelIndex()
 
         # Stale-read guard: every open stamps a new token; a read whose token
         # is no longer current is dropped.
@@ -445,6 +527,19 @@ class PreviewController(QObject):
         sel_model = view.selectionModel()
         if sel_model is not None:
             sel_model.currentChanged.connect(self._on_current_changed)
+        # A scroll or column drag-resize would move the anchored row out from
+        # under the peek button, so hide it (it re-reveals on the next
+        # hover/focus); no stale floating glyph (§3.2). Cheap per-view wiring.
+        scrollbar = view.verticalScrollBar()
+        if scrollbar is not None:
+            scrollbar.valueChanged.connect(self._hide_affordance)
+        header = None
+        if hasattr(view, "horizontalHeader"):  # QTableView
+            header = view.horizontalHeader()
+        elif hasattr(view, "header"):  # QTreeView
+            header = view.header()
+        if header is not None:
+            header.sectionResized.connect(self._hide_affordance)
 
     def shutdown(self) -> None:
         """Dismiss any card and wait for in-flight enrichment workers.
@@ -467,6 +562,16 @@ class PreviewController(QObject):
         self, obj: QObject, event: QEvent
     ) -> bool:
         et = event.type()
+        # The peek button overlays the viewport, so crossing onto it fires a
+        # viewport Leave (which would start the dismiss grace). Cancel the grace
+        # while the pointer is on the button, and restart it when it leaves, so
+        # the user can travel from the row onto the button to click it (§3.2).
+        if self._affordance is not None and obj is self._affordance:
+            if et == QEvent.Type.Enter:
+                self._grace_timer.stop()
+            elif et == QEvent.Type.Leave:
+                self._start_grace()
+            return super().eventFilter(obj, event)
         if et == QEvent.Type.MouseMove:
             view = self._view_for_viewport(obj)
             if view is not None and isinstance(event, QMouseEvent):
@@ -495,8 +600,9 @@ class PreviewController(QObject):
             self._dwell_timer.stop()
             self._hover_view = None
             self._hover_index = QModelIndex()
+            self._hide_affordance()
             return
-        # Same cell → leave the running dwell / open card alone.
+        # Same cell → leave the running dwell / open card / shown button alone.
         if (
             view is self._hover_view
             and index.row() == self._hover_index.row()
@@ -507,6 +613,9 @@ class PreviewController(QObject):
         self._hover_view = view
         self._hover_index = QModelIndex(index)
         self._dwell_timer.start()
+        # The discoverability win: reveal the peek button immediately (0 ms),
+        # long before the 400 ms dwell would open a card (§3.2).
+        self._reveal_affordance(view, index)
 
     def _on_dwell_elapsed(self) -> None:
         if self._hover_view is not None and self._hover_index.isValid():
@@ -531,16 +640,35 @@ class PreviewController(QObject):
     def _on_current_changed(
         self, current: QModelIndex, _previous: QModelIndex
     ) -> None:
-        # Arrow-key selection moves a keyboard-pinned card to the new row.
+        view = self._hover_view or (self._views[0] if self._views else None)
+        # Keyboard reveal: a row gaining focus/selection via arrow keys or Tab
+        # shows the peek button on it too, so keyboard-only users discover it
+        # (§3.2). Repositions to the newly-current row.
+        if view is not None and current.isValid():
+            self._reveal_affordance(view, current)
+        # Arrow-key selection also moves a keyboard-pinned card to the new row.
         if self._card is None or not self._pinned:
             return
-        view = self._hover_view or (self._views[0] if self._views else None)
         if view is not None and current.isValid():
             self._open(view, current, focusable=True)
 
     # ------------------------------------------------------------------
     # Open + enrich
     # ------------------------------------------------------------------
+
+    def open_for_index(
+        self, view: QAbstractItemView, index: QModelIndex, *, focusable: bool = True
+    ) -> None:
+        """Open a preview card for a specific ``index`` — the public open path.
+
+        A thin public wrapper over the private :meth:`_open` so the
+        discoverable affordance (and tests) open a card without reaching into a
+        private method, and so the open path stays single-sourced: the
+        affordance click cannot diverge from the hover-dwell and Space triggers
+        (§4.2). Opens the pinned (focusable) variant by default — a deliberate
+        click deserves a card that stays put, matching the Space path.
+        """
+        self._open(view, index, focusable=focusable)
 
     def _open(
         self, view: QAbstractItemView, index: QModelIndex, *, focusable: bool
@@ -653,22 +781,102 @@ class PreviewController(QObject):
             pass
 
     # ------------------------------------------------------------------
+    # Discoverable affordance (PI-148 / WTK-153)
+    # ------------------------------------------------------------------
+
+    def _ensure_affordance(self) -> PreviewAffordance:
+        """Lazily build the single reused peek button and wire its click."""
+        if self._affordance is None:
+            self._affordance = PreviewAffordance()
+            self._affordance.clicked.connect(self._on_affordance_clicked)
+            # Cancel/restart the dismiss grace as the pointer travels onto and
+            # off the overlaid button (handled in ``eventFilter``).
+            self._affordance.installEventFilter(self)
+        return self._affordance
+
+    def _reveal_affordance(
+        self, view: QAbstractItemView, index: QModelIndex
+    ) -> None:
+        """Show the peek button on ``index`` if it is a previewable target.
+
+        Reuses the same ``resolver`` + ``extractor`` guards as :meth:`_open`,
+        so the button appears only for rows that *would* open a card: a group
+        node, an invalid row, or the standalone panel's non-previewable
+        Relationship column reveals **no** button, mirroring "no card" (§3.2).
+        """
+        record = self._resolver(index)
+        if record is None:  # group node / invalid → no button
+            self._hide_affordance()
+            return
+        target = self._extractor(record, index.column())
+        if target is None:  # non-previewable column (panel Relationship)
+            self._hide_affordance()
+            return
+        entity_type, identifier, _title, _relationship = target
+        if not entity_type or not identifier:
+            self._hide_affordance()
+            return
+        affordance = self._ensure_affordance()
+        self._affordance_view = view
+        self._affordance_index = QModelIndex(index)
+        affordance.show_at(
+            view,
+            viewport_rect=self._affordance_rect(view, index),
+            identifier=identifier,
+        )
+
+    def _affordance_rect(
+        self, view: QAbstractItemView, index: QModelIndex
+    ) -> QRect:
+        """Anchor rect (viewport coords) for the peek button's trailing edge.
+
+        Row-trailing on the grids — the full-width band at the row's vertical
+        extent, so the glyph rides the row's right edge regardless of which
+        column the pointer is over. Cell-trailing on the column-aware standalone
+        panel — the hovered Source/Target cell, so the glyph sits on the
+        endpoint being pointed at (§3.2).
+        """
+        cell = view.visualRect(index)
+        if self._cell_anchored:
+            return cell
+        return QRect(0, cell.y(), view.viewport().width(), cell.height())
+
+    def _on_affordance_clicked(self) -> None:
+        """Open the same card the hover/Space paths open, for the shown row."""
+        if (
+            self._affordance_view is not None
+            and self._affordance_index.isValid()
+        ):
+            self.open_for_index(
+                self._affordance_view, self._affordance_index, focusable=True
+            )
+
+    def _hide_affordance(self) -> None:
+        """Hide the peek button and forget the row it was shown for."""
+        if self._affordance is not None:
+            self._affordance.hide_affordance()
+        self._affordance_view = None
+        self._affordance_index = QModelIndex()
+
+    # ------------------------------------------------------------------
     # Dismiss
     # ------------------------------------------------------------------
 
     def dismiss(self) -> None:
-        """Dismiss any open card and invalidate in-flight reads.
+        """Dismiss any open card + peek button and invalidate in-flight reads.
 
         Connected by each surface to its reorder / regroup / refilter signals
-        (§3.7): any change that can move or remove the anchored row closes the
-        card; the user re-points to reopen. Bumping the token here drops a
-        read that resolves after the dismiss.
+        and the right-click menu (§3.6–3.7): any change that can move or remove
+        the anchored row closes the card and hides the button; the user
+        re-points to reopen. Bumping the token here drops a read that resolves
+        after the dismiss.
         """
         self._dwell_timer.stop()
         self._grace_timer.stop()
         self._token += 1
         self._pinned = False
         self._dismiss_card_only()
+        self._hide_affordance()
 
     def _dismiss_card_only(self) -> None:
         if self._card is not None:
@@ -676,5 +884,7 @@ class PreviewController(QObject):
             self._card = None
 
     def _start_grace(self) -> None:
-        if self._card is not None:
+        if self._card is not None or (
+            self._affordance is not None and self._affordance.isVisible()
+        ):
             self._grace_timer.start()

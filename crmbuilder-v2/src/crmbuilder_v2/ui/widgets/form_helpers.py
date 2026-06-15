@@ -278,14 +278,21 @@ def text_link_button(text: str, *, icon_name: str | None = None) -> QPushButton:
     return btn
 
 
-def icon_button(icon_name: str, *, tooltip: str) -> QPushButton:
+def icon_button(
+    icon_name: str, *, tooltip: str, button: QPushButton | None = None
+) -> QPushButton:
     """Build an Icon-only-category button — 28×28 square, no text.
 
     Used for compact toolbar affordances (the panel Refresh button is
     the canonical example). The tooltip is required because the button
     carries no visible label.
+
+    ``button`` lets a ``QPushButton`` subclass borrow the same chrome by
+    passing ``self`` instead of having a fresh button constructed — the
+    icon-button styling stays single-sourced here (the inline preview's
+    ``PreviewAffordance`` is the first such caller).
     """
-    btn = QPushButton()
+    btn = button if button is not None else QPushButton()
     btn.setProperty("buttonCategory", "icon-only")
     btn.setIcon(
         lucide(

@@ -34,11 +34,16 @@ from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.widgets import linked_record_preview as preview_mod
 from crmbuilder_v2.ui.widgets.linked_record_preview import (
     LinkedRecordPreviewCard,
+    PreviewAffordance,
     PreviewController,
     extract_preview_fields,
 )
-from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
-from PySide6.QtCore import QModelIndex, QPoint
+from crmbuilder_v2.ui.widgets.references_section import (
+    EntityFieldsGridSection,
+    ReferencesSection,
+    WorkTaskGridSection,
+)
+from PySide6.QtCore import QModelIndex, QPoint, QRect, Qt
 
 # Column indices (mirror _COLUMNS order in the section widget).
 _COL_DIRECTION = 0
@@ -662,3 +667,316 @@ def test_section_real_hover_starts_dwell_and_opens_card(qapp, qtbot, monkeypatch
     assert ctrl._dwell_timer.isActive()  # hover registered → dwell pending
     ctrl._on_dwell_elapsed()  # fire the dwell deterministically
     assert captured.get("card") is not None  # card opened from the hover
+
+
+# ---------------------------------------------------------------------------
+# Discoverable peek-button affordance (PI-148 / WTK-153)
+# ---------------------------------------------------------------------------
+
+
+def _affordance_visible(ctrl: PreviewController) -> bool:
+    """The controller's reused peek button exists and is not hidden."""
+    return ctrl._affordance is not None and not ctrl._affordance.isHidden()
+
+
+# --- PreviewAffordance widget-level -----------------------------------------
+
+
+def test_affordance_is_focusable_icon_button_hidden_at_rest(qapp, qtbot):
+    aff = PreviewAffordance()
+    qtbot.addWidget(aff)
+    # Icon-only chrome from the shared factory: 28×28, tooltip, no text.
+    assert aff.toolTip() == "Preview"
+    assert aff.text() == ""
+    assert aff.property("buttonCategory") == "icon-only"
+    assert (aff.width(), aff.height()) == (28, 28)
+    # A real QPushButton is natively focusable (the accessibility win, §3.5).
+    assert aff.focusPolicy() != Qt.FocusPolicy.NoFocus
+    # Nothing at rest.
+    assert aff.isHidden()
+
+
+def test_affordance_show_at_labels_positions_and_reveals(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    aff = PreviewAffordance()
+    qtbot.addWidget(aff)
+    rect = QRect(0, 10, 200, 24)
+    aff.show_at(section._table, viewport_rect=rect, identifier="PI-118")
+    # accessibleName names the record (so a screen reader announces it).
+    assert aff.accessibleName() == "Preview PI-118"
+    # Reparented onto the view's viewport and shown at the trailing edge.
+    assert aff.parentWidget() is section._table.viewport()
+    assert not aff.isHidden()
+    assert aff.x() + aff.width() <= rect.right()
+    aff.hide_affordance()
+    assert aff.isHidden()
+
+
+# --- Controller reveal / hide -----------------------------------------------
+
+
+def test_controller_reveals_affordance_on_previewable_row(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    ctrl = section._preview
+    index = section._proxy.index(0, _COL_DIRECTION)
+    ctrl._reveal_affordance(section._table, index)
+    assert _affordance_visible(ctrl)
+    # Remembers the (view, index) so a click targets exactly this row.
+    assert ctrl._affordance_view is section._table
+    assert ctrl._affordance_index.row() == index.row()
+    # The accessibleName matches the resolved far-side record.
+    expected = section._row_at(index)["other_id"]
+    assert ctrl._affordance.accessibleName() == f"Preview {expected}"
+
+
+def test_controller_group_node_reveals_no_affordance(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    section._group_combo.setCurrentIndex(1)  # group by Relationship
+    group_model = section._group_model
+    group_index = group_model.index(0, 0, QModelIndex())
+    assert group_model.is_group_index(group_index)
+    ctrl = section._preview
+    ctrl._reveal_affordance(section._tree, group_index)
+    # Resolver returns None for a group node → no button (mirrors "no card").
+    assert not _affordance_visible(ctrl)
+
+
+def test_controller_invalid_index_in_mousemove_hides_affordance(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    ctrl = section._preview
+    # Reveal first, then a move over empty space (invalid index) hides it.
+    ctrl._reveal_affordance(
+        section._table, section._proxy.index(0, _COL_DIRECTION)
+    )
+    assert _affordance_visible(ctrl)
+    ctrl._on_mouse_move(section._table, QPoint(5, 100_000))  # below all rows
+    assert not _affordance_visible(ctrl)
+
+
+def test_controller_dismiss_hides_affordance(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    ctrl = section._preview
+    ctrl._reveal_affordance(
+        section._table, section._proxy.index(0, _COL_DIRECTION)
+    )
+    assert _affordance_visible(ctrl)
+    ctrl.dismiss()
+    assert not _affordance_visible(ctrl)
+
+
+def test_controller_sort_change_hides_affordance(qapp, qtbot):
+    # A reorder dismisses via the surface's sortKeysChanged → dismiss wiring,
+    # which now hides the button alongside the card.
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    ctrl = section._preview
+    ctrl._reveal_affordance(
+        section._table, section._proxy.index(0, _COL_DIRECTION)
+    )
+    assert _affordance_visible(ctrl)
+    section._proxy.sortKeysChanged.emit()
+    assert not _affordance_visible(ctrl)
+
+
+def test_controller_current_changed_reveals_affordance_for_keyboard(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    ctrl = section._preview
+    index = section._proxy.index(0, _COL_DIRECTION)
+    # Keyboard focus/selection (no card pinned) still reveals the button.
+    ctrl._on_current_changed(index, QModelIndex())
+    assert _affordance_visible(ctrl)
+
+
+def test_controller_affordance_enter_cancels_dismiss_grace(qapp, qtbot):
+    from PySide6.QtCore import QEvent
+
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    ctrl = section._preview
+    ctrl._reveal_affordance(
+        section._table, section._proxy.index(0, _COL_DIRECTION)
+    )
+    ctrl._grace_timer.start()  # pretend the row was just left
+    assert ctrl._grace_timer.isActive()
+    # Travelling onto the button cancels the pending dismiss so it is clickable.
+    enter = QEvent(QEvent.Type.Enter)
+    ctrl.eventFilter(ctrl._affordance, enter)
+    assert not ctrl._grace_timer.isActive()
+
+
+# --- Click opens the SAME card as the accelerators --------------------------
+
+
+def test_affordance_click_opens_same_card_as_space(qapp, qtbot, monkeypatch):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    ctrl = section._preview
+    index = section._proxy.index(0, _COL_DIRECTION)
+    expected = section._row_at(index)["other_id"]
+
+    cards: list[_FakeCard] = []
+
+    def _factory(*_a, **_kw):
+        card = _FakeCard()
+        cards.append(card)
+        return card
+
+    monkeypatch.setattr(preview_mod, "LinkedRecordPreviewCard", _factory)
+
+    # Click path: reveal the button on the row, then activate it.
+    ctrl._reveal_affordance(section._table, index)
+    ctrl._affordance.click()
+    assert cards, "affordance click opened no card"
+    click_card = cards[-1]
+    assert click_card.shown["identifier"] == expected
+    # The click opens the pinned (focusable) variant — like Space, not hover.
+    assert click_card.shown["focusable"] is True
+
+    # Space path on the same row: same identifier, same open path.
+    section._table.setCurrentIndex(index)
+    ctrl._open_for_selection(section._table)
+    space_card = cards[-1]
+    assert space_card.shown["identifier"] == expected
+    assert space_card.shown["focusable"] is True
+
+
+def test_accelerators_intact_after_affordance_installed(qapp, qtbot, monkeypatch):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    ctrl = section._preview
+    assert ctrl is not None  # affordance machinery installed
+
+    cards: list[_FakeCard] = []
+
+    def _factory(*_a, **_kw):
+        card = _FakeCard()
+        cards.append(card)
+        return card
+
+    monkeypatch.setattr(preview_mod, "LinkedRecordPreviewCard", _factory)
+
+    index = section._proxy.index(0, _COL_DIRECTION)
+    # 400 ms hover-dwell still opens a transient (non-focusable) card.
+    ctrl._hover_view = section._table
+    ctrl._hover_index = QModelIndex(index)
+    ctrl._on_dwell_elapsed()
+    assert cards and cards[-1].shown["focusable"] is False
+
+    # Space still opens a pinned (focusable) card.
+    section._table.setCurrentIndex(index)
+    ctrl._open_for_selection(section._table)
+    assert cards[-1].shown["focusable"] is True
+
+
+# --- Consistent across all three surfaces -----------------------------------
+
+
+def _entity_field_rows() -> list[dict[str, Any]]:
+    return [
+        {
+            "identifier": "FLD-1",
+            "title": "Mentor status",
+            "field_type": "enum",
+            "status": "current",
+            "other_type": "field",
+            "other_id": "FLD-1",
+        }
+    ]
+
+
+def test_affordance_reveals_on_all_three_grid_surfaces(qapp, qtbot):
+    work = WorkTaskGridSection("workstream", "WSK-001", _multi_grid_work_rows())
+    qtbot.addWidget(work)
+    fields = EntityFieldsGridSection("entity", "ENT-1", _entity_field_rows())
+    qtbot.addWidget(fields)
+    refs = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(refs)
+
+    for section in (work, fields, refs):
+        ctrl = section._preview
+        ctrl._reveal_affordance(section._table, section._proxy.index(0, 0))
+        assert _affordance_visible(ctrl), (
+            f"affordance did not reveal on {type(section).__name__}"
+        )
+
+
+def _multi_grid_work_rows() -> list[dict[str, Any]]:
+    return [
+        {
+            "identifier": "WTK-001",
+            "title": "Storage layer migration",
+            "area": "storage",
+            "status": "Complete",
+            "claim_state": "Unclaimed",
+            "other_type": "work_task",
+            "other_id": "WTK-001",
+        }
+    ]
+
+
+def test_affordance_reveals_on_panel_source_and_target_not_relationship(
+    qapp, qtbot
+):
+    panel = _seed_panel(qtbot, _panel_refs())
+    ctrl = panel._preview
+
+    # Source cell (col 0) reveals the button.
+    ctrl._reveal_affordance(panel._table, panel._model.index(0, 0))
+    assert _affordance_visible(ctrl)
+    assert ctrl._affordance.accessibleName() == "Preview SES-008"
+
+    # Target cell (col 2) reveals it, naming the target endpoint.
+    ctrl._reveal_affordance(panel._table, panel._model.index(0, 2))
+    assert _affordance_visible(ctrl)
+    assert ctrl._affordance.accessibleName() == "Preview DEC-032"
+
+    # Relationship cell (col 1) is not previewable → no button.
+    ctrl._reveal_affordance(panel._table, panel._model.index(0, 1))
+    assert not _affordance_visible(ctrl)
+
+
+def test_panel_affordance_is_cell_anchored(qapp, qtbot):
+    panel = _seed_panel(qtbot, _panel_refs())
+    # The standalone panel anchors on the hovered cell, not the whole row.
+    assert panel._preview._cell_anchored is True
+
+
+def test_section_affordance_is_row_anchored(qapp, qtbot):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    # The grids anchor on the row band (default placement).
+    assert section._preview._cell_anchored is False
+
+
+# --- No model restructuring across the affordance lifecycle -----------------
+
+
+def test_affordance_reveal_click_hide_calls_no_model_mutator(
+    qapp, qtbot, monkeypatch
+):
+    section = ReferencesSection("decision", "DEC-001", _multi_row_payload())
+    qtbot.addWidget(section)
+    invalidate_spy = MagicMock(wraps=section._proxy.invalidate)
+    reset_spy = MagicMock(wraps=section._model.beginResetModel)
+    monkeypatch.setattr(section._proxy, "invalidate", invalidate_spy)
+    monkeypatch.setattr(section._model, "beginResetModel", reset_spy)
+    monkeypatch.setattr(
+        preview_mod, "LinkedRecordPreviewCard", lambda *a, **k: _FakeCard()
+    )
+
+    before_cols = section._model.columnCount()
+    ctrl = section._preview
+    index = section._proxy.index(0, _COL_DIRECTION)
+    ctrl._reveal_affordance(section._table, index)
+    ctrl._affordance.click()
+    ctrl._hide_affordance()
+
+    invalidate_spy.assert_not_called()
+    reset_spy.assert_not_called()
+    assert section._model.columnCount() == before_cols
