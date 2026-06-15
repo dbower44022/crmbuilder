@@ -22,6 +22,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -628,7 +629,7 @@ class PlanningItem(EngagementScopedMixin, Base):
     # The only write path is POST /planning-items/{id}/approve-dispatch (DEC-424
     # / REQ-155) — not a general field update. NOT NULL, defaults to False.
     dispatch_approved: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
+        Boolean, nullable=False, default=False, server_default=false()
     )
     # PI-077: orchestrator claim. ``claimed_by`` holds the conversation
     # identifier (CONV-NNN) of the agent working the item; both columns
