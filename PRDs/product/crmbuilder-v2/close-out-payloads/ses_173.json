@@ -1,0 +1,234 @@
+{
+  "label": "PRJ-025 deposit-record backfill \u2014 14 mainline commits (PI-180..197)",
+  "session": {
+    "session_identifier": "SES-173",
+    "session_title": "PRJ-025 Engine-Neutral CRM Design \u2192 Adapters",
+    "session_medium": "chat",
+    "session_medium_metadata": {},
+    "session_participants": [],
+    "session_status": "complete",
+    "session_executive_summary": "Backfill of the PRJ-025 (Engine-Neutral CRM Design \u2192 Adapters) build-closure deposit trail. The project's design records, seven planning items (PI-180/181/182/189/191/196/197), requirements, decisions and resolutions were authored in real time, but the commit records and deposit event were never created. This records the 14 mainline commits that delivered the work \u2014 the design-model spec, entity/field MCP tooling, intrinsic + composite design columns, the engine-adapter framework with the EspoCRM adapter, the Entity PRD emitter, and derived/formula field support \u2014 and emits the deposit event so the git-tracked governance trail is complete.",
+    "session_description": "PRJ-025 session whose deposit/commit trail is being backfilled."
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-087",
+    "conversation_title": "PRJ-025 build + resolution",
+    "conversation_purpose": "Deliver and resolve the PRJ-025 planning items.",
+    "conversation_description": "The conversation that built and resolved PI-180..197; its commit and deposit records are backfilled here.",
+    "conversation_status": "complete",
+    "conversation_summary": "PRJ-025 delivered; deposit trail backfilled.",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-087",
+        "target_type": "session",
+        "target_id": "SES-173",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [],
+  "commits": [
+    {
+      "commit_sha": "b54f71bf88f3c94dfca67169b7831b80cd74745d",
+      "commit_message_first_line": "v2: derived/formula field support \u2014 neutral result-type + formula AST + EspoCRM render (PI-197)",
+      "commit_message_full": "v2: derived/formula field support \u2014 neutral result-type + formula AST + EspoCRM render (PI-197)\n\nPRJ-025 PI-197 (DEC-438): the EspoCRM adapter now renders derived fields\ninstead of deferring them. Adds a neutral derived result-type + a neutral\nstructured formula AST, threads both through the field repo / REST / MCP,\nand compiles them to the EspoCRM formula: block (schema \u00a76.1.3).\n\n- schema: field_derived_result_type (Text) + field_formula (JSON) on Field;\n  vocab DERIVED_RESULT_TYPES / FORMULA_KINDS / FORMULA_AGGREGATE_FUNCTIONS /\n  ARITHMETIC_OPS; migration 0062 (down_revision 0061_pi_195_filtered_tab).\n- access/formulas.py: validate_formula (concat/arithmetic/aggregate).\n- field repo: required-when-derived / forbidden-otherwise result-type gate +\n  formula AST validation, through create/PUT/PATCH; REST schemas + router;\n  MCP create_field/update_field.\n- adapters/espocrm/formulas.py: neutral formula AST -> EspoCRM formula block\n  compiler; model.py renders derived fields as readOnly formula fields\n  (engine_override formula wins; neither formula nor override -> MANUAL-CONFIG).\n- tests: formula validator, field repo+REST, adapter model + e2e (each\n  formula kind asserts validate_program()==[]), migration 0062.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-15T00:10:18-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "9ce3f6ff78c123fb8f13aa64cd45fe15a510532d"
+      ],
+      "commit_files_changed_count": 17
+    },
+    {
+      "commit_sha": "9ce3f6ff78c123fb8f13aa64cd45fe15a510532d",
+      "commit_message_first_line": "v2: Entity PRD document emitter \u2014 product-neutral render from design records (PI-196)",
+      "commit_message_full": "v2: Entity PRD document emitter \u2014 product-neutral render from design records (PI-196)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T21:53:28-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "482fe6926e3d255132aaa54a14c4987e783f13ee"
+      ],
+      "commit_files_changed_count": 4
+    },
+    {
+      "commit_sha": "b7a4b3764318ba16ff0a086a875017211da8b524",
+      "commit_message_first_line": "v2: Phase 0 engine-neutral CRM design-model spec + dual-engine mapping (PI-180)",
+      "commit_message_full": "v2: Phase 0 engine-neutral CRM design-model spec + dual-engine mapping (PI-180)\n\nFixes the shape of the engine-neutral CRM design model before any schema migration: the three dispositions (neutral / derived / engine-override), the neutral entity/field/composite record shapes, and a full EspoCRM+HubSpot dual-engine mapping per attribute (the REQ-142 single-engine-bias guard). Feeds PI-B and PI-C.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T17:13:00-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "ecca3dcf33a6777fa8b888cb57b1f6febeb18bb7"
+      ],
+      "commit_files_changed_count": 1
+    },
+    {
+      "commit_sha": "ecca3dcf33a6777fa8b888cb57b1f6febeb18bb7",
+      "commit_message_first_line": "v2: reconcile PRJ-025 migration chain onto main \u2014 linearize 0055-0058 + fix scoped-table registry (PI-189)",
+      "commit_message_full": "v2: reconcile PRJ-025 migration chain onto main \u2014 linearize 0055-0058 + fix scoped-table registry (PI-189)\n\nResolves the alembic multi-head divergence between main (0053_pi_183 execution_mode, 0054_pi_186 instance entity) and the PRJ-025 stack (0053_pi_182\u20260056_pi_189). Re-chains the four stack migrations after main's head 0054_pi_186 as 0055_pi_182 \u2192 0056_pi_189 \u2192 0057_pi_189 \u2192 0058_pi_189 (single head 0058), renames their migration tests to match, and registers the 6 post-0038 scoped tables (rules/views/automations/dedup_rules/message_templates + main's instances) that test_0038's registry was missing. Full chain validated on a live-DB copy; migration suite + a 2045-test non-UI sweep green.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T17:07:52-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "ce23c1522fa4b999439dabf75178ec04619b41d1"
+      ],
+      "commit_files_changed_count": 9
+    },
+    {
+      "commit_sha": "bb791d8c8b6b1935dbe93eaa459815c1ab5c3abc",
+      "commit_message_first_line": "v2: EspoCRM adapter \u2014 views/automations/dedup + emailTemplates (PI-191 slice 3)",
+      "commit_message_full": "v2: EspoCRM adapter \u2014 views/automations/dedup + emailTemplates (PI-191 slice 3)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T16:44:45-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "6f63141216f75a6a74e705bf66260d86a0eaa023"
+      ],
+      "commit_files_changed_count": 7
+    },
+    {
+      "commit_sha": "6f63141216f75a6a74e705bf66260d86a0eaa023",
+      "commit_message_first_line": "v2: EspoCRM adapter \u2014 associations to relationships + rules to requiredWhen/visibleWhen (PI-191 slice 2)",
+      "commit_message_full": "v2: EspoCRM adapter \u2014 associations to relationships + rules to requiredWhen/visibleWhen (PI-191 slice 2)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T16:24:20-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "b3689218acd2f41d468bc3ca838c839f97decdde"
+      ],
+      "commit_files_changed_count": 9
+    },
+    {
+      "commit_sha": "b3689218acd2f41d468bc3ca838c839f97decdde",
+      "commit_message_first_line": "v2: EspoCRM adapter framework + entity/field YAML generation (PI-191 slice 1)",
+      "commit_message_full": "v2: EspoCRM adapter framework + entity/field YAML generation (PI-191 slice 1)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T15:30:03-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "2bed0c8c5e462b2b3aebf6b5220d3478f86c999b"
+      ],
+      "commit_files_changed_count": 9
+    },
+    {
+      "commit_sha": "2bed0c8c5e462b2b3aebf6b5220d3478f86c999b",
+      "commit_message_first_line": "v2: add dedup_rule + message_template design records (PI-189 slice 3)",
+      "commit_message_full": "v2: add dedup_rule + message_template design records (PI-189 slice 3)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T15:10:15-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "b81bd93721649e899ea9e572ce4e8a8b87c3a17f"
+      ],
+      "commit_files_changed_count": 17
+    },
+    {
+      "commit_sha": "b81bd93721649e899ea9e572ce4e8a8b87c3a17f",
+      "commit_message_first_line": "v2: add rule + view + automation design records w/ neutral condition validator (PI-189 slice 2)",
+      "commit_message_full": "v2: add rule + view + automation design records w/ neutral condition validator (PI-189 slice 2)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T14:51:22-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "4385a22e2ae50bfc4fef73f88e43361343b10fa0"
+      ],
+      "commit_files_changed_count": 23
+    },
+    {
+      "commit_sha": "4385a22e2ae50bfc4fef73f88e43361343b10fa0",
+      "commit_message_first_line": "v2: add association + engine_override design records (PI-189 slice 1)",
+      "commit_message_full": "v2: add association + engine_override design records (PI-189 slice 1)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T14:20:02-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "e685109933e73963883a8185cd5007e16f66a8be"
+      ],
+      "commit_files_changed_count": 18
+    },
+    {
+      "commit_sha": "e685109933e73963883a8185cd5007e16f66a8be",
+      "commit_message_first_line": "v2: surface intrinsic field/entity attributes + field_options editor in the UI (PI-182 UI slice)",
+      "commit_message_full": "v2: surface intrinsic field/entity attributes + field_options editor in the UI (PI-182 UI slice)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T13:09:20-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "5b4b183dbad1ba7616ff02566fa33dba836cff79"
+      ],
+      "commit_files_changed_count": 10
+    },
+    {
+      "commit_sha": "5b4b183dbad1ba7616ff02566fa33dba836cff79",
+      "commit_message_first_line": "v2: add intrinsic field/entity design-intent columns + field_options (PI-182)",
+      "commit_message_full": "v2: add intrinsic field/entity design-intent columns + field_options (PI-182)\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T11:55:23-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "07c8650f717dfc4805624984a70770fff4f9dce4"
+      ],
+      "commit_files_changed_count": 16
+    },
+    {
+      "commit_sha": "07c8650f717dfc4805624984a70770fff4f9dce4",
+      "commit_message_first_line": "v2: expose entity + field records as MCP tools (PI-181)",
+      "commit_message_full": "v2: expose entity + field records as MCP tools (PI-181)\n\nAdd list/get/create/update/delete/restore MCP tools for the entity\n(ENT-NNN) and field (FLD-NNN) methodology records as thin wrappers over\nthe existing REST endpoints. create_field takes the parent entity_identifier\nso the mandatory field_belongs_to_entity edge is established atomically;\ndomain affiliations and field re-parenting reuse the existing add_reference\ntool. Tests mirror the catalog/smoke MCP tool pattern.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T01:37:31-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "b1682d38c69768f76cca3b74891a08894c28bdf4"
+      ],
+      "commit_files_changed_count": 2
+    },
+    {
+      "commit_sha": "5db10bc8feecc30c95d10e0abb4177328d65d383",
+      "commit_message_first_line": "v2: Phase 0 engine-neutral CRM design-model spec + dual-engine mapping (PI-180)",
+      "commit_message_full": "v2: Phase 0 engine-neutral CRM design-model spec + dual-engine mapping (PI-180)\n\nFixes the shape of the engine-neutral CRM design model before any schema migration: the three dispositions (neutral / derived / engine-override), the neutral entity/field/composite record shapes, and a full EspoCRM+HubSpot dual-engine mapping per attribute (the REQ-142 single-engine-bias guard). Feeds PI-B and PI-C.\n\nCo-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>",
+      "commit_author_name": "Doug Bower",
+      "commit_author_email": "doug@dougbower.com",
+      "commit_committed_at": "2026-06-14T01:32:55-04:00",
+      "commit_repository": "crmbuilder",
+      "commit_branch": "main",
+      "commit_parent_shas": [
+        "1b91bc3fb571a31edd6f91738b00ec6e9c3c57b7"
+      ],
+      "commit_files_changed_count": 1
+    }
+  ],
+  "decisions": [],
+  "references": [],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}

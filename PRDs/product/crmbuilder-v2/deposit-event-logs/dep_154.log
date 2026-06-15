@@ -1,0 +1,34 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_173.json
+Label:  PRJ-025 deposit-record backfill — 14 mainline commits (PI-180..197)
+Deposit event: DEP-154
+
+Close-out payload validation: 0 error(s), 2 warning(s).
+  [WARN]  identifier_heads: SES-173 is at-or-below the live head (SES head's next free slot is SES-183). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+  [WARN]  identifier_heads: CNV-087 is at-or-below the live head (CNV head's next free slot is CNV-092). This is expected for an idempotent re-apply (the record already exists); a genuine collision is caught by the API's 409 on apply.
+
+=== conversation (1 record) ===
+  · POST conversation  CNV-087 already present (HTTP 409) — skipping
+
+=== session (1 record) ===
+  · POST session  <unidentified record> already present (HTTP 409) — skipping
+
+=== commits (14 records) ===
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+  ✓ POST commits  <unidentified record> (HTTP 201)
+
+✓ All 16 operations complete.
+
+✓ Recorded apply as deposit_event DEP-154 (HTTP 201).
