@@ -93,7 +93,7 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
 
     _titles = {
         "reference_field": "Reference fields (covered by association records)",
-        "derived_field": "Derived / formula fields (later slice)",
+        "derived_field": "Derived / formula fields not rendered",
         "unmapped_field": "Unmapped fields",
         "field_attribute": "Field attributes with no deploy-validated YAML key",
         "entity_default_sort": "Entity default-sort intent",

@@ -597,6 +597,9 @@ class FieldCreateIn(_Base):
     field_read_only: bool | None = None
     field_unique: bool | None = None
     field_externally_populated: bool | None = None
+    # PRJ-025 PI-197 — derived/formula intent (DEC-438).
+    field_derived_result_type: str | None = None
+    field_formula: dict | None = None
     field_options: list[FieldOptionIn] | None = None
 
 
@@ -628,6 +631,9 @@ class FieldReplaceIn(_Base):
     field_read_only: bool | None = None
     field_unique: bool | None = None
     field_externally_populated: bool | None = None
+    # PRJ-025 PI-197 — derived/formula intent (DEC-438).
+    field_derived_result_type: str | None = None
+    field_formula: dict | None = None
     field_options: list[FieldOptionIn] | None = None
 
 
@@ -659,6 +665,9 @@ class FieldPatchIn(_Base):
     field_read_only: bool | None = None
     field_unique: bool | None = None
     field_externally_populated: bool | None = None
+    # PRJ-025 PI-197 — derived/formula intent (DEC-438).
+    field_derived_result_type: str | None = None
+    field_formula: dict | None = None
     field_options: list[FieldOptionIn] | None = None
 
 

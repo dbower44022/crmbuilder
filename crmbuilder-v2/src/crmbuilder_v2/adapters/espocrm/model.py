@@ -23,6 +23,10 @@ from crmbuilder_v2.adapters.espocrm.conditions import (
     CompileError,
     compile_condition,
 )
+from crmbuilder_v2.adapters.espocrm.formulas import (
+    FormulaCompileError,
+    compile_formula,
+)
 
 ENGINE = "espocrm"
 
@@ -321,6 +325,41 @@ def _map_field_type(field_row: dict) -> str | None:
     return espo_type
 
 
+def _derived_field_type(field_row: dict) -> str | None:
+    """Map a ``derived`` field's ``field_derived_result_type`` to the EspoCRM
+    platform type the computed field carries (PI-197, design §7/§9).
+
+    The result type is one of :data:`DERIVED_RESULT_TYPES` — the same value
+    shapes ``_map_field_type`` handles for a regular field — so it reuses the
+    ``_TYPE_MAP`` + numeric-scale + ``varchar``-format-refinement logic
+    against the result type. Returns ``None`` if the result type is missing
+    or unknown.
+    """
+    result_type = field_row.get("field_derived_result_type")
+    if not result_type:
+        return None
+    return _map_field_type(
+        {
+            "field_type": result_type,
+            "field_numeric_scale": field_row.get("field_numeric_scale"),
+            "field_format": field_row.get("field_format"),
+        }
+    )
+
+
+def _has_formula_source(
+    field_row: dict, index: dict[tuple[str, str, str], object]
+) -> bool:
+    """True when a derived field has a formula to render — either a neutral
+    ``field_formula`` AST or an ``engine_override`` carrying raw EspoCRM
+    formula text (PI-197, design §9: absent override → adapter default)."""
+    if field_row.get("field_formula"):
+        return True
+    fid = field_row["field_identifier"]
+    override = index.get(("field", fid, "formula"))
+    return override is not None
+
+
 def _field_options(field_row: dict) -> list[str]:
     """Ordered option *values* for an enum/multiEnum field."""
     opts = list(field_row.get("field_options") or [])
@@ -331,6 +370,85 @@ def _field_options(field_row: dict) -> list[str]:
         )
     )
     return [str(o.get("option_value")) for o in opts if o.get("option_value")]
+
+
+def _build_derived_field(
+    field_row: dict,
+    index: dict[tuple[str, str, str], object],
+    deferrals: list[Deferral],
+    parent_name: str,
+) -> FieldBlock | None:
+    """Emit a ``derived`` field's base block (type + ``readOnly: true``), or
+    route it to a deferral (PI-197, design §7/§9, DEC-438).
+
+    The ``formula:`` block itself is compiled and attached later by
+    :func:`_apply_derived_formulas` (it needs the cross-entity ref map +
+    association resolver). Here we only emit the read-only typed field when:
+
+    * a formula source exists (a neutral ``field_formula`` AST **or** an
+      ``engine_override`` carrying raw formula text), **and**
+    * the ``field_derived_result_type`` maps to an EspoCRM platform type.
+
+    With no formula source, or an unmappable result type, the field routes
+    to MANUAL-CONFIG (the old pre-PI-197 behaviour, now the exception).
+    """
+    fid = field_row["field_identifier"]
+    fname = field_row.get("field_name", "")
+
+    if not _has_formula_source(field_row, index):
+        deferrals.append(
+            Deferral(
+                kind="derived_field",
+                identifier=fid,
+                name=fname,
+                parent=parent_name,
+                detail=(
+                    "derived/formula field — no neutral formula and no "
+                    "engine_override formula text; configure the computed "
+                    "field via the EspoCRM admin UI"
+                ),
+            )
+        )
+        return None
+
+    espo_type = _derived_field_type(field_row)
+    if espo_type is None:
+        deferrals.append(
+            Deferral(
+                kind="derived_field",
+                identifier=fid,
+                name=fname,
+                parent=parent_name,
+                detail=(
+                    "derived/formula field — field_derived_result_type "
+                    f"{field_row.get('field_derived_result_type')!r} has no "
+                    "EspoCRM platform-type mapping; configure via the admin UI"
+                ),
+            )
+        )
+        return None
+
+    internal_name = str(
+        _override(index, "field", fid, "internal_name", derive_internal_name(fname))
+    )
+    label = str(_override(index, "field", fid, "label", derive_label(fname)))
+    payload: dict = {
+        "name": internal_name,
+        "type": espo_type,
+        "label": label,
+        "readOnly": True,
+    }
+    description = field_row.get("field_description")
+    if description:
+        payload["description"] = str(description)
+    # An enum/multiEnum-typed derived field still carries its option set.
+    if espo_type in _ENUM_TYPES:
+        options = _field_options(field_row)
+        if options:
+            payload["options"] = options
+        else:
+            payload["optionsDeferred"] = True
+    return FieldBlock(field_identifier=fid, payload=payload)
 
 
 def _build_field(
@@ -362,20 +480,7 @@ def _build_field(
         )
         return None
     if semantic == "derived":
-        deferrals.append(
-            Deferral(
-                kind="derived_field",
-                identifier=fid,
-                name=fname,
-                parent=parent_name,
-                detail=(
-                    "derived/formula field — neutral model carries no "
-                    "result value-type to map to an EspoCRM field type; "
-                    "formula capture is a later slice"
-                ),
-            )
-        )
-        return None
+        return _build_derived_field(field_row, index, deferrals, parent_name)
 
     espo_type = _map_field_type(field_row)
     if espo_type is None:
@@ -692,6 +797,151 @@ def _apply_field_rules(
         # unconditional flag, so drop it when a condition is attached.
         payload.pop("required", None)
         payload[key] = compiled
+
+
+# ---------------------------------------------------------------------------
+# Derived formulas → formula: block (design §7/§9, schema §6.1.3) — PI-197
+# ---------------------------------------------------------------------------
+
+
+def _apply_derived_formulas(
+    fields: list[dict],
+    builds: dict[str, _EntityBuild],
+    field_entity: dict[str, str],
+    associations: list[dict],
+    entity_name_by_id: dict[str, str],
+    index: dict[tuple[str, str, str], object],
+    deferrals: list[Deferral],
+) -> None:
+    """Compile each emitted ``derived`` field's formula and attach it as the
+    field's ``formula:`` block (PI-197, design §7/§9, DEC-438).
+
+    For each confirmed derived field whose base block was emitted by
+    :func:`_build_derived_field`:
+
+    * an ``engine_override`` formula text wins (§9: hand-tuned override) and
+      is attached verbatim;
+    * otherwise the neutral ``field_formula`` AST is compiled via
+      :func:`compile_formula` (concat/arithmetic resolve same-entity refs
+      strictly; an aggregate resolves its ``association`` to ``relatedEntity``
+      / ``via``).
+
+    A formula that cannot be compiled (a dangling association, an
+    unresolvable same-entity ref) routes to a deferral — the read-only field
+    stays in the YAML (valid, just uncomputed). ``readOnly: true`` is already
+    on the base block, so the attached ``formula:`` passes ``validate_program``.
+    """
+    assoc_by_id = {
+        a["association_identifier"]: a for a in associations
+    }
+    for field_row in sorted(fields, key=lambda f: f["field_identifier"]):
+        if field_row.get("field_type") != "derived":
+            continue
+        if field_row.get("field_status") != "confirmed":
+            continue
+        fid = field_row["field_identifier"]
+        fname = field_row.get("field_name", "")
+        eid = field_entity.get(fid)
+        build = builds.get(eid) if eid is not None else None
+        payload = (
+            build.payload_by_field_id.get(fid) if build is not None else None
+        )
+        if payload is None:
+            # The base block was deferred (no formula source / unmapped result
+            # type) — _build_derived_field already recorded that deferral.
+            continue
+
+        # §9: a hand-tuned engine override formula wins, attached verbatim.
+        # The override value carries the EspoCRM ``formula:`` block itself (a
+        # mapping, the §6.1.3 shape) — the per-engine residue in the engine's
+        # own form. A non-mapping override cannot satisfy validate_program, so
+        # it routes to a deferral rather than emitting an invalid block.
+        override_formula = index.get(("field", fid, "formula"))
+        if override_formula is not None:
+            if isinstance(override_formula, dict):
+                payload["formula"] = override_formula
+            else:
+                deferrals.append(
+                    Deferral(
+                        kind="derived_field",
+                        identifier=fid,
+                        name=fname,
+                        parent=entity_name_by_id.get(eid, eid),
+                        detail=(
+                            "engine_override formula is not a formula block "
+                            "(mapping) — configure the computed field via the "
+                            "EspoCRM admin UI"
+                        ),
+                    )
+                )
+            continue
+
+        formula = field_row.get("field_formula")
+        if not formula:  # pragma: no cover — _has_formula_source guards
+            continue
+
+        def _resolve(ref: str, _map: dict[str, str] = build.ref_map) -> str:
+            internal = _map.get(ref)
+            if internal is None:
+                raise FormulaCompileError(
+                    f"formula references field {ref!r} not emitted on the entity"
+                )
+            return internal
+
+        def _resolve_association(
+            asn_ref: str, _eid: str = eid
+        ) -> tuple[str, str]:
+            assoc = assoc_by_id.get(asn_ref)
+            if assoc is None:
+                raise FormulaCompileError(
+                    f"aggregate references association {asn_ref!r} that does "
+                    "not exist"
+                )
+            source_id = assoc.get("association_source_entity")
+            target_id = assoc.get("association_target_entity")
+            cardinality = assoc.get("association_cardinality")
+            source_name = entity_name_by_id.get(source_id)
+            target_name = entity_name_by_id.get(target_id)
+            if source_name is None or target_name is None:
+                raise FormulaCompileError(
+                    f"aggregate association {asn_ref!r} has an endpoint that "
+                    "is not a confirmed/emitted entity"
+                )
+            link, foreign = _link_names(
+                assoc, source_name, target_name, cardinality, index
+            )
+            # The related entity is the *other* endpoint; ``via`` is the link
+            # on the related entity that points back to this entity.
+            if _eid == source_id:
+                return target_name, foreign
+            if _eid == target_id:
+                return source_name, link
+            raise FormulaCompileError(
+                f"aggregate association {asn_ref!r} does not connect the "
+                "derived field's entity"
+            )
+
+        # An aggregate's aggregated field lives on the *related* entity, so it
+        # derives leniently — it is not one of this entity's emitted fields.
+        def _resolve_related(ref: str) -> str:
+            return derive_internal_name(ref)
+
+        try:
+            compiled = compile_formula(
+                formula, _resolve, _resolve_association, _resolve_related
+            )
+        except FormulaCompileError as exc:
+            deferrals.append(
+                Deferral(
+                    kind="derived_field",
+                    identifier=fid,
+                    name=fname,
+                    parent=entity_name_by_id.get(eid, eid),
+                    detail=f"formula not compilable to EspoCRM form: {exc}",
+                )
+            )
+            continue
+        payload["formula"] = compiled
 
 
 # ---------------------------------------------------------------------------
@@ -1489,6 +1739,18 @@ def build_program_model(
         builds,
         entity_name_by_id,
         confirmed_entity_ids,
+        index,
+        deferrals,
+    )
+
+    # PI-197: derived fields → formula: blocks (concat/arithmetic resolve
+    # same-entity refs; aggregate resolves its association to relatedEntity/via).
+    _apply_derived_formulas(
+        [f for f in fields if f.get("field_status") == "confirmed"],
+        builds,
+        field_entity,
+        associations,
+        entity_name_by_id,
         index,
         deferrals,
     )

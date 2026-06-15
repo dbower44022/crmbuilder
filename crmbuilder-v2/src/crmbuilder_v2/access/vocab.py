@@ -266,6 +266,44 @@ FIELD_FORMATS: frozenset[str] = frozenset(
 # Nullable on the column; validated only when present.
 FIELD_NUMERIC_SCALES: frozenset[str] = frozenset({"integer", "decimal"})
 
+# Engine-neutral value-type a ``derived`` field's formula yields (PRJ-025
+# PI-197, design §7/§9, DEC-438). Required on a ``derived`` field, NULL on
+# every other field type. The set is the value-shapes a formula can produce
+# — it deliberately excludes ``derived`` (a formula cannot yield another
+# formula) and ``reference`` (a formula yields a value, not a link). The
+# EspoCRM adapter maps the result type to the platform field type the
+# computed field carries (``text``→varchar, ``money``→currency, …).
+DERIVED_RESULT_TYPES: frozenset[str] = frozenset(
+    {
+        "text",
+        "long_text",
+        "number",
+        "money",
+        "date",
+        "datetime",
+        "boolean",
+        "enum",
+        "multi_enum",
+    }
+)
+
+# Engine-neutral structured-formula vocabulary (PRJ-025 PI-197, design §7/§9,
+# DEC-438). The neutral formula AST stored in ``field_formula`` carries one of
+# these ``kind`` values; the access-layer validator (``access.formulas``)
+# checks the shape, and the EspoCRM adapter compiles it to the platform
+# ``formula:`` block (schema §6.1.3).
+FORMULA_KINDS: frozenset[str] = frozenset({"concat", "arithmetic", "aggregate"})
+
+# The aggregate functions a ``kind: aggregate`` neutral formula may invoke —
+# the subset of EspoCRM's seven that map cleanly to both engines. ``count``
+# takes no field; the rest aggregate one named field.
+FORMULA_AGGREGATE_FUNCTIONS: frozenset[str] = frozenset(
+    {"count", "sum", "avg", "min", "max"}
+)
+
+# The binary operators a ``kind: arithmetic`` neutral expression node may use.
+ARITHMETIC_OPS: frozenset[str] = frozenset({"+", "-", "*", "/"})
+
 # Methodology entity `requirement` lifecycle (PI-004 cohort, v0.5+).
 # Three-status propose-verify mirroring ``domain`` / ``entity`` per
 # ``requirement.md`` section 3.4.

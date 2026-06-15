@@ -67,9 +67,11 @@ from crmbuilder_v2.access.exceptions import (
     StatusTransitionError,
     UnprocessableError,
 )
+from crmbuilder_v2.access.formulas import FormulaError, validate_formula
 from crmbuilder_v2.access.models import Entity, Field, FieldOption, Reference
 from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
+    DERIVED_RESULT_TYPES,
     FIELD_FORMATS,
     FIELD_NUMERIC_SCALES,
     FIELD_STATUS_TRANSITIONS,
@@ -108,6 +110,17 @@ _INTRINSIC_BOOL_KWARGS = frozenset(
     {"read_only", "unique", "externally_populated"}
 )
 
+# PRJ-025 PI-197 (design §7/§9, DEC-438) — derived/formula kwargs. These
+# carry cross-field semantics (gated on the effective ``field_type``) so
+# they are handled outside the flat ``_INTRINSIC_COLUMN_BY_KWARG`` map:
+# ``derived_result_type`` must be a DERIVED_RESULT_TYPES value present iff
+# the field is ``derived``; ``formula`` is the neutral structured-formula
+# AST, validated via ``access.formulas`` when supplied.
+_DERIVED_COLUMN_BY_KWARG: dict[str, str] = {
+    "derived_result_type": "field_derived_result_type",
+    "formula": "field_formula",
+}
+
 # Fields accepted by :func:`patch_field`. The identifier, timestamps,
 # and the parent-entity stash column are not patchable. Re-parenting
 # is not allowed via PATCH (spec §3.5.4); use explicit edge management.
@@ -115,6 +128,7 @@ _INTRINSIC_BOOL_KWARGS = frozenset(
 _PATCHABLE_FIELDS = frozenset(
     {"name", "description", "type", "required", "notes", "status"}
     | set(_INTRINSIC_COLUMN_BY_KWARG)
+    | set(_DERIVED_COLUMN_BY_KWARG)
     | {"options"}
 )
 
@@ -263,6 +277,93 @@ def _apply_intrinsics(row: Field, provided: dict) -> None:
     for kwarg, column in _INTRINSIC_COLUMN_BY_KWARG.items():
         if kwarg in provided:
             setattr(row, column, _coerce_intrinsic(kwarg, provided[kwarg]))
+
+
+def _coerce_result_type_or_none(value: object) -> str | None:
+    """Validate ``derived_result_type`` against DERIVED_RESULT_TYPES.
+
+    ``None`` / empty clears the column; any other value must be one of
+    the allowed result types (PRJ-025 PI-197, design §7/§9). The
+    required-when-derived / forbidden-otherwise rule is checked by
+    :func:`_apply_derived` against the field's effective type.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    if value not in DERIVED_RESULT_TYPES:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "field_derived_result_type",
+                    "invalid_value",
+                    f"must be null or one of {sorted(DERIVED_RESULT_TYPES)}",
+                )
+            ]
+        )
+    return value  # type: ignore[return-value]
+
+
+def _validate_formula_or_none(value: object) -> dict | None:
+    """Validate the neutral structured formula AST, returning it or ``None``.
+
+    ``None`` clears the column; a present value is validated against the
+    ``access.formulas`` shape and a malformation raises a field-scoped 422.
+    """
+    if value is None:
+        return None
+    try:
+        validate_formula(value)
+    except FormulaError as exc:
+        raise UnprocessableError(
+            [FieldError("field_formula", "invalid_value", str(exc))]
+        ) from exc
+    return value  # type: ignore[return-value]
+
+
+def _apply_derived(
+    row: Field, provided: dict, *, effective_type: str
+) -> None:
+    """Validate + assign the PI-197 derived/formula kwargs in ``provided``.
+
+    Enforces the cross-field rule against ``effective_type``: when the
+    field is ``derived`` a ``field_derived_result_type`` value is REQUIRED
+    (validated ∈ DERIVED_RESULT_TYPES); when it is any other type the
+    column must be absent/NULL. ``formula`` is validated against the
+    neutral AST shape whenever supplied (allowed on any type, but only a
+    ``derived`` field's adapter renders it).
+    """
+    if "derived_result_type" in provided:
+        row.field_derived_result_type = _coerce_result_type_or_none(
+            provided["derived_result_type"]
+        )
+    if "formula" in provided:
+        row.field_formula = _validate_formula_or_none(provided["formula"])
+
+    # Cross-field invariant on the resolved (type, result_type) pair.
+    if effective_type == "derived":
+        if not row.field_derived_result_type:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "field_derived_result_type",
+                        "required_for_derived",
+                        "a derived field requires field_derived_result_type "
+                        f"(one of {sorted(DERIVED_RESULT_TYPES)})",
+                    )
+                ]
+            )
+    elif row.field_derived_result_type is not None:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "field_derived_result_type",
+                    "forbidden_for_non_derived",
+                    "field_derived_result_type is only valid on a field of "
+                    "type 'derived'",
+                )
+            ]
+        )
 
 
 def _load_options(session: Session, field_identifier: str) -> list[dict]:
@@ -692,7 +793,19 @@ def create_field(
     optional ordered enum/multi_enum option set that, when supplied,
     populates the ``field_options`` child collection in the same
     transaction.
+
+    PRJ-025 PI-197: ``**intrinsics`` also accepts ``derived_result_type``
+    (the value-type a ``derived`` field's formula yields — required when
+    ``type`` is ``derived``, forbidden otherwise) and ``formula`` (the
+    neutral structured-formula AST, validated against ``access.formulas``).
     """
+    # Separate the PI-197 derived/formula kwargs from the flat §7 intrinsics
+    # — they carry cross-field semantics validated against the field type.
+    derived = {
+        k: intrinsics.pop(k)
+        for k in list(intrinsics)
+        if k in _DERIVED_COLUMN_BY_KWARG
+    }
     name = _require_nonempty(name, field="field_name")
     description = _require_nonempty(description, field="field_description")
     field_type = _require_type(type)
@@ -724,6 +837,9 @@ def create_field(
         )
         session.add(row)
         session.flush()
+
+    _apply_derived(row, derived, effective_type=field_type)
+    session.flush()
 
     if options is not None:
         _replace_options(session, row.field_identifier, options)
@@ -786,6 +902,10 @@ def update_field(
     the existing option set untouched and a list (including ``[]``)
     replaces it — a child collection is not silently wiped on an
     unrelated PUT.
+
+    PRJ-025 PI-197: ``derived_result_type`` / ``formula`` follow PUT
+    replace semantics too and are validated against the new ``type``
+    (required-when-derived / forbidden-otherwise).
     """
     row = _get_row(session, identifier)
     if field_identifier is not None and field_identifier != identifier:
@@ -799,6 +919,11 @@ def update_field(
             ]
         )
     before = _field_to_dict(session, row)
+    # PUT replaces the derived/formula attributes wholesale — an omitted
+    # key clears the column — so both keys are always passed.
+    derived = {
+        k: intrinsics.pop(k, None) for k in _DERIVED_COLUMN_BY_KWARG
+    }
     intrinsics = _validate_intrinsic_kwargs(intrinsics)
 
     name = _require_nonempty(name, field="field_name")
@@ -838,6 +963,7 @@ def update_field(
     row.field_required = bool(required)
     row.field_notes = notes
     _apply_intrinsics(row, intrinsics)
+    _apply_derived(row, derived, effective_type=field_type)
     session.flush()
 
     if options is not None:
@@ -862,12 +988,20 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
     ``notes``, ``status``, ``rejected_by_decision``, the PRJ-025 PI-182
     §7 intrinsics (``tooltip``, ``usage_summary``, ``default_value``,
     ``format``, ``numeric_scale``, ``max_length``, ``min``, ``max``,
-    ``read_only``, ``unique``, ``externally_populated``), and ``options``
-    (the enum option set — provided replaces it, omitted leaves it
-    unchanged). A ``status`` change is transition-validated; a move to
-    ``rejected`` requires either the ``rejected_by_decision`` key (atomic
-    edge + flip, PI-153 §3.4) or a pre-existing ``rejected_by_decision``
-    edge. Parent-entity reparenting is not allowed via PATCH (spec §3.5.4).
+    ``read_only``, ``unique``, ``externally_populated``), the PRJ-025
+    PI-197 derived/formula keys (``derived_result_type``, ``formula``),
+    and ``options`` (the enum option set — provided replaces it, omitted
+    leaves it unchanged). A ``status`` change is transition-validated; a
+    move to ``rejected`` requires either the ``rejected_by_decision`` key
+    (atomic edge + flip, PI-153 §3.4) or a pre-existing
+    ``rejected_by_decision`` edge. Parent-entity reparenting is not allowed
+    via PATCH (spec §3.5.4).
+
+    PI-197 cross-field rule: ``field_derived_result_type`` must be present
+    iff the field's *resulting* type is ``derived`` — re-checked whenever
+    either ``type`` or a derived key is supplied (so a PATCH that flips a
+    field away from ``derived`` without clearing the result type, or that
+    sets a result type on a non-derived field, is rejected).
     """
     rejected_by_decision = fields.pop("rejected_by_decision", None)
     # ``options`` only replaces the set when a list is supplied; an
@@ -932,6 +1066,12 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
     _apply_intrinsics(
         row, {k: fields[k] for k in _INTRINSIC_COLUMN_BY_KWARG if k in fields}
     )
+
+    # PI-197 derived/formula — apply the supplied keys, then re-check the
+    # cross-field invariant whenever the type or a derived key was touched.
+    derived = {k: fields[k] for k in _DERIVED_COLUMN_BY_KWARG if k in fields}
+    if derived or "type" in fields:
+        _apply_derived(row, derived, effective_type=row.field_type)
 
     session.flush()
 

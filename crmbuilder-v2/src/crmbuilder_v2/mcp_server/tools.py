@@ -1031,6 +1031,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         read_only: bool | None = None,
         unique: bool | None = None,
         externally_populated: bool | None = None,
+        derived_result_type: str | None = None,
+        formula: dict | None = None,
         options: list | None = None,
     ) -> Any:
         """Create a field (methodology) record under a parent entity.
@@ -1054,6 +1056,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         ``{"option_value": str, "option_label": str|None,
         "option_order": int|None}`` — supplying it populates the field's
         option set.
+
+        PRJ-025 PI-197 — derived/formula intent (DEC-438):
+        ``derived_result_type`` is the value-type a formula yields (one of
+        text/long_text/number/money/date/datetime/boolean/enum/multi_enum)
+        — REQUIRED when ``type`` is ``derived`` and forbidden otherwise;
+        ``formula`` is the neutral structured-formula AST (one of
+        ``{"kind":"concat","parts":[...]}`` /
+        ``{"kind":"arithmetic","expression":{...}}`` /
+        ``{"kind":"aggregate","function":...,"association":...,"field":...}``).
         """
         body = {
             k: v
@@ -1077,6 +1088,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 field_read_only=read_only,
                 field_unique=unique,
                 field_externally_populated=externally_populated,
+                field_derived_result_type=derived_result_type,
+                field_formula=formula,
                 field_options=options,
             ).items()
             if v is not None
@@ -1102,6 +1115,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         read_only: bool | None = None,
         unique: bool | None = None,
         externally_populated: bool | None = None,
+        derived_result_type: str | None = None,
+        formula: dict | None = None,
         options: list | None = None,
     ) -> Any:
         """Update fields on a field record (PATCH). Pass only the fields to
@@ -1112,7 +1127,11 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         (``tooltip``, ``usage_summary``, ``default_value``, ``format``,
         ``numeric_scale``, ``max_length``, ``min``, ``max``, ``read_only``,
         ``unique``, ``externally_populated``) are settable here. Supplying
-        ``options`` (a list) replaces the field's enum option set."""
+        ``options`` (a list) replaces the field's enum option set.
+
+        PRJ-025 PI-197 — ``derived_result_type`` and ``formula`` (the
+        neutral structured-formula AST) are settable here too; the
+        result-type / ``derived`` type invariant is re-checked on PATCH."""
         body = {
             f"field_{k}": v
             for k, v in dict(
@@ -1133,6 +1152,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 read_only=read_only,
                 unique=unique,
                 externally_populated=externally_populated,
+                derived_result_type=derived_result_type,
+                formula=formula,
                 options=options,
             ).items()
             if v is not None
