@@ -28,13 +28,14 @@ class _FakeClient:
     """Minimal introspection client: scopes + per-entity field/link lists."""
 
     def __init__(self, scopes, fields=None, links=None, layouts=None,
-                 roles=None, teams=None, status=200):
+                 roles=None, teams=None, report_filters=None, status=200):
         self._scopes = scopes
         self._fields = fields or {}
         self._links = links or {}
         self._layouts = layouts or {}  # {scope: {espo_layout_type: content}}
         self._roles = roles or []
         self._teams = teams or []
+        self._report_filters = report_filters or {}  # {scope: [filter rows]}
         self._status = status
 
     def get_all_scopes(self):
@@ -55,6 +56,11 @@ class _FakeClient:
 
     def get_teams(self):
         return (200, {"list": self._teams})
+
+    def list_report_filters(self, entity_type):
+        if entity_type in self._report_filters:
+            return (200, {"list": self._report_filters[entity_type]})
+        return (404, None)
 
 
 def _custom(stream=False):
@@ -548,3 +554,42 @@ def test_reconcile_teams_create_and_absent(v2_env):
         assert s2["absent"] == 1
         row = mb.list_memberships(s, instance_identifier=iid, member_type="team")[0]
         assert row["state"] == "absent"
+
+
+# --- filtered-tab reconcile (PI-195) ---------------------------------------
+
+
+def test_reconcile_filtered_tabs_create_drift_and_advanced_pack_absent(v2_env):
+    from crmbuilder_v2.access.repositories import filtered_tabs as ft_repo
+    from crmbuilder_v2.introspect.reconcile import reconcile_filtered_tabs
+    with session_scope() as s:
+        iid = _make_instance(s)
+        entity_repo.create_entity(s, name="Engagement", description="x")
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            report_filters={"CEngagement": [
+                {"name": "Active", "data": {"status": "open"}},
+            ]},
+        )
+        summary = reconcile_filtered_tabs(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 1 and summary["present"] == 1
+        ft = ft_repo.list_filtered_tabs(s)
+        assert len(ft) == 1
+        assert ft[0]["filtered_tab_label"] == "Active"
+        assert ft[0]["filtered_tab_filter"] == {"status": "open"}
+        # Re-audit with a changed filter -> drift + override.
+        client2 = _FakeClient(
+            {"CEngagement": _custom()},
+            report_filters={"CEngagement": [
+                {"name": "Active", "data": {"status": "closed"}},
+            ]},
+        )
+        s2 = reconcile_filtered_tabs(s, instance_identifier=iid, client=client2)
+        assert s2["drifted"] == 1
+        row = mb.list_memberships(
+            s, instance_identifier=iid, member_type="filtered_tab")[0]
+        assert row["override"]["filtered_tab_filter"] == {"status": "closed"}
+        # No Advanced Pack (list_report_filters 404) -> nothing seen, tab absent.
+        s3 = reconcile_filtered_tabs(
+            s, instance_identifier=iid, client=_FakeClient({"CEngagement": _custom()}))
+        assert s3["seen"] == 0 and s3["absent"] == 1

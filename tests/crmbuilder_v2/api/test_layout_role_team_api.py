@@ -65,3 +65,23 @@ def test_layout_crud(client):
 def test_role_bad_enum_rejected(client):
     r = client.post("/roles", json={"role_name": "X", "role_status": "weird"})
     assert r.status_code == 422
+
+
+def test_filtered_tab_crud(client):
+    r = client.post("/filtered-tabs", json={
+        "filtered_tab_entity_identifier": "ENT-001",
+        "filtered_tab_label": "Active",
+        "filtered_tab_filter": {"status": "open"},
+    })
+    assert r.status_code == 201, r.text
+    fid = r.json()["data"]["filtered_tab_identifier"]
+    assert fid == "FTB-001"
+    got = client.get(f"/filtered-tabs/{fid}").json()["data"]
+    assert got["filtered_tab_label"] == "Active"
+    assert got["filtered_tab_filter"] == {"status": "open"}
+    patched = client.patch(
+        f"/filtered-tabs/{fid}", json={"filtered_tab_status": "confirmed"}
+    )
+    assert patched.json()["data"]["filtered_tab_status"] == "confirmed"
+    assert client.delete(f"/filtered-tabs/{fid}").status_code == 200
+    assert client.get(f"/filtered-tabs/{fid}").status_code == 404

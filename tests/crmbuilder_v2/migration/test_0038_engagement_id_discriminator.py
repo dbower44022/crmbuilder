@@ -90,6 +90,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "layouts",
         "roles",
         "teams",
+        # PI-195 (PRJ-027) filtered-tab design family.
+        "filtered_tabs",
     }
 )
 

@@ -47,6 +47,7 @@ from crmbuilder_v2.api.routers import (
     engine_overrides,
     entities,
     field,
+    filtered_tabs,
     findings,
     health,
     identifiers,
@@ -195,6 +196,7 @@ def create_app() -> FastAPI:
     app.include_router(commits.router)
     app.include_router(instances.router)
     app.include_router(layouts.router)
+    app.include_router(filtered_tabs.router)
     app.include_router(roles.router)
     app.include_router(teams.router)
     # Agent Profile Registry (PI-122).

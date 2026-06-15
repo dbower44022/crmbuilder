@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.repositories import filtered_tabs as filtered_tab_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
 from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import roles as role_repo
@@ -37,6 +38,12 @@ _MEMBER_SOURCES = (
     ("layout", layout_repo.list_layouts, "layout_identifier", "layout_type"),
     ("role", role_repo.list_roles, "role_identifier", "role_name"),
     ("team", team_repo.list_teams, "team_identifier", "team_name"),
+    (
+        "filtered_tab",
+        filtered_tab_repo.list_filtered_tabs,
+        "filtered_tab_identifier",
+        "filtered_tab_label",
+    ),
 )
 
 

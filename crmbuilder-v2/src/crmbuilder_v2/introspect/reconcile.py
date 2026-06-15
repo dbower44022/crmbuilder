@@ -29,6 +29,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.repositories import filtered_tabs as filtered_tab_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
 from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import roles as role_repo
@@ -742,5 +743,94 @@ def reconcile_teams(
     summary["absent"] = membership_repo.mark_absent_missing(
         session, instance_identifier=instance_identifier, member_type="team",
         present_member_identifiers=seen_ids, last_audited_at=stamp,
+    )
+    return summary
+
+
+class _FilteredTabsClient(_ScopesClient, Protocol):
+    """Adds the per-entity report-filter listing the filtered-tab reconcile uses."""
+
+    def list_report_filters(self, entity_type: str) -> tuple[int, dict | None]: ...
+
+
+def reconcile_filtered_tabs(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _FilteredTabsClient,
+) -> dict:
+    """Reconcile an instance's filtered tabs into the inventory (PI-195).
+
+    For each canonical entity, lists its report filters (the filtered-tab
+    definitions) and matches by (entity, label); filter-content differences are
+    recorded as a sparse override. ``list_report_filters`` returns 404 when the
+    Advanced Pack is absent — that entity is skipped, not fatal. Entities must
+    already be canonical (run after :func:`reconcile_entities`). ``filtered_tab``
+    membership + absent sweep.
+
+    :returns: A summary ``{seen, created, present, drifted, absent}``.
+    :raises ReconcileError: If the scopes call fails or returns a non-dict body.
+    """
+    status, scopes = client.get_all_scopes()
+    if status != 200 or not isinstance(scopes, dict):
+        raise ReconcileError(
+            f"get_all_scopes returned status={status}; expected 200 + dict body"
+        )
+    ent_by_name = {
+        row["entity_name"]: row["entity_identifier"]
+        for row in entity_repo.list_entities(session)
+    }
+    stamp = datetime.now(UTC)
+    summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
+    seen_ids: set[str] = set()
+
+    for scope_name, scope_meta in scopes.items():
+        if not isinstance(scope_meta, dict):
+            continue
+        entity_id = ent_by_name.get(strip_entity_c_prefix(scope_name))
+        if entity_id is None:
+            continue
+        f_status, body = client.list_report_filters(scope_name)
+        if f_status != 200:
+            # 404 = no Advanced Pack / no filters for this entity; skip.
+            continue
+        for row in _rows_of(body):
+            label = row.get("name")
+            if not label:
+                continue
+            summary["seen"] += 1
+            filter_content = row.get("data", row.get("filter"))
+            existing = filtered_tab_repo.list_filtered_tabs(
+                session, entity_identifier=entity_id, label=label
+            )
+            match = existing[0] if existing else None
+            if match is None:
+                created = filtered_tab_repo.create_filtered_tab(
+                    session, entity_identifier=entity_id, label=label,
+                    filter=filter_content,
+                )
+                member_id = created["filtered_tab_identifier"]
+                summary["created"] += 1
+                state, override = "present", None
+            else:
+                member_id = match["filtered_tab_identifier"]
+                if match.get("filtered_tab_filter") != filter_content:
+                    state, override = "drifted", {
+                        "filtered_tab_filter": filter_content
+                    }
+                else:
+                    state, override = "present", None
+            membership_repo.upsert_membership(
+                session, instance_identifier=instance_identifier,
+                member_type="filtered_tab", member_identifier=member_id,
+                state=state, override=override, last_audited_at=stamp,
+            )
+            seen_ids.add(member_id)
+            summary[state] += 1
+
+    summary["absent"] = membership_repo.mark_absent_missing(
+        session, instance_identifier=instance_identifier,
+        member_type="filtered_tab", present_member_identifiers=seen_ids,
+        last_audited_at=stamp,
     )
     return summary

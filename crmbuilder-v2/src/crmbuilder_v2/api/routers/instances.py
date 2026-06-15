@@ -38,6 +38,7 @@ from crmbuilder_v2.introspect.reconcile import (
     reconcile_associations,
     reconcile_entities,
     reconcile_fields,
+    reconcile_filtered_tabs,
     reconcile_layouts,
     reconcile_roles,
     reconcile_teams,
@@ -288,6 +289,9 @@ def audit(identifier: str):
             teams = reconcile_teams(
                 s, instance_identifier=identifier, client=client
             )
+            filtered_tabs = reconcile_filtered_tabs(
+                s, instance_identifier=identifier, client=client
+            )
         except ReconcileError as exc:
             raise UnprocessableError(
                 [FieldError("audit", "introspection_failed", str(exc))]
@@ -300,5 +304,6 @@ def audit(identifier: str):
                 "layouts": layouts,
                 "roles": roles,
                 "teams": teams,
+                "filtered_tabs": filtered_tabs,
             }
         )
