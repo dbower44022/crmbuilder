@@ -132,65 +132,74 @@ _SRC_PREFIX = "crmbuilder-v2/src/crmbuilder_v2/"
 _TEST_ROOT = "tests/crmbuilder_v2"
 
 
+# Documentation-only file shapes: a change touching ONLY these cannot alter any
+# Python test outcome, so the test-gate is skipped for it (PI-147 follow-up). A
+# Design-phase Work Task that writes only a spec .md was otherwise mapped to the
+# full-suite fallback ("path outside the src tree") — pure waste, and now a
+# 30-min timeout. Kept deliberately narrow: docs only.
+_DOC_ONLY_SUFFIXES = (".md", ".rst", ".txt")
+_DOC_ONLY_DIRS = ("PRDs/", "docs/")
+# The tests mirror the src tree 1:1 under tests/crmbuilder_v2/<sub>/, so a
+# touched test file belongs to the same subtree as the source it covers — a
+# change to a ui widget AND its ui test is still localized to the ``ui`` package.
+_TEST_PREFIX = _TEST_ROOT + "/"
+
+
+def _is_doc_path(path: str) -> bool:
+    """True if a single path is documentation (cannot affect a test outcome)."""
+    if path.endswith(_DOC_ONLY_SUFFIXES):
+        return True
+    return any(path == d.rstrip("/") or path.startswith(d) for d in _DOC_ONLY_DIRS)
+
+
+def is_doc_only_change(touched_paths: Iterable[str]) -> bool:
+    """True iff EVERY touched path is documentation (``.md``/``.rst``/``.txt`` or
+    under ``PRDs/`` / ``docs/``) — nothing that could affect a test outcome. An
+    EMPTY/unknown set returns ``False`` so the conservative full-suite fallback
+    still runs (we only skip when we are sure the change is doc-only)."""
+    paths = list(touched_paths)
+    return bool(paths) and all(_is_doc_path(p) for p in paths)
+
+
+def _subtree_of(path: str) -> str | None:
+    """The mirrored subtree a touched path belongs to, or ``None`` if it cannot
+    be localized. Recognizes BOTH the source tree
+    (``crmbuilder-v2/src/crmbuilder_v2/<sub>/…``) and its mirror test tree
+    (``tests/crmbuilder_v2/<sub>/…``). A file directly under either root with no
+    ``<sub>/`` segment (a top-level module/test) has no mirror package → None."""
+    for prefix in (_SRC_PREFIX, _TEST_PREFIX):
+        if path.startswith(prefix):
+            segments = path[len(prefix):].split("/")
+            return segments[0] if len(segments) >= 2 else None
+    return None  # outside both the src and test trees
+
+
 def select_test_target(touched_paths: Iterable[str]) -> str:
-    """Map the source files a task touched to the pytest target to run (PI-147).
+    """Map the files a task touched to the pytest target to run (PI-147).
 
-    Returns a single, conservative pytest target:
-
-    * the mirroring package ``tests/crmbuilder_v2/<sub>`` **iff** every touched
-      file under the v2 source tree resolves to the *same* mirrored subtree;
-    * the full ``tests/crmbuilder_v2`` suite otherwise — the conservative
-      fallback when the change is ambiguous (spans >1 subtree, touches a
-      top-level module such as ``cli.py``/``config.py`` with no mirroring
-      package, touches files outside the v2 source tree, or the touched set is
-      empty/unknown). A localization miss therefore widens coverage, never
-      narrows it.
+    Returns the mirroring package ``tests/crmbuilder_v2/<sub>`` **iff** every
+    non-doc touched file resolves to the *same* mirrored subtree — counting both
+    source files and their mirror tests, so a feature plus its test stays
+    localized. Otherwise the full ``tests/crmbuilder_v2`` suite — the
+    conservative fallback for an ambiguous change (>1 subtree, a top-level module
+    with no mirror package, a path outside the src/test trees, or an empty set).
+    Doc-only paths are ignored for selection (they cannot affect a test outcome).
+    A localization miss widens coverage, never narrows it.
     """
     subtrees: set[str] = set()
     for path in touched_paths:
-        if not path.startswith(_SRC_PREFIX):
-            # A change we cannot localize to the v2 src tree → full suite.
-            return _TEST_ROOT
-        remainder = path[len(_SRC_PREFIX):]
-        segments = remainder.split("/")
-        if len(segments) < 2:
-            # A top-level src module (cli.py, config.py) with no mirroring
-            # package directory → full suite.
-            return _TEST_ROOT
-        subtrees.add(segments[0])
+        if _is_doc_path(path):
+            continue  # docs can't affect tests → irrelevant to target selection
+        sub = _subtree_of(path)
+        if sub is None:
+            return _TEST_ROOT  # an un-localizable non-doc change → full suite
+        subtrees.add(sub)
     if len(subtrees) == 1:
         (sub,) = tuple(subtrees)
         if sub in _MIRRORED_SUBTREES:
             return f"{_TEST_ROOT}/{sub}"
-    # Empty touched set, >1 subtree, or an unmirrored subtree → full suite.
+    # Empty (all-doc — handled upstream), >1 subtree, or unmirrored → full suite.
     return _TEST_ROOT
-
-
-# Documentation-only file shapes: a change touching ONLY these cannot alter any
-# Python test outcome, so the test-gate is skipped for it (PI-147 follow-up). A
-# Design-phase Work Task that writes only a spec .md was otherwise mapped to the
-# full-suite fallback by select_test_target ("path outside the src tree") — pure
-# waste, and now a 30-min timeout. Kept deliberately narrow: docs only.
-_DOC_ONLY_SUFFIXES = (".md", ".rst", ".txt")
-_DOC_ONLY_DIRS = ("PRDs/", "docs/")
-
-
-def is_doc_only_change(touched_paths: Iterable[str]) -> bool:
-    """True iff EVERY touched path is documentation (a ``.md``/``.rst``/``.txt``
-    file, or anything under ``PRDs/`` / ``docs/``) — i.e. nothing that could
-    affect a test outcome. An EMPTY/unknown touched set returns ``False`` so the
-    normal conservative full-suite fallback still runs (we only skip when we are
-    sure the change is doc-only)."""
-    paths = list(touched_paths)
-    if not paths:
-        return False
-    for p in paths:
-        if p.endswith(_DOC_ONLY_SUFFIXES):
-            continue
-        if any(p == d.rstrip("/") or p.startswith(d) for d in _DOC_ONLY_DIRS):
-            continue
-        return False  # a non-doc file → not doc-only
-    return True
 
 
 @dataclass

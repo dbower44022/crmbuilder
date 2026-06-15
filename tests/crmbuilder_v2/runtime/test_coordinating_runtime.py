@@ -107,6 +107,35 @@ def test_select_target_unmirrored_subtree_falls_back():
     assert select_test_target([f"{_P}brandnew/x.py"]) == "tests/crmbuilder_v2"
 
 
+def test_select_target_src_plus_its_mirror_test_stays_localized():
+    # The WTK-151 case: a ui change + its ui test must map to the fast ui package,
+    # not the full-suite fallback (which then times out).
+    target = select_test_target([
+        f"{_P}ui/widgets/linked_record_preview.py",
+        f"{_P}ui/assets/icons/lucide/eye.svg",
+        "tests/crmbuilder_v2/ui/widgets/test_linked_record_preview.py",
+    ])
+    assert target == "tests/crmbuilder_v2/ui"
+
+
+def test_select_target_test_only_change_localizes_to_subtree():
+    assert select_test_target(
+        ["tests/crmbuilder_v2/runtime/test_x.py"]
+    ) == "tests/crmbuilder_v2/runtime"
+
+
+def test_select_target_ignores_docs_in_mixed_change():
+    # A src/ui change plus a spec .md → the .md is ignored, target is ui.
+    assert select_test_target(
+        [f"{_P}ui/x.py", "PRDs/product/spec.md"]
+    ) == "tests/crmbuilder_v2/ui"
+
+
+def test_select_target_top_level_test_file_falls_back():
+    # tests/crmbuilder_v2/conftest.py (no <sub>/ segment) affects everything.
+    assert select_test_target(["tests/crmbuilder_v2/conftest.py"]) == "tests/crmbuilder_v2"
+
+
 # --------------------------------------------------------------------------
 # Doc-only change → skip the test gate (a .md spec cannot break tests)
 # --------------------------------------------------------------------------
