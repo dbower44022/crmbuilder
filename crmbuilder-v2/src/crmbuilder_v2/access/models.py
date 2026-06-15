@@ -921,6 +921,18 @@ class Field(EngagementScopedPKMixin, Base):
     field_externally_populated: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    # PRJ-025 PI-197 (design §7/§9, DEC-438) — derived/formula intent.
+    # ``field_derived_result_type`` is the value-type the formula yields
+    # (validated against DERIVED_RESULT_TYPES, required when ``field_type``
+    # is ``derived`` and NULL otherwise — enforced at the access layer).
+    # ``field_formula`` is the neutral structured-formula AST
+    # (``access.formulas`` shape), validated when present. Both nullable.
+    field_derived_result_type: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    field_formula: Mapped[dict | None] = mapped_column(
+        JSONColumn, nullable=True
+    )
     field_previous_parent_entity_identifier: Mapped[str | None] = (
         mapped_column(String(32), nullable=True)
     )

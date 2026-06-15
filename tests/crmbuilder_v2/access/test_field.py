@@ -48,6 +48,9 @@ _EXPECTED_COLUMNS = {
     "field_read_only": "BOOLEAN",
     "field_unique": "BOOLEAN",
     "field_externally_populated": "BOOLEAN",
+    # PRJ-025 PI-197 — derived/formula intent (DEC-438).
+    "field_derived_result_type": "TEXT",
+    "field_formula": "JSON",
     "field_previous_parent_entity_identifier": "VARCHAR",
     "field_created_at": "DATETIME",
     "field_updated_at": "DATETIME",

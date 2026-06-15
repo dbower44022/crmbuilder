@@ -57,6 +57,8 @@ def _field(identifier="FLD-001", name="mentor_status", type="text", parent="ENT-
         "field_tooltip": None,
         "field_unique": False,
         "field_usage_summary": None,
+        "field_derived_result_type": None,
+        "field_formula": None,
         "field_options": [],
         "parent_entity_identifier": parent,
     }
@@ -372,6 +374,245 @@ def test_reference_and_derived_fields_deferred():
     kinds = {(d.kind, d.identifier) for d in model.deferrals}
     assert ("reference_field", "FLD-001") in kinds
     assert ("derived_field", "FLD-002") in kinds
+
+
+# ---------------------------------------------------------------------------
+# Derived / formula fields (PI-197)
+# ---------------------------------------------------------------------------
+
+
+def _derived_block(model):
+    block = _only_entity_block(model)
+    return {f["name"]: f for f in block.get("fields", [])}
+
+
+def test_derived_concat_renders_readonly_formula_field():
+    model = build_program_model(
+        [_entity()],
+        [
+            _field(identifier="FLD-001", name="first_name", type="text"),
+            _field(identifier="FLD-002", name="last_name", type="text"),
+            _field(
+                identifier="FLD-003",
+                name="full_name",
+                type="derived",
+                field_derived_result_type="text",
+                field_formula={
+                    "kind": "concat",
+                    "parts": [
+                        {"field": "FLD-001"},
+                        {"literal": " "},
+                        {"field": "last_name"},
+                    ],
+                },
+            ),
+        ],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    fields = _derived_block(model)
+    fn = fields["fullName"]
+    assert fn["type"] == "varchar"
+    assert fn["readOnly"] is True
+    assert fn["formula"] == {
+        "type": "concat",
+        "parts": [
+            {"field": "firstName"},
+            {"literal": " "},
+            {"field": "lastName"},
+        ],
+    }
+    assert not any(d.kind == "derived_field" for d in model.deferrals)
+
+
+def test_derived_arithmetic_renders_infix_expression():
+    model = build_program_model(
+        [_entity()],
+        [
+            _field(identifier="FLD-001", name="capacity", type="number"),
+            _field(identifier="FLD-002", name="used", type="number"),
+            _field(
+                identifier="FLD-003",
+                name="available",
+                type="derived",
+                field_derived_result_type="number",
+                field_numeric_scale="integer",
+                field_formula={
+                    "kind": "arithmetic",
+                    "expression": {
+                        "op": "-",
+                        "left": {"field": "capacity"},
+                        "right": {"field": "used"},
+                    },
+                },
+            ),
+        ],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    fields = _derived_block(model)
+    av = fields["available"]
+    assert av["type"] == "int"
+    assert av["readOnly"] is True
+    assert av["formula"] == {
+        "type": "arithmetic",
+        "expression": "capacity - used",
+    }
+
+
+def test_derived_arithmetic_parenthesises_lower_precedence():
+    model = build_program_model(
+        [_entity()],
+        [
+            _field(identifier="FLD-001", name="a", type="number"),
+            _field(identifier="FLD-002", name="b", type="number"),
+            _field(identifier="FLD-003", name="c", type="number"),
+            _field(
+                identifier="FLD-004",
+                name="scaled",
+                type="derived",
+                field_derived_result_type="number",
+                field_formula={
+                    "kind": "arithmetic",
+                    "expression": {
+                        "op": "*",
+                        "left": {"field": "a"},
+                        "right": {
+                            "op": "+",
+                            "left": {"field": "b"},
+                            "right": {"field": "c"},
+                        },
+                    },
+                },
+            ),
+        ],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    assert _derived_block(model)["scaled"]["formula"]["expression"] == (
+        "a * (b + c)"
+    )
+
+
+def test_derived_aggregate_resolves_related_entity_and_via():
+    # Dues (source, "one") relates to many Sessions (target). The derived
+    # field lives on Dues and sums Session.hours via the link back to Dues.
+    entities = [
+        _entity(identifier="ENT-001", name="Dues"),
+        _entity(identifier="ENT-002", name="Session"),
+    ]
+    fields = [
+        _field(
+            identifier="FLD-001",
+            name="total_hours",
+            type="derived",
+            parent="ENT-001",
+            field_derived_result_type="number",
+            field_numeric_scale="decimal",
+            field_formula={
+                "kind": "aggregate",
+                "function": "sum",
+                "association": "ASN-001",
+                "field": "hours",
+            },
+        ),
+    ]
+    associations = [
+        _assoc(
+            identifier="ASN-001",
+            name="Dues has Sessions",
+            source="ENT-001",
+            target="ENT-002",
+            cardinality="one_to_many",
+        )
+    ]
+    model = build_program_model(
+        entities, fields, [], associations=associations, rendered_at=RENDERED_AT
+    )
+    dues = _program_for(model, "Dues")["entities"]["Dues"]
+    total = {f["name"]: f for f in dues["fields"]}["totalHours"]
+    assert total["type"] == "float"
+    assert total["readOnly"] is True
+    assert total["formula"] == {
+        "type": "aggregate",
+        "function": "sum",
+        "relatedEntity": "Session",
+        "via": "dues",  # link on Session pointing back to Dues (singular)
+        "field": "hours",
+    }
+
+
+def test_derived_no_formula_source_defers():
+    model = build_program_model(
+        [_entity()],
+        [_field(identifier="FLD-001", name="computed", type="derived")],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    block = _only_entity_block(model)
+    assert "fields" not in block or all(
+        f["name"] != "computed" for f in block.get("fields", [])
+    )
+    assert any(
+        d.kind == "derived_field" and d.identifier == "FLD-001"
+        for d in model.deferrals
+    )
+
+
+def test_derived_engine_override_formula_used_verbatim():
+    override = {
+        "override_target_engine": "espocrm",
+        "override_subject_type": "field",
+        "override_subject_identifier": "FLD-001",
+        "override_attribute": "formula",
+        "override_value": {
+            "type": "concat",
+            "parts": [{"literal": "X"}],
+        },
+    }
+    model = build_program_model(
+        [_entity()],
+        [
+            _field(
+                identifier="FLD-001",
+                name="computed",
+                type="derived",
+                field_derived_result_type="text",
+            )
+        ],
+        [override],
+        rendered_at=RENDERED_AT,
+    )
+    computed = _derived_block(model)["computed"]
+    assert computed["formula"] == {"type": "concat", "parts": [{"literal": "X"}]}
+    assert not any(d.kind == "derived_field" for d in model.deferrals)
+
+
+def test_derived_aggregate_dangling_association_defers_formula():
+    model = build_program_model(
+        [_entity()],
+        [
+            _field(
+                identifier="FLD-001",
+                name="total",
+                type="derived",
+                field_derived_result_type="number",
+                field_formula={
+                    "kind": "aggregate",
+                    "function": "count",
+                    "association": "ASN-404",
+                },
+            )
+        ],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    # The read-only base field is still emitted (valid YAML), but the formula
+    # could not be compiled → deferral, and no formula key attached.
+    field_block = _derived_block(model)["total"]
+    assert field_block["readOnly"] is True
+    assert "formula" not in field_block
+    assert any(d.kind == "derived_field" for d in model.deferrals)
 
 
 def test_field_attribute_and_default_sort_deferred():

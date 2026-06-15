@@ -641,3 +641,212 @@ def test_adapter_emits_composite_construct_blocks(v2_env, tmp_path):
     assert {c.filename: c.content for c in result2.companions} == {
         c.filename: c.content for c in result.companions
     }
+
+
+# ---------------------------------------------------------------------------
+# PI-197 — derived/formula fields render as readOnly formula fields
+# ---------------------------------------------------------------------------
+
+
+def _seed_derived() -> None:
+    """One entity with concat + arithmetic derived fields and their operand
+    fields, plus a second entity + association for an aggregate derived field
+    that sums a related field."""
+    with session_scope() as s:
+        person = entity.create_entity(
+            s,
+            name="Mentor",
+            description="A mentor",
+            kind="person",
+            status="confirmed",
+        )
+        pid = person["entity_identifier"]
+        ses = entity.create_entity(
+            s,
+            name="Session",
+            description="A mentoring session",
+            kind="event",
+            status="confirmed",
+        )
+        sid = ses["entity_identifier"]
+
+        field.create_field(
+            s, field_belongs_to_entity_identifier=pid, name="first_name",
+            description="given name", type="text", status="confirmed",
+        )
+        field.create_field(
+            s, field_belongs_to_entity_identifier=pid, name="last_name",
+            description="family name", type="text", status="confirmed",
+        )
+        field.create_field(
+            s, field_belongs_to_entity_identifier=pid, name="capacity",
+            description="max clients", type="number", status="confirmed",
+        )
+        field.create_field(
+            s, field_belongs_to_entity_identifier=pid, name="active_clients",
+            description="current clients", type="number", status="confirmed",
+        )
+        # The aggregated field lives on the related (Session) entity.
+        field.create_field(
+            s, field_belongs_to_entity_identifier=sid, name="hours",
+            description="session hours", type="number", status="confirmed",
+        )
+
+        # concat derived field.
+        field.create_field(
+            s, field_belongs_to_entity_identifier=pid, name="display_name",
+            description="full name", type="derived", status="confirmed",
+            derived_result_type="text",
+            formula={
+                "kind": "concat",
+                "parts": [
+                    {"field": "first_name"},
+                    {"literal": " "},
+                    {"field": "last_name"},
+                ],
+            },
+        )
+        # arithmetic derived field.
+        field.create_field(
+            s, field_belongs_to_entity_identifier=pid, name="available_capacity",
+            description="spare slots", type="derived", status="confirmed",
+            derived_result_type="number",
+            formula={
+                "kind": "arithmetic",
+                "expression": {
+                    "op": "-",
+                    "left": {"field": "capacity"},
+                    "right": {"field": "active_clients"},
+                },
+            },
+        )
+
+        assoc = association.create_association(
+            s,
+            name="Mentor runs Sessions",
+            source_entity=pid,
+            target_entity=sid,
+            cardinality="one_to_many",
+            status="confirmed",
+        )
+        # aggregate derived field — sum Session.hours via the association.
+        field.create_field(
+            s, field_belongs_to_entity_identifier=pid, name="total_hours",
+            description="total mentoring hours", type="derived",
+            status="confirmed",
+            derived_result_type="number",
+            formula={
+                "kind": "aggregate",
+                "function": "sum",
+                "association": assoc["association_identifier"],
+                "field": "hours",
+            },
+        )
+
+
+def test_adapter_renders_derived_formula_fields_valid(v2_env, tmp_path):
+    _seed_derived()
+    adapter = EspoCrmAdapter()
+    result = adapter.run(
+        AccessDesignClient(), tmp_path, rendered_at=RENDERED_AT,
+        engagement="ENG-005",
+    )
+
+    # Hard bar (REQ-143): every emitted program passes validate_program()
+    # with zero errors — WITH the three formula fields present.
+    by_file = {p.filename: p.content for p in result.programs}
+    for content in by_file.values():
+        assert validate_yaml_text(content) == []
+    assert adapter.self_check(result) == {}
+
+    from espo_impl.core.config_loader import ConfigLoader
+
+    loader = ConfigLoader()
+    prog = loader.load_program(tmp_path / "Mentor.yaml")
+    assert loader.validate_program(prog) == []
+    fields = {f.name: f for f in prog.entities[0].fields}
+
+    # concat
+    display = fields["displayName"]
+    assert display.readOnly is True
+    assert display.formula.type == "concat"
+
+    # arithmetic
+    avail = fields["availableCapacity"]
+    assert avail.readOnly is True
+    assert avail.formula.type == "arithmetic"
+    assert avail.formula.arithmetic.expression == "capacity - activeClients"
+
+    # aggregate
+    total = fields["totalHours"]
+    assert total.readOnly is True
+    assert total.formula.type == "aggregate"
+    assert total.formula.aggregate.function == "sum"
+    assert total.formula.aggregate.related_entity == "Session"
+    assert total.formula.aggregate.field == "hours"
+
+    # No derived field was deferred.
+    assert not any(d.kind == "derived_field" for d in result.deferrals)
+
+
+def test_adapter_uses_engine_override_formula(v2_env, tmp_path):
+    with session_scope() as s:
+        ent = entity.create_entity(
+            s, name="Mentor", description="A mentor", kind="person",
+            status="confirmed",
+        )
+        eid = ent["entity_identifier"]
+        f = field.create_field(
+            s, field_belongs_to_entity_identifier=eid, name="hand_tuned",
+            description="hand-tuned computed", type="derived",
+            status="confirmed", derived_result_type="text",
+        )
+        # No neutral formula — only an engine_override carrying the EspoCRM
+        # formula block (the §9 hand-tuned residue, in the engine's own shape).
+        engine_override.create_engine_override(
+            s, target_engine="espocrm", subject_type="field",
+            subject_identifier=f["field_identifier"], attribute="formula",
+            value={"type": "concat", "parts": [{"literal": "fixed"}]},
+        )
+    adapter = EspoCrmAdapter()
+    result = adapter.run(
+        AccessDesignClient(), tmp_path, rendered_at=RENDERED_AT,
+        engagement="ENG-006",
+    )
+    for p in result.programs:
+        assert validate_yaml_text(p.content) == []
+
+    from espo_impl.core.config_loader import ConfigLoader
+
+    loader = ConfigLoader()
+    prog = loader.load_program(tmp_path / "Mentor.yaml")
+    fields = {f.name: f for f in prog.entities[0].fields}
+    assert fields["handTuned"].formula.type == "concat"
+    assert not any(d.kind == "derived_field" for d in result.deferrals)
+
+
+def test_adapter_defers_derived_field_without_formula(v2_env, tmp_path):
+    with session_scope() as s:
+        ent = entity.create_entity(
+            s, name="Mentor", description="A mentor", kind="person",
+            status="confirmed",
+        )
+        # A derived field with a result type but NO formula and NO override.
+        field.create_field(
+            s, field_belongs_to_entity_identifier=ent["entity_identifier"],
+            name="orphan_calc", description="no formula", type="derived",
+            status="confirmed", derived_result_type="text",
+        )
+    adapter = EspoCrmAdapter()
+    result = adapter.run(
+        AccessDesignClient(), tmp_path, rendered_at=RENDERED_AT,
+        engagement="ENG-007",
+    )
+    # Still valid YAML; the orphan derived field routes to MANUAL-CONFIG.
+    for p in result.programs:
+        assert validate_yaml_text(p.content) == []
+    written = (tmp_path / "Mentor.yaml").read_text(encoding="utf-8")
+    assert "orphanCalc" not in written
+    manual = (tmp_path / "MANUAL-CONFIG.md").read_text(encoding="utf-8")
+    assert "Derived / formula fields" in manual
+    assert any(d.kind == "derived_field" for d in result.deferrals)
