@@ -4,7 +4,7 @@
 **Status:** Draft (design deliverable)
 **Planning Item:** PI-148 — *Make the link-panel inline preview discoverable — visible per-row affordance, not just timed hover*
 **Project:** PRJ-016 — *usability for objects that carry large numbers of links*
-**Work Task:** WTK-150 (area: ui)
+**Work Task:** WTK-150 (area: ui); ratified for the WSK-138 re-decomposition by WTK-152 — see `pi-148-discoverable-preview-affordance-design-verification-wtk152.md`
 **Builds on:** PI-118 (`pi-118-link-panel-inline-preview-ui-design.md`) — the `LinkedRecordPreviewCard` + `PreviewController`, already shipped; and the PI-116 filter / PI-117 sort+grouping / PI-119 drag-resize / PI-120 generalized grid rebuilds beneath it, all shipped.
 
 ## 1. Overview
