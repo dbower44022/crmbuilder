@@ -356,6 +356,20 @@ this process" down to the single field that moved. This is **end-to-end provenan
 construction**, and it is the reason this concept is a governance win and not merely a
 workflow.
 
+**Versioning mechanism (§16.4 — DEC-481/482, REQ-214/215/216, built by PI-208):**
+- **Full-definition snapshots.** Each versioned artifact keeps a per-artifact `*_versions`
+  child table; every release-change appends a complete-definition snapshot **vN+1** that
+  **supersedes** the prior. "The Contact entity as shipped in R23" is a *direct read*, not a
+  log replay. The existing `change_log` retains the granular field-level edit trail beneath.
+- **Numbering:** per-artifact, monotonic (Contact v1 → v2 → v3), independent of other
+  artifacts.
+- **Release tie + live rule:** each version is tied to the release that introduced it; the
+  **live/current definition is the latest version whose release has *shipped*.** Versions in
+  an in-flight release are **frozen drafts** — locked by the freeze, but not yet live.
+- **Scope:** processes and the model definitions (entity, persona, relation, field) are
+  versioned; **requirements are governed by their lifecycle** (candidate/confirmed/reopened),
+  not by version numbers.
+
 ---
 
 ## 10. The Agent Orgs — two, same shape
@@ -592,8 +606,10 @@ These were deliberately *not* decided in the conversation. Do not assume answers
    REQ-208) — **no.** Phase-2 area planning is *serial within an area* (no parallel sub-agent
    fan-out), so there is no judgment grain to backstop; it also edits already-row-safe DB
    records, not git files. Single-owner-per-area + DB row-safety suffices.
-4. **Versioning model details** for processes and entity definitions (numbering,
-   supersession edges, how a release "ties" a version).
+4. ~~**Versioning model details.**~~ **RESOLVED** (DEC-481/482, REQ-214/215/216; §9) —
+   full-definition snapshots per version in a `*_versions` child table, per-artifact monotonic
+   numbering, each version release-tied and superseding the prior, live = latest *shipped*
+   version, scope = processes + model definitions (requirements stay lifecycle-governed).
 5. **How reconciliation actually merges** two process changes that both touch one entity
    (the algorithm/agent contract).
 6. **The Release entity — fully designed (§5.0 + §16.2 resolved), not yet built.** Intrinsic
@@ -738,6 +754,7 @@ REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 | §16.3 | Planning serial within area; no backstop | DEC-475 | REQ-208 | PI-209 |
 | §16.6 | Release entity designed (intrinsic; composition → §16.2) | DEC-476, DEC-477 | REQ-209, REQ-210 | PI-205 |
 | §16.2 | Project-model: R-1 release-scoped + two-home reqs + blocked_by/Topic | DEC-478…480 | REQ-211…213 | PI-205 |
+| §16.4 | Versioning: full-definition snapshots, release-tied, live=latest-shipped | DEC-481, DEC-482 | REQ-214…216 | PI-208 |
 
 ---
 
