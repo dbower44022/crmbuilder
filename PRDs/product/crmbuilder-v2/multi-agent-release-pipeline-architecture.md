@@ -153,6 +153,10 @@ Release → Project → Requirement → Planning Item (PI) → Workstream → Wo
 | **Frozen (release)** | A release's process versions and requirements are committed to the release and closed to further *conceptual* change. Freeze locks the processes and requirements (the demands), not the derived model; reconciliation and architecture planning then operate on the frozen set. Freeze triggers the temperature flip to single-threaded-by-area, and is the first of the three "planned completely" conditions. Distinct from **area freeze** (§7.1), which is a development-side area passing its own QA + testing. |
 | **Reopen** | The governed reverse of a freeze (§14). The only in-flight reopen is of a frozen *area* (D2), triggered by a downstream area's discovered need; it re-serializes (pause → reopen → re-freeze → resume). Frozen *plans* are never reopened — plan corrections go to a new Release. |
 | **Blast radius** | The set of areas downstream of a reopen point — everything that re-flows through its QA/test gate when an area is reopened. Larger the lower the reopen; the measure that sizes reopen approval (RW5). |
+| **Facet** | The grain at which reconciliation detects conflict: a single attribute of a field or model element (`email.required`, `contactType.options`, `phone.type`), not the whole entity. Two demands collide only if they set the *same facet* to contradictory values (§5.4). |
+| **Reconciliation conflict** | A typed record emitted when two requirements demand contradictory values on one facet. It is resolved by a governed decision (pick / synthesize / amend a requirement), never by the reconciler silently choosing (§5.4, D-35). |
+| **Reconciled delta-set** | Reconciliation's output for a release: per touched artifact, the conflict-free merged change against the live base, every change traced to its demanding requirement(s). Architecture planning consumes it to author vN+1 (§5.4, D-36). |
+| **Three-way merge (model)** | Reconciliation's merge shape: base = the artifact's live (latest-shipped) definition; each demanding requirement = a delta against that base; merged = base + the N deltas (§5.4, D-33). |
 
 ---
 
@@ -240,6 +244,85 @@ it falls out of the work-task prerequisite graph.
   specs (build what the spec said, to the required standard)? Testing is **functional**
   verification — does it actually work? QA comes first on purpose.
 - See §7 for the two levels (area vs release) of QA/testing.
+
+### 5.4 The reconciliation-merge algorithm (§16.5, resolved)
+
+This is the **algorithm/agent contract** for the reconciliation stage (§5.1): how the
+overlapping demands of a release's process changes on one **shared model artifact** (an
+entity, persona, or relation) merge into one coherent definition. Designed in conversation
+**CNV-108**, decisions **DEC-483…487** (D-33…D-37). It is the planning-side mirror of the
+dev-side shared-base-file problem, solved by structure-first merging with judgment reserved
+for the one place it is unavoidable — exactly the philosophy of the file-lock backstop (§7.3),
+one ring out.
+
+**The setup.** Under the two temperatures (§5.1), Phase-1 concepts are drafted optimistically
+and in parallel; nobody locks the model. So when a set of frozen processes/requirements is
+scheduled into a release, several requirements — born in different processes — may each demand
+changes to the **same** artifact (e.g. "Mentor Recruitment" and "Donor Management" both touch
+**Contact**). Reconciliation resolves those superimposed demands into one conflict-free model.
+
+**It is a three-way / N-way merge (D-33).** Each touched artifact is merged like a
+three-way merge:
+- **Base** = the artifact's **live definition** — its latest *shipped* version (per §16.4).
+- **Sides** = each demanding requirement's **delta** expressed against that same base.
+- **Merged** = base + the set of deltas. N demanding requirements → an N-way merge over **one
+  common base**, so the result is order-independent and every merged change keeps a clean line
+  back to the demand(s) that produced it.
+
+**The conflict unit is the facet, not the entity (D-34).** Two requirements both "touching
+Contact" is *not* a conflict. The unit is the **facet** of a field or attribute —
+`email.required`, `contactType.options`, `phone.type`. The reconciler classifies every
+overlapping demand on the same facet by a fixed taxonomy; the first four classes **auto-merge
+without judgment** and are recorded, and **only `CONFLICT` escalates**:
+
+| Class | When | Resolution |
+|---|---|---|
+| **NONE** | demands touch disjoint facets/fields | union — both apply |
+| **IDENTICAL** | same facet, same value (both want `email` required) | dedupe — apply once |
+| **COMPOSE** | different facets of one field (A: `email.required`; B: `email.maxLength`) | apply all facets |
+| **ADDITIVE-UNION** | set-valued facet (both add `contactType` enum options) | union the set |
+| **CONFLICT** | same facet, contradictory values (`required` true vs false; `phone.type` phone vs varchar; add-vs-remove of one field) | **escalate (D-35)** |
+
+Most parallel-drafted overlaps fall in the first four classes and merge mechanically
+(machine-verifiable, fast). Judgment is spent only on the rare genuine contradiction.
+
+**A contradiction is a governed requirements decision — never a silent reconciler pick
+(D-35).** When two confirmed requirements demand contradictory values on one facet, the
+reconciler does **not** choose. It emits a typed **reconciliation-conflict** (artifact, facet,
+the competing demands and their requirements) and routes it to a governed `decision`, whose
+outcome — pick A, pick B, synthesize a third value, or **amend** one requirement via a
+`requirement_changed_by_decision` edge (sending it back to candidate/needs-review) — is applied
+into the reconciled delta. Approval weight scales with impact, consistent with the
+reopen-approval principle (RW5). Choosing between two business processes' demands is a
+*requirements* decision, not a merge mechanic; a silent pick would violate "inferences require
+positive support" and bury a real trade-off. The project's existing decision + requirement-amend
+machinery (the provenance/Review work) governs it.
+
+**Output is a conflict-free reconciled delta-set; vN+1 is authored downstream (D-36).**
+Reconciliation's deliverable is the **conflict-free reconciled delta-set** per touched artifact
+(the merged logical target + every resolved conflict), **not** the version snapshot. Architecture
+planning (§5.1) consumes that delta-set and authors/snapshots the release-tied **vN+1** (§16.4).
+Reconciliation never writes a `*_versions` row — version authoring stays a single-writer
+(architecture) concern, and the stage boundary in §5.1 is preserved exactly.
+
+**One single writer, dependency-ordered, deterministic, fully traced (D-37).** Reconciliation
+is single-threaded by area (§10), so **one reconciler owns the whole model (Data Structure)
+area** and processes artifacts in **intra-model dependency order — entities and personas first,
+then the relations that reference them** — over the *static* frozen requirement set. That makes
+the merge **deterministic and re-runnable**: a re-freeze after a reopen (§14) or a requirement
+amendment reproduces the same reconciled delta-set from the same inputs. Every auto-merged or
+resolved change links to the requirement(s) that demanded it, and every conflict resolution
+links to its decision — extending the §9 provenance spine **down to the single field**.
+
+**Reconciliation invariants (RC-1…RC-7 — REQ-217…223, ai-derived, candidate):**
+
+- **RC-1** (REQ-217) — A release cannot leave reconciliation with any open (unresolved) model conflict. *(the gate)*
+- **RC-2** (REQ-218) — Reconciliation merges each requirement's demand as a delta against the live (latest-shipped) base (an N-way three-way merge over one common base).
+- **RC-3** (REQ-219) — The conflict unit is the (artifact, field/attribute, facet); disjoint, identical, orthogonal-facet, and additive-union overlaps auto-merge without judgment and are recorded.
+- **RC-4** (REQ-220) — A same-facet contradiction is a typed conflict resolved by a governed decision; the reconciler never silently chooses between two requirements' demands.
+- **RC-5** (REQ-221) — Reconciliation produces a conflict-free reconciled delta-set; vN+1 is authored downstream by architecture planning, not by reconciliation.
+- **RC-6** (REQ-222) — The model area is reconciled by a single writer in intra-model dependency order, making the merge deterministic and re-runnable from the frozen requirement set.
+- **RC-7** (REQ-223) — Every reconciled change links to its demanding requirement(s) and every conflict resolution links to its decision (provenance to the field by construction).
 
 ---
 
@@ -513,6 +596,44 @@ Each decision below should become a DEC record with `alternatives_considered` an
   locking is wasteful; once committed to a release, reconciliation resolves shared-model
   conflicts deterministically.
 
+### D-33 — Reconciliation is a three-way merge against the live (latest-shipped) base
+- **Options:** **(a)** pairwise merge of requirement demands with no common base;
+  **(b)** three-way merge where base = the artifact's live definition and each requirement is a
+  delta against it (N requirements → N-way over one base).
+- **Chosen:** (b). **Why:** a single common base makes the N-way structured merge well-defined
+  and order-independent, ties to the §16.4 live=latest-shipped rule, and keeps clean per-change
+  provenance. *(§5.4, DEC-483.)*
+
+### D-34 — The conflict unit is the (artifact, field, facet); a typed taxonomy auto-merges non-contradictory overlaps
+- **Options:** **(a)** entity-grain (any two requirements touching one entity conflict/serialize);
+  **(b)** facet-grain with a fixed taxonomy (NONE/IDENTICAL/COMPOSE/ADDITIVE-UNION/CONFLICT) where
+  the first four auto-merge and only CONFLICT escalates.
+- **Chosen:** (b). **Why:** most parallel-drafted overlaps are non-contradictory; facet-grain lets
+  the structural majority merge mechanically and reserves judgment for the rare true contradiction
+  — structure-first, judgment-only-where-unavoidable. *(§5.4, DEC-484.)*
+
+### D-35 — A same-facet contradiction is a governed requirements decision; never a silent reconciler pick
+- **Options:** **(a)** the reconciler agent auto-resolves with recorded rationale;
+  **(b)** it emits a typed reconciliation-conflict and a governed `decision` resolves it
+  (pick/synthesize/amend a requirement via `requirement_changed_by_decision`).
+- **Chosen:** (b). **Why:** choosing between two business processes' contradictory demands is a
+  requirements decision, not a merge mechanic; a silent pick would violate "no silent inferences"
+  and bury a real trade-off. The existing decision + amend machinery governs it. *(§5.4, DEC-485.)*
+
+### D-36 — Reconciliation outputs a conflict-free delta-set; vN+1 is authored downstream by architecture planning
+- **Options:** **(a)** reconciliation writes vN+1 directly; **(b)** reconciliation produces the
+  conflict-free reconciled delta-set and architecture planning snapshots vN+1.
+- **Chosen:** (b). **Why:** preserves the §5.1 stage separation and keeps version authoring a
+  single-writer (architecture) concern; reconciliation never writes a `*_versions` row.
+  *(§5.4, DEC-486.)*
+
+### D-37 — The model area is reconciled by a single writer, dependency-ordered, deterministically, fully traced
+- **Options:** **(a)** per-artifact parallel reconcilers; **(b)** one model-area reconciler
+  processing entities/personas before the relations that reference them, over the frozen set.
+- **Chosen:** (b). **Why:** a single writer over a frozen base removes cross-artifact races;
+  dependency order matches "data structure before API"; determinism makes the rework/amend paths
+  safe; per-change provenance is the governance win. *(§5.4, DEC-487.)*
+
 ---
 
 ## 13. Non-Goals / Out of Scope
@@ -610,8 +731,14 @@ These were deliberately *not* decided in the conversation. Do not assume answers
    full-definition snapshots per version in a `*_versions` child table, per-artifact monotonic
    numbering, each version release-tied and superseding the prior, live = latest *shipped*
    version, scope = processes + model definitions (requirements stay lifecycle-governed).
-5. **How reconciliation actually merges** two process changes that both touch one entity
-   (the algorithm/agent contract).
+5. ~~**How reconciliation actually merges** two process changes that both touch one entity
+   (the algorithm/agent contract).~~ **RESOLVED** — designed in §5.4 (DEC-483…487, REQ-217…223,
+   built by PI-215): a three-way / N-way merge of each requirement's demanded delta against the
+   live (latest-shipped) base, a facet-grain typed conflict taxonomy that auto-merges every
+   non-contradictory overlap, same-facet contradictions escalated to a governed requirements
+   decision (never a silent reconciler pick), a conflict-free reconciled delta-set output (vN+1
+   authored downstream by architecture planning), and a single-writer, dependency-ordered,
+   deterministic, fully-provenance-linked model pass.
 6. **The Release entity — fully designed (§5.0 + §16.2 resolved), not yet built.** Intrinsic
    shape (DEC-476/477, REQ-209/210): born-early forming container, pipeline-stage lifecycle,
    explicit-order + `blocked_by` lane entry. Composition (DEC-478/479/480, REQ-211/212/213):
@@ -675,6 +802,14 @@ into a literal Release record. This is logged as Open Question §16, item 6.
 origin `ai_derived` (REQ-190…196 confirmed via Review-panel sign-off; REQ-188, REQ-189,
 REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 `planning_item_belongs_to_project`.
+
+**§16.5 follow-on (2026-06-16):** after SES-192 closed, the reconciliation-merge design pass
+was recorded under a new session **SES-193** (`session_belongs_to_project` PRJ-031),
+conversation **CNV-108** (`conversation_belongs_to_session` SES-193, `_belongs_to_topic`
+TOP-094). Decisions **DEC-483…487** are `decided_in` SES-193; requirements **REQ-217…223** are
+`requirement_defined_in_conversation` CNV-108 and `requirement_belongs_to_topic` TOP-094, origin
+`ai_derived`, status `candidate` (awaiting Review-panel sign-off); **PI-215**
+`planning_item_belongs_to_project` PRJ-031, implements REQ-217…223, `blocked_by` PI-208 + PI-205.
 
 **Decisions:**
 
@@ -746,6 +881,29 @@ REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 | REQ-206 | FLR-4 Owner-independent DB locks, verified on diff | §7.3 | PI-203 |
 | REQ-207 | FLR-5 Dead sub-agent reclaimed, worktree discarded | §7.3 | PI-203 |
 
+**Reconciliation-merge algorithm (§5.4, §16.5) — decisions and requirements (SES-193 / CNV-108):**
+
+| # | Decision | Decision id | Requirement | Built by |
+|---|---|---|---|---|
+| D-33 | Three-way merge against the live (latest-shipped) base | DEC-483 | REQ-218 | PI-215 |
+| D-34 | Facet-grain conflict unit; typed taxonomy auto-merges non-contradictory overlaps | DEC-484 | REQ-219 | PI-215 |
+| D-35 | Contradiction → governed requirements decision, never a silent pick | DEC-485 | REQ-220 | PI-215 |
+| D-36 | Output is a conflict-free delta-set; vN+1 authored downstream | DEC-486 | REQ-221 | PI-215 |
+| D-37 | Single-writer, dependency-ordered, deterministic, fully traced | DEC-487 | REQ-222, REQ-223 | PI-215 |
+
+| REQ | Reconciliation invariant | PRD § | Built by |
+|---|---|---|---|
+| REQ-217 | RC-1 No open conflict may leave reconciliation (the gate) | §5.4 | PI-215 |
+| REQ-218 | RC-2 Three-way merge against the live base | §5.4 | PI-215 |
+| REQ-219 | RC-3 Facet-grain conflict unit + mechanical auto-merge | §5.4 | PI-215 |
+| REQ-220 | RC-4 Contradictions escalate to a governed decision | §5.4 | PI-215 |
+| REQ-221 | RC-5 Output is a conflict-free delta-set; vN+1 downstream | §5.4 | PI-215 |
+| REQ-222 | RC-6 Single-writer, dependency-ordered, deterministic pass | §5.4 | PI-215 |
+| REQ-223 | RC-7 Every reconciled change is provenance-linked | §5.4 | PI-215 |
+
+*(REQ-217…223 are `ai_derived` / `candidate`, awaiting Review-panel sign-off; PI-215 belongs to
+PRJ-031 and is `blocked_by` PI-208 (versioning base) and PI-205 (the reconciliation stage).)*
+
 **Resolved open questions (decisions):**
 
 | Open Q | Resolution | Decision | Requirement | Built by |
@@ -755,6 +913,7 @@ REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 | §16.6 | Release entity designed (intrinsic; composition → §16.2) | DEC-476, DEC-477 | REQ-209, REQ-210 | PI-205 |
 | §16.2 | Project-model: R-1 release-scoped + two-home reqs + blocked_by/Topic | DEC-478…480 | REQ-211…213 | PI-205 |
 | §16.4 | Versioning: full-definition snapshots, release-tied, live=latest-shipped | DEC-481, DEC-482 | REQ-214…216 | PI-208 |
+| §16.5 | Reconciliation-merge: three-way against live base, facet-grain taxonomy, governed-decision conflicts, delta-set output, single-writer traced | DEC-483…487 | REQ-217…223 | PI-215 |
 
 ---
 
