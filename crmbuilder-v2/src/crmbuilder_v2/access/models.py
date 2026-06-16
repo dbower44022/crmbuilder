@@ -97,6 +97,7 @@ from crmbuilder_v2.access.vocab import (
     PLANNING_ITEM_TYPES,
     PROCESS_CLASSIFICATIONS,
     PROJECT_STATUSES,
+    RELEASE_STATUSES,
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
@@ -2873,6 +2874,95 @@ class WorkTask(EngagementScopedPKMixin, Base):
         Index("ix_work_tasks_work_task_status", "work_task_status"),
         Index("ix_work_tasks_work_task_area", "work_task_area"),
         Index("ix_work_tasks_work_task_deleted_at", "work_task_deleted_at"),
+    )
+
+
+class Release(EngagementScopedPKMixin, Base):
+    """Governance entity — the multi-agent release pipeline keystone (PI-205).
+
+    PRJ-031. A born-early forming container (REQ-209) whose ``release_status``
+    *is* its pipeline stage over the 12-value lifecycle
+    preliminary_planning → development_planning → reconciliation →
+    architecture_planning → ready → development → qa → testing → deployment →
+    shipped (+ cancelled / superseded). The four lane states
+    (development..deployment) are the exclusive development lane held by one
+    release until it ships (REQ-189) — enforced by the access-layer occupancy
+    check at ``ready → development`` and, as a concurrency-safe structural
+    backstop, the ``uq_releases_one_in_lane`` partial unique index. Three gated
+    transitions: freeze (→ reconciliation; stamps ``release_frozen_at``),
+    planned-completely (→ ready; stamps ``release_planned_completely_at``), and
+    single-occupancy (→ development). Lane entry is by ``release_lane_order`` +
+    ``blocked_by`` (REQ-210). Composition (release-scoped Projects, lane order)
+    lives in ``refs``, not FK columns. See
+    pi-205-release-entity-architecture.md.
+    """
+
+    __tablename__ = "releases"
+
+    release_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    release_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    release_status: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="preliminary_planning"
+    )
+    release_description: Mapped[str] = mapped_column(Text, nullable=False)
+    release_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The human-set lane-entry sequence (REQ-210); NULL until ordered.
+    release_lane_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The freeze stamp (§9A/§16.7) — also the boundary marking post-freeze
+    # versions as frozen drafts (read by PI-208).
+    release_frozen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_planned_completely_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_shipped_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    release_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    release_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_superseded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("release_identifier", ["REL"]),
+            name="ck_release_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("release_status", RELEASE_STATUSES),
+            name="ck_release_status",
+        ),
+        Index("ix_releases_release_status", "release_status"),
+        Index("ix_releases_release_deleted_at", "release_deleted_at"),
+        # Single-occupancy of the development lane (REQ-189): at most one live
+        # release per engagement in a lane state. Partial unique on both
+        # dialects; the primary enforcement is the access-layer check, this is
+        # the concurrency-safe backstop under BEGIN IMMEDIATE.
+        Index(
+            "uq_releases_one_in_lane",
+            "engagement_id",
+            unique=True,
+            sqlite_where=text(
+                "release_status IN ('development','qa','testing','deployment') "
+                "AND release_deleted_at IS NULL"
+            ),
+            postgresql_where=text(
+                "release_status IN ('development','qa','testing','deployment') "
+                "AND release_deleted_at IS NULL"
+            ),
+        ),
     )
 
 

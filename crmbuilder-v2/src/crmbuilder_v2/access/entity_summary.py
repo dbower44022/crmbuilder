@@ -103,6 +103,7 @@ _SPECS: dict[str, _Spec] = {
     "filtered_tab": _Spec(models.FilteredTab, "filtered_tab_identifier", "filtered_tab_label", "filtered_tab_status", "filtered_tab_created_at", "filtered_tab_updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
+    "release": _Spec(models.Release, "release_identifier", "release_title", "release_status", "release_created_at", "release_updated_at"),
     "workstream": _Spec(models.Workstream, "workstream_identifier", "workstream_title", "workstream_status", "workstream_created_at", "workstream_updated_at"),
     "work_task": _Spec(models.WorkTask, "work_task_identifier", "work_task_title", "work_task_status", "work_task_created_at", "work_task_updated_at"),
     "finding": _Spec(models.Finding, "finding_identifier", "finding_summary", "finding_status", "finding_created_at", "finding_updated_at"),

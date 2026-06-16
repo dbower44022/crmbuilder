@@ -863,6 +863,60 @@ PROJECT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "superseded": frozenset(),
 }
 
+# `release` (REL-) — PI-205 (PRJ-031), the multi-agent release pipeline keystone.
+# A born-early forming container that work is scheduled into as concepts mature
+# (REQ-209). Its status IS its pipeline stage; the lane states
+# (development..deployment) are the exclusive development lane held by one
+# release until it ships (REQ-189). See
+# multi-agent-release-pipeline-architecture.md §5.0/§9A and
+# pi-205-release-entity-architecture.md.
+RELEASE_STATUSES: frozenset[str] = frozenset(
+    {
+        "preliminary_planning",
+        "development_planning",
+        "reconciliation",
+        "architecture_planning",
+        "ready",
+        "development",
+        "qa",
+        "testing",
+        "deployment",
+        "shipped",
+        "cancelled",
+        "superseded",
+    }
+)
+# The lane states — the exclusive development lane (single-occupancy, REQ-189),
+# held from `development` through `deployment` until `shipped`.
+RELEASE_LANE_STATUSES: frozenset[str] = frozenset(
+    {"development", "qa", "testing", "deployment"}
+)
+RELEASE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "preliminary_planning": frozenset(
+        {"development_planning", "cancelled", "superseded"}
+    ),
+    # → reconciliation is the FREEZE gate (§9A / §16.7).
+    "development_planning": frozenset(
+        {"reconciliation", "cancelled", "superseded"}
+    ),
+    "reconciliation": frozenset(
+        {"architecture_planning", "cancelled", "superseded"}
+    ),
+    # → ready is the PLANNED-COMPLETELY gate (§5.2).
+    "architecture_planning": frozenset({"ready", "cancelled", "superseded"}),
+    # → development is the SINGLE-OCCUPANCY + lane-order gate (§4.3).
+    "ready": frozenset({"development", "cancelled", "superseded"}),
+    # The exclusive lane. Forward flow plus the rework bounce-backs to
+    # development (D-07); the lane stays held the whole time.
+    "development": frozenset({"qa", "cancelled", "superseded"}),
+    "qa": frozenset({"testing", "development", "cancelled", "superseded"}),
+    "testing": frozenset({"deployment", "development", "cancelled", "superseded"}),
+    "deployment": frozenset({"shipped", "development", "cancelled", "superseded"}),
+    "shipped": frozenset(),
+    "cancelled": frozenset(),
+    "superseded": frozenset(),
+}
+
 # ADO execution_mode (PRJ-026 / PI-183, DEC-423..425). The structural risk gate
 # on a Project and a Planning Item that controls whether the ADO Project Manager
 # dispatcher may touch it — replacing the fragile "don't point the ADO there"
@@ -1320,6 +1374,14 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # joining its consuming processes to their parent domains.
         "process_consumes_service",
         "service_owns_entity",
+        # PI-205 release pipeline (PRJ-031, REQ-211/213). A Project is
+        # release-scoped — it belongs to exactly one Release (single-membership
+        # enforced at the access layer). Release→Release lane ordering reuses the
+        # generic `blocked_by` (admitted for the (release,release) pair in
+        # _kinds_for_pair). The optional planning-doc tie parallels
+        # `project_planned_in_reference_book`.
+        "project_belongs_to_release",
+        "release_planned_in_reference_book",
     }
 )
 
@@ -1441,6 +1503,9 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "team",
         # PI-195 (PRJ-027) net-new filtered-tab design family (FTB-).
         "filtered_tab",
+        # PI-205 (PRJ-031) the multi-agent release pipeline keystone (REL-).
+        # The born-early forming container whose status is its pipeline stage.
+        "release",
     }
 )
 
@@ -1797,6 +1862,15 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("requirement_changed_by_decision")
     if source_type == "planning_item" and target_type == "requirement":
         kinds.add("planning_item_implements_requirement")
+    # PI-205 release pipeline (PRJ-031). A Project is release-scoped (REQ-211);
+    # Releases are lane-ordered by the generic `blocked_by` (REQ-210/213); the
+    # optional planning-doc tie parallels project_planned_in_reference_book.
+    if source_type == "project" and target_type == "release":
+        kinds.add("project_belongs_to_release")
+    if source_type == "release" and target_type == "release":
+        kinds.add("blocked_by")
+    if source_type == "release" and target_type == "reference_book":
+        kinds.add("release_planned_in_reference_book")
     return frozenset(kinds)
 
 

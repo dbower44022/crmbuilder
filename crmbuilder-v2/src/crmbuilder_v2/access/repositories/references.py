@@ -304,6 +304,30 @@ def create(
                 ]
             )
 
+    # PI-205 (PRJ-031, REQ-211): a Project is release-scoped — it belongs to
+    # exactly one Release. Reject a second outgoing project_belongs_to_release
+    # edge from the same project.
+    if relationship == "project_belongs_to_release":
+        existing_count = session.scalar(
+            select(func.count(Reference.id)).where(
+                Reference.source_type == "project",
+                Reference.source_id == source_id,
+                Reference.relationship_kind == "project_belongs_to_release",
+            )
+        )
+        if existing_count and existing_count > 0:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "relationship",
+                        "cardinality_violation",
+                        f"project {source_id} already belongs to a release; "
+                        "delete the existing project_belongs_to_release edge "
+                        "first",
+                    )
+                ]
+            )
+
     # PI-109: enforce the work_ticket single-use rule at the edge level
     # so it fires regardless of the target's current status. A work_ticket
     # admits at most one inbound consumption edge of either kind

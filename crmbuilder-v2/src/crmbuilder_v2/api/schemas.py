@@ -1764,6 +1764,34 @@ class ProjectPatchIn(_Base):
     references: list[GovernanceEdgeIn] | None = None
 
 
+# --- Release (multi-agent release pipeline keystone, PI-205 / PRJ-031) ------
+class ReleaseCreateIn(_Base):
+    release_title: str
+    release_description: str
+    release_notes: str | None = None
+    release_status: str | None = None
+    release_lane_order: int | None = None
+    release_identifier: str | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class ReleasePatchIn(_Base):
+    release_title: str | None = None
+    release_description: str | None = None
+    release_notes: str | None = None
+    release_lane_order: int | None = None
+    references: list[GovernanceEdgeIn] | None = None
+
+
+class ReleaseTransitionIn(_Base):
+    to_status: str
+    actor: str | None = None
+
+
+class ReleaseLaneOrderIn(_Base):
+    order: int | None = None
+
+
 # --- Workstream (delivery phase, PI-112 Phase 4) ---------------------------
 class WorkstreamCreateIn(_Base):
     workstream_phase_type: str
