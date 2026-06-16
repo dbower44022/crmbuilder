@@ -152,7 +152,9 @@ Release → Project → Requirement → Planning Item (PI) → Workstream → Wo
 | **Expert decomposer** | The area owner is a domain expert that decides what to parallelize, not a forced serializer. |
 | **Frozen (release)** | A release's process versions and requirements are committed to the release and closed to further *conceptual* change. Freeze locks the processes and requirements (the demands), not the derived model; reconciliation and architecture planning then operate on the frozen set. Freeze triggers the temperature flip to single-threaded-by-area, and is the first of the three "planned completely" conditions. Distinct from **area freeze** (§7.1), which is a development-side area passing its own QA + testing. |
 | **Reopen** | The governed reverse of a freeze (§14). The only in-flight reopen is of a frozen *area* (D2), triggered by a downstream area's discovered need; it re-serializes (pause → reopen → re-freeze → resume). Frozen *plans* are never reopened — plan corrections go to a new Release. |
-| **Blast radius** | The set of areas downstream of a reopen point — everything that re-flows through its QA/test gate when an area is reopened. Larger the lower the reopen; the measure that sizes reopen approval (RW5). |
+| **Blast radius** | The set of areas downstream of a reopen point — everything that re-flows through its QA/test gate when an area is reopened. Larger the lower the reopen; the measure that sizes reopen approval (RW5). **Computed deterministically** from the frozen prerequisite graph + area statuses, sized by breadth, depth, and re-flow volume (§14.4, D-44). |
+| **Reopen approval tier** | The authority band a reopen needs, derived from its blast radius: Tier 0 (empty) PI-Lead-auto, 1 (shallow) Lead, 2 (majority) PM, 3 (foundational-area/whole-lane) Human. `tier = max(breadth-implied, depth-implied)`, so depth is a hard escalator (§14.4, D-46). |
+| **Reopen impact report** | The deterministic artifact surfaced to the approver before a reopen decision: reopen point + reason, the ordered downstream areas that will re-validate, the re-flow cost, and the derived tier. Bound to the triggering `finding` (§14.4, D-48). |
 | **Facet** | The grain at which reconciliation detects conflict: a single attribute of a field or model element (`email.required`, `contactType.options`, `phone.type`), not the whole entity. Two demands collide only if they set the *same facet* to contradictory values (§5.4). |
 | **Reconciliation conflict** | A typed record emitted when two requirements demand contradictory values on one facet. It is resolved by a governed decision (pick / synthesize / amend a requirement), never by the reconciler silently choosing (§5.4, D-35). |
 | **Reconciled delta-set** | Reconciliation's output for a release: per touched artifact, the conflict-free merged change against the live base, every change traced to its demanding requirement(s). Architecture planning consumes it to author vN+1 (§5.4, D-36). |
@@ -572,7 +574,7 @@ conformance spec for the system itself.
     conceptual change, triggers the flip to single-threaded-by-area planning, and is the
     first of the three "planned completely" conditions. *(Defines the "frozen" term used in
     invariants 3 and 8. Freeze locks the requirements, not the derived model. Enforcement
-    mechanism deferred — §16.7.)*
+    mechanism designed in §9A — gated status, derived frozen-ness, two-gate model.)*
 
 ---
 
@@ -755,6 +757,43 @@ Each decision below should become a DEC record with `alternatives_considered` an
   substrate (`complete_phase`/`start_phase`), and locates §14's reopen as the area-freeze reverse.
   *(§9A, DEC-493.)*
 
+### D-44 — Blast radius is computed deterministically from the frozen prerequisite graph + area statuses
+- **Options:** **(a)** a human estimates the reopen impact; **(b)** compute it from the frozen
+  prerequisite graph + current area statuses — the ordered frozen/in-flight downstream areas that
+  must re-pass QA/test, sized by breadth, depth, and re-flow volume.
+- **Chosen:** (b). **Why:** the graph + statuses are authoritative and already exist; a
+  deterministic measure makes the tier objective and the impact report trustworthy.
+  *(§14.4, DEC-494.)*
+
+### D-45 — A reopen is hard-gated by a recorded approval decision at the required tier
+- **Options:** **(a)** an advisory sign-off note; **(b)** a governed `decision` at the required
+  tier, hard-gated at the access layer (the §14.2 pause/thaw cannot start without it).
+- **Chosen:** (b). **Why:** consistent with §16.5/§16.7 governance; makes RW5 hard, auditable,
+  and provenance-linked. *(§14.4, DEC-495.)*
+
+### D-46 — Four approval tiers keyed on the radius, with a hard depth override; tier = max(breadth, depth)
+- **Options:** **(a)** pure-count keying with a single approver; **(b)** four tiers (0 Lead-auto /
+  1 Lead / 2 PM / 3 Human) keyed on the radius, with a depth override making a foundational-area or
+  whole-lane reopen always Human, and tier = max(breadth-implied, depth-implied).
+- **Chosen:** (b). **Why:** count alone is fragile across engagements; depth is the real cost
+  driver and the thing to make expensive (to pressure good planning); `max()` makes depth a hard
+  escalator. *(§14.4, DEC-496.)*
+
+### D-47 — Tier thresholds are per-engagement configurable (defaults); a repeat reopen escalates one tier
+- **Options:** **(a)** hardcoded thresholds, no repeat penalty; **(b)** per-engagement
+  configurable thresholds (defaults) + a one-tier escalation for a repeat reopen of the same area
+  within a release.
+- **Chosen:** (b). **Why:** engagements differ in area count, so fixed thresholds don't transfer;
+  the repeat-escalation directly serves RW5's goal of pressuring good planning. *(§14.4, DEC-497.)*
+
+### D-48 — A reopen is a structured request bound to the triggering finding, with a deterministic impact report surfaced before approval
+- **Options:** **(a)** a free-text reopen request; **(b)** a structured request referencing the
+  triggering `finding` (`FND-`), plus a computed impact report (reopen point, ordered downstream
+  areas, re-flow cost, derived tier) surfaced to the approver before the decision.
+- **Chosen:** (b). **Why:** makes the decision reviewable and informed; mirrors the §16.5
+  reconciliation-conflict record and the coverage report; reuses the existing finding entity.
+  *(§14.4, DEC-498.)*
+
 ---
 
 ## 13. Non-Goals / Out of Scope
@@ -817,6 +856,64 @@ a revised requirement in a *new Release*, never by cracking the current plan (DE
   QA/test gate; no exemption.
 - **RW5** (REQ-202) — A reopen requires recorded approval sized to its blast radius.
 
+### 14.4 Reopen approval mechanism (§16.8, resolved)
+
+RW5 sets the *principle* — approval sized to blast radius. This section fixes the *mechanism*:
+how the blast radius is computed and surfaced, the concrete tiers/thresholds, and who approves.
+Designed in conversation **CNV-110**, decisions **DEC-494…498** (D-44…D-48); refines RW5
+(REQ-202) and is built by **PI-214**.
+
+**Blast radius is computed, not estimated (D-44).** The blast radius of reopening area X is the
+**ordered set of areas downstream of X in the frozen prerequisite graph that are currently frozen
+or in-flight** — those that built on X and must thaw and re-pass their QA/test gate (the
+conservative full cascade, DEC-467). It is computed deterministically from the frozen graph
+(§5.2) + current area statuses, sized by **breadth** (count of those areas), **depth** (whether X
+is a foundational/structural layer — lowest layer rank, e.g. Data Structure), and the **re-flow
+volume** (completed Work Tasks that must re-validate) as a secondary cost signal.
+
+**A reopen is hard-gated by an approval decision at the required tier (D-45).** A reopen proceeds
+only after a governed `decision` records approval at the blast-radius-derived tier. The decision
+references the triggering finding, the reopen point, the computed radius, and the tier. A reopen
+attempted without the required-tier approval is **rejected at the access layer** — the §14.2
+pause/thaw mechanics cannot start without it.
+
+**Four tiers, keyed on the radius, with a hard depth override (D-46):**
+
+| Tier | Blast radius | Approver |
+|---|---|---|
+| **0** | empty (nothing frozen downstream) | **PI Lead** — self-authorizes, recorded |
+| **1** | shallow (a minority of frozen areas re-flow; reopen point not a foundational layer) | **PI Lead** |
+| **2** | moderate (a majority of frozen areas re-flow, or the configured breadth threshold is crossed) | **PM** |
+| **3** | deep (reopen point is a foundational/structural area, **or** the whole frozen lane re-flows) | **Human** |
+
+The tier is **`max(breadth-implied, depth-implied)`**, so reopening a foundational area is always
+a human decision even if few areas appear to depend on it — depth is a hard escalator that a small
+apparent breadth cannot dilute. (RBAC enforces the approver authority when on; recorded-but-advisory
+while RBAC is off, as for the §9A gates.)
+
+**Configurable thresholds + repeat-reopen escalation (D-47).** The breadth thresholds separating
+the tiers are **configurable per engagement** with sensible defaults (minority vs majority of the
+frozen lane), because engagements differ in area count. A **second or later reopen of the same
+area within one release escalates the computed tier by one** (capped at Human) — repeated
+reopening is exactly the planning failure RW5 exists to make expensive.
+
+**Structured request + surfaced impact report (D-48).** A reopen is raised as a structured
+**request** referencing the triggering **finding** (`FND-`, the downstream area's recorded
+discovery of insufficiency). The system generates a deterministic **impact report** — the reopen
+point and reason, the ordered downstream areas that will thaw and re-validate, the re-flow cost
+(areas + completed Work Tasks), and the derived tier — and surfaces it to the required-tier
+approver **before** the decision. The request, finding, impact report, and approval decision are
+the auditable reopen provenance. This front-end runs *ahead of* the §14.2 mechanics (step 5's
+"approval, recorded" is exactly this gate).
+
+**Reopen-approval invariants (RA-1…RA-5 — REQ-230…234, ai-derived, candidate; refine REQ-202):**
+
+- **RA-1** (REQ-230) — Blast radius is computed deterministically from the frozen prerequisite graph + area statuses (the frozen/in-flight downstream areas that must re-pass QA/test), sized by breadth, depth, and re-flow volume.
+- **RA-2** (REQ-231) — A reopen proceeds only with a recorded approval decision at the required tier; the access layer rejects a reopen lacking it.
+- **RA-3** (REQ-232) — Tiers are keyed on the radius with a depth override (empty → Lead; foundational-area/whole-lane → Human; tier = max(breadth, depth)).
+- **RA-4** (REQ-233) — Thresholds are per-engagement configurable; a repeat reopen of the same area within a release escalates one tier.
+- **RA-5** (REQ-234) — A reopen is a structured request bound to the triggering finding, with a deterministic impact report surfaced to the approver before the decision.
+
 ---
 
 ## 15. New vs Existing — what actually has to be built
@@ -876,9 +973,15 @@ These were deliberately *not* decided in the conversation. Do not assume answers
    decision-governed amends; planned-completely closes even that → RW1); confirmed-scope freeze
    entry with no in-flight plan reverse; area freeze on the Lead QA+test gate, reversible only by
    the §14 reopen.
-8. **Reopen approval mechanism (§14).** The *principle* is set — approval sized to blast
+8. ~~**Reopen approval mechanism (§14).** The *principle* is set — approval sized to blast
    radius (RW5) — but the concrete tiers/thresholds, who approves at each, and how the blast
-   radius is computed and surfaced before approval are deferred to the PRJ-034 build.
+   radius is computed and surfaced before approval.~~ **RESOLVED** — designed in §14.4 (DEC-494…498,
+   REQ-230…234 refining RW5/REQ-202, built by PI-214): blast radius computed deterministically
+   from the frozen prerequisite graph + area statuses; reopen hard-gated by an approval decision
+   at a blast-radius-derived tier (Tier 0 Lead-auto / 1 Lead / 2 PM / 3 Human) with
+   tier = max(breadth, depth) and a hard depth override; per-engagement-configurable thresholds +
+   a one-tier repeat-reopen escalation; a structured reopen request bound to the triggering
+   finding with a deterministic impact report surfaced before approval.
 
 ---
 
@@ -946,6 +1049,17 @@ TOP-094). Decisions **DEC-483…487** are `decided_in` SES-193; requirements **R
 `ai_derived`, status `candidate` (awaiting Review-panel sign-off; they **refine REQ-197**, the
 release-freeze invariant); **PI-216** `planning_item_belongs_to_project` PRJ-031, implements
 REQ-224…229, `blocked_by` PI-205.
+
+**§16.8 follow-on (2026-06-16):** the reopen-approval design pass is recorded under session
+**SES-195** (`session_belongs_to_project` PRJ-034), conversation **CNV-110**
+(`conversation_belongs_to_session` SES-195, `_belongs_to_topic` TOP-094). Decisions
+**DEC-494…498** are `decided_in` SES-195; requirements **REQ-230…234** are
+`requirement_defined_in_conversation` CNV-110, `requirement_belongs_to_topic` TOP-094, and
+`requirement_refines_requirement` **REQ-202** (RW5), origin `ai_derived`, status `candidate`
+(awaiting Review-panel sign-off). They are built by the existing **PI-214** ("Blast-radius-sized
+reopen approval", PRJ-034), which now `planning_item_implements_requirement` REQ-202 + REQ-230…234.
+With §16.8 resolved, **all eight §16 design questions are closed** (item 6 is a build-status note,
+not an open design question).
 
 **Decisions:**
 
@@ -1063,6 +1177,27 @@ PRJ-031 and is `blocked_by` PI-208 (versioning base) and PI-205 (the reconciliat
 *(REQ-224…229 are `ai_derived` / `candidate`, awaiting Review-panel sign-off; PI-216 belongs to
 PRJ-031 and is `blocked_by` PI-205 (the Release entity/status it gates on).)*
 
+**Reopen-approval mechanism (§14.4, §16.8) — decisions and requirements (SES-195 / CNV-110):**
+
+| # | Decision | Decision id | Requirement | Built by |
+|---|---|---|---|---|
+| D-44 | Blast radius computed deterministically from frozen graph + statuses | DEC-494 | REQ-230 | PI-214 |
+| D-45 | Reopen hard-gated by an approval decision at the required tier | DEC-495 | REQ-231 | PI-214 |
+| D-46 | Four tiers keyed on radius + depth override; tier = max(breadth, depth) | DEC-496 | REQ-232 | PI-214 |
+| D-47 | Per-engagement-configurable thresholds; repeat reopen escalates one tier | DEC-497 | REQ-233 | PI-214 |
+| D-48 | Structured request bound to finding; impact report surfaced before approval | DEC-498 | REQ-234 | PI-214 |
+
+| REQ | Reopen-approval invariant (refines REQ-202 / RW5) | PRD § | Built by |
+|---|---|---|---|
+| REQ-230 | RA-1 Blast radius computed deterministically | §14.4 | PI-214 |
+| REQ-231 | RA-2 Reopen hard-gated by an approval decision at the required tier | §14.4 | PI-214 |
+| REQ-232 | RA-3 Tiers keyed on radius with depth override | §14.4 | PI-214 |
+| REQ-233 | RA-4 Configurable thresholds; repeat reopen escalates one tier | §14.4 | PI-214 |
+| REQ-234 | RA-5 Structured request + finding + surfaced impact report | §14.4 | PI-214 |
+
+*(REQ-230…234 are `ai_derived` / `candidate`, awaiting Review-panel sign-off; they
+`requirement_refines_requirement` REQ-202 and are built by the existing PI-214 under PRJ-034.)*
+
 **Resolved open questions (decisions):**
 
 | Open Q | Resolution | Decision | Requirement | Built by |
@@ -1074,6 +1209,7 @@ PRJ-031 and is `blocked_by` PI-205 (the Release entity/status it gates on).)*
 | §16.4 | Versioning: full-definition snapshots, release-tied, live=latest-shipped | DEC-481, DEC-482 | REQ-214…216 | PI-208 |
 | §16.5 | Reconciliation-merge: three-way against live base, facet-grain taxonomy, governed-decision conflicts, delta-set output, single-writer traced | DEC-483…487 | REQ-217…223 | PI-215 |
 | §16.7 | Freeze enforcement: gated status (not a lock), derived frozen-ness, two-gate model, confirmed-scope entry/no-reverse, area freeze via the Lead gate | DEC-488…493 | REQ-224…229 | PI-216 |
+| §16.8 | Reopen approval: deterministic blast radius, decision-gated tiers (Lead/PM/Human) with depth override, configurable thresholds + repeat escalation, finding-bound request + impact report | DEC-494…498 | REQ-230…234 | PI-214 |
 
 ---
 
