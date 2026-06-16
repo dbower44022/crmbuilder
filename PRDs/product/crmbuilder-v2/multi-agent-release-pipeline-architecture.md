@@ -142,6 +142,7 @@ Release → Project → Requirement → Planning Item (PI) → Workstream → Wo
 | **Planned completely (the gate)** | A release may enter the development lane only when: spec frozen + all requirements decomposed to work tasks + all tasks sequenced with prerequisites. |
 | **Rework loop** | A QA/Testing/Deployment failure bounces the release *backward* to Development; the lane stays locked the whole time. |
 | **Expert decomposer** | The area owner is a domain expert that decides what to parallelize, not a forced serializer. |
+| **Frozen (release)** | A release's process versions and requirements are committed to the release and closed to further *conceptual* change. Freeze locks the processes and requirements (the demands), not the derived model; reconciliation and architecture planning then operate on the frozen set. Freeze triggers the temperature flip to single-threaded-by-area, and is the first of the three "planned completely" conditions. Distinct from **area freeze** (§7.1), which is a development-side area passing its own QA + testing. |
 
 ---
 
@@ -329,6 +330,11 @@ conformance spec for the system itself.
    release and frozen, it becomes single-threaded by area** (reconciliation onward).
 9. **Every change is a versioned, release-tied chain: process → requirements → model →
    tasks → code.**
+10. **A release freeze is a deliberate gate** that closes its processes and requirements to
+    conceptual change, triggers the flip to single-threaded-by-area planning, and is the
+    first of the three "planned completely" conditions. *(Defines the "frozen" term used in
+    invariants 3 and 8. Freeze locks the requirements, not the derived model. Enforcement
+    mechanism deferred — §16.7.)*
 
 ---
 
@@ -474,6 +480,9 @@ These were deliberately *not* decided in the conversation. Do not assume answers
    Building it is in scope (PRJ-031 / PI-205). Until then the five projects are grouped via
    `project_planned_in_reference_book → RB-014`; literal Release-record organization waits on
    the entity. *(This is why "organize into a release" is not yet a literal DB grouping.)*
+7. **Freeze enforcement mechanism.** The *semantics* of "frozen" are defined (§4.4, invariant
+   10, REQ-197); *how* the system performs and enforces a freeze — a status flag, a lock, who
+   may set/reverse it — is deferred to the PRJ-031 design pass.
 
 ---
 
@@ -517,10 +526,11 @@ into a literal Release record. This is logged as Open Question §16, item 6.
 ## 18. Traceability Matrix
 
 **Governance anchor (2026-06-16):** Session **SES-192**, Conversation **CNV-101**, Topic
-**TOP-094**, Reference book **RB-014** (this PRD). All 12 decisions are `decided_in`
-SES-192; all 9 requirements are `requirement_defined_in_conversation` CNV-101 and
-`requirement_belongs_to_topic` TOP-094, origin `ai_derived`, status `candidate` (awaiting
-Review-panel sign-off). Every PI `planning_item_implements_requirement` and
+**TOP-094**, Reference book **RB-014** (this PRD). All 13 decisions (DEC-451…463) are
+`decided_in` SES-192; all 10 requirements (REQ-188…197) are
+`requirement_defined_in_conversation` CNV-101 and `requirement_belongs_to_topic` TOP-094,
+origin `ai_derived` (REQ-190…196 confirmed via Review-panel sign-off; REQ-188, REQ-189,
+REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 `planning_item_belongs_to_project`.
 
 **Decisions:**
@@ -539,6 +549,7 @@ Review-panel sign-off). Every PI `planning_item_implements_requirement` and
 | D-10 | File-level locking backstop (PRJ-030) | §7.2, §12 | DEC-460 | REQ-194 | PI-203 |
 | D-11 | Process is unit of change; versioned & tied | §9, §12 | DEC-461 | REQ-196 | PI-208 |
 | D-12 | Optimistic-then-reconcile; two temperatures | §5.1, §12 | DEC-462 | REQ-195 | PI-207 |
+| D-13 | Model the freeze as its own gate requirement (additive, not reopen) | §4.4, §11.10, §16.7 | DEC-463 | REQ-197 | PI-205/207 |
 
 **Requirements (the §11 invariants) → Planning Items → Projects:**
 
@@ -553,6 +564,7 @@ Review-panel sign-off). Every PI `planning_item_implements_requirement` and
 | REQ-194 | (7) Non-overlapping file locks | §11.7 | PI-203 | PRJ-030 |
 | REQ-195 | (8) Conceptual parallel → committed single-threaded | §11.8 | PI-207, PI-209 | PRJ-031, PRJ-033 |
 | REQ-196 | (9) Versioned, release-tied change chain | §11.9 | PI-208 | PRJ-032 |
+| REQ-197 | (10) Release freeze is a deliberate gate | §11.10 | PI-205, PI-207 | PRJ-031 |
 
 ---
 
