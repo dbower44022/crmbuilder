@@ -143,6 +143,8 @@ Release → Project → Requirement → Planning Item (PI) → Workstream → Wo
 | **Rework loop** | A QA/Testing/Deployment failure bounces the release *backward* to Development; the lane stays locked the whole time. |
 | **Expert decomposer** | The area owner is a domain expert that decides what to parallelize, not a forced serializer. |
 | **Frozen (release)** | A release's process versions and requirements are committed to the release and closed to further *conceptual* change. Freeze locks the processes and requirements (the demands), not the derived model; reconciliation and architecture planning then operate on the frozen set. Freeze triggers the temperature flip to single-threaded-by-area, and is the first of the three "planned completely" conditions. Distinct from **area freeze** (§7.1), which is a development-side area passing its own QA + testing. |
+| **Reopen** | The governed reverse of a freeze (§14). The only in-flight reopen is of a frozen *area* (D2), triggered by a downstream area's discovered need; it re-serializes (pause → reopen → re-freeze → resume). Frozen *plans* are never reopened — plan corrections go to a new Release. |
+| **Blast radius** | The set of areas downstream of a reopen point — everything that re-flows through its QA/test gate when an area is reopened. Larger the lower the reopen; the measure that sizes reopen approval (RW5). |
 
 ---
 
@@ -443,7 +445,54 @@ Each decision below should become a DEC record with `alternatives_considered` an
 
 ---
 
-## 14. (reserved)
+## 14. Rework & Reopen — the exception / backward path
+
+Sections 3–13 are the **forward / happy path**: structure that prevents collisions and
+freezes that guarantee stable foundations. This section is its **dual** — how a previously
+frozen step is reopened *under control* when a late problem demands it. (Project **PRJ-034**;
+design recorded in conversation **CNV-102**, decisions **DEC-465…468** = D-15…18.)
+
+A freeze with no governed reverse is brittle; the goal is **"frozen, but reopenable under
+control"** — not forbidden (too rigid), not free (defeats the freeze).
+
+### 14.1 Scope (deliberately narrow)
+
+The depth of a problem is *which freeze gate it traces to*:
+
+| Depth | Problem traces to… | Handling |
+|---|---|---|
+| **D1 — shallow** | a code defect found in QA/Test/Deploy | back to Development — the existing dev-lane rework loop (D-07) |
+| **D2 — the real concern** | a **frozen area** is insufficient for a downstream area | **in-lane area reopen** (this section) |
+| **deeper** | a **frozen plan** (processes/requirements/model) is wrong | **a new Release** — *frozen plans are never reopened* (RW1) |
+
+So the only genuinely new capability is **D2: an in-lane reopen of a frozen area**, triggered
+by a downstream area discovering the upstream area is insufficient (the Contact-entity →
+Business-Logic case). Frozen plans are inviolable; a wrong frozen/shipped plan is corrected by
+a revised requirement in a *new Release*, never by cracking the current plan (DEC-465).
+
+### 14.2 D2 mechanics — a re-serialization
+
+1. The downstream area **pauses** — it can't build on an area that's thawing (preserves
+   "never build on unfrozen ground").
+2. The upstream area is **reopened** — its single owner re-acquired, the change made.
+3. It is **re-QA'd / re-tested / re-frozen**.
+4. **Cascade:** *every* area downstream of the reopen point thaws and **re-passes its QA/test
+   gate — no suspected-no-impact exemption** (DEC-467). Blast radius = all downstream areas, so
+   reopening the lowest layer is the most expensive.
+5. **Approval:** recorded, **sized to the blast radius** (DEC-468) — deep reopens need heavy
+   sign-off; shallow ones are lighter. Deliberately makes deep reopens expensive to authorize,
+   which pressures good up-front planning.
+6. The downstream area **resumes** on the re-frozen upstream.
+
+### 14.3 Rework invariants
+
+- **RW1** (REQ-198) — A frozen plan is never reopened; plan corrections go to a new Release.
+- **RW2** (REQ-199) — The only in-flight reopen is of a frozen *area*, triggered by a
+  downstream area's discovered need.
+- **RW3** (REQ-200) — Reopening an area pauses dependent downstream work until it re-freezes.
+- **RW4** (REQ-201) — Reopening an area re-validates *every* downstream area through its
+  QA/test gate; no exemption.
+- **RW5** (REQ-202) — A reopen requires recorded approval sized to its blast radius.
 
 ---
 
@@ -483,6 +532,9 @@ These were deliberately *not* decided in the conversation. Do not assume answers
 7. **Freeze enforcement mechanism.** The *semantics* of "frozen" are defined (§4.4, invariant
    10, REQ-197); *how* the system performs and enforces a freeze — a status flag, a lock, who
    may set/reverse it — is deferred to the PRJ-031 design pass.
+8. **Reopen approval mechanism (§14).** The *principle* is set — approval sized to blast
+   radius (RW5) — but the concrete tiers/thresholds, who approves at each, and how the blast
+   radius is computed and surfaced before approval are deferred to the PRJ-034 build.
 
 ---
 
@@ -510,8 +562,9 @@ These were deliberately *not* decided in the conversation. Do not assume answers
 - **PRJ-031** — Release Pipeline & Staged Delivery *(new)*.
 - **PRJ-032** — Versioned Process/Model & Provenance *(new)*.
 - **PRJ-033** — Planning Agent Org *(new)*.
+- **PRJ-034** — Rework & Reopen (Exception Handling) *(new — §14)* — the backward/exception path.
 
-All five are `execution_mode = interactive` so the background ADO runtime cannot
+All six are `execution_mode = interactive` so the background ADO runtime cannot
 auto-dispatch this design work before you choose to hand it over.
 
 **Release organization — and the Release-entity gap.** There is **no Release entity in the
@@ -565,6 +618,24 @@ REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 | REQ-195 | (8) Conceptual parallel → committed single-threaded | §11.8 | PI-207, PI-209 | PRJ-031, PRJ-033 |
 | REQ-196 | (9) Versioned, release-tied change chain | §11.9 | PI-208 | PRJ-032 |
 | REQ-197 | (10) Release freeze is a deliberate gate | §11.10 | PI-205, PI-207 | PRJ-031 |
+
+**Rework & Reopen (§14) — decisions and requirements:**
+
+| # | Decision | Decision id | Requirement | Implemented by | Project |
+|---|---|---|---|---|---|
+| D-14 | Pipeline needs a first-class reopen capability | DEC-464 | — | PI-210 (design) | PRJ-034 |
+| D-15 | Narrow scope; frozen plans inviolable | DEC-465 | REQ-198 | PI-211 | PRJ-034 |
+| D-16 | Reopen re-serializes (pause/refreeze/resume) | DEC-466 | REQ-199, REQ-200 | PI-212 | PRJ-034 |
+| D-17 | Conservative full cascade, no exemption | DEC-467 | REQ-201 | PI-213 | PRJ-034 |
+| D-18 | Blast-radius-sized approval | DEC-468 | REQ-202 | PI-214 | PRJ-034 |
+
+| REQ | Rework invariant | PRD § | Implemented by | Project |
+|---|---|---|---|---|
+| REQ-198 | RW1 Frozen plan never reopened (→ new Release) | §14.3 | PI-211 | PRJ-034 |
+| REQ-199 | RW2 Only a frozen area reopens, on downstream need | §14.3 | PI-212 | PRJ-034 |
+| REQ-200 | RW3 Reopen pauses downstream until re-freeze | §14.3 | PI-212 | PRJ-034 |
+| REQ-201 | RW4 Reopen re-validates every downstream area | §14.3 | PI-213 | PRJ-034 |
+| REQ-202 | RW5 Reopen approval sized to blast radius | §14.3 | PI-214 | PRJ-034 |
 
 ---
 
