@@ -1213,6 +1213,81 @@ PRJ-031 and is `blocked_by` PI-205 (the Release entity/status it gates on).)*
 
 ---
 
+## 19. Build Plan & Sequencing
+
+*(Build-planning pass, 2026-06-16 — session **SES-196**, conversation **CNV-111**, decisions
+**DEC-499/500**. The design phase is complete: all eight §16 questions are resolved.)*
+
+The six projects carry **fourteen** build PIs (PI-203…216). The reopen/rework **design** PI
+**PI-210 is Resolved** (its deliverable is §14 + §14.4). The remaining **thirteen** build PIs are
+sequenced by their cross-PI dependencies — **not** by project boundary — so the build walks a
+finished prerequisite graph, the same discipline the pipeline itself uses (§5.2).
+
+### 19.1 The keystone and the independents
+
+- **PI-205** (Release entity + staged pipeline + planned-completely gate) is the **keystone**: it
+  gates eight downstream PIs. Build it first and carefully.
+- **PI-203** (file lock, PRJ-030) is **independent** — it extends the landed ADO substrate and
+  shares no prerequisite with the rest; it can build any time, fully in parallel.
+
+### 19.2 The four dependency waves
+
+| Wave | PIs | What unlocks |
+|---|---|---|
+| **0** | **PI-205** (keystone); **PI-203** (independent) | the Release/stage substrate everything hangs off |
+| **1** | **PI-208** versioning · **PI-206** area-freeze handoff + QA/test levels · **PI-216** freeze enforcement · **PI-207** two-temperature planning · **PI-204** lane single-occupancy + single-owner | the direct dependents of the keystone |
+| **2** | **PI-215** reconciliation engine (needs PI-208) · **PI-211** plan-freeze inviolability (needs PI-216) · **PI-212** in-lane area reopen (needs PI-206 + PI-216) | the merge engine + the freeze reverses |
+| **3** | **PI-209** planning org (needs PI-205/207/208/215) · **PI-213** cascade re-validation (needs PI-212) · **PI-214** reopen approval (needs PI-212) | the agent org + the rework completion |
+
+PIs within a wave have no dependency on each other and may build in parallel (subject to the
+file-lock backstop, §7.3, if they touch shared files).
+
+### 19.3 Critical paths
+
+- **Pipeline spine:** `PI-205 → PI-208 → PI-215 → PI-209` (release → versioning → reconciliation →
+  planning org).
+- **Rework spine:** `PI-205 → PI-206 → PI-212 → PI-213 / PI-214` (release → area freeze → area
+  reopen → cascade / approval).
+
+Both are length 4; the keystone PI-205 is on both.
+
+### 19.4 Project-level order
+
+The PI graph implies a project DAG (encoded as project `blocked_by` edges):
+
+```
+PRJ-031 (Release Pipeline)  ──► PRJ-032 (Versioning) ──► PRJ-033 (Planning Org)
+        │                   └─► PRJ-029 (Coordination)        ▲
+        └─► PRJ-034 (Rework & Reopen)                         │
+PRJ-030 (Source Check-in/Check-out) — independent ────────────┘ (PRJ-033 also needs PRJ-031)
+```
+
+PRJ-031 is foundational; PRJ-032 and PRJ-029 follow it; PRJ-033 follows PRJ-031 + PRJ-032;
+PRJ-034 follows PRJ-031; PRJ-030 is independent.
+
+### 19.5 What is net-new vs extends-existing (per §15)
+
+- **Extends the landed ADO / Agent Profile Registry substrate:** PI-203 (file lock — DB lock table
+  + worktrees over the existing area/sub-agent model), PI-204 (claims/area-ownership over the
+  existing claim lifecycle), PI-206 (area freeze = the existing `complete_phase`/`start_phase`
+  gates), PI-212/213 (reopen = reverse of those gates + the existing `finding` entity), PI-209
+  (planning org over the existing decomposition/scoping substrate).
+- **Net-new:** PI-205 (the Release entity + pipeline-stage lifecycle), PI-208 (versioned
+  release-tied `*_versions` spine), PI-215 (the reconciliation-merge engine), PI-216 (freeze
+  enforcement gating), PI-207 (the two-temperature regime), PI-214 (blast-radius approval).
+
+### 19.6 Gating note (what this pass deliberately did not do)
+
+Per **DEC-500**, per-PI **decomposition into workstreams and work tasks is deferred** to each PI's
+own **Architecture-phase pickup**, using the landed ADO decomposer, and **only after the
+requirements it implements are confirmed in the Review panel**. Many requirements are still
+`candidate` (REQ-188/189/197 from the founding pass; **all of REQ-217…234** from §16.5/16.7/16.8).
+All PIs remain `execution_mode = interactive` so the background ADO runtime cannot auto-dispatch
+them before the human hand-off. **The immediate next action is Review-panel sign-off of the
+candidate requirements**, then Wave 0 (PI-205) Architecture-phase pickup.
+
+---
+
 ## Appendix A — Conversation Transcript (faithful to every turn)
 
 > User turns are reproduced verbatim. Assistant turns are reproduced faithfully in
