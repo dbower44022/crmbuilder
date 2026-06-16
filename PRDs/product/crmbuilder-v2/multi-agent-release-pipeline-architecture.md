@@ -157,6 +157,8 @@ Release → Project → Requirement → Planning Item (PI) → Workstream → Wo
 | **Reconciliation conflict** | A typed record emitted when two requirements demand contradictory values on one facet. It is resolved by a governed decision (pick / synthesize / amend a requirement), never by the reconciler silently choosing (§5.4, D-35). |
 | **Reconciled delta-set** | Reconciliation's output for a release: per touched artifact, the conflict-free merged change against the live base, every change traced to its demanding requirement(s). Architecture planning consumes it to author vN+1 (§5.4, D-36). |
 | **Three-way merge (model)** | Reconciliation's merge shape: base = the artifact's live (latest-shipped) definition; each demanding requirement = a delta against that base; merged = base + the N deltas (§5.4, D-33). |
+| **Derived frozen-ness** | A record is *frozen* by computation, not by a stored flag: frozen iff scheduled into a release at/past the freeze transition, or output by a `Complete` area. Single source of truth = the Release/Workstream status (§9A, D-39). |
+| **Governed-amend window** | The only span in which a frozen release's demands may still change, and only via a `requirement_changed_by_decision` amend: `[freeze, planned-completely)` — the `reconciliation` and `architecture_planning` stages. After planned-completely, a demand change requires a new release (§9A, D-40/D-41). |
 
 ---
 
@@ -455,6 +457,76 @@ workflow.
 
 ---
 
+## 9A. Freeze enforcement (§16.7, resolved)
+
+The *semantics* of "frozen" are set (§4.4, invariant 10, REQ-197); this section fixes the
+*mechanism* — the artifact of "frozen," what it gates, and who may set/reverse it. Designed in
+conversation **CNV-109**, decisions **DEC-488…493** (D-38…D-43). There are two freezes — the
+**release (plan) freeze** (§4.4) and the **area freeze** (§7.1) — and they share one shape.
+
+**Freeze is a gated status, not a lock object (D-38).** A freeze is a deliberate, gated
+**status transition** — on the **Release** for the plan freeze (`development_planning →
+reconciliation`, stamped `release_frozen_at`) and on the **Workstream** for the area freeze
+(`In Progress → Complete`) — enforced **hard at the access layer**, which rejects disallowed
+mutations to the frozen scope. It is *not* an advisory marker and *not* a separate lock
+table. A freeze is a stage property of one long-lived release/area, not a contended concurrent
+resource (that is the file-lock's job, §7.3); a status + access-layer gate is the right weight
+and matches every other V2 gate (supersession, requirement approval, claim single-use).
+
+**Frozen-ness is derived, not stored per record (D-39).** Single source of truth = the Release
+status (plan freeze) and the Workstream status (area freeze). A record is **frozen iff** it is
+scheduled into a release at/past the freeze transition (or is an output of a `Complete` area).
+The access layer computes this at write time from the status + the existing membership/scheduling
+edges (§16.2); there is **no per-record `frozen` column** to drift — the same derive-don't-store
+discipline as §16.4's live=latest-shipped rule.
+
+**The release freeze closes conceptual authoring + scope membership; in-flight refinement is
+decision-only (D-40).** After freeze, the release's **scope membership is closed** (no
+requirement/process-version added or removed) and **ungoverned substantive edits to in-scope
+demands are rejected**. The *one* legal in-flight mutation is the sanctioned amend path: a
+**`requirement_changed_by_decision`** edge sends the requirement to `needs_review`, the edit is
+made, and it is re-approved. The temperature flip *is* this rule — post-freeze, demand mutations
+require a governing decision. (Freeze locks the *demands*, not the derived model; reconciliation
+and architecture planning still produce the model and the plan on the frozen set.)
+
+**Two gates reconcile §16.5 with §14 (D-41).** The **freeze gate** (→ reconciliation) ends free
+conceptual authoring but permits the governed amend through reconciliation and architecture
+planning — the governed-amend window is exactly the `reconciliation` and `architecture_planning`
+stages, i.e. **[freeze, planned-completely)**. The **planned-completely gate** (→ the lane)
+closes even the amend path; thereafter the plan is fully inviolable and any demand change
+requires a **new release** (RW1). This is what distinguishes "refining the frozen plan toward
+completeness" from "reopening a completed plan."
+
+**Release-freeze entry & (non-)reverse (D-42).** A release may be frozen only when its scope is
+**settled and every in-scope requirement is `confirmed`** (human-reviewed via its approving
+decision) — you never freeze candidate demands — and only by a **deliberate human/PM action**,
+recorded with actor + `release_frozen_at` (the timestamp that also marks post-freeze versions as
+**frozen drafts**, §16.4). A frozen release plan has **no in-flight reverse**: abandoning it
+means cancelling/superseding the whole release into a new one (RW1). The D-40 decision-amend is
+in-flight refinement *within* the frozen release, not a reverse.
+
+**Area freeze = the same mechanism, area-scoped (D-43).** The area freeze reuses the gated-status
++ access-layer pattern on the **Workstream**, set by the **PI Lead via the existing
+`complete_phase`** gate (`In Progress → Complete` once all Work Tasks are `Complete` and area QA +
+testing pass, invariant 6). It enforces (i) a downstream area **opens only after** every area it
+depends on is frozen (invariant 5, via the existing serial `blocked_by` + Lead `start_phase`
+gate) and (ii) a frozen area's outputs are **immutable**. Its **only** in-flight reverse is the
+**§14 D2 reopen** (pause downstream → reopen → re-QA/test/re-freeze → cascade re-validate →
+resume), approval sized to blast radius. The asymmetry — area freeze reversible via a governed
+reopen, plan freeze not — is already in §14.
+
+**Freeze-enforcement invariants (FE-1…FE-6 — REQ-224…229, ai-derived, candidate; refine
+REQ-197):**
+
+- **FE-1** (REQ-224) — Freeze is a gated status (release + area) enforced hard at the access layer, not an advisory flag or a separate lock object.
+- **FE-2** (REQ-225) — Frozen-ness is derived from release/workstream status + membership edges; no per-record frozen flag is stored.
+- **FE-3** (REQ-226) — A frozen release closes scope membership and rejects ungoverned demand edits; the only in-flight mutation is a `requirement_changed_by_decision` amend (→ needs_review → re-approve).
+- **FE-4** (REQ-227) — At planned-completely even the governed-amend path closes; any later demand change requires a new release (RW1). The amend window is [freeze, planned-completely).
+- **FE-5** (REQ-228) — A release freezes only with a settled scope of confirmed requirements, by a deliberate human/PM act recorded with actor + timestamp; a frozen plan has no in-flight reverse.
+- **FE-6** (REQ-229) — An area freezes only on area QA + test pass (Lead `complete_phase`); frozen outputs are immutable and downstream opens only after it, reversible solely by the §14 reopen sized to blast radius.
+
+---
+
 ## 10. The Agent Orgs — two, same shape
 
 - **Planning org:** Architect Planning Agent → area planning specialists (e.g. Data
@@ -634,6 +706,55 @@ Each decision below should become a DEC record with `alternatives_considered` an
   dependency order matches "data structure before API"; determinism makes the rework/amend paths
   safe; per-change provenance is the governance win. *(§5.4, DEC-487.)*
 
+### D-38 — Freeze is a deliberate gated status enforced at the access layer, not a separate lock object
+- **Options:** **(a)** a dedicated freeze-lock object/table (like the file-lock);
+  **(b)** a gated *status* (Release for the plan freeze, Workstream for the area freeze) enforced
+  hard by the access layer rejecting disallowed mutations.
+- **Chosen:** (b). **Why:** a freeze is a stage property of one long-lived release/area, not a
+  contended concurrent resource (that is the file-lock's job); a status gate is the right weight
+  and matches every other V2 gate; a lock table would be the heavyweight infra the non-goals warn
+  against. *(§9A, DEC-488.)*
+
+### D-39 — Frozen-ness is derived from release/workstream status + membership edges, not stored per record
+- **Options:** **(a)** stamp a `frozen` flag on every in-scope record; **(b)** single source of
+  truth = the Release/Workstream status; a record is frozen iff scheduled into a release at/past
+  freeze (or output by a `Complete` area). Derive, don't duplicate.
+- **Chosen:** (b). **Why:** avoids sync drift across many records, gives one status to flip,
+  mirrors §16.4 live=latest-shipped and the engine-neutral derive-don't-store pattern; the
+  membership edges already exist (§16.2). *(§9A, DEC-489.)*
+
+### D-40 — The release freeze closes conceptual authoring + scope membership; in-flight refinement is decision-only
+- **Options:** **(a)** freeze hard-locks all in-scope requirements (blocks the §16.5 amend path);
+  **(b)** freeze rejects *ungoverned* mutations and closes scope membership, permitting only the
+  sanctioned `requirement_changed_by_decision` amend (→ needs_review → re-approve).
+- **Chosen:** (b). **Why:** reconciles §16.5 D-35 with the freeze; the temperature flip *is*
+  "post-freeze demand changes require a governing decision"; preserves provenance. *(§9A, DEC-490.)*
+
+### D-41 — Two gates: freeze closes conceptual change; planned-completely closes even the governed-amend path (then RW1)
+- **Options:** **(a)** one gate making the plan fully inviolable at freeze (forbids the §16.5
+  reconciliation amend); **(b)** two gates with a bounded governed-amend window between freeze and
+  planned-completely.
+- **Chosen:** (b). **Why:** matches §4.4 ("reconciliation and architecture planning operate on
+  the frozen set") and §14; cleanly separates refining a frozen plan from reopening a completed
+  one. The amend window is exactly `[freeze, planned-completely)`. *(§9A, DEC-491.)*
+
+### D-42 — Release-freeze entry needs confirmed scope + a deliberate act; it has no in-flight reverse
+- **Options for entry:** auto-freeze vs a deliberate human/PM gate requiring all in-scope
+  requirements `confirmed`. **For reverse:** a direct unfreeze vs none (cancel/supersede → new
+  release, per RW1).
+- **Chosen:** deliberate confirmed-scope freeze, recorded with actor + `release_frozen_at`; no
+  direct reverse. **Why:** invariant 10's "deliberate gate"; you don't freeze unreviewed demands;
+  RW1 makes the plan freeze irreversible except by abandoning the release; the timestamp marks
+  post-freeze versions as frozen drafts (§16.4). *(§9A, DEC-492.)*
+
+### D-43 — Area freeze is the same mechanism at area scope; set by the Lead on QA+test, reversed only by the §14 reopen
+- **Options:** **(a)** a distinct area-freeze mechanism; **(b)** the same gated-status +
+  access-layer enforcement on the Workstream — set via the existing `complete_phase` (QA+test),
+  enforcing downstream-open and output-immutability, reversed only by the §14 D2 reopen.
+- **Chosen:** (b). **Why:** unifies both freezes under one shape, reuses the landed ADO Lead
+  substrate (`complete_phase`/`start_phase`), and locates §14's reopen as the area-freeze reverse.
+  *(§9A, DEC-493.)*
+
 ---
 
 ## 13. Non-Goals / Out of Scope
@@ -746,9 +867,15 @@ These were deliberately *not* decided in the conversation. Do not assume answers
    PRJ-031 / PI-205. Until built, projects are grouped via
    `project_planned_in_reference_book → RB-014`; literal Release-record organization waits on
    the build.
-7. **Freeze enforcement mechanism.** The *semantics* of "frozen" are defined (§4.4, invariant
+7. ~~**Freeze enforcement mechanism.** The *semantics* of "frozen" are defined (§4.4, invariant
    10, REQ-197); *how* the system performs and enforces a freeze — a status flag, a lock, who
-   may set/reverse it — is deferred to the PRJ-031 design pass.
+   may set/reverse it.~~ **RESOLVED** — designed in §9A (DEC-488…493, REQ-224…229, built by
+   PI-216): a deliberate gated *status* (release + area) enforced hard at the access layer, not a
+   lock object; frozen-ness *derived* from release/workstream status + membership edges; a
+   two-gate model (freeze closes conceptual authoring + scope membership, permitting only
+   decision-governed amends; planned-completely closes even that → RW1); confirmed-scope freeze
+   entry with no in-flight plan reverse; area freeze on the Lead QA+test gate, reversible only by
+   the §14 reopen.
 8. **Reopen approval mechanism (§14).** The *principle* is set — approval sized to blast
    radius (RW5) — but the concrete tiers/thresholds, who approves at each, and how the blast
    radius is computed and surfaced before approval are deferred to the PRJ-034 build.
@@ -810,6 +937,15 @@ TOP-094). Decisions **DEC-483…487** are `decided_in` SES-193; requirements **R
 `requirement_defined_in_conversation` CNV-108 and `requirement_belongs_to_topic` TOP-094, origin
 `ai_derived`, status `candidate` (awaiting Review-panel sign-off); **PI-215**
 `planning_item_belongs_to_project` PRJ-031, implements REQ-217…223, `blocked_by` PI-208 + PI-205.
+
+**§16.7 follow-on (2026-06-16):** the freeze-enforcement design pass is recorded under session
+**SES-194** (`session_belongs_to_project` PRJ-031), conversation **CNV-109**
+(`conversation_belongs_to_session` SES-194, `_belongs_to_topic` TOP-094). Decisions
+**DEC-488…493** are `decided_in` SES-194; requirements **REQ-224…229** are
+`requirement_defined_in_conversation` CNV-109 and `requirement_belongs_to_topic` TOP-094, origin
+`ai_derived`, status `candidate` (awaiting Review-panel sign-off; they **refine REQ-197**, the
+release-freeze invariant); **PI-216** `planning_item_belongs_to_project` PRJ-031, implements
+REQ-224…229, `blocked_by` PI-205.
 
 **Decisions:**
 
@@ -904,6 +1040,29 @@ TOP-094). Decisions **DEC-483…487** are `decided_in` SES-193; requirements **R
 *(REQ-217…223 are `ai_derived` / `candidate`, awaiting Review-panel sign-off; PI-215 belongs to
 PRJ-031 and is `blocked_by` PI-208 (versioning base) and PI-205 (the reconciliation stage).)*
 
+**Freeze-enforcement mechanism (§9A, §16.7) — decisions and requirements (SES-194 / CNV-109):**
+
+| # | Decision | Decision id | Requirement | Built by |
+|---|---|---|---|---|
+| D-38 | Gated status enforced at access layer, not a lock object | DEC-488 | REQ-224 | PI-216 |
+| D-39 | Frozen-ness derived from status + membership edges | DEC-489 | REQ-225 | PI-216 |
+| D-40 | Release freeze closes authoring + membership; amend is decision-only | DEC-490 | REQ-226 | PI-216 |
+| D-41 | Two gates; planned-completely closes the amend path (RW1) | DEC-491 | REQ-227 | PI-216 |
+| D-42 | Confirmed-scope deliberate freeze; no in-flight plan reverse | DEC-492 | REQ-228 | PI-216 |
+| D-43 | Area freeze = same mechanism; reversed only by the §14 reopen | DEC-493 | REQ-229 | PI-216 |
+
+| REQ | Freeze-enforcement invariant (refines REQ-197) | PRD § | Built by |
+|---|---|---|---|
+| REQ-224 | FE-1 Gated status enforced at access layer, not a lock object | §9A | PI-216 |
+| REQ-225 | FE-2 Frozen-ness derived, not stored per record | §9A | PI-216 |
+| REQ-226 | FE-3 Frozen release closes membership; amend is decision-only | §9A | PI-216 |
+| REQ-227 | FE-4 Planned-completely closes the amend path (RW1) | §9A | PI-216 |
+| REQ-228 | FE-5 Confirmed-scope freeze; no in-flight plan reverse | §9A | PI-216 |
+| REQ-229 | FE-6 Area freeze on QA+test; reversed only by the §14 reopen | §9A | PI-216 |
+
+*(REQ-224…229 are `ai_derived` / `candidate`, awaiting Review-panel sign-off; PI-216 belongs to
+PRJ-031 and is `blocked_by` PI-205 (the Release entity/status it gates on).)*
+
 **Resolved open questions (decisions):**
 
 | Open Q | Resolution | Decision | Requirement | Built by |
@@ -914,6 +1073,7 @@ PRJ-031 and is `blocked_by` PI-208 (versioning base) and PI-205 (the reconciliat
 | §16.2 | Project-model: R-1 release-scoped + two-home reqs + blocked_by/Topic | DEC-478…480 | REQ-211…213 | PI-205 |
 | §16.4 | Versioning: full-definition snapshots, release-tied, live=latest-shipped | DEC-481, DEC-482 | REQ-214…216 | PI-208 |
 | §16.5 | Reconciliation-merge: three-way against live base, facet-grain taxonomy, governed-decision conflicts, delta-set output, single-writer traced | DEC-483…487 | REQ-217…223 | PI-215 |
+| §16.7 | Freeze enforcement: gated status (not a lock), derived frozen-ness, two-gate model, confirmed-scope entry/no-reverse, area freeze via the Lead gate | DEC-488…493 | REQ-224…229 | PI-216 |
 
 ---
 
