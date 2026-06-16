@@ -265,6 +265,39 @@ it falls out of the work-task prerequisite graph.
 
 ---
 
+### 7.3 File-lock mechanism (PRJ-030, resolves §16.1)
+
+Mechanism for the backstop above (REQ-194), designed in conversation **CNV-103**, decisions
+**DEC-469…474** (FL-1…FL-6). It is narrow by construction: one area active, one owner, a few
+sub-agents — so it resists heavyweight global infrastructure.
+
+- **FL-1 — the check-out unit is a *named resource*** (DEC-469): a file path *or* a named
+  logical resource (the migration chain, a shared registry). Path-only locking would miss
+  non-path collisions (two migrations are different files but collide on the chain).
+- **FL-2 — logical resources are defined by *detection rules*** over the actual diff
+  (DEC-470). A rule both *tells* an agent what to check out and *detects* an undeclared touch.
+  The lock has two moments: **acquire** (declare + lock before work; planned overlap →
+  serialize) and **verify** (recompute touched resources from the real diff, confirm the
+  actor held each — the owner-independent backstop).
+- **FL-3 — worktree per sub-agent** (DEC-471): each works isolated; merge-back to the area
+  branch is serialized and conflict-free (disjoint locks). A `reset --hard` can only hit the
+  actor's own throwaway worktree — this is what actually closes the DEC-449 wound. `verify`
+  runs at merge-back.
+- **FL-4 — locks live in a V2 DB table** (DEC-472): atomic acquire via the existing
+  `BEGIN IMMEDIATE` + unique-constraint machinery; cross-process, owner-independent,
+  queryable by `verify`, audited. One source of truth.
+- **FL-5 — verify failure → retroactive acquire/serialize + record** (DEC-473): a merge whose
+  diff touched an unheld resource is rejected; acquire the missed resource (free → merge; held
+  → serialize behind the holder, rebase if co-touched). All in the throwaway worktree; the
+  miss is recorded and feeds learning.
+- **FL-6 — dead sub-agent → owner-supervised reclaim** (DEC-474): the owner releases the
+  dead child's locks and discards its unmerged worktree; a TTL backstops owner death.
+
+Made testable as child requirements refining REQ-194: **REQ-203…207 (FLR-1…5)**, all built
+by **PI-203**.
+
+---
+
 ## 8. QA & Testing — two levels
 
 - **Area-level** — each area verified **in isolation**: does this piece work on its own?
@@ -512,10 +545,10 @@ a revised requirement in a *new Release*, never by cracking the current plan (DE
 
 These were deliberately *not* decided in the conversation. Do not assume answers.
 
-1. **Mechanism of the file lock (PRJ-030):** lock store (DB entity vs filesystem vs git
-   ref), enforcement (worktree isolation vs read-only FS vs hook-gate vs advisory), conflict
-   policy (refuse vs queue), and stale-lock policy (TTL/heartbeat vs session-lifecycle vs
-   liveness vs manual). *Documented as discarded-for-now options in Appendix A turn 1.*
+1. ~~**Mechanism of the file lock (PRJ-030).**~~ **RESOLVED** — designed in §7.3 (FL-1…FL-6,
+   DEC-469…474, REQ-203…207): named-resource check-out, detection rules with acquire+verify,
+   worktree-per-sub-agent with serialized merge-back, V2 DB lock table, retroactive-acquire on
+   verify failure, owner-supervised reclaim.
 2. **DB shape reconciliation:** today requirements hang off Topics and PIs *implement* them;
    here a requirement is *scheduled into* a Project under a Release, and Release *contains*
    Projects. How to reconcile with the live model (§4.3 note).
@@ -636,6 +669,25 @@ REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 | REQ-200 | RW3 Reopen pauses downstream until re-freeze | §14.3 | PI-212 | PRJ-034 |
 | REQ-201 | RW4 Reopen re-validates every downstream area | §14.3 | PI-213 | PRJ-034 |
 | REQ-202 | RW5 Reopen approval sized to blast radius | §14.3 | PI-214 | PRJ-034 |
+
+**File-lock mechanism (§7.3, PRJ-030) — decisions and child requirements (refine REQ-194):**
+
+| # | Decision | Decision id | Requirement | Built by |
+|---|---|---|---|---|
+| FL-1 | Check-out unit is a named resource | DEC-469 | REQ-203 | PI-203 |
+| FL-2 | Detection rules; acquire + verify | DEC-470 | REQ-204 | PI-203 |
+| FL-3 | Worktree per sub-agent, serialized merge-back | DEC-471 | REQ-205 | PI-203 |
+| FL-4 | Locks in a V2 DB table | DEC-472 | REQ-206 | PI-203 |
+| FL-5 | Verify failure → retroactive acquire + record | DEC-473 | REQ-206 | PI-203 |
+| FL-6 | Dead sub-agent → owner-supervised reclaim | DEC-474 | REQ-207 | PI-203 |
+
+| REQ | File-lock requirement (refines REQ-194) | PRD § | Built by |
+|---|---|---|---|
+| REQ-203 | FLR-1 Check-out unit is a named resource | §7.3 | PI-203 |
+| REQ-204 | FLR-2 Logical resources defined by detection rules | §7.3 | PI-203 |
+| REQ-205 | FLR-3 Worktree-isolated, serialized merge-back | §7.3 | PI-203 |
+| REQ-206 | FLR-4 Owner-independent DB locks, verified on diff | §7.3 | PI-203 |
+| REQ-207 | FLR-5 Dead sub-agent reclaimed, worktree discarded | §7.3 | PI-203 |
 
 ---
 
