@@ -205,10 +205,11 @@ signs off in the Review panel.
 
 ## 13. Structured instance deploy configuration (scoped follow-on)
 
-**Status:** Scoped 2026-06-15. Candidate requirement **REQ-172** queued for Review-panel
-approval; build **PI-201** (Draft). Provenance: **SES-191 / CNV-100 → TOP-091**; design
-**DEC-447**. Not part of the original PI-184 design — added when the V1→V2 instance
-migration surfaced that deploy/provisioning config had nowhere structured to live.
+**Status:** Scoped 2026-06-15; **REQ-172 approved** 2026-06-15 (confirmed via **DEC-450**,
+topic sign-off recorded on TOP-091). Build **PI-201** (Draft) cleared to build. Provenance:
+**SES-191 / CNV-100 → TOP-091**; design **DEC-447**. Not part of the original PI-184 design —
+added when the V1→V2 instance migration surfaced that deploy/provisioning config had nowhere
+structured to live.
 
 ### 13.1 Motivation
 
