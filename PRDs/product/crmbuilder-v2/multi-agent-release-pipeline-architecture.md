@@ -336,7 +336,12 @@ workflow.
 - **Development org:** lead → area build specialists → sub-agents.
 
 The planning org mirrors the development org. The same single-owner-per-area collision
-medicine applies to Phase-2 planning (it is one release at a time there too).
+medicine applies to Phase-2 planning (it is one release at a time there too) — but with one
+deliberate asymmetry: **Phase-2 area planning is serial *within* an area** (it does not fan
+out parallel sub-agents the way development does), because an area's design is holistic and
+tightly coupled and it edits already-row-safe DB records, not git files. So planning needs
+**no intra-area lock backstop** — the file-lock backstop (§7.3) is development-only.
+(DEC-475, REQ-208; resolves §16.3.)
 
 > **Grounding note:** much of the development org already exists as the **ADO** substrate
 > (areas, workstreams, work tasks, area specialists, claim/lifecycle, the runtime
@@ -552,8 +557,10 @@ These were deliberately *not* decided in the conversation. Do not assume answers
 2. **DB shape reconciliation:** today requirements hang off Topics and PIs *implement* them;
    here a requirement is *scheduled into* a Project under a Release, and Release *contains*
    Projects. How to reconcile with the live model (§4.3 note).
-3. **Whether Phase-2 planning needs the file-lock backstop too** (it has the same
-   intra-area fan-out shape).
+3. ~~**Whether Phase-2 planning needs the file-lock backstop too.**~~ **RESOLVED** (DEC-475,
+   REQ-208) — **no.** Phase-2 area planning is *serial within an area* (no parallel sub-agent
+   fan-out), so there is no judgment grain to backstop; it also edits already-row-safe DB
+   records, not git files. Single-owner-per-area + DB row-safety suffices.
 4. **Versioning model details** for processes and entity definitions (numbering,
    supersession edges, how a release "ties" a version).
 5. **How reconciliation actually merges** two process changes that both touch one entity
@@ -688,6 +695,13 @@ REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 | REQ-205 | FLR-3 Worktree-isolated, serialized merge-back | §7.3 | PI-203 |
 | REQ-206 | FLR-4 Owner-independent DB locks, verified on diff | §7.3 | PI-203 |
 | REQ-207 | FLR-5 Dead sub-agent reclaimed, worktree discarded | §7.3 | PI-203 |
+
+**Resolved open questions (decisions):**
+
+| Open Q | Resolution | Decision | Requirement | Built by |
+|---|---|---|---|---|
+| §16.1 | File-lock mechanism designed | DEC-469…474 | REQ-203…207 | PI-203 |
+| §16.3 | Planning serial within area; no backstop | DEC-475 | REQ-208 | PI-209 |
 
 ---
 
