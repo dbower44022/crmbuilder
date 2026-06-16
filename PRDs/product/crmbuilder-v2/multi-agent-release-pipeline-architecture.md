@@ -124,11 +124,19 @@ Release → Project → Requirement → Planning Item (PI) → Workstream → Wo
   Management" project.
 - **Work Task** is the leaf — the single-area unit an agent actually executes.
 
-> **Note on the current DB vs this model.** Today requirements hang off Topics and a PI
-> *links* to a requirement via an "implements" edge; here a requirement is *scheduled into*
-> a Project under a Release. Today Release behaves as a batch and Project as the long-lived
-> container; here Release contains Projects. These are intentional shape changes to be
-> reconciled when we create records (see Open Questions §16).
+> **Project-model reconciliation (§16.2, RESOLVED — DEC-478/479/480, REQ-211/212/213).**
+> Target model:
+> - **A Project is *release-scoped*** (R-1): it belongs to exactly one Release and is the
+>   bundle delivered in that release. The long-lived/timeless grouping role moves to
+>   **Topic/Domain** — there is no long-lived Project container. *(Supersedes the live
+>   Project-as-long-lived-container model; reclassifying existing `PRJ-` records is a
+>   separate migration.)*
+> - **A Requirement keeps two homes:** its timeless **Topic** (and defining Process), plus a
+>   **delivery scheduling overlay** into a release-scoped Project when scheduled. It is never
+>   moved out from under its Topic.
+> - **Work larger than one project** = a sequence of release-scoped projects linked by
+>   **`blocked_by`** (project→project) and grouped by a **shared Topic**. No parent-project
+>   field (that would re-introduce the long-lived container).
 
 ### 4.4 Glossary of coined terms
 
@@ -182,8 +190,9 @@ supersedes the coarse `REL-` cadence sketch from DEC-370/371. Built by **PI-205*
   a release `blocked_by` another can't enter the lane until its blocker ships; the lane takes
   the next ready, unblocked release in order.
 - It is the anchor the **plan-freeze** (§4.4) and **version-tying** (§9) attach to.
-- **What a Release *contains*** (Projects / PIs / requirements under it) runs into the
-  Project-model reconciliation → deferred to §16.2.
+- **What a Release contains** (§16.2, resolved): release-scoped **Projects** (`blocked_by`-
+  sequenced, Topic-grouped); each Project gathers the **PIs** that implement the
+  **Requirements** scheduled into the release. Requirements keep their timeless Topic home.
 
 ### 5.1 Planning side — two phases
 
@@ -574,9 +583,11 @@ These were deliberately *not* decided in the conversation. Do not assume answers
    DEC-469…474, REQ-203…207): named-resource check-out, detection rules with acquire+verify,
    worktree-per-sub-agent with serialized merge-back, V2 DB lock table, retroactive-acquire on
    verify failure, owner-supervised reclaim.
-2. **DB shape reconciliation:** today requirements hang off Topics and PIs *implement* them;
-   here a requirement is *scheduled into* a Project under a Release, and Release *contains*
-   Projects. How to reconcile with the live model (§4.3 note).
+2. ~~**DB shape reconciliation.**~~ **RESOLVED** (DEC-478/479/480, REQ-211/212/213; §4.3) —
+   R-1: Project is release-scoped (belongs to one Release); timeless grouping → Topic/Domain;
+   requirements keep their Topic home + a delivery scheduling overlay; larger work =
+   `blocked_by`-sequenced, Topic-grouped projects, no parent container. *(Migrating existing
+   `PRJ-` records is a separate build concern.)*
 3. ~~**Whether Phase-2 planning needs the file-lock backstop too.**~~ **RESOLVED** (DEC-475,
    REQ-208) — **no.** Phase-2 area planning is *serial within an area* (no parallel sub-agent
    fan-out), so there is no judgment grain to backstop; it also edits already-row-safe DB
@@ -585,10 +596,11 @@ These were deliberately *not* decided in the conversation. Do not assume answers
    supersession edges, how a release "ties" a version).
 5. **How reconciliation actually merges** two process changes that both touch one entity
    (the algorithm/agent contract).
-6. **The Release entity — designed (§5.0), not yet built.** Its intrinsic shape is resolved
-   (DEC-476/477, REQ-209/210): born-early forming container, pipeline-stage lifecycle,
-   explicit-order + `blocked_by` lane entry. Building it is PRJ-031 / PI-205; its
-   *composition* (what it contains) is §16.2. Until built, the projects are grouped via
+6. **The Release entity — fully designed (§5.0 + §16.2 resolved), not yet built.** Intrinsic
+   shape (DEC-476/477, REQ-209/210): born-early forming container, pipeline-stage lifecycle,
+   explicit-order + `blocked_by` lane entry. Composition (DEC-478/479/480, REQ-211/212/213):
+   contains release-scoped Projects (blocked_by-sequenced, Topic-grouped). Building it is
+   PRJ-031 / PI-205. Until built, projects are grouped via
    `project_planned_in_reference_book → RB-014`; literal Release-record organization waits on
    the build.
 7. **Freeze enforcement mechanism.** The *semantics* of "frozen" are defined (§4.4, invariant
@@ -725,6 +737,7 @@ REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 | §16.1 | File-lock mechanism designed | DEC-469…474 | REQ-203…207 | PI-203 |
 | §16.3 | Planning serial within area; no backstop | DEC-475 | REQ-208 | PI-209 |
 | §16.6 | Release entity designed (intrinsic; composition → §16.2) | DEC-476, DEC-477 | REQ-209, REQ-210 | PI-205 |
+| §16.2 | Project-model: R-1 release-scoped + two-home reqs + blocked_by/Topic | DEC-478…480 | REQ-211…213 | PI-205 |
 
 ---
 
