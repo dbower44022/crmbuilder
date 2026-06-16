@@ -165,6 +165,26 @@ Release → Project → Requirement → Planning Item (PI) → Workstream → Wo
    next release enters the lane
 ```
 
+### 5.0 The Release entity (§16.6)
+
+Designed in conversation **CNV-105**, decisions **DEC-476/477**; fully specifies and
+supersedes the coarse `REL-` cadence sketch from DEC-370/371. Built by **PI-205**.
+
+- **Identifier `REL-`.** A Release is **born early** (in `preliminary_planning`) as a
+  **mutable forming container** that work is scheduled *into* as concepts mature — not a
+  frozen-at-birth bundle (DEC-476 / REQ-209).
+- **Status = its pipeline stage:** `preliminary_planning → development_planning →
+  reconciliation → architecture_planning → ready → development → qa → testing → deployment →
+  shipped` (+ `cancelled` / `superseded`), with **three gated transitions**: freeze (→
+  reconciliation), planned-completely (→ ready/the lane), and single-occupancy across the
+  lane states (`development…deployment`).
+- **Lane entry = explicit order + `blocked_by`** (DEC-477 / REQ-210): a human-set sequence;
+  a release `blocked_by` another can't enter the lane until its blocker ships; the lane takes
+  the next ready, unblocked release in order.
+- It is the anchor the **plan-freeze** (§4.4) and **version-tying** (§9) attach to.
+- **What a Release *contains*** (Projects / PIs / requirements under it) runs into the
+  Project-model reconciliation → deferred to §16.2.
+
 ### 5.1 Planning side — two phases
 
 **Phase 1 — Conceptual (process-driven), parallel & free.**
@@ -565,10 +585,12 @@ These were deliberately *not* decided in the conversation. Do not assume answers
    supersession edges, how a release "ties" a version).
 5. **How reconciliation actually merges** two process changes that both touch one entity
    (the algorithm/agent contract).
-6. **The Release entity does not exist yet.** `REL-` (DEC-370/371) was designed, never built.
-   Building it is in scope (PRJ-031 / PI-205). Until then the five projects are grouped via
+6. **The Release entity — designed (§5.0), not yet built.** Its intrinsic shape is resolved
+   (DEC-476/477, REQ-209/210): born-early forming container, pipeline-stage lifecycle,
+   explicit-order + `blocked_by` lane entry. Building it is PRJ-031 / PI-205; its
+   *composition* (what it contains) is §16.2. Until built, the projects are grouped via
    `project_planned_in_reference_book → RB-014`; literal Release-record organization waits on
-   the entity. *(This is why "organize into a release" is not yet a literal DB grouping.)*
+   the build.
 7. **Freeze enforcement mechanism.** The *semantics* of "frozen" are defined (§4.4, invariant
    10, REQ-197); *how* the system performs and enforces a freeze — a status flag, a lock, who
    may set/reverse it — is deferred to the PRJ-031 design pass.
@@ -702,6 +724,7 @@ REQ-197 still `candidate`). Every PI `planning_item_implements_requirement` and
 |---|---|---|---|---|
 | §16.1 | File-lock mechanism designed | DEC-469…474 | REQ-203…207 | PI-203 |
 | §16.3 | Planning serial within area; no backstop | DEC-475 | REQ-208 | PI-209 |
+| §16.6 | Release entity designed (intrinsic; composition → §16.2) | DEC-476, DEC-477 | REQ-209, REQ-210 | PI-205 |
 
 ---
 
