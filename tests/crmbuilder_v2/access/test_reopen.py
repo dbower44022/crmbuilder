@@ -107,9 +107,9 @@ def test_reopen_rejects_non_spine_area(v2_env):
 def test_reopen_rejects_double_open(v2_env):
     with session_scope() as s:
         rel = _dev_release(s)
-        reopen.reopen_area(s, rel, "storage", "need")
+        reopen.reopen_area(s, rel, "storage", "need", approval_decision_identifier="DEC-001")
         with pytest.raises(ConflictError, match="already has an open reopen"):
-            reopen.reopen_area(s, rel, "storage", "again")
+            reopen.reopen_area(s, rel, "storage", "again", approval_decision_identifier="DEC-001")
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +121,8 @@ def test_downstream_paused_and_resumed(v2_env):
     with session_scope() as s:
         rel = _dev_release(s)
         api_task = _work_task(s, rel, "api")  # api is downstream of storage
-        reopen.reopen_area(s, rel, "storage", "Contact entity insufficient")
+        reopen.reopen_area(s, rel, "storage", "Contact entity insufficient",
+                           approval_decision_identifier="DEC-001")
         assert "api" in reopen.paused_areas(s, rel)
         # claiming downstream work is refused while the upstream is thawing.
         with pytest.raises(ConflictError, match="paused"):
@@ -138,7 +139,7 @@ def test_non_downstream_area_unaffected(v2_env):
         rel = _dev_release(s)
         storage_task = _work_task(s, rel, "storage")
         # reopen api (rank 3) — storage (rank 1) is upstream, not paused.
-        reopen.reopen_area(s, rel, "api", "need")
+        reopen.reopen_area(s, rel, "api", "need", approval_decision_identifier="DEC-001")
         assert "storage" not in reopen.paused_areas(s, rel)
         out = work_tasks.claim_work_task(s, storage_task, claimed_by="agent-1")
         assert out["work_task_claimed_by"] == "agent-1"

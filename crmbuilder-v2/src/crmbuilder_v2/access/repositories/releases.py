@@ -365,6 +365,18 @@ def _check_no_open_conflicts(session: Session, identifier: str) -> None:
         )
 
 
+def _check_revalidations_complete(session: Session, identifier: str) -> None:
+    """Cascade gate (PI-213, RW4) — every reopened-area downstream re-validated."""
+    from crmbuilder_v2.access import reopen
+
+    outstanding = reopen.outstanding_revalidations(session, identifier)
+    if outstanding:
+        raise ConflictError(
+            f"release {identifier!r} cannot ship: area(s) {sorted(outstanding)} "
+            f"downstream of a reopen have not re-validated (RW4 — no exemption)."
+        )
+
+
 _GATE_PREDICATES = {
     ("development_planning", "reconciliation"): _check_freeze,
     ("reconciliation", "architecture_planning"): _check_no_open_conflicts,
@@ -372,6 +384,7 @@ _GATE_PREDICATES = {
     ("ready", "development"): _check_single_occupancy,
     ("qa", "testing"): _check_qa_passed,
     ("testing", "deployment"): _check_test_passed,
+    ("deployment", "shipped"): _check_revalidations_complete,
 }
 
 

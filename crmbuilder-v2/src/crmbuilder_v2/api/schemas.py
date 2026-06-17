@@ -1801,11 +1801,22 @@ class ReleaseCorrectionIn(_Base):
 class AreaReopenIn(_Base):
     area: str
     reason: str
+    approval_decision_identifier: str | None = None
+    triggering_finding_identifier: str | None = None
+
+
+class RevalidateIn(_Base):
+    area: str
 
 
 class PlanningClaimIn(_Base):
     area: str
     claimed_by: str
+
+
+# --- Planning org (PI-209 / PRJ-033) ----------------------------------------
+class PlanReleaseIn(_Base):
+    delta_sets: list[dict[str, Any]]
 
 
 # --- Reconciliation engine (PI-215 / PRJ-031) -------------------------------

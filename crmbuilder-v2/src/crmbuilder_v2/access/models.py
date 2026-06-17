@@ -105,6 +105,7 @@ from crmbuilder_v2.access.vocab import (
     REFERENCE_RELATIONSHIPS,
     REGISTRY_STATUSES,
     RELEASE_STATUSES,
+    REOPEN_APPROVAL_TIERS,
     REQUIREMENT_ORIGINS,
     REQUIREMENT_PRIORITIES,
     REQUIREMENT_REVIEW_STATES,
@@ -3119,6 +3120,26 @@ class AreaReopen(EngagementScopedMixin, Base):
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="open"
     )
+    # PI-213 (RW4): the full downstream cascade required to re-validate, and the
+    # subset that has re-passed. Set at reopen; the release cannot ship until
+    # cascade_areas ⊆ revalidated_areas (no exemption).
+    cascade_areas: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False, default=list
+    )
+    revalidated_areas: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False, default=list
+    )
+    # PI-214 (RW5): the blast-radius-derived approval tier, the approving decision
+    # (null only for lead_auto), and the triggering finding.
+    approval_tier: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="lead_auto"
+    )
+    approval_decision_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    triggering_finding_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -3135,6 +3156,10 @@ class AreaReopen(EngagementScopedMixin, Base):
         CheckConstraint(
             _check_in("status", AREA_REOPEN_STATUSES),
             name="ck_area_reopen_status",
+        ),
+        CheckConstraint(
+            _check_in("approval_tier", REOPEN_APPROVAL_TIERS),
+            name="ck_area_reopen_approval_tier",
         ),
         Index(
             "ix_area_reopens_release_status",

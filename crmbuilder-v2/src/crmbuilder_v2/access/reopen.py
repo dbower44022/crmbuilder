@@ -20,6 +20,13 @@ from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
 from crmbuilder_v2.access.models import AreaReopen, Release, WorkTask
 from crmbuilder_v2.access.vocab import RELEASE_LANE_STATUSES, SYSTEM_AREA_RANKS
 
+_TIERS = ("lead_auto", "lead", "pm", "human")
+# Breadth thresholds (count of downstream areas) → tier index. Module defaults;
+# per-engagement override is a thin follow-on (PI-214 §2).
+_BREADTH_PM_THRESHOLD = 3  # 3+ downstream areas → PM
+_BREADTH_LEAD_THRESHOLD = 1  # 1–2 → Lead; 0 → lead_auto
+_FOUNDATIONAL_RANK = 1  # storage — depth override → Human
+
 
 def downstream_areas(area: str) -> frozenset[str]:
     """Spine areas strictly downstream of ``area`` (higher rank). Empty for an
@@ -81,10 +88,60 @@ def is_area_paused(session: Session, release_id: str, area: str) -> bool:
     return area in paused_areas(session, release_id)
 
 
+def _prior_reopen_count(session: Session, release_id: str, area: str) -> int:
+    return len(session.scalars(
+        select(AreaReopen.id).where(
+            AreaReopen.release_identifier == release_id,
+            AreaReopen.area == area,
+        )
+    ).all())
+
+
+def reopen_tier(session: Session, release_id: str, area: str) -> str:
+    """The blast-radius-derived approval tier (PI-214, RA-3). tier =
+    max(breadth, depth), then +1 for a repeat reopen of the same area."""
+    n = len(downstream_areas(area))
+    if n == 0:
+        breadth = 0
+    elif n >= _BREADTH_PM_THRESHOLD:
+        breadth = 2
+    else:
+        breadth = 1
+    depth = 3 if SYSTEM_AREA_RANKS.get(area) == _FOUNDATIONAL_RANK else 0
+    idx = max(breadth, depth)
+    if _prior_reopen_count(session, release_id, area) >= 1:  # repeat (RA-4)
+        idx = min(idx + 1, 3)
+    return _TIERS[idx]
+
+
+def reopen_impact(session: Session, release_id: str, area: str) -> dict:
+    """The deterministic impact report surfaced before approval (PI-214, RA-5)."""
+    down = sorted(downstream_areas(area))
+    return {
+        "release_identifier": release_id,
+        "reopen_point": area,
+        "downstream_areas": down,
+        "count": len(down),
+        "tier": reopen_tier(session, release_id, area),
+        "is_repeat": _prior_reopen_count(session, release_id, area) >= 1,
+    }
+
+
 def reopen_area(
-    session: Session, release_id: str, area: str, reason: str
+    session: Session,
+    release_id: str,
+    area: str,
+    reason: str,
+    *,
+    approval_decision_identifier: str | None = None,
+    triggering_finding_identifier: str | None = None,
 ) -> dict:
-    """Reopen a frozen area in-lane (RW2). Its downstream areas are now paused."""
+    """Reopen a frozen area in-lane (RW2). Its downstream areas are now paused.
+
+    PI-214 (RW5): the reopen is gated by a recorded approval decision at the
+    blast-radius-derived tier; ``lead_auto`` (empty radius) is Lead-self-authorized
+    and needs no decision.
+    """
     rel = _release(session, release_id)
     if rel.release_status not in RELEASE_LANE_STATUSES:
         raise ConflictError(
@@ -102,8 +159,21 @@ def reopen_area(
         raise ConflictError(
             f"area {area!r} of release {release_id!r} already has an open reopen."
         )
+    tier = reopen_tier(session, release_id, area)
+    if tier != "lead_auto" and not approval_decision_identifier:
+        raise ConflictError(
+            f"reopening area {area!r} of release {release_id!r} is tier {tier!r} "
+            f"(blast radius {sorted(downstream_areas(area))}); it requires a "
+            f"recorded approval decision (RW5)."
+        )
     row = AreaReopen(
-        release_identifier=release_id, area=area, reason=reason, status="open"
+        release_identifier=release_id, area=area, reason=reason, status="open",
+        # PI-213 (RW4): the full downstream set must re-validate — no exemption.
+        cascade_areas=sorted(downstream_areas(area)),
+        revalidated_areas=[],
+        approval_tier=tier,
+        approval_decision_identifier=approval_decision_identifier,
+        triggering_finding_identifier=triggering_finding_identifier,
     )
     session.add(row)
     session.flush()
@@ -119,6 +189,41 @@ def refreeze_area(session: Session, release_id: str, area: str) -> dict:
     row.resolved_at = datetime.now(UTC)
     session.flush()
     return to_dict(row)
+
+
+def revalidate_area(
+    session: Session, reopen_id: int, area: str
+) -> dict:
+    """Record that a downstream area re-passed its QA/test gate (PI-213, RW4)."""
+    row = session.get(AreaReopen, reopen_id)
+    if row is None:
+        raise NotFoundError("area_reopen", str(reopen_id))
+    if area not in (row.cascade_areas or []):
+        raise ConflictError(
+            f"{area!r} is not in the cascade of reopen {reopen_id} "
+            f"({sorted(row.cascade_areas or [])}); only downstream areas "
+            f"re-validate."
+        )
+    done = list(row.revalidated_areas or [])
+    if area in done:
+        raise ConflictError(
+            f"area {area!r} is already re-validated for reopen {reopen_id}."
+        )
+    done.append(area)
+    row.revalidated_areas = sorted(done)
+    session.flush()
+    return to_dict(row)
+
+
+def outstanding_revalidations(session: Session, release_id: str) -> set[str]:
+    """Downstream areas still owed a re-validation across the release's reopens
+    (RW4). The release cannot ship while this is non-empty."""
+    out: set[str] = set()
+    for r in session.scalars(
+        select(AreaReopen).where(AreaReopen.release_identifier == release_id)
+    ).all():
+        out |= set(r.cascade_areas or []) - set(r.revalidated_areas or [])
+    return out
 
 
 def assert_area_not_paused(session: Session, work_task_id: str) -> None:

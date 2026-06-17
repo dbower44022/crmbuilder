@@ -938,6 +938,13 @@ RECONCILIATION_CONFLICT_TYPES: frozenset[str] = frozenset(
 # while open, the area is thawing and its downstream areas are paused.
 AREA_REOPEN_STATUSES: frozenset[str] = frozenset({"open", "resolved"})
 
+# Reopen approval tiers (PI-214 / PRJ-034, RW5/§16.8) — sized to the blast radius.
+# lead_auto = empty radius (Lead self-authorizes, no decision); lead/pm/human each
+# require a recorded approval decision.
+REOPEN_APPROVAL_TIERS: frozenset[str] = frozenset(
+    {"lead_auto", "lead", "pm", "human"}
+)
+
 # ADO execution_mode (PRJ-026 / PI-183, DEC-423..425). The structural risk gate
 # on a Project and a Planning Item that controls whether the ADO Project Manager
 # dispatcher may touch it — replacing the fragile "don't point the ADO there"

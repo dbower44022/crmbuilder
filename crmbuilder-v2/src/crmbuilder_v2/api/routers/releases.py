@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from crmbuilder_v2.access import coordination, freeze, reopen
+from crmbuilder_v2.access import coordination, freeze, planning, reopen
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import (
     artifact_versions,
@@ -24,12 +24,14 @@ from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     AreaReopenIn,
     PlanningClaimIn,
+    PlanReleaseIn,
     ReconcileIn,
     ReleaseCorrectionIn,
     ReleaseCreateIn,
     ReleaseLaneOrderIn,
     ReleasePatchIn,
     ReleaseTransitionIn,
+    RevalidateIn,
 )
 
 router = APIRouter(prefix="/releases", tags=["releases"])
@@ -189,6 +191,21 @@ def reconciliation_conflicts(identifier: str, status: str | None = None):
         return ok(reconciliation.list_conflicts(s, identifier, status=status))
 
 
+@router.post("/{identifier}/plan")
+def plan(identifier: str, body: PlanReleaseIn):
+    """Architecture-planning pass (PI-209): author vN+1 designs from the
+    reconciled delta-sets, then report planned-completely readiness."""
+    with writable_session() as s:
+        return ok(planning.plan_release(s, identifier, body.delta_sets))
+
+
+@router.get("/{identifier}/planning-readiness")
+def planning_readiness(identifier: str):
+    """The planned-completely readiness report (PI-209)."""
+    with readonly_session() as s:
+        return ok(planning.planning_readiness(s, identifier))
+
+
 @router.get("/{identifier}/area-reopens")
 def area_reopens(identifier: str, status: str | None = None):
     """The release's area reopens + the currently paused areas (PI-212)."""
@@ -199,11 +216,25 @@ def area_reopens(identifier: str, status: str | None = None):
         })
 
 
+@router.get("/{identifier}/reopen-impact")
+def reopen_impact(identifier: str, area: str):
+    """The blast-radius impact report for reopening an area (PI-214 / RW5)."""
+    with readonly_session() as s:
+        return ok(reopen.reopen_impact(s, identifier, area))
+
+
 @router.post("/{identifier}/area-reopens", status_code=201)
 def open_area_reopen(identifier: str, body: AreaReopenIn):
-    """Reopen a frozen area in-lane (PI-212 / RW2); pauses its downstream."""
+    """Reopen a frozen area in-lane (PI-212 / RW2); pauses its downstream. The
+    reopen is gated by a blast-radius-sized approval (PI-214 / RW5)."""
     with writable_session() as s:
-        return ok(reopen.reopen_area(s, identifier, body.area, body.reason))
+        return ok(
+            reopen.reopen_area(
+                s, identifier, body.area, body.reason,
+                approval_decision_identifier=body.approval_decision_identifier,
+                triggering_finding_identifier=body.triggering_finding_identifier,
+            )
+        )
 
 
 @router.post("/{identifier}/area-reopens/{area}/refreeze")
@@ -211,6 +242,20 @@ def refreeze_area(identifier: str, area: str):
     """Re-freeze a reopened area (PI-212 / RW3); its downstream resumes."""
     with writable_session() as s:
         return ok(reopen.refreeze_area(s, identifier, area))
+
+
+@router.post("/{identifier}/area-reopens/{reopen_id}/revalidate")
+def revalidate_area(identifier: str, reopen_id: int, body: RevalidateIn):
+    """Record a downstream area's cascade re-validation (PI-213 / RW4)."""
+    with writable_session() as s:
+        return ok(reopen.revalidate_area(s, reopen_id, body.area))
+
+
+@router.get("/{identifier}/outstanding-revalidations")
+def outstanding_revalidations(identifier: str):
+    """Downstream areas still owed a cascade re-validation (PI-213 / RW4)."""
+    with readonly_session() as s:
+        return ok(sorted(reopen.outstanding_revalidations(s, identifier)))
 
 
 @router.get("/{identifier}/temperature")
