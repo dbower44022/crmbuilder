@@ -165,6 +165,10 @@ class AdoRuntimeConfig:
     # A shared repo lock, set by the PM when driving PIs in parallel so their
     # pools serialize git ops across the one repo (None → the pool's own lock).
     repo_lock: threading.Lock | None = None
+    # PI-220 (PRJ-030): engage the sub-agent file-lock backstop in the pool. The
+    # release-dev driver sets this True when walking a dev-lane release; default
+    # off keeps a plain ADO run byte-identical.
+    enable_file_locks: bool = False
     log: Callable[[str], None] = print
 
 
@@ -193,6 +197,7 @@ def run_pool_for_workstream(cfg: AdoRuntimeConfig, workstream_id: str) -> PoolRu
         agent_timeout=cfg.agent_timeout,
         max_concurrent=cfg.max_concurrent,
         manage_api=cfg.manage_api,
+        enable_file_locks=cfg.enable_file_locks,
     )
     # `log` is a field on the runtime, not the config — pass it there.
     return ParallelCoordinatingRuntime(

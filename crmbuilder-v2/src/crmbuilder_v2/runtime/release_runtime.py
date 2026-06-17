@@ -37,6 +37,12 @@ DemandsProvider = Callable[[dict], list[dict]]
 # Given {release_identifier, planning_item, designs:[delta_set,...]} → the
 # decomposition spec consumed by decompose_planning_item_direct.
 DecompositionProvider = Callable[[dict], list[dict]]
+# Dev-lane seams (the development-org boundary). PiRunner delivers one in-scope PI
+# (drives it to a delivered state, e.g. the ADO runtime → "In Review" under the
+# file-lock gate). GateRunner runs a release-level (integration) gate ("qa" /
+# "testing") and returns whether it passed.
+PiRunner = Callable[[str, str], None]          # (release_identifier, planning_item)
+GateRunner = Callable[[str, str], bool]        # (release_identifier, stage) -> passed
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +57,16 @@ class StepKind(str, Enum):
     ADVANCE_RECONCILIATION = "advance_reconciliation"
     PLAN = "plan"                        # author designs + decompose PIs
     FINALIZE = "finalize"                # readiness + interactive→ado + enter ready
-    DONE = "done"                        # planning slice complete (status ready+)
+    # --- development lane (the dev-lane delegation) ---
+    ENTER_LANE = "enter_lane"            # ready → development (single-occupancy gate)
+    DEVELOP = "develop"                  # run the next eligible in-scope PI via ADO
+    TO_QA = "to_qa"                      # all PIs delivered → development → qa
+    RUN_QA = "run_qa"                    # release-level QA gate → qa_pass
+    TO_TESTING = "to_testing"            # qa passed → qa → testing
+    RUN_TEST = "run_test"                # release-level test gate → test_pass
+    TO_DEPLOYMENT = "to_deployment"      # tests passed → testing → deployment
+    SHIP = "ship"                        # deployment → shipped (ship-cascade gate)
+    DONE = "done"                        # planning slice complete / release shipped
     BLOCKED = "blocked"
 
 
@@ -70,13 +85,22 @@ def decide_next(
     demands_present: bool,
     has_open_conflicts: bool,
     readiness_ready: bool,
+    dev_lane_enabled: bool = False,
+    all_pis_delivered: bool = False,
+    qa_passed: bool = False,
+    test_passed: bool = False,
 ) -> ReleaseStep:
     """The next step owed, from the release's status + a few derived flags.
 
     Pre-freeze the loop only waits (freeze is a deliberate human/PM act, FE-5).
     In ``reconciliation`` it authors demands, pauses for governed conflict
     decisions, or advances. In ``architecture_planning`` it plans then finalizes.
-    ``ready`` and beyond are the development lane — out of the planning slice.
+
+    ``ready`` and the lane stages are the **dev-lane delegation** (AL-4 / §5.2): a
+    finished prerequisite graph is walked — each in-scope PI delivered via the ADO
+    runtime under the gates, then the release-level QA / test / ship gates. Driven
+    only when ``dev_lane_enabled`` (a pi_runner is wired); otherwise ``ready`` is
+    the planning-slice boundary (DONE).
     """
     if status in _PRE_FREEZE:
         return ReleaseStep(
@@ -96,7 +120,26 @@ def decide_next(
         if not readiness_ready:
             return ReleaseStep(StepKind.PLAN)
         return ReleaseStep(StepKind.FINALIZE)
-    return ReleaseStep(StepKind.DONE, f"status {status!r} is beyond the planning slice")
+    # --- development lane ---
+    if not dev_lane_enabled:
+        return ReleaseStep(
+            StepKind.DONE, f"status {status!r} — planning slice complete"
+        )
+    if status == "ready":
+        return ReleaseStep(StepKind.ENTER_LANE)
+    if status == "development":
+        return ReleaseStep(
+            StepKind.TO_QA if all_pis_delivered else StepKind.DEVELOP
+        )
+    if status == "qa":
+        return ReleaseStep(StepKind.TO_TESTING if qa_passed else StepKind.RUN_QA)
+    if status == "testing":
+        return ReleaseStep(
+            StepKind.TO_DEPLOYMENT if test_passed else StepKind.RUN_TEST
+        )
+    if status == "deployment":
+        return ReleaseStep(StepKind.SHIP)
+    return ReleaseStep(StepKind.DONE, f"status {status!r} (shipped / terminal)")
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +154,13 @@ class ReleaseRuntimeConfig:
     decomposition_provider: DecompositionProvider
     authored_by: str = "AGP-release-planning"
     max_steps: int = 24
+    # Dev-lane delegation (optional). When pi_runner is set, the loop drives past
+    # `ready` through development → qa → testing → deployment → shipped; otherwise
+    # it stops at `ready` (the planning slice). gate_runner runs the release-level
+    # QA/test gates; when unset the loop pauses at qa for a human/release-QA agent.
+    pi_runner: PiRunner | None = None
+    gate_runner: GateRunner | None = None
+    delivered_statuses: tuple[str, ...] = ("In Review", "Resolved")
 
 
 @dataclass
@@ -127,94 +177,236 @@ class ReleaseRunReport:
 
 
 class ReleaseRuntime:
-    """Walks one release through the planning slice using the injected providers."""
+    """Walks one release through the pipeline using the injected agent seams.
+
+    Read-decide in a session, then execute outside it — the development-stage ADO
+    delegation (pi_runner) and the LLM/gate seams are long-running and spawn agents
+    that hit the API, so they must not hold the DB session open.
+    """
+
+    _HALTS = frozenset({
+        StepKind.AWAIT_FREEZE, StepKind.RESOLVE_CONFLICTS, StepKind.DONE,
+        StepKind.BLOCKED,
+    })
 
     def __init__(self, config: ReleaseRuntimeConfig):
         self.cfg = config
 
     def run(self) -> ReleaseRunReport:
-        from crmbuilder_v2.access.repositories import reconciliation as recon
-        from crmbuilder_v2.access.repositories import (
-            release_demands,
-            releases,
-        )
-
         rid = self.cfg.release_identifier
         report = ReleaseRunReport(release_identifier=rid)
-        # Stops that need an external actor (human / governed decision) or are done.
-        _HALTS = {
-            StepKind.AWAIT_FREEZE,
-            StepKind.RESOLVE_CONFLICTS,
-            StepKind.DONE,
-            StepKind.BLOCKED,
-        }
+        dev_lane = self.cfg.pi_runner is not None
 
         for _ in range(self.cfg.max_steps):
-            with session_scope() as s:
-                status = releases.get_release(s, rid)["release_status"]
-                demands_present = bool(release_demands.list_demands(s, rid))
-                has_open = recon.has_open_conflicts(s, rid)
-                readiness = planning.planning_readiness(s, rid)
-                step = decide_next(
-                    status,
-                    demands_present=demands_present,
-                    has_open_conflicts=has_open,
-                    readiness_ready=readiness["ready"],
-                )
-                report.steps.append(f"{status} → {step.kind.value}")
+            snap = self._read_state(rid)
+            step = decide_next(
+                snap["status"],
+                demands_present=snap["demands_present"],
+                has_open_conflicts=snap["has_open_conflicts"],
+                readiness_ready=snap["readiness_ready"],
+                dev_lane_enabled=dev_lane,
+                all_pis_delivered=snap["all_pis_delivered"],
+                qa_passed=snap["qa_passed"],
+                test_passed=snap["test_passed"],
+            )
+            report.steps.append(f"{snap['status']} → {step.kind.value}")
+            if step.kind in self._HALTS:
+                report.final_status = snap["status"]
+                report.stopped_reason = step.reason or step.kind.value
+                return report
+            halt = self._execute(step, rid)  # executes outside the read session
+            if halt is not None:
+                report.final_status = self._status(rid)
+                report.stopped_reason = halt
+                return report
 
-                if step.kind in _HALTS:
-                    report.final_status = status
-                    report.stopped_reason = step.reason or step.kind.value
-                    return report
-
-                if step.kind is StepKind.AUTHOR_DEMANDS:
-                    self._author_demands(s, rid)
-                elif step.kind is StepKind.ADVANCE_RECONCILIATION:
-                    releases.transition(s, rid, "architecture_planning")
-                elif step.kind is StepKind.PLAN:
-                    self._plan(s, rid)
-                elif step.kind is StepKind.FINALIZE:
-                    orch.finalize_planning(s, rid)
-
-        with session_scope() as s:
-            from crmbuilder_v2.access.repositories import releases
-
-            report.final_status = releases.get_release(s, rid)["release_status"]
+        report.final_status = self._status(rid)
         report.stopped_reason = "max_steps reached"
         return report
 
-    # -- handlers -----------------------------------------------------------
+    # -- step dispatch ------------------------------------------------------
 
-    def _author_demands(self, session, rid: str) -> None:
+    def _execute(self, step: ReleaseStep, rid: str) -> str | None:
+        """Run one step's effect; return a halt reason, or None to continue."""
+        k = StepKind
+        if step.kind is k.AUTHOR_DEMANDS:
+            self._author_demands(rid)
+        elif step.kind is k.ADVANCE_RECONCILIATION:
+            self._transition(rid, "architecture_planning")
+        elif step.kind is k.PLAN:
+            self._plan(rid)
+        elif step.kind is k.FINALIZE:
+            self._finalize(rid)
+        elif step.kind is k.ENTER_LANE:
+            self._transition(rid, "development")
+        elif step.kind is k.DEVELOP:
+            return self._develop_step(rid)
+        elif step.kind is k.TO_QA:
+            self._transition(rid, "qa")
+        elif step.kind is k.RUN_QA:
+            return self._gate(rid, "qa")
+        elif step.kind is k.TO_TESTING:
+            self._transition(rid, "testing")
+        elif step.kind is k.RUN_TEST:
+            return self._gate(rid, "testing")
+        elif step.kind is k.TO_DEPLOYMENT:
+            self._transition(rid, "deployment")
+        elif step.kind is k.SHIP:
+            self._transition(rid, "shipped")
+        return None
+
+    # -- planning handlers --------------------------------------------------
+
+    def _author_demands(self, rid: str) -> None:
         from crmbuilder_v2.access.repositories import release_demands
 
-        context = {
-            "release_identifier": rid,
-            "requirements": _confirmed_requirements(session, rid),
-        }
-        demands = self.cfg.demands_provider(context)
-        release_demands.clear_demands(session, rid)
-        if demands:
-            release_demands.add_demands(session, rid, demands, self.cfg.authored_by)
-        orch.run_reconciliation(session, rid)
+        with session_scope() as s:
+            reqs = _confirmed_requirements(s, rid)
+        demands = self.cfg.demands_provider(
+            {"release_identifier": rid, "requirements": reqs}
+        )
+        with session_scope() as s:
+            release_demands.clear_demands(s, rid)
+            if demands:
+                release_demands.add_demands(s, rid, demands, self.cfg.authored_by)
+            orch.run_reconciliation(s, rid)
 
-    def _plan(self, session, rid: str) -> None:
+    def _plan(self, rid: str) -> None:
         from crmbuilder_v2.access.repositories import releases
 
-        delta_sets = orch.reconciled_delta_sets(session, rid)
-        orch.run_architecture_planning(session, rid, delta_sets)
-        for prj in releases._in_scope_projects(session, rid):
-            for pi in releases._in_scope_planning_items(session, prj):
-                if releases._pi_workstreams(session, pi):
-                    continue  # already decomposed
-                spec = self.cfg.decomposition_provider({
-                    "release_identifier": rid,
-                    "planning_item": pi,
-                    "designs": delta_sets,
-                })
-                if spec:
-                    orch.decompose_planning_item_direct(session, pi, spec)
+        with session_scope() as s:
+            delta_sets = orch.reconciled_delta_sets(s, rid)
+            orch.run_architecture_planning(s, rid, delta_sets)
+            pending = [
+                pi
+                for prj in releases._in_scope_projects(s, rid)
+                for pi in releases._in_scope_planning_items(s, prj)
+                if not releases._pi_workstreams(s, pi)
+            ]
+        for pi in pending:  # the decomposition agent runs outside the session
+            spec = self.cfg.decomposition_provider(
+                {"release_identifier": rid, "planning_item": pi, "designs": delta_sets}
+            )
+            if spec:
+                with session_scope() as s:
+                    orch.decompose_planning_item_direct(s, pi, spec)
+
+    def _finalize(self, rid: str) -> None:
+        with session_scope() as s:
+            orch.finalize_planning(s, rid)
+
+    # -- development-lane handlers ------------------------------------------
+
+    def _transition(self, rid: str, to_status: str) -> None:
+        from crmbuilder_v2.access.repositories import releases
+
+        with session_scope() as s:
+            releases.transition(s, rid, to_status)
+
+    def _develop_step(self, rid: str) -> str | None:
+        """Deliver the next eligible in-scope PI via the ADO runner (outside any
+        session). Returns a halt reason if nothing is eligible or the PI does not
+        reach a delivered state."""
+        from crmbuilder_v2.access.repositories import planning_items
+
+        with session_scope() as s:
+            pi = self._next_eligible_pi(s, rid)
+        if pi is None:
+            return ("development blocked: no eligible in-scope planning item "
+                    "(unmet dependencies among the in-scope items)")
+        self.cfg.pi_runner(rid, pi)  # long; spawns ADO agents under the file lock
+        with session_scope() as s:
+            status = planning_items.get(s, pi)["status"]
+        if status not in self.cfg.delivered_statuses:
+            return (f"planning item {pi} did not reach a delivered state "
+                    f"(status {status!r}); needs attention")
+        return None
+
+    def _gate(self, rid: str, stage: str) -> str | None:
+        """Run a release-level (integration) QA/test gate via the gate runner, then
+        stamp the pass. No runner wired → pause for a human / release-QA agent."""
+        from crmbuilder_v2.access.repositories import releases
+
+        if self.cfg.gate_runner is None:
+            return (f"release-level {stage} gate owed — wire a gate runner or run it "
+                    f"and stamp the pass, then relaunch")
+        if not self.cfg.gate_runner(rid, stage):
+            return f"release-level {stage} gate failed"
+        with session_scope() as s:
+            if stage == "qa":
+                releases.qa_pass(s, rid)
+            else:
+                releases.test_pass(s, rid)
+        return None
+
+    # -- state reads --------------------------------------------------------
+
+    def _read_state(self, rid: str) -> dict:
+        from crmbuilder_v2.access.repositories import reconciliation as recon
+        from crmbuilder_v2.access.repositories import release_demands, releases
+
+        with session_scope() as s:
+            rel = releases.get_release(s, rid)
+            in_scope = self._in_scope_pis(s, rid)
+            delivered = self._delivered_pis(s, in_scope)
+            return {
+                "status": rel["release_status"],
+                "demands_present": bool(release_demands.list_demands(s, rid)),
+                "has_open_conflicts": recon.has_open_conflicts(s, rid),
+                "readiness_ready": planning.planning_readiness(s, rid)["ready"],
+                "all_pis_delivered": bool(in_scope) and delivered == set(in_scope),
+                "qa_passed": rel.get("release_qa_passed_at") is not None,
+                "test_passed": rel.get("release_test_passed_at") is not None,
+            }
+
+    def _status(self, rid: str) -> str:
+        from crmbuilder_v2.access.repositories import releases
+
+        with session_scope() as s:
+            return releases.get_release(s, rid)["release_status"]
+
+    def _in_scope_pis(self, session, rid: str) -> list[str]:
+        from crmbuilder_v2.access.repositories import releases
+
+        return [
+            pi
+            for prj in releases._in_scope_projects(session, rid)
+            for pi in releases._in_scope_planning_items(session, prj)
+        ]
+
+    def _delivered_pis(self, session, pis: list[str]) -> set[str]:
+        from crmbuilder_v2.access.repositories import planning_items
+
+        out: set[str] = set()
+        for pi in pis:
+            try:
+                if planning_items.get(session, pi)["status"] in self.cfg.delivered_statuses:
+                    out.add(pi)
+            except Exception:
+                continue
+        return out
+
+    def _next_eligible_pi(self, session, rid: str) -> str | None:
+        """An undelivered in-scope PI whose in-scope blockers are all delivered
+        (the finished prerequisite graph is walked in dependency order, §5.2)."""
+        from crmbuilder_v2.access.repositories import _governance as gov
+
+        in_scope = self._in_scope_pis(session, rid)
+        delivered = self._delivered_pis(session, in_scope)
+        in_scope_set = set(in_scope)
+        for pi in in_scope:
+            if pi in delivered:
+                continue
+            blockers = {
+                e.target_id
+                for e in gov.outbound_edges(
+                    session, source_type="planning_item", source_id=pi,
+                    relationship="blocked_by", target_type="planning_item",
+                )
+            } & in_scope_set
+            if blockers <= delivered:
+                return pi
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -347,26 +539,66 @@ def anthropic_providers(model: str = _MODEL):
     return demands_provider, decomposition_provider
 
 
+def ado_pi_runner(
+    *,
+    api_base: str = "http://127.0.0.1:8765",
+    engagement: str = "CRMBUILDER",
+    repo_root: str = ".",
+    base_branch: str = "main",
+    max_concurrent: int = 2,
+    agent_timeout: int = 1800,
+) -> PiRunner:
+    """The real dev-org delegation seam: deliver one in-scope PI by running the ADO
+    runtime over its phases with the file-lock backstop engaged (PI-220). The PI is
+    driven to ``In Review``; the release loop reads its status to confirm delivery.
+    """
+    def _run(release_identifier: str, planning_item: str) -> None:
+        from crmbuilder_v2.runtime.ado_runtime import AdoRuntime, AdoRuntimeConfig
+
+        AdoRuntime(AdoRuntimeConfig(
+            planning_item=planning_item, api_base=api_base, engagement=engagement,
+            repo_root=repo_root, base_branch=base_branch,
+            max_concurrent=max_concurrent, agent_timeout=agent_timeout,
+            enable_file_locks=True,
+        )).run()
+
+    return _run
+
+
 def main(argv: list[str] | None = None) -> int:
-    """CLI: drive one release through the planning slice (reconciliation -> ready)."""
+    """CLI: drive a release with the agent layer. Default = the planning slice
+    (reconciliation -> ready); ``--dev-lane`` continues through the development lane
+    to shipped, delegating each in-scope PI to the ADO runtime under the file lock.
+    """
     import argparse
 
     parser = argparse.ArgumentParser(
         prog="crmbuilder-v2-release",
-        description="Drive a release through the planning slice with the agent layer.",
+        description="Drive a release through the pipeline with the agent layer.",
     )
     parser.add_argument("release_identifier", help="REL-NNN")
     parser.add_argument("--authored-by", default="AGP-release-planning")
     parser.add_argument("--max-steps", type=int, default=24)
+    parser.add_argument("--dev-lane", action="store_true",
+                        help="continue past 'ready' through the development lane "
+                        "(delegates each in-scope PI to the ADO runtime)")
+    parser.add_argument("--repo-root", default=".")
+    parser.add_argument("--base-branch", default="main")
+    parser.add_argument("--max-concurrent", type=int, default=2)
     args = parser.parse_args(argv)
 
     demands_provider, decomposition_provider = anthropic_providers()
+    pi_runner = ado_pi_runner(
+        repo_root=args.repo_root, base_branch=args.base_branch,
+        max_concurrent=args.max_concurrent,
+    ) if args.dev_lane else None
     report = ReleaseRuntime(ReleaseRuntimeConfig(
         release_identifier=args.release_identifier,
         demands_provider=demands_provider,
         decomposition_provider=decomposition_provider,
         authored_by=args.authored_by,
         max_steps=args.max_steps,
+        pi_runner=pi_runner,
     )).run()
     print(json.dumps({
         "release": report.release_identifier,
