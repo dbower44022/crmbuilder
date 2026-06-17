@@ -1849,6 +1849,20 @@ class ResolveConflictIn(_Base):
     resolved_value: Any | None = None
 
 
+# --- Agent layer: demand-set + stage drivers (PI-217/218 / PRJ-033) ----------
+class DemandsIn(_Base):
+    demands: list[dict[str, Any]]
+    authored_by: str
+
+
+class ArchitecturePlanningIn(_Base):
+    delta_sets: list[dict[str, Any]] | None = None
+
+
+class DecomposeIn(_Base):
+    workstreams: list[dict[str, Any]]
+
+
 # --- Artifact version (versioned change spine, PI-208 / PRJ-031) ------------
 class ArtifactVersionSnapshotIn(_Base):
     artifact_type: str

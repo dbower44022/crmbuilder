@@ -11,18 +11,28 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from crmbuilder_v2.access import coordination, freeze, planning, reopen
+from crmbuilder_v2.access import (
+    coordination,
+    freeze,
+    planning,
+    release_orchestration,
+    reopen,
+)
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import (
     artifact_versions,
     planning_claims,
     reconciliation,
+    release_demands,
     releases,
 )
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
+    ArchitecturePlanningIn,
     AreaReopenIn,
+    DecomposeIn,
+    DemandsIn,
     PlanningClaimIn,
     PlanReleaseIn,
     ReconcileIn,
@@ -204,6 +214,74 @@ def planning_readiness(identifier: str):
     """The planned-completely readiness report (PI-209)."""
     with readonly_session() as s:
         return ok(planning.planning_readiness(s, identifier))
+
+
+# --- Agent layer: demand-set + stage drivers (PI-217/218 / PRJ-033) ----------
+@router.get("/{identifier}/demands")
+def list_demands(identifier: str):
+    """The persisted demand-set feeding reconciliation (PI-217)."""
+    with readonly_session() as s:
+        return ok(release_demands.list_demands(s, identifier))
+
+
+@router.post("/{identifier}/demands")
+def add_demands(identifier: str, body: DemandsIn):
+    """Persist agent-authored demands for the release (PI-217 / AL-1)."""
+    with writable_session() as s:
+        return ok(
+            release_demands.add_demands(s, identifier, body.demands, body.authored_by)
+        )
+
+
+@router.delete("/{identifier}/demands")
+def clear_demands(identifier: str, requirement: str | None = None):
+    """Drop the release's demands (all, or one requirement's) so re-authoring
+    replaces (PI-217)."""
+    with writable_session() as s:
+        return ok({
+            "deleted": release_demands.clear_demands(
+                s, identifier, requirement_identifier=requirement
+            )
+        })
+
+
+@router.post("/{identifier}/run-reconciliation")
+def run_reconciliation(identifier: str):
+    """Reconcile the persisted demand-set (PI-217); returns the delta-sets +
+    open conflicts to route to governed decisions."""
+    with writable_session() as s:
+        return ok(release_orchestration.run_reconciliation(s, identifier))
+
+
+@router.post("/{identifier}/run-architecture-planning")
+def run_architecture_planning(identifier: str, body: ArchitecturePlanningIn):
+    """Author vN+1 designs from the reconciled delta-sets + report readiness
+    (PI-218). Re-derives the delta-sets when none are supplied."""
+    with writable_session() as s:
+        return ok(
+            release_orchestration.run_architecture_planning(
+                s, identifier, body.delta_sets
+            )
+        )
+
+
+@router.post("/{identifier}/decompose-planning-item/{pi_identifier}")
+def decompose_planning_item(identifier: str, pi_identifier: str, body: DecomposeIn):
+    """Create a PI's workstreams + work-tasks directly (PI-218 / AL-3)."""
+    with writable_session() as s:
+        return ok(
+            release_orchestration.decompose_planning_item_direct(
+                s, pi_identifier, body.workstreams
+            )
+        )
+
+
+@router.post("/{identifier}/finalize-planning")
+def finalize_planning(identifier: str):
+    """Assert readiness, flip in-scope PIs interactive→ado, enter ``ready``
+    (PI-218 / AL-4)."""
+    with writable_session() as s:
+        return ok(release_orchestration.finalize_planning(s, identifier))
 
 
 @router.get("/{identifier}/area-reopens")
