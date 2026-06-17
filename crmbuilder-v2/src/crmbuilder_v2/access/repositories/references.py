@@ -280,6 +280,13 @@ def create(
     if existing is not None:
         raise ConflictError(f"reference already exists: {_identifier(existing)}")
 
+    # PI-216 (PRJ-031, FE-3): a release's scope membership is closed once frozen.
+    # Reject adding a project/PI/requirement membership edge into a frozen
+    # release. Deferred import breaks the references↔freeze cycle.
+    from crmbuilder_v2.access import freeze
+
+    freeze.assert_membership_addable(session, relationship, source_id, target_id)
+
     # PI-004 first slice (field.md §3.3.1 / §3.7 criterion 16):
     # `field_belongs_to_entity` is 1:1 mandatory at the source side.
     # Reject a second outgoing edge of this kind from the same field.
@@ -300,6 +307,30 @@ def create(
                         f"field {source_id} already has a "
                         "field_belongs_to_entity edge; delete the existing "
                         "edge first",
+                    )
+                ]
+            )
+
+    # PI-205 (PRJ-031, REQ-211): a Project is release-scoped — it belongs to
+    # exactly one Release. Reject a second outgoing project_belongs_to_release
+    # edge from the same project.
+    if relationship == "project_belongs_to_release":
+        existing_count = session.scalar(
+            select(func.count(Reference.id)).where(
+                Reference.source_type == "project",
+                Reference.source_id == source_id,
+                Reference.relationship_kind == "project_belongs_to_release",
+            )
+        )
+        if existing_count and existing_count > 0:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "relationship",
+                        "cardinality_violation",
+                        f"project {source_id} already belongs to a release; "
+                        "delete the existing project_belongs_to_release edge "
+                        "first",
                     )
                 ]
             )

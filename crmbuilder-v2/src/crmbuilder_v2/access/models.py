@@ -97,6 +97,8 @@ from crmbuilder_v2.access.vocab import (
     PLANNING_ITEM_TYPES,
     PROCESS_CLASSIFICATIONS,
     PROJECT_STATUSES,
+    RELEASE_STATUSES,
+    VERSIONED_ARTIFACT_TYPES,
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
@@ -2873,6 +2875,199 @@ class WorkTask(EngagementScopedPKMixin, Base):
         Index("ix_work_tasks_work_task_status", "work_task_status"),
         Index("ix_work_tasks_work_task_area", "work_task_area"),
         Index("ix_work_tasks_work_task_deleted_at", "work_task_deleted_at"),
+    )
+
+
+class Release(EngagementScopedPKMixin, Base):
+    """Governance entity — the multi-agent release pipeline keystone (PI-205).
+
+    PRJ-031. A born-early forming container (REQ-209) whose ``release_status``
+    *is* its pipeline stage over the 12-value lifecycle
+    preliminary_planning → development_planning → reconciliation →
+    architecture_planning → ready → development → qa → testing → deployment →
+    shipped (+ cancelled / superseded). The four lane states
+    (development..deployment) are the exclusive development lane held by one
+    release until it ships (REQ-189) — enforced by the access-layer occupancy
+    check at ``ready → development`` and, as a concurrency-safe structural
+    backstop, the ``uq_releases_one_in_lane`` partial unique index. Three gated
+    transitions: freeze (→ reconciliation; stamps ``release_frozen_at``),
+    planned-completely (→ ready; stamps ``release_planned_completely_at``), and
+    single-occupancy (→ development). Lane entry is by ``release_lane_order`` +
+    ``blocked_by`` (REQ-210). Composition (release-scoped Projects, lane order)
+    lives in ``refs``, not FK columns. See
+    pi-205-release-entity-architecture.md.
+    """
+
+    __tablename__ = "releases"
+
+    release_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    release_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    release_status: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="preliminary_planning"
+    )
+    release_description: Mapped[str] = mapped_column(Text, nullable=False)
+    release_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The human-set lane-entry sequence (REQ-210); NULL until ordered.
+    release_lane_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # The freeze stamp (§9A/§16.7) — also the boundary marking post-freeze
+    # versions as frozen drafts (read by PI-208).
+    release_frozen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_planned_completely_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # PI-206: release-level QA/test gate stamps (§8). qa_passed gates
+    # qa→testing; test_passed gates testing→deployment; both cleared on a rework
+    # bounce-back to development.
+    release_qa_passed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_test_passed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_shipped_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    release_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    release_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_cancelled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_superseded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("release_identifier", ["REL"]),
+            name="ck_release_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("release_status", RELEASE_STATUSES),
+            name="ck_release_status",
+        ),
+        Index("ix_releases_release_status", "release_status"),
+        Index("ix_releases_release_deleted_at", "release_deleted_at"),
+        # Single-occupancy of the development lane (REQ-189): at most one live
+        # release per engagement in a lane state. Partial unique on both
+        # dialects; the primary enforcement is the access-layer check, this is
+        # the concurrency-safe backstop under BEGIN IMMEDIATE.
+        Index(
+            "uq_releases_one_in_lane",
+            "engagement_id",
+            unique=True,
+            sqlite_where=text(
+                "release_status IN ('development','qa','testing','deployment') "
+                "AND release_deleted_at IS NULL"
+            ),
+            postgresql_where=text(
+                "release_status IN ('development','qa','testing','deployment') "
+                "AND release_deleted_at IS NULL"
+            ),
+        ),
+    )
+
+
+class ArtifactVersion(EngagementScopedMixin, Base):
+    """The versioned, release-tied change spine (PI-208 / PRJ-031, DEC-503).
+
+    One generic version store (§16.4 refined by DEC-503): each row is a complete
+    JSON ``snapshot`` of one versioned artifact at one ``version_number``, tied to
+    the ``release_identifier`` that introduced it. Numbering is per-artifact
+    monotonic (the UNIQUE constraint guards it); the live/current definition is
+    the highest version whose release has shipped (computed in the repository, not
+    stored). Outside the refs/change_log discipline — the version rows are the
+    audit trail. See pi-208-versioning-spine-architecture.md.
+    """
+
+    __tablename__ = "artifact_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    artifact_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    artifact_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    snapshot: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_artifact_versions_release",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "artifact_type",
+            "artifact_identifier",
+            "version_number",
+            name="uq_artifact_versions_number",
+        ),
+        CheckConstraint(
+            _check_in("artifact_type", VERSIONED_ARTIFACT_TYPES),
+            name="ck_artifact_version_type",
+        ),
+        CheckConstraint(
+            "version_number >= 1", name="ck_artifact_version_number_positive"
+        ),
+        Index(
+            "ix_artifact_versions_artifact",
+            "engagement_id",
+            "artifact_type",
+            "artifact_identifier",
+        ),
+    )
+
+
+class PlanningAreaClaim(EngagementScopedMixin, Base):
+    """Single-threaded-by-area planning claim (PI-207 / PRJ-031, DEC-505).
+
+    The committed-temperature substrate (§5.1, §11.8 / REQ-195): within a frozen
+    release's planning window (reconciliation / architecture_planning), each area's
+    planning work is owned by one agent. ``UNIQUE(engagement_id,
+    release_identifier, area)`` enforces single-threaded-by-area; the access layer
+    additionally gates that the release is in the committed planning window.
+    Outside the refs/change_log discipline. See
+    pi-207-two-temperature-planning-architecture.md.
+    """
+
+    __tablename__ = "planning_area_claims"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    area: Mapped[str] = mapped_column(String(64), nullable=False)
+    claimed_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    claimed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_planning_area_claims_release",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "release_identifier",
+            "area",
+            name="uq_planning_area_claims_one_owner",
+        ),
+        Index(
+            "ix_planning_area_claims_release",
+            "engagement_id",
+            "release_identifier",
+        ),
     )
 
 

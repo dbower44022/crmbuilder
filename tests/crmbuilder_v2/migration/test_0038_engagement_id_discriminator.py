@@ -92,6 +92,12 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "teams",
         # PI-195 (PRJ-027) filtered-tab design family.
         "filtered_tabs",
+        # PI-205 (PRJ-031) the release pipeline keystone.
+        "releases",
+        # PI-208 (PRJ-031) the versioned change spine.
+        "artifact_versions",
+        # PI-207 (PRJ-031) the single-threaded-by-area planning substrate.
+        "planning_area_claims",
     }
 )
 
