@@ -1814,6 +1814,11 @@ class PlanningClaimIn(_Base):
     claimed_by: str
 
 
+# --- Planning org (PI-209 / PRJ-033) ----------------------------------------
+class PlanReleaseIn(_Base):
+    delta_sets: list[dict[str, Any]]
+
+
 # --- Reconciliation engine (PI-215 / PRJ-031) -------------------------------
 class ReconcileIn(_Base):
     demands: list[dict[str, Any]]

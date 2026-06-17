@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from crmbuilder_v2.access import coordination, freeze, reopen
+from crmbuilder_v2.access import coordination, freeze, planning, reopen
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import (
     artifact_versions,
@@ -24,6 +24,7 @@ from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     AreaReopenIn,
     PlanningClaimIn,
+    PlanReleaseIn,
     ReconcileIn,
     ReleaseCorrectionIn,
     ReleaseCreateIn,
@@ -188,6 +189,21 @@ def reconciliation_conflicts(identifier: str, status: str | None = None):
     """The release's reconciliation conflicts (PI-215)."""
     with readonly_session() as s:
         return ok(reconciliation.list_conflicts(s, identifier, status=status))
+
+
+@router.post("/{identifier}/plan")
+def plan(identifier: str, body: PlanReleaseIn):
+    """Architecture-planning pass (PI-209): author vN+1 designs from the
+    reconciled delta-sets, then report planned-completely readiness."""
+    with writable_session() as s:
+        return ok(planning.plan_release(s, identifier, body.delta_sets))
+
+
+@router.get("/{identifier}/planning-readiness")
+def planning_readiness(identifier: str):
+    """The planned-completely readiness report (PI-209)."""
+    with readonly_session() as s:
+        return ok(planning.planning_readiness(s, identifier))
 
 
 @router.get("/{identifier}/area-reopens")
