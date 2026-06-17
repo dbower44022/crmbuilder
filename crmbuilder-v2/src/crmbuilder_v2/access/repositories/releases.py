@@ -613,6 +613,45 @@ def patch_release(
     return after
 
 
+_FROZEN_OPEN_STATUSES = frozenset({"preliminary_planning", "development_planning"})
+
+
+def open_correction_release(
+    session: Session,
+    prior_identifier: str,
+    *,
+    title: str,
+    description: str,
+    notes: str | None = None,
+) -> dict:
+    """Open a new release that corrects a frozen prior (PI-211, RW1).
+
+    A frozen plan is never reopened; corrections go to a new release. Creates a
+    successor in ``preliminary_planning`` linked ``new -release_corrects_release->
+    prior``. ``prior`` must be frozen (past ``development_planning``) — correcting
+    a still-open release is rejected (just edit it).
+    """
+    prior = _get_row(session, prior_identifier)
+    if prior.release_status in _FROZEN_OPEN_STATUSES:
+        raise ConflictError(
+            f"release {prior_identifier!r} is {prior.release_status!r} (not yet "
+            f"frozen); edit it directly rather than opening a correction release "
+            f"(RW1 applies only to frozen plans)."
+        )
+    new = create_release(session, title=title, description=description, notes=notes)
+    from crmbuilder_v2.access.repositories import references
+
+    references.create(
+        session,
+        source_type=_ENTITY_TYPE,
+        source_id=new["release_identifier"],
+        target_type=_ENTITY_TYPE,
+        target_id=prior_identifier,
+        relationship="release_corrects_release",
+    )
+    return new
+
+
 def delete_release(session: Session, identifier: str) -> dict:
     row = _get_row(session, identifier)
     if row.release_deleted_at is not None:

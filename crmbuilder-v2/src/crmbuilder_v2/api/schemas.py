@@ -1792,6 +1792,12 @@ class ReleaseLaneOrderIn(_Base):
     order: int | None = None
 
 
+class ReleaseCorrectionIn(_Base):
+    title: str
+    description: str
+    notes: str | None = None
+
+
 class PlanningClaimIn(_Base):
     area: str
     claimed_by: str

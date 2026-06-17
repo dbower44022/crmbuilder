@@ -24,6 +24,7 @@ from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     PlanningClaimIn,
     ReconcileIn,
+    ReleaseCorrectionIn,
     ReleaseCreateIn,
     ReleaseLaneOrderIn,
     ReleasePatchIn,
@@ -134,6 +135,18 @@ def transition(identifier: str, body: ReleaseTransitionIn):
 def lane_order(identifier: str, body: ReleaseLaneOrderIn):
     with writable_session() as s:
         return ok(releases.set_lane_order(s, identifier, body.order))
+
+
+@router.post("/{identifier}/open-correction", status_code=201)
+def open_correction(identifier: str, body: ReleaseCorrectionIn):
+    """Open a new release that corrects this frozen prior (PI-211 / RW1)."""
+    with writable_session() as s:
+        return ok(
+            releases.open_correction_release(
+                s, identifier, title=body.title, description=body.description,
+                notes=body.notes,
+            )
+        )
 
 
 @router.post("/{identifier}/qa-pass")

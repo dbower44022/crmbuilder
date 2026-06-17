@@ -1399,6 +1399,11 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # `project_planned_in_reference_book`.
         "project_belongs_to_release",
         "release_planned_in_reference_book",
+        # PI-211 (PRJ-034, RW1): a new release corrects a frozen/shipped release
+        # whose plan was found wanting — the traceable "corrections go to a new
+        # release" route. Distinct from supersedes (a shipped release is not
+        # superseded by a follow-up correction).
+        "release_corrects_release",
     }
 )
 
@@ -1886,6 +1891,7 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("project_belongs_to_release")
     if source_type == "release" and target_type == "release":
         kinds.add("blocked_by")
+        kinds.add("release_corrects_release")
     if source_type == "release" and target_type == "reference_book":
         kinds.add("release_planned_in_reference_book")
     return frozenset(kinds)
