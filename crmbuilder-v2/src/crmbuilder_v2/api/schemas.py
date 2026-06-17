@@ -1798,6 +1798,11 @@ class ReleaseCorrectionIn(_Base):
     notes: str | None = None
 
 
+class AreaReopenIn(_Base):
+    area: str
+    reason: str
+
+
 class PlanningClaimIn(_Base):
     area: str
     claimed_by: str

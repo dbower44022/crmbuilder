@@ -37,6 +37,7 @@ from sqlalchemy.sql.expression import ColumnElement
 
 from crmbuilder_v2.access.vocab import (
     AGENT_PROFILE_TIERS,
+    AREA_REOPEN_STATUSES,
     ASSOCIATION_CARDINALITIES,
     ASSOCIATION_STATUSES,
     AUTOMATION_STATUSES,
@@ -99,12 +100,11 @@ from crmbuilder_v2.access.vocab import (
     PROJECT_STATUSES,
     RECONCILIATION_CONFLICT_STATUSES,
     RECONCILIATION_CONFLICT_TYPES,
-    RELEASE_STATUSES,
-    VERSIONED_ARTIFACT_TYPES,
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
     REGISTRY_STATUSES,
+    RELEASE_STATUSES,
     REQUIREMENT_ORIGINS,
     REQUIREMENT_PRIORITIES,
     REQUIREMENT_REVIEW_STATES,
@@ -126,6 +126,7 @@ from crmbuilder_v2.access.vocab import (
     TERM_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
+    VERSIONED_ARTIFACT_TYPES,
     VIEW_STATUSES,
     WORK_TASK_STATUSES,
     WORK_TICKET_KINDS,
@@ -3092,6 +3093,51 @@ class ReconciliationConflict(EngagementScopedMixin, Base):
         ),
         Index(
             "ix_reconciliation_conflicts_release_status",
+            "engagement_id",
+            "release_identifier",
+            "status",
+        ),
+    )
+
+
+class AreaReopen(EngagementScopedMixin, Base):
+    """An in-lane reopen of a frozen area (PI-212 / PRJ-034, RW2/RW3).
+
+    While ``open`` the area is thawing and its downstream areas (higher
+    SYSTEM_AREA_RANKS rank) are paused; ``resolved`` re-freezes it and the
+    downstream resumes. Engagement-scoped satellite, surrogate PK, composite FK to
+    ``releases``; outside the refs/change_log discipline. See
+    pi-212-area-reopen-architecture.md.
+    """
+
+    __tablename__ = "area_reopens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    area: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="open"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_area_reopens_release",
+        ),
+        CheckConstraint(
+            _check_in("status", AREA_REOPEN_STATUSES),
+            name="ck_area_reopen_status",
+        ),
+        Index(
+            "ix_area_reopens_release_status",
             "engagement_id",
             "release_identifier",
             "status",

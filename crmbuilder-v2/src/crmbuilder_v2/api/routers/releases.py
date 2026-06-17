@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from crmbuilder_v2.access import coordination, freeze
+from crmbuilder_v2.access import coordination, freeze, reopen
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import (
     artifact_versions,
@@ -22,6 +22,7 @@ from crmbuilder_v2.access.repositories import (
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
+    AreaReopenIn,
     PlanningClaimIn,
     ReconcileIn,
     ReleaseCorrectionIn,
@@ -186,6 +187,30 @@ def reconciliation_conflicts(identifier: str, status: str | None = None):
     """The release's reconciliation conflicts (PI-215)."""
     with readonly_session() as s:
         return ok(reconciliation.list_conflicts(s, identifier, status=status))
+
+
+@router.get("/{identifier}/area-reopens")
+def area_reopens(identifier: str, status: str | None = None):
+    """The release's area reopens + the currently paused areas (PI-212)."""
+    with readonly_session() as s:
+        return ok({
+            "reopens": reopen.list_reopens(s, identifier, status=status),
+            "paused_areas": sorted(reopen.paused_areas(s, identifier)),
+        })
+
+
+@router.post("/{identifier}/area-reopens", status_code=201)
+def open_area_reopen(identifier: str, body: AreaReopenIn):
+    """Reopen a frozen area in-lane (PI-212 / RW2); pauses its downstream."""
+    with writable_session() as s:
+        return ok(reopen.reopen_area(s, identifier, body.area, body.reason))
+
+
+@router.post("/{identifier}/area-reopens/{area}/refreeze")
+def refreeze_area(identifier: str, area: str):
+    """Re-freeze a reopened area (PI-212 / RW3); its downstream resumes."""
+    with writable_session() as s:
+        return ok(reopen.refreeze_area(s, identifier, area))
 
 
 @router.get("/{identifier}/temperature")

@@ -934,6 +934,10 @@ RECONCILIATION_CONFLICT_TYPES: frozenset[str] = frozenset(
     {"facet_value", "remove_vs_modify", "field_redefinition"}
 )
 
+# `area_reopen` (PI-212 / PRJ-034, RW2/RW3) — an in-lane reopen of a frozen area;
+# while open, the area is thawing and its downstream areas are paused.
+AREA_REOPEN_STATUSES: frozenset[str] = frozenset({"open", "resolved"})
+
 # ADO execution_mode (PRJ-026 / PI-183, DEC-423..425). The structural risk gate
 # on a Project and a Planning Item that controls whether the ADO Project Manager
 # dispatcher may touch it — replacing the fragile "don't point the ADO there"

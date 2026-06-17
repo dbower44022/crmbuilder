@@ -356,9 +356,12 @@ def claim_work_task(session: Session, identifier: str, *, claimed_by: str) -> di
     # dev-lane release, refuse the claim if its (release, area) is already owned
     # by a different agent. No-op when not release-scoped. Lazy import to keep
     # this low-level repo free of a module-level coordination dependency.
-    from crmbuilder_v2.access import coordination
+    from crmbuilder_v2.access import coordination, reopen
 
     coordination.assert_area_owner(session, identifier, claimed_by)
+    # PI-212 / RW3: a downstream area is paused while an upstream area is reopened
+    # and thawing — never build on thawing ground. No-op when not release-scoped.
+    reopen.assert_area_not_paused(session, identifier)
     before = to_dict(row)
     row.work_task_claimed_by = claimed_by
     row.work_task_claimed_at = datetime.now(UTC)
