@@ -280,6 +280,13 @@ def create(
     if existing is not None:
         raise ConflictError(f"reference already exists: {_identifier(existing)}")
 
+    # PI-216 (PRJ-031, FE-3): a release's scope membership is closed once frozen.
+    # Reject adding a project/PI/requirement membership edge into a frozen
+    # release. Deferred import breaks the references↔freeze cycle.
+    from crmbuilder_v2.access import freeze
+
+    freeze.assert_membership_addable(session, relationship, source_id, target_id)
+
     # PI-004 first slice (field.md §3.3.1 / §3.7 criterion 16):
     # `field_belongs_to_entity` is 1:1 mandatory at the source side.
     # Reject a second outgoing edge of this kind from the same field.

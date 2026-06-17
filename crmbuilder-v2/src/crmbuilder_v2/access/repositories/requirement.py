@@ -493,6 +493,16 @@ def update_requirement(
     content_changed = any(
         before.get(f) != getattr(row, f) for f in _CONTENT_FIELDS
     )
+    if content_changed:
+        # PI-216: a substantive edit to a requirement scheduled into a frozen
+        # release is gated — permitted only via the governed amend path
+        # (review_state needs_review), and rejected outright once the release is
+        # past planned-completely (change → new release, RW1).
+        from crmbuilder_v2.access import freeze
+
+        freeze.assert_requirement_amendable(
+            session, identifier, review_state=before["requirement_review_state"]
+        )
     session.flush()
     if content_changed:
         flag_descendants_needs_review(session, identifier)
@@ -836,6 +846,16 @@ def patch_requirement(session: Session, identifier: str, **fields) -> dict:
     content_changed = any(
         before.get(f) != getattr(row, f) for f in _CONTENT_FIELDS
     )
+    if content_changed:
+        # PI-216: a substantive edit to a requirement scheduled into a frozen
+        # release is gated — permitted only via the governed amend path
+        # (review_state needs_review), and rejected outright once the release is
+        # past planned-completely (change → new release, RW1).
+        from crmbuilder_v2.access import freeze
+
+        freeze.assert_requirement_amendable(
+            session, identifier, review_state=before["requirement_review_state"]
+        )
     session.flush()
     if content_changed:
         flag_descendants_needs_review(session, identifier)

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from crmbuilder_v2.access import freeze
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import artifact_versions, releases
 from crmbuilder_v2.api.deps import readonly_session, writable_session
@@ -69,6 +70,23 @@ def versions(identifier: str):
     """Every artifact-version snapshot this release introduced (PI-208 provenance)."""
     with readonly_session() as s:
         return ok(artifact_versions.versions_for_release(s, identifier))
+
+
+@router.get("/{identifier}/freeze")
+def freeze_state(identifier: str):
+    """The release's freeze enforcement band (PI-216): open / amend_window /
+    locked, or null when terminal (shipped/cancelled/superseded)."""
+    with readonly_session() as s:
+        record = releases.get_release(s, identifier)
+        if record is None:
+            raise NotFoundError("release", identifier)
+        return ok(
+            {
+                "release_identifier": identifier,
+                "status": record["release_status"],
+                "freeze_band": freeze.band_for_status(record["release_status"]),
+            }
+        )
 
 
 @router.post("", status_code=201)
