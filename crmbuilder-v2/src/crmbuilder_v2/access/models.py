@@ -3101,6 +3101,42 @@ class ReconciliationConflict(EngagementScopedMixin, Base):
     )
 
 
+class ResourceLock(EngagementScopedMixin, Base):
+    """A file-level / named-resource check-out lock (PI-203 / PRJ-030, §7.3).
+
+    The backstop under an area owner's intra-area parallel sub-agent fan-out
+    (FL-1..FL-6). ``resource_name`` is a file path OR a logical resource (e.g.
+    ``migration-chain``); ``released_at IS NULL`` means held. The partial unique
+    index admits at most one active lock per resource — the atomic,
+    owner-independent acquire backstop. Engagement-scoped satellite, surrogate PK;
+    outside the refs/change_log discipline. See pi-203-file-lock-architecture.md.
+    """
+
+    __tablename__ = "resource_locks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    resource_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    holder: Mapped[str] = mapped_column(String(128), nullable=False)
+    acquired_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    released_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        Index(
+            "uq_resource_locks_active",
+            "engagement_id",
+            "resource_name",
+            unique=True,
+            sqlite_where=text("released_at IS NULL"),
+            postgresql_where=text("released_at IS NULL"),
+        ),
+        Index("ix_resource_locks_holder", "engagement_id", "holder"),
+    )
+
+
 class AreaReopen(EngagementScopedMixin, Base):
     """An in-lane reopen of a frozen area (PI-212 / PRJ-034, RW2/RW3).
 

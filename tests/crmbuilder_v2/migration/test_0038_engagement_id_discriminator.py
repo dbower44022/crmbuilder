@@ -102,6 +102,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "reconciliation_conflicts",
         # PI-212 (PRJ-034) the in-lane area-reopen store.
         "area_reopens",
+        # PI-203 (PRJ-030) the file-level resource-lock store.
+        "resource_locks",
     }
 )
 
