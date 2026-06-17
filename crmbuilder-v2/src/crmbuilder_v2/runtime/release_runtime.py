@@ -243,6 +243,35 @@ the decomposition minimal and buildable; the work tasks are what the release is 
 later tested against."""
 
 
+def _registry_system_prompt(area: str, tier: str) -> str | None:
+    """The composed system prompt for an (area, tier) system profile from the
+    registry (PI-221), or None if no such profile exists or the registry is
+    unreachable — letting the runtime drive the durable, learnable registry
+    prompts (AL-7) with the inline constants as a fallback.
+    """
+    try:
+        from sqlalchemy import select
+
+        from crmbuilder_v2.access.db import session_scope
+        from crmbuilder_v2.access.models import AgentProfileRow
+        from crmbuilder_v2.access.repositories import registry_resolver
+
+        with session_scope() as s:
+            row = s.scalars(
+                select(AgentProfileRow).where(
+                    AgentProfileRow.area == area,
+                    AgentProfileRow.tier == tier,
+                    AgentProfileRow.engagement_id.is_(None),
+                    AgentProfileRow.status == "active",
+                )
+            ).first()
+            if row is None:
+                return None
+            return registry_resolver.resolve_contract(s, row.identifier)["system_prompt"]
+    except Exception:
+        return None
+
+
 def anthropic_providers(model: str = _MODEL):
     """The real agent seam: LLM-backed demands + decomposition providers.
 
@@ -280,6 +309,11 @@ def anthropic_providers(model: str = _MODEL):
         workstreams: list[_Workstream]
 
     client = anthropic.Anthropic()
+    # Prefer the durable registry prompts (PI-221) over the inline fallbacks.
+    demands_system = _registry_system_prompt("model", "architect") or _DEMANDS_SYSTEM
+    decompose_system = (
+        _registry_system_prompt("planning", "architect") or _DECOMPOSE_SYSTEM
+    )
 
     def _parse(system, user, schema):
         resp = client.messages.parse(
@@ -292,7 +326,7 @@ def anthropic_providers(model: str = _MODEL):
 
     def demands_provider(context: dict) -> list[dict]:
         out = _parse(
-            _DEMANDS_SYSTEM,
+            demands_system,
             "Author the demand-set for release "
             f"{context['release_identifier']} from these confirmed requirements:\n"
             + json.dumps(context["requirements"], indent=2),
@@ -302,7 +336,7 @@ def anthropic_providers(model: str = _MODEL):
 
     def decomposition_provider(context: dict) -> list[dict]:
         out = _parse(
-            _DECOMPOSE_SYSTEM,
+            decompose_system,
             f"Decompose planning item {context['planning_item']} of release "
             f"{context['release_identifier']}. The versioned design deltas:\n"
             + json.dumps(context["designs"], indent=2),

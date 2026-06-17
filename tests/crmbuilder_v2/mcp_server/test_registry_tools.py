@@ -83,7 +83,9 @@ def test_seed_decomposes_proven_prompts_into_resolvable_contracts(v2_env):
 
     with session_scope() as s:
         created = seed_system_profiles(s)
-        assert len(created) == 2
+        # Two proven ADO dev prompts + the three release-pipeline planning-org
+        # profiles (PI-221): (model,architect), (planning,architect), (release,pi_lead).
+        assert len(created) == 5
         assert all(p["scope"] == "system" for p in created)
 
         archs = agent_profiles.list_all(s, area="storage", tier="architect")
