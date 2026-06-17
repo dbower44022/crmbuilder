@@ -352,6 +352,13 @@ def claim_work_task(session: Session, identifier: str, *, claimed_by: str) -> di
             f"work_task {identifier!r} already claimed by "
             f"{row.work_task_claimed_by!r}"
         )
+    # PI-204 / REQ-191: single-owner-per-area. When this task is under a
+    # dev-lane release, refuse the claim if its (release, area) is already owned
+    # by a different agent. No-op when not release-scoped. Lazy import to keep
+    # this low-level repo free of a module-level coordination dependency.
+    from crmbuilder_v2.access import coordination
+
+    coordination.assert_area_owner(session, identifier, claimed_by)
     before = to_dict(row)
     row.work_task_claimed_by = claimed_by
     row.work_task_claimed_at = datetime.now(UTC)

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from crmbuilder_v2.access import freeze
+from crmbuilder_v2.access import coordination, freeze
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import (
     artifact_versions,
@@ -50,6 +50,13 @@ def list_all(include_deleted: bool = False, status: str | None = None):
 def next_identifier():
     with readonly_session() as s:
         return ok({"next": releases.next_release_identifier(s)})
+
+
+@router.get("/lane-holder")
+def lane_holder():
+    """The release currently holding the development lane, or null (PI-204)."""
+    with readonly_session() as s:
+        return ok(coordination.lane_holder(s))
 
 
 @router.get("/{identifier}")
@@ -139,6 +146,16 @@ def test_pass(identifier: str):
     """Record the release-level test pass (PI-206); gates testing → deployment."""
     with writable_session() as s:
         return ok(releases.test_pass(s, identifier))
+
+
+@router.get("/{identifier}/area-ownership")
+def area_ownership(identifier: str):
+    """The {area: owner} map for a release's claimed Work Tasks (PI-204)."""
+    with readonly_session() as s:
+        record = releases.get_release(s, identifier)
+        if record is None:
+            raise NotFoundError("release", identifier)
+        return ok(coordination.area_ownership(s, identifier))
 
 
 @router.get("/{identifier}/temperature")
