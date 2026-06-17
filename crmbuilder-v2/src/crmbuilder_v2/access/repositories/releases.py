@@ -354,8 +354,20 @@ def _check_test_passed(session: Session, identifier: str) -> None:
         )
 
 
+def _check_no_open_conflicts(session: Session, identifier: str) -> None:
+    """Reconciliation gate (PI-215, RC-1) — no open model conflict may remain."""
+    from crmbuilder_v2.access.repositories import reconciliation
+
+    if reconciliation.has_open_conflicts(session, identifier):
+        raise ConflictError(
+            f"release {identifier!r} cannot leave reconciliation: it has open "
+            f"model conflict(s); resolve them (governed decision) first (RC-1)."
+        )
+
+
 _GATE_PREDICATES = {
     ("development_planning", "reconciliation"): _check_freeze,
+    ("reconciliation", "architecture_planning"): _check_no_open_conflicts,
     ("architecture_planning", "ready"): _check_planned_completely,
     ("ready", "development"): _check_single_occupancy,
     ("qa", "testing"): _check_qa_passed,

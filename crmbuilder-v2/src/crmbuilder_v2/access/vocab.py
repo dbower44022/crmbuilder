@@ -926,6 +926,14 @@ RELEASE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "superseded": frozenset(),
 }
 
+# `reconciliation_conflict` (PI-215 / PRJ-031, §5.4/§16.5) — a same-facet
+# contradiction between two requirements' demands on one shared artifact, settled
+# by a governed decision (RC-4). Two-state lifecycle; three typed kinds.
+RECONCILIATION_CONFLICT_STATUSES: frozenset[str] = frozenset({"open", "resolved"})
+RECONCILIATION_CONFLICT_TYPES: frozenset[str] = frozenset(
+    {"facet_value", "remove_vs_modify", "field_redefinition"}
+)
+
 # ADO execution_mode (PRJ-026 / PI-183, DEC-423..425). The structural risk gate
 # on a Project and a Planning Item that controls whether the ADO Project Manager
 # dispatcher may touch it — replacing the fragile "don't point the ADO there"

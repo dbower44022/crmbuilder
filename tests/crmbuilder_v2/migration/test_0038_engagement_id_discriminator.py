@@ -98,6 +98,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "artifact_versions",
         # PI-207 (PRJ-031) the single-threaded-by-area planning substrate.
         "planning_area_claims",
+        # PI-215 (PRJ-031) the reconciliation conflict store.
+        "reconciliation_conflicts",
     }
 )
 

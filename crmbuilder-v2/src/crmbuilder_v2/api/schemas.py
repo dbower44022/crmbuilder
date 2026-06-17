@@ -1797,6 +1797,16 @@ class PlanningClaimIn(_Base):
     claimed_by: str
 
 
+# --- Reconciliation engine (PI-215 / PRJ-031) -------------------------------
+class ReconcileIn(_Base):
+    demands: list[dict[str, Any]]
+
+
+class ResolveConflictIn(_Base):
+    decision_identifier: str
+    resolved_value: Any | None = None
+
+
 # --- Artifact version (versioned change spine, PI-208 / PRJ-031) ------------
 class ArtifactVersionSnapshotIn(_Base):
     artifact_type: str

@@ -97,6 +97,8 @@ from crmbuilder_v2.access.vocab import (
     PLANNING_ITEM_TYPES,
     PROCESS_CLASSIFICATIONS,
     PROJECT_STATUSES,
+    RECONCILIATION_CONFLICT_STATUSES,
+    RECONCILIATION_CONFLICT_TYPES,
     RELEASE_STATUSES,
     VERSIONED_ARTIFACT_TYPES,
     REFERENCE_BOOK_KINDS,
@@ -3025,6 +3027,74 @@ class ArtifactVersion(EngagementScopedMixin, Base):
             "engagement_id",
             "artifact_type",
             "artifact_identifier",
+        ),
+    )
+
+
+class ReconciliationConflict(EngagementScopedMixin, Base):
+    """A same-facet contradiction between requirements' demands (PI-215, §5.4).
+
+    PRJ-031, §16.5 (RC-4). The reconciliation engine emits one row per
+    unresolved same-facet contradiction on a shared artifact; it is settled by a
+    governed decision (``resolving_decision_identifier``), never by the reconciler
+    itself. Keyed UNIQUE per (release, artifact, facet) so re-runs upsert.
+    Engagement-scoped satellite, surrogate PK, composite FK to ``releases``;
+    outside the refs/change_log discipline. See
+    pi-215-reconciliation-engine-architecture.md.
+    """
+
+    __tablename__ = "reconciliation_conflicts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    artifact_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    artifact_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    facet: Mapped[str] = mapped_column(String(128), nullable=False)
+    conflict_type: Mapped[str] = mapped_column(String(24), nullable=False)
+    competing: Mapped[list] = mapped_column(JSONColumn, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="open"
+    )
+    resolved_value: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    resolving_decision_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_reconciliation_conflicts_release",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "release_identifier",
+            "artifact_type",
+            "artifact_identifier",
+            "facet",
+            name="uq_reconciliation_conflicts_locus",
+        ),
+        CheckConstraint(
+            _check_in("status", RECONCILIATION_CONFLICT_STATUSES),
+            name="ck_reconciliation_conflict_status",
+        ),
+        CheckConstraint(
+            _check_in("conflict_type", RECONCILIATION_CONFLICT_TYPES),
+            name="ck_reconciliation_conflict_type",
+        ),
+        Index(
+            "ix_reconciliation_conflicts_release_status",
+            "engagement_id",
+            "release_identifier",
+            "status",
         ),
     )
 

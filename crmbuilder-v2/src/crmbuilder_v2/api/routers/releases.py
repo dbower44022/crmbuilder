@@ -16,12 +16,14 @@ from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import (
     artifact_versions,
     planning_claims,
+    reconciliation,
     releases,
 )
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     PlanningClaimIn,
+    ReconcileIn,
     ReleaseCreateIn,
     ReleaseLaneOrderIn,
     ReleasePatchIn,
@@ -156,6 +158,21 @@ def area_ownership(identifier: str):
         if record is None:
             raise NotFoundError("release", identifier)
         return ok(coordination.area_ownership(s, identifier))
+
+
+@router.post("/{identifier}/reconcile")
+def reconcile(identifier: str, body: ReconcileIn):
+    """Run reconciliation over the release's demands (PI-215); returns the
+    conflict-free delta-sets + any open conflicts."""
+    with writable_session() as s:
+        return ok(reconciliation.reconcile_release(s, identifier, body.demands))
+
+
+@router.get("/{identifier}/reconciliation-conflicts")
+def reconciliation_conflicts(identifier: str, status: str | None = None):
+    """The release's reconciliation conflicts (PI-215)."""
+    with readonly_session() as s:
+        return ok(reconciliation.list_conflicts(s, identifier, status=status))
 
 
 @router.get("/{identifier}/temperature")
