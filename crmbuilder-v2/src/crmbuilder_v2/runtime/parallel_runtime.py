@@ -292,6 +292,11 @@ class ParallelRuntimeConfig(RuntimeConfig):
     # Run only this explicit set of Work Tasks (the most precise demo control);
     # falls back to ``target_workstream`` / next-eligible-globally when None.
     target_work_tasks: list[str] | None = None
+    # PI-220 (PRJ-030): engage the file-lock backstop on merge-back — verify the
+    # sub-agent's diff against the resource locks and reclaim a dead child's locks.
+    # Default off; a no-op anyway outside a dev-lane release. The release-dev driver
+    # sets it True. Existing ADO runs are byte-identical with it off.
+    enable_file_locks: bool = False
 
 
 # Type alias for the injectable spawn seam.
@@ -523,6 +528,7 @@ class ParallelCoordinatingRuntime:
                 a.work_task_id,
                 f"verification failed: {verdict.value}{log_suffix}",
             )
+            self._reclaim_locks(a.work_task_id)  # PI-220: free a failed child's locks (FL-6)
             run.worktree.remove()
             return TaskReport(
                 work_task_id=a.work_task_id,
@@ -534,6 +540,14 @@ class ParallelCoordinatingRuntime:
                 finished_at=run.finished_at,
                 verify_log_path=verify_log_path,
             )
+        # PI-220 (FL-5): capture the sub-agent's touched files from its worktree
+        # before it is removed, so the lock backstop can verify the real diff.
+        touched_paths: list[str] = []
+        if self.config.enable_file_locks:
+            try:
+                touched_paths = run.worktree.changed_files(self.config.base_branch)
+            except Exception as exc:  # never let a diff read break the merge
+                self.log(f"  [{a.work_task_id}] (lock) could not read diff: {exc}")
         # Merge is serialized: only one branch lands on the base at a time, in
         # completion order (the order results arrive on the queue).
         with self._repo_lock:
@@ -549,6 +563,7 @@ class ParallelCoordinatingRuntime:
             self._record_finding(
                 a.work_task_id, f"merge conflict on {a.branch}"
             )
+            self._reclaim_locks(a.work_task_id)  # PI-220: free the child's locks (FL-6)
             return TaskReport(
                 work_task_id=a.work_task_id,
                 branch=a.branch,
@@ -558,6 +573,10 @@ class ParallelCoordinatingRuntime:
                 spawned_at=run.spawned_at,
                 finished_at=run.finished_at,
             )
+        # PI-220 (FL-5): verify the merged diff against the resource locks +
+        # release this holder's locks. A flagged overlap is the mis-judged grain.
+        if self.config.enable_file_locks:
+            self._coordinate_locks_on_merge(a.work_task_id, touched_paths)
         self.log(
             f"✔ {a.work_task_id} verified + merged into {self.config.base_branch}"
         )
@@ -572,6 +591,48 @@ class ParallelCoordinatingRuntime:
             finished_at=run.finished_at,
             merged_at=merged_at,
         )
+
+    def _coordinate_locks_on_merge(
+        self, work_task_id: str, touched_paths: list[str]
+    ) -> None:
+        """PI-220 (FL-5): verify the merged diff against the file locks + release
+        them. Defensive and no-op outside a dev-lane release — a lock error never
+        breaks the merge / PI-145 atomicity. An overlap held by another sub-agent
+        is the mis-judged grain the lock exists to catch; surface it as a finding.
+        """
+        try:
+            from crmbuilder_v2.access.db import session_scope
+            from crmbuilder_v2.runtime import sub_agent_locks
+
+            with session_scope() as s:
+                report = sub_agent_locks.verify_and_release(
+                    s, work_task_id, touched_paths
+                )
+            if report and report.get("conflicts"):
+                detail = "; ".join(
+                    f"{c['resource']}@{c['holder']}" for c in report["conflicts"]
+                )
+                self.log(f"  [{work_task_id}] (lock) overlap: {detail}")
+                self._record_finding(
+                    work_task_id, f"file-lock overlap on merge: {detail}"
+                )
+        except Exception as exc:  # lock coordination is a backstop, never fatal
+            self.log(f"  [{work_task_id}] (lock) coordination skipped: {exc}")
+
+    def _reclaim_locks(self, work_task_id: str) -> None:
+        """PI-220 (FL-6): release a failed/dead sub-agent's locks. Defensive +
+        opt-in; no-op when file locks are off or outside a dev-lane release."""
+        if not self.config.enable_file_locks:
+            return
+        try:
+            from crmbuilder_v2.access.db import session_scope
+            from crmbuilder_v2.runtime import sub_agent_locks
+
+            with session_scope() as s:
+                if sub_agent_locks.dev_lane_release(s, work_task_id) is not None:
+                    sub_agent_locks.reclaim(s, work_task_id)
+        except Exception as exc:
+            self.log(f"  [{work_task_id}] (lock) reclaim skipped: {exc}")
 
     def _record_finding(self, work_task_id: str, summary: str) -> None:
         """Record a conflict/verify-failure as a finding (DEC-397).
