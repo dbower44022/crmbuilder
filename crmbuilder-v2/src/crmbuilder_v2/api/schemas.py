@@ -1801,6 +1801,8 @@ class ReleaseCorrectionIn(_Base):
 class AreaReopenIn(_Base):
     area: str
     reason: str
+    approval_decision_identifier: str | None = None
+    triggering_finding_identifier: str | None = None
 
 
 class RevalidateIn(_Base):

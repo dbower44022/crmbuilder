@@ -34,7 +34,7 @@ def _set_status(s, rel, status):
 def test_reopen_populates_cascade(v2_env):
     with session_scope() as s:
         rel = _dev_release(s)
-        r = reopen.reopen_area(s, rel, "storage", "need")
+        r = reopen.reopen_area(s, rel, "storage", "need", approval_decision_identifier="DEC-001")
         # storage's downstream = access, api, mcp, ui
         assert set(r["cascade_areas"]) == {"access", "api", "mcp", "ui"}
         assert r["revalidated_areas"] == []
@@ -44,7 +44,7 @@ def test_reopen_populates_cascade(v2_env):
 def test_revalidate_reduces_outstanding(v2_env):
     with session_scope() as s:
         rel = _dev_release(s)
-        r = reopen.reopen_area(s, rel, "api", "need")  # downstream = mcp, ui
+        r = reopen.reopen_area(s, rel, "api", "need", approval_decision_identifier="DEC-001")  # downstream = mcp, ui
         assert set(r["cascade_areas"]) == {"mcp", "ui"}
         reopen.revalidate_area(s, r["id"], "mcp")
         assert reopen.outstanding_revalidations(s, rel) == {"ui"}
@@ -55,7 +55,7 @@ def test_revalidate_reduces_outstanding(v2_env):
 def test_revalidate_rejects_non_cascade_and_double(v2_env):
     with session_scope() as s:
         rel = _dev_release(s)
-        r = reopen.reopen_area(s, rel, "api", "need")
+        r = reopen.reopen_area(s, rel, "api", "need", approval_decision_identifier="DEC-001")
         with pytest.raises(ConflictError, match="not in the cascade"):
             reopen.revalidate_area(s, r["id"], "storage")  # upstream, not downstream
         reopen.revalidate_area(s, r["id"], "mcp")
@@ -66,7 +66,7 @@ def test_revalidate_rejects_non_cascade_and_double(v2_env):
 def test_ship_gate_blocks_until_all_revalidated(v2_env):
     with session_scope() as s:
         rel = _dev_release(s, status="development")
-        r = reopen.reopen_area(s, rel, "api", "need")  # downstream mcp, ui
+        r = reopen.reopen_area(s, rel, "api", "need", approval_decision_identifier="DEC-001")  # downstream mcp, ui
         reopen.refreeze_area(s, rel, "api")  # re-freeze upstream
         # drive to deployment (qa/test passes recorded along the way)
         _set_status(s, rel, "deployment")

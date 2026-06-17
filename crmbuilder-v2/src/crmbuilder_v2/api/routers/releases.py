@@ -200,11 +200,25 @@ def area_reopens(identifier: str, status: str | None = None):
         })
 
 
+@router.get("/{identifier}/reopen-impact")
+def reopen_impact(identifier: str, area: str):
+    """The blast-radius impact report for reopening an area (PI-214 / RW5)."""
+    with readonly_session() as s:
+        return ok(reopen.reopen_impact(s, identifier, area))
+
+
 @router.post("/{identifier}/area-reopens", status_code=201)
 def open_area_reopen(identifier: str, body: AreaReopenIn):
-    """Reopen a frozen area in-lane (PI-212 / RW2); pauses its downstream."""
+    """Reopen a frozen area in-lane (PI-212 / RW2); pauses its downstream. The
+    reopen is gated by a blast-radius-sized approval (PI-214 / RW5)."""
     with writable_session() as s:
-        return ok(reopen.reopen_area(s, identifier, body.area, body.reason))
+        return ok(
+            reopen.reopen_area(
+                s, identifier, body.area, body.reason,
+                approval_decision_identifier=body.approval_decision_identifier,
+                triggering_finding_identifier=body.triggering_finding_identifier,
+            )
+        )
 
 
 @router.post("/{identifier}/area-reopens/{area}/refreeze")
