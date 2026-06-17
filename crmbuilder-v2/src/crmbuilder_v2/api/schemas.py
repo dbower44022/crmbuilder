@@ -1792,6 +1792,14 @@ class ReleaseLaneOrderIn(_Base):
     order: int | None = None
 
 
+# --- Artifact version (versioned change spine, PI-208 / PRJ-031) ------------
+class ArtifactVersionSnapshotIn(_Base):
+    artifact_type: str
+    artifact_identifier: str
+    release_identifier: str
+    snapshot: dict[str, Any]
+
+
 # --- Workstream (delivery phase, PI-112 Phase 4) ---------------------------
 class WorkstreamCreateIn(_Base):
     workstream_phase_type: str

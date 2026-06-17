@@ -891,6 +891,15 @@ RELEASE_STATUSES: frozenset[str] = frozenset(
 RELEASE_LANE_STATUSES: frozenset[str] = frozenset(
     {"development", "qa", "testing", "deployment"}
 )
+
+# `artifact_version` (PI-208 / PRJ-031, DEC-503) — the versioned, release-tied
+# change spine (§9/§16.4). The model definitions (entity, field, persona,
+# relation=association) plus processes are versioned (REQ-215); requirements are
+# lifecycle-governed, not versioned (REQ-216). The set bounds the
+# ``artifact_versions.artifact_type`` CHECK.
+VERSIONED_ARTIFACT_TYPES: frozenset[str] = frozenset(
+    {"entity", "field", "persona", "process", "association"}
+)
 RELEASE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "preliminary_planning": frozenset(
         {"development_planning", "cancelled", "superseded"}

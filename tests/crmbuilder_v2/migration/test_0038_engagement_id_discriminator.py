@@ -94,6 +94,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "filtered_tabs",
         # PI-205 (PRJ-031) the release pipeline keystone.
         "releases",
+        # PI-208 (PRJ-031) the versioned change spine.
+        "artifact_versions",
     }
 )
 

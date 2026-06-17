@@ -98,6 +98,7 @@ from crmbuilder_v2.access.vocab import (
     PROCESS_CLASSIFICATIONS,
     PROJECT_STATUSES,
     RELEASE_STATUSES,
+    VERSIONED_ARTIFACT_TYPES,
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
@@ -2962,6 +2963,59 @@ class Release(EngagementScopedPKMixin, Base):
                 "release_status IN ('development','qa','testing','deployment') "
                 "AND release_deleted_at IS NULL"
             ),
+        ),
+    )
+
+
+class ArtifactVersion(EngagementScopedMixin, Base):
+    """The versioned, release-tied change spine (PI-208 / PRJ-031, DEC-503).
+
+    One generic version store (§16.4 refined by DEC-503): each row is a complete
+    JSON ``snapshot`` of one versioned artifact at one ``version_number``, tied to
+    the ``release_identifier`` that introduced it. Numbering is per-artifact
+    monotonic (the UNIQUE constraint guards it); the live/current definition is
+    the highest version whose release has shipped (computed in the repository, not
+    stored). Outside the refs/change_log discipline — the version rows are the
+    audit trail. See pi-208-versioning-spine-architecture.md.
+    """
+
+    __tablename__ = "artifact_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    artifact_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    artifact_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    snapshot: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_artifact_versions_release",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "artifact_type",
+            "artifact_identifier",
+            "version_number",
+            name="uq_artifact_versions_number",
+        ),
+        CheckConstraint(
+            _check_in("artifact_type", VERSIONED_ARTIFACT_TYPES),
+            name="ck_artifact_version_type",
+        ),
+        CheckConstraint(
+            "version_number >= 1", name="ck_artifact_version_number_positive"
+        ),
+        Index(
+            "ix_artifact_versions_artifact",
+            "engagement_id",
+            "artifact_type",
+            "artifact_identifier",
         ),
     )
 

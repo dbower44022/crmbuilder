@@ -12,7 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from crmbuilder_v2.access.exceptions import NotFoundError
-from crmbuilder_v2.access.repositories import releases
+from crmbuilder_v2.access.repositories import artifact_versions, releases
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
@@ -62,6 +62,13 @@ def composition(identifier: str):
     """The release's release-scoped Projects and their Planning Items (derived)."""
     with readonly_session() as s:
         return ok(releases.composition(s, identifier))
+
+
+@router.get("/{identifier}/versions")
+def versions(identifier: str):
+    """Every artifact-version snapshot this release introduced (PI-208 provenance)."""
+    with readonly_session() as s:
+        return ok(artifact_versions.versions_for_release(s, identifier))
 
 
 @router.post("", status_code=201)
