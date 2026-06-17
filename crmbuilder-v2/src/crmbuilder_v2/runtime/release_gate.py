@@ -29,12 +29,28 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
+from pydantic import BaseModel
+
 from crmbuilder_v2.access.db import session_scope
 
 # The judge: given the grounded gate context, return {passed, summary, findings}.
 GateJudge = Callable[[dict], dict]
 
 _MODEL = "claude-opus-4-8"
+
+
+# The Release Lead verdict schema (module-level so it is testable for Anthropic
+# structured-output compatibility, like the planning-agent schemas).
+class _Finding(BaseModel):
+    requirement_identifier: str | None = None
+    issue: str
+    severity: str = "major"
+
+
+class _Verdict(BaseModel):
+    passed: bool
+    summary: str
+    findings: list[_Finding] = []
 
 _GATE_SYSTEM = """\
 You are the Release Lead for a multi-agent release pipeline, performing a \
@@ -148,17 +164,6 @@ def anthropic_gate_runner(model: str = _MODEL, *, log: Callable[[str], None] = p
     assembled release. Imported lazily so the runtime core carries no dependency."""
     def _judge(ctx: dict) -> dict:
         import anthropic
-        from pydantic import BaseModel
-
-        class _Finding(BaseModel):
-            requirement_identifier: str | None = None
-            issue: str
-            severity: str = "major"
-
-        class _Verdict(BaseModel):
-            passed: bool
-            summary: str
-            findings: list[_Finding] = []
 
         from crmbuilder_v2.runtime.release_runtime import _registry_system_prompt
 

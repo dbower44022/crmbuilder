@@ -22,10 +22,14 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Literal
+
+from pydantic import BaseModel
 
 from crmbuilder_v2.access import planning
 from crmbuilder_v2.access import release_orchestration as orch
 from crmbuilder_v2.access.db import session_scope
+from crmbuilder_v2.access.vocab import SYSTEM_AREA_RANKS as _SYSTEM_AREA_RANKS
 
 # ---------------------------------------------------------------------------
 # Provider seams (the agent boundary)
@@ -415,6 +419,46 @@ class ReleaseRuntime:
 
 _MODEL = "claude-opus-4-8"  # per the project's default model (claude-api skill)
 
+# The valid System areas, as a Literal so the decomposition agent's structured
+# output is forced to a real area (it otherwise emits friendly names like
+# "Data Model"). Built at module scope so Pydantic resolves the annotation.
+_AREA_LITERAL = Literal[tuple(sorted(_SYSTEM_AREA_RANKS))]  # type: ignore[valid-type]
+
+
+# --- the agents' structured-output schemas (module-level so they are testable) ---
+# Literal enums + a JSON-typed value union so Anthropic structured output FORCES
+# valid values — the LLM otherwise emits plausible-but-invalid ones (op "ensure",
+# area "Data Model", bare untyped `value`) that the access layer then rejects.
+class _Demand(BaseModel):
+    requirement_identifier: str
+    artifact_type: Literal["entity", "field", "persona", "process", "association"]
+    artifact_identifier: str
+    field: str = ""
+    facet: str | None = None
+    op: Literal["set", "add", "remove"]
+    value: str | int | float | bool | list[str] | None = None
+
+
+class _DemandSet(BaseModel):
+    demands: list[_Demand]
+
+
+class _WorkTask(BaseModel):
+    title: str
+    area: _AREA_LITERAL  # forced to a valid System area
+    description: str | None = None
+
+
+class _Workstream(BaseModel):
+    phase_type: Literal["Design", "Develop", "Test"]
+    title: str
+    description: str | None = None
+    work_tasks: list[_WorkTask]
+
+
+class _Decomposition(BaseModel):
+    workstreams: list[_Workstream]
+
 _DEMANDS_SYSTEM = """\
 You are the model-area Reconciliation Agent for a multi-agent release pipeline. \
 You read a release's confirmed requirements and express each as structured \
@@ -472,33 +516,6 @@ def anthropic_providers(model: str = _MODEL):
     tests) carry no anthropic dependency. Not unit-tested — exercised live.
     """
     import anthropic
-    from pydantic import BaseModel
-
-    class _Demand(BaseModel):
-        requirement_identifier: str
-        artifact_type: str
-        artifact_identifier: str
-        field: str = ""
-        facet: str | None = None
-        op: str
-        value: object | None = None
-
-    class _DemandSet(BaseModel):
-        demands: list[_Demand]
-
-    class _WorkTask(BaseModel):
-        title: str
-        area: str
-        description: str | None = None
-
-    class _Workstream(BaseModel):
-        phase_type: str
-        title: str
-        description: str | None = None
-        work_tasks: list[_WorkTask]
-
-    class _Decomposition(BaseModel):
-        workstreams: list[_Workstream]
 
     client = anthropic.Anthropic()
     # Prefer the durable registry prompts (PI-221) over the inline fallbacks.
