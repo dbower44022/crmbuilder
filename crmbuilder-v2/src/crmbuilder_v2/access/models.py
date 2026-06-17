@@ -2917,6 +2917,15 @@ class Release(EngagementScopedPKMixin, Base):
     release_planned_completely_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # PI-206: release-level QA/test gate stamps (§8). qa_passed gates
+    # qa→testing; test_passed gates testing→deployment; both cleared on a rework
+    # bounce-back to development.
+    release_qa_passed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    release_test_passed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     release_shipped_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

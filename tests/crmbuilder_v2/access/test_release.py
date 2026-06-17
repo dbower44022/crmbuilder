@@ -37,6 +37,8 @@ _EXPECTED_COLUMNS = {
     "release_lane_order",
     "release_frozen_at",
     "release_planned_completely_at",
+    "release_qa_passed_at",
+    "release_test_passed_at",
     "release_shipped_at",
     "release_created_at",
     "release_updated_at",
@@ -235,8 +237,12 @@ def test_lane_freed_after_ship(v2_env):
         _drive_to_ready(s, a)
         _drive_to_ready(s, b)
         releases.transition(s, a, "development")
-        for st in ("qa", "testing", "deployment", "shipped"):
-            releases.transition(s, a, st)
+        releases.transition(s, a, "qa")
+        releases.qa_pass(s, a)
+        releases.transition(s, a, "testing")
+        releases.test_pass(s, a)
+        releases.transition(s, a, "deployment")
+        releases.transition(s, a, "shipped")
         out = releases.transition(s, b, "development")
         assert out["release_status"] == "development"
 

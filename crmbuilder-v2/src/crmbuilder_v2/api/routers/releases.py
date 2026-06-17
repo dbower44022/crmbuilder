@@ -122,6 +122,20 @@ def lane_order(identifier: str, body: ReleaseLaneOrderIn):
         return ok(releases.set_lane_order(s, identifier, body.order))
 
 
+@router.post("/{identifier}/qa-pass")
+def qa_pass(identifier: str):
+    """Record the release-level QA pass (PI-206); gates qa → testing."""
+    with writable_session() as s:
+        return ok(releases.qa_pass(s, identifier))
+
+
+@router.post("/{identifier}/test-pass")
+def test_pass(identifier: str):
+    """Record the release-level test pass (PI-206); gates testing → deployment."""
+    with writable_session() as s:
+        return ok(releases.test_pass(s, identifier))
+
+
 @router.patch("/{identifier}")
 def patch(identifier: str, body: ReleasePatchIn):
     provided = body.model_dump(exclude_unset=True)

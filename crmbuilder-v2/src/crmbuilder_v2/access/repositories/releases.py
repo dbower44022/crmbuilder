@@ -334,10 +334,32 @@ def _check_single_occupancy(session: Session, identifier: str) -> None:
             )
 
 
+def _check_qa_passed(session: Session, identifier: str) -> None:
+    """Release-level QA gate (PI-206, §8) — QA must have passed to leave qa."""
+    row = _get_row(session, identifier)
+    if row.release_qa_passed_at is None:
+        raise ConflictError(
+            f"release {identifier!r} cannot leave qa: release-level QA has not "
+            f"passed (POST /releases/{identifier}/qa-pass first)."
+        )
+
+
+def _check_test_passed(session: Session, identifier: str) -> None:
+    """Release-level test gate (PI-206, §8) — tests must pass to leave testing."""
+    row = _get_row(session, identifier)
+    if row.release_test_passed_at is None:
+        raise ConflictError(
+            f"release {identifier!r} cannot leave testing: release-level testing "
+            f"has not passed (POST /releases/{identifier}/test-pass first)."
+        )
+
+
 _GATE_PREDICATES = {
     ("development_planning", "reconciliation"): _check_freeze,
     ("architecture_planning", "ready"): _check_planned_completely,
     ("ready", "development"): _check_single_occupancy,
+    ("qa", "testing"): _check_qa_passed,
+    ("testing", "deployment"): _check_test_passed,
 }
 
 
@@ -460,6 +482,11 @@ def transition(
 
     row.release_status = to_status
     gov.set_status_timestamp(row, to_status, _STATUS_TIMESTAMP)
+    # PI-206: a rework bounce-back to development invalidates the release-level
+    # QA/test passes — re-QA and re-test are required on the way back up.
+    if to_status == "development" and from_status in RELEASE_LANE_STATUSES:
+        row.release_qa_passed_at = None
+        row.release_test_passed_at = None
     session.flush()
 
     after = to_dict(row)
@@ -472,6 +499,45 @@ def transition(
         after=after,
     )
     return after
+
+
+def _record_pass(
+    session: Session, identifier: str, *, require_status: str, column: str
+) -> dict:
+    row = _get_row(session, identifier)
+    if row.release_status != require_status:
+        raise ConflictError(
+            f"release {identifier!r} is {row.release_status!r}, not "
+            f"{require_status!r}; the pass can only be recorded during that stage."
+        )
+    before = to_dict(row)
+    setattr(row, column, datetime.now(UTC))
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+def qa_pass(session: Session, identifier: str) -> dict:
+    """Record the release-level QA pass (PI-206, §8). Requires status ``qa``."""
+    return _record_pass(
+        session, identifier, require_status="qa", column="release_qa_passed_at"
+    )
+
+
+def test_pass(session: Session, identifier: str) -> dict:
+    """Record the release-level test pass (PI-206, §8). Requires ``testing``."""
+    return _record_pass(
+        session, identifier, require_status="testing",
+        column="release_test_passed_at",
+    )
 
 
 def set_lane_order(session: Session, identifier: str, order: int | None) -> dict:
