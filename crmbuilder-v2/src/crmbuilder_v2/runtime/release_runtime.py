@@ -582,6 +582,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dev-lane", action="store_true",
                         help="continue past 'ready' through the development lane "
                         "(delegates each in-scope PI to the ADO runtime)")
+    parser.add_argument("--manual-gates", action="store_true",
+                        help="with --dev-lane, pause at the release QA/test gates for "
+                        "a human instead of running the LLM Release Lead judge")
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--base-branch", default="main")
     parser.add_argument("--max-concurrent", type=int, default=2)
@@ -592,6 +595,11 @@ def main(argv: list[str] | None = None) -> int:
         repo_root=args.repo_root, base_branch=args.base_branch,
         max_concurrent=args.max_concurrent,
     ) if args.dev_lane else None
+    gate_runner = None
+    if args.dev_lane and not args.manual_gates:
+        from crmbuilder_v2.runtime.release_gate import anthropic_gate_runner
+
+        gate_runner = anthropic_gate_runner()
     report = ReleaseRuntime(ReleaseRuntimeConfig(
         release_identifier=args.release_identifier,
         demands_provider=demands_provider,
@@ -599,6 +607,7 @@ def main(argv: list[str] | None = None) -> int:
         authored_by=args.authored_by,
         max_steps=args.max_steps,
         pi_runner=pi_runner,
+        gate_runner=gate_runner,
     )).run()
     print(json.dumps({
         "release": report.release_identifier,
