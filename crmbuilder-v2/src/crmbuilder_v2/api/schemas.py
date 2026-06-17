@@ -1814,6 +1814,26 @@ class PlanningClaimIn(_Base):
     claimed_by: str
 
 
+# --- Resource locks (PI-203 / PRJ-030) --------------------------------------
+class AcquireLocksIn(_Base):
+    resources: list[str]
+    holder: str
+
+
+class ReleaseLockIn(_Base):
+    holder: str
+    resource: str | None = None
+
+
+class VerifyLocksIn(_Base):
+    holder: str
+    touched_paths: list[str]
+
+
+class ReclaimLocksIn(_Base):
+    holder: str
+
+
 # --- Planning org (PI-209 / PRJ-033) ----------------------------------------
 class PlanReleaseIn(_Base):
     delta_sets: list[dict[str, Any]]
