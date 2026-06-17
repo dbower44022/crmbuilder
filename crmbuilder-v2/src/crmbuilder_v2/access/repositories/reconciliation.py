@@ -31,6 +31,29 @@ def _locus(field: str, facet) -> str:
     return f"{field}.{facet}"
 
 
+def _apply_resolution(merged: dict, locus: str, resolved_value) -> None:
+    """Fold a resolved conflict's value back into the merged design (RC-5).
+
+    ``resolved_value`` contract: ``{"value": X}`` sets the facet to X;
+    ``{"remove": true}`` drops the field; ``None`` / anything else leaves the
+    locus as the auto-merge left it. ``locus`` is ``"<field>.<facet>"`` (field is
+    "" for an artifact-level attribute).
+    """
+    if not isinstance(resolved_value, dict):
+        return
+    field, _, facet = locus.partition(".")
+    merged.setdefault("fields", {})
+    merged.setdefault("attributes", {})
+    if resolved_value.get("remove"):
+        merged["fields"].pop(field, None)
+        return
+    if "value" in resolved_value:
+        bag = merged["attributes"] if field == "" else merged["fields"].setdefault(
+            field, {}
+        )
+        bag[facet] = resolved_value["value"]
+
+
 def _release(session: Session, release_id: str) -> Release:
     row = session.scalars(
         select(Release).where(Release.release_identifier == release_id)
@@ -165,10 +188,16 @@ def reconcile_release(
         result = engine.reconcile_artifact(base, ds)
         _upsert_artifact_conflicts(session, release_identifier, atype, aid,
                                    result["conflicts"])
+        # Fold any already-resolved conflicts back into the merged design so the
+        # reconciled delta-set is complete (RC-5), not missing resolved facets.
+        merged = result["merged"]
+        for c in _existing(session, release_identifier, atype, aid).values():
+            if c.status == "resolved":
+                _apply_resolution(merged, c.facet, c.resolved_value)
         delta_sets.append({
             "artifact_type": atype,
             "artifact_identifier": aid,
-            "merged": result["merged"],
+            "merged": merged,
             "provenance": result["provenance"],
             "open_conflicts": len(result["conflicts"]),
         })

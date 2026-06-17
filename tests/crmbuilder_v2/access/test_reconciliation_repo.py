@@ -118,3 +118,28 @@ def test_resolution_sticks_on_rerun(v2_env):
         recon.reconcile_release(s, rel, demands)
         assert recon.has_open_conflicts(s, rel) is False
         assert len(recon.list_conflicts(s, rel, status="resolved")) == 1
+
+
+def test_resolved_value_folded_into_delta_set(v2_env):
+    """RC-5 seam fix: a resolved conflict's value is folded back into the
+    reconciled delta-set, so the authored design is complete."""
+    with session_scope() as s:
+        rel = _release(s)
+        demands = [
+            _demand("REQ-1", "entity", "ENT-7", "email", "required", "set", True),
+            _demand("REQ-2", "entity", "ENT-7", "email", "required", "set", False),
+            _demand("REQ-2", "entity", "ENT-7", "email", "maxLength", "set", 255),
+        ]
+        out = recon.reconcile_release(s, rel, demands)
+        # the contradicted facet is excluded until resolved; the clean one merges.
+        assert out["delta_sets"][0]["merged"]["fields"]["email"] == {"maxLength": 255}
+        cid = recon.list_conflicts(s, rel, status="open")[0]["id"]
+        recon.resolve_conflict(
+            s, cid, decision_identifier="DEC-1", resolved_value={"value": True}
+        )
+        # re-reconcile: the resolved value is now folded into the design.
+        out2 = recon.reconcile_release(s, rel, demands)
+        assert out2["delta_sets"][0]["merged"]["fields"]["email"] == {
+            "maxLength": 255, "required": True
+        }
+        assert out2["has_open_conflicts"] is False
