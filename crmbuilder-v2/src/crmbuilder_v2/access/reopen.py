@@ -103,7 +103,10 @@ def reopen_area(
             f"area {area!r} of release {release_id!r} already has an open reopen."
         )
     row = AreaReopen(
-        release_identifier=release_id, area=area, reason=reason, status="open"
+        release_identifier=release_id, area=area, reason=reason, status="open",
+        # PI-213 (RW4): the full downstream set must re-validate — no exemption.
+        cascade_areas=sorted(downstream_areas(area)),
+        revalidated_areas=[],
     )
     session.add(row)
     session.flush()
@@ -119,6 +122,41 @@ def refreeze_area(session: Session, release_id: str, area: str) -> dict:
     row.resolved_at = datetime.now(UTC)
     session.flush()
     return to_dict(row)
+
+
+def revalidate_area(
+    session: Session, reopen_id: int, area: str
+) -> dict:
+    """Record that a downstream area re-passed its QA/test gate (PI-213, RW4)."""
+    row = session.get(AreaReopen, reopen_id)
+    if row is None:
+        raise NotFoundError("area_reopen", str(reopen_id))
+    if area not in (row.cascade_areas or []):
+        raise ConflictError(
+            f"{area!r} is not in the cascade of reopen {reopen_id} "
+            f"({sorted(row.cascade_areas or [])}); only downstream areas "
+            f"re-validate."
+        )
+    done = list(row.revalidated_areas or [])
+    if area in done:
+        raise ConflictError(
+            f"area {area!r} is already re-validated for reopen {reopen_id}."
+        )
+    done.append(area)
+    row.revalidated_areas = sorted(done)
+    session.flush()
+    return to_dict(row)
+
+
+def outstanding_revalidations(session: Session, release_id: str) -> set[str]:
+    """Downstream areas still owed a re-validation across the release's reopens
+    (RW4). The release cannot ship while this is non-empty."""
+    out: set[str] = set()
+    for r in session.scalars(
+        select(AreaReopen).where(AreaReopen.release_identifier == release_id)
+    ).all():
+        out |= set(r.cascade_areas or []) - set(r.revalidated_areas or [])
+    return out
 
 
 def assert_area_not_paused(session: Session, work_task_id: str) -> None:

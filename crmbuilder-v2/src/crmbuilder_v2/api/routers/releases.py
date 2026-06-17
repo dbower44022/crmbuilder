@@ -30,6 +30,7 @@ from crmbuilder_v2.api.schemas import (
     ReleaseLaneOrderIn,
     ReleasePatchIn,
     ReleaseTransitionIn,
+    RevalidateIn,
 )
 
 router = APIRouter(prefix="/releases", tags=["releases"])
@@ -211,6 +212,20 @@ def refreeze_area(identifier: str, area: str):
     """Re-freeze a reopened area (PI-212 / RW3); its downstream resumes."""
     with writable_session() as s:
         return ok(reopen.refreeze_area(s, identifier, area))
+
+
+@router.post("/{identifier}/area-reopens/{reopen_id}/revalidate")
+def revalidate_area(identifier: str, reopen_id: int, body: RevalidateIn):
+    """Record a downstream area's cascade re-validation (PI-213 / RW4)."""
+    with writable_session() as s:
+        return ok(reopen.revalidate_area(s, reopen_id, body.area))
+
+
+@router.get("/{identifier}/outstanding-revalidations")
+def outstanding_revalidations(identifier: str):
+    """Downstream areas still owed a cascade re-validation (PI-213 / RW4)."""
+    with readonly_session() as s:
+        return ok(sorted(reopen.outstanding_revalidations(s, identifier)))
 
 
 @router.get("/{identifier}/temperature")

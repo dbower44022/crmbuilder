@@ -3119,6 +3119,15 @@ class AreaReopen(EngagementScopedMixin, Base):
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="open"
     )
+    # PI-213 (RW4): the full downstream cascade required to re-validate, and the
+    # subset that has re-passed. Set at reopen; the release cannot ship until
+    # cascade_areas ⊆ revalidated_areas (no exemption).
+    cascade_areas: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False, default=list
+    )
+    revalidated_areas: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False, default=list
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )

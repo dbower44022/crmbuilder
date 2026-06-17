@@ -1803,6 +1803,10 @@ class AreaReopenIn(_Base):
     reason: str
 
 
+class RevalidateIn(_Base):
+    area: str
+
+
 class PlanningClaimIn(_Base):
     area: str
     claimed_by: str
