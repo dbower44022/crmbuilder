@@ -3029,6 +3029,48 @@ class ArtifactVersion(EngagementScopedMixin, Base):
     )
 
 
+class PlanningAreaClaim(EngagementScopedMixin, Base):
+    """Single-threaded-by-area planning claim (PI-207 / PRJ-031, DEC-505).
+
+    The committed-temperature substrate (§5.1, §11.8 / REQ-195): within a frozen
+    release's planning window (reconciliation / architecture_planning), each area's
+    planning work is owned by one agent. ``UNIQUE(engagement_id,
+    release_identifier, area)`` enforces single-threaded-by-area; the access layer
+    additionally gates that the release is in the committed planning window.
+    Outside the refs/change_log discipline. See
+    pi-207-two-temperature-planning-architecture.md.
+    """
+
+    __tablename__ = "planning_area_claims"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    area: Mapped[str] = mapped_column(String(64), nullable=False)
+    claimed_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    claimed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_planning_area_claims_release",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "release_identifier",
+            "area",
+            name="uq_planning_area_claims_one_owner",
+        ),
+        Index(
+            "ix_planning_area_claims_release",
+            "engagement_id",
+            "release_identifier",
+        ),
+    )
+
+
 class Finding(EngagementScopedPKMixin, Base):
     """Governance entity — a cross-area coherence finding (PI-134, DEC-400).
 

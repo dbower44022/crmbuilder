@@ -13,10 +13,15 @@ from fastapi import APIRouter
 
 from crmbuilder_v2.access import freeze
 from crmbuilder_v2.access.exceptions import NotFoundError
-from crmbuilder_v2.access.repositories import artifact_versions, releases
+from crmbuilder_v2.access.repositories import (
+    artifact_versions,
+    planning_claims,
+    releases,
+)
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
+    PlanningClaimIn,
     ReleaseCreateIn,
     ReleaseLaneOrderIn,
     ReleasePatchIn,
@@ -134,6 +139,45 @@ def test_pass(identifier: str):
     """Record the release-level test pass (PI-206); gates testing → deployment."""
     with writable_session() as s:
         return ok(releases.test_pass(s, identifier))
+
+
+@router.get("/{identifier}/temperature")
+def temperature(identifier: str):
+    """The planning temperature (PI-207): conceptual / committed / null."""
+    with readonly_session() as s:
+        record = releases.get_release(s, identifier)
+        if record is None:
+            raise NotFoundError("release", identifier)
+        return ok(
+            {
+                "release_identifier": identifier,
+                "status": record["release_status"],
+                "temperature": planning_claims.temperature(record["release_status"]),
+            }
+        )
+
+
+@router.get("/{identifier}/planning-claims")
+def list_planning_claims(identifier: str):
+    """The release's active planning-area claims (PI-207)."""
+    with readonly_session() as s:
+        return ok(planning_claims.area_claims(s, identifier))
+
+
+@router.post("/{identifier}/planning-claims")
+def claim_planning_area(identifier: str, body: PlanningClaimIn):
+    """Claim an area's planning work (PI-207); single-threaded-by-area."""
+    with writable_session() as s:
+        return ok(
+            planning_claims.claim_area(s, identifier, body.area, body.claimed_by)
+        )
+
+
+@router.delete("/{identifier}/planning-claims/{area}")
+def release_planning_area(identifier: str, area: str, claimed_by: str):
+    """Release an area claim (PI-207). Only the holder may release it."""
+    with writable_session() as s:
+        return ok(planning_claims.release_area(s, identifier, area, claimed_by))
 
 
 @router.patch("/{identifier}")

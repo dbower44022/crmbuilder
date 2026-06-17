@@ -1792,6 +1792,11 @@ class ReleaseLaneOrderIn(_Base):
     order: int | None = None
 
 
+class PlanningClaimIn(_Base):
+    area: str
+    claimed_by: str
+
+
 # --- Artifact version (versioned change spine, PI-208 / PRJ-031) ------------
 class ArtifactVersionSnapshotIn(_Base):
     artifact_type: str
