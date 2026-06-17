@@ -1792,9 +1792,30 @@ class ReleaseLaneOrderIn(_Base):
     order: int | None = None
 
 
+class ReleaseCorrectionIn(_Base):
+    title: str
+    description: str
+    notes: str | None = None
+
+
+class AreaReopenIn(_Base):
+    area: str
+    reason: str
+
+
 class PlanningClaimIn(_Base):
     area: str
     claimed_by: str
+
+
+# --- Reconciliation engine (PI-215 / PRJ-031) -------------------------------
+class ReconcileIn(_Base):
+    demands: list[dict[str, Any]]
+
+
+class ResolveConflictIn(_Base):
+    decision_identifier: str
+    resolved_value: Any | None = None
 
 
 # --- Artifact version (versioned change spine, PI-208 / PRJ-031) ------------

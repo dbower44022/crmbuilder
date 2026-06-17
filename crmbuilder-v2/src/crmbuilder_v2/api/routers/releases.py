@@ -11,17 +11,21 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from crmbuilder_v2.access import coordination, freeze
+from crmbuilder_v2.access import coordination, freeze, reopen
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import (
     artifact_versions,
     planning_claims,
+    reconciliation,
     releases,
 )
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
+    AreaReopenIn,
     PlanningClaimIn,
+    ReconcileIn,
+    ReleaseCorrectionIn,
     ReleaseCreateIn,
     ReleaseLaneOrderIn,
     ReleasePatchIn,
@@ -134,6 +138,18 @@ def lane_order(identifier: str, body: ReleaseLaneOrderIn):
         return ok(releases.set_lane_order(s, identifier, body.order))
 
 
+@router.post("/{identifier}/open-correction", status_code=201)
+def open_correction(identifier: str, body: ReleaseCorrectionIn):
+    """Open a new release that corrects this frozen prior (PI-211 / RW1)."""
+    with writable_session() as s:
+        return ok(
+            releases.open_correction_release(
+                s, identifier, title=body.title, description=body.description,
+                notes=body.notes,
+            )
+        )
+
+
 @router.post("/{identifier}/qa-pass")
 def qa_pass(identifier: str):
     """Record the release-level QA pass (PI-206); gates qa → testing."""
@@ -156,6 +172,45 @@ def area_ownership(identifier: str):
         if record is None:
             raise NotFoundError("release", identifier)
         return ok(coordination.area_ownership(s, identifier))
+
+
+@router.post("/{identifier}/reconcile")
+def reconcile(identifier: str, body: ReconcileIn):
+    """Run reconciliation over the release's demands (PI-215); returns the
+    conflict-free delta-sets + any open conflicts."""
+    with writable_session() as s:
+        return ok(reconciliation.reconcile_release(s, identifier, body.demands))
+
+
+@router.get("/{identifier}/reconciliation-conflicts")
+def reconciliation_conflicts(identifier: str, status: str | None = None):
+    """The release's reconciliation conflicts (PI-215)."""
+    with readonly_session() as s:
+        return ok(reconciliation.list_conflicts(s, identifier, status=status))
+
+
+@router.get("/{identifier}/area-reopens")
+def area_reopens(identifier: str, status: str | None = None):
+    """The release's area reopens + the currently paused areas (PI-212)."""
+    with readonly_session() as s:
+        return ok({
+            "reopens": reopen.list_reopens(s, identifier, status=status),
+            "paused_areas": sorted(reopen.paused_areas(s, identifier)),
+        })
+
+
+@router.post("/{identifier}/area-reopens", status_code=201)
+def open_area_reopen(identifier: str, body: AreaReopenIn):
+    """Reopen a frozen area in-lane (PI-212 / RW2); pauses its downstream."""
+    with writable_session() as s:
+        return ok(reopen.reopen_area(s, identifier, body.area, body.reason))
+
+
+@router.post("/{identifier}/area-reopens/{area}/refreeze")
+def refreeze_area(identifier: str, area: str):
+    """Re-freeze a reopened area (PI-212 / RW3); its downstream resumes."""
+    with writable_session() as s:
+        return ok(reopen.refreeze_area(s, identifier, area))
 
 
 @router.get("/{identifier}/temperature")

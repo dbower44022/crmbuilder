@@ -926,6 +926,18 @@ RELEASE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "superseded": frozenset(),
 }
 
+# `reconciliation_conflict` (PI-215 / PRJ-031, §5.4/§16.5) — a same-facet
+# contradiction between two requirements' demands on one shared artifact, settled
+# by a governed decision (RC-4). Two-state lifecycle; three typed kinds.
+RECONCILIATION_CONFLICT_STATUSES: frozenset[str] = frozenset({"open", "resolved"})
+RECONCILIATION_CONFLICT_TYPES: frozenset[str] = frozenset(
+    {"facet_value", "remove_vs_modify", "field_redefinition"}
+)
+
+# `area_reopen` (PI-212 / PRJ-034, RW2/RW3) — an in-lane reopen of a frozen area;
+# while open, the area is thawing and its downstream areas are paused.
+AREA_REOPEN_STATUSES: frozenset[str] = frozenset({"open", "resolved"})
+
 # ADO execution_mode (PRJ-026 / PI-183, DEC-423..425). The structural risk gate
 # on a Project and a Planning Item that controls whether the ADO Project Manager
 # dispatcher may touch it — replacing the fragile "don't point the ADO there"
@@ -1391,6 +1403,11 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # `project_planned_in_reference_book`.
         "project_belongs_to_release",
         "release_planned_in_reference_book",
+        # PI-211 (PRJ-034, RW1): a new release corrects a frozen/shipped release
+        # whose plan was found wanting — the traceable "corrections go to a new
+        # release" route. Distinct from supersedes (a shipped release is not
+        # superseded by a follow-up correction).
+        "release_corrects_release",
     }
 )
 
@@ -1878,6 +1895,7 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("project_belongs_to_release")
     if source_type == "release" and target_type == "release":
         kinds.add("blocked_by")
+        kinds.add("release_corrects_release")
     if source_type == "release" and target_type == "reference_book":
         kinds.add("release_planned_in_reference_book")
     return frozenset(kinds)
