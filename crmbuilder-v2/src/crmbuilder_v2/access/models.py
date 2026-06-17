@@ -3248,6 +3248,51 @@ class PlanningAreaClaim(EngagementScopedMixin, Base):
     )
 
 
+class ReleaseDemand(EngagementScopedMixin, Base):
+    """A structured requirement→design delta feeding reconciliation (PI-217, AL-1).
+
+    The agent-layer's persisted demand-set (DEC-512/513): the model-area
+    Reconciliation Agent authors one row per ``(requirement, artifact, field,
+    facet)`` change it derives from a confirmed requirement; the rows are the
+    stable, reviewable, replayable *input* to ``reconcile_release`` (the substrate
+    deliberately left demands as input). ``op`` is ``set`` / ``add`` / ``remove``;
+    ``field=""`` targets an artifact-level attribute; ``facet`` may be NULL for a
+    field-level remove. Outside the refs / change_log discipline, so no CHECK
+    rebuilds. See release-pipeline-agent-layer-architecture.md §3.
+    """
+
+    __tablename__ = "release_demands"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    requirement_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    artifact_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    artifact_identifier: Mapped[str] = mapped_column(String(64), nullable=False)
+    field: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    facet: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    op: Mapped[str] = mapped_column(String(16), nullable=False)
+    value: Mapped[object | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    authored_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_release_demands_release",
+        ),
+        Index(
+            "ix_release_demands_release",
+            "engagement_id",
+            "release_identifier",
+        ),
+    )
+
+
 class Finding(EngagementScopedPKMixin, Base):
     """Governance entity — a cross-area coherence finding (PI-134, DEC-400).
 
