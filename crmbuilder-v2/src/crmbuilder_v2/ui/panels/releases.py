@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMenu,
+    QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
@@ -71,6 +72,7 @@ from crmbuilder_v2.ui.panels._governance_helpers import (
     separator,
 )
 from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.releases")
@@ -113,6 +115,13 @@ class ReleasesPanel(ListDetailPanel):
         # Transient modal dialogs are tracked so they can be deleteLater()'d on
         # close — a sub-dialog GC'd while a worker thread is live can crash Qt.
         self._dialogs: list[QDialog] = []
+        # PI-226: the panel is the human release-planning workbench. A New
+        # Release button lives in the toolbar action slot; the rest of the
+        # authoring (scope add/remove, edit) is in the detail pane.
+        new_button = QPushButton("New Release")
+        new_button.setObjectName("new_release_button")
+        new_button.clicked.connect(self._on_new_release)
+        self._action_layout.addWidget(new_button)
 
     # ------------------------------------------------------------------
     # Master list
@@ -188,6 +197,13 @@ class ReleasesPanel(ListDetailPanel):
             lambda: self._client.release_area_ownership(identifier),
         )
         _safe("lane_holder", lambda: self._client.release_lane_holder())
+        # PI-226: the edges touching the release, so the Composition tab can map
+        # each in-scope project back to its project_belongs_to_release edge id
+        # for the Remove action.
+        _safe(
+            "edges",
+            lambda: self._client.list_references_touching("release", identifier),
+        )
         return extras
 
     # ------------------------------------------------------------------
@@ -229,7 +245,7 @@ class ReleasesPanel(ListDetailPanel):
 
         tabs = QTabWidget()
         tabs.addTab(self._overview_tab(record, extras), "Overview")
-        tabs.addTab(self._composition_tab(extras), "Composition")
+        tabs.addTab(self._composition_tab(identifier, extras), "Composition")
         tabs.addTab(self._conflicts_tab(identifier, extras), "Conflicts")
         tabs.addTab(self._reopens_tab(identifier, extras), "Reopens")
         outer.addWidget(tabs, stretch=1)
@@ -257,6 +273,7 @@ class ReleasesPanel(ListDetailPanel):
             row.addWidget(b)
             return b
 
+        _btn("Edit…", lambda: self._do_edit(record))
         _btn("Transition…", lambda: self._do_transition(ident, status))
         _btn("QA Pass", lambda: self._do_simple(self._client.release_qa_pass, ident))
         _btn(
@@ -361,13 +378,34 @@ class ReleasesPanel(ListDetailPanel):
         lines = [f"{area}: {who}" for area, who in sorted(owners.items())]
         return read_only_text("\n".join(lines))
 
-    def _composition_tab(self, extras: dict[str, Any]) -> QWidget:
+    def _composition_tab(self, identifier: str, extras: dict[str, Any]) -> QWidget:
         w = QWidget()
         v = QVBoxLayout(w)
         v.setContentsMargins(8, 8, 8, 8)
         v.setSpacing(8)
 
-        v.addWidget(QLabel("<b>Projects &amp; planning items</b>"))
+        # PI-226: scope is editable only while the release is open (pre-freeze).
+        # Once frozen, the band is amend_window/locked and scope is closed (FE-3).
+        band = (extras.get("freeze") or {}).get("freeze_band")
+        open_for_scope = band == "open"
+
+        header = QHBoxLayout()
+        header.addWidget(QLabel("<b>Projects &amp; planning items</b>"))
+        header.addStretch(1)
+        if open_for_scope:
+            add_btn = QPushButton("Add project to scope…")
+            add_btn.setObjectName("add_project_button")
+            add_btn.clicked.connect(
+                lambda: self._do_add_project(identifier, extras)
+            )
+            header.addWidget(add_btn)
+        v.addLayout(header)
+        if not open_for_scope and band:
+            v.addWidget(
+                self._dim("Scope is closed (release is frozen) — re-scope by "
+                          "opening a correction release.")
+            )
+
         comp_err = extras.get("errors", {}).get("composition")
         if comp_err:
             v.addWidget(self._dim(f"Unavailable: {comp_err}"))
@@ -379,7 +417,18 @@ class ReleasesPanel(ListDetailPanel):
             else:
                 for prj in projects:
                     pid = prj.get("project_identifier") or ""
-                    v.addWidget(self._link_or_dim("project", pid, pid))
+                    row = QHBoxLayout()
+                    row.addWidget(self._link_or_dim("project", pid, pid))
+                    row.addStretch(1)
+                    if open_for_scope:
+                        rm = QPushButton("Remove")
+                        rm.clicked.connect(
+                            lambda _c=False, p=pid: self._do_remove_project(
+                                identifier, p, extras
+                            )
+                        )
+                        row.addWidget(rm)
+                    v.addLayout(row)
                     pis = prj.get("planning_items") or []
                     inner = QLabel(
                         "    " + (", ".join(pis) if pis else "— no planning items")
@@ -514,7 +563,148 @@ class ReleasesPanel(ListDetailPanel):
         return w
 
     # ------------------------------------------------------------------
-    # Action handlers
+    # Planning-workbench handlers (PI-226)
+    # ------------------------------------------------------------------
+
+    def _on_new_release(self) -> None:
+        dialog = _ReleaseCreateDialog(parent=self)
+        self._dialogs.append(dialog)
+        try:
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+            title, description, order = dialog.values()
+            body: dict[str, Any] = {
+                "release_title": title,
+                "release_description": description,
+            }
+            if order is not None:
+                body["release_lane_order"] = order
+
+            def _on_done(result: Any) -> None:
+                new_id = (
+                    result.get("release_identifier")
+                    if isinstance(result, dict)
+                    else None
+                )
+                self._status_label.setText(f"Created {new_id or 'release'}.")
+                if new_id:
+                    self._pending_select_identifier = new_id
+                self.refresh()
+
+            worker = run_in_thread(
+                lambda: self._client.create_release(body),
+                on_success=_on_done,
+                on_error=self._on_toolbar_error,
+                parent=self,
+            )
+            self._in_flight_workers.append(worker)
+            worker.finished.connect(lambda w=worker: self._drop_worker(w))
+        finally:
+            self._dialogs.remove(dialog)
+            dialog.deleteLater()
+
+    def _do_edit(self, record: dict[str, Any]) -> None:
+        identifier = record.get("release_identifier") or ""
+        dialog = _ReleaseEditDialog(record, parent=self)
+        self._exec_dialog(
+            dialog,
+            lambda: self._run(
+                lambda: self._client.patch_release(identifier, dialog.values()),
+                label="edit",
+            ),
+        )
+
+    def _do_add_project(self, identifier: str, extras: dict[str, Any]) -> None:
+        in_scope = {
+            p.get("project_identifier")
+            for p in ((extras.get("composition") or {}).get("projects") or [])
+        }
+        try:
+            projects = [
+                p
+                for p in self._client.list_projects()
+                if p.get("project_identifier") not in in_scope
+            ]
+        except StorageClientError as exc:
+            self._set_action_status(f"Could not load projects: {exc.message}")
+            return
+        if not projects:
+            self._set_action_status("No unassigned projects available to add.")
+            return
+        dialog = _ProjectPickerDialog(projects, parent=self)
+        self._exec_dialog(
+            dialog,
+            lambda: self._run(
+                lambda: self._client.create_reference(
+                    {
+                        "source_type": "project",
+                        "source_id": dialog.chosen_project(),
+                        "target_type": "release",
+                        "target_id": identifier,
+                        "relationship": "project_belongs_to_release",
+                    }
+                ),
+                label="add project",
+            ),
+        )
+
+    def _do_remove_project(
+        self, identifier: str, project_id: str, extras: dict[str, Any]
+    ) -> None:
+        edge_id = self._scope_edge_id(extras, project_id, identifier)
+        if edge_id is None:
+            self._set_action_status(
+                f"Could not find the scope edge for {project_id} (try Refresh)."
+            )
+            return
+        if not self._confirm(
+            "Remove from scope",
+            f"Remove {project_id} from {identifier}'s scope?",
+        ):
+            return
+        self._run(
+            lambda: self._client.delete_reference(edge_id), label="remove project"
+        )
+
+    @staticmethod
+    def _scope_edge_id(
+        extras: dict[str, Any], project_id: str, release_id: str
+    ) -> int | None:
+        """The id of the project_belongs_to_release edge (project → release)."""
+        edges = extras.get("edges") or {}
+        for edge in edges.get("as_target") or []:
+            if (
+                edge.get("relationship") == "project_belongs_to_release"
+                and edge.get("source_id") == project_id
+                and edge.get("target_id") == release_id
+            ):
+                return edge.get("id")
+        return None
+
+    def _confirm(self, title: str, text: str) -> bool:
+        # CopyableMessageBox (not raw QMessageBox) per the PI-124 guard.
+        reply = CopyableMessageBox.question(
+            self,
+            title,
+            text,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        return reply == QMessageBox.StandardButton.Yes
+
+    def _on_toolbar_error(self, exc: Exception) -> None:
+        if isinstance(exc, StorageConnectionError):
+            self._status_label.setText("Connection lost")
+            self.connection_lost.emit(str(exc))
+            return
+        if isinstance(exc, StorageClientError):
+            self._status_label.setText(f"Rejected: {exc.message}")
+            return
+        _log.exception("Unexpected error creating release", exc_info=exc)
+        self._status_label.setText(f"Error: {exc!s}")
+
+    # ------------------------------------------------------------------
+    # Lifecycle-action handlers
     # ------------------------------------------------------------------
 
     def _do_simple(self, fn, identifier: str) -> None:
@@ -711,6 +901,100 @@ class ReleasesPanel(ListDetailPanel):
         clipboard = QGuiApplication.clipboard()
         if clipboard is not None:
             clipboard.setText(text)
+
+
+# ---------------------------------------------------------------------------
+# Planning dialogs (PI-226)
+# ---------------------------------------------------------------------------
+
+
+class _ReleaseCreateDialog(QDialog):
+    """Create a new release — the start of human release planning."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("New release")
+        layout = QVBoxLayout(self)
+        self._title = QLineEdit()
+        self._description = QPlainTextEdit()
+        self._description.setMinimumHeight(80)
+        self._order = QSpinBox()
+        self._order.setRange(-1, 9999)
+        self._order.setSpecialValueText("— (none)")
+        self._order.setValue(-1)
+        form = QFormLayout()
+        form.addRow("Title", self._title)
+        form.addRow("Description", self._description)
+        form.addRow("Lane order", self._order)
+        layout.addLayout(form)
+        self._error = QLabel("")
+        self._error.setStyleSheet("color: #842029;")
+        layout.addWidget(self._error)
+        layout.addWidget(_button_box(self, accept=self._validate))
+
+    def _validate(self) -> None:
+        if not self._title.text().strip():
+            self._error.setText("A title is required.")
+            return
+        if not self._description.toPlainText().strip():
+            self._error.setText("A description is required.")
+            return
+        self.accept()
+
+    def values(self) -> tuple[str, str, int | None]:
+        order = self._order.value()
+        return (
+            self._title.text().strip(),
+            self._description.toPlainText().strip(),
+            None if order < 0 else order,
+        )
+
+
+class _ReleaseEditDialog(QDialog):
+    """Edit a release's title / description / notes while it is open."""
+
+    def __init__(self, record: dict[str, Any], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit release")
+        layout = QVBoxLayout(self)
+        self._title = QLineEdit(record.get("release_title") or "")
+        self._description = QPlainTextEdit(record.get("release_description") or "")
+        self._description.setMinimumHeight(80)
+        self._notes = QPlainTextEdit(record.get("release_notes") or "")
+        self._notes.setMinimumHeight(60)
+        form = QFormLayout()
+        form.addRow("Title", self._title)
+        form.addRow("Description", self._description)
+        form.addRow("Notes", self._notes)
+        layout.addLayout(form)
+        layout.addWidget(_button_box(self))
+
+    def values(self) -> dict[str, Any]:
+        return {
+            "release_title": self._title.text().strip(),
+            "release_description": self._description.toPlainText().strip(),
+            "release_notes": self._notes.toPlainText().strip() or None,
+        }
+
+
+class _ProjectPickerDialog(QDialog):
+    """Pick an unassigned project to add to the release's scope."""
+
+    def __init__(self, projects: list[dict[str, Any]], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add project to scope")
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Project (only those not yet in a release):"))
+        self._combo = QComboBox()
+        for p in projects:
+            pid = p.get("project_identifier") or ""
+            name = p.get("project_name") or ""
+            self._combo.addItem(f"{pid} — {name}" if name else pid, pid)
+        layout.addWidget(self._combo)
+        layout.addWidget(_button_box(self))
+
+    def chosen_project(self) -> str:
+        return self._combo.currentData()
 
 
 # ---------------------------------------------------------------------------

@@ -2926,6 +2926,22 @@ class StorageClient:
             self._request("GET", f"/releases/{identifier}"), op="get_release"
         )
 
+    def create_release(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /releases (PI-226 human planning). ``body`` keys: ``release_title``,
+        ``release_description`` (required), optional ``release_notes`` /
+        ``release_lane_order``."""
+        return self._expect_dict(
+            self._request("POST", "/releases", json_body=body), op="create_release"
+        )
+
+    def patch_release(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """PATCH /releases/{id} — edit non-status fields (title/description/notes/
+        lane order) while the release is open (PI-226)."""
+        return self._expect_dict(
+            self._request("PATCH", f"/releases/{identifier}", json_body=body),
+            op="patch_release",
+        )
+
     def release_composition(self, identifier: str) -> dict[str, Any]:
         return self._expect_dict(
             self._request("GET", f"/releases/{identifier}/composition"),
