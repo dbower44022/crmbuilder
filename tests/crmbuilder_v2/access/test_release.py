@@ -17,7 +17,7 @@ from crmbuilder_v2.access.exceptions import (
     StatusTransitionError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.models import Requirement
+from crmbuilder_v2.access.models import PlanningItem, Requirement
 from crmbuilder_v2.access.repositories import (
     planning_items,
     projects,
@@ -109,6 +109,23 @@ def _drive_to_ready(s, rel):
     releases.transition(s, rel, "reconciliation")  # freeze
     releases.transition(s, rel, "architecture_planning")
     releases.transition(s, rel, "ready")  # planned-completely
+
+
+def _drive_to_shipped(s, rel):
+    _drive_to_ready(s, rel)
+    releases.transition(s, rel, "development")
+    releases.transition(s, rel, "qa")
+    releases.qa_pass(s, rel)
+    releases.transition(s, rel, "testing")
+    releases.test_pass(s, rel)
+    releases.transition(s, rel, "deployment")
+    releases.transition(s, rel, "shipped")
+
+
+def _set_pi_status(s, pi_id, status):
+    row = get_by_identifier(s, PlanningItem, PlanningItem.identifier, pi_id)
+    row.status = status
+    s.flush()
 
 
 # ---------------------------------------------------------------------------
@@ -280,3 +297,53 @@ def test_patch_rejects_status(v2_env):
         rel = _make(s)["release_identifier"]
         with pytest.raises(UnprocessableError, match="unknown patchable"):
             releases.patch_release(s, rel, status="development")
+
+
+# ---------------------------------------------------------------------------
+# Ship completes fully-delivered projects (PI-227)
+# ---------------------------------------------------------------------------
+
+
+def test_ship_completes_in_flight_project_with_no_active_pi(v2_env):
+    with session_scope() as s:
+        rel, pi, _ = _scoped_release(s, title="DONE")
+        prj = releases._in_scope_projects(s, rel)[0]
+        projects.patch_project(s, prj, status="in_flight")
+        _set_pi_status(s, pi, "Resolved")  # terminal disposition
+        _drive_to_shipped(s, rel)
+        assert projects.get_project(s, prj)["project_status"] == "complete"
+
+
+def test_ship_completes_project_whose_pi_is_deferred(v2_env):
+    # Deferred is a decided disposition (not pending work), so it still completes.
+    with session_scope() as s:
+        rel, pi, _ = _scoped_release(s, title="DEF")
+        prj = releases._in_scope_projects(s, rel)[0]
+        projects.patch_project(s, prj, status="in_flight")
+        _set_pi_status(s, pi, "Deferred")
+        _drive_to_shipped(s, rel)
+        assert projects.get_project(s, prj)["project_status"] == "complete"
+
+
+def test_ship_leaves_project_with_active_pi_in_flight(v2_env):
+    # A still-active PI (Ready) means unfinished work — the project is NOT
+    # force-completed; it stays in_flight (moves to a new project per the rule).
+    with session_scope() as s:
+        rel, pi, _ = _scoped_release(s, title="OPEN")
+        prj = releases._in_scope_projects(s, rel)[0]
+        projects.patch_project(s, prj, status="in_flight")
+        _set_pi_status(s, pi, "Ready")
+        _drive_to_shipped(s, rel)
+        assert projects.get_project(s, prj)["project_status"] == "in_flight"
+
+
+def test_ship_leaves_planned_project_untouched(v2_env):
+    # Only in_flight projects auto-complete (planned -> complete is not a legal
+    # project transition); a planned project is left as-is.
+    with session_scope() as s:
+        rel, pi, _ = _scoped_release(s, title="PLN")
+        prj = releases._in_scope_projects(s, rel)[0]
+        _set_pi_status(s, pi, "Resolved")
+        # project left at its create-default "planned"
+        _drive_to_shipped(s, rel)
+        assert projects.get_project(s, prj)["project_status"] == "planned"

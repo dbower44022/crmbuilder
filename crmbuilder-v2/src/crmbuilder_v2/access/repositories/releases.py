@@ -57,6 +57,13 @@ _MAX_AUTOASSIGN_ATTEMPTS = 50
 _PATCHABLE_FIELDS = frozenset(
     {"title", "description", "notes", "lane_order"}
 )
+# PI-227: planning-item statuses that mean a project still has pending work. A
+# project with any active PI is left ``in_flight`` on ship (its unfinished work
+# belongs in a new project, never a silent completion); a project whose PIs are
+# all Resolved/Deferred/Cancelled has no pending work and is auto-completed.
+_ACTIVE_PI_STATUSES = frozenset(
+    {"Draft", "Decomposed", "Ready", "In Progress", "In Review"}
+)
 
 # status value -> per-status lifecycle timestamp column. Only the gated /
 # terminal transitions materialise a stamp; the un-gated forward moves do not.
@@ -512,6 +519,11 @@ def transition(
     if to_status == "development" and from_status in RELEASE_LANE_STATUSES:
         row.release_qa_passed_at = None
         row.release_test_passed_at = None
+    # PI-227: shipping is the in-scope projects' full delivery — complete each
+    # one whose work is done. Runs inside the ship transaction so the project
+    # status and the ``release_shipped_at`` stamp commit atomically.
+    if to_status == "shipped":
+        _complete_delivered_projects(session, identifier)
     session.flush()
 
     after = to_dict(row)
@@ -524,6 +536,39 @@ def transition(
         after=after,
     )
     return after
+
+
+def _complete_delivered_projects(
+    session: Session, release_identifier: str
+) -> list[str]:
+    """Complete each in-scope project whose work is fully delivered (PI-227).
+
+    Called from the ``deployment → shipped`` transition. A project is completed
+    (``in_flight → complete``) when it is currently ``in_flight`` and none of
+    its planning items is still active (active = Draft/Decomposed/Ready/
+    In Progress/In Review). Deferred/Cancelled/Resolved are decided
+    dispositions, so a project carrying only those has no pending work — and
+    ``project_belongs_to_release`` is single-membership, so the ship is the
+    project's full delivery. A project with an active PI is deliberately left
+    ``in_flight``: its unfinished work belongs in a new project, never a silent
+    completion. Returns the identifiers completed.
+    """
+    from crmbuilder_v2.access.repositories import planning_items, projects
+
+    completed: list[str] = []
+    for project_id in _in_scope_projects(session, release_identifier):
+        proj = projects.get_project(session, project_id)
+        if proj.get("project_status") != "in_flight":
+            continue
+        pi_ids = _in_scope_planning_items(session, project_id)
+        if any(
+            planning_items.get(session, pi)["status"] in _ACTIVE_PI_STATUSES
+            for pi in pi_ids
+        ):
+            continue
+        projects.patch_project(session, project_id, status="complete")
+        completed.append(project_id)
+    return completed
 
 
 def _record_pass(
