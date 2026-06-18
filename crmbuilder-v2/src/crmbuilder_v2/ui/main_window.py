@@ -37,7 +37,6 @@ from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.detail_window_manager import DetailWindowManager
 from crmbuilder_v2.ui.exceptions import StorageConnectionError
-from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
 from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.chat import ChatPanel
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
@@ -47,11 +46,11 @@ from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
 from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
 from crmbuilder_v2.ui.panels.domains import DomainsPanel
-from crmbuilder_v2.ui.panels.instances import InstancesPanel
 from crmbuilder_v2.ui.panels.engagements import EngagementsPanel
 from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
 from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
+from crmbuilder_v2.ui.panels.instances import InstancesPanel
 from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
@@ -59,6 +58,7 @@ from crmbuilder_v2.ui.panels.processes import ProcessesPanel
 from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
+from crmbuilder_v2.ui.panels.releases import ReleasesPanel
 from crmbuilder_v2.ui.panels.requirements import RequirementsPanel
 from crmbuilder_v2.ui.panels.review import ReviewPanel
 from crmbuilder_v2.ui.panels.risks import RisksPanel
@@ -71,6 +71,7 @@ from crmbuilder_v2.ui.panels.work_tickets import WorkTicketsPanel
 from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
+from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
 from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.main_window")
@@ -139,6 +140,8 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "term": "Glossary",
     # PI-186 (PRJ-027): CRM-connection instance.
     "instance": "Instances",
+    # PI-224: the release-pipeline staged-delivery container.
+    "release": "Releases",
 }
 
 
@@ -227,6 +230,9 @@ def build_panel(
     # requirements-provenance Phase 6b: topic-first review surface.
     if label == "Requirements Review":
         return ReviewPanel(client)
+    # PI-224: the release-pipeline operability surface.
+    if label == "Releases":
+        return ReleasesPanel(client)
     placeholder = QLabel(f"Panel for {label} — not yet implemented.")
     placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
     placeholder.setObjectName(f"placeholder_{label.lower().replace(' ', '_')}")
