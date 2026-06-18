@@ -6,7 +6,7 @@ client already supports. This rebuilds the ``instances``
 ``ck_instance_auth_method`` CHECK from the current vocab (now including
 ``basic``). Predicate derives from vocab; a superset so no existing row is
 invalidated; inspector-guarded for mid-stream entry. SQLite head 0061 -> 0062;
-companion PG delta ``migrations/pg/versions/0020_pi_196_instance_basic_auth.py``.
+companion PG delta ``migrations/pg/versions/0031_pi_196_instance_basic_auth.py``.
 """
 
 from collections.abc import Sequence
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from alembic import op
 from crmbuilder_v2.access.vocab import INSTANCE_AUTH_METHODS, _check_in
 
-revision: str = "0062_pi_196_instance_basic_auth"
-down_revision: str | None = "0061_pi_195_filtered_tab"
+revision: str = "0074_pi_196_instance_basic_auth"
+down_revision: str | None = "0073_pi_217_release_demands"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
