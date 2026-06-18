@@ -45,17 +45,25 @@ def status_choices(current: str | None) -> list[str]:
     """Return the status values selectable from ``current``.
 
     The current value plus its valid successors per
-    :data:`REQUIREMENT_STATUS_TRANSITIONS`. ``candidate`` (the create-
-    dialog starting point) yields all three values; ``confirmed`` and
-    ``deferred`` yield the two-value narrowed set.
+    :data:`REQUIREMENT_STATUS_TRANSITIONS` — **except** ``confirmed``, which is
+    never offered as a target (PI-228). A requirement is confirmed only by
+    recording an approving decision (the ``requirement_approved_by_decision``
+    edge → ``activate_by_decision``), which enforces the readability +
+    provenance + topic gates; editing the status field straight to
+    ``confirmed`` was the bypass we closed, so the dialog must not offer it.
+    ``confirmed`` still appears when it is already the current value, so an
+    already-confirmed requirement renders correctly.
     """
     current = current or "candidate"
     if current not in REQUIREMENT_STATUSES:
-        return sorted(REQUIREMENT_STATUSES)
-    return sorted(
-        {current}
-        | set(REQUIREMENT_STATUS_TRANSITIONS.get(current, frozenset()))
-    )
+        choices = set(REQUIREMENT_STATUSES)
+    else:
+        choices = {current} | set(
+            REQUIREMENT_STATUS_TRANSITIONS.get(current, frozenset())
+        )
+    if current != "confirmed":
+        choices.discard("confirmed")
+    return sorted(choices)
 
 
 def priority_choices(current: str | None) -> list[str]:

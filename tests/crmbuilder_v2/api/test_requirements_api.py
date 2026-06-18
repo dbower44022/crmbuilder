@@ -8,9 +8,6 @@ five outbound relationship kinds.
 
 from __future__ import annotations
 
-from crmbuilder_v2.api.main import create_app
-from fastapi.testclient import TestClient
-
 
 def _make(client, **overrides) -> dict:
     """POST a requirement, returning the created record dict."""
@@ -84,13 +81,13 @@ def test_put_full_replace(client):
             "requirement_acceptance_summary": "na",
             "requirement_priority": "must",
             "requirement_notes": "now noted",
-            "requirement_status": "confirmed",
+            "requirement_status": "deferred",  # PI-228: confirmed not settable via PUT
         },
     )
     assert response.status_code == 200
     data = response.json()["data"]
     assert data["requirement_name"] == "New"
-    assert data["requirement_status"] == "confirmed"
+    assert data["requirement_status"] == "deferred"
     assert data["requirement_notes"] == "now noted"
     assert data["requirement_priority"] == "must"
 
@@ -134,11 +131,25 @@ def test_patch_invalid_priority_returns_422(client):
     assert response.json()["errors"][0]["field"] == "requirement_priority"
 
 
-def test_patch_invalid_transition_returns_422_with_error_body(client):
+def test_patch_to_confirmed_rejected(client):
+    # PI-228: a status edit can no longer confirm a requirement — that is the
+    # closed approval bypass. Confirming is only via an approving decision.
     _make(client)
-    client.patch(
+    response = client.patch(
         "/requirements/REQ-001", json={"requirement_status": "confirmed"}
     )
+    assert response.status_code == 422
+    assert (
+        client.get("/requirements/REQ-001").json()["data"]["requirement_status"]
+        == "candidate"
+    )
+
+
+def test_patch_invalid_transition_returns_422_with_error_body(client):
+    # PI-228: reach confirmed via the create escape hatch (the import path),
+    # since a status edit can no longer set confirmed. The invalid transition
+    # under test is confirmed -> candidate.
+    _make(client, requirement_status="confirmed")
     response = client.patch(
         "/requirements/REQ-001", json={"requirement_status": "candidate"}
     )
