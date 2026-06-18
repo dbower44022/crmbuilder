@@ -2902,6 +2902,210 @@ class StorageClient:
             op="get_work_task",
         )
 
+    # ----- releases (the multi-agent release pipeline; PI-224) --------------
+    # The Releases hub panel reads a release's status, freeze band, temperature,
+    # planning-readiness, composition, versions, conflicts, and area-reopens, and
+    # drives the lifecycle (transition — which performs the freeze via
+    # development_planning → reconciliation — plus qa/test passes, lane order,
+    # corrections, reopens, refreezes, and conflict resolution). All release
+    # endpoints live under ``/releases`` (resolve lives on its own router).
+
+    def list_releases(
+        self, *, include_deleted: bool = False, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if include_deleted:
+            params.append("include_deleted=true")
+        if status:
+            params.append(f"status={status}")
+        path = "/releases" + ("?" + "&".join(params) if params else "")
+        return self._expect_list(self._request("GET", path))
+
+    def get_release(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/releases/{identifier}"), op="get_release"
+        )
+
+    def release_composition(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/releases/{identifier}/composition"),
+            op="release_composition",
+        )
+
+    def release_versions(self, identifier: str) -> list[dict[str, Any]]:
+        return self._expect_list(
+            self._request("GET", f"/releases/{identifier}/versions")
+        )
+
+    def release_freeze(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/releases/{identifier}/freeze"),
+            op="release_freeze",
+        )
+
+    def release_temperature(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/releases/{identifier}/temperature"),
+            op="release_temperature",
+        )
+
+    def release_planning_readiness(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/releases/{identifier}/planning-readiness"),
+            op="release_planning_readiness",
+        )
+
+    def release_area_ownership(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/releases/{identifier}/area-ownership"),
+            op="release_area_ownership",
+        )
+
+    def release_lane_holder(self) -> dict[str, Any] | None:
+        result = self._request("GET", "/releases/lane-holder")
+        return result if isinstance(result, dict) else None
+
+    def release_reconciliation_conflicts(
+        self, identifier: str, *, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        path = f"/releases/{identifier}/reconciliation-conflicts"
+        if status:
+            path += f"?status={status}"
+        return self._expect_list(self._request("GET", path))
+
+    def release_area_reopens(
+        self, identifier: str, *, status: str | None = None
+    ) -> dict[str, Any]:
+        """Return ``{"reopens": [...], "paused_areas": [...]}`` for a release."""
+        path = f"/releases/{identifier}/area-reopens"
+        if status:
+            path += f"?status={status}"
+        return self._expect_dict(
+            self._request("GET", path), op="release_area_reopens"
+        )
+
+    def release_reopen_impact(self, identifier: str, area: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request(
+                "GET", f"/releases/{identifier}/reopen-impact?area={area}"
+            ),
+            op="release_reopen_impact",
+        )
+
+    def release_outstanding_revalidations(
+        self, identifier: str
+    ) -> list[dict[str, Any]]:
+        return self._expect_list(
+            self._request(
+                "GET", f"/releases/{identifier}/outstanding-revalidations"
+            )
+        )
+
+    # --- release lifecycle actions (the panel's writes) ---
+
+    def transition_release(
+        self, identifier: str, to_status: str, *, actor: str | None = None
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"to_status": to_status}
+        if actor:
+            body["actor"] = actor
+        return self._expect_dict(
+            self._request(
+                "POST", f"/releases/{identifier}/transition", json_body=body
+            ),
+            op="transition_release",
+        )
+
+    def release_qa_pass(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", f"/releases/{identifier}/qa-pass"),
+            op="release_qa_pass",
+        )
+
+    def release_test_pass(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", f"/releases/{identifier}/test-pass"),
+            op="release_test_pass",
+        )
+
+    def set_release_lane_order(
+        self, identifier: str, order: int | None
+    ) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request(
+                "POST",
+                f"/releases/{identifier}/lane-order",
+                json_body={"order": order},
+            ),
+            op="set_release_lane_order",
+        )
+
+    def open_release_correction(
+        self,
+        identifier: str,
+        *,
+        title: str,
+        description: str,
+        notes: str | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"title": title, "description": description}
+        if notes:
+            body["notes"] = notes
+        return self._expect_dict(
+            self._request(
+                "POST", f"/releases/{identifier}/open-correction", json_body=body
+            ),
+            op="open_release_correction",
+        )
+
+    def reopen_release_area(
+        self,
+        identifier: str,
+        *,
+        area: str,
+        reason: str,
+        approval_decision_identifier: str | None = None,
+        triggering_finding_identifier: str | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"area": area, "reason": reason}
+        if approval_decision_identifier:
+            body["approval_decision_identifier"] = approval_decision_identifier
+        if triggering_finding_identifier:
+            body["triggering_finding_identifier"] = triggering_finding_identifier
+        return self._expect_dict(
+            self._request(
+                "POST", f"/releases/{identifier}/area-reopens", json_body=body
+            ),
+            op="reopen_release_area",
+        )
+
+    def refreeze_release_area(self, identifier: str, area: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request(
+                "POST", f"/releases/{identifier}/area-reopens/{area}/refreeze"
+            ),
+            op="refreeze_release_area",
+        )
+
+    def resolve_reconciliation_conflict(
+        self,
+        conflict_id: int,
+        *,
+        decision_identifier: str,
+        resolved_value: Any | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"decision_identifier": decision_identifier}
+        if resolved_value is not None:
+            body["resolved_value"] = resolved_value
+        return self._expect_dict(
+            self._request(
+                "POST",
+                f"/reconciliation-conflicts/{conflict_id}/resolve",
+                json_body=body,
+            ),
+            op="resolve_reconciliation_conflict",
+        )
+
     # ------------------------------------------------------------------
     # Review surface (requirements-provenance Phase 6). Read-only topic
     # review tree + read-back document + the three review queues, plus the

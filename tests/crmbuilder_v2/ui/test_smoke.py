@@ -56,6 +56,9 @@ EXPECTED_ENTRIES = (
     # requirements-provenance Phase 6b: topic-first review surface,
     # appended to the Governance group after Work Tasks.
     "Requirements Review",
+    # PI-224: the Release Pipeline group (its own group between Governance
+    # and Methodology) with the single Releases hub entry.
+    "Releases",
     # Methodology group — Domains landed in UI v0.4 slice B,
     # Entities in slice C, Processes in slice D, CRM Candidates in slice E,
     # Personas in v0.5+ (PI-003), Fields in v0.5+ (PI-004 first slice),

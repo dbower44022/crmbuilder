@@ -97,6 +97,15 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "Requirements Review",
         ),
     ),
+    # PI-224: the multi-agent release-pipeline operability surface. A
+    # Releases hub panel that browses releases and drives the lifecycle
+    # (freeze via transition, qa/test passes, lane order, corrections,
+    # reopens, conflict resolution). Its own group between Governance and
+    # Methodology.
+    (
+        "Release Pipeline",
+        ("Releases",),
+    ),
     (
         "Methodology",
         (
