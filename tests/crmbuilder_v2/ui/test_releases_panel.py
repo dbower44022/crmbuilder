@@ -111,6 +111,25 @@ _REOPENS = {
 }
 _AREA_OWNERSHIP = {"access": "AGP-dev-access"}
 _LANE_HOLDER = _release("REL-002", status="development", lane_order=1)
+# References touching REL-001: the one project_belongs_to_release edge (PRJ-031).
+_EDGES = {
+    "as_source": [],
+    "as_target": [
+        {
+            "id": 501,
+            "source_type": "project",
+            "source_id": "PRJ-031",
+            "target_type": "release",
+            "target_id": "REL-001",
+            "relationship": "project_belongs_to_release",
+        }
+    ],
+}
+# Project catalog for the Add-to-scope picker.
+_PROJECTS = [
+    {"project_identifier": "PRJ-031", "project_name": "Release Pipeline"},
+    {"project_identifier": "PRJ-040", "project_name": "Unassigned Project"},
+]
 
 
 def _full_extras(**overrides: Any) -> dict[str, Any]:
@@ -125,6 +144,7 @@ def _full_extras(**overrides: Any) -> dict[str, Any]:
         "reopens": _REOPENS,
         "area_ownership": _AREA_OWNERSHIP,
         "lane_holder": _LANE_HOLDER,
+        "edges": _EDGES,
     }
     extras.update(overrides)
     return extras
@@ -134,12 +154,24 @@ def _handler(releases=_RELEASES, *, captured: list | None = None):
     def handler(req: httpx.Request) -> httpx.Response:
         path = req.url.path
         method = req.method
-        if captured is not None and method == "POST":
-            captured.append((path, req.url.query.decode(), req.content.decode()))
+        if captured is not None and method in ("POST", "PATCH", "DELETE"):
+            captured.append((method, path, req.content.decode()))
+        if method == "DELETE" and path.startswith("/references/"):
+            return httpx.Response(200, json=envelope_ok({"deleted": True}))
+        if method == "PATCH" and path.startswith("/releases/"):
+            return httpx.Response(200, json=envelope_ok(_release()))
+        if method == "POST" and path == "/releases":
+            return httpx.Response(201, json=envelope_ok(_release("REL-009")))
+        if method == "POST" and path == "/references":
+            return httpx.Response(201, json=envelope_ok({"id": 777}))
         if method == "GET" and path == "/releases":
             return httpx.Response(200, json=envelope_ok(releases))
         if method == "GET" and path == "/releases/lane-holder":
             return httpx.Response(200, json=envelope_ok(_LANE_HOLDER))
+        if method == "GET" and path.startswith("/references/touching/release/"):
+            return httpx.Response(200, json=envelope_ok(_EDGES))
+        if method == "GET" and path == "/projects":
+            return httpx.Response(200, json=envelope_ok(_PROJECTS))
         if method == "GET" and path.endswith("/freeze"):
             return httpx.Response(200, json=envelope_ok(_FREEZE))
         if method == "GET" and path.endswith("/temperature"):
@@ -319,7 +351,7 @@ def test_qa_pass_issues_post(qtbot):
     detail = panel.render_detail(_RELEASES[0], _full_extras())
     qtbot.addWidget(detail)
     panel._do_simple(panel._client.release_qa_pass, "REL-001")
-    qtbot.waitUntil(lambda: any("/qa-pass" in c[0] for c in captured), timeout=3000)
+    qtbot.waitUntil(lambda: any(c[1] == "/releases/REL-001/qa-pass" for c in captured), timeout=3000)
 
 
 def test_transition_release_client_request_shape(qtbot):
@@ -327,7 +359,7 @@ def test_transition_release_client_request_shape(qtbot):
     client = build_client(_handler(captured=captured))
     client.transition_release("REL-001", "reconciliation", actor="claude")
     assert captured
-    path, _query, body = captured[0]
+    _method, path, body = captured[0]
     assert path == "/releases/REL-001/transition"
     assert '"to_status":"reconciliation"' in body
     assert '"actor":"claude"' in body
@@ -339,7 +371,103 @@ def test_resolve_conflict_client_request_shape(qtbot):
     client.resolve_reconciliation_conflict(
         7, decision_identifier="DEC-9", resolved_value={"value": True}
     )
-    path, _query, body = captured[0]
+    _method, path, body = captured[0]
     assert path == "/reconciliation-conflicts/7/resolve"
     assert '"decision_identifier":"DEC-9"' in body
     assert '"value":true' in body
+
+
+# --- PI-226: human planning workbench --------------------------------------
+
+
+def test_new_release_button_present(qtbot):
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    assert panel.findChild(QPushButton, "new_release_button") is not None
+
+
+def test_action_row_has_edit(qtbot):
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    detail = panel.render_detail(_RELEASES[0], _full_extras())
+    assert "Edit…" in {b.text() for b in detail.findChildren(QPushButton)}
+
+
+def test_composition_scope_actions_when_open(qtbot):
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    # Default extras have freeze_band == "open" (development_planning).
+    detail = panel.render_detail(_RELEASES[0], _full_extras())
+    assert detail.findChild(QPushButton, "add_project_button") is not None
+    assert "Remove" in {b.text() for b in detail.findChildren(QPushButton)}
+
+
+def test_composition_scope_closed_when_frozen(qtbot):
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    frozen = _full_extras(freeze={"freeze_band": "locked"})
+    detail = panel.render_detail(_RELEASES[0], frozen)
+    assert detail.findChild(QPushButton, "add_project_button") is None
+    labels = [w.text() for w in detail.findChildren(QLabel)]
+    assert any("Scope is closed" in t for t in labels)
+
+
+def test_create_release_client_shape(qtbot):
+    captured: list = []
+    client = build_client(_handler(captured=captured))
+    client.create_release({"release_title": "R", "release_description": "d", "release_lane_order": 2})
+    method, path, body = captured[0]
+    assert (method, path) == ("POST", "/releases")
+    assert '"release_title":"R"' in body and '"release_lane_order":2' in body
+
+
+def test_patch_release_client_shape(qtbot):
+    captured: list = []
+    client = build_client(_handler(captured=captured))
+    client.patch_release("REL-001", {"release_title": "New"})
+    method, path, body = captured[0]
+    assert (method, path) == ("PATCH", "/releases/REL-001")
+    assert '"release_title":"New"' in body
+
+
+def test_release_create_dialog_validates_and_returns_values(qtbot):
+    from crmbuilder_v2.ui.panels.releases import _ReleaseCreateDialog
+
+    dlg = _ReleaseCreateDialog()
+    qtbot.addWidget(dlg)
+    dlg._title.setText("My release")
+    dlg._description.setPlainText("Scope of this release")
+    dlg._order.setValue(3)
+    assert dlg.values() == ("My release", "Scope of this release", 3)
+
+
+def test_add_project_excludes_in_scope_and_posts_edge(qtbot, monkeypatch):
+    captured: list = []
+    panel = ReleasesPanel(build_client(_handler(captured=captured)))
+    qtbot.addWidget(panel)
+    detail = panel.render_detail(_RELEASES[0], _full_extras())
+    qtbot.addWidget(detail)
+    # Auto-accept the picker; it should offer PRJ-040 (PRJ-031 is already scoped).
+    monkeypatch.setattr(panel, "_exec_dialog", lambda dlg, cb: cb())
+    panel._do_add_project("REL-001", _full_extras())
+    qtbot.waitUntil(
+        lambda: any(c[1] == "/references" for c in captured), timeout=3000
+    )
+    _m, _p, body = next(c for c in captured if c[1] == "/references")
+    assert '"relationship":"project_belongs_to_release"' in body
+    assert '"source_id":"PRJ-040"' in body  # the unassigned one, not PRJ-031
+
+
+def test_remove_project_deletes_scope_edge(qtbot, monkeypatch):
+    captured: list = []
+    panel = ReleasesPanel(build_client(_handler(captured=captured)))
+    qtbot.addWidget(panel)
+    detail = panel.render_detail(_RELEASES[0], _full_extras())
+    qtbot.addWidget(detail)
+    monkeypatch.setattr(panel, "_confirm", lambda *a, **k: True)
+    panel._do_remove_project("REL-001", "PRJ-031", _full_extras())
+    # _EDGES maps PRJ-031 -> edge id 501.
+    qtbot.waitUntil(
+        lambda: any(c[1] == "/references/501" for c in captured), timeout=3000
+    )
+    assert captured[-1][0] == "DELETE"
