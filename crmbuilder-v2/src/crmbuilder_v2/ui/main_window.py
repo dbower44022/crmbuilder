@@ -60,6 +60,7 @@ from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.panels.releases import ReleasesPanel
 from crmbuilder_v2.ui.panels.requirements import RequirementsPanel
+from crmbuilder_v2.ui.panels.resource_locks import ResourceLocksPanel
 from crmbuilder_v2.ui.panels.review import ReviewPanel
 from crmbuilder_v2.ui.panels.risks import RisksPanel
 from crmbuilder_v2.ui.panels.sessions import SessionsPanel
@@ -233,6 +234,9 @@ def build_panel(
     # PI-224: the release-pipeline operability surface.
     if label == "Releases":
         return ReleasesPanel(client)
+    # PI-225: the file-level check-out backstop monitor.
+    if label == "Resource Locks":
+        return ResourceLocksPanel(client)
     placeholder = QLabel(f"Panel for {label} — not yet implemented.")
     placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
     placeholder.setObjectName(f"placeholder_{label.lower().replace(' ', '_')}")

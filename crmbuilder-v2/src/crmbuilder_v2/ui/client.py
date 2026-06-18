@@ -3106,6 +3106,40 @@ class StorageClient:
             op="resolve_reconciliation_conflict",
         )
 
+    # ----- resource locks (the file-level check-out backstop; PI-225) -------
+    # The PI-203 / PRJ-030 named-resource lock substrate (FL-1..6). The Resource
+    # Locks panel browses the currently-held locks and exposes the two operator
+    # escape hatches — reclaim a dead holder's locks (FL-6) and release a single
+    # stuck lock. Acquire and verify are the runtime's job (agent-side), so the
+    # UI exposes only the read + these two writes.
+
+    def list_locks(
+        self, *, resource: str | None = None, holder: str | None = None
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if resource:
+            params.append(f"resource={resource}")
+        if holder:
+            params.append(f"holder={holder}")
+        path = "/locks" + ("?" + "&".join(params) if params else "")
+        return self._expect_list(self._request("GET", path))
+
+    def release_lock(self, holder: str, resource: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request(
+                "POST",
+                "/locks/release",
+                json_body={"holder": holder, "resource": resource},
+            ),
+            op="release_lock",
+        )
+
+    def reclaim_locks(self, holder: str) -> list[dict[str, Any]]:
+        """Owner-supervised reclaim of every lock a dead sub-agent holds (FL-6)."""
+        return self._expect_list(
+            self._request("POST", "/locks/reclaim", json_body={"holder": holder})
+        )
+
     # ------------------------------------------------------------------
     # Review surface (requirements-provenance Phase 6). Read-only topic
     # review tree + read-back document + the three review queues, plus the
