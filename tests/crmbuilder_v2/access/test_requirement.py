@@ -204,13 +204,14 @@ def test_default_status_is_candidate(v2_env):
     assert row["requirement_status"] == "candidate"
 
 
+# PI-228: → confirmed is no longer reachable by a status edit (it is the
+# closed approval bypass); confirming goes through activate_by_decision. The
+# remaining edit-path transitions stay valid.
 @pytest.mark.parametrize(
     ("start", "target"),
     [
-        ("candidate", "confirmed"),
         ("candidate", "deferred"),
         ("confirmed", "deferred"),
-        ("deferred", "confirmed"),
     ],
 )
 def test_valid_status_transitions_permitted(v2_env, start, target):
@@ -222,6 +223,31 @@ def test_valid_status_transitions_permitted(v2_env, start, target):
     with session_scope() as s:
         row = requirement.patch_requirement(s, "REQ-001", status=target)
     assert row["requirement_status"] == target
+
+
+def test_confirm_via_update_or_patch_is_rejected(v2_env):
+    """PI-228: the generic update/patch paths refuse a direct flip to confirmed
+    — that bypass (no approving decision, no readability/provenance/topic gate,
+    no approved_at stamp) is the hole the requirements-provenance rebuild was
+    meant to close. Confirming is only via activate_by_decision."""
+    with session_scope() as s:
+        requirement.create_requirement(
+            s, name="Gate", description="d", acceptance_summary="a",
+        )
+    with session_scope() as s, pytest.raises(UnprocessableError) as exc:
+        requirement.patch_requirement(s, "REQ-001", status="confirmed")
+    assert exc.value.errors[0].code == "approval_required"
+    with session_scope() as s, pytest.raises(UnprocessableError):
+        requirement.update_requirement(
+            s, "REQ-001", requirement_identifier="REQ-001",
+            name="Gate", description="d", acceptance_summary="a",
+            priority="must", status="confirmed",
+        )
+    with session_scope() as s:
+        assert (
+            requirement.get_requirement(s, "REQ-001")["requirement_status"]
+            == "candidate"
+        )
 
 
 @pytest.mark.parametrize("start", ["confirmed", "deferred"])
@@ -299,11 +325,11 @@ def test_update_requirement_full_replace(v2_env):
             acceptance_summary="na",
             priority="must",
             notes="now has notes",
-            status="confirmed",
+            status="deferred",  # PI-228: confirmed is no longer settable via update
         )
     assert row["requirement_name"] == "New"
     assert row["requirement_notes"] == "now has notes"
-    assert row["requirement_status"] == "confirmed"
+    assert row["requirement_status"] == "deferred"
     assert row["requirement_priority"] == "must"
 
 

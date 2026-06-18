@@ -186,6 +186,34 @@ def _check_transition(current: str, requested: str) -> None:
         raise StatusTransitionError(current, requested)
 
 
+def _reject_direct_confirm(requested: str) -> None:
+    """Refuse a status edit straight to ``confirmed`` (the approval bypass).
+
+    A requirement reaches ``confirmed`` only through the approval path
+    (:func:`activate_by_decision`, triggered when a
+    ``requirement_approved_by_decision`` edge is created), which enforces the
+    readability + provenance + topic gates and stamps
+    ``requirement_approved_at``. The generic ``update`` / ``patch`` paths must
+    not set ``confirmed`` directly — doing so would walk around every one of
+    those guarantees (the requirements-provenance rule that a capability can't
+    be built without a reviewed, traced requirement). This is symmetric with how
+    ``rejected`` is already gated behind a decision in the same paths.
+    """
+    if requested == "confirmed":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "requirement_status",
+                    "approval_required",
+                    "a requirement is confirmed by recording an approving "
+                    "decision (a requirement_approved_by_decision edge), not by "
+                    "editing its status field; this enforces the readability, "
+                    "provenance, and topic gates",
+                )
+            ]
+        )
+
+
 def _reject_duplicate_name(
     session: Session, name: str, *, exclude_identifier: str | None = None
 ) -> None:
@@ -467,6 +495,7 @@ def update_requirement(
     if status is not None and status != row.requirement_status:
         _require_status(status)
         _check_transition(row.requirement_status, status)
+        _reject_direct_confirm(status)
         if status == "rejected":
             _rejection.enforce_rejected_status(
                 session,
@@ -825,6 +854,7 @@ def patch_requirement(session: Session, identifier: str, **fields) -> dict:
         status = _require_status(fields["status"])
         if status != row.requirement_status:
             _check_transition(row.requirement_status, status)
+            _reject_direct_confirm(status)
             if status == "rejected":
                 _rejection.enforce_rejected_status(
                     session,
