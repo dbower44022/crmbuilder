@@ -674,7 +674,7 @@ INSTANCE_VENDORS: frozenset[str] = frozenset({"espocrm"})
 
 INSTANCE_ROLES: frozenset[str] = frozenset({"source", "target", "both"})
 
-INSTANCE_AUTH_METHODS: frozenset[str] = frozenset({"api_key", "hmac"})
+INSTANCE_AUTH_METHODS: frozenset[str] = frozenset({"api_key", "basic", "hmac"})
 
 INSTANCE_STATUSES: frozenset[str] = frozenset({"active", "disabled"})
 

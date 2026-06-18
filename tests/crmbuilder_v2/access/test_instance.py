@@ -182,3 +182,10 @@ def test_list_filters(v2_env):
         assert len(instances.list_instances(s)) == 2
         assert len(instances.list_instances(s, role="source")) == 1
         assert len(instances.list_instances(s, status="disabled")) == 1
+
+
+def test_basic_auth_method_accepted(v2_env):
+    """PI-196: basic is a valid instance auth method (EspoCRM/CBM use it)."""
+    with session_scope() as s:
+        row = _make(s, auth_method="basic")
+        assert row["instance_auth_method"] == "basic"
