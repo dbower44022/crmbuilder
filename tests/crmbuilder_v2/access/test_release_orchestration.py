@@ -181,6 +181,29 @@ def test_decompose_planning_item_direct_creates_structure(v2_env):
         assert readiness["undecomposed_planning_items"] == []
 
 
+def test_decompose_drives_workstreams_to_scoped(v2_env):
+    """The architect's decomposition IS the scoping: development executes it (§5.2),
+    so a phase with work is Ready and an empty phase is Not Applicable — not Planned
+    (which the ADO runtime would re-scope)."""
+    from crmbuilder_v2.access.repositories import workstreams as wsr
+
+    with session_scope() as s:
+        pi = planning_items.create(
+            s, title="T", item_type="pending_work", executive_summary=_SUMMARY,
+            execution_mode="interactive")["identifier"]
+        orch.decompose_planning_item_direct(s, pi, [
+            {"phase_type": "Design", "title": "Design", "work_tasks": []},
+            {"phase_type": "Develop", "title": "Build",
+             "work_tasks": [{"title": "do it", "area": "storage"}]},
+        ])
+        by_phase = {
+            wsr.get_workstream(s, w)["workstream_phase_type"]:
+            wsr.get_workstream(s, w)["workstream_status"]
+            for w in releases._pi_workstreams(s, pi)
+        }
+        assert by_phase == {"Design": "Not Applicable", "Develop": "Ready"}
+
+
 def test_finalize_planning_flips_to_ado_and_advances(v2_env):
     with session_scope() as s:
         rel, prj, pi = _scaffold(s)

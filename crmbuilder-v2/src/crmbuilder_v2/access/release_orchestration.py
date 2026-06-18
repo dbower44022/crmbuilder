@@ -149,6 +149,13 @@ def decompose_planning_item_direct(
     phase (acyclic by construction, satisfying the planned-completely sequencing
     check). The structural ADO decomposer is bypassed because it refuses interactive
     release-pipeline PIs.
+
+    Each phase is driven to its **scoped** status — ``Ready`` (it has work) or
+    ``Not Applicable`` (empty) — so the development stage (the ADO runtime) walks
+    the finished prerequisite graph and *executes* it (§5.2) rather than re-scoping
+    it. The architect's decomposition IS the scoping; ``scope_workstream`` is not
+    reused because it refuses the still-interactive release PI (DEC-425) — the
+    transition is driven directly here, which is the same carve-out.
     """
     created_ws: list[dict] = []
     created_wt: list[dict] = []
@@ -169,7 +176,8 @@ def decompose_planning_item_direct(
         if prev_ws_id is not None:
             _edge(session, "workstream", ws_id, "blocked_by", "workstream", prev_ws_id)
         prev_ws_id = ws_id
-        for t in spec.get("work_tasks", []):
+        tasks = spec.get("work_tasks", [])
+        for t in tasks:
             wt = work_tasks.create_work_task(
                 session,
                 title=t["title"],
@@ -179,6 +187,10 @@ def decompose_planning_item_direct(
             _edge(session, "work_task", wt["work_task_identifier"],
                   "work_task_belongs_to_workstream", "workstream", ws_id)
             created_wt.append(wt)
+        # Scope the phase: Planned → Scoping → Ready (has work) | Not Applicable.
+        ws_repo.patch_workstream(session, ws_id, status="Scoping")
+        ws_repo.patch_workstream(
+            session, ws_id, status="Ready" if tasks else "Not Applicable")
     return {
         "planning_item": pi_identifier,
         "workstreams": created_ws,
