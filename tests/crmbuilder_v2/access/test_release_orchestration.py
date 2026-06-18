@@ -220,3 +220,27 @@ def test_finalize_planning_rejects_when_not_ready(v2_env):
             orch.finalize_planning(s, rel)
         # still interactive, still in architecture_planning
         assert planning_items.get(s, pi)["execution_mode"] == "interactive"
+
+
+def test_decompose_rejects_duplicate_phase_types(v2_env):
+    """REQ-258 / PI-233: a decomposition that repeats a delivery phase is
+    rejected — duplicate phase triples tangle the dev-lane walk and stranded a
+    real fleet build after Design. The substrate guarantees a well-formed,
+    one-workstream-per-phase structure regardless of what the agent proposes."""
+    with session_scope() as s:
+        pi = planning_items.create(
+            s, title="T", item_type="pending_work", executive_summary=_SUMMARY,
+            execution_mode="interactive")["identifier"]
+        with pytest.raises(ConflictError, match="repeats phase"):
+            orch.decompose_planning_item_direct(s, pi, [
+                {"phase_type": "Design", "title": "D1", "work_tasks": []},
+                {"phase_type": "Develop", "title": "Build",
+                 "work_tasks": [{"title": "do it", "area": "storage"}]},
+                {"phase_type": "Test", "title": "T1", "work_tasks": []},
+                {"phase_type": "Design", "title": "D2 (dup)", "work_tasks": []},
+                {"phase_type": "Develop", "title": "Build2 (dup)", "work_tasks": []},
+                {"phase_type": "Test", "title": "T2 (dup)", "work_tasks": []},
+            ])
+    # nothing was created — the guard runs before any workstream is made
+    with session_scope() as s:
+        assert releases._pi_workstreams(s, pi) == []

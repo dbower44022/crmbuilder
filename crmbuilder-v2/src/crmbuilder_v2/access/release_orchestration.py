@@ -156,7 +156,23 @@ def decompose_planning_item_direct(
     it. The architect's decomposition IS the scoping; ``scope_workstream`` is not
     reused because it refuses the still-interactive release PI (DEC-425) — the
     transition is driven directly here, which is the same carve-out.
+
+    The decomposition must be a **well-formed phase structure** (REQ-258): at
+    most one workstream per delivery phase. A spec that repeats a phase is
+    rejected — duplicate, serially cross-chained phases of the same type tangle
+    the dev-lane's phase walk and strand the planning item after its first phase
+    (the failure a real fleet build surfaced: an architect spec with two
+    Design/Develop/Test triples). The substrate enforces this regardless of what
+    the planning agent proposes.
     """
+    phase_types = [spec["phase_type"] for spec in workstreams]
+    duplicates = sorted({p for p in phase_types if phase_types.count(p) > 1})
+    if duplicates:
+        raise ConflictError(
+            f"decomposition of {pi_identifier!r} repeats phase(s) "
+            f"{duplicates}: a planning item has at most one workstream per "
+            "delivery phase (a well-formed, serially-ordered phase structure)"
+        )
     created_ws: list[dict] = []
     created_wt: list[dict] = []
     prev_ws_id: str | None = None
