@@ -3212,6 +3212,32 @@ class StorageClient:
             op="create_signoff",
         )
 
+    def approve_requirements(
+        self,
+        requirement_identifiers: list[str],
+        *,
+        reviewer: str,
+        decision_date: str,
+        note: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Reviewer-driven approval of one or more candidate requirements (REQ-251).
+
+        Records a governed approving decision per requirement and confirms each;
+        returns a per-requirement result (``identifier``, ``outcome`` of
+        ``confirmed`` / ``already_confirmed`` / ``failed``, ``decision_identifier``,
+        ``reason``). A gate failure on one neither blocks nor rolls back the others.
+        """
+        body: dict[str, Any] = {
+            "requirement_identifiers": requirement_identifiers,
+            "reviewer": reviewer,
+            "decision_date": decision_date,
+        }
+        if note:
+            body["note"] = note
+        return self._expect_list(
+            self._request("POST", "/review/approvals", json_body=body)
+        )
+
     def capability_coverage(self, since: str | None = None) -> dict[str, Any]:
         """The bidirectional no-orphan-capability coverage-gaps report.
 

@@ -361,6 +361,12 @@ def reconcile_fields(
 
             match = canon.get(neutral_field)
             if match is None:
+                extra: dict[str, Any] = {}
+                # A derived field (mapped from EspoCRM foreign/formula) requires
+                # a result type (PI-197); the audit can't infer it, so default to
+                # ``text`` — the override/later refinement can correct it.
+                if audited["field_type"] == "derived":
+                    extra["derived_result_type"] = "text"
                 created = field_repo.create_field(
                     session,
                     field_belongs_to_entity_identifier=parent_id,
@@ -370,6 +376,7 @@ def reconcile_fields(
                     ),
                     type=audited["field_type"],
                     required=audited["field_required"],
+                    **extra,
                 )
                 canon[neutral_field] = created
                 member_id = created["field_identifier"]
