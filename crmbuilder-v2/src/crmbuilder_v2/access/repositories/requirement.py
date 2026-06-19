@@ -609,11 +609,32 @@ def activate_by_decision(session: Session, identifier: str) -> dict:
     ancestor's. (a) is the no-orphan-capability rule (you can't activate an
     unrooted requirement); (b) makes it reachable under a topic, so it can't be
     activated without first being reviewable (review is topic-first). Both
-    enforced at activation per decisions A1 + topic-gate. Idempotent if already
-    ``confirmed``; a ``rejected`` requirement cannot be approved.
+    enforced at activation per decisions A1 + topic-gate. Approval also returns
+    ``review_state`` to ``current``, clearing any ``needs_review`` flag — so an
+    approval that immediately follows a change-decision reopen (which set
+    ``needs_review`` via :func:`reopen_by_decision`) leaves the requirement
+    cleanly active rather than approved-but-flagged (REQ-249). Idempotent if
+    already ``confirmed``; a ``rejected`` requirement cannot be approved.
     """
     row = _get_row(session, identifier)
     if row.requirement_status == "confirmed":
+        # Idempotent when already active and clean. If living drift left an
+        # already-confirmed (human_defined) requirement flagged needs_review,
+        # re-approval is the human sign-off that clears the flag (REQ-249).
+        if row.requirement_review_state == "needs_review":
+            before = to_dict(row)
+            row.requirement_review_state = "current"
+            session.flush()
+            after = to_dict(row)
+            emit(
+                session,
+                entity_type=_ENTITY_TYPE,
+                entity_identifier=identifier,
+                operation="update",
+                before=before,
+                after=after,
+            )
+            return after
         return to_dict(row)
     if row.requirement_status == "rejected":
         raise UnprocessableError(
@@ -661,6 +682,7 @@ def activate_by_decision(session: Session, identifier: str) -> dict:
         )
     before = to_dict(row)
     row.requirement_status = "confirmed"
+    row.requirement_review_state = "current"
     row.requirement_approved_at = datetime.now(UTC)
     session.flush()
     after = to_dict(row)
