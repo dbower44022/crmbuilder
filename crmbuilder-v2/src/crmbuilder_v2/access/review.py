@@ -23,6 +23,8 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access import rbac
+from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.exceptions import (
     FieldError,
     NotFoundError,
@@ -255,7 +257,14 @@ def approve_requirements(
     (order-preserving with the input); one requirement's gate failure neither
     rolls back nor blocks the others. Confirming is *only* via this governed
     path — never a status edit (the bypass closed by PI-228).
+
+    Authorization: the whole action is gated by the ``approve`` permission — the
+    reviewer capability granted to the ``owner`` and ``editor`` roles, withheld
+    from ``viewer`` and the agent tiers (WTK-177 / REQ-251). The check is a no-op
+    when ``principal_auth_enabled`` is off (the default-owner localhost flow) and
+    raises :class:`~crmbuilder_v2.access.rbac.PermissionDenied` (→ 403) otherwise.
     """
+    rbac.check("approve", engagement_id=get_active_engagement())
     reviewer = (reviewer or "").strip()
     if not reviewer:
         raise UnprocessableError(
