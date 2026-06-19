@@ -70,10 +70,10 @@ def test_approve_requirements_denied_without_approve_permission(v2_env, monkeypa
         reset_active_engagement(eng)
 
 
-def _candidate(s) -> str:
+def _candidate(s, name: str = "A candidate awaiting review") -> str:
     return _requirement.create_requirement(
         s,
-        name="A candidate awaiting review",
+        name=name,
         description="A requirement to exercise the approval gate.",
         acceptance_summary="Approving it records a governed decision.",
         origin="human_defined",
@@ -122,3 +122,125 @@ def test_approve_requirements_gate_is_noop_when_auth_off(v2_env, monkeypatch):
         )
     assert result[0]["identifier"] == rid
     assert result[0]["outcome"] == "failed"
+
+
+# ---------------------------------------------------------------------------
+# WTK-180 / REQ-251 — reviewer authorization enforcement coverage.
+#
+# WTK-177 wired the gate and proved the happy/denied paths for one role each;
+# these close the enforcement gaps: *every* agent tier (not only one) lacks the
+# capability, an anonymous request (auth on, no principal) is denied, denial
+# actually prevents confirmation rather than merely raising, a denied principal
+# blocks the whole batch (no partial approval), and the capability is
+# engagement-scoped — reviewer rights on one engagement do not carry to another.
+# ---------------------------------------------------------------------------
+
+
+def test_approve_permission_denied_to_every_agent_tier():
+    # Confirming a requirement is a human review, not an agent action: none of
+    # the four ADO agent tiers holds ``approve`` — only the reviewer persona.
+    for tier in ("orchestrator", "pi_lead", "phase_specialist", "area_specialist"):
+        assert not rbac.has_permission(_principal(tier), "ENG-001", "approve"), tier
+
+
+def test_approve_requirements_denied_for_anonymous_principal(v2_env, monkeypatch):
+    # Auth on with no active principal at all: the gate denies the anonymous
+    # request rather than falling open.
+    _auth(monkeypatch, True)
+    eng = set_active_engagement("ENG-001")
+    prn = set_active_principal(None)
+    try:
+        with session_scope() as s, pytest.raises(rbac.PermissionDenied) as exc:
+            review.approve_requirements(
+                s,
+                requirement_identifiers=["REQ-999"],
+                reviewer="Doug",
+                decision_date="2026-06-18",
+            )
+        assert exc.value.permission == "approve"
+    finally:
+        reset_active_principal(prn)
+        reset_active_engagement(eng)
+
+
+def test_unauthorized_approval_leaves_requirement_unconfirmed(v2_env, monkeypatch):
+    # The gate is enforcement, not advice: a denied attempt confirms nothing —
+    # the candidate stays a candidate (no governed approving decision is run).
+    _auth(monkeypatch, True)
+    eng = set_active_engagement("ENG-001")
+    prn = set_active_principal(_principal("viewer"))
+    try:
+        with session_scope() as s:
+            rid = _candidate(s)
+            with pytest.raises(rbac.PermissionDenied):
+                review.approve_requirements(
+                    s,
+                    requirement_identifiers=[rid],
+                    reviewer="Doug",
+                    decision_date="2026-06-18",
+                )
+            assert (
+                _requirement.get_requirement(s, rid)["requirement_status"]
+                == "candidate"
+            )
+    finally:
+        reset_active_principal(prn)
+        reset_active_engagement(eng)
+
+
+def test_unauthorized_approval_blocks_entire_batch(v2_env, monkeypatch):
+    # The gate sits above the per-requirement loop, so an unauthorized principal
+    # approves none of a multi-requirement batch — there is no partial approval.
+    _auth(monkeypatch, True)
+    eng = set_active_engagement("ENG-001")
+    prn = set_active_principal(_principal("viewer"))
+    try:
+        with session_scope() as s:
+            rids = [
+                _candidate(s, "First batch candidate"),
+                _candidate(s, "Second batch candidate"),
+            ]
+            with pytest.raises(rbac.PermissionDenied):
+                review.approve_requirements(
+                    s,
+                    requirement_identifiers=rids,
+                    reviewer="Doug",
+                    decision_date="2026-06-18",
+                )
+            for rid in rids:
+                assert (
+                    _requirement.get_requirement(s, rid)["requirement_status"]
+                    == "candidate"
+                )
+    finally:
+        reset_active_principal(prn)
+        reset_active_engagement(eng)
+
+
+def test_approve_capability_is_engagement_scoped(v2_env, monkeypatch):
+    # Reviewer rights are per-engagement: an editor on ENG-002 holds ``approve``
+    # there but is denied on the active ENG-001.
+    _auth(monkeypatch, True)
+    other_eng_editor = Principal(
+        principal_id="PRN-200",
+        kind="human",
+        roles=frozenset({"editor"}),
+        roles_by_engagement={"ENG-002": frozenset({"editor"})},
+        allowed_engagements=frozenset({"ENG-002"}),
+    )
+    eng = set_active_engagement("ENG-001")
+    prn = set_active_principal(other_eng_editor)
+    try:
+        assert rbac.has_permission(other_eng_editor, "ENG-002", "approve")
+        assert not rbac.has_permission(other_eng_editor, "ENG-001", "approve")
+        with session_scope() as s, pytest.raises(rbac.PermissionDenied) as exc:
+            review.approve_requirements(
+                s,
+                requirement_identifiers=["REQ-999"],
+                reviewer="Doug",
+                decision_date="2026-06-18",
+            )
+        assert exc.value.permission == "approve"
+    finally:
+        reset_active_principal(prn)
+        reset_active_engagement(eng)
