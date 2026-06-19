@@ -736,6 +736,19 @@ class ReviewSignoffCreateIn(_Base):
     signoff_attestation: str
 
 
+class ReviewApprovalsCreateIn(_Base):
+    """POST /review/approvals body — reviewer-driven approval of candidates (REQ-251).
+
+    The panel passes its selection, the reviewer, and a decision date; each
+    requirement is approved independently and a per-requirement result returned.
+    ``note`` is an optional reviewer rationale folded into each approving decision."""
+
+    requirement_identifiers: list[str]
+    reviewer: str
+    decision_date: str
+    note: str | None = None
+
+
 # ---------- Migration mappings (methodology entity, WTK-107) ----------
 
 

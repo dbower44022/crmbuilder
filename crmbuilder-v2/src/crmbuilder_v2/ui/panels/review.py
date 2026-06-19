@@ -28,6 +28,7 @@ from typing import Any
 
 from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QCheckBox,
     QComboBox,
     QDateEdit,
@@ -39,6 +40,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QMenu,
     QPlainTextEdit,
     QPushButton,
     QScrollArea,
@@ -64,6 +66,7 @@ from crmbuilder_v2.ui.panels._governance_helpers import (
 )
 from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from crmbuilder_v2.ui.widgets.form_helpers import icon_button
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.review")
@@ -91,6 +94,10 @@ class ReviewPanel(ListDetailPanel):
         self._current_topic_id: str | None = None
         self._populating_combo = False
         self._dialogs: list[QWidget] = []
+        # A one-shot status message the next overview refresh should land on
+        # instead of the default "N topics" (e.g. an approval-batch summary
+        # that must survive the post-approval refresh).
+        self._pending_status: str | None = None
         # Coverage baseline cutoff. ``None`` => let the server apply its
         # configured default; ``""`` => force no cutoff (count every gap as
         # live); a date string => that cutoff. The control is synced from the
@@ -203,12 +210,23 @@ class ReviewPanel(ListDetailPanel):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(
+
+        # Header row: the explanation on the left, the Approve action upper-right
+        # (REQ-251 — a reviewer completes the review in the panel).
+        header = QHBoxLayout()
+        header.addWidget(
             QLabel(
-                "Candidate requirements awaiting activation — each row shows "
-                "what it still needs before it can be approved."
-            )
+                "Candidate requirements awaiting activation — select one or more "
+                "and Approve to confirm them. Each row shows what it still needs."
+            ),
+            stretch=1,
         )
+        self._approve_button = QPushButton("Approve selected…")
+        self._approve_button.setObjectName("approve_selected_button")
+        self._approve_button.clicked.connect(self._on_approve_selected)
+        header.addWidget(self._approve_button)
+        layout.addLayout(header)
+
         self._approval_tree = QTreeWidget()
         self._approval_tree.setHeaderLabels(
             ["Identifier", "Name", "Origin", "Has provenance", "Has topic"]
@@ -216,6 +234,16 @@ class ReviewPanel(ListDetailPanel):
         self._approval_tree.setColumnWidth(0, 110)
         self._approval_tree.setColumnWidth(1, 300)
         self._approval_tree.setAlternatingRowColors(True)
+        # Multi-select + right-click Approve (REQ-251).
+        self._approval_tree.setSelectionMode(
+            QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        self._approval_tree.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self._approval_tree.customContextMenuRequested.connect(
+            self._on_approval_context_menu
+        )
         layout.addWidget(self._approval_tree)
         return page
 
@@ -326,7 +354,11 @@ class ReviewPanel(ListDetailPanel):
         self._fill_approval(result.get("approval") or [])
         self._fill_drift(result.get("drift") or [])
         self._fill_coverage(result.get("coverage") or {})
-        self._status_label.setText(f"{len(topics)} topics")
+        if self._pending_status is not None:
+            self._status_label.setText(self._pending_status)
+            self._pending_status = None
+        else:
+            self._status_label.setText(f"{len(topics)} topics")
         # Drive the topic-scoped panes off the (possibly newly-restored)
         # selection.
         if self._current_topic_id:
@@ -678,6 +710,80 @@ class ReviewPanel(ListDetailPanel):
             on_error=self._on_error,
         )
 
+    # -- Approve action (REQ-251) --------------------------------------------
+
+    def _selected_approval_ids(self) -> list[str]:
+        seen: list[str] = []
+        for item in self._approval_tree.selectedItems():
+            rid = item.text(0)
+            if rid and rid not in seen:
+                seen.append(rid)
+        return seen
+
+    def _on_approval_context_menu(self, position) -> None:
+        if not self._approval_tree.selectedItems():
+            return
+        menu = QMenu(self._approval_tree)
+        act = menu.addAction("Approve selected…")
+        act.triggered.connect(self._on_approve_selected)
+        menu.exec(self._approval_tree.viewport().mapToGlobal(position))
+
+    def _on_approve_selected(self) -> None:
+        ids = self._selected_approval_ids()
+        if not ids:
+            self._status_label.setText(
+                "Select one or more candidate requirements to approve."
+            )
+            return
+        dialog = _ApproveDialog(ids, parent=self)
+        self._dialogs.append(dialog)
+        try:
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                reviewer, note = dialog.values()
+                self._submit_approvals(ids, reviewer, note)
+        finally:
+            self._dialogs.remove(dialog)
+            dialog.deleteLater()
+
+    def _submit_approvals(
+        self, ids: list[str], reviewer: str, note: str | None
+    ) -> None:
+        decision_date = QDate.currentDate().toString("yyyy-MM-dd")
+
+        def _on_done(results: Any) -> None:
+            rows = results if isinstance(results, list) else []
+            confirmed = [r for r in rows if r.get("outcome") == "confirmed"]
+            already = [r for r in rows if r.get("outcome") == "already_confirmed"]
+            failed = [r for r in rows if r.get("outcome") == "failed"]
+            parts = [f"{len(confirmed)} approved"]
+            if already:
+                parts.append(f"{len(already)} already confirmed")
+            if failed:
+                parts.append(f"{len(failed)} failed")
+            summary = "Approvals: " + ", ".join(parts) + "."
+            self._status_label.setText(summary)
+            if failed:
+                detail = "\n".join(
+                    f"• {r.get('identifier')}: {r.get('reason')}" for r in failed
+                )
+                CopyableMessageBox.warning(
+                    self, "Some approvals failed",
+                    "These requirements were not approved and remain candidates:\n\n"
+                    + detail,
+                )
+            # Refresh re-fetches the queues (confirmed rows leave, failed stay);
+            # carry the summary through so it survives the async overview reload.
+            self._pending_status = summary
+            self.refresh()
+
+        self._run(
+            lambda: self._client.approve_requirements(
+                ids, reviewer=reviewer, decision_date=decision_date, note=note
+            ),
+            on_success=_on_done,
+            on_error=self._on_error,
+        )
+
     # -- Provenance conversation dialog --------------------------------------
 
     def _open_conversation(self, conv_id: str) -> None:
@@ -789,6 +895,57 @@ class _SignoffDialog(QDialog):
         return (
             self._reviewer.text().strip(),
             self._attestation.toPlainText().strip(),
+        )
+
+
+class _ApproveDialog(QDialog):
+    """Modal capturing reviewer + optional note for approving requirements (REQ-251)."""
+
+    def __init__(self, identifiers: list[str], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(
+            f"Approve {len(identifiers)} requirement"
+            + ("s" if len(identifiers) != 1 else "")
+        )
+        self.setMinimumWidth(460)
+        layout = QVBoxLayout(self)
+        listing = ", ".join(identifiers)
+        layout.addWidget(
+            QLabel(
+                f"Approving <b>{listing}</b> for delivery. This records a governed "
+                "approving decision for each and confirms those that pass the "
+                "readability, provenance, and topic gates; any that fail stay "
+                "candidates with the reason shown."
+            )
+        )
+        form = QFormLayout()
+        self._reviewer = QLineEdit()
+        self._reviewer.setPlaceholderText("Your name")
+        form.addRow("Reviewer", self._reviewer)
+        self._note = QPlainTextEdit()
+        self._note.setPlaceholderText("Optional rationale, folded into each decision.")
+        self._note.setMinimumHeight(70)
+        form.addRow("Note (optional)", self._note)
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Approve")
+        buttons.accepted.connect(self._on_accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _on_accept(self) -> None:
+        if not self._reviewer.text().strip():
+            self.setWindowTitle("A reviewer is required")
+            return
+        self.accept()
+
+    def values(self) -> tuple[str, str | None]:
+        return (
+            self._reviewer.text().strip(),
+            self._note.toPlainText().strip() or None,
         )
 
 

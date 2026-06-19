@@ -12,7 +12,10 @@ from crmbuilder_v2.access import review
 from crmbuilder_v2.access.repositories import review_signoffs
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
-from crmbuilder_v2.api.schemas import ReviewSignoffCreateIn
+from crmbuilder_v2.api.schemas import (
+    ReviewApprovalsCreateIn,
+    ReviewSignoffCreateIn,
+)
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -60,6 +63,27 @@ def create_signoff(body: ReviewSignoffCreateIn):
                 topic_identifier=body.signoff_topic_identifier,
                 reviewer=body.signoff_reviewer,
                 attestation=body.signoff_attestation,
+            )
+        )
+
+
+@router.post("/approvals", status_code=201)
+def create_approvals(body: ReviewApprovalsCreateIn):
+    """Reviewer-driven approval of one or more candidate requirements (REQ-251).
+
+    Records a governed approving decision per requirement and confirms each
+    (via the approving-decision edge + its gates); returns a per-requirement
+    result. One requirement's gate failure neither blocks nor rolls back the
+    others — the only way a requirement reaches confirmed, never a status edit.
+    """
+    with writable_session() as s:
+        return ok(
+            review.approve_requirements(
+                s,
+                requirement_identifiers=body.requirement_identifiers,
+                reviewer=body.reviewer,
+                decision_date=body.decision_date,
+                note=body.note,
             )
         )
 

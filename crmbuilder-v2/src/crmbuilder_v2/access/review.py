@@ -23,7 +23,16 @@ from collections import defaultdict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access.exceptions import (
+    FieldError,
+    NotFoundError,
+    UnprocessableError,
+    ValidationError,
+)
 from crmbuilder_v2.access.models import Reference, Requirement
+from crmbuilder_v2.access.repositories import decisions as _decisions
+from crmbuilder_v2.access.repositories import references as _references
+from crmbuilder_v2.access.repositories import requirement as _requirement
 
 
 def _refines_maps(session: Session) -> tuple[dict[str, list[str]], dict[str, str]]:
@@ -219,3 +228,103 @@ def drift_queue(session: Session) -> list[dict]:
             )
         ).all()
     ]
+
+
+# ---------------------------------------------------------------------------
+# Reviewer-driven approval (PI-229 / REQ-251) — the Requirements Review panel's
+# approve action, so a human completes the review IN the panel rather than only
+# through hand-assembled interface calls.
+# ---------------------------------------------------------------------------
+
+
+def approve_requirements(
+    session: Session,
+    *,
+    requirement_identifiers: list[str],
+    reviewer: str,
+    decision_date: str,
+    note: str | None = None,
+) -> list[dict]:
+    """Reviewer-driven approval of one or more candidate requirements (REQ-251).
+
+    For each identifier — independently and in its own savepoint — record a
+    governed approving decision authored by ``reviewer``, then create the
+    ``requirement_approved_by_decision`` edge (which triggers
+    ``activate_by_decision`` and its readability / provenance / topic gates
+    atomically, confirming the requirement). Returns a per-requirement result
+    (order-preserving with the input); one requirement's gate failure neither
+    rolls back nor blocks the others. Confirming is *only* via this governed
+    path — never a status edit (the bypass closed by PI-228).
+    """
+    reviewer = (reviewer or "").strip()
+    if not reviewer:
+        raise UnprocessableError(
+            [FieldError("reviewer", "missing_or_empty", "a reviewer is required")]
+        )
+    return [
+        _approve_one(session, rid, reviewer=reviewer,
+                     decision_date=decision_date, note=note)
+        for rid in requirement_identifiers
+    ]
+
+
+def _approve_one(
+    session: Session, rid: str, *, reviewer: str, decision_date: str,
+    note: str | None,
+) -> dict:
+    try:
+        row = _requirement.get_requirement(session, rid)
+    except NotFoundError:
+        return {"identifier": rid, "outcome": "failed",
+                "decision_identifier": None,
+                "reason": f"requirement {rid} not found"}
+    if row["requirement_status"] == "confirmed":
+        return {"identifier": rid, "outcome": "already_confirmed",
+                "decision_identifier": None, "reason": None}
+
+    note_clause = f" Reviewer note: {note}" if note else ""
+    summary = (
+        f"Records {reviewer}'s human review and approval of requirement {rid} "
+        "for delivery. The reviewer examined the requirement's current statement "
+        "in the Requirements Review panel and approved it through the governed "
+        "approving-decision path, which confirms the requirement only after its "
+        "readability, provenance, and topic gates pass — never by editing the "
+        f"status field.{note_clause}"
+    )
+    try:
+        with session.begin_nested():
+            dec = _decisions.create(
+                session,
+                title=f"Approve {rid} for delivery",
+                decision_date=decision_date,
+                status="Active",
+                context=(
+                    f"{reviewer} reviewed requirement {rid} in the Requirements "
+                    f"Review panel and approved it for delivery.{note_clause}"
+                ),
+                decision=(
+                    f"Approve {rid} for delivery through the governed "
+                    "approving-decision path."
+                ),
+                rationale=(
+                    "Human review and approval recorded as a governed decision, "
+                    "not a status edit; the approving-decision edge confirms the "
+                    "requirement only if its gates pass."
+                ),
+                executive_summary=summary,
+            )
+            did = dec["identifier"]
+            _references.create(
+                session,
+                source_type="requirement", source_id=rid,
+                target_type="decision", target_id=did,
+                relationship="requirement_approved_by_decision",
+            )
+        return {"identifier": rid, "outcome": "confirmed",
+                "decision_identifier": did, "reason": None}
+    except (UnprocessableError, ValidationError) as exc:
+        # The savepoint rolled the decision + edge back; surface the gate's own
+        # message so the reviewer learns *what to fix*, not merely *that* it failed.
+        reason = str(exc.errors[0]) if getattr(exc, "errors", None) else str(exc)
+        return {"identifier": rid, "outcome": "failed",
+                "decision_identifier": None, "reason": reason}
