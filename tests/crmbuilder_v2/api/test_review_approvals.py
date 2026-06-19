@@ -105,3 +105,42 @@ def test_reviewer_required(client):
     assert r.status_code == 422
     assert client.get(f"/requirements/{rid}").json()["data"][
         "requirement_status"] == "candidate"
+
+
+def test_confirm_records_governed_decision_naming_reviewer_and_edge(client):
+    """Contract acceptance #3 + Actor: each confirmed requirement gets a governed
+    approving decision authored by — and naming — the reviewer, plus a
+    ``requirement_approved_by_decision`` edge to it. Confirmation is *only* via
+    that governed path, never a status edit."""
+    rid = _rooted(client, "Edge and decision")
+    res = _approve(client, [rid], reviewer="Dana Reviewer").json()["data"][0]
+    assert res["outcome"] == "confirmed"
+    did = res["decision_identifier"]
+
+    dec = client.get(f"/decisions/{did}").json()["data"]
+    assert dec["status"] == "Active"  # a real, active governed decision
+    # the reviewer is named on the record, and the requirement under review cited
+    assert "Dana Reviewer" in dec["context"]
+    assert "Dana Reviewer" in dec["executive_summary"]
+    assert rid in dec["context"]
+
+    # the approving-decision edge exists from the requirement to that decision
+    edges = client.get(
+        "/references",
+        params={"target_id": did,
+                "relationship_kind": "requirement_approved_by_decision"},
+    ).json()["data"]
+    assert any(e["source_id"] == rid and e["target_id"] == did for e in edges)
+
+
+def test_reviewer_note_is_folded_into_the_decision(client):
+    """Contract Effects: a reviewer note is carried into the approving decision's
+    context and summary, so the rationale travels with the governed record."""
+    rid = _rooted(client, "Noted approval")
+    did = _approve(
+        client, [rid], reviewer="Dana Reviewer",
+        note="Confirmed scope with the PM on 06-18.",
+    ).json()["data"][0]["decision_identifier"]
+    dec = client.get(f"/decisions/{did}").json()["data"]
+    assert "Confirmed scope with the PM on 06-18." in dec["context"]
+    assert "Confirmed scope with the PM on 06-18." in dec["executive_summary"]
