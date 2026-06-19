@@ -93,6 +93,14 @@ def composition(identifier: str):
         return ok(releases.composition(s, identifier))
 
 
+@router.get("/{identifier}/planning-item-status-counts")
+def planning_item_status_counts(identifier: str):
+    """The count of the release's in-scope planning items per lifecycle status,
+    covering every status present (REQ-242). 404 when the release is unknown."""
+    with readonly_session() as s:
+        return ok(releases.planning_item_status_counts(s, identifier))
+
+
 @router.get("/{identifier}/versions")
 def versions(identifier: str):
     """Every artifact-version snapshot this release introduced (PI-208 provenance)."""
