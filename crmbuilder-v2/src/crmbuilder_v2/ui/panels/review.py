@@ -720,12 +720,21 @@ class ReviewPanel(ListDetailPanel):
                 seen.append(rid)
         return seen
 
-    def _on_approval_context_menu(self, position) -> None:
+    def _build_approval_context_menu(self) -> QMenu | None:
+        """Right-click menu for the approval queue, or ``None`` if nothing is
+        selected. Returned (not exec'd) so the action wiring is unit-testable,
+        mirroring the other governance panels' ``_build_context_menu``."""
         if not self._approval_tree.selectedItems():
-            return
+            return None
         menu = QMenu(self._approval_tree)
         act = menu.addAction("Approve selected…")
         act.triggered.connect(self._on_approve_selected)
+        return menu
+
+    def _on_approval_context_menu(self, position) -> None:
+        menu = self._build_approval_context_menu()
+        if menu is None:
+            return
         menu.exec(self._approval_tree.viewport().mapToGlobal(position))
 
     def _on_approve_selected(self) -> None:

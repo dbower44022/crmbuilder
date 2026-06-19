@@ -91,3 +91,37 @@ def test_selected_ids_dedupe_and_read_column_zero(review_client, qtbot):
     ])
     panel._approval_tree.selectAll()
     assert panel._selected_approval_ids() == ["REQ-100", "REQ-101"]
+
+
+def test_right_click_offers_approve_action_wired_to_handler(
+    review_client, qtbot, monkeypatch
+):
+    """The right-click context menu on a selected row offers Approve (REQ-251),
+    wired to the same handler the upper-right button uses."""
+    panel = ReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    panel._fill_approval([
+        {"identifier": "REQ-100", "name": "A", "has_provenance": True, "has_topic": True},
+    ])
+    panel._approval_tree.selectAll()
+
+    called: list[bool] = []
+    monkeypatch.setattr(panel, "_on_approve_selected", lambda: called.append(True))
+
+    menu = panel._build_approval_context_menu()
+    assert menu is not None
+    actions = [a for a in menu.actions() if not a.isSeparator()]
+    assert [a.text() for a in actions] == ["Approve selected…"]
+    actions[0].trigger()
+    assert called == [True]
+
+
+def test_right_click_with_no_selection_builds_no_menu(review_client, qtbot):
+    """With nothing selected the right-click is a no-op — no menu is built."""
+    panel = ReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    panel._fill_approval([
+        {"identifier": "REQ-100", "name": "A", "has_provenance": True, "has_topic": True},
+    ])
+    panel._approval_tree.clearSelection()
+    assert panel._build_approval_context_menu() is None
