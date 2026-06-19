@@ -347,3 +347,69 @@ def test_ship_leaves_planned_project_untouched(v2_env):
         # project left at its create-default "planned"
         _drive_to_shipped(s, rel)
         assert projects.get_project(s, prj)["project_status"] == "planned"
+
+
+# ---------------------------------------------------------------------------
+# Planning-item status counts (REQ-242 / WTK-178)
+# ---------------------------------------------------------------------------
+
+
+def _add_pi(s, prj, *, title, status):
+    """Create a planning item, scope it to ``prj``, set its status."""
+    pi = planning_items.create(
+        s,
+        title=title,
+        item_type="pending_work",
+        executive_summary="x" * 250,
+        area=["storage"],
+    )["identifier"]
+    _link(s, "planning_item", pi, "project", prj, "planning_item_belongs_to_project")
+    _set_pi_status(s, pi, status)
+    return pi
+
+
+def test_status_counts_groups_in_scope_pis_by_status(v2_env):
+    with session_scope() as s:
+        rel, pi, _ = _scoped_release(s, title="CNT")
+        prj = releases._in_scope_projects(s, rel)[0]
+        _set_pi_status(s, pi, "Draft")
+        _add_pi(s, prj, title="PI-cnt-2", status="Ready")
+        _add_pi(s, prj, title="PI-cnt-3", status="Ready")
+        _add_pi(s, prj, title="PI-cnt-4", status="Resolved")
+        out = releases.planning_item_status_counts(s, rel)
+        assert out["release_identifier"] == rel
+        assert out["status_counts"] == {"Draft": 1, "Ready": 2, "Resolved": 1}
+        assert out["total"] == 4
+
+
+def test_status_counts_omits_absent_statuses_and_orders_by_lifecycle(v2_env):
+    # Only statuses actually present appear (no zeros), in lifecycle order even
+    # when inserted out of order.
+    with session_scope() as s:
+        rel, pi, _ = _scoped_release(s, title="ORD")
+        prj = releases._in_scope_projects(s, rel)[0]
+        _set_pi_status(s, pi, "Resolved")
+        _add_pi(s, prj, title="PI-ord-2", status="Draft")
+        _add_pi(s, prj, title="PI-ord-3", status="In Progress")
+        out = releases.planning_item_status_counts(s, rel)
+        assert list(out["status_counts"]) == ["Draft", "In Progress", "Resolved"]
+        assert "Ready" not in out["status_counts"]
+
+
+def test_status_counts_empty_when_no_in_scope_pis(v2_env):
+    with session_scope() as s:
+        rel = _make(s, title="EMPTY")["release_identifier"]
+        out = releases.planning_item_status_counts(s, rel)
+        assert out == {
+            "release_identifier": rel,
+            "status_counts": {},
+            "total": 0,
+        }
+
+
+def test_status_counts_unknown_release_404(v2_env):
+    from crmbuilder_v2.access.exceptions import NotFoundError
+
+    with session_scope() as s:
+        with pytest.raises(NotFoundError):
+            releases.planning_item_status_counts(s, "REL-999")

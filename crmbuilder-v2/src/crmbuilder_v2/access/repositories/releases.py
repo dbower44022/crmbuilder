@@ -135,6 +135,53 @@ def composition(session: Session, identifier: str) -> dict:
     return {"release_identifier": identifier, "projects": out}
 
 
+# Canonical lifecycle order for the status-counts report (REQ-242). Only statuses
+# actually present among the in-scope planning items appear in the output; this
+# ordering only makes that output stable and readable (lifecycle, not alphabetic).
+_PI_STATUS_ORDER = (
+    "Draft",
+    "Decomposed",
+    "Ready",
+    "In Progress",
+    "In Review",
+    "Resolved",
+    "Deferred",
+    "Cancelled",
+)
+
+
+def planning_item_status_counts(session: Session, identifier: str) -> dict:
+    """Count the release's in-scope planning items per lifecycle status (REQ-242).
+
+    Walks the release scope (``project_belongs_to_release`` →
+    ``planning_item_belongs_to_project``) and tallies each in-scope planning
+    item by its ``status``. ``status_counts`` covers every status present — a
+    status with no in-scope item is omitted, never reported as a zero — ordered
+    by the lifecycle sequence for a stable, at-a-glance read of how much release
+    work remains and in what state. ``total`` is the in-scope planning-item
+    count. 404 when the release does not exist.
+    """
+    from crmbuilder_v2.access.repositories import planning_items
+
+    _get_row(session, identifier)
+    counts: dict[str, int] = {}
+    for prj in _in_scope_projects(session, identifier):
+        for pi in _in_scope_planning_items(session, prj):
+            status = planning_items.get(session, pi)["status"]
+            counts[status] = counts.get(status, 0) + 1
+    ordered = {
+        status: counts[status] for status in _PI_STATUS_ORDER if status in counts
+    }
+    # Any status outside the known lifecycle order (defensive) is appended sorted.
+    for status in sorted(set(counts) - set(_PI_STATUS_ORDER)):
+        ordered[status] = counts[status]
+    return {
+        "release_identifier": identifier,
+        "status_counts": ordered,
+        "total": sum(ordered.values()),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Composition / scope traversal helpers
 # ---------------------------------------------------------------------------
