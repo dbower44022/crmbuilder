@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from crmbuilder_v2.access import planning
 from crmbuilder_v2.access import release_orchestration as orch
 from crmbuilder_v2.access.db import session_scope
+from crmbuilder_v2.access.engagement_scope import active_engagement
 from crmbuilder_v2.access.vocab import SYSTEM_AREA_RANKS as _SYSTEM_AREA_RANKS
 
 # ---------------------------------------------------------------------------
@@ -197,6 +198,26 @@ class ReleaseRuntime:
         self.cfg = config
 
     def run(self) -> ReleaseRunReport:
+        # Scope every in-process session_scope() write below to the engagement
+        # the release actually lives in, so engagement-scoped rows
+        # (release_demands, reconciliation records, …) get a non-NULL
+        # engagement_id stamped by the flush hook instead of failing the NOT
+        # NULL constraint. Derived from the release row itself — when it has no
+        # engagement_id (unscoped data, e.g. tests) the contextvar stays None
+        # and the scope filter is dormant, exactly as before. (The dev-lane ADO
+        # runner is scoped separately via its X-Engagement header.)
+        with active_engagement(self._release_engagement()):
+            return self._run()
+
+    def _release_engagement(self) -> str | None:
+        """The release's own engagement_id (read unscoped), or None when unset."""
+        from crmbuilder_v2.access.repositories import releases
+
+        with session_scope() as s:
+            rel = releases.get_release(s, self.cfg.release_identifier)
+        return (rel or {}).get("engagement_id")
+
+    def _run(self) -> ReleaseRunReport:
         rid = self.cfg.release_identifier
         report = ReleaseRunReport(release_identifier=rid)
         dev_lane = self.cfg.pi_runner is not None
@@ -605,12 +626,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--base-branch", default="main")
     parser.add_argument("--max-concurrent", type=int, default=2)
+    parser.add_argument("--engagement", default="CRMBUILDER",
+                        help="engagement identifier (ENG-NNN) or code the release "
+                        "lives in; scopes the loop's in-process writes")
     args = parser.parse_args(argv)
 
     demands_provider, decomposition_provider = anthropic_providers()
     pi_runner = ado_pi_runner(
         repo_root=args.repo_root, base_branch=args.base_branch,
-        max_concurrent=args.max_concurrent,
+        max_concurrent=args.max_concurrent, engagement=args.engagement,
     ) if args.dev_lane else None
     gate_runner = None
     if args.dev_lane and not args.manual_gates:
