@@ -2004,18 +2004,26 @@ RBAC_ROLES: frozenset[str] = frozenset(
 )
 
 # Coarse permission verbs (PI-γ §5: start coarse; finer per-entity perms only
-# if a real need appears). ``claim`` is the ADO claim/release action perm.
+# if a real need appears). ``claim`` is the ADO claim/release action perm;
+# ``approve`` is the reviewer capability — completing a human requirement review
+# by recording a governed approving decision (REQ-251 / WTK-177). It is its own
+# verb, not generic ``create``, so authorization to approve can be granted and
+# enforced distinctly from authorization to author content.
 RBAC_PERMISSIONS: frozenset[str] = frozenset(
-    {"read", "create", "update", "delete", "admin", "claim"}
+    {"read", "create", "update", "delete", "admin", "claim", "approve"}
 )
 
 # Role → permitted operations. ``owner`` is total (includes ``admin``, the
-# system/shared-table + token-minting gate). ``editor`` writes content but not
-# admin; ``viewer`` reads only. The agent-tier roles can read, write, and claim
-# work within their assigned engagement, but never ``admin``.
+# system/shared-table + token-minting gate). ``editor`` writes content and acts
+# as the reviewer persona (``approve``) but is not ``admin``; ``viewer`` reads
+# only. The agent-tier roles can read, write, and claim work within their
+# assigned engagement, but never ``admin`` and never ``approve`` — confirming a
+# requirement is a human review, not an agent action.
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "owner": RBAC_PERMISSIONS,
-    "editor": frozenset({"read", "create", "update", "delete", "claim"}),
+    "editor": frozenset(
+        {"read", "create", "update", "delete", "claim", "approve"}
+    ),
     "viewer": frozenset({"read"}),
     "orchestrator": frozenset(
         {"read", "create", "update", "delete", "claim"}
