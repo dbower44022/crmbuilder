@@ -26,9 +26,11 @@ Release pipeline (PRJ-031)        release_runtime.py        ← outermost conduc
                  └─ Worker agent   agent_runtime.py + dispatcher.py
 ```
 
-> 📐 **Editable diagram:** [`Agent-System-Runtime-Layers.drawio`](Agent-System-Runtime-Layers.drawio)
-> — open in [draw.io](https://app.diagrams.net) or the VS Code Draw.io extension.
-> (The end-to-end pipeline flow is in `Agent-System-Flow.drawio`, rendered in
+> 📐 **Diagram files:** [`Agent-System-Runtime-Layers.svg`](Agent-System-Runtime-Layers.svg)
+> — an editable SVG (renders on GitHub *and* opens for editing in
+> [draw.io](https://app.diagrams.net) / the VS Code Draw.io extension); raw
+> source: [`Agent-System-Runtime-Layers.drawio`](Agent-System-Runtime-Layers.drawio).
+> (The end-to-end pipeline flow is `Agent-System-Flow.svg`, shown in
 > `Agent-System-Overview.md` §2.)
 
 Each runtime composes the one below it. Around the edges sit the **substrate
