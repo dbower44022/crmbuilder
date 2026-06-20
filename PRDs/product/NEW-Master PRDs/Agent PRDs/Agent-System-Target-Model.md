@@ -34,8 +34,18 @@
    failed`. (`needs_human` = blocked on a decision or review; `failed` =
    errored, eligible for retry/correction.)
 5. **Naming.** The orchestration layer is the **"scheduler"** (not "runtime").
-   Use **descriptive** names. **Every term is defined in the glossary (§7); no
+   Use **descriptive** names. **Every term is defined in the glossary (§8); no
    new term — in docs or code — is used without Doug's approval.**
+6. **Agent naming.** Per-area Agents are named **`<Area> <Tier> Agent`** — Area
+   title-cased from the System/Engagement area; Tier ∈ {Architect, Developer,
+   Tester} — e.g. **Storage Developer Agent**, **API Architect Agent**, **UI
+   Tester Agent**. Maps 1:1 to the registry `(area, tier)` key; scales to new
+   engagement areas automatically; build areas get all three tiers,
+   design/methodology areas Architect-only. The three **release-level Agents**
+   keep **task-descriptive** names (display = function; registry key stays
+   structural): **Reconciliation Agent** `(model, architect)`,
+   **Architecture-Planning Agent** `(planning, architect)`, **Release-gate
+   Agent** `(release, pi_lead)`.
 
 ---
 
@@ -324,16 +334,19 @@ implementation, each layer consuming the prior, no redundancy.
 | D12 | 2026-06-20 | **Release-level QA gate (§4.9) + Test gate (§4.10)** — the Release-gate Agent (AGP-005) judges the **assembled whole**: QA = conformance (design covers every requirement, no contradictions), Test = functional (processes hold end-to-end). Deterministic **fail-closed floor** (no requirements/designs → auto-fail → `needs_human`); a `failed` gate **bounces** to the back half, findings driving rework. |
 | D13 | 2026-06-20 | **Final human Ship Approval (§4.11)** — option B: shipping requires a human sign-off, **symmetric to freeze** (human commits at both ends). Test gate `succeeded` → Ship Approval → deployment → shipped. **The pipeline (§4.1–§4.11) is now fully defined.** |
 | D14 | 2026-06-20 | **Not-all-PIs-ready rule** — option C: the **freeze gate** requires every in-scope PI to be **`ready`** *or* **explicitly deferred** by a human to a future release. No silent auto-defer (built's behavior); no hard stall (pure all-or-nothing). "Ready" = requirements confirmed + no blocker outside this release (§3). |
+| D15 | 2026-06-20 | **Agent naming** (principle 1.6) — per-area Agents = `<Area> <Tier> Agent` (e.g. Storage Developer Agent), 1:1 with the registry `(area, tier)` key, scaling to engagement areas; the three release-level Agents keep task-descriptive names (Reconciliation Agent, Architecture-Planning Agent, Release-gate Agent). **Closes the last open item — the target model is complete.** |
 
 ---
 
-## 7. OPEN questions / pending divergences
+## 7. Resolved questions (target model complete — D1–D15)
 
-- **Final per-`(area, tier)` Agent display names** — e.g. the Data / API / UI
-  design-, develop-, and test-Agents (per principle 1.5).
-- *(Resolved: Divergence 1 → §3, D4; Arch-Planning/Design boundary → D7;
-  Divergence 2 back-half shape → per-area, D9; specialty/matrix-org agents →
-  the per-`(area, tier)` Agents, D9.)*
+**No open items.** How the diff's divergences and open questions were settled:
+- *Divergence 1 (trigger)* → §3, D4
+- *Arch-Planning / Design boundary* → D7
+- *Divergence 2 (back-half execution shape)* → per-area, D9
+- *Specialty / matrix-org agents* → the per-`(area, tier)` Agents (D9), named D15
+- *Not-all-PIs-ready* → freeze-gate rule, D14
+- *Agent naming* → D15
 
 ---
 
