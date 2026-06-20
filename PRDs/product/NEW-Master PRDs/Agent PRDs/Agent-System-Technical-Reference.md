@@ -26,6 +26,11 @@ Release pipeline (PRJ-031)        release_runtime.py        ← outermost conduc
                  └─ Worker agent   agent_runtime.py + dispatcher.py
 ```
 
+> 📐 **Editable diagram:** [`Agent-System-Runtime-Layers.drawio`](Agent-System-Runtime-Layers.drawio)
+> — open in [draw.io](https://app.diagrams.net) or the VS Code Draw.io extension.
+> (The end-to-end pipeline flow is in `Agent-System-Flow.drawio`, rendered in
+> `Agent-System-Overview.md` §2.)
+
 Each runtime composes the one below it. Around the edges sit the **substrate
 repositories** (the deterministic REST/access functions the runtimes call), the
 **registry** (which supplies each spawned agent its contract), and the

@@ -1,0 +1,31 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="runtime-layers" name="Runtime Layer Cake">
+    <mxGraphModel dx="900" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- nested layers: each composes the one inside it; declared outer-first so inner sit on top -->
+        <mxCell id="L0" value="&lt;b&gt;Release pipeline (PRJ-031)&lt;/b&gt;&lt;br&gt;release_runtime.py — outermost conductor" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontSize=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="700" height="430" as="geometry" />
+        </mxCell>
+        <mxCell id="L1" value="&lt;b&gt;ADO PI driver (PI-143)&lt;/b&gt;&lt;br&gt;ado_runtime.py — drives ONE Planning Item" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="90" y="110" width="600" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="L2" value="&lt;b&gt;Parallel pool (PI-139)&lt;/b&gt;&lt;br&gt;parallel_runtime.py — runs ONE phase&#39;s Work Tasks" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;fontSize=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="140" y="180" width="500" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="L3" value="&lt;b&gt;Serial loop (PI-132)&lt;/b&gt;&lt;br&gt;coordinating_runtime.py — spawn → verify → merge ONE agent" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontSize=12;spacingTop=6;" vertex="1" parent="1">
+          <mxGeometry x="190" y="250" width="400" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="L4" value="&lt;b&gt;Worker agent&lt;/b&gt;&lt;br&gt;agent_runtime.py + dispatcher.py&lt;br&gt;(the spawned Area Specialist Agent)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="240" y="310" width="300" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="CAP" value="Each layer composes the one inside it. Around the edges sit the substrate repositories (deterministic REST/access functions), the Agent Profile Registry (supplies each spawned agent its contract), and the concurrency locks." style="text;html=1;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=11;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="490" width="700" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

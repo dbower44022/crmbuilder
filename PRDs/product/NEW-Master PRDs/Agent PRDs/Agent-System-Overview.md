@@ -154,6 +154,11 @@ flowchart TD
     TEST -->|fail| DEV
 ```
 
+> 📐 **Editable diagram:** [`Agent-System-Flow.drawio`](Agent-System-Flow.drawio)
+> — open in [draw.io](https://app.diagrams.net) or the VS Code Draw.io extension.
+> (The Mermaid version above renders inline on GitHub; the `.drawio` is the
+> editable source of the same flow.)
+
 *(If a release fails QA or Test it "bounces back" to Development and must pass
 both again — nothing ships unverified.)*
 
