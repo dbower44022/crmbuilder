@@ -9,6 +9,45 @@
 
 ---
 
+## Status amendment — SES-216 (06-20-26): agent-contract hardening & batch unit
+
+A subsequent design walk of the *running* pipeline (SES-216, project **PRJ-039**
+"Release Pipeline Agent Hardening" / topic **TOP-099**; observability under **PRJ-040** /
+**TOP-100**) refines this agent-layer design. The **DB requirement/decision records are
+authoritative** for these points — all **candidate / needs_review pending
+Requirements-Review approval; nothing built.** This doc is updated only to point at them:
+
+- **Strict, DB-stored contracts (REQ-278).** Every agent's contract must be a strict job
+  card — role/scope, hard MUST/MUST-NOT guidelines (not advisory), explicit deliverables
+  with a checkable done-condition, and reporting requirements — and must *match what the
+  agent actually does*. (Today AGP-003's reconciliation prompt over-claims authority; the
+  sole worker profile AGP-002 is generic + advisory.) Refines confirmed REQ-021.
+- **Hard area constraints + technology variants (REQ-280, REQ-281).** Build-area contracts
+  must encode *enforced* technology/framework, design-system/palette, convention, and
+  testing constraints; and the model must support multiple **technology variants of one
+  functional area** (Desktop-UI vs Web-UI, coexisting in one project) as distinct routable
+  profiles keyed `(area × technology × tier)`. The "broad catalog of system-default agents,
+  customizable per engagement" vision is **already CONFIRMED** (REQ-004/044/045/046/252) —
+  REQ-282 was rejected as a duplicate of it (DEC-553).
+- **Area-phase batch unit (REQ-283 / DEC-554).** An area expert builds its whole area for a
+  phase as ONE batch across the release (one worktree/branch per area per phase), not one
+  process per Work Task per PI — context loaded once, intra-area sequencing internal,
+  size-capped. Generalizes confirmed REQ-208 (single train of thought) to all passes;
+  operationalizes deferred REQ-061. **Amends confirmed REQ-024** (per-PI granularity, DEC-555)
+  and **REQ-027/031** (coherence check → release scope, DEC-556), all reopened to needs_review.
+- **Verified handoffs (REQ-279) + observability (REQ-277).** Receiving agents validate their
+  inputs before starting (conductor-side *result* verification is confirmed REQ-057); and the
+  pipeline needs a single durable, queryable progress/agent-activity log (today: fragmented
+  across DB statuses, ephemeral stdout, and scattered `~/.claude` transcripts).
+- **The concrete worker-contract template** these imply (sections A–H, with system/area/
+  per-task fill-sources) is sketched in the SES-216 transcript and
+  `CLAUDE-CODE-PROMPT-agent-architecture-walk-part2.md`.
+
+Authoritative records: TOP-099 / TOP-100, requirements REQ-277…283 (+ REQ-024/027/031/273/274),
+decisions DEC-552…556.
+
+---
+
 ## 0. Why this document exists — the originating seam
 
 This evolution started from one concrete question while preparing to execute PI-122's Architecture phase:

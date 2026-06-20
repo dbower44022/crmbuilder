@@ -7,6 +7,25 @@
 
 ---
 
+## Status amendment — SES-216 (06-20-26): substrate touchpoints
+
+The SES-216 hardening walk (PRJ-039 / TOP-099) leaves the substrate *model* here unchanged
+but revises two behaviors it drives (DB records authoritative; candidate/needs_review,
+nothing built):
+
+- **Decompose granularity (REQ-283 / DEC-554):** the architect creates one **area-phase
+  batch across the release**, not one Work Task per area per planning item — so
+  `decomposition.py` / the decompose endpoint and **confirmed REQ-024** (reopened, narrowed,
+  DEC-555) change to emit release-level area batches.
+- **Phase gate / coherence check (REQ-027/031, amended to release scope, DEC-556):** the
+  confirmed cross-area coherence gate is **UNBUILT** — `lead.complete_phase` advances on
+  "all tasks Complete" and never runs it, though the `finding` substrate (PI-134) exists.
+  Wiring it is a PRJ-039 build gap.
+
+See the evolution doc's SES-216 amendment and TOP-099 for the full set.
+
+---
+
 ## Status
 
 This document specifies the **Agent Delivery Organization** (ADO) that DEC-343 adopted

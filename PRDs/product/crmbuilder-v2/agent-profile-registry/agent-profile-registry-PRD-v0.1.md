@@ -7,6 +7,29 @@
 
 ---
 
+## Status amendment — SES-216 (06-20-26): what the registry must hold
+
+The SES-216 hardening walk (PRJ-039 / TOP-099) sharpens the registry's required *content*
+(DB records authoritative; candidate/needs_review, nothing built):
+
+- Every profile is a **strict contract** — role/scope, hard MUST/MUST-NOT guidelines,
+  explicit deliverables + a checkable done-condition, reporting requirements; and it must
+  *match the agent's actual behavior* (REQ-278, refines REQ-021).
+- Build-area profiles carry **enforced hard constraints** — technology/framework,
+  design-system/palette, conventions, testing idioms (REQ-280).
+- Profiles are keyed by **`(area × technology × tier)`** to support technology variants of
+  one area (Desktop-UI vs Web-UI) coexisting in one engagement (REQ-281).
+- The **system-default + per-engagement-customization** model this PRD targets is already
+  CONFIRMED (REQ-004/044/045/046/252); REQ-282 (a restatement) was rejected as a duplicate.
+- **Gap today:** only AGP-001…005 exist; the sole worker profile AGP-002 (storage/developer)
+  is generic + advisory and is string-substituted for every area — the REQ-273 area-match gap.
+- The concrete worker-contract template (sections A–H) is in
+  `CLAUDE-CODE-PROMPT-agent-architecture-walk-part2.md`.
+
+Authoritative records: TOP-099, requirements REQ-273/277/278/280/281/283, decisions DEC-552…556.
+
+---
+
 ## Status & positioning
 
 This PRD specifies an **Agent Profile Registry**: the centrally-managed store of *what each agent knows and is allowed to do* — its skills and its governance rules — so that capabilities can be managed in one place even when agents run dispersed.
