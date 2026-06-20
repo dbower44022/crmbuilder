@@ -27,8 +27,10 @@ trickle of tiny changes). Here is everyone who works there and what they do.
 writes it down as **requirements** (plain-language statements of "we need X, and
 here's why"). Nothing gets built until a human has approved a requirement — this
 is a hard rule. The humans also group work into **Projects** (long-running
-themes) and **Planning Items** (individual jobs inside a project), and they
-decide which jobs go into the next **Release**.
+themes); inside each project are **Planning Items (PIs)** — one Planning Item is
+a single unit of work to build (think of an item on a to-do list). When it's
+time to ship, the humans choose which whole **Projects** go into the next
+**Release**, and each project carries its Planning Items along.
 
 **Then a human "freezes the plan."** Freezing is the moment the humans hand the
 work off to the machine. Before the freeze, planning is loose and people can
@@ -40,30 +42,48 @@ before, cold and orderly after.)
 **Now the AI org takes over.** Picture four levels of staff:
 
 ```
-Project Manager  →  picks the next ready job and hands it to a Lead
-   PI Lead       →  runs one job through its phases, opening each in turn
-      Phase Specialist  →  decides the to-do list for one phase
-         Area Specialist  →  actually does one item on that list
+Project Manager Agent     →  picks the next ready Planning Item, hands it to a Lead
+   PI Lead Agent          →  runs one Planning Item through its phases, in order
+      Phase Specialist Agent  →  decides the to-do list for one phase
+         Area Specialist Agent  →  actually does one item on that list
 ```
 
-- A **Project Manager** looks at all the jobs in a project, figures out which
-  one is ready to start (its prerequisites are done), and hands it to a Lead.
-- A **PI Lead** takes one job and walks it through a fixed sequence of
+**All four levels are AI agents — software, not people.** The humans already did
+their part (writing and approving the requirements, grouping the work, and
+freezing the plan); from the freeze onward this whole org runs by itself, and a
+human is only pulled back in when an agent raises a `needs_attention` flag. So
+"Project Manager Agent," "PI Lead Agent," and so on are roles played by AI
+programs, not job titles for staff.
+
+> **Naming convention.** Every agent's name ends in the word **"Agent"** —
+> Project Manager Agent, PI Lead Agent, Phase Specialist Agent, Area Specialist
+> Agent, and so on. The rule cuts both ways: if a name does *not* end in
+> "Agent," it is *not* an agent. (For example, the **runtime/conductor** is a
+> program that *spawns* agents but is not itself one, so it carries no "Agent"
+> suffix.)
+
+- A **Project Manager Agent** (the top tier) looks at all the Planning Items in a
+  project, figures out
+  which one is ready to start (its prerequisites are done), and hands it to a Lead.
+- A **PI Lead Agent** takes one Planning Item and walks it through a fixed sequence of
   **phases**: first *Design* (figure out exactly what to build), then *Develop*
   (write the code), then *Test* (prove it works).
-- For each phase, a **Phase Specialist** writes the to-do list — it breaks the
+- For each phase, a **Phase Specialist Agent** writes the to-do list — it breaks the
   phase into small, single-topic **Work Tasks** (e.g. "add the database column,"
   "add the API endpoint," "add the screen").
-- An **Area Specialist** is the worker who actually does one Work Task. Each one
+- An **Area Specialist Agent** is the worker who actually does one Work Task. Each one
   is a real AI coding agent that gets its own private copy of the codebase (a
   git "worktree"), does its one task, and its work is checked and merged in.
 
 **A coherence check before building.** When the Design phase finishes, the
-system checks that all the separate design decisions actually fit together
-before any code is written. Problems it spots are written down as **findings**
-(like sticky-note bugs: "these two designs contradict each other"). If there's a
-serious ("blocking") finding, the Develop phase is held until it's resolved. This
-is the **reconciliation gate**.
+system pauses to look for places where the separate design decisions don't fit
+together. Any problem it finds is written down as a **finding** (like a
+sticky-note bug: "these two designs contradict each other"), and while a serious
+("blocking") finding is open, the Develop phase is held until it's resolved. This
+is the **reconciliation gate**. (In practice the gate today is modest — it mainly
+confirms the Design step is finished and that no blocking finding is open; the
+deeper, automatic cross-area coherence checking is still mostly a goal, not yet
+fully built. See §4.)
 
 **Workers don't collide.** Because many workers can run at once, the system has
 **locks**: a worker "checks out" the files it's going to touch (like checking a
@@ -71,7 +91,7 @@ library book out), and nobody else can touch those files until it's done. There'
 also a special **migration lock** that pauses everyone whenever the database
 shape needs to change, so that risky step happens alone.
 
-**Shipping.** Once all the jobs in a release are built, the release goes through
+**Shipping.** Once all the Planning Items in a release are built, the release goes through
 two big gates: a **QA gate** (does the design cover every requirement, with no
 contradictions?) and a **Test gate** (do the real end-to-end processes work?).
 Pass both, and the release is **shipped**.
@@ -100,7 +120,7 @@ flowchart TD
     subgraph H["HUMAN PLANNING (warm temperature)"]
         REQ["Requirement\n(human-approved)"] --> PRJ["Project (PRJ)"]
         PRJ --> PI["Planning Items (PI)"]
-        PI --> RELplan["Release (REL)\nbatch the jobs"]
+        PI --> RELplan["Release (REL)\nbatch whole projects\n(+ their Planning Items)"]
     end
 
     RELplan -->|human FREEZES the plan| FREEZE{{"Plan Freeze\n= a transition,\nnot a switch"}}
@@ -113,11 +133,11 @@ flowchart TD
     end
 
     subgraph ADO["ADO DEV-ORG — runs each Planning Item (ado_runtime.py)"]
-        DEV["Development lane"] --> PM["Project Manager\ndispatch next eligible PI"]
-        PM --> LEAD["PI Lead\nopen each phase in order"]
+        DEV["Development lane"] --> PM["Project Manager Agent\ndispatch next eligible PI"]
+        PM --> LEAD["PI Lead Agent\nopen each phase in order"]
         LEAD --> DECOMP["Decompose\nPlan: Design→Develop→Test\nchained by blocked_by"]
-        DECOMP --> SCOPE["Phase Specialist\nscope phase → Work Tasks"]
-        SCOPE --> POOL["Area Specialists (workers)\nparallel pool, own git worktrees\n(parallel_runtime.py)"]
+        DECOMP --> SCOPE["Phase Specialist Agent\nscope phase → Work Tasks"]
+        SCOPE --> POOL["Area Specialist Agents (workers)\nparallel pool, own git worktrees\n(parallel_runtime.py)"]
         POOL --> GATE{{"Reconciliation gate\nDesign settled +\nno blocking findings (FND)?"}}
         GATE -->|yes| MERGE["verify by result →\nmerge each branch"]
         MERGE --> COMPLETE["complete phase →\nPI: In Review"]
@@ -130,13 +150,21 @@ flowchart TD
 
     LOCKS[("Locks\nfile/resource locks +\nmigration lock\nkeep workers apart")] -.guards.-> POOL
     REG[("Agent Profile Registry\nprofile + skills + rules +\nlearnings → contract")] -.supplies contract.-> POOL
-    REG -.supplies prompt.-> LEAD
     QA -->|fail| DEV
     TEST -->|fail| DEV
 ```
 
 *(If a release fails QA or Test it "bounces back" to Development and must pass
 both again — nothing ships unverified.)*
+
+*(**About the two "decompose" steps.** There are two ways work runs. In a
+**release-driven** run — the main path — decomposition and scoping happen up
+front, during Architecture Planning; the ADO then simply **executes** the
+already-scoped Work Tasks. In a **standalone** ADO run (one Planning Item, no
+release), the ADO does the decompose + scope steps itself, exactly as drawn in
+the lower box. So the `Decompose`/`scope phase` steps in the lower box and the
+"decompose into Work Tasks" in Architecture Planning are the **same work done in
+one place or the other**, never both.)*
 
 ---
 
@@ -167,7 +195,7 @@ with its 12-state pipeline, and the registry (resolver + lifecycle). What is
 - The registry is built but **lightly populated** — 5 agent profiles, 23 tool
   skills, 18 rules (only 1 enforced), and just 1 learning. The "living knowledge
   base that gets smarter every release" is mostly *capacity*, not yet *content*.
-- The **matrix org** (per-area Architect/Developer/Tester experts, cross-PI
+- The **matrix org** (per-area Architect Agent / Developer Agent / Tester Agent experts, cross-PI
   coordination, standing learning experts) is the **design direction**
   (`agent-delivery-organization-evolution.md`); the *built* runtime still drives
   the older four-tier PM→Lead→Phase→Area shape with a single generic worker
@@ -192,11 +220,11 @@ alphabetical index is at the very end.
   the job by itself, then stops. Here, most agents are AI programs that write or
   check code.
 - **ADO (Agent Delivery Organization).** The little company of robot helpers that
-  builds one job at a time. Like a toy factory with a boss, team leaders, and
-  workers. *(It used to be called the "Agent-Delivery Runtime" — same thing, nicer
+  builds one Planning Item at a time. Like a toy factory with a boss, team
+  leaders, and workers. *(It used to be called the "Agent-Delivery Runtime" — same thing, nicer
   name.)*
-- **Release pipeline.** The bigger assembly line that bundles lots of jobs into
-  one big delivery and makes sure the robots don't bump into each other. The toy
+- **Release pipeline.** The bigger assembly line that bundles lots of Planning
+  Items into one big delivery and makes sure the robots don't bump into each other. The toy
   factory (ADO) works *inside* this assembly line.
 - **Runtime / scheduler / conductor.** The program that says "you go now, you go
   next" — like the conductor of an orchestra waving the baton. It starts each
@@ -204,42 +232,52 @@ alphabetical index is at the very end.
   just software running the show.
 - **Engagement.** Which customer we're working for right now (like CRMBuilder
   itself, or the client "CBM"). Everything is tagged with the customer's name so
-  jobs for different customers never get mixed up. You tell the system the
+  work for different customers never gets mixed up. You tell the system the
   customer by adding a name tag (`X-Engagement`) to every request.
 
 ### The org (who the agents are)
 
-- **Agent tier.** Which level of the company an agent is — boss, team leader,
+*(Everyone in this section is an **AI agent — software, not a person.** The "boss"
+and "team leader" are roles played by programs. Humans only plan the work up
+front and step back in when an agent asks for help via `needs_attention`.)*
+
+- **Agent tier.** Which level of the AI org an agent is — boss, team leader,
   list-maker, or worker. Higher tiers decide; lower tiers do.
-- **Project Manager (PM).** The boss of one project. Looks at all the jobs,
-  picks the next one that's ready, and hands it to a team leader. Like the person
-  who decides which chore the family does next.
-- **PI Lead.** The team leader for one job. Walks that job through its steps in
-  order — first plan it, then build it, then test it.
-- **Phase Specialist.** The person who writes the to-do list for one step. They
-  break a big step into small jobs anyone can pick up.
-- **Area Specialist.** The worker who actually does one small job from the list.
+- **Project Manager Agent (PM).** An AI agent — the top tier (not a human). The
+  "boss" of one project: looks at all the Planning Items, picks the next one
+  that's ready, and hands it to a team leader. Like the person who decides which
+  chore the family does next, except it's automated.
+- **PI Lead Agent.** An AI agent — the team leader for one Planning Item. Walks it
+  through its steps in order — first plan it, then build it, then test it.
+- **Phase Specialist Agent.** An AI agent that writes the to-do list for one step.
+  It breaks a big step into small **Work Tasks** anyone can pick up.
+- **Area Specialist Agent.** An AI agent — the worker that actually does one **Work
+  Task** from the list.
   Each worker gets their own desk (a private copy of the code) so they don't
   scribble on someone else's work.
-- **Architect / Developer / Tester.** A newer plan for splitting up the workers
-  by skill: the **Architect** decides exactly what to build, the **Developer**
-  writes the code, and the **Tester** checks it works *without peeking* at the
-  Developer's code (so the check is honest). *(In the older plan, "Phase
-  Specialist" grew into "Architect" and "Area Specialist" grew into "Developer";
-  "Tester" is brand new.)*
+- **Architect Agent / Developer Agent / Tester Agent.** A newer plan for splitting
+  up the workers by skill: the **Architect Agent** decides exactly what to build,
+  the **Developer Agent** writes the code, and the **Tester Agent** checks it works
+  *without peeking* at the Developer Agent's code (so the check is honest). *(In
+  the older plan, the "Phase Specialist Agent" grew into the "Architect Agent" and
+  the "Area Specialist Agent" grew into the "Developer Agent"; the "Tester Agent"
+  is brand new.)*
 - **Orchestrator.** An older word for the conductor — the program that hands out
-  jobs and collects the finished work. The first version of it (the "Parallel
-  Agent Orchestrator") was retired and replaced by the ADO.
+  tasks and collects the finished work. (Per the naming convention, it has no
+  "Agent" suffix because it is the *scheduler that spawns* agents, not an agent
+  itself.) The first version of it (the "Parallel Agent Orchestrator") was retired
+  and replaced by the ADO.
 
 ### The "things" (entities the system keeps track of)
 
 - **Project (PRJ).** A big, long-running theme of work, like "the kitchen
-  remodel." It holds lots of smaller jobs. *(This used to be called a
+  remodel." It holds lots of smaller Planning Items. *(This used to be called a
   "Workstream" — confusingly, that word was then re-used for something else;
   see Workstream below.)*
-- **Planning Item (PI).** One job inside a project, like "install the new sink."
-  It's the main unit the robots build.
-- **Workstream (WSK).** One *step* of a single job — Design, Develop, or Test.
+- **Planning Item (PI).** One unit of work inside a project, like "install the
+  new sink." It's the main thing the robots build — picture an item on a to-do
+  list.
+- **Workstream (WSK).** One *step* of a single Planning Item — Design, Develop, or Test.
   *(Yes, the word "Workstream" was recycled: it used to mean the big theme that's
   now called a Project.)*
 - **Work Task (WTK).** One tiny single-topic to-do inside a step, like "tighten
@@ -248,7 +286,7 @@ alphabetical index is at the very end.
 - **Work Ticket (WT).** A note that kicks off a work *session* and points to the
   full instructions. Different from a Work Task — this one is about starting a
   conversation, not doing a build step.
-- **Release (REL).** A bundle of finished jobs that ship together, like packing
+- **Release (REL).** A bundle of finished Planning Items that ship together, like packing
   several wrapped presents into one box to deliver at once.
 - **Finding (FND).** A sticky-note that says "uh oh, these two plans don't agree"
   or "something's missing." A **blocking** finding stops the build until someone
@@ -256,7 +294,7 @@ alphabetical index is at the very end.
 - **Area.** The *kind* of work a task is. **System areas** are the fixed list
   baked into the code (database, screen, API, etc.). **Engagement areas** are
   extra kinds a specific customer adds for themselves.
-- **Phase / pass.** The big steps a job goes through: **Plan**, **Design**,
+- **Phase / pass.** The big steps a Planning Item goes through: **Plan**, **Design**,
   **Develop**, **Test**. (Today the build steps are named Design → Develop →
   Test; "Plan" is the act of making the to-do list.) *(An older version had six
   steps with different names like "Architecture," "Documentation," and
@@ -265,7 +303,7 @@ alphabetical index is at the very end.
   tools, rules, and lessons-learned for every kind of worker. It's how a robot
   knows who it is and what it's allowed to do.
 - **Agent profile (AGP).** One worker's job description in the cabinet — "you are
-  the database Architect."
+  the database Architect Agent."
 - **Skill (SKL).** A thing a worker knows how to do (an instruction) or a tool
   it's allowed to use.
 - **Governance rule (GVR).** A rule a worker must follow. Some are just advice
@@ -285,13 +323,13 @@ alphabetical index is at the very end.
 
 ### The verbs (what agents do)
 
-- **Decomposition.** Breaking one job into its steps (Design, Develop, Test) and
+- **Decomposition.** Breaking one Planning Item into its steps (Design, Develop, Test) and
   saying which must come first. Like splitting "make breakfast" into "crack eggs
   → cook eggs → serve."
 - **Scoping.** Writing the to-do list for one step. If a step turns out to have
   nothing to do, you mark it **Not Applicable** (you *looked* and there was
   genuinely nothing — that's different from skipping it).
-- **Dispatch.** The boss officially starting a job and handing it down. "Okay,
+- **Dispatch.** The boss officially starting a Planning Item and handing it down. "Okay,
   begin this one."
 - **Claim.** A worker grabbing a task so it's *theirs* and nobody else takes it.
   Like putting your name on the sign-up sheet.
@@ -301,9 +339,9 @@ alphabetical index is at the very end.
 
 ### The safety mechanisms (how nobody collides)
 
-- **blocked_by.** A "wait for this first" arrow between two jobs (or steps, or
-  tasks). It makes sure things happen in the right order.
-- **Gate model.** Each job, step, and task has a list of allowed moves between
+- **blocked_by.** A "wait for this first" arrow between two Planning Items (or
+  steps, or tasks). It makes sure things happen in the right order.
+- **Gate model.** Each Planning Item, step, and task has a list of allowed moves between
   states (like a board game where you can only move along certain lines). You
   can't skip ahead; a "gate" checks the rules before you move.
 - **needs_attention.** A flag a robot raises to say "a human should look at
@@ -338,7 +376,7 @@ alphabetical index is at the very end.
   nobody else can touch them, like checking a book out of the library. When
   done, it checks them back in.
 - **Migration lock.** A special pause-everyone lock used only when the database's
-  shape changes, so that risky job runs completely alone.
+  shape changes, so that risky step runs completely alone.
 - **Spawn-on-demand.** Robots aren't left running. Each is started fresh for its
   task, reads its job and memory from the database, does the work, and switches
   off. "Standing" just means the database remembers who it is.
@@ -350,18 +388,18 @@ alphabetical index is at the very end.
 
 | Acronym | Means | One-liner |
 |---|---|---|
-| **ADO** | Agent Delivery Organization | The org of robot helpers that builds a job. |
+| **ADO** | Agent Delivery Organization | The org of robot helpers that builds a Planning Item. |
 | **AGP** | Agent profile | One worker's job description in the registry. |
 | **FND** | Finding | A sticky-note: a clash or gap in the plans. |
 | **GVR** | Governance rule | A rule a worker must follow (advice or hard). |
 | **LRN** | Learning | A lesson the workers remembered from real work. |
-| **PI** | Planning Item | One job inside a project. |
-| **PM** | Project Manager | The boss who picks the next job. |
+| **PI** | Planning Item | One unit of work inside a project. |
+| **PM** | Project Manager Agent | The boss who picks the next Planning Item. |
 | **PRJ** | Project | A big long-running theme of work. |
 | **QA** | Quality Assurance | The gate checking the design covers everything. |
-| **REL** | Release | A bundle of finished jobs that ship together. |
+| **REL** | Release | A bundle of finished Planning Items that ship together. |
 | **SKL** | Skill | Something a worker knows or a tool it may use. |
-| **WSK** | Workstream | One step (Design/Develop/Test) of a job. |
+| **WSK** | Workstream | One step (Design/Develop/Test) of a Planning Item. |
 | **WT** | Work Ticket | A note that kicks off a work session. |
 | **WTK** | Work Task | One tiny single-topic to-do a worker claims. |
 

@@ -39,16 +39,28 @@ repositories** (the deterministic REST/access functions the runtimes call), the
    `repositories/reconciliation.py` (orchestration + conflict store). Across a
    frozen release; merges demand-sets into a conflict-free delta-set.
 
+**Naming convention.** Every agent's display name ends in the word **"Agent"**
+(Project Manager Agent, PI Lead Agent, Phase Specialist Agent, Area Specialist
+Agent, Architect Agent, Developer Agent, Tester Agent, Release Lead Agent,
+Reconciliation Agent, Architect Planning Agent). The converse holds: a thing
+whose name does *not* end in "Agent" is *not* an agent — e.g. the
+runtime/conductor/orchestrator is the scheduler that *spawns* agents, and the
+substrate repositories below are the deterministic functions agents call. **This
+convention applies to display names only.** The *code* spelling is unchanged and
+unsuffixed — tier enum values stay lowercase (`AGENT_PROFILE_TIERS = {architect,
+developer, tester, orchestrator, pi_lead}`), as do module names (`pm.py`,
+`lead.py`) and identifiers.
+
 **The four agent tiers and their substrates** (verified):
 
-| Tier | Role | Substrate module | Evolution name |
+| Tier | Agent (display name) | Substrate module | Evolution name |
 |---|---|---|---|
-| 1 | Project Manager | `access/repositories/pm.py` | (unchanged) |
-| 2 | PI Lead | `access/repositories/lead.py` | (unchanged) |
-| 3 | Phase Specialist | `access/repositories/decomposition.py` + `scoping.py` | → **Architect** (per-area) |
-| 4 | Area Specialist | `access/repositories/work_tasks.py` (claim lifecycle) | → **Developer** / **Tester** (per-area) |
+| 1 | Project Manager Agent | `access/repositories/pm.py` | (unchanged) |
+| 2 | PI Lead Agent | `access/repositories/lead.py` | (unchanged) |
+| 3 | Phase Specialist Agent | `access/repositories/decomposition.py` + `scoping.py` | → **Architect Agent** (per-area) |
+| 4 | Area Specialist Agent | `access/repositories/work_tasks.py` (claim lifecycle) | → **Developer Agent** / **Tester Agent** (per-area) |
 
-The Architect/Developer/Tester per-area split is the design direction in
+The Architect Agent / Developer Agent / Tester Agent per-area split is the design direction in
 `Archive/agent-delivery-organization-evolution.md` (DEC-368); the *built*
 runtime still drives the four-tier shape with a single generic worker prompt
 (see §11, Registry — live state).
@@ -173,7 +185,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ---
 
-## 2. Component: Project Manager (PM) substrate
+## 2. Component: Project Manager Agent (PM) substrate
 
 - **Name & purpose.** Tier-1 substrate. Deterministic, dependency-aware backlog
   over one Project; computes PI eligibility and dispatches an eligible PI.
@@ -202,7 +214,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ---
 
-## 3. Component: PI Lead substrate
+## 3. Component: PI Lead Agent substrate
 
 - **Name & purpose.** Tier-2 substrate. Per-PI phase state machine.
 - **Functionality.** `phase_overview` (every phase Workstream in canonical order
@@ -229,7 +241,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ---
 
-## 4. Component: Phase Specialist substrate — Decomposition
+## 4. Component: Phase Specialist Agent substrate — Decomposition
 
 - **Name & purpose.** Tier-3, the structural decomposer. Once-only step that
   creates all phase Workstreams and chains them serially.
@@ -253,7 +265,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ---
 
-## 5. Component: Phase Specialist substrate — Scoping
+## 5. Component: Phase Specialist Agent substrate — Scoping
 
 - **Name & purpose.** Tier-3, the scoping substrate. Records a phase's scope
   decision and feeds forward prior-phase output.
@@ -277,7 +289,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ---
 
-## 6. Component: Area Specialist substrate — Work Task lifecycle
+## 6. Component: Area Specialist Agent substrate — Work Task lifecycle
 
 - **Name & purpose.** Tier-4 substrate is the claim/lifecycle on the single-area
   `work_task` entity — the unit a worker agent actually executes.
@@ -447,7 +459,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   `scope / start / resume / done / pause / blocked`). `AdoRuntime.run()` is the
   per-PI loop (`_execute_phase`, `_resume_phase`, `_patch_pi_status`).
   `run_pool_for_workstream` is the pool seam (delegates to `parallel_runtime`).
-  Agent seams: `scope_phase_agent` (Architect scoping), `reconcile_phase_agent`
+  Agent seams: `scope_phase_agent` (Architect Agent scoping), `reconcile_phase_agent`
   (raises findings over a completed Design), `develop_gate_open` (phase-level
   Develop-gate consult), `review_close_pi` (closure reviewer). `task_branch_unmerged`
   is the PI-145 rollback-residue detector. `ProjectRuntime` adds `select_next_pi`,
@@ -515,7 +527,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ## 13. Component: Release-level QA/Test gate (`release_gate.py`)
 
-- **Name & purpose.** PI-223. The LLM "Release Lead" judge over the assembled
+- **Name & purpose.** PI-223. The LLM "Release Lead Agent" judge over the assembled
   release, with a deterministic fail-closed floor; supplies the `gate_runner`
   seam for the dev lane.
 - **Functionality.** `release_gate_context(release_identifier, stage)` (deterministic
@@ -559,7 +571,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   `open_correction_release` (creates a `release_corrects_release` edge);
   `delete_release` (soft).
 - **Triggers.** `/releases` REST + `/releases/{id}/transition`, `/qa-pass`,
-  `/test-pass`, `/composition`; driven by the Release Lead agent and the desktop
+  `/test-pass`, `/composition`; driven by the Release Lead Agent and the desktop
   Releases hub panel (PI-224).
 - **Inputs.** Edges read: `project_belongs_to_release`,
   `planning_item_belongs_to_project`, `planning_item_implements_requirement`,
@@ -684,6 +696,15 @@ re-derivable merge); `run_architecture_planning` (PI-218); `decompose_planning_i
 phase to `Ready`/`Not Applicable`; rejects duplicate phase types, REQ-258);
 `finalize_planning` (AL-4 — assert readiness, flip in-scope PIs
 `execution_mode interactive → ado`, transition `architecture_planning → ready`).
+
+**Two decomposition paths (reconciled).** Decomposition happens in *one* of two
+places, never both: (a) **release-driven** — `decompose_planning_item_direct`
+here, during Architecture Planning, drives each phase Workstream to `Ready`/`Not
+Applicable` so the ADO later just **executes** (DEC-529: "dev EXECUTES not
+re-scopes"); (b) **standalone ADO** — `crmbuilder-v2-ado` on a single PI calls
+the §4 `decomposition.decompose_planning_item` + §5 `scoping.scope_workstream`
+itself. §11's `dispatch → decompose → scope → …` describes path (b); under a
+release, those steps are already done here.
 
 ---
 
@@ -842,7 +863,7 @@ The capture → accumulate → promote → curate loop:
 `_SEED_PROFILES`: `(storage, architect)`, `(storage, developer)` (incl. one
 **enforced** self-verify rule: `ruff` clean + `pytest` green before Complete),
 `(model, architect)` (Reconciliation Agent), `(planning, architect)` (Architect
-Planning Agent), `(release, pi_lead)` (Release Lead). Per-invocation placeholders
+Planning Agent), `(release, pi_lead)` (Release Lead Agent). Per-invocation placeholders
 `{AREA}/{WORKSTREAM_ID}/{WORK_TASK}/{API_BASE}/{RELEASE}/{PI}`.
 
 ### 22.5 Live state (2026-06-20)
@@ -971,9 +992,9 @@ Source Check-in/Check-out. Query: `GET /topics/TOP-005` then
 | "Workstream" (long-running container, `WS-`) | **Project** (`PRJ-`) | PI-112, DEC-341/345 |
 | (the word reused) | **Workstream** = a delivery phase of one PI (`WSK-`) | PI-112, DEC-343/349 |
 | `*_belongs_to_workstream` edges | `*_belongs_to_project` | PI-112 |
-| Phase Specialist (tier 3, generalist) | **Architect** (per-area) [DESIGNED] | evolution.md §3, DEC-368 |
-| Area Specialist (tier 4, generalist) | **Developer** (per-area) [DESIGNED] | evolution.md §3, DEC-368 |
-| (none) | **Tester** (new per-area tier) [DESIGNED] | evolution.md §3.1, DEC-368 |
+| Phase Specialist Agent (tier 3, generalist) | **Architect Agent** (per-area) [DESIGNED] | evolution.md §3, DEC-368 |
+| Area Specialist Agent (tier 4, generalist) | **Developer Agent** (per-area) [DESIGNED] | evolution.md §3, DEC-368 |
+| (none) | **Tester Agent** (new per-area tier) [DESIGNED] | evolution.md §3.1, DEC-368 |
 | Phase value "Design" | "Architecture" (legacy 6-phase vocab) | DEC-349 |
 | Six phases (Architecture/Development/Testing/Documentation/Data Migration/Deployment) | Four passes (Plan/Design/Develop/Test); `PHASE_SEQUENCE = (Design, Develop, Test)` | evolution.md §1 |
 | `SES-NNN` = session | now identifies a **conversation** (PI-073) | DEC-314 |
