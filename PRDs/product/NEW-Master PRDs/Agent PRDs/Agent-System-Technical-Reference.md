@@ -19,11 +19,11 @@
 ## 0. Orientation — the layer cake
 
 ```
-Release pipeline (PRJ-031)        release_runtime.py        ← outermost conductor
+Release pipeline (PRJ-031)        release_runtime.py        ← outermost scheduler
   └─ ADO PI driver (PI-143)       ado_runtime.py            ← drives ONE Planning Item
        └─ Parallel pool (PI-139)  parallel_runtime.py       ← runs ONE phase's Work Tasks
             └─ Serial loop (PI-132) coordinating_runtime.py ← spawn→verify→merge ONE agent
-                 └─ Worker agent   agent_runtime.py + dispatcher.py
+                 └─ Area Specialist Agent   agent_runtime.py + dispatcher.py
 ```
 
 > 📐 **Diagram files:** [`Agent-System-Runtime-Layers.svg`](Agent-System-Runtime-Layers.svg)
@@ -33,10 +33,17 @@ Release pipeline (PRJ-031)        release_runtime.py        ← outermost conduc
 > (The end-to-end pipeline flow is `Agent-System-Flow.svg`, shown in
 > `Agent-System-Overview.md` §2.)
 
-Each runtime composes the one below it. Around the edges sit the **substrate
-repositories** (the deterministic REST/access functions the runtimes call), the
+Each scheduler layer composes the one below it. Around the edges sit the **substrate
+repositories** (the deterministic REST/access functions the schedulers call), the
 **registry** (which supplies each spawned agent its contract), and the
 **concurrency primitives** (locks).
+
+> ⚠️ **Legacy code name.** The five modules above are the **schedulers** — the
+> term this doc uses throughout. In the *code* today they are still the
+> `*_runtime.py` files under `crmbuilder-v2/src/crmbuilder_v2/runtime/`;
+> "runtime" is an overloaded legacy name slated to be renamed to "scheduler."
+> The only "runtime" strings remaining in this doc are those literal file/module
+> paths.
 
 **Two distinct things both called "reconciliation"** — keep them apart:
 1. **ADO Design→Develop reconciliation gate** — `runtime/reconciliation.py` +
@@ -51,8 +58,8 @@ repositories** (the deterministic REST/access functions the runtimes call), the
 Agent, Architect Agent, Developer Agent, Tester Agent, Release Lead Agent,
 Reconciliation Agent, Architect Planning Agent). The converse holds: a thing
 whose name does *not* end in "Agent" is *not* an agent — e.g. the
-runtime/conductor/orchestrator is the scheduler that *spawns* agents, and the
-substrate repositories below are the deterministic functions agents call. **This
+**scheduler** (which *spawns* agents) and the substrate repositories
+below are the deterministic functions agents call. **This
 convention applies to display names only.** The *code* spelling is unchanged and
 unsuffixed — tier enum values stay lowercase (`AGENT_PROFILE_TIERS = {architect,
 developer, tester, orchestrator, pi_lead}`), as do module names (`pm.py`,
@@ -69,7 +76,7 @@ developer, tester, orchestrator, pi_lead}`), as do module names (`pm.py`,
 
 The Architect Agent / Developer Agent / Tester Agent per-area split is the design direction in
 `Archive/agent-delivery-organization-evolution.md` (DEC-368); the *built*
-runtime still drives the four-tier shape with a single generic worker prompt
+scheduler still drives the four-tier shape with a single generic agent prompt
 (see §11, Registry — live state).
 
 ---
@@ -94,7 +101,7 @@ All status enums and legal transitions live in
 
 Terminals reachable from any non-terminal: `Resolved`, `Cancelled`, `Deferred`.
 A PI flips to `Resolved` only via a governance `resolves` close-out edge, **not**
-by the runtime. The ADO marks a finished PI `In Review` (`ado_runtime._DONE_STATUS`).
+by the scheduler. The ADO marks a finished PI `In Review` (`ado_runtime._DONE_STATUS`).
 
 ### 1.2 Workstream (`WSK-NNN`, the delivery phase) — `WORKSTREAM_STATUS_TRANSITIONS`
 
@@ -254,8 +261,8 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   creates all phase Workstreams and chains them serially.
 - **Functionality.** `decompose_planning_item` (create every Workstream in
   `PHASE_SEQUENCE = ("Design", "Develop", "Test")`, wire membership + serial
-  `blocked_by` chain); `existing_phase_workstreams`. *(The fourth "pass" — Plan —
-  is the decomposition act itself; it has no Workstream.)*
+  `blocked_by` chain); `existing_phase_workstreams`. *(Plan is the decomposition
+  act itself and has no Workstream — only Design, Develop, and Test are phases.)*
 - **Triggers.** `POST /planning-items/{id}/decompose`.
 - **Inputs.** `planning_item` (existence + title); existing
   `workstream_belongs_to_planning_item` edges (idempotency guard); pm interactive
@@ -299,7 +306,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 ## 6. Component: Area Specialist Agent substrate — Work Task lifecycle
 
 - **Name & purpose.** Tier-4 substrate is the claim/lifecycle on the single-area
-  `work_task` entity — the unit a worker agent actually executes.
+  `work_task` entity — the unit an Area Specialist Agent actually executes.
 - **Functionality.** CRUD + `claim_work_task` / `release_work_task`. `area`
   validated against `engagement_areas.valid_area_names` (System ∪ Engagement).
 - **Triggers.** `POST /work-tasks/{id}/claim`, `POST /work-tasks/{id}/release`,
@@ -321,7 +328,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ---
 
-## 7. Component: Coordinating runtime (Layer 1, serial)
+## 7. Component: Coordinating scheduler (Layer 1, serial)
 
 - **Name & purpose.** PI-132 / DEC-395. The serial spawn → verify → test-gate →
   merge loop, one agent at a time, each in a throwaway git worktree.
@@ -343,7 +350,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 - **States.** Enums `VerifyOutcome {ok, not_complete, no_commits, tests_failed}`,
   `StepResult {merged, paused, drained}`, `MergeStatus {clean, conflict}`. The
   spawned agent (per `operating_protocol`) drives its own Work Task
-  `claim → In Progress → Complete`; the runtime gates on the *result*, not the
+  `claim → In Progress → Complete`; the scheduler gates on the *result*, not the
   agent's exit code (DEC-396).
 - **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/runtime/coordinating_runtime.py`.
 - **Interactions.** `dispatcher`, `reconciliation`, `agent_runtime.build_agent_prompt`,
@@ -351,7 +358,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ---
 
-## 8. Component: Parallel runtime (Layer 2, pool)
+## 8. Component: Parallel scheduler (Layer 2, pool)
 
 - **Name & purpose.** PI-139 / DEC-397. A capped, concurrency-safe pool of
   agents (each its own worktree), merge-as-complete in completion order, plus
@@ -435,7 +442,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   `finding_status ∈ {open, referred}`.
 - **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/runtime/reconciliation.py`.
 - **Interactions.** `dispatcher`, `access.vocab`. Consumed by both coordinating
-  runtimes and `ado_runtime`.
+  schedulers and `ado_runtime`.
 
 ### 10.2 The `finding` (`FND-NNN`) entity — `repositories/findings.py`
 
@@ -493,7 +500,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ---
 
-## 12. Component: Release runtime / conductor (`release_runtime.py`)
+## 12. Component: Release scheduler (`release_runtime.py`)
 
 - **Name & purpose.** PI-219. The release-pipeline orchestration loop — walks a
   Release through its stage machine (§1.5), delegating the judgment steps
@@ -520,7 +527,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   reconciliation + architecture planning + PI decomposition + `finalize_planning`
   (all via `access.release_orchestration as orch`), release status transitions
   (`releases.transition`), QA/test pass stamps (`releases.qa_pass`/`test_pass`).
-  Delegates PI delivery to the ADO runtime and gates to `release_gate`.
+  Delegates PI delivery to the ADO scheduler and gates to `release_gate`.
 - **States.** Drives the §1.5 release lifecycle. `_PRE_FREEZE = {preliminary_planning,
   development_planning}`. Pre-freeze halts (waits for the human). Dev lane:
   `ready → development → qa → testing → deployment → shipped`. PI delivery target
@@ -730,7 +737,7 @@ release, those steps are already done here.
   touched_paths)` → `{held, retroactively_acquired, conflicts}` (recompute touched
   resources from the real diff — FL-5); `detect_resources(paths)` (`_DETECTION_RULES`
   maps `migrations/*.py → "migration-chain"`); `held_locks`.
-- **Triggers.** The sub-agent runtime (worktree-per-sub-agent + serialized
+- **Triggers.** The sub-agent scheduler (worktree-per-sub-agent + serialized
   merge-back) via `runtime/sub_agent_locks.py`; the Resource Locks monitor panel
   (Reclaim/Release operator actions — PI-225).
 - **States.** A lock is **held** (`released_at IS NULL`) or **released**. No
@@ -739,7 +746,7 @@ release, those steps are already done here.
   now; **`/resource-locks` does not exist**). Live: no locks held.
 - **Interactions.** `_governance`; wrapped by `runtime/sub_agent_locks.py`.
 
-### 19.1 Runtime wrapper (`runtime/sub_agent_locks.py`)
+### 19.1 Scheduler wrapper (`runtime/sub_agent_locks.py`)
 
 PI-220. Wraps the lock substrate into acquire/verify/release/reclaim for sub-agent
 fan-out; **a no-op outside a dev-lane release** (`dev_lane_release` gates on
@@ -826,7 +833,7 @@ resolver does the scope merge explicitly. Binding edges: `agent_profile_has_skil
 
 ### 22.2 Resolver (`repositories/registry_resolver.py`)
 
-- **Purpose.** Compose an `agent_profile` id into a runtime-ready **effective
+- **Purpose.** Compose an `agent_profile` id into a ready-to-use **effective
   contract** + a deterministic version stamp.
 - **Function.** `resolve_contract(session, profile_id, *, engagement_id=None,
   min_confidence=1) -> dict`. Composition:
@@ -848,7 +855,7 @@ resolver does the scope merge explicitly. Binding edges: `agent_profile_has_skil
   `rule_type` drops the system rule) and **disable** (`rule_type = "disable:<target>"`
   suppresses a matching system rule).
 - **Triggers.** `GET /agent-profiles/{id}/contract`; the MCP resolve-contract
-  tool; consumed at runtime by `agent_runtime.build_agent_prompt` (§23).
+  tool; consumed when an agent is spawned, by `agent_runtime.build_agent_prompt` (§23).
 - **Where it lives.** `access/repositories/registry_resolver.py`.
 
 ### 22.3 Write-back lifecycle (`repositories/registry_lifecycle.py` + `learnings.py`)
@@ -880,17 +887,17 @@ storage×developer, model×architect, planning×architect, release×pi_lead). 23
 skills — **all `kind=tool`** (no `instruction` skills live). 18 governance rules
 (17 advisory, 1 enforced). 1 learning (LRN-001, constraint, confidence 1). This
 confirms the **[PARTIAL]** note: the registry's *capacity* is built but the
-"living knowledge base" is barely populated, and a single generic worker prompt
+"living knowledge base" is barely populated, and a single generic agent prompt
 is string-substituted across areas.
 
 ---
 
-## 23. Component: Agent runtime + dispatcher (the spawn path)
+## 23. Component: Agent prompt builder + dispatcher (the spawn path)
 
 ### 23.1 `runtime/agent_runtime.py`
 
 - **Purpose.** Resolve a registry contract + a Work Task into the full system
-  prompt a spawned worker boots from.
+  prompt a spawned agent boots from.
 - **Function.** `build_agent_prompt(api_base, engagement, profile_id,
   work_task_id) -> AgentInvocation` — read-only string assembly over
   `GET /agent-profiles/{id}/contract` (system_prompt, tools, enforced_ruleset,
@@ -904,7 +911,7 @@ is string-substituted across areas.
 - **Purpose.** Auto-pull the next eligible Work Task, select its agent profile,
   resolve a ready-to-spawn assignment; also the shared HTTP I/O
   (`_get`/`_post`/`_patch`, envelope-unwrapping, `X-Engagement` header) for all
-  runtimes.
+  schedulers.
 - **Functions.** `is_work_task_eligible` (status `Ready` + unclaimed + all
   `blocked_by` `Complete`); `select_profile_id(profiles, area, tier)`;
   `eligible_work_tasks`; `next_assignment` (resolution only, no writes);
@@ -912,7 +919,7 @@ is string-substituted across areas.
   (→ `Complete`). Constants `_CLAIMABLE_STATUS="Ready"`, `_COMPLETE_STATUS="Complete"`,
   `_DEFAULT_TIER="developer"`.
 - **Where it lives.** `runtime/dispatcher.py`. The shared substrate for every
-  other runtime module.
+  other scheduler module.
 
 ---
 
@@ -948,7 +955,7 @@ From the root `pyproject.toml` `[project.scripts]`:
 
 | Script | → module:function | Launches |
 |---|---|---|
-| `crmbuilder-v2-api` | `crmbuilder_v2.cli:run_api` | FastAPI/uvicorn REST API on `127.0.0.1:8765` (the server all runtimes hit). |
+| `crmbuilder-v2-api` | `crmbuilder_v2.cli:run_api` | FastAPI/uvicorn REST API on `127.0.0.1:8765` (the server all schedulers hit). |
 | `crmbuilder-v2-ado` | `runtime.ado_runtime:main` | Drives **one** Planning Item through its phases → `In Review`. |
 | `crmbuilder-v2-ado-pm` | `runtime.ado_runtime:project_main` | PM auto-dispatch over a **Project's** eligible PIs. |
 | `crmbuilder-v2-release` | `runtime.release_runtime:main` | Drives a **Release** through the pipeline (LLM agent layer); `--dev-lane` continues development→shipped, `--manual-gates` skips LLM gates. |
@@ -1003,7 +1010,7 @@ Source Check-in/Check-out. Query: `GET /topics/TOP-005` then
 | Area Specialist Agent (tier 4, generalist) | **Developer Agent** (per-area) [DESIGNED] | evolution.md §3, DEC-368 |
 | (none) | **Tester Agent** (new per-area tier) [DESIGNED] | evolution.md §3.1, DEC-368 |
 | Phase value "Design" | "Architecture" (legacy 6-phase vocab) | DEC-349 |
-| Six phases (Architecture/Development/Testing/Documentation/Data Migration/Deployment) | Four passes (Plan/Design/Develop/Test); `PHASE_SEQUENCE = (Design, Develop, Test)` | evolution.md §1 |
+| Six phases (Architecture/Development/Testing/Documentation/Data Migration/Deployment) | Four stages Plan/Design/Develop/Test — only Design/Develop/Test are phase Workstreams (`PHASE_SEQUENCE = (Design, Develop, Test)`) | evolution.md §1 |
 | `SES-NNN` = session | now identifies a **conversation** (PI-073) | DEC-314 |
 | `CONV-NNN` = conversation wrapper | now identifies a **session** (PI-073) | DEC-314 |
 | new conversations | `CNV-NNN` | DEC-314 |
