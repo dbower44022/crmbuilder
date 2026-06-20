@@ -118,38 +118,38 @@ reads its job and memory from the database, does its bit, writes back, and exits
 ```mermaid
 flowchart TD
     subgraph H["HUMAN PLANNING (warm temperature)"]
-        REQ["Requirement\n(human-approved)"] --> PRJ["Project (PRJ)"]
+        REQ["Requirement<br/>(human-approved)"] --> PRJ["Project (PRJ)"]
         PRJ --> PI["Planning Items (PI)"]
-        PI --> RELplan["Release (REL)\nbatch whole projects\n(+ their Planning Items)"]
+        PI --> RELplan["Release (REL)<br/>batch whole projects<br/>(+ their Planning Items)"]
     end
 
-    RELplan -->|human FREEZES the plan| FREEZE{{"Plan Freeze\n= a transition,\nnot a switch"}}
+    RELplan -->|human FREEZES the plan| FREEZE{{"Plan Freeze<br/>= a transition,<br/>not a switch"}}
 
     subgraph PIPE["RELEASE PIPELINE — the conductor (release_runtime.py)"]
-        FREEZE --> RECON["Reconciliation\nmerge all demands →\nfind conflicts\n(reconciliation engine)"]
-        RECON --> ARCH["Architecture Planning\nauthor designs (versioning spine)\n+ decompose into Work Tasks"]
+        FREEZE --> RECON["Reconciliation<br/>merge all demands →<br/>find conflicts<br/>(reconciliation engine)"]
+        RECON --> ARCH["Architecture Planning<br/>author designs (versioning spine)<br/>+ decompose into Work Tasks"]
         ARCH --> READY["Release: ready"]
-        READY -->|single-occupancy:\none release in the lane| DEV
+        READY -->|single-occupancy:<br/>one release in the lane| DEV
     end
 
     subgraph ADO["ADO DEV-ORG — runs each Planning Item (ado_runtime.py)"]
-        DEV["Development lane"] --> PM["Project Manager Agent\ndispatch next eligible PI"]
-        PM --> LEAD["PI Lead Agent\nopen each phase in order"]
-        LEAD --> DECOMP["Decompose\nPlan: Design→Develop→Test\nchained by blocked_by"]
-        DECOMP --> SCOPE["Phase Specialist Agent\nscope phase → Work Tasks"]
-        SCOPE --> POOL["Area Specialist Agents (workers)\nparallel pool, own git worktrees\n(parallel_runtime.py)"]
-        POOL --> GATE{{"Reconciliation gate\nDesign settled +\nno blocking findings (FND)?"}}
-        GATE -->|yes| MERGE["verify by result →\nmerge each branch"]
-        MERGE --> COMPLETE["complete phase →\nPI: In Review"]
+        DEV["Development lane"] --> PM["Project Manager Agent<br/>dispatch next eligible PI"]
+        PM --> LEAD["PI Lead Agent<br/>open each phase in order"]
+        LEAD --> DECOMP["Decompose<br/>Plan: Design→Develop→Test<br/>chained by blocked_by"]
+        DECOMP --> SCOPE["Phase Specialist Agent<br/>scope phase → Work Tasks"]
+        SCOPE --> POOL["Area Specialist Agents (workers)<br/>parallel pool, own git worktrees<br/>(parallel_runtime.py)"]
+        POOL --> GATE{{"Reconciliation gate<br/>Design settled +<br/>no blocking findings (FND)?"}}
+        GATE -->|yes| MERGE["verify by result →<br/>merge each branch"]
+        MERGE --> COMPLETE["complete phase →<br/>PI: In Review"]
     end
 
-    COMPLETE --> QA{{"Release QA gate\ndesign covers every requirement?"}}
-    QA -->|pass| TEST{{"Release Test gate\nprocesses hold end-to-end?"}}
+    COMPLETE --> QA{{"Release QA gate<br/>design covers every requirement?"}}
+    QA -->|pass| TEST{{"Release Test gate<br/>processes hold end-to-end?"}}
     TEST -->|pass| DEPLOY["deployment"]
     DEPLOY --> SHIP["shipped"]
 
-    LOCKS[("Locks\nfile/resource locks +\nmigration lock\nkeep workers apart")] -.guards.-> POOL
-    REG[("Agent Profile Registry\nprofile + skills + rules +\nlearnings → contract")] -.supplies contract.-> POOL
+    LOCKS[("Locks<br/>file/resource locks +<br/>migration lock<br/>keep workers apart")] -.guards.-> POOL
+    REG[("Agent Profile Registry<br/>profile + skills + rules +<br/>learnings → contract")] -.supplies contract.-> POOL
     QA -->|fail| DEV
     TEST -->|fail| DEV
 ```
