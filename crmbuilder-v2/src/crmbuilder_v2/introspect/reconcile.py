@@ -114,6 +114,18 @@ def _map_field_type(espo_type: object) -> str:
     return _FIELD_TYPE_MAP.get(str(espo_type), "text")
 
 
+def _ci(name: str | None) -> str:
+    """Case-insensitive canonical match key.
+
+    Canonical identity (DEC-431) is the neutral name, and the access layer's
+    name-uniqueness is case-insensitive — so reconcile must match
+    case-insensitively too, or an existing record whose name differs only in
+    case (e.g. prior Phase-1 candidate data) is missed and a duplicate-create
+    collides.
+    """
+    return (name or "").strip().lower()
+
+
 class ReconcileError(RuntimeError):
     """Raised when introspection returns an unusable response."""
 
@@ -181,7 +193,7 @@ def reconcile_entities(
         )
 
     canonical = {
-        row["entity_name"]: row for row in entity_repo.list_entities(session)
+        _ci(row["entity_name"]): row for row in entity_repo.list_entities(session)
     }
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
@@ -204,7 +216,7 @@ def reconcile_entities(
         neutral = strip_entity_c_prefix(scope_name)
         audited = _audited_entity_attrs(scope_meta)
 
-        match = canonical.get(neutral)
+        match = canonical.get(_ci(neutral))
         if match is None:
             origin = "Native EspoCRM entity" if is_native else "Discovered"
             created = entity_repo.create_entity(
@@ -298,7 +310,7 @@ def reconcile_fields(
         )
 
     ent_by_name = {
-        row["entity_name"]: row["entity_identifier"]
+        _ci(row["entity_name"]): row["entity_identifier"]
         for row in entity_repo.list_entities(session)
     }
     stamp = datetime.now(UTC)
@@ -331,7 +343,7 @@ def reconcile_fields(
             continue
 
         neutral_entity = strip_entity_c_prefix(scope_name)
-        parent_id = ent_by_name.get(neutral_entity)
+        parent_id = ent_by_name.get(_ci(neutral_entity))
         if parent_id is None:
             origin = (
                 "Native EspoCRM entity"
@@ -350,7 +362,7 @@ def reconcile_fields(
             ent_by_name[neutral_entity] = parent_id
 
         canon = {
-            f["field_name"]: f
+            _ci(f["field_name"]): f
             for f in field_repo.list_fields(session, entity_identifier=parent_id)
         }
 
@@ -359,7 +371,7 @@ def reconcile_fields(
             neutral_field = strip_field_c_prefix(field_name)
             audited = _audited_field_attrs(field_meta)
 
-            match = canon.get(neutral_field)
+            match = canon.get(_ci(neutral_field))
             if match is None:
                 extra: dict[str, Any] = {}
                 # A derived field (mapped from EspoCRM foreign/formula) requires
@@ -438,11 +450,11 @@ def reconcile_associations(
         )
 
     ent_by_name = {
-        row["entity_name"]: row["entity_identifier"]
+        _ci(row["entity_name"]): row["entity_identifier"]
         for row in entity_repo.list_entities(session)
     }
     canon = {
-        a["association_name"]: a
+        _ci(a["association_name"]): a
         for a in association_repo.list_associations(session)
     }
     stamp = datetime.now(UTC)
@@ -457,7 +469,7 @@ def reconcile_associations(
         # (PI-192). Non-canonical scopes (uncustomized native, system) have no
         # canonical record and are skipped; endpoints likewise resolve only to
         # canonical entities.
-        source_id = ent_by_name.get(strip_entity_c_prefix(scope_name))
+        source_id = ent_by_name.get(_ci(strip_entity_c_prefix(scope_name)))
         if source_id is None:
             continue
 
@@ -474,7 +486,7 @@ def reconcile_associations(
             foreign_scope = link_meta.get("entity")
             if not foreign_scope:
                 continue
-            target_id = ent_by_name.get(strip_entity_c_prefix(foreign_scope))
+            target_id = ent_by_name.get(_ci(strip_entity_c_prefix(foreign_scope)))
             if target_id is None:
                 # Endpoint is native / not in the canonical inventory — skip.
                 continue
@@ -489,7 +501,7 @@ def reconcile_associations(
                 assoc_name = link_name
 
             summary["seen"] += 1
-            match = canon.get(assoc_name)
+            match = canon.get(_ci(assoc_name))
             if match is None:
                 created = association_repo.create_association(
                     session,
@@ -580,7 +592,7 @@ def reconcile_layouts(
             f"get_all_scopes returned status={status}; expected 200 + dict body"
         )
     ent_by_name = {
-        row["entity_name"]: row["entity_identifier"]
+        _ci(row["entity_name"]): row["entity_identifier"]
         for row in entity_repo.list_entities(session)
     }
     stamp = datetime.now(UTC)
@@ -590,7 +602,7 @@ def reconcile_layouts(
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
             continue
-        entity_id = ent_by_name.get(strip_entity_c_prefix(scope_name))
+        entity_id = ent_by_name.get(_ci(strip_entity_c_prefix(scope_name)))
         if entity_id is None:
             continue  # not a canonical entity (uncustomized native / system)
         for neutral_type in sorted(LAYOUT_TYPES):
@@ -654,7 +666,7 @@ def reconcile_roles(
     status, body = client.get_roles()
     if status != 200:
         raise ReconcileError(f"get_roles returned status={status}")
-    canon = {r["role_name"]: r for r in role_repo.list_roles(session)}
+    canon = {_ci(r["role_name"]): r for r in role_repo.list_roles(session)}
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
     seen_ids: set[str] = set()
@@ -668,7 +680,7 @@ def reconcile_roles(
         system_permissions = {
             k: v for k, v in row.items() if "Permission" in k
         } or None
-        match = canon.get(name)
+        match = canon.get(_ci(name))
         if match is None:
             created = role_repo.create_role(
                 session, name=name, scope_access=scope_access,
@@ -713,7 +725,7 @@ def reconcile_teams(
     status, body = client.get_teams()
     if status != 200:
         raise ReconcileError(f"get_teams returned status={status}")
-    canon = {t["team_name"]: t for t in team_repo.list_teams(session)}
+    canon = {_ci(t["team_name"]): t for t in team_repo.list_teams(session)}
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
     seen_ids: set[str] = set()
@@ -724,7 +736,7 @@ def reconcile_teams(
             continue
         summary["seen"] += 1
         description = row.get("description")
-        match = canon.get(name)
+        match = canon.get(_ci(name))
         if match is None:
             created = team_repo.create_team(
                 session, name=name, description=description
@@ -784,7 +796,7 @@ def reconcile_filtered_tabs(
             f"get_all_scopes returned status={status}; expected 200 + dict body"
         )
     ent_by_name = {
-        row["entity_name"]: row["entity_identifier"]
+        _ci(row["entity_name"]): row["entity_identifier"]
         for row in entity_repo.list_entities(session)
     }
     stamp = datetime.now(UTC)
@@ -794,7 +806,7 @@ def reconcile_filtered_tabs(
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
             continue
-        entity_id = ent_by_name.get(strip_entity_c_prefix(scope_name))
+        entity_id = ent_by_name.get(_ci(strip_entity_c_prefix(scope_name)))
         if entity_id is None:
             continue
         f_status, body = client.list_report_filters(scope_name)
@@ -807,9 +819,12 @@ def reconcile_filtered_tabs(
                 continue
             summary["seen"] += 1
             filter_content = row.get("data", row.get("filter"))
-            existing = filtered_tab_repo.list_filtered_tabs(
-                session, entity_identifier=entity_id, label=label
-            )
+            existing = [
+                ft for ft in filtered_tab_repo.list_filtered_tabs(
+                    session, entity_identifier=entity_id
+                )
+                if _ci(ft["filtered_tab_label"]) == _ci(label)
+            ]
             match = existing[0] if existing else None
             if match is None:
                 created = filtered_tab_repo.create_filtered_tab(
