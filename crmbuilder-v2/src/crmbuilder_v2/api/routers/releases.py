@@ -128,6 +128,24 @@ def freeze_state(identifier: str):
         )
 
 
+@router.get("/{identifier}/freeze-readiness")
+def freeze_readiness(identifier: str):
+    """Per-PI freeze readiness (PI-239 / REQ-285): which in-scope planning items are
+    ready (requirements confirmed + no blocker outside this release), which are
+    explicitly deferred, and which are not-ready and so block the freeze."""
+    with readonly_session() as s:
+        return ok(releases.freeze_readiness(s, identifier))
+
+
+@router.post("/{identifier}/planning-items/{pi_identifier}/defer")
+def defer_planning_item(identifier: str, pi_identifier: str):
+    """Explicitly defer an in-scope planning item out of the release (PI-239 /
+    REQ-285) — the deliberate human defer at the freeze gate, in place of a silent
+    auto-defer. Sets the planning item's status to Deferred."""
+    with writable_session() as s:
+        return ok(releases.defer_planning_item(s, identifier, pi_identifier))
+
+
 @router.post("", status_code=201)
 def create(body: ReleaseCreateIn):
     with writable_session() as s:

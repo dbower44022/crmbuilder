@@ -40,6 +40,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import (
+    PlanningItem,
     Release,
     Requirement,
 )
@@ -220,6 +221,93 @@ def _in_scope_requirements(session: Session, pi_id: str) -> list[str]:
     return sorted({e.target_id for e in edges})
 
 
+def _pi_blocked_by(session: Session, pi_id: str) -> list[str]:
+    edges = gov.outbound_edges(
+        session,
+        source_type="planning_item",
+        source_id=pi_id,
+        relationship="blocked_by",
+        target_type="planning_item",
+    )
+    return sorted({e.target_id for e in edges})
+
+
+def freeze_readiness(session: Session, release_identifier: str) -> dict:
+    """Per-PI freeze readiness (PI-239 / REQ-285, target-model D14).
+
+    The freeze gate's rule is: every in-scope planning item must be **ready** — its
+    requirements confirmed AND no blocker outside this release — **or** have been
+    **explicitly deferred** by a human (status ``Deferred``). There is no silent
+    auto-defer: a not-ready, not-deferred PI keeps the release from freezing until a
+    human readies it or defers it. This is the single source of truth for that rule
+    (the gate raises on it; the UI reads it to show what to ready/defer).
+    """
+    in_scope: set[str] = set()
+    for prj in _in_scope_projects(session, release_identifier):
+        in_scope.update(_in_scope_planning_items(session, prj))
+
+    items: list[dict] = []
+    for pi in sorted(in_scope):
+        row = get_by_identifier(session, PlanningItem, PlanningItem.identifier, pi)
+        status = row.status if row is not None else None
+        deferred = status == "Deferred"
+        unconfirmed: list[str] = []
+        external_blockers: list[str] = []
+        if not deferred:
+            for req in _in_scope_requirements(session, pi):
+                r = get_by_identifier(
+                    session, Requirement, Requirement.requirement_identifier, req
+                )
+                if r is None or r.requirement_status != "confirmed":
+                    unconfirmed.append(req)
+            for b in _pi_blocked_by(session, pi):
+                if b in in_scope:
+                    continue  # an in-release dependency is fine
+                br = get_by_identifier(
+                    session, PlanningItem, PlanningItem.identifier, b
+                )
+                if br is None or br.status != "Resolved":
+                    external_blockers.append(b)
+        ready = (not deferred) and not unconfirmed and not external_blockers
+        items.append({
+            "planning_item": pi,
+            "status": status,
+            "deferred": deferred,
+            "ready": ready,
+            "unconfirmed_requirements": sorted(unconfirmed),
+            "external_blockers": sorted(external_blockers),
+        })
+    not_ready = [i for i in items if not i["deferred"] and not i["ready"]]
+    return {
+        "release_identifier": release_identifier,
+        "items": items,
+        "not_ready": not_ready,
+        "ready_to_freeze": not not_ready,
+    }
+
+
+def defer_planning_item(
+    session: Session, release_identifier: str, pi_identifier: str
+) -> dict:
+    """Explicitly defer an in-scope planning item out of the release (REQ-285 /
+    PI-239) — the deliberate human action that removes a not-ready PI from the
+    freeze readiness requirement, in place of a silent auto-defer. Sets the PI's
+    status to ``Deferred`` (the existing lifecycle transition). Returns the PI."""
+    from crmbuilder_v2.access.repositories import planning_items
+
+    _get_row(session, release_identifier)  # 404 if the release is unknown
+    in_scope: set[str] = set()
+    for prj in _in_scope_projects(session, release_identifier):
+        in_scope.update(_in_scope_planning_items(session, prj))
+    if pi_identifier not in in_scope:
+        raise ConflictError(
+            f"planning item {pi_identifier!r} is not in scope of release "
+            f"{release_identifier!r} (no planning_item_belongs_to_project edge to "
+            f"a release-scoped Project)."
+        )
+    return planning_items.update(session, pi_identifier, status="Deferred")
+
+
 def _pi_workstreams(session: Session, pi_id: str) -> list[str]:
     edges = gov.inbound_edges(
         session,
@@ -248,26 +336,40 @@ def _ws_work_tasks(session: Session, ws_id: str) -> list[str]:
 
 
 def _check_freeze(session: Session, identifier: str) -> None:
-    """Freeze gate — settled scope of confirmed requirements (REQ-197)."""
+    """Freeze gate (REQ-197 + REQ-285 / PI-239, target-model D14).
+
+    Requires a release-scoped Project, and every in-scope planning item to be
+    **ready** (its requirements confirmed AND no blocker outside this release) or
+    **explicitly deferred** by a human (status ``Deferred``). No silent auto-defer:
+    a not-ready, not-deferred PI blocks the freeze until a human readies or defers
+    it.
+    """
     projects = _in_scope_projects(session, identifier)
     if not projects:
         raise ConflictError(
             f"release {identifier!r} cannot be frozen: no release-scoped "
             f"Project is attached (project_belongs_to_release)."
         )
-    unconfirmed: list[str] = []
-    for prj in projects:
-        for pi in _in_scope_planning_items(session, prj):
-            for req in _in_scope_requirements(session, pi):
-                row = get_by_identifier(
-                    session, Requirement, Requirement.requirement_identifier, req
+    report = freeze_readiness(session, identifier)
+    if report["not_ready"]:
+        details: list[str] = []
+        for item in report["not_ready"]:
+            reasons: list[str] = []
+            if item["unconfirmed_requirements"]:
+                reasons.append(
+                    f"requirement(s) not confirmed: {item['unconfirmed_requirements']}"
                 )
-                if row is None or row.requirement_status != "confirmed":
-                    unconfirmed.append(req)
-    if unconfirmed:
+            if item["external_blockers"]:
+                reasons.append(
+                    f"blocked by planning item(s) outside this release: "
+                    f"{item['external_blockers']}"
+                )
+            details.append(f"{item['planning_item']} ({'; '.join(reasons)})")
         raise ConflictError(
-            f"release {identifier!r} cannot be frozen: in-scope requirement(s) "
-            f"not confirmed: {sorted(set(unconfirmed))}."
+            f"release {identifier!r} cannot be frozen: in-scope planning item(s) "
+            f"not ready — {'; '.join(details)}. Ready each (confirm its "
+            f"requirements / clear external blockers) or explicitly defer it "
+            f"(set its status to Deferred) (REQ-285)."
         )
 
 
