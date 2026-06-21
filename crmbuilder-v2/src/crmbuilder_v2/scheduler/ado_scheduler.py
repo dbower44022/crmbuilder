@@ -48,6 +48,7 @@ from .parallel_scheduler import (
     PoolRunReport,
 )
 from .reconciliation import GateDecision
+from crmbuilder_v2.scheduler.task_contract import TaskStatus
 
 _DEVELOP_PHASE = "Develop"
 _TERMINAL_PHASE = frozenset({"Complete", "Not Applicable"})
@@ -175,7 +176,8 @@ class AdoSchedulerConfig:
 @dataclass
 class AdoRunReport:
     planning_item: str
-    status: str = "incomplete"          # complete | paused | blocked | dry_run
+    status: TaskStatus = TaskStatus.IN_PROGRESS  # NEEDS_HUMAN=paused/blocked; SUCCEEDED=complete
+    dry_run: bool = False
     completed_phases: list[str] = field(default_factory=list)
     reason: str | None = None
 
@@ -496,17 +498,19 @@ class AdoScheduler:
         return max((pi_mode, self._project_mode()),
                    key=lambda m: _EXECUTION_MODE_RANK.get(m, 0))
 
-    def _execution_gate(self, pi: dict) -> tuple[str, str] | None:
-        """Return ``(report_status, message)`` if this PI is not the ADO's to
-        run (PI-190 / REQ-165), else ``None``. Interactive items are never run;
-        ado_with_approval items wait for a human approve-dispatch signal."""
+    def _execution_gate(self, pi: dict) -> tuple[TaskStatus, str] | None:
+        """Return ``(status, message)`` if this PI is not the ADO's to run
+        (PI-190 / REQ-165), else ``None``. Both cases resolve to
+        ``NEEDS_HUMAN`` (the run-outcome vocabulary); the message carries which
+        case it is. Interactive items are never run; ado_with_approval items wait
+        for a human approve-dispatch signal."""
         mode = self._effective_mode(pi)
         pid = self.config.planning_item
         if mode == _INTERACTIVE:
-            return ("interactive", f"⏸ {pid} is execution_mode 'interactive' — "
+            return (TaskStatus.NEEDS_HUMAN, f"⏸ {pid} is execution_mode 'interactive' — "
                     f"left for a human; the ADO does not run it.")
         if mode == _ADO_WITH_APPROVAL and not pi.get("dispatch_approved"):
-            return ("pending_approval", f"⏸ {pid} is 'ado_with_approval' and not "
+            return (TaskStatus.NEEDS_HUMAN, f"⏸ {pid} is 'ado_with_approval' and not "
                     f"yet approved — left pending a human approve-dispatch.")
         return None
 
@@ -570,7 +574,8 @@ class AdoScheduler:
             self.log(f"dry-run: next step is {step.kind.value}"
                      + (f" ({step.workstream})" if step.workstream else "")
                      + (f" — {step.reason}" if step.reason else ""))
-            report.status = "dry_run"
+            report.status = TaskStatus.NOT_STARTED
+            report.dry_run = True
             report.reason = step.reason
             return report
 
@@ -586,18 +591,18 @@ class AdoScheduler:
                 # advance the PI out of In Progress (execution complete).
                 self._patch_pi_status(_DONE_STATUS)
                 self.log(f"✔ {pi}: all phases terminal → {_DONE_STATUS}")
-                report.status = "complete"
+                report.status = TaskStatus.SUCCEEDED
                 return report
 
             if step.kind is StepKind.PAUSE:
                 self.log(f"⏸ {pi}: paused — {step.reason}")
-                report.status = "paused"
+                report.status = TaskStatus.NEEDS_HUMAN
                 report.reason = step.reason
                 return report
 
             if step.kind is StepKind.BLOCKED:
                 self.log(f"⏹ {pi}: blocked — {step.reason}")
-                report.status = "blocked"
+                report.status = TaskStatus.NEEDS_HUMAN
                 report.reason = step.reason
                 return report
 
@@ -621,7 +626,7 @@ class AdoScheduler:
                     self.scope_runner(cfg, ws, step.phase_type or "")
                     after = self._phase_status(ws)
                 if after not in ("Ready", "Not Applicable"):
-                    report.status = "paused"
+                    report.status = TaskStatus.NEEDS_HUMAN
                     report.reason = (
                         f"scoping did not complete phase {ws} (still {after!r}); "
                         f"a person needs to scope it"
@@ -642,7 +647,7 @@ class AdoScheduler:
             if not self._execute_phase(report, ws, step.phase_type, open_phase=True):
                 return report
 
-        report.status = "blocked"
+        report.status = TaskStatus.NEEDS_HUMAN
         report.reason = f"exceeded the phase budget ({cfg.max_phases}) without finishing"
         self.log(f"⚠ {pi}: {report.reason}")
         return report
@@ -668,7 +673,7 @@ class AdoScheduler:
         if phase_type == _DEVELOP_PHASE:
             gate = self.gate_checker(cfg, ws)
             if not gate.allow:
-                report.status = "paused"
+                report.status = TaskStatus.NEEDS_HUMAN
                 report.reason = (
                     f"Develop gate held on {ws}: {gate.reason} — reconcile the "
                     f"Design before building"
@@ -685,7 +690,7 @@ class AdoScheduler:
         pool_report = self.pool_runner(cfg, ws)
         if pool_report.paused:
             self.log(f"⏸ {pi}: execution paused in phase {ws}")
-            report.status = "paused"
+            report.status = TaskStatus.NEEDS_HUMAN
             report.reason = f"execution paused in {ws}"
             return False
 
@@ -755,7 +760,7 @@ class AdoScheduler:
             # "Ready" (now unclaimed): leave — the pool will dispatch it.
 
         if residue:
-            report.status = "paused"
+            report.status = TaskStatus.NEEDS_HUMAN
             report.reason = (
                 f"resume: {ws} has Complete task(s) {residue} whose branch is "
                 f"not merged into {cfg.base_branch} (PI-145 rollback residue) — "
@@ -765,7 +770,7 @@ class AdoScheduler:
             return False
 
         if blocked:
-            report.status = "paused"
+            report.status = TaskStatus.NEEDS_HUMAN
             report.reason = (
                 f"resume: {ws} has Blocked task(s) {blocked}; a person parked "
                 f"them — unblock or fail them, then relaunch"
@@ -957,24 +962,24 @@ class ProjectScheduler:
     def _close_out(self, pid: str, pi_report: AdoRunReport) -> None:
         """Resolve / review / log one completed (or paused) PI's outcome."""
         cfg = self.config
-        if pi_report.status == "complete" and cfg.review_on_complete:
+        if pi_report.status is TaskStatus.SUCCEEDED and cfg.review_on_complete:
             if self.closure_runner(cfg, pid):
                 self.log(f"  ✔ {pid} complete → reviewed → Resolved")
             else:
                 self.log(f"  ⏸ {pid} complete → review declined → In Review "
                          f"(needs a person)")
-        elif pi_report.status == "complete" and cfg.resolve_on_complete:
+        elif pi_report.status is TaskStatus.SUCCEEDED and cfg.resolve_on_complete:
             self._resolve_pi(pid)
             self.log(f"  ✔ {pid} complete → Resolved (autonomous)")
-        elif pi_report.status == "complete":
+        elif pi_report.status is TaskStatus.SUCCEEDED:
             self.log(f"  ✔ {pid} complete → In Review (awaiting resolution)")
         else:
-            self.log(f"  ⏸ {pid} {pi_report.status} — {pi_report.reason}")
+            self.log(f"  ⏸ {pid} {pi_report.status.value} — {pi_report.reason}")
 
     def run(self) -> ProjectRunReport:
         cfg = self.config
         report = ProjectRunReport(project=cfg.project)
-        attempted: dict[str, str] = {}
+        attempted: dict[str, TaskStatus] = {}
         # One repo lock shared by every PI's pool this run, so when PIs run in
         # parallel their worktree/merge git ops still serialize across the repo.
         shared_lock = threading.Lock()
@@ -1054,7 +1059,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"\nrun complete: {report.status}"
           + (f" — {report.reason}" if report.reason else "")
           + f"; phases completed: {report.completed_phases or '[]'}")
-    return 0 if report.status in ("complete", "dry_run") else 1
+    return 0 if report.status is TaskStatus.SUCCEEDED or report.dry_run else 1
 
 
 def project_main(argv: list[str] | None = None) -> int:
@@ -1100,7 +1105,7 @@ def project_main(argv: list[str] | None = None) -> int:
     if report.blocked_remaining:
         print(f"blocked on unresolved dependencies: {report.blocked_remaining}")
     # success when every driven PI completed and nothing remains eligible.
-    ok = all(d["status"] == "complete" for d in report.driven) and not report.eligible_remaining
+    ok = all(d["status"] is TaskStatus.SUCCEEDED for d in report.driven) and not report.eligible_remaining
     return 0 if ok else 1
 
 

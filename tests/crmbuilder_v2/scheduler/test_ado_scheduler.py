@@ -27,6 +27,7 @@ from crmbuilder_v2.scheduler.ado_scheduler import (
 )
 from crmbuilder_v2.scheduler.parallel_scheduler import PoolRunReport
 from crmbuilder_v2.scheduler.reconciliation import GateDecision
+from crmbuilder_v2.scheduler.task_contract import TaskStatus
 
 _TERMINAL = {"Complete", "Not Applicable"}
 _PHASE_TYPES = ["Design", "Develop", "Test"]
@@ -291,7 +292,7 @@ def test_drives_all_phases_scope_then_execute():
         pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert report.completed_phases == ["WSK-1", "WSK-2", "WSK-3"]
     assert world.pi_status == "In Review"
     # every phase was scoped before it was started.
@@ -308,7 +309,7 @@ def test_reconcile_runs_after_design_only():
         reconcile_runner=lambda c, w: reconciled.append(w),
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     # reconciliation ran exactly once, over the Design phase (WSK-1).
     assert reconciled == ["WSK-1"]
 
@@ -326,7 +327,7 @@ def test_not_applicable_phase_is_skipped():
         pool_runner=_clean_pool, scope_runner=_na_first, gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     # WSK-1 was Not Applicable → never started; WSK-2 executed.
     assert "/workstreams/WSK-1/start-execution" not in world.calls
     assert report.completed_phases == ["WSK-2"]
@@ -345,7 +346,7 @@ def test_pauses_when_scoping_does_not_complete():
         pool_runner=_clean_pool, scope_runner=_scope_noop, gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "paused" and "scope" in report.reason.lower()
+    assert report.status is TaskStatus.NEEDS_HUMAN and "scope" in report.reason.lower()
 
 
 def test_scoping_retries_once_then_succeeds():
@@ -368,7 +369,7 @@ def test_scoping_retries_once_then_succeeds():
         pool_runner=_clean_pool, scope_runner=_flaky_scope, gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert calls["n"] == 2  # scoped once, retried once → succeeded
 
 
@@ -384,7 +385,7 @@ def test_develop_gate_holds_on_open_blocking_finding():
         gate_checker=lambda c, w: held,
     )
     report = driver.run()
-    assert report.status == "paused" and "gate held" in report.reason.lower()
+    assert report.status is TaskStatus.NEEDS_HUMAN and "gate held" in report.reason.lower()
     # the Develop phase was never started.
     assert "/workstreams/WSK-2/start-execution" not in world.calls
 
@@ -402,7 +403,7 @@ def test_develop_gate_consulted_only_for_develop():
         gate_checker=lambda c, w: (seen.append(w) or GateDecision(True, "ok")),
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert seen == ["WSK-2"]  # only the Develop phase was gate-checked
 
 
@@ -417,7 +418,7 @@ def test_pauses_when_the_pool_pauses():
         scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "paused" and "WSK-1" in report.reason
+    assert report.status is TaskStatus.NEEDS_HUMAN and "WSK-1" in report.reason
 
 
 def test_orchestrator_does_not_advance_phase_when_pool_rolls_back():
@@ -441,7 +442,7 @@ def test_orchestrator_does_not_advance_phase_when_pool_rolls_back():
         scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "paused"
+    assert report.status is TaskStatus.NEEDS_HUMAN
     assert not any("complete-phase" in c for c in world.calls)
     assert world.phase_status["WSK-1"] != "Complete"
 
@@ -456,7 +457,7 @@ def test_resume_without_redispatch_and_dry_run():
         pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "dry_run"
+    assert report.dry_run is True and report.status is TaskStatus.NOT_STARTED
     assert "/planning-items/PI-900/dispatch" not in world.calls
     assert not any("start-execution" in c for c in world.calls)
 
@@ -489,7 +490,7 @@ def test_resume_all_tasks_complete_auto_completes_phase():
         scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert report.completed_phases == ["WSK-1"]
     assert pool_calls == []
     assert "/workstreams/WSK-1/start-execution" not in world.calls
@@ -517,7 +518,7 @@ def test_resume_partial_completion_releases_stale_claim_and_runs_pool():
         pool_runner=_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert world.released == [("WTK-2", "AGP-other-identity")]
     assert world.patches == [("WTK-2", "Ready")]
     assert pool_calls == ["WSK-1"]
@@ -535,7 +536,7 @@ def test_resume_ready_claimed_row_releases_without_status_patch():
         pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert world.released == [("WTK-1", "AGP-x")]
     assert world.patches == []  # already Ready — release only
 
@@ -550,7 +551,7 @@ def test_resume_in_progress_task_rewinds_via_failed():
         pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert world.released == [("WTK-1", "AGP-x")]
     assert world.patches == [("WTK-1", "Failed"), ("WTK-1", "Ready")]
 
@@ -564,7 +565,7 @@ def test_resume_failed_and_planned_tasks_re_readied():
         pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert world.released == []  # no claims to release
     assert world.patches == [("WTK-1", "Ready"), ("WTK-2", "Ready")]
 
@@ -580,7 +581,7 @@ def test_resume_blocked_task_pauses_not_guesses():
         scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "paused"
+    assert report.status is TaskStatus.NEEDS_HUMAN
     assert "WTK-1" in report.reason and "Blocked" in report.reason
     assert pool_calls == []
     assert world.patches == []  # the Blocked task was never PATCHed
@@ -597,7 +598,7 @@ def test_resume_unmerged_complete_residue_pauses():
         unmerged_check=lambda c, t: True,
     )
     report = driver.run()
-    assert report.status == "paused"
+    assert report.status is TaskStatus.NEEDS_HUMAN
     assert "WTK-1" in report.reason and "rollback residue" in report.reason
     assert "/workstreams/WSK-1/complete-phase" not in world.calls
 
@@ -616,7 +617,7 @@ def test_resume_develop_gate_rechecked():
         gate_checker=lambda c, w: held,
     )
     report = driver.run()
-    assert report.status == "paused" and "gate held" in report.reason.lower()
+    assert report.status is TaskStatus.NEEDS_HUMAN and "gate held" in report.reason.lower()
 
 
 def test_resume_idempotent_after_second_pause():
@@ -635,7 +636,7 @@ def test_resume_idempotent_after_second_pause():
         world, config=_cfg(),
         pool_runner=_pausing_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
-    assert first.run().status == "paused"
+    assert first.run().status is TaskStatus.NEEDS_HUMAN
     assert world.phase_status["WSK-1"] == "In Progress"  # never rewound
 
     def _clean_second(cfg, ws):
@@ -647,7 +648,7 @@ def test_resume_idempotent_after_second_pause():
         pool_runner=_clean_second, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = second.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     # The second pass released the new stale claim and rewound via Failed.
     assert world.released[-1] == ("WTK-2", "AGP-x")
     assert world.patches[-2:] == [("WTK-2", "Failed"), ("WTK-2", "Ready")]
@@ -675,7 +676,7 @@ def test_resume_mid_sequence_then_later_phases_follow_normally():
         pool_runner=_pool, scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert report.completed_phases == ["WSK-2", "WSK-3"]
     assert pool_calls == ["WSK-2", "WSK-3"]
     # The resumed phase was never re-opened or re-scoped; the following phase
@@ -709,7 +710,7 @@ def test_resume_develop_gate_open_proceeds_to_pool():
         gate_checker=lambda c, w: (seen.append(w) or GateDecision(True, "ok")),
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert seen == ["WSK-2"]  # the gate WAS consulted on resume
     assert pool_calls == ["WSK-2"]
     assert "/workstreams/WSK-2/start-execution" not in world.calls
@@ -729,7 +730,7 @@ def test_resume_residue_guard_checks_only_complete_tasks():
         unmerged_check=lambda c, t: (checked.append(t) or False),
     )
     report = driver.run()
-    assert report.status == "complete"
+    assert report.status is TaskStatus.SUCCEEDED
     assert checked == ["WTK-1"]
 
 
@@ -781,15 +782,23 @@ class _FakePm(ProjectScheduler):
         self.backlog.pis[pi] = "Resolved"
 
 
+_OUTCOME_STATUS = {"complete": TaskStatus.SUCCEEDED, "paused": TaskStatus.NEEDS_HUMAN}
+
+
 def _pi_driver(backlog, outcomes=None):
-    """Fake per-PI driver: reflects the outcome into the backlog and reports it."""
+    """Fake per-PI driver: reflects the outcome into the backlog and reports it.
+
+    ``outcomes`` is keyed by the test-facing words ("complete"/"paused"); the
+    driver maps them onto the uniform ``TaskStatus`` the report carries."""
     outcomes = outcomes or {}
 
     def _driver(ado_cfg):
         pid = ado_cfg.planning_item
-        status, reason = outcomes.get(pid, ("complete", None))
-        backlog.pis[pid] = "In Review" if status == "complete" else "In Progress"
-        return AdoRunReport(planning_item=pid, status=status, reason=reason)
+        word, reason = outcomes.get(pid, ("complete", None))
+        backlog.pis[pid] = "In Review" if word == "complete" else "In Progress"
+        return AdoRunReport(
+            planning_item=pid, status=_OUTCOME_STATUS[word], reason=reason
+        )
 
     return _driver
 
@@ -804,7 +813,7 @@ def test_pm_dispatches_all_independent_eligible_pis():
     pm = _FakePm(bl, config=_pm_cfg(), pi_driver=_pi_driver(bl))
     report = pm.run()
     assert [d["planning_item"] for d in report.driven] == ["PI-1", "PI-2"]
-    assert all(d["status"] == "complete" for d in report.driven)
+    assert all(d["status"] is TaskStatus.SUCCEEDED for d in report.driven)
     assert report.eligible_remaining == []  # both at In Review, none re-eligible
 
 
@@ -829,7 +838,7 @@ def test_pm_drives_independent_pis_in_parallel():
             starts.append((pid, time.monotonic()))
         time.sleep(0.05)  # hold the slot so concurrency is observable
         bl.pis[pid] = "In Review"
-        return AdoRunReport(planning_item=pid, status="complete")
+        return AdoRunReport(planning_item=pid, status=TaskStatus.SUCCEEDED)
 
     pm = _FakePm(bl, config=_pm_cfg(max_parallel_pis=3), pi_driver=_slow_driver)
     report = pm.run()
@@ -845,7 +854,7 @@ def test_pm_records_a_paused_pi_and_does_not_retry():
                  pi_driver=_pi_driver(bl, {"PI-1": ("paused", "needs a human")}))
     report = pm.run()
     statuses = {d["planning_item"]: d["status"] for d in report.driven}
-    assert statuses == {"PI-1": "paused", "PI-2": "complete"}
+    assert statuses == {"PI-1": TaskStatus.NEEDS_HUMAN, "PI-2": TaskStatus.SUCCEEDED}
     # PI-1 was driven exactly once (In Progress now → not re-eligible).
     assert [d["planning_item"] for d in report.driven].count("PI-1") == 1
 
@@ -886,7 +895,7 @@ def test_pm_review_decline_leaves_pi_in_review():
                  pi_driver=_pi_driver(bl), closure_runner=_decline)
     report = pm.run()
     assert bl.pis["PI-1"] == "In Review"  # not resolved
-    assert report.driven[0]["status"] == "complete"
+    assert report.driven[0]["status"] is TaskStatus.SUCCEEDED
 
 
 def test_pm_stops_at_chain_boundary_without_resolve_on_complete():
@@ -916,7 +925,8 @@ def test_run_skips_interactive_pi_without_dispatch(monkeypatch):
         driver, "_pi", lambda: {"status": "Draft", "execution_mode": "interactive"}
     )
     report = driver.run()
-    assert report.status == "interactive"
+    assert report.status is TaskStatus.NEEDS_HUMAN
+    assert "interactive" in report.reason
     assert "/planning-items/PI-900/dispatch" not in world.calls
     assert world.decomposed is False
 
@@ -931,7 +941,8 @@ def test_run_skips_unapproved_ado_with_approval_pi(monkeypatch):
                  "dispatch_approved": False},
     )
     report = driver.run()
-    assert report.status == "pending_approval"
+    assert report.status is TaskStatus.NEEDS_HUMAN
+    assert "approved" in report.reason
     assert "/planning-items/PI-900/dispatch" not in world.calls
 
 
@@ -950,4 +961,4 @@ def test_run_proceeds_for_approved_ado_with_approval_pi(monkeypatch):
     )
     report = driver.run()
     # approved → not gated; dry-run proceeds past the gate to planning.
-    assert report.status == "dry_run"
+    assert report.dry_run is True and report.status is TaskStatus.NOT_STARTED
