@@ -52,12 +52,12 @@ from crmbuilder_v2.scheduler.coordinating_scheduler import (
     MergeStatus,
     SchedulerConfig,
     TestRunnerFn,
-    VerifyOutcome,
     Worktree,
     _ResolvedAssignment,
     spawn_claude_agent,
     verify_result,
 )
+from crmbuilder_v2.scheduler.task_contract import TaskResult
 from crmbuilder_v2.scheduler.migration_lock import ExclusiveMigrationLock
 
 # --------------------------------------------------------------------------
@@ -149,7 +149,7 @@ class TaskReport:
     work_task_id: str
     branch: str
     outcome: TaskOutcome
-    verify: VerifyOutcome | None = None
+    verify: TaskResult | None = None
     merge: MergeResult | None = None
     agent_returncode: int | None = None
     spawned_at: float | None = None
@@ -489,7 +489,7 @@ class ParallelCoordinatingScheduler:
     def _integrate(self, run: _AgentRun) -> TaskReport:
         a = run.assignment
         verdict = verify_result(run.refreshed_task, run.has_commits)
-        if verdict in (VerifyOutcome.NOT_COMPLETE, VerifyOutcome.NO_COMMITS):
+        if verdict.detail in ("not_complete", "no_commits"):
             # Per-agent retry: an agent that exits without driving its task to
             # Complete (or with an empty branch) is most often a transient agent
             # incompletion — not bad work the gate should reject. Re-spawn the
@@ -497,14 +497,14 @@ class ParallelCoordinatingScheduler:
             # all-or-nothing phase back). A genuine test failure (TESTS_FAILED)
             # or merge conflict is NOT retried here — only incompletion.
             self.log(
-                f"  [{a.work_task_id}] incomplete ({verdict.value}) "
+                f"  [{a.work_task_id}] incomplete ({(verdict.detail or verdict.status.value)}) "
                 "— retrying agent once"
             )
             run.worktree.remove()
             run = self._spawn_one(a)
             verdict = verify_result(run.refreshed_task, run.has_commits)
         verify_log_path = None
-        if verdict is VerifyOutcome.OK:
+        if verdict.ok:
             # PI-147: run the affected test package before merging. The
             # changed_files git read touches the shared repo, so take the lock
             # for it; the helper's pytest subprocess runs in the worker's own
@@ -514,19 +514,19 @@ class ParallelCoordinatingScheduler:
                     run.worktree, a.work_task_id
                 )
         self.log(
-            f"  [{a.work_task_id}] verify: {verdict.value} "
+            f"  [{a.work_task_id}] verify: {(verdict.detail or verdict.status.value)} "
             f"(branch_has_commits={run.has_commits})"
         )
-        if verdict is not VerifyOutcome.OK:
+        if not verdict.ok:
             log_suffix = f" — output: {verify_log_path}" if verify_log_path else ""
             self._l1._flag_needs_attention(
                 a.work_task_id,
-                f"verification failed: {verdict.value} "
+                f"verification failed: {(verdict.detail or verdict.status.value)} "
                 f"(agent rc={run.returncode}){log_suffix}",
             )
             self._record_finding(
                 a.work_task_id,
-                f"verification failed: {verdict.value}{log_suffix}",
+                f"verification failed: {(verdict.detail or verdict.status.value)}{log_suffix}",
             )
             self._reclaim_locks(a.work_task_id)  # PI-220: free a failed child's locks (FL-6)
             run.worktree.remove()

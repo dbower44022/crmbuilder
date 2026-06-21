@@ -29,7 +29,6 @@ from crmbuilder_v2.scheduler.coordinating_scheduler import (
     SchedulerConfig,
     StepResult,
     TestRunResult,
-    VerifyOutcome,
     _is_harness_crash,
     _safe_run_tests,
     interpret_merge,
@@ -47,24 +46,24 @@ from crmbuilder_v2.scheduler.coordinating_scheduler import (
 
 
 def test_verify_ok_requires_complete_and_commits():
-    assert verify_result({"work_task_status": "Complete"}, True) is VerifyOutcome.OK
+    assert verify_result({"work_task_status": "Complete"}, True).ok
 
 
 def test_verify_not_complete_when_status_not_complete():
     assert (
         verify_result({"work_task_status": "In Progress"}, True)
-        is VerifyOutcome.NOT_COMPLETE
+       .detail == "not_complete"
     )
     assert (
         verify_result({"work_task_status": "Claimed"}, True)
-        is VerifyOutcome.NOT_COMPLETE
+       .detail == "not_complete"
     )
 
 
 def test_verify_no_commits_when_complete_but_branch_empty():
     assert (
         verify_result({"work_task_status": "Complete"}, False)
-        is VerifyOutcome.NO_COMMITS
+       .detail == "no_commits"
     )
 
 
@@ -180,7 +179,7 @@ def test_affected_tests_skips_gate_for_doc_only(monkeypatch):
 
     rt = _runtime_for_affected_tests(monkeypatch, _runner)
     verdict, log_path = rt._run_affected_tests(_DocWorktree(), "WTK-1")
-    assert verdict is VerifyOutcome.OK
+    assert verdict.ok
     assert log_path is None
     assert called["n"] == 0  # the test runner was never invoked
 
@@ -299,7 +298,7 @@ def test_affected_tests_timeout_fails_gracefully_no_retry(monkeypatch):
 
     rt = _runtime_for_affected_tests(monkeypatch, _timeout_runner)
     verdict, _ = rt._run_affected_tests(_FakeWorktree(has_commits=True), "WTK-1")
-    assert verdict is VerifyOutcome.TESTS_FAILED
+    assert verdict.detail == "tests_failed"
     assert calls["n"] == 1  # a timeout is a failure, not a retryable crash
 
 
@@ -331,7 +330,7 @@ def test_affected_tests_retries_once_on_crash_then_passes(monkeypatch):
     ])
     rt = _runtime_for_affected_tests(monkeypatch, runner)
     verdict, _ = rt._run_affected_tests(_FakeWorktree(has_commits=True), "WTK-1")
-    assert verdict is VerifyOutcome.OK
+    assert verdict.ok
     assert runner.calls == 2  # crashed once, retried, passed
 
 
@@ -342,7 +341,7 @@ def test_affected_tests_fails_after_second_crash(monkeypatch):
     ])
     rt = _runtime_for_affected_tests(monkeypatch, runner)
     verdict, _ = rt._run_affected_tests(_FakeWorktree(has_commits=True), "WTK-1")
-    assert verdict is VerifyOutcome.TESTS_FAILED
+    assert verdict.detail == "tests_failed"
     assert runner.calls == 2  # two crashes → block
 
 
@@ -353,7 +352,7 @@ def test_affected_tests_real_failure_is_not_retried(monkeypatch):
     ])
     rt = _runtime_for_affected_tests(monkeypatch, runner)
     verdict, _ = rt._run_affected_tests(_FakeWorktree(has_commits=True), "WTK-1")
-    assert verdict is VerifyOutcome.TESTS_FAILED
+    assert verdict.detail == "tests_failed"
     assert runner.calls == 1  # a genuine rc=1 failure blocks immediately
 
 
@@ -520,7 +519,7 @@ def test_happy_path_verifies_and_merges(monkeypatch):
     )
     report = rt.run_one()
     assert report.result is StepResult.MERGED
-    assert report.verify is VerifyOutcome.OK
+    assert report.verify.ok
     assert report.merge.status is MergeStatus.CLEAN
     assert rt._fake_wt.created and rt._fake_wt.removed  # worktree cleaned up
     assert rt._flagged == {}  # nothing flagged on a clean run
@@ -537,7 +536,7 @@ def test_pauses_and_flags_when_agent_did_not_complete(monkeypatch):
     )
     report = rt.run_one()
     assert report.result is StepResult.PAUSED
-    assert report.verify is VerifyOutcome.NOT_COMPLETE
+    assert report.verify.detail == "not_complete"
     assert "WTK-099" in rt._flagged  # human-attention flag set
     assert rt._fake_wt.removed
 
@@ -558,7 +557,7 @@ def test_pauses_and_flags_when_affected_tests_fail(monkeypatch):
     )
     report = rt.run_one()
     assert report.result is StepResult.PAUSED
-    assert report.verify is VerifyOutcome.TESTS_FAILED
+    assert report.verify.detail == "tests_failed"
     assert "WTK-099" in rt._flagged  # workstream flagged needs_attention
     assert rt._fake_wt.removed  # branch never merged
 
@@ -586,7 +585,7 @@ def test_verify_failure_persists_output_log(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
     report = rt.run_one()
-    assert report.verify is VerifyOutcome.TESTS_FAILED
+    assert report.verify.detail == "tests_failed"
     files = list((tmp_path / "verify").glob("WTK-099-*.log"))
     assert len(files) == 1
     text = files[0].read_text()
@@ -619,7 +618,7 @@ def test_not_complete_verdict_writes_no_verify_log(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
     report = rt.run_one()
-    assert report.verify is VerifyOutcome.NOT_COMPLETE
+    assert report.verify.detail == "not_complete"
     assert not (tmp_path / "verify").exists()
     assert report.verify_log_path is None
     assert "output:" not in rt._flagged["WTK-099"]  # no path to point at
@@ -640,7 +639,7 @@ def test_verify_log_write_failure_never_masks_tests_failed(monkeypatch, tmp_path
     rt.log = lines.append
     report = rt.run_one()
     assert report.result is StepResult.PAUSED
-    assert report.verify is VerifyOutcome.TESTS_FAILED
+    assert report.verify.detail == "tests_failed"
     assert report.verify_log_path is None
     assert any("could not persist verify output" in ln for ln in lines)
     assert "output:" not in rt._flagged["WTK-099"]
@@ -670,7 +669,7 @@ def test_pauses_on_merge_conflict_after_verify(monkeypatch):
     )
     report = rt.run_one()
     assert report.result is StepResult.PAUSED
-    assert report.verify is VerifyOutcome.OK
+    assert report.verify.ok
     assert report.merge.status is MergeStatus.CONFLICT
     assert "WTK-099" in rt._flagged
 

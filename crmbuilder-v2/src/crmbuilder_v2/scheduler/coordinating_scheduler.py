@@ -50,21 +50,13 @@ from datetime import UTC, datetime
 from enum import Enum
 
 from crmbuilder_v2.config import verify_log_dir
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler import dispatcher, reconciliation
 from crmbuilder_v2.scheduler.agent_prompt import build_agent_prompt
 
 # --------------------------------------------------------------------------
 # Outcomes (small enums + records the loop and its tests reason over)
 # --------------------------------------------------------------------------
-
-
-class VerifyOutcome(str, Enum):
-    """The result of checking an agent's work before advancing (REQ-057)."""
-
-    OK = "ok"  # Work Task Complete + branch carries commits → safe to merge
-    NOT_COMPLETE = "not_complete"  # agent exited without driving the task Complete
-    NO_COMMITS = "no_commits"  # task marked Complete but the branch is empty
-    TESTS_FAILED = "tests_failed"  # Complete + commits, but the affected tests are red (PI-147)
 
 
 class StepResult(str, Enum):
@@ -92,7 +84,7 @@ class IterationReport:
 
     result: StepResult
     work_task_id: str | None = None
-    verify: VerifyOutcome | None = None
+    verify: TaskResult | None = None
     merge: MergeResult | None = None
     pause_reason: str | None = None
     agent_returncode: int | None = None
@@ -107,7 +99,7 @@ class IterationReport:
 # --------------------------------------------------------------------------
 
 
-def verify_result(work_task: dict, branch_has_commits: bool) -> VerifyOutcome:
+def verify_result(work_task: dict, branch_has_commits: bool) -> TaskResult:
     """Decide whether an agent's finished work is safe to advance (REQ-057).
 
     A result is ``OK`` only when the agent drove the Work Task to ``Complete``
@@ -116,10 +108,10 @@ def verify_result(work_task: dict, branch_has_commits: bool) -> VerifyOutcome:
     suspect and held (``NO_COMMITS``) rather than merged.
     """
     if work_task.get("work_task_status") != dispatcher._COMPLETE_STATUS:
-        return VerifyOutcome.NOT_COMPLETE
+        return TaskResult(TaskStatus.FAILED, "not_complete")
     if not branch_has_commits:
-        return VerifyOutcome.NO_COMMITS
-    return VerifyOutcome.OK
+        return TaskResult(TaskStatus.FAILED, "no_commits")
+    return TaskResult(TaskStatus.SUCCEEDED)
 
 
 # The src subtrees that mirror a tests/ package 1:1. A touched subtree not in
@@ -712,16 +704,16 @@ class CoordinatingScheduler:
             has_commits = worktree.has_commits_beyond(cfg.base_branch)
             verdict = verify_result(refreshed, has_commits)
             verify_log_path = None
-            if verdict is VerifyOutcome.OK:
+            if verdict.ok:
                 # PI-147: a lifecycle-clean task still must not break the suite.
                 verdict, verify_log_path = self._run_affected_tests(
                     worktree, assignment.work_task_id
                 )
-            self.log(f"  verify: {verdict.value} (branch_has_commits={has_commits})")
+            self.log(f"  verify: {(verdict.detail or verdict.status.value)} (branch_has_commits={has_commits})")
 
-            if verdict is not VerifyOutcome.OK:
+            if not verdict.ok:
                 reason = (
-                    f"verification failed: {verdict.value} "
+                    f"verification failed: {(verdict.detail or verdict.status.value)} "
                     f"(agent rc={returncode})"
                 )
                 if verify_log_path:
@@ -733,7 +725,7 @@ class CoordinatingScheduler:
                     verify=verdict,
                     agent_returncode=returncode,
                     branch=assignment.branch,
-                    pause_reason=f"verification {verdict.value}",
+                    pause_reason=f"verification {(verdict.detail or verdict.status.value)}",
                     verify_log_path=verify_log_path,
                 )
 
@@ -802,7 +794,7 @@ class CoordinatingScheduler:
 
     def _run_affected_tests(
         self, worktree: Worktree, work_task_id: str
-    ) -> tuple[VerifyOutcome, str | None]:
+    ) -> tuple[TaskResult, str | None]:
         """Run the affected test package in ``worktree`` (PI-147).
 
         Resolves the task's touched source files (git read), maps them to a
@@ -828,7 +820,7 @@ class CoordinatingScheduler:
                 "  affected-tests: doc-only change (no testable source) "
                 "— skipping the test gate"
             )
-            return VerifyOutcome.OK, None
+            return TaskResult(TaskStatus.SUCCEEDED), None
         target = select_test_target(touched)
         runner = self.test_runner_fn or run_pytest
         result = _safe_run_tests(runner, worktree.path, target)
@@ -851,7 +843,7 @@ class CoordinatingScheduler:
             + ("pass" if result.passed else "FAIL"
                + (f" (output: {log_path})" if log_path else ""))
         )
-        verdict = VerifyOutcome.OK if result.passed else VerifyOutcome.TESTS_FAILED
+        verdict = TaskResult(TaskStatus.SUCCEEDED) if result.passed else TaskResult(TaskStatus.FAILED, "tests_failed")
         return verdict, log_path
 
     def _persist_verify_output(
