@@ -23,11 +23,10 @@ import threading
 import time
 from pathlib import Path
 
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler import parallel_scheduler as pr
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
     CoordinatingScheduler,
-    MergeResult,
-    MergeStatus,
     SchedulerConfig,
     TestRunResult,
     _ResolvedAssignment,
@@ -248,7 +247,7 @@ def _make_runtime(
     """Build a ParallelCoordinatingScheduler with every I/O seam stubbed.
 
     ``task_sleeps`` maps Work Task id → how long its fake agent runs (to force
-    overlap and control completion order). ``merge_for`` maps id → MergeResult
+    overlap and control completion order). ``merge_for`` maps id → TaskResult
     (default: all clean).
     """
     recorder = _Recorder()
@@ -308,7 +307,7 @@ def _make_runtime(
         rt._l1,
         "_merge",
         lambda branch: merge_for.get(
-            branch.rsplit("/", 1)[-1], MergeResult(MergeStatus.CLEAN, "merged")
+            branch.rsplit("/", 1)[-1], TaskResult(TaskStatus.SUCCEEDED, "merged")
         ),
     )
     flagged: dict[str, str] = {}
@@ -372,7 +371,7 @@ def test_merge_conflict_pauses_dispatch_and_flags(monkeypatch):
         monkeypatch,
         task_sleeps={"WTK-1": 0.05, "WTK-2": 0.05},
         max_concurrent=2,
-        merge_for={"wtk-1": MergeResult(MergeStatus.CONFLICT, "CONFLICT in f.py")},
+        merge_for={"wtk-1": TaskResult(TaskStatus.NEEDS_HUMAN, "CONFLICT in f.py")},
     )
     report = rt.run()
     assert report.paused is True
@@ -599,7 +598,7 @@ def test_phase_rollback_on_conflict_undoes_clean_sibling(monkeypatch):
         monkeypatch,
         task_sleeps={"WTK-1": 0.05, "WTK-2": 0.15},
         max_concurrent=2,
-        merge_for={"wtk-2": MergeResult(MergeStatus.CONFLICT, "CONFLICT in f.py")},
+        merge_for={"wtk-2": TaskResult(TaskStatus.NEEDS_HUMAN, "CONFLICT in f.py")},
     )
     report = rt.run()
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
@@ -731,8 +730,8 @@ def test_real_git_clean_merges_land_then_reset_undoes_them(tmp_path):
     _branch_with_file(repo, "ado/wtk-1", "a.txt", "alpha\n")
     _branch_with_file(repo, "ado/wtk-2", "b.txt", "beta\n")
     # Both branches merge clean → two merge commits, main advances, both present.
-    assert rt._merge("ado/wtk-1").status is MergeStatus.CLEAN
-    assert rt._merge("ado/wtk-2").status is MergeStatus.CLEAN
+    assert rt._merge("ado/wtk-1").status is TaskStatus.SUCCEEDED
+    assert rt._merge("ado/wtk-2").status is TaskStatus.SUCCEEDED
     assert rt._base_head() != anchor
     assert (repo / "a.txt").exists() and (repo / "b.txt").exists()
     # The atomic rollback hard-resets main to the anchor — neither merge survives.
@@ -750,10 +749,10 @@ def test_real_git_conflict_then_rollback_leaves_main_at_anchor(tmp_path):
     _branch_with_file(repo, "ado/wtk-1", "shared.txt", "from one\n")
     _branch_with_file(repo, "ado/wtk-2", "shared.txt", "from two\n")
     # The first merges clean and lands on main...
-    assert rt._merge("ado/wtk-1").status is MergeStatus.CLEAN
+    assert rt._merge("ado/wtk-1").status is TaskStatus.SUCCEEDED
     assert rt._base_head() != anchor
     # ...the second conflicts; ``_merge`` aborts it, leaving no merge in progress.
-    assert rt._merge("ado/wtk-2").status is MergeStatus.CONFLICT
+    assert rt._merge("ado/wtk-2").status is TaskStatus.NEEDS_HUMAN
     # Atomic phase rollback: reset main to the anchor — the clean sibling merge is
     # undone too, so main carries NEITHER task's work (all-or-nothing).
     rt._reset_base_to(anchor)

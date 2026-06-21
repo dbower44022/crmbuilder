@@ -59,33 +59,14 @@ from crmbuilder_v2.scheduler.agent_prompt import build_agent_prompt
 # --------------------------------------------------------------------------
 
 
-class StepResult(str, Enum):
-    """What happened to one Work Task this iteration."""
-
-    MERGED = "merged"  # verified + merged + marked Complete
-    PAUSED = "paused"  # stopped for a human (needs_attention gate)
-    DRAINED = "drained"  # no eligible work remained
-
-
-class MergeStatus(str, Enum):
-    CLEAN = "clean"
-    CONFLICT = "conflict"
-
-
-@dataclass
-class MergeResult:
-    status: MergeStatus
-    detail: str = ""
-
-
 @dataclass
 class IterationReport:
     """A human- and test-readable record of one loop iteration."""
 
-    result: StepResult
+    result: TaskStatus
     work_task_id: str | None = None
     verify: TaskResult | None = None
-    merge: MergeResult | None = None
+    merge: TaskResult | None = None
     pause_reason: str | None = None
     agent_returncode: int | None = None
     branch: str | None = None
@@ -335,18 +316,18 @@ def pause_reason_for(
     return None
 
 
-def interpret_merge(returncode: int, output: str) -> MergeResult:
+def interpret_merge(returncode: int, output: str) -> TaskResult:
     """Read a ``git merge`` invocation into a clean/conflict outcome.
 
     A non-zero exit with conflict markers in the output is a merge conflict —
     recorded as a finding and surfaced to a human, never force-resolved (REQ-056).
     """
     if returncode == 0:
-        return MergeResult(MergeStatus.CLEAN, output.strip())
+        return TaskResult(TaskStatus.SUCCEEDED, output.strip())
     lowered = output.lower()
     if "conflict" in lowered or "automatic merge failed" in lowered:
-        return MergeResult(MergeStatus.CONFLICT, output.strip())
-    return MergeResult(MergeStatus.CONFLICT, output.strip() or "merge failed")
+        return TaskResult(TaskStatus.NEEDS_HUMAN, output.strip())
+    return TaskResult(TaskStatus.NEEDS_HUMAN, output.strip() or "merge failed")
 
 
 # --------------------------------------------------------------------------
@@ -645,7 +626,7 @@ class CoordinatingScheduler:
         assignment = self._next_assignment()
         if assignment is None:
             self.log("· no eligible work — loop drained")
-            return IterationReport(result=StepResult.DRAINED)
+            return IterationReport(result=TaskStatus.NOT_STARTED)
 
         # Gate: an already-flagged task pauses before we spend an agent on it.
         workstream = self._owning_workstream(assignment.work_task_id)
@@ -653,7 +634,7 @@ class CoordinatingScheduler:
         if reason:
             self.log(f"⏸ pausing for a human on {assignment.work_task_id}: {reason}")
             return IterationReport(
-                result=StepResult.PAUSED,
+                result=TaskStatus.NEEDS_HUMAN,
                 work_task_id=assignment.work_task_id,
                 pause_reason=reason,
             )
@@ -665,7 +646,7 @@ class CoordinatingScheduler:
         if cfg.dry_run:
             self.log("  (dry-run) resolved contract; not spawning")
             return IterationReport(
-                result=StepResult.PAUSED,
+                result=TaskStatus.NEEDS_HUMAN,
                 work_task_id=assignment.work_task_id,
                 branch=assignment.branch,
                 pause_reason="dry-run",
@@ -720,7 +701,7 @@ class CoordinatingScheduler:
                     reason += f" — output: {verify_log_path}"
                 self._flag_needs_attention(assignment.work_task_id, reason)
                 return IterationReport(
-                    result=StepResult.PAUSED,
+                    result=TaskStatus.NEEDS_HUMAN,
                     work_task_id=assignment.work_task_id,
                     verify=verdict,
                     agent_returncode=returncode,
@@ -732,13 +713,13 @@ class CoordinatingScheduler:
             # Merge (REQ-056): land the agent's branch on the base branch.
             merge = self._merge(assignment.branch)
             self.log(f"  merge: {merge.status.value}")
-            if merge.status is MergeStatus.CONFLICT:
+            if not merge.ok:
                 self._flag_needs_attention(
                     assignment.work_task_id,
                     f"merge conflict on {assignment.branch}: {merge.detail[:200]}",
                 )
                 return IterationReport(
-                    result=StepResult.PAUSED,
+                    result=TaskStatus.NEEDS_HUMAN,
                     work_task_id=assignment.work_task_id,
                     verify=verdict,
                     merge=merge,
@@ -750,7 +731,7 @@ class CoordinatingScheduler:
                 f"✔ {assignment.work_task_id} verified + merged into {cfg.base_branch}"
             )
             return IterationReport(
-                result=StepResult.MERGED,
+                result=TaskStatus.SUCCEEDED,
                 work_task_id=assignment.work_task_id,
                 verify=verdict,
                 merge=merge,
@@ -767,7 +748,7 @@ class CoordinatingScheduler:
             self.log(f"── iteration {i + 1}/{cfg.max_iterations} ──")
             report = self.run_one()
             self.reports.append(report)
-            if report.result in (StepResult.DRAINED, StepResult.PAUSED):
+            if report.result in (TaskStatus.NOT_STARTED, TaskStatus.NEEDS_HUMAN):
                 break
         return self.reports
 
@@ -936,7 +917,7 @@ class CoordinatingScheduler:
         _git(cfg.repo_root, "checkout", cfg.base_branch)
         _git(cfg.repo_root, "reset", "--hard", head)
 
-    def _merge(self, branch: str) -> MergeResult:
+    def _merge(self, branch: str) -> TaskResult:
         cfg = self.config
         _git(cfg.repo_root, "checkout", cfg.base_branch)
         proc = _git(
@@ -949,7 +930,7 @@ class CoordinatingScheduler:
             check=False,
         )
         result = interpret_merge(proc.returncode, proc.stdout + proc.stderr)
-        if result.status is MergeStatus.CONFLICT:
+        if not result.ok:
             _git(cfg.repo_root, "merge", "--abort", check=False)
         return result
 
@@ -1069,13 +1050,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     runtime = CoordinatingScheduler(config=config)
     reports = runtime.run()
-    merged = sum(1 for r in reports if r.result is StepResult.MERGED)
+    merged = sum(1 for r in reports if r.result is TaskStatus.SUCCEEDED)
     print(
         f"\nrun complete: {len(reports)} iteration(s), {merged} merged. "
         f"Last: {reports[-1].result.value if reports else 'none'}"
     )
     # Exit non-zero if the loop paused for a human (so a wrapper can notice).
-    return 0 if reports and reports[-1].result is not StepResult.PAUSED else 1
+    return 0 if reports and reports[-1].result is not TaskStatus.NEEDS_HUMAN else 1
 
 
 if __name__ == "__main__":
