@@ -30,7 +30,6 @@ from crmbuilder_v2.scheduler.coordinating_scheduler import (
     MergeStatus,
     SchedulerConfig,
     TestRunResult,
-    VerifyOutcome,
     _ResolvedAssignment,
 )
 from crmbuilder_v2.scheduler.parallel_scheduler import (
@@ -396,7 +395,7 @@ def test_verify_failure_pauses_and_flags(monkeypatch):
     assert report.paused is True
     r = report.task_reports[0]
     assert r.outcome is TaskOutcome.VERIFY_FAILED
-    assert r.verify is VerifyOutcome.NOT_COMPLETE
+    assert r.verify.detail == "not_complete"
     assert "WTK-1" in rt._flagged
 
 
@@ -453,7 +452,7 @@ def test_affected_tests_failure_rolls_back_phase(monkeypatch):
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
     assert outcomes["WTK-2"] is TaskOutcome.VERIFY_FAILED
     verdicts = {r.work_task_id: r.verify for r in report.task_reports}
-    assert verdicts["WTK-2"] is VerifyOutcome.TESTS_FAILED
+    assert verdicts["WTK-2"].detail == "tests_failed"
     assert report.rolled_back is True
     assert rt._reset_calls == ["PRE_PHASE_HEAD"]  # the clean sibling is undone
     assert "WTK-2" in rt._flagged
@@ -495,7 +494,7 @@ def test_verify_failure_persists_output_log_parallel(monkeypatch, tmp_path):
     report = rt.run()
     r = report.task_reports[0]
     assert r.outcome is TaskOutcome.VERIFY_FAILED
-    assert r.verify is VerifyOutcome.TESTS_FAILED
+    assert r.verify.detail == "tests_failed"
     files = list((tmp_path / "verify").glob("WTK-1-*.log"))
     assert len(files) == 1
     assert "FAILED test_y" in files[0].read_text()
@@ -556,7 +555,7 @@ def test_run_pytest_real_failure_persists_wide_tail(monkeypatch, tmp_path):
             return []
 
     verdict, log_path = rt._run_affected_tests(_Wt(), "WTK-094")
-    assert verdict is VerifyOutcome.TESTS_FAILED
+    assert verdict.detail == "tests_failed"
     assert log_path is not None and "WTK-094-" in log_path
     text = Path(log_path).read_text()
     assert "deliberate failure for PI-157" in text
