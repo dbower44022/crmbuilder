@@ -1,14 +1,13 @@
 """PI-232 / REQ-252 — the fleet resolves a contract for every build area.
 
-REQ-252: the agent fleet has developer and architect profiles for the build
-areas it must work in. The mechanism is the dispatcher's tier-level fallback
-(``select_profile_id``) to the **area-parameterized** proven profiles: there is
-no per-area profile for ``ui`` / ``access`` / ``api``, but a request for any of
-them at the developer or architect tier resolves to the proven storage-area
-profile (whose ``{AREA}`` is injected per invocation). These tests pin that
-guarantee against the *actual* seeded profile set, so a real fleet build never
-stalls on a missing profile — and they break if the seeder ever drops the
-developer or architect tier the fallback depends on.
+REQ-252: the agent fleet has developer and architect profiles for the build areas
+it must work in. **Since PI-240 (Phase 3) seeds the full per-(area, tier) catalog**,
+every System build area resolves its OWN exact profile — the dispatcher's
+tier-level fallback (``select_profile_id``) now only catches genuinely non-catalog
+areas (e.g. per-engagement areas), which still resolve to a proven
+area-parameterized profile (the storage cell, whose ``{AREA}`` is injected per
+invocation). These tests pin both guarantees against the *actual* seeded profile
+set, so a real fleet build never stalls on a missing profile.
 """
 
 from __future__ import annotations
@@ -34,7 +33,7 @@ _BUILD_AREAS = ("ui", "access", "api")
 
 def test_seeder_provides_the_fallback_tiers():
     """The fallback only works if the seeder ships a developer and an architect
-    profile (the area-parameterized proven prompts)."""
+    profile (the area-parameterized proven prompts the non-catalog fallback uses)."""
     tiers = {tier for _area, tier, *_rest in _SEED_PROFILES}
     assert "developer" in tiers
     assert "architect" in tiers
@@ -42,8 +41,7 @@ def test_seeder_provides_the_fallback_tiers():
 
 def test_every_build_area_resolves_developer_and_architect():
     """REQ-252 acceptance: each build area resolves BOTH a developer and an
-    architect contract (exact or via the tier fallback), so the fleet never
-    stalls on a missing profile."""
+    architect contract, so the fleet never stalls on a missing profile."""
     for area in _BUILD_AREAS:
         assert select_profile_id(_SYSTEM, area, "developer") is not None, (
             f"no developer contract resolves for build area {area!r}"
@@ -53,11 +51,21 @@ def test_every_build_area_resolves_developer_and_architect():
         )
 
 
-def test_unseeded_area_uses_the_parameterized_storage_profile():
-    """The resolution for an unseeded area is the area-parameterized proven
-    profile (storage cell), since no per-area profile exists for it."""
+def test_catalog_build_area_resolves_its_own_profile():
+    """PI-240: a System build area now resolves its OWN exact (area, tier)
+    profile — no longer borrowing the storage cell."""
     by_cell = {(p["area"], p["tier"]): p["identifier"] for p in _SYSTEM}
-    storage_dev = by_cell[("storage", "developer")]
-    storage_arch = by_cell[("storage", "architect")]
-    assert select_profile_id(_SYSTEM, "ui", "developer") == storage_dev
-    assert select_profile_id(_SYSTEM, "ui", "architect") == storage_arch
+    for area in _BUILD_AREAS:
+        for tier in ("developer", "architect", "tester"):
+            assert select_profile_id(_SYSTEM, area, tier) == by_cell[(area, tier)], (
+                f"({area},{tier}) did not resolve to its own profile"
+            )
+
+
+def test_noncatalog_area_falls_back_to_the_proven_profile():
+    """A genuinely unseeded area (e.g. a per-engagement area) has no per-area
+    profile, so it falls back to a proven area-parameterized profile of the tier
+    (the storage cell, first in seed order)."""
+    by_cell = {(p["area"], p["tier"]): p["identifier"] for p in _SYSTEM}
+    assert select_profile_id(_SYSTEM, "billing", "developer") == by_cell[("storage", "developer")]
+    assert select_profile_id(_SYSTEM, "billing", "architect") == by_cell[("storage", "architect")]

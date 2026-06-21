@@ -1,10 +1,19 @@
-"""Seed the proven ADO agent prompts as real registry content (PI-122 slice 6, D-δ3).
+"""Seed the system agent-profile catalog as real registry content (PI-122 slice 6
++ PI-240 / REQ-286 Phase-3 catalog).
 
 Two agent prompts were proven end-to-end before the registry existed (the ADO §12
 "prove one agent" runtime slice) and live under
 ``PRDs/product/crmbuilder-v2/agent-profile-registry/profiles/``. **The point of
 the registry is to hold those proven prompts as data** — so this seed does the
 decomposition each prompt file's "Toward the registry" section prescribes:
+
+PI-240 (Phase 3) extends this from the 5 proven/release-level profiles to the full
+per-(area, tier) **catalog** the matrix back half resolves (target-model §4.12):
+the 9 System build areas at Architect / Developer / Tester and the 4 methodology
+areas at Architect, with thin starter contracts that accrue learnings at runtime.
+The proven storage Architect/Developer and the three release-level agents are kept
+verbatim; the rest are generated from per-tier templates parameterised by ``{AREA}``.
+
 
 * the system-prompt body becomes the ``agent_profile.description``;
 * the endpoints it lists become bound **tool-skills** (``agent_profile_has_skill``);
@@ -346,8 +355,162 @@ _RELEASE_LEAD_RULES = (
      "approval decision at the derived tier."),
 )
 
-# (area, tier, description, skills, rules)
-_SEED_PROFILES = (
+# ---------------------------------------------------------------------------
+# Phase 3 (PI-240 / REQ-286): the per-(area, tier) catalog templates.
+#
+# The matrix back half (target-model §4.5-4.8/§4.12) resolves a contract for each
+# (area, tier) cell a release touches. The registry holds a STARTER profile per
+# cell; these begin thin and accrue learnings at runtime. Build areas get
+# Architect / Developer / Tester; methodology areas get Architect only. The
+# Developer tier reuses the proven Area-Specialist contract above; the Architect
+# and Tester tiers are target-aligned starter templates. The {AREA}/{PI}/
+# {WORKSTREAM_ID}/{WORK_TASK} placeholders are the per-invocation contract the
+# runtime injects (same convention as the proven profiles).
+# ---------------------------------------------------------------------------
+
+_AREA_ARCHITECT_DESCRIPTION = """\
+SYSTEM ROLE — you are the {AREA} Architect Agent, the standing design-tier expert \
+for the {AREA} area in a multi-agent delivery pass.
+
+Who you are: the architect for one area of one Planning Item's work. \
+Architecture-Planning has already produced the product design (what each artifact \
+becomes); your job is the {AREA} area's IMPLEMENTATION design — how it is built — \
+plus the testable spec the Developer builds to and the Tester verifies against \
+blind. You decide the approach, not prose, and you do not write the production \
+code yourself.
+
+Your two deliverables: (a) the {AREA} implementation design — the approach, the \
+modules / edges / endpoints touched, and the existing conventions to follow; \
+(b) a testable spec — observable behaviours and acceptance checks precise enough \
+that a Tester can implement them WITHOUT reading the Developer's code.
+
+Method: read the area's current code and the feed-forward from earlier-ranked \
+areas; design the smallest correct change that fits the codebase's conventions; \
+write the testable spec as observable behaviour, not implementation detail. \
+Honour layer rank (storage 1 -> access 2 -> api 3 -> mcp/ui 4) and whatever \
+earlier areas froze."""
+
+_AREA_ARCHITECT_SKILLS = (
+    ("read planning item", "tool",
+     "Read the feature you design against (title + executive_summary).",
+     {"method": "GET"}, "GET /planning-items/{PI}"),
+    ("read prior-area outputs", "tool",
+     "Read the feed-forward from earlier-ranked areas/phases you must honour.",
+     {"method": "GET"}, "GET /workstreams/{WORKSTREAM_ID}/prior-phase-outputs"),
+)
+
+_AREA_ARCHITECT_RULES = (
+    ("advisory",
+     "Design the implementation, not the product: Architecture-Planning already "
+     "decided what each artifact becomes; you decide how the {AREA} area builds it, "
+     "fitting the codebase's existing conventions."),
+    ("advisory",
+     "Produce a testable spec as observable behaviour: state acceptance checks "
+     "precise enough that the Tester can implement them blind to the Developer's "
+     "code; never specify a test by pointing at the implementation."),
+    ("advisory",
+     "Honour layer rank and frozen upstream: build on what earlier-ranked areas "
+     "(storage 1 -> access 2 -> api 3 -> mcp/ui 4) froze; do not re-decide their "
+     "design."),
+)
+
+_AREA_TESTER_DESCRIPTION = """\
+SYSTEM ROLE — you are the {AREA} Tester Agent, the standing test-tier expert for \
+the {AREA} area, working from the area's testable spec.
+
+Who you are: you implement the {AREA} area's testable spec and verify the built \
+system's BEHAVIOUR against it — BLIND to the Developer's source. You never read \
+the Developer's implementation as a reference; you exercise the running / merged \
+build so a Developer mistake cannot hide in same-mind tests.
+
+Your one job: turn the testable spec into real tests, run them against the build, \
+and report pass / fail. On a failure you bounce the work back to the {AREA} \
+Developer with the failing behaviour — you do not fix the code yourself.
+
+Method: (1) claim your test Work Task; (2) read the testable spec (the acceptance \
+behaviours); (3) write tests that assert those behaviours against the system's \
+observable outputs; (4) run them and report results. If the spec is ambiguous, \
+raise it rather than guess."""
+
+_AREA_TESTER_SKILLS = (
+    ("claim a Work Task", "tool",
+     "Claim your test Work Task (sets claimed_by/claimed_at).",
+     {"method": "POST"}, "POST /work-tasks/{WORK_TASK}/claim"),
+    ("update Work Task status", "tool",
+     "Drive your test Work Task through its lifecycle (In Progress -> Complete).",
+     {"method": "PATCH", "body": {"work_task_status": "str"}},
+     "PATCH /work-tasks/{WORK_TASK}"),
+    ("release a Work Task", "tool",
+     "Release the Work Task if you cannot complete it.",
+     {"method": "POST"}, "POST /work-tasks/{WORK_TASK}/release"),
+)
+
+_AREA_TESTER_RULES = (
+    ("advisory",
+     "Blind verification: implement the testable spec and check the system's "
+     "behaviour; do NOT read the Developer's source as a reference, so a same-mind "
+     "mistake cannot hide in the tests."),
+    ("advisory",
+     "Test observable behaviour, not implementation: assert against the system's "
+     "outputs / contracts, never its internal structure."),
+    ("advisory",
+     "On failure, bounce — do not fix: report the failing behaviour back to the "
+     "{AREA} Developer; the Tester verifies, the Developer corrects."),
+)
+
+_METHODOLOGY_ARCHITECT_DESCRIPTION = """\
+SYSTEM ROLE — you are the {AREA} Architect Agent, the standing design-tier expert \
+for the {AREA} methodology area (a design/methodology area — architect tier only, \
+no build tiers).
+
+Who you are: the architect for one methodology area. Your work is design \
+authoring — your area's methodology artifacts (interview guides, process \
+definitions, document templates, or product/PRD structure, per your area) — not \
+code. There are no Developer or Tester tiers for a methodology area: your \
+deliverable is the design itself, reviewed by a human.
+
+Your one job: author or revise your area's methodology design from the reconciled \
+intent, following the methodology's own rules. Method: read the relevant \
+requirements and the current methodology artifacts; author the smallest faithful \
+change; keep it consistent with the rest of the methodology."""
+
+_METHODOLOGY_ARCHITECT_SKILLS = (
+    ("read planning item", "tool",
+     "Read the feature/requirement context you design against.",
+     {"method": "GET"}, "GET /planning-items/{PI}"),
+)
+
+_METHODOLOGY_ARCHITECT_RULES = (
+    ("advisory",
+     "Author methodology design, not code: your deliverable is the methodology "
+     "artifact of the {AREA} area; there are no Developer/Tester tiers — the "
+     "design itself, human-reviewed, is the output."),
+    ("advisory",
+     "Never name specific products in methodology artifacts: requirements, "
+     "entities, processes, and PRDs describe needs, not implementation tools "
+     "(product names belong only in a CRM-selection report)."),
+    ("advisory",
+     "Keep each change consistent with the rest of the methodology: read the "
+     "current artifacts first and make the smallest faithful revision."),
+)
+
+# The build areas (Architect+Developer+Tester) and methodology areas (Architect
+# only), per target-model §4.12. The grid drives off vocab's System areas; new
+# engagement areas extend it automatically at resolve time, not here.
+_BUILD_AREAS = (
+    "storage", "access", "api", "mcp", "ui",
+    "automation", "infrastructure", "espo", "programs",
+)
+_METHODOLOGY_AREAS = (
+    "methodology-interviews", "methodology-process",
+    "methodology-templates", "methodology-product",
+)
+
+# The proven / release-level profiles, kept verbatim (storage Architect+Developer
+# are the proven contracts; model/planning/release are the three release-level
+# task-named agents). These take precedence over the generated grid templates for
+# the same (area, tier) cell.
+_EXPLICIT_PROFILES = (
     ("storage", "architect", _ARCHITECT_DESCRIPTION, _ARCHITECT_SKILLS, _ARCHITECT_RULES),
     ("storage", "developer", _DEVELOPER_DESCRIPTION, _DEVELOPER_SKILLS, _DEVELOPER_RULES),
     ("model", "architect", _RECONCILIATION_DESCRIPTION, _RECONCILIATION_SKILLS,
@@ -357,6 +520,35 @@ _SEED_PROFILES = (
     ("release", "pi_lead", _RELEASE_LEAD_DESCRIPTION, _RELEASE_LEAD_SKILLS,
      _RELEASE_LEAD_RULES),
 )
+
+_GRID_TIERS = (
+    ("architect", _AREA_ARCHITECT_DESCRIPTION, _AREA_ARCHITECT_SKILLS, _AREA_ARCHITECT_RULES),
+    ("developer", _DEVELOPER_DESCRIPTION, _DEVELOPER_SKILLS, _DEVELOPER_RULES),
+    ("tester", _AREA_TESTER_DESCRIPTION, _AREA_TESTER_SKILLS, _AREA_TESTER_RULES),
+)
+
+
+def _catalog_profiles() -> tuple:
+    """The full system catalog: the explicit proven/release-level profiles, plus
+    the per-(area, tier) grid (build areas x 3 tiers + methodology areas x
+    Architect), with explicit cells taking precedence (target-model §4.12)."""
+    explicit_keys = {(a, t) for a, t, *_ in _EXPLICIT_PROFILES}
+    out = list(_EXPLICIT_PROFILES)
+    for area in _BUILD_AREAS:
+        for tier, desc, sk, ru in _GRID_TIERS:
+            if (area, tier) in explicit_keys:
+                continue
+            out.append((area, tier, desc, sk, ru))
+    for area in _METHODOLOGY_AREAS:
+        if (area, "architect") in explicit_keys:
+            continue
+        out.append((area, "architect", _METHODOLOGY_ARCHITECT_DESCRIPTION,
+                    _METHODOLOGY_ARCHITECT_SKILLS, _METHODOLOGY_ARCHITECT_RULES))
+    return tuple(out)
+
+
+# (area, tier, description, skills, rules)
+_SEED_PROFILES = _catalog_profiles()
 
 
 def _bind(session: Session, profile_id: str, target_type: str, target_id: str, relationship: str) -> None:
