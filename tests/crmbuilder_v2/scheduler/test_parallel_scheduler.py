@@ -35,7 +35,6 @@ from crmbuilder_v2.scheduler.parallel_scheduler import (
     ApiProcess,
     ParallelCoordinatingScheduler,
     ParallelSchedulerConfig,
-    TaskOutcome,
     select_to_dispatch,
     should_restart_api,
     slots_available,
@@ -376,10 +375,10 @@ def test_merge_conflict_pauses_dispatch_and_flags(monkeypatch):
     report = rt.run()
     assert report.paused is True
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
-    assert outcomes["WTK-1"] is TaskOutcome.MERGE_CONFLICT
+    assert outcomes["WTK-1"] is TaskStatus.NEEDS_HUMAN
     assert "WTK-1" in rt._flagged  # surfaced for a human, never force-resolved
     # WTK-2 was already in flight (cap 2) and still drains + merges cleanly.
-    assert outcomes["WTK-2"] is TaskOutcome.MERGED
+    assert outcomes["WTK-2"] is TaskStatus.SUCCEEDED
 
 
 def test_verify_failure_pauses_and_flags(monkeypatch):
@@ -393,7 +392,7 @@ def test_verify_failure_pauses_and_flags(monkeypatch):
     report = rt.run()
     assert report.paused is True
     r = report.task_reports[0]
-    assert r.outcome is TaskOutcome.VERIFY_FAILED
+    assert r.outcome is TaskStatus.FAILED
     assert r.verify.detail == "not_complete"
     assert "WTK-1" in rt._flagged
 
@@ -412,7 +411,7 @@ def test_build_agent_retried_once_on_incomplete_then_merges(monkeypatch):
     monkeypatch.setattr(pr.dispatcher, "_get", fake_get)
     report = rt.run()
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
-    assert outcomes["WTK-1"] is TaskOutcome.MERGED
+    assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED
     assert reads["n"] == 2  # re-read twice → the agent was re-spawned once
     assert "WTK-1" not in rt._flagged
 
@@ -426,7 +425,7 @@ def test_build_agent_incomplete_twice_fails_the_phase(monkeypatch):
     )
     report = rt.run()
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
-    assert outcomes["WTK-1"] is TaskOutcome.VERIFY_FAILED
+    assert outcomes["WTK-1"] is TaskStatus.FAILED
     assert "WTK-1" in rt._flagged
 
 
@@ -449,7 +448,7 @@ def test_affected_tests_failure_rolls_back_phase(monkeypatch):
     )
     report = rt.run()
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
-    assert outcomes["WTK-2"] is TaskOutcome.VERIFY_FAILED
+    assert outcomes["WTK-2"] is TaskStatus.FAILED
     verdicts = {r.work_task_id: r.verify for r in report.task_reports}
     assert verdicts["WTK-2"].detail == "tests_failed"
     assert report.rolled_back is True
@@ -492,7 +491,7 @@ def test_verify_failure_persists_output_log_parallel(monkeypatch, tmp_path):
     monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
     report = rt.run()
     r = report.task_reports[0]
-    assert r.outcome is TaskOutcome.VERIFY_FAILED
+    assert r.outcome is TaskStatus.FAILED
     assert r.verify.detail == "tests_failed"
     files = list((tmp_path / "verify").glob("WTK-1-*.log"))
     assert len(files) == 1
@@ -602,8 +601,8 @@ def test_phase_rollback_on_conflict_undoes_clean_sibling(monkeypatch):
     )
     report = rt.run()
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
-    assert outcomes["WTK-1"] is TaskOutcome.MERGED  # the sibling did land...
-    assert outcomes["WTK-2"] is TaskOutcome.MERGE_CONFLICT
+    assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED  # the sibling did land...
+    assert outcomes["WTK-2"] is TaskStatus.NEEDS_HUMAN
     # ...but the phase failed, so base is reset to the captured anchor — neither
     # sibling merge survives on main.
     assert report.pre_phase_head == "PRE_PHASE_HEAD"
@@ -617,12 +616,12 @@ def test_phase_rollback_on_conflict_undoes_clean_sibling(monkeypatch):
 
 def test_all_clean_phase_keeps_merges_and_does_not_roll_back(monkeypatch):
     # (b) Both tasks merge clean → the phase advances: no pause, no rollback,
-    # _reset_base_to never called, both merges remain (TaskOutcome.MERGED).
+    # _reset_base_to never called, both merges remain (TaskStatus.SUCCEEDED).
     rt = _make_runtime(
         monkeypatch, task_sleeps={"WTK-1": 0.1, "WTK-2": 0.1}, max_concurrent=2
     )
     report = rt.run()
-    assert {r.outcome for r in report.task_reports} == {TaskOutcome.MERGED}
+    assert {r.outcome for r in report.task_reports} == {TaskStatus.SUCCEEDED}
     assert len(report.merged) == 2
     assert report.paused is False
     assert report.rolled_back is False
@@ -649,8 +648,8 @@ def test_verify_failure_triggers_same_rollback_as_conflict(monkeypatch):
     monkeypatch.setattr(pr.dispatcher, "_get", fake_get)
     report = rt.run()
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
-    assert outcomes["WTK-1"] is TaskOutcome.MERGED
-    assert outcomes["WTK-2"] is TaskOutcome.VERIFY_FAILED
+    assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED
+    assert outcomes["WTK-2"] is TaskStatus.FAILED
     assert report.rolled_back is True
     assert report.rolled_back_to == "PRE_PHASE_HEAD"
     assert rt._reset_calls == ["PRE_PHASE_HEAD"]  # the clean sibling is also undone
@@ -666,7 +665,7 @@ def test_cap_one_happy_path_is_structurally_unchanged(monkeypatch):
         monkeypatch, task_sleeps={"WTK-1": 0.05, "WTK-2": 0.05}, max_concurrent=1
     )
     report = rt.run()
-    assert {r.outcome for r in report.task_reports} == {TaskOutcome.MERGED}
+    assert {r.outcome for r in report.task_reports} == {TaskStatus.SUCCEEDED}
     assert len(report.merged) == 2
     assert report.paused is False
     assert report.rolled_back is False
