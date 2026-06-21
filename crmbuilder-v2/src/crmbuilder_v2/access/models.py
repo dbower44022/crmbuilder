@@ -3101,6 +3101,55 @@ class ReconciliationConflict(EngagementScopedMixin, Base):
     )
 
 
+class ReleaseChangeSet(EngagementScopedMixin, Base):
+    """The persisted reconciled change-set — a durable, reviewable artifact (PI-237).
+
+    PRJ-041 / REQ-285 (front-half completion). The reconciliation stage's merged
+    result was re-derived on demand (``release_orchestration.reconciled_delta_sets``)
+    and never stored, so there was nothing durable for a human to review. This
+    table persists that reconciled change-set alongside the demand-set and the
+    conflicts: one row per ``(release, artifact)`` holding the ``merged`` artifact
+    (the post-resolution reconciled definition) and its ``provenance`` (which
+    requirements authored each change). Refreshed wholesale each reconciliation run
+    (delete-then-insert), so it always reflects the latest reconciliation; once the
+    reconciliation gate opens (no open conflicts) it is the final set the
+    Reconciliation Review reads. Engagement-scoped satellite, surrogate PK,
+    composite FK to ``releases``; outside the refs/change_log discipline.
+    """
+
+    __tablename__ = "release_change_sets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    artifact_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    artifact_identifier: Mapped[str] = mapped_column(String(64), nullable=False)
+    merged: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
+    provenance: Mapped[list] = mapped_column(JSONColumn, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_release_change_sets_release",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "release_identifier",
+            "artifact_type",
+            "artifact_identifier",
+            name="uq_release_change_sets_artifact",
+        ),
+        Index(
+            "ix_release_change_sets_release",
+            "engagement_id",
+            "release_identifier",
+        ),
+    )
+
+
 class ResourceLock(EngagementScopedMixin, Base):
     """A file-level / named-resource check-out lock (PI-203 / PRJ-030, §7.3).
 

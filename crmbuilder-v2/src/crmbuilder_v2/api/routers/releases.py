@@ -23,6 +23,7 @@ from crmbuilder_v2.access.repositories import (
     artifact_versions,
     planning_claims,
     reconciliation,
+    release_change_sets,
     release_demands,
     releases,
 )
@@ -256,9 +257,30 @@ def clear_demands(identifier: str, requirement: str | None = None):
 @router.post("/{identifier}/run-reconciliation")
 def run_reconciliation(identifier: str):
     """Reconcile the persisted demand-set (PI-217); returns the delta-sets +
-    open conflicts to route to governed decisions."""
+    open conflicts to route to governed decisions. Persists the reconciled
+    change-set as a durable, reviewable artifact (PI-237)."""
     with writable_session() as s:
         return ok(release_orchestration.run_reconciliation(s, identifier))
+
+
+@router.get("/{identifier}/change-set")
+def change_set(identifier: str):
+    """The persisted reconciled change-set — the durable, reviewable front-half
+    artifact (PI-237 / REQ-285): one entry per (artifact) with its merged
+    definition and provenance."""
+    with readonly_session() as s:
+        return ok(release_change_sets.list_change_set(s, identifier))
+
+
+@router.post("/{identifier}/persist-change-set")
+def persist_change_set(identifier: str):
+    """(Re)materialise the reconciled change-set for the release from the current
+    demands + resolved conflicts, and persist it (PI-237). Returns the persisted
+    set. Normally done as part of run-reconciliation; this drives it on demand."""
+    with writable_session() as s:
+        return ok(
+            release_orchestration.persist_reconciled_change_set(s, identifier)
+        )
 
 
 @router.post("/{identifier}/run-architecture-planning")

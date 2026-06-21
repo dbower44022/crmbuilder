@@ -106,6 +106,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "resource_locks",
         # PI-217 (PRJ-033) the agent-layer demand-set store (migration 0073).
         "release_demands",
+        # PI-237 (PRJ-041) the persisted reconciled change-set (migration 0075).
+        "release_change_sets",
     }
 )
 

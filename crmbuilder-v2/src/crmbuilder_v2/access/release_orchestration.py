@@ -33,6 +33,7 @@ from crmbuilder_v2.access.exceptions import ConflictError
 from crmbuilder_v2.access.repositories import (
     artifact_versions,
     planning_items,
+    release_change_sets,
     release_demands,
     releases,
     work_tasks,
@@ -66,6 +67,12 @@ def run_reconciliation(session: Session, release_identifier: str) -> dict:
     result["open_conflicts"] = recon.list_conflicts(
         session, release_identifier, status="open"
     )
+    # Persist the reconciled change-set as a durable, reviewable artifact (PI-237 /
+    # REQ-285). Refreshed wholesale each run, so it tracks conflict resolutions as
+    # they land; once the reconciliation gate opens it is the final set the
+    # Reconciliation Review reads. Behaviour-preserving — additive to the existing
+    # return shape.
+    result["change_set"] = persist_reconciled_change_set(session, release_identifier)
     return result
 
 
@@ -110,6 +117,24 @@ def reconciled_delta_sets(session: Session, release_identifier: str) -> list[dic
             "provenance": result["provenance"],
         })
     return delta_sets
+
+
+def persist_reconciled_change_set(
+    session: Session, release_identifier: str
+) -> list[dict]:
+    """Persist the reconciled change-set as a durable, reviewable artifact (PI-237).
+
+    Computes the post-resolution reconciled delta-sets (the same merge the
+    architecture-planning stage consumes) and stores them in the
+    ``release_change_sets`` table, replacing any prior snapshot for the release.
+    Called at the end of ``run_reconciliation`` so the durable artifact refreshes
+    on every reconciliation run; also exposed as a standalone driver so the
+    change-set can be (re)materialised on demand. Returns the persisted rows.
+    """
+    delta_sets = reconciled_delta_sets(session, release_identifier)
+    return release_change_sets.persist_change_set(
+        session, release_identifier, delta_sets
+    )
 
 
 # ---------------------------------------------------------------------------
