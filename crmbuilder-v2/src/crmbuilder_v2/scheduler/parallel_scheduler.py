@@ -55,7 +55,7 @@ from crmbuilder_v2.scheduler.coordinating_scheduler import (
     spawn_claude_agent,
     verify_result,
 )
-from crmbuilder_v2.scheduler.task_contract import TaskResult
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler.migration_lock import ExclusiveMigrationLock
 
 # --------------------------------------------------------------------------
@@ -128,14 +128,6 @@ def should_restart_api(health_ok: bool, owned: bool) -> bool:
 # --------------------------------------------------------------------------
 
 
-class TaskOutcome(str, Enum):
-    """What happened to one Work Task that the pool ran to completion."""
-
-    MERGED = "merged"  # verified + merged cleanly into the base branch
-    VERIFY_FAILED = "verify_failed"  # not Complete, or Complete with no commits
-    MERGE_CONFLICT = "merge_conflict"  # verified, but the branch would not merge
-
-
 @dataclass
 class TaskReport:
     """A human- and test-readable record of one Work Task's pool lifecycle.
@@ -146,7 +138,7 @@ class TaskReport:
 
     work_task_id: str
     branch: str
-    outcome: TaskOutcome
+    outcome: TaskStatus
     verify: TaskResult | None = None
     merge: TaskResult | None = None
     agent_returncode: int | None = None
@@ -179,7 +171,7 @@ class PoolRunReport:
 
     @property
     def merged(self) -> list[TaskReport]:
-        return [r for r in self.task_reports if r.outcome is TaskOutcome.MERGED]
+        return [r for r in self.task_reports if r.outcome is TaskStatus.SUCCEEDED]
 
 
 @dataclass
@@ -531,7 +523,7 @@ class ParallelCoordinatingScheduler:
             return TaskReport(
                 work_task_id=a.work_task_id,
                 branch=a.branch,
-                outcome=TaskOutcome.VERIFY_FAILED,
+                outcome=TaskStatus.FAILED,
                 verify=verdict,
                 agent_returncode=run.returncode,
                 spawned_at=run.spawned_at,
@@ -565,7 +557,7 @@ class ParallelCoordinatingScheduler:
             return TaskReport(
                 work_task_id=a.work_task_id,
                 branch=a.branch,
-                outcome=TaskOutcome.MERGE_CONFLICT,
+                outcome=TaskStatus.NEEDS_HUMAN,
                 verify=verdict,
                 merge=merge,
                 spawned_at=run.spawned_at,
@@ -581,7 +573,7 @@ class ParallelCoordinatingScheduler:
         return TaskReport(
             work_task_id=a.work_task_id,
             branch=a.branch,
-            outcome=TaskOutcome.MERGED,
+            outcome=TaskStatus.SUCCEEDED,
             verify=verdict,
             merge=merge,
             agent_returncode=run.returncode,
@@ -702,7 +694,7 @@ class ParallelCoordinatingScheduler:
                 report.task_reports.append(task_report)
                 self.reports.append(task_report)
                 active.discard(task_report.work_task_id)
-                if task_report.outcome is not TaskOutcome.MERGED:
+                if task_report.outcome is not TaskStatus.SUCCEEDED:
                     if not paused:
                         paused = True
                         report.paused = True
@@ -729,7 +721,7 @@ class ParallelCoordinatingScheduler:
             # rollback only restores main. An empty drain (no task_reports) has
             # nothing to undo and never used pre_phase_head.
             phase_failed = any(
-                r.outcome is not TaskOutcome.MERGED for r in report.task_reports
+                r.outcome is not TaskStatus.SUCCEEDED for r in report.task_reports
             )
             if phase_failed and report.task_reports:
                 with self._repo_lock:
