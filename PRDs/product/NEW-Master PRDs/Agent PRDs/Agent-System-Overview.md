@@ -10,6 +10,11 @@
 > **Companion:** for exact code paths, status enums, and component internals,
 > read `Agent-System-Technical-Reference.md` in this same folder.
 >
+> **⚠️ Built vs. target.** This document describes the system **as built today**.
+> A separate **target redesign** — different terminology and structure — is under
+> active design in `Agent-System-Target-Model.md` (same folder). Where the two
+> differ, that doc is the *future direction*, not current reality.
+>
 > **Two names you'll see a lot.** **ADO** = *Agent Delivery Organization*, the
 > org of agents that builds one planned item at a time. **Release pipeline** =
 > the bigger machine that batches many planned items into a single shipped

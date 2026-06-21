@@ -13,6 +13,11 @@
 >
 > **Verified against** the live V2 DB (`http://127.0.0.1:8765`,
 > `X-Engagement: CRMBUILDER`) on **2026-06-20**.
+>
+> **⚠️ Built vs. target.** This is the system **as built**. A separate **target
+> redesign** — with different terminology (e.g. "scheduler" not "runtime") and
+> structure — is under active design in `Agent-System-Target-Model.md`. Where the
+> two differ, that doc is the *future direction*, not current reality.
 
 ---
 
