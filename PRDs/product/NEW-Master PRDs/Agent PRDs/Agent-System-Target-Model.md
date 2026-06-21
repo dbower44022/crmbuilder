@@ -296,6 +296,46 @@ ends**: *freeze* to start the run, *approve* to ship.
 | **Outputs (persisted)** | a **ship-approval sign-off record** (approved/held + approver + timestamp + notes) |
 | **Status** | `succeeded` (approved → **deployment → shipped**) · `needs_human` (awaiting approval) · `failed`/held (do not ship) |
 
+### 4.12 Agent roster (the per-`(area, tier)` grid) (DECIDED)
+
+The naming pattern (principle 1.6) applied to the 13 System areas
+(`vocab.SYSTEM_AREA_RANKS`), split **build** (Architect + Developer + Tester) vs
+**design/methodology** (Architect-only) per DEC-368. The registry holds this as
+the **catalog**; the scheduler instantiates only the `(area, tier)` cells a
+release actually **touches** (sparse). **Engagement areas extend it
+automatically** (e.g. a "Billing" area → Billing Architect/Developer/Tester
+Agent).
+
+**Build areas — Architect / Developer / Tester each:**
+
+| Area (layer rank) | Agents |
+|---|---|
+| storage (1) | Storage Architect / Developer / Tester Agent |
+| access (2) | Access Architect / Developer / Tester Agent |
+| api (3) | API Architect / Developer / Tester Agent |
+| mcp (4) | MCP Architect / Developer / Tester Agent |
+| ui (4) | UI Architect / Developer / Tester Agent |
+| automation | Automation Architect / Developer / Tester Agent |
+| infrastructure | Infrastructure Architect / Developer / Tester Agent |
+| espo | Espo Architect / Developer / Tester Agent |
+| programs | Programs Architect / Developer / Tester Agent |
+
+**Design/methodology areas — Architect-only:**
+
+| Area | Agent |
+|---|---|
+| methodology-interviews | Methodology-Interviews Architect Agent |
+| methodology-process | Methodology-Process Architect Agent |
+| methodology-templates | Methodology-Templates Architect Agent |
+| methodology-product | Methodology-Product Architect Agent |
+
+**Release-level (task-named):** **Reconciliation Agent** `(model, architect)` ·
+**Architecture-Planning Agent** `(planning, architect)` · **Release-gate Agent**
+`(release, pi_lead)`.
+
+**Catalog total:** 9 build × 3 = 27 + 4 design = **31 per-area Agents**, + **3
+release-level**.
+
 ---
 
 ## 5. What "Reconciliation" vs "Architecture-Planning" mean (reference)
@@ -334,7 +374,8 @@ implementation, each layer consuming the prior, no redundancy.
 | D12 | 2026-06-20 | **Release-level QA gate (§4.9) + Test gate (§4.10)** — the Release-gate Agent (AGP-005) judges the **assembled whole**: QA = conformance (design covers every requirement, no contradictions), Test = functional (processes hold end-to-end). Deterministic **fail-closed floor** (no requirements/designs → auto-fail → `needs_human`); a `failed` gate **bounces** to the back half, findings driving rework. |
 | D13 | 2026-06-20 | **Final human Ship Approval (§4.11)** — option B: shipping requires a human sign-off, **symmetric to freeze** (human commits at both ends). Test gate `succeeded` → Ship Approval → deployment → shipped. **The pipeline (§4.1–§4.11) is now fully defined.** |
 | D14 | 2026-06-20 | **Not-all-PIs-ready rule** — option C: the **freeze gate** requires every in-scope PI to be **`ready`** *or* **explicitly deferred** by a human to a future release. No silent auto-defer (built's behavior); no hard stall (pure all-or-nothing). "Ready" = requirements confirmed + no blocker outside this release (§3). |
-| D15 | 2026-06-20 | **Agent naming** (principle 1.6) — per-area Agents = `<Area> <Tier> Agent` (e.g. Storage Developer Agent), 1:1 with the registry `(area, tier)` key, scaling to engagement areas; the three release-level Agents keep task-descriptive names (Reconciliation Agent, Architecture-Planning Agent, Release-gate Agent). **Closes the last open item — the target model is complete.** |
+| D15 | 2026-06-20 | **Agent naming** (principle 1.6) — per-area Agents = `<Area> <Tier> Agent` (e.g. Storage Developer Agent), 1:1 with the registry `(area, tier)` key, scaling to engagement areas; the three release-level Agents keep task-descriptive names (Reconciliation Agent, Architecture-Planning Agent, Release-gate Agent). |
+| D16 | 2026-06-20 | **Per-area Agent roster** (§4.12) — pattern applied to the 13 System areas: **build areas** (storage, access, api, mcp, ui, automation, infrastructure, espo, programs) get Architect + Developer + Tester; **methodology-\*** areas Architect-only (DEC-368). 31 per-area + 3 release-level Agents; catalog is **sparse** (only touched cells instantiated); engagement areas extend it. |
 
 ---
 
