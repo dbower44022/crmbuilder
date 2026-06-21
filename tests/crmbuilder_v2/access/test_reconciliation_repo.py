@@ -13,7 +13,11 @@ from crmbuilder_v2.access._helpers import get_by_identifier
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import ConflictError
 from crmbuilder_v2.access.models import Release
-from crmbuilder_v2.access.repositories import artifact_versions, releases
+from crmbuilder_v2.access.repositories import (
+    artifact_versions,
+    release_signoffs,
+    releases,
+)
 from crmbuilder_v2.access.repositories import reconciliation as recon
 
 
@@ -63,6 +67,9 @@ def test_conflict_persists_and_gates_transition(v2_env):
             resolved_value={"required": True},
         )
         assert recon.has_open_conflicts(s, rel) is False
+        # PI-238: the gate also needs a human review sign-off of the change-set.
+        release_signoffs.create_signoff(
+            s, rel, stage="reconciliation", reviewer="t", attestation="ok")
         out2 = releases.transition(s, rel, "architecture_planning")
         assert out2["release_status"] == "architecture_planning"
 
@@ -76,6 +83,9 @@ def test_clean_reconcile_allows_transition(v2_env):
         ]
         out = recon.reconcile_release(s, rel, demands)
         assert out["has_open_conflicts"] is False
+        # PI-238: the gate also needs a human review sign-off of the change-set.
+        release_signoffs.create_signoff(
+            s, rel, stage="reconciliation", reviewer="t", attestation="ok")
         assert (
             releases.transition(s, rel, "architecture_planning")["release_status"]
             == "architecture_planning"

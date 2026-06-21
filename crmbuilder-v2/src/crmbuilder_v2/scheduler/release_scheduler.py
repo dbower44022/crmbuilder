@@ -59,8 +59,10 @@ class StepKind(str, Enum):
     AWAIT_FREEZE = "await_freeze"        # a deliberate human/PM freeze act is owed
     AUTHOR_DEMANDS = "author_demands"    # reconciliation: no demands yet
     RESOLVE_CONFLICTS = "resolve_conflicts"  # PAUSE — governed decisions owed
+    AWAIT_RECONCILIATION_REVIEW = "await_reconciliation_review"  # PAUSE — human review of the change-set owed
     ADVANCE_RECONCILIATION = "advance_reconciliation"
     PLAN = "plan"                        # author designs + decompose PIs
+    AWAIT_ARCHITECTURE_REVIEW = "await_architecture_review"  # PAUSE — human review of the designs owed
     FINALIZE = "finalize"                # readiness + interactive→ado + enter ready
     # --- development lane (the dev-lane delegation) ---
     ENTER_LANE = "enter_lane"            # ready → development (single-occupancy gate)
@@ -90,6 +92,8 @@ def decide_next(
     demands_present: bool,
     has_open_conflicts: bool,
     readiness_ready: bool,
+    reconciliation_signed: bool = False,
+    architecture_planning_signed: bool = False,
     dev_lane_enabled: bool = False,
     all_pis_delivered: bool = False,
     qa_passed: bool = False,
@@ -120,10 +124,20 @@ def decide_next(
                 StepKind.RESOLVE_CONFLICTS,
                 "open reconciliation conflict(s) need governed decisions",
             )
+        if not reconciliation_signed:
+            return ReleaseStep(
+                StepKind.AWAIT_RECONCILIATION_REVIEW,
+                "reconciled change-set needs a human review sign-off (PI-238)",
+            )
         return ReleaseStep(StepKind.ADVANCE_RECONCILIATION)
     if status == "architecture_planning":
         if not readiness_ready:
             return ReleaseStep(StepKind.PLAN)
+        if not architecture_planning_signed:
+            return ReleaseStep(
+                StepKind.AWAIT_ARCHITECTURE_REVIEW,
+                "authored designs need a human review sign-off (PI-238)",
+            )
         return ReleaseStep(StepKind.FINALIZE)
     # --- development lane ---
     if not dev_lane_enabled:
@@ -190,8 +204,9 @@ class ReleaseScheduler:
     """
 
     _HALTS = frozenset({
-        StepKind.AWAIT_FREEZE, StepKind.RESOLVE_CONFLICTS, StepKind.DONE,
-        StepKind.BLOCKED,
+        StepKind.AWAIT_FREEZE, StepKind.RESOLVE_CONFLICTS,
+        StepKind.AWAIT_RECONCILIATION_REVIEW, StepKind.AWAIT_ARCHITECTURE_REVIEW,
+        StepKind.DONE, StepKind.BLOCKED,
     })
 
     def __init__(self, config: ReleaseSchedulerConfig):
@@ -229,6 +244,8 @@ class ReleaseScheduler:
                 demands_present=snap["demands_present"],
                 has_open_conflicts=snap["has_open_conflicts"],
                 readiness_ready=snap["readiness_ready"],
+                reconciliation_signed=snap["reconciliation_signed"],
+                architecture_planning_signed=snap["architecture_planning_signed"],
                 dev_lane_enabled=dev_lane,
                 all_pis_delivered=snap["all_pis_delivered"],
                 qa_passed=snap["qa_passed"],
@@ -368,7 +385,11 @@ class ReleaseScheduler:
 
     def _read_state(self, rid: str) -> dict:
         from crmbuilder_v2.access.repositories import reconciliation as recon
-        from crmbuilder_v2.access.repositories import release_demands, releases
+        from crmbuilder_v2.access.repositories import (
+            release_demands,
+            release_signoffs,
+            releases,
+        )
 
         with session_scope() as s:
             rel = releases.get_release(s, rid)
@@ -379,6 +400,12 @@ class ReleaseScheduler:
                 "demands_present": bool(release_demands.list_demands(s, rid)),
                 "has_open_conflicts": recon.has_open_conflicts(s, rid),
                 "readiness_ready": planning.planning_readiness(s, rid)["ready"],
+                # Front-half human-review gates (PI-238): a *fresh* sign-off whose
+                # fingerprint still matches the current stage output.
+                "reconciliation_signed": release_signoffs.fresh_signoff(
+                    s, rid, "reconciliation") is not None,
+                "architecture_planning_signed": release_signoffs.fresh_signoff(
+                    s, rid, "architecture_planning") is not None,
                 "all_pis_delivered": bool(in_scope) and delivered == set(in_scope),
                 "qa_passed": rel.get("release_qa_passed_at") is not None,
                 "test_passed": rel.get("release_test_passed_at") is not None,

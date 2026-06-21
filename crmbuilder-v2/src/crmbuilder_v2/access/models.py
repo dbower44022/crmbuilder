@@ -100,6 +100,7 @@ from crmbuilder_v2.access.vocab import (
     PROJECT_STATUSES,
     RECONCILIATION_CONFLICT_STATUSES,
     RECONCILIATION_CONFLICT_TYPES,
+    RELEASE_SIGNOFF_STAGES,
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
@@ -3146,6 +3147,60 @@ class ReleaseChangeSet(EngagementScopedMixin, Base):
             "ix_release_change_sets_release",
             "engagement_id",
             "release_identifier",
+        ),
+    )
+
+
+class ReleaseSignoff(EngagementScopedMixin, Base):
+    """A recorded human review sign-off at a release front-half stage (PI-238).
+
+    PRJ-041 / REQ-285. Reconciliation and architecture-planning each conclude on a
+    human review: a reviewer records a sign-off attesting they reviewed the stage's
+    output and approve advancing. The release transition then gates on the sign-off
+    (in addition to the deterministic check). Append-only — a sign-off is a dated
+    attestation, never edited.
+
+    ``signoff_stage`` names the output reviewed and the from-status of the
+    transition the sign-off unblocks (``reconciliation`` → the reconciled
+    change-set; ``architecture_planning`` → the authored designs).
+    ``signoff_fingerprint`` is a stable content hash of that output captured at
+    sign-off time, so the gate is **freshness-checked**: if the output later
+    changes, the fingerprint no longer matches and the gate forces a re-review
+    (the review_signoffs drift-snapshot pattern, applied to release stages).
+    Engagement-scoped satellite, surrogate PK, composite FK to ``releases``;
+    outside the refs/change_log discipline.
+    """
+
+    __tablename__ = "release_signoffs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    signoff_stage: Mapped[str] = mapped_column(String(32), nullable=False)
+    signoff_reviewer: Mapped[str] = mapped_column(Text, nullable=False)
+    signoff_attestation: Mapped[str] = mapped_column(Text, nullable=False)
+    signoff_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    signoff_decision_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    signoff_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_release_signoffs_release",
+        ),
+        CheckConstraint(
+            _check_in("signoff_stage", RELEASE_SIGNOFF_STAGES),
+            name="ck_release_signoff_stage",
+        ),
+        Index(
+            "ix_release_signoffs_release_stage",
+            "engagement_id",
+            "release_identifier",
+            "signoff_stage",
         ),
     )
 

@@ -23,6 +23,7 @@ from crmbuilder_v2.access.repositories import (
     projects,
     references,
     release_demands,
+    release_signoffs,
     releases,
 )
 from crmbuilder_v2.access.repositories import reconciliation as recon
@@ -74,7 +75,9 @@ def test_run_reconciliation_clean_then_advance(v2_env):
         assert out["delta_sets"][0]["merged"]["fields"]["email"] == {
             "required": True, "maxLength": 255
         }
-        # gate opens with no conflicts
+        # gate opens with no conflicts + a human review sign-off (PI-238)
+        release_signoffs.create_signoff(
+            s, rel, stage="reconciliation", reviewer="t", attestation="ok")
         assert releases.transition(s, rel, "architecture_planning")[
             "release_status"
         ] == "architecture_planning"
@@ -207,6 +210,10 @@ def test_decompose_drives_workstreams_to_scoped(v2_env):
 def test_finalize_planning_flips_to_ado_and_advances(v2_env):
     with session_scope() as s:
         rel, prj, pi = _scaffold(s)
+        # the architecture_planning → ready transition now also gates on a human
+        # review sign-off of the designs (PI-238)
+        release_signoffs.create_signoff(
+            s, rel, stage="architecture_planning", reviewer="t", attestation="ok")
         out = orch.finalize_planning(s, rel)
         assert out["release"]["release_status"] == "ready"
         assert pi in out["flipped_to_ado"]

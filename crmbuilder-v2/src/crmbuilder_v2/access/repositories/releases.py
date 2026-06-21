@@ -431,10 +431,40 @@ def _check_revalidations_complete(session: Session, identifier: str) -> None:
         )
 
 
+def _require_fresh_review_signoff(
+    session: Session, identifier: str, stage: str
+) -> None:
+    """Human-review gate (PI-238 / REQ-285) — a *fresh* sign-off must exist for the
+    stage. Fresh = the sign-off's captured fingerprint matches the stage's current
+    output, so a re-run that changed the output forces a re-review."""
+    from crmbuilder_v2.access.repositories import release_signoffs
+
+    if release_signoffs.fresh_signoff(session, identifier, stage) is None:
+        raise ConflictError(
+            f"release {identifier!r} cannot leave {stage}: no current human review "
+            f"sign-off (record one against the {stage} output; a stale sign-off "
+            f"from before the output changed does not count) (PI-238)."
+        )
+
+
+def _check_reconciliation_review(session: Session, identifier: str) -> None:
+    """Reconciliation gate — no open conflicts (RC-1) AND a fresh human review
+    sign-off of the reconciled change-set (PI-238)."""
+    _check_no_open_conflicts(session, identifier)
+    _require_fresh_review_signoff(session, identifier, "reconciliation")
+
+
+def _check_architecture_planning_review(session: Session, identifier: str) -> None:
+    """Architecture-planning gate — planned-completely (REQ-190) AND a fresh human
+    review sign-off of the authored designs (PI-238)."""
+    _check_planned_completely(session, identifier)
+    _require_fresh_review_signoff(session, identifier, "architecture_planning")
+
+
 _GATE_PREDICATES = {
     ("development_planning", "reconciliation"): _check_freeze,
-    ("reconciliation", "architecture_planning"): _check_no_open_conflicts,
-    ("architecture_planning", "ready"): _check_planned_completely,
+    ("reconciliation", "architecture_planning"): _check_reconciliation_review,
+    ("architecture_planning", "ready"): _check_architecture_planning_review,
     ("ready", "development"): _check_single_occupancy,
     ("qa", "testing"): _check_qa_passed,
     ("testing", "deployment"): _check_test_passed,

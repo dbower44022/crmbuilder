@@ -19,6 +19,7 @@ from crmbuilder_v2.access.repositories import (
     planning_items,
     projects,
     references,
+    release_signoffs,
     releases,
     requirement,
 )
@@ -63,7 +64,11 @@ def _in_development(s, title="R"):
           "workstream_belongs_to_planning_item")
     releases.transition(s, rel, "development_planning")
     releases.transition(s, rel, "reconciliation")
+    release_signoffs.create_signoff(
+        s, rel, stage="reconciliation", reviewer="t", attestation="ok")
     releases.transition(s, rel, "architecture_planning")
+    release_signoffs.create_signoff(
+        s, rel, stage="architecture_planning", reviewer="t", attestation="ok")
     releases.transition(s, rel, "ready")
     releases.transition(s, rel, "development")
     releases.transition(s, rel, "qa")

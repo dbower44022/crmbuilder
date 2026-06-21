@@ -17,6 +17,7 @@ from crmbuilder_v2.access.repositories import (
     planning_items,
     projects,
     references,
+    release_signoffs,
     releases,
 )
 from crmbuilder_v2.scheduler import release_scheduler as rr
@@ -49,9 +50,16 @@ def test_decide_next_reconciliation_authors_then_advances():
         "reconciliation", demands_present=True,
         has_open_conflicts=True, readiness_ready=False,
     ).kind is rr.StepKind.RESOLVE_CONFLICTS
+    # no conflicts but unreviewed → pause for the human review sign-off (PI-238)
     assert rr.decide_next(
         "reconciliation", demands_present=True,
         has_open_conflicts=False, readiness_ready=False,
+    ).kind is rr.StepKind.AWAIT_RECONCILIATION_REVIEW
+    # reviewed → advance
+    assert rr.decide_next(
+        "reconciliation", demands_present=True,
+        has_open_conflicts=False, readiness_ready=False,
+        reconciliation_signed=True,
     ).kind is rr.StepKind.ADVANCE_RECONCILIATION
 
 
@@ -60,9 +68,16 @@ def test_decide_next_planning_then_finalize_then_done():
         "architecture_planning", demands_present=True,
         has_open_conflicts=False, readiness_ready=False,
     ).kind is rr.StepKind.PLAN
+    # planned but unreviewed → pause for the design review sign-off (PI-238)
     assert rr.decide_next(
         "architecture_planning", demands_present=True,
         has_open_conflicts=False, readiness_ready=True,
+    ).kind is rr.StepKind.AWAIT_ARCHITECTURE_REVIEW
+    # reviewed → finalize
+    assert rr.decide_next(
+        "architecture_planning", demands_present=True,
+        has_open_conflicts=False, readiness_ready=True,
+        architecture_planning_signed=True,
     ).kind is rr.StepKind.FINALIZE
     assert rr.decide_next(
         "ready", demands_present=True,
@@ -96,7 +111,11 @@ def _scaffold_frozen_reconciliation(s):
     return rel, pi
 
 
-def test_loop_drives_reconciliation_to_ready(v2_env):
+def test_loop_pauses_for_front_half_reviews_then_reaches_ready(v2_env):
+    """The front half now pauses for human review (PI-238): the loop authors demands
+    and halts awaiting the reconciliation review; after a sign-off it advances,
+    plans, and halts awaiting the design review; after that sign-off it finalizes
+    to ready. Sign-offs are recorded between runs (the human gate)."""
     with session_scope() as s:
         rel, pi = _scaffold_frozen_reconciliation(s)
 
@@ -115,13 +134,29 @@ def test_loop_drives_reconciliation_to_ready(v2_env):
         demands_provider=lambda ctx: demands,
         decomposition_provider=lambda ctx: decomposition,
     )
-    report = rr.ReleaseScheduler(cfg).run()
 
-    assert report.final_status == "ready"
+    # 1) authors demands + persists change-set, then pauses for reconciliation review
+    r1 = rr.ReleaseScheduler(cfg).run()
+    assert r1.final_status == "reconciliation"
+    assert "review" in (r1.stopped_reason or "")
     with session_scope() as s:
-        # the loop authored demands, planned, decomposed, flipped the PI, advanced.
+        release_signoffs.create_signoff(
+            s, rel, stage="reconciliation", reviewer="t", attestation="ok")
+
+    # 2) advances to architecture_planning, plans + decomposes, pauses for design review
+    r2 = rr.ReleaseScheduler(cfg).run()
+    assert r2.final_status == "architecture_planning"
+    assert "review" in (r2.stopped_reason or "")
+    with session_scope() as s:
+        assert releases._pi_workstreams(s, pi)  # decomposed during planning
+        release_signoffs.create_signoff(
+            s, rel, stage="architecture_planning", reviewer="t", attestation="ok")
+
+    # 3) finalizes to ready
+    r3 = rr.ReleaseScheduler(cfg).run()
+    assert r3.final_status == "ready"
+    with session_scope() as s:
         assert planning_items.get(s, pi)["execution_mode"] == "ado"
-        assert releases._pi_workstreams(s, pi)  # decomposed
 
 
 def test_loop_pauses_on_conflict(v2_env):

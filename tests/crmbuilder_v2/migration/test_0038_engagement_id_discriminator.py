@@ -108,6 +108,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "release_demands",
         # PI-237 (PRJ-041) the persisted reconciled change-set (migration 0075).
         "release_change_sets",
+        # PI-238 (PRJ-041) the front-half review sign-offs (migration 0076).
+        "release_signoffs",
     }
 )
 

@@ -25,6 +25,7 @@ from crmbuilder_v2.access.repositories import (
     reconciliation,
     release_change_sets,
     release_demands,
+    release_signoffs,
     releases,
 )
 from crmbuilder_v2.api.deps import readonly_session, writable_session
@@ -41,6 +42,7 @@ from crmbuilder_v2.api.schemas import (
     ReleaseCreateIn,
     ReleaseLaneOrderIn,
     ReleasePatchIn,
+    ReleaseSignoffIn,
     ReleaseTransitionIn,
     RevalidateIn,
 )
@@ -280,6 +282,40 @@ def persist_change_set(identifier: str):
     with writable_session() as s:
         return ok(
             release_orchestration.persist_reconciled_change_set(s, identifier)
+        )
+
+
+# --- Front-half review sign-offs (PI-238 / REQ-285) --------------------------
+@router.get("/{identifier}/signoffs")
+def list_signoffs(identifier: str, stage: str | None = None):
+    """The release's recorded review sign-offs, newest first (PI-238); optionally
+    filtered to one stage (reconciliation | architecture_planning)."""
+    with readonly_session() as s:
+        return ok(release_signoffs.list_signoffs(s, identifier, stage=stage))
+
+
+@router.get("/{identifier}/signoff-status")
+def signoff_status(identifier: str, stage: str):
+    """Whether a stage has a *fresh* sign-off (matching the current output) plus
+    the current fingerprint — the review surface's 'reviewed / needs re-review'
+    read (PI-238)."""
+    with readonly_session() as s:
+        return ok(release_signoffs.signoff_status(s, identifier, stage))
+
+
+@router.post("/{identifier}/signoffs", status_code=201)
+def create_signoff(identifier: str, body: ReleaseSignoffIn):
+    """Record a human review sign-off for a front-half stage (PI-238 / REQ-285) —
+    the review task's completion. Captures the current stage fingerprint so the
+    transition gate can tell a fresh sign-off from a stale one."""
+    with writable_session() as s:
+        return ok(
+            release_signoffs.create_signoff(
+                s, identifier,
+                stage=body.stage, reviewer=body.reviewer,
+                attestation=body.attestation,
+                decision_identifier=body.decision_identifier,
+            )
         )
 
 

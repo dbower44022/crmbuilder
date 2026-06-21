@@ -22,6 +22,7 @@ from crmbuilder_v2.access.repositories import (
     planning_items,
     projects,
     references,
+    release_signoffs,
     releases,
     requirement,
     workstreams,
@@ -104,10 +105,19 @@ def _scoped_release(s, *, title="R", confirmed=True, decomposed=True):
     return rel, pi, req
 
 
+def _signoff(s, rel, stage):
+    """Record a human review sign-off for a front-half stage (PI-238 gate)."""
+    release_signoffs.create_signoff(
+        s, rel, stage=stage, reviewer="tester", attestation="reviewed",
+    )
+
+
 def _drive_to_ready(s, rel):
     releases.transition(s, rel, "development_planning")
     releases.transition(s, rel, "reconciliation")  # freeze
+    _signoff(s, rel, "reconciliation")  # PI-238 review gate
     releases.transition(s, rel, "architecture_planning")
+    _signoff(s, rel, "architecture_planning")  # PI-238 review gate
     releases.transition(s, rel, "ready")  # planned-completely
 
 
@@ -215,7 +225,10 @@ def test_planned_completely_rejected_when_undecomposed(v2_env):
         rel, _, _ = _scoped_release(s, title="ND", decomposed=False)
         releases.transition(s, rel, "development_planning")
         releases.transition(s, rel, "reconciliation")
+        _signoff(s, rel, "reconciliation")
         releases.transition(s, rel, "architecture_planning")
+        _signoff(s, rel, "architecture_planning")
+        # planned-completely fails before the review check (undecomposed PI)
         with pytest.raises(ConflictError, match="not decomposed"):
             releases.transition(s, rel, "ready")
 
@@ -225,7 +238,9 @@ def test_planned_completely_succeeds_and_stamps(v2_env):
         rel, _, _ = _scoped_release(s, title="PC")
         releases.transition(s, rel, "development_planning")
         releases.transition(s, rel, "reconciliation")
+        _signoff(s, rel, "reconciliation")
         releases.transition(s, rel, "architecture_planning")
+        _signoff(s, rel, "architecture_planning")
         out = releases.transition(s, rel, "ready")
         assert out["release_status"] == "ready"
         assert out["release_planned_completely_at"] is not None

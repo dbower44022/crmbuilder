@@ -1876,6 +1876,14 @@ class DecomposeIn(_Base):
     workstreams: list[dict[str, Any]]
 
 
+# --- Front-half review sign-offs (PI-238 / PRJ-041, REQ-285) -----------------
+class ReleaseSignoffIn(_Base):
+    stage: str  # "reconciliation" | "architecture_planning"
+    reviewer: str
+    attestation: str
+    decision_identifier: str | None = None
+
+
 # --- Artifact version (versioned change spine, PI-208 / PRJ-031) ------------
 class ArtifactVersionSnapshotIn(_Base):
     artifact_type: str

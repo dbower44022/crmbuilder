@@ -934,6 +934,14 @@ RECONCILIATION_CONFLICT_TYPES: frozenset[str] = frozenset(
     {"facet_value", "remove_vs_modify", "field_redefinition"}
 )
 
+# `release_signoff` (PI-238 / PRJ-041, REQ-285) — a recorded human review sign-off
+# at a release front-half stage. The stage names the release output reviewed (and
+# the from-status of the transition the sign-off unblocks): the reconciled
+# change-set, or the architecture-planning designs.
+RELEASE_SIGNOFF_STAGES: frozenset[str] = frozenset(
+    {"reconciliation", "architecture_planning"}
+)
+
 # `area_reopen` (PI-212 / PRJ-034, RW2/RW3) — an in-lane reopen of a frozen area;
 # while open, the area is thawing and its downstream areas are paused.
 AREA_REOPEN_STATUSES: frozenset[str] = frozenset({"open", "resolved"})
