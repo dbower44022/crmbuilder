@@ -165,7 +165,7 @@ def anthropic_gate_runner(model: str = _MODEL, *, log: Callable[[str], None] = p
     def _judge(ctx: dict) -> dict:
         import anthropic
 
-        from crmbuilder_v2.runtime.release_runtime import _registry_system_prompt
+        from crmbuilder_v2.scheduler.release_scheduler import _registry_system_prompt
 
         system = _registry_system_prompt("release", "pi_lead") or _GATE_SYSTEM
         instruction = _STAGE_INSTRUCTION.get(ctx["stage"], _STAGE_INSTRUCTION["qa"])

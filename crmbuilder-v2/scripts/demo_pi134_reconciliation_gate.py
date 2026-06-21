@@ -55,10 +55,10 @@ def main() -> int:
     from fastapi.testclient import TestClient
 
     from crmbuilder_v2.api.main import create_app
-    from crmbuilder_v2.runtime import dispatcher, reconciliation
-    from crmbuilder_v2.runtime.parallel_runtime import (
-        ParallelCoordinatingRuntime,
-        ParallelRuntimeConfig,
+    from crmbuilder_v2.scheduler import dispatcher, reconciliation
+    from crmbuilder_v2.scheduler.parallel_scheduler import (
+        ParallelCoordinatingScheduler,
+        ParallelSchedulerConfig,
     )
 
     client = TestClient(create_app())
@@ -122,8 +122,8 @@ def main() -> int:
 
     dispatcher._blocker_statuses = routed_blockers
 
-    cfg = ParallelRuntimeConfig(target_work_tasks=[wtk], max_concurrent=2)
-    rt = ParallelCoordinatingRuntime(config=cfg, log=lambda m: None)
+    cfg = ParallelSchedulerConfig(target_work_tasks=[wtk], max_concurrent=2)
+    rt = ParallelCoordinatingScheduler(config=cfg, log=lambda m: None)
 
     # Phase 1 — the gate holds the Develop task.
     decision = reconciliation.develop_gate("x", "ENG-001",

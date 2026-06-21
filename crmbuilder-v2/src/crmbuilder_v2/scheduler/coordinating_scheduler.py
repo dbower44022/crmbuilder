@@ -18,7 +18,7 @@ The loop, once per iteration:
    optionally narrowed to a target Work Task or Workstream so a demo run does not
    grab another session's real work);
 2. resolve that ``(area, tier)`` agent's contract from the registry (reuses
-   :func:`.agent_runtime.build_agent_prompt`), falling back to a minimal built-in
+   :func:`.agent_prompt.build_agent_prompt`), falling back to a minimal built-in
    contract when the registry has no matching profile;
 3. **spawn one Claude Code agent** in a fresh git worktree taken from the base
    branch HEAD, with the resolved contract (plus the operating protocol) as its
@@ -50,8 +50,8 @@ from datetime import UTC, datetime
 from enum import Enum
 
 from crmbuilder_v2.config import verify_log_dir
-from crmbuilder_v2.runtime import dispatcher, reconciliation
-from crmbuilder_v2.runtime.agent_runtime import build_agent_prompt
+from crmbuilder_v2.scheduler import dispatcher, reconciliation
+from crmbuilder_v2.scheduler.agent_prompt import build_agent_prompt
 
 # --------------------------------------------------------------------------
 # Outcomes (small enums + records the loop and its tests reason over)
@@ -126,7 +126,7 @@ def verify_result(work_task: dict, branch_has_commits: bool) -> VerifyOutcome:
 # this set (a future src package with no tests yet) falls back to the full
 # suite. Update this when a new mirrored package lands. (PI-147 §4.)
 _MIRRORED_SUBTREES = frozenset(
-    {"access", "api", "bootstrap", "mcp_server", "migration", "runtime", "ui"}
+    {"access", "api", "bootstrap", "mcp_server", "migration", "scheduler", "ui"}
 )
 _SRC_PREFIX = "crmbuilder-v2/src/crmbuilder_v2/"
 _TEST_ROOT = "tests/crmbuilder_v2"
@@ -520,7 +520,7 @@ SpawnFn = Callable[[str, str], subprocess.CompletedProcess]
 
 
 @dataclass
-class RuntimeConfig:
+class SchedulerConfig:
     """How a coordinating-runtime run is wired."""
 
     api_base: str = "http://127.0.0.1:8765"
@@ -541,10 +541,10 @@ class RuntimeConfig:
 
 
 @dataclass
-class CoordinatingRuntime:
+class CoordinatingScheduler:
     """The Layer-1 serial control loop (DEC-395)."""
 
-    config: RuntimeConfig
+    config: SchedulerConfig
     spawn_fn: SpawnFn | None = None
     # PI-147: injectable test runner. Default = real ``run_pytest``; unit tests
     # inject a fake returning a chosen TestRunResult without shelling out.
@@ -1015,17 +1015,17 @@ def seed_minimal_profile(
 
 
 # --------------------------------------------------------------------------
-# CLI — `crmbuilder-v2-runtime`
+# CLI — `crmbuilder-v2-scheduler`
 # --------------------------------------------------------------------------
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``crmbuilder-v2-runtime`` — run the Layer-1 serial coordinating loop."""
+    """``crmbuilder-v2-scheduler`` — run the Layer-1 serial coordinating loop."""
     import argparse
     import sys
 
     parser = argparse.ArgumentParser(
-        prog="crmbuilder-v2-runtime",
+        prog="crmbuilder-v2-scheduler",
         description="Coordinating runtime, Layer 1: serial spawn / verify / merge.",
     )
     parser.add_argument("--api-base", default="http://127.0.0.1:8765")
@@ -1063,7 +1063,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"seeded/found profile {pid} for ({args.seed_profile}, {args.tier})")
         return 0
 
-    config = RuntimeConfig(
+    config = SchedulerConfig(
         api_base=args.api_base,
         engagement=args.engagement,
         repo_root=args.repo_root,
@@ -1075,7 +1075,7 @@ def main(argv: list[str] | None = None) -> int:
         agent_timeout=args.agent_timeout,
         dry_run=args.dry_run,
     )
-    runtime = CoordinatingRuntime(config=config)
+    runtime = CoordinatingScheduler(config=config)
     reports = runtime.run()
     merged = sum(1 for r in reports if r.result is StepResult.MERGED)
     print(

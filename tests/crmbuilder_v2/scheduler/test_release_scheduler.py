@@ -19,7 +19,7 @@ from crmbuilder_v2.access.repositories import (
     references,
     releases,
 )
-from crmbuilder_v2.runtime import release_runtime as rr
+from crmbuilder_v2.scheduler import release_scheduler as rr
 
 _SUMMARY = (
     "A planning item exercised by the release-pipeline orchestration-loop tests; it "
@@ -110,12 +110,12 @@ def test_loop_drives_reconciliation_to_ready(v2_env):
         "work_tasks": [{"title": "add field", "area": "storage"}],
     }]
 
-    cfg = rr.ReleaseRuntimeConfig(
+    cfg = rr.ReleaseSchedulerConfig(
         release_identifier=rel,
         demands_provider=lambda ctx: demands,
         decomposition_provider=lambda ctx: decomposition,
     )
-    report = rr.ReleaseRuntime(cfg).run()
+    report = rr.ReleaseScheduler(cfg).run()
 
     assert report.final_status == "ready"
     with session_scope() as s:
@@ -137,11 +137,11 @@ def test_loop_pauses_on_conflict(v2_env):
          "artifact_identifier": "ENT-1", "field": "email", "facet": "required",
          "op": "set", "value": False},
     ]
-    cfg = rr.ReleaseRuntimeConfig(
+    cfg = rr.ReleaseSchedulerConfig(
         release_identifier=rel,
         demands_provider=lambda ctx: conflicting,
         decomposition_provider=lambda ctx: [],
     )
-    report = rr.ReleaseRuntime(cfg).run()
+    report = rr.ReleaseScheduler(cfg).run()
     assert report.final_status == "reconciliation"
     assert "conflict" in (report.stopped_reason or "")

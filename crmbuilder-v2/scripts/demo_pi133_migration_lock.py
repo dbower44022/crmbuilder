@@ -19,15 +19,15 @@ import subprocess
 import threading
 import time
 
-from crmbuilder_v2.runtime import parallel_runtime as pr
-from crmbuilder_v2.runtime.coordinating_runtime import (
+from crmbuilder_v2.scheduler import parallel_scheduler as pr
+from crmbuilder_v2.scheduler.coordinating_scheduler import (
     MergeResult,
     MergeStatus,
     _ResolvedAssignment,
 )
-from crmbuilder_v2.runtime.parallel_runtime import (
-    ParallelCoordinatingRuntime,
-    ParallelRuntimeConfig,
+from crmbuilder_v2.scheduler.parallel_scheduler import (
+    ParallelCoordinatingScheduler,
+    ParallelSchedulerConfig,
 )
 
 _T0 = time.time()
@@ -85,12 +85,12 @@ def main() -> int:
         time.sleep(0.05)
         _stamp("*** MIGRATION COMPLETE")
 
-    cfg = ParallelRuntimeConfig(
+    cfg = ParallelSchedulerConfig(
         max_concurrent=2,
         target_work_tasks=["WTK-1", "WTK-2", "WTK-3"],
         poll_interval=0.02,
     )
-    rt = ParallelCoordinatingRuntime(config=cfg, spawn_fn=fake_spawn, log=lambda m: None)
+    rt = ParallelCoordinatingScheduler(config=cfg, spawn_fn=fake_spawn, log=lambda m: None)
     rt_holder["rt"] = rt
 
     seen: set[str] = set()

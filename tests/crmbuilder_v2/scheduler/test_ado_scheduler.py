@@ -13,20 +13,20 @@ Mirrors the module's pure/I-O split:
 
 from __future__ import annotations
 
-from crmbuilder_v2.runtime import ado_runtime as ado
-from crmbuilder_v2.runtime.ado_runtime import (
+from crmbuilder_v2.scheduler import ado_scheduler as ado
+from crmbuilder_v2.scheduler.ado_scheduler import (
     AdoRunReport,
-    AdoRuntime,
-    AdoRuntimeConfig,
-    ProjectRuntime,
-    ProjectRuntimeConfig,
+    AdoScheduler,
+    AdoSchedulerConfig,
+    ProjectScheduler,
+    ProjectSchedulerConfig,
     StepKind,
     decide_next,
     eligible_batch,
     select_next_pi,
 )
-from crmbuilder_v2.runtime.parallel_runtime import PoolRunReport
-from crmbuilder_v2.runtime.reconciliation import GateDecision
+from crmbuilder_v2.scheduler.parallel_scheduler import PoolRunReport
+from crmbuilder_v2.scheduler.reconciliation import GateDecision
 
 _TERMINAL = {"Complete", "Not Applicable"}
 _PHASE_TYPES = ["Design", "Develop", "Test"]
@@ -153,8 +153,8 @@ class _World:
         )
 
 
-class _FakeDriver(AdoRuntime):
-    """AdoRuntime with the HTTP seams routed to a :class:`_World`."""
+class _FakeDriver(AdoScheduler):
+    """AdoScheduler with the HTTP seams routed to a :class:`_World`."""
 
     def __init__(self, world, **kw):
         super().__init__(**kw)
@@ -213,7 +213,7 @@ class _FakeDriver(AdoRuntime):
 
 def _cfg(**kw):
     kw.setdefault("log", lambda _m: None)
-    return AdoRuntimeConfig(planning_item="PI-900", **kw)
+    return AdoSchedulerConfig(planning_item="PI-900", **kw)
 
 
 def _clean_pool(cfg, ws):
@@ -233,7 +233,7 @@ def _scopes_to_ready(world):
 
 
 def test_run_pool_for_workstream_builds_a_valid_config(monkeypatch):
-    # Regression: the default pool seam must construct a real ParallelRuntimeConfig
+    # Regression: the default pool seam must construct a real ParallelSchedulerConfig
     # (no bad kwargs) and pass `log` to the runtime, not the config. Faked tests
     # inject pool_runner and never exercise this, so a live run was the only path
     # that caught `log=` being passed to the config.
@@ -248,11 +248,11 @@ def test_run_pool_for_workstream_builds_a_valid_config(monkeypatch):
         def run(self):
             return PoolRunReport(paused=False)
 
-    monkeypatch.setattr(ado, "ParallelCoordinatingRuntime", _FakePool)
-    cfg = AdoRuntimeConfig(planning_item="PI-1", log=lambda _m: None)
+    monkeypatch.setattr(ado, "ParallelCoordinatingScheduler", _FakePool)
+    cfg = AdoSchedulerConfig(planning_item="PI-1", log=lambda _m: None)
     report = ado.run_pool_for_workstream(cfg, "WSK-1")
     assert report.paused is False
-    # real ParallelRuntimeConfig built (would TypeError on a bad kwarg), and log
+    # real ParallelSchedulerConfig built (would TypeError on a bad kwarg), and log
     # routed to the runtime instance, not the config.
     assert captured["log"] is cfg.log
     assert captured["config"].target_workstream == "WSK-1"
@@ -275,7 +275,7 @@ def test_review_close_pi_verifies_by_result(monkeypatch):
     # Even when the closure agent fails/overruns (spawn → None), the outcome is
     # decided by the PI's actual status, not the subprocess.
     monkeypatch.setattr(ado, "spawn_scoping_agent", lambda *a, **k: None)
-    cfg = ProjectRuntimeConfig(project="PRJ-9", log=lambda _m: None)
+    cfg = ProjectSchedulerConfig(project="PRJ-9", log=lambda _m: None)
 
     monkeypatch.setattr(ado.dispatcher, "_get", lambda *a, **k: {"status": "Resolved"})
     assert ado.review_close_pi(cfg, "PI-1") is True
@@ -769,7 +769,7 @@ class _Backlog:
         }
 
 
-class _FakePm(ProjectRuntime):
+class _FakePm(ProjectScheduler):
     def __init__(self, backlog, **kw):
         super().__init__(**kw)
         self.backlog = backlog
@@ -796,7 +796,7 @@ def _pi_driver(backlog, outcomes=None):
 
 def _pm_cfg(**kw):
     kw.setdefault("log", lambda _m: None)
-    return ProjectRuntimeConfig(project="PRJ-9", **kw)
+    return ProjectSchedulerConfig(project="PRJ-9", **kw)
 
 
 def test_pm_dispatches_all_independent_eligible_pis():

@@ -1,6 +1,6 @@
 """ADO orchestration driver — the PI-level scheduler (PI-143, slices 1–2).
 
-The L1/L2 runtime (:mod:`coordinating_runtime`, :mod:`parallel_runtime`) drives
+The L1/L2 runtime (:mod:`coordinating_scheduler`, :mod:`parallel_scheduler`) drives
 the *bottom* half of the delivery loop: it finds a ``Ready`` Work Task, spawns an
 agent, verifies by result, and merges. It does not drive the *top* half — turning
 a dispatched Planning Item into ``Ready`` Work Tasks and advancing it phase by
@@ -42,9 +42,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from . import dispatcher, reconciliation
-from .parallel_runtime import (
-    ParallelCoordinatingRuntime,
-    ParallelRuntimeConfig,
+from .parallel_scheduler import (
+    ParallelCoordinatingScheduler,
+    ParallelSchedulerConfig,
     PoolRunReport,
 )
 from .reconciliation import GateDecision
@@ -148,7 +148,7 @@ def decide_next(overview: dict) -> AdoStep:
 
 
 @dataclass
-class AdoRuntimeConfig:
+class AdoSchedulerConfig:
     planning_item: str
     api_base: str = "http://127.0.0.1:8765"
     engagement: str = "CRMBUILDER"
@@ -185,9 +185,9 @@ class AdoRunReport:
 # --------------------------------------------------------------------------
 
 
-def run_pool_for_workstream(cfg: AdoRuntimeConfig, workstream_id: str) -> PoolRunReport:
+def run_pool_for_workstream(cfg: AdoSchedulerConfig, workstream_id: str) -> PoolRunReport:
     """Run the L2 parallel pool over exactly one phase Workstream's Work Tasks."""
-    pool_cfg = ParallelRuntimeConfig(
+    pool_cfg = ParallelSchedulerConfig(
         api_base=cfg.api_base,
         engagement=cfg.engagement,
         repo_root=cfg.repo_root,
@@ -200,7 +200,7 @@ def run_pool_for_workstream(cfg: AdoRuntimeConfig, workstream_id: str) -> PoolRu
         enable_file_locks=cfg.enable_file_locks,
     )
     # `log` is a field on the runtime, not the config — pass it there.
-    return ParallelCoordinatingRuntime(
+    return ParallelCoordinatingScheduler(
         config=pool_cfg, repo_lock=cfg.repo_lock, log=cfg.log
     ).run()
 
@@ -219,7 +219,7 @@ _PHASE_ROLE = {
 }
 
 
-def build_scoping_prompt(cfg: AdoRuntimeConfig, workstream_id: str, phase_type: str) -> str:
+def build_scoping_prompt(cfg: AdoSchedulerConfig, workstream_id: str, phase_type: str) -> str:
     """The scoping agent's operating protocol.
 
     Unlike an execution agent it writes no code and needs no worktree — it reads
@@ -286,7 +286,7 @@ def spawn_scoping_agent(prompt: str, *, timeout: int = 1800):
         return None
 
 
-def scope_phase_agent(cfg: AdoRuntimeConfig, workstream_id: str, phase_type: str) -> None:
+def scope_phase_agent(cfg: AdoSchedulerConfig, workstream_id: str, phase_type: str) -> None:
     """Default scope_runner: spawn an Architect to scope ``workstream_id``.
 
     Success is verified by the caller *by result* (the phase reaching ``Ready`` or
@@ -302,7 +302,7 @@ def scope_phase_agent(cfg: AdoRuntimeConfig, workstream_id: str, phase_type: str
 # --------------------------------------------------------------------------
 
 
-def build_reconcile_prompt(cfg: AdoRuntimeConfig, design_workstream_id: str) -> str:
+def build_reconcile_prompt(cfg: AdoSchedulerConfig, design_workstream_id: str) -> str:
     """The reconciliation reviewer's operating protocol.
 
     Runs once the Design phase's per-area specs (Work Tasks) exist. It reviews
@@ -344,7 +344,7 @@ def build_reconcile_prompt(cfg: AdoRuntimeConfig, design_workstream_id: str) -> 
     )
 
 
-def reconcile_phase_agent(cfg: AdoRuntimeConfig, design_workstream_id: str) -> None:
+def reconcile_phase_agent(cfg: AdoSchedulerConfig, design_workstream_id: str) -> None:
     """Default reconcile_runner: spawn a reviewer to raise findings over Design.
 
     Best-effort — a coherent design raises no findings, so there is nothing to
@@ -359,11 +359,11 @@ def reconcile_phase_agent(cfg: AdoRuntimeConfig, design_workstream_id: str) -> N
 # --------------------------------------------------------------------------
 
 
-def develop_gate_open(cfg: AdoRuntimeConfig, workstream_id: str) -> GateDecision:
+def develop_gate_open(cfg: AdoSchedulerConfig, workstream_id: str) -> GateDecision:
     """Phase-level Develop-gate consult, reusing :mod:`reconciliation`.
 
     The pool already enforces the gate per Work Task at dispatch
-    (``coordinating_runtime`` → ``reconciliation.develop_gate``); this lets the
+    (``coordinating_scheduler`` → ``reconciliation.develop_gate``); this lets the
     driver check it *before* running a futile pool and pause cleanly with a
     reconciliation reason. Reads one of the phase's Work Tasks and delegates to
     the same gate logic; a phase with no Work Tasks yet passes vacuously.
@@ -388,7 +388,7 @@ def develop_gate_open(cfg: AdoRuntimeConfig, workstream_id: str) -> GateDecision
 # --------------------------------------------------------------------------
 
 
-def task_branch_unmerged(cfg: AdoRuntimeConfig, work_task_id: str) -> bool:
+def task_branch_unmerged(cfg: AdoSchedulerConfig, work_task_id: str) -> bool:
     """Whether a Complete task's ``ado/<wtk-id>`` branch is un-merged (PI-145 residue).
 
     Under PI-145 a failed phase rolls back every sibling merge, but the
@@ -424,16 +424,16 @@ def task_branch_unmerged(cfg: AdoRuntimeConfig, work_task_id: str) -> bool:
 
 
 @dataclass
-class AdoRuntime:
+class AdoScheduler:
     """Drives one Planning Item through its phases to ``In Review`` (or a pause)."""
 
-    config: AdoRuntimeConfig
+    config: AdoSchedulerConfig
     # Injected for tests; defaults hit the live API / real pool / real agents.
-    pool_runner: Callable[[AdoRuntimeConfig, str], PoolRunReport] = run_pool_for_workstream
-    scope_runner: Callable[[AdoRuntimeConfig, str, str], None] = scope_phase_agent
-    gate_checker: Callable[[AdoRuntimeConfig, str], GateDecision] = develop_gate_open
-    reconcile_runner: Callable[[AdoRuntimeConfig, str], None] = reconcile_phase_agent
-    unmerged_check: Callable[[AdoRuntimeConfig, str], bool] = task_branch_unmerged
+    pool_runner: Callable[[AdoSchedulerConfig, str], PoolRunReport] = run_pool_for_workstream
+    scope_runner: Callable[[AdoSchedulerConfig, str, str], None] = scope_phase_agent
+    gate_checker: Callable[[AdoSchedulerConfig, str], GateDecision] = develop_gate_open
+    reconcile_runner: Callable[[AdoSchedulerConfig, str], None] = reconcile_phase_agent
+    unmerged_check: Callable[[AdoSchedulerConfig, str], bool] = task_branch_unmerged
 
     def log(self, msg: str) -> None:
         self.config.log(msg)
@@ -830,7 +830,7 @@ def build_review_prompt(api_base: str, engagement: str, pi: str) -> str:
     )
 
 
-def review_close_pi(cfg: ProjectRuntimeConfig, pi: str) -> bool:
+def review_close_pi(cfg: ProjectSchedulerConfig, pi: str) -> bool:
     """Default closure_runner: spawn a reviewer that resolves the PI if satisfied.
 
     Verified by result — returns True iff the PI reached ``Resolved``. A reviewer
@@ -843,7 +843,7 @@ def review_close_pi(cfg: ProjectRuntimeConfig, pi: str) -> bool:
 
 
 @dataclass
-class ProjectRuntimeConfig:
+class ProjectSchedulerConfig:
     project: str
     api_base: str = "http://127.0.0.1:8765"
     engagement: str = "CRMBUILDER"
@@ -905,18 +905,18 @@ def eligible_batch(backlog: dict, attempted: dict, cap: int) -> list[str]:
     return fresh[: max(1, cap)]
 
 
-def drive_planning_item(ado_cfg: AdoRuntimeConfig) -> AdoRunReport:
-    """Default per-PI driver seam: run the slice-1/2 :class:`AdoRuntime`."""
-    return AdoRuntime(ado_cfg).run()
+def drive_planning_item(ado_cfg: AdoSchedulerConfig) -> AdoRunReport:
+    """Default per-PI driver seam: run the slice-1/2 :class:`AdoScheduler`."""
+    return AdoScheduler(ado_cfg).run()
 
 
 @dataclass
-class ProjectRuntime:
+class ProjectScheduler:
     """Dispatches a Project's eligible PIs to the per-PI driver, in priority order."""
 
-    config: ProjectRuntimeConfig
-    pi_driver: Callable[[AdoRuntimeConfig], AdoRunReport] = drive_planning_item
-    closure_runner: Callable[[ProjectRuntimeConfig, str], bool] = review_close_pi
+    config: ProjectSchedulerConfig
+    pi_driver: Callable[[AdoSchedulerConfig], AdoRunReport] = drive_planning_item
+    closure_runner: Callable[[ProjectSchedulerConfig, str], bool] = review_close_pi
 
     def log(self, msg: str) -> None:
         self.config.log(msg)
@@ -928,9 +928,9 @@ class ProjectRuntime:
             self.config.engagement,
         )  # type: ignore[return-value]
 
-    def _ado_cfg(self, pi: str, repo_lock: threading.Lock | None = None) -> AdoRuntimeConfig:
+    def _ado_cfg(self, pi: str, repo_lock: threading.Lock | None = None) -> AdoSchedulerConfig:
         c = self.config
-        return AdoRuntimeConfig(
+        return AdoSchedulerConfig(
             planning_item=pi, api_base=c.api_base, engagement=c.engagement,
             repo_root=c.repo_root, base_branch=c.base_branch,
             max_concurrent=c.max_concurrent, tier=c.tier,
@@ -1038,7 +1038,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="dispatch/decompose plan only; report the next step, spawn nothing")
     args = p.parse_args(argv)
 
-    cfg = AdoRuntimeConfig(
+    cfg = AdoSchedulerConfig(
         planning_item=args.planning_item,
         api_base=args.api_base,
         engagement=args.engagement,
@@ -1050,7 +1050,7 @@ def main(argv: list[str] | None = None) -> int:
         manage_api=args.manage_api,
         dry_run=args.dry_run,
     )
-    report = AdoRuntime(cfg).run()
+    report = AdoScheduler(cfg).run()
     print(f"\nrun complete: {report.status}"
           + (f" — {report.reason}" if report.reason else "")
           + f"; phases completed: {report.completed_phases or '[]'}")
@@ -1081,7 +1081,7 @@ def project_main(argv: list[str] | None = None) -> int:
                    help="drive up to N independent eligible PIs at once (1 = serial)")
     args = p.parse_args(argv)
 
-    cfg = ProjectRuntimeConfig(
+    cfg = ProjectSchedulerConfig(
         project=args.project, api_base=args.api_base, engagement=args.engagement,
         repo_root=args.repo_root, base_branch=args.base_branch,
         max_concurrent=args.max_concurrent, tier=args.tier,
@@ -1090,7 +1090,7 @@ def project_main(argv: list[str] | None = None) -> int:
         review_on_complete=args.review_on_complete,
         max_parallel_pis=args.max_parallel_pis,
     )
-    report = ProjectRuntime(cfg).run()
+    report = ProjectScheduler(cfg).run()
     print(f"\nPM run complete: {len(report.driven)} PI(s) driven")
     for d in report.driven:
         print(f"  {d['planning_item']}: {d['status']}"

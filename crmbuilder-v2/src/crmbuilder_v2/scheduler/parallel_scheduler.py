@@ -1,6 +1,6 @@
 """Coordinating runtime — Layer 2 (concurrency-safe parallel execution).
 
-Layer 1 (:mod:`.coordinating_runtime`) closed the loop: it actually spawns a
+Layer 1 (:mod:`.coordinating_scheduler`) closed the loop: it actually spawns a
 Claude Code agent in a worktree, verifies, merges, and pauses for a human — but
 **one agent at a time** (DEC-395). Layer 2 generalizes that single-spawn unit
 into a **capped parallel pool** per **DEC-397**:
@@ -21,9 +21,9 @@ migration lock (PI-133) and the reconciliation-gate enforcement (PI-134) are
 **separate PIs built on top of this engine** and are deliberately *not* here.
 
 Layer 1's proven single-spawn-in-worktree is reused unchanged as the pool unit:
-:class:`~.coordinating_runtime.Worktree`, :func:`~.coordinating_runtime.spawn_claude_agent`,
-:func:`~.coordinating_runtime.verify_result`, :func:`~.coordinating_runtime.interpret_merge`,
-and the I/O helpers on :class:`~.coordinating_runtime.CoordinatingRuntime`
+:class:`~.coordinating_scheduler.Worktree`, :func:`~.coordinating_scheduler.spawn_claude_agent`,
+:func:`~.coordinating_scheduler.verify_result`, :func:`~.coordinating_scheduler.interpret_merge`,
+and the I/O helpers on :class:`~.coordinating_scheduler.CoordinatingScheduler`
 (``_assignment_for`` / ``_merge`` / ``_flag_needs_attention`` / ``_owning_workstream``)
 are composed here rather than reimplemented.
 
@@ -45,12 +45,12 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
 
-from crmbuilder_v2.runtime import dispatcher
-from crmbuilder_v2.runtime.coordinating_runtime import (
-    CoordinatingRuntime,
+from crmbuilder_v2.scheduler import dispatcher
+from crmbuilder_v2.scheduler.coordinating_scheduler import (
+    CoordinatingScheduler,
     MergeResult,
     MergeStatus,
-    RuntimeConfig,
+    SchedulerConfig,
     TestRunnerFn,
     VerifyOutcome,
     Worktree,
@@ -58,7 +58,7 @@ from crmbuilder_v2.runtime.coordinating_runtime import (
     spawn_claude_agent,
     verify_result,
 )
-from crmbuilder_v2.runtime.migration_lock import ExclusiveMigrationLock
+from crmbuilder_v2.scheduler.migration_lock import ExclusiveMigrationLock
 
 # --------------------------------------------------------------------------
 # Pure pool decisions (no I/O — unit-tested directly)
@@ -283,7 +283,7 @@ class ApiProcess:
 
 
 @dataclass
-class ParallelRuntimeConfig(RuntimeConfig):
+class ParallelSchedulerConfig(SchedulerConfig):
     """Layer-2 wiring: Layer-1 config + the concurrency cap and API ownership."""
 
     max_concurrent: int = 2
@@ -304,17 +304,17 @@ SpawnFn = Callable[[str, str], subprocess.CompletedProcess]
 
 
 @dataclass
-class ParallelCoordinatingRuntime:
+class ParallelCoordinatingScheduler:
     """The Layer-2 concurrency-safe parallel pool (DEC-397).
 
-    Composition over inheritance: a Layer-1 :class:`CoordinatingRuntime` is held
+    Composition over inheritance: a Layer-1 :class:`CoordinatingScheduler` is held
     as ``_l1`` and its I/O helpers (assignment resolution, merge, flag,
     owning-workstream lookup) are reused, so this class only adds the pool
     orchestration — slot filling, parallel spawn, completion-ordered merging,
     and API-process ownership.
     """
 
-    config: ParallelRuntimeConfig
+    config: ParallelSchedulerConfig
     spawn_fn: SpawnFn | None = None
     log: Callable[[str], None] = print
     reports: list[TaskReport] = field(default_factory=list)
@@ -334,7 +334,7 @@ class ParallelCoordinatingRuntime:
         # The Layer-1 runtime provides the proven per-task I/O unit. Its spawn
         # is unused here (we drive spawns from the pool), but it carries the
         # assignment/merge/flag helpers keyed off the same config.
-        self._l1 = CoordinatingRuntime(
+        self._l1 = CoordinatingScheduler(
             config=self.config, spawn_fn=None, log=self.log,
             test_runner_fn=self.test_runner_fn,
         )
@@ -602,7 +602,7 @@ class ParallelCoordinatingRuntime:
         """
         try:
             from crmbuilder_v2.access.db import session_scope
-            from crmbuilder_v2.runtime import sub_agent_locks
+            from crmbuilder_v2.scheduler import sub_agent_locks
 
             with session_scope() as s:
                 report = sub_agent_locks.verify_and_release(
@@ -626,7 +626,7 @@ class ParallelCoordinatingRuntime:
             return
         try:
             from crmbuilder_v2.access.db import session_scope
-            from crmbuilder_v2.runtime import sub_agent_locks
+            from crmbuilder_v2.scheduler import sub_agent_locks
 
             with session_scope() as s:
                 if sub_agent_locks.dev_lane_release(s, work_task_id) is not None:
@@ -749,17 +749,17 @@ class ParallelCoordinatingRuntime:
 
 
 # --------------------------------------------------------------------------
-# CLI — `crmbuilder-v2-runtime-pool`
+# CLI — `crmbuilder-v2-scheduler-pool`
 # --------------------------------------------------------------------------
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``crmbuilder-v2-runtime-pool`` — run the Layer-2 parallel pool."""
+    """``crmbuilder-v2-scheduler-pool`` — run the Layer-2 parallel pool."""
     import argparse
     import sys
 
     parser = argparse.ArgumentParser(
-        prog="crmbuilder-v2-runtime-pool",
+        prog="crmbuilder-v2-scheduler-pool",
         description="Coordinating runtime, Layer 2: capped concurrency-safe "
         "parallel spawn / verify / merge-as-complete.",
     )
@@ -797,7 +797,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
-    config = ParallelRuntimeConfig(
+    config = ParallelSchedulerConfig(
         api_base=args.api_base,
         engagement=args.engagement,
         repo_root=args.repo_root,
@@ -810,7 +810,7 @@ def main(argv: list[str] | None = None) -> int:
         poll_interval=args.poll_interval,
         manage_api=args.manage_api,
     )
-    runtime = ParallelCoordinatingRuntime(config=config)
+    runtime = ParallelCoordinatingScheduler(config=config)
     report = runtime.run()
     merged = len(report.merged)
     print(

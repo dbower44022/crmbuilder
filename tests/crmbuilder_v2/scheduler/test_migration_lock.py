@@ -22,22 +22,22 @@ import threading
 import time
 
 import pytest
-from crmbuilder_v2.runtime import parallel_runtime as pr
-from crmbuilder_v2.runtime.coordinating_runtime import (
+from crmbuilder_v2.scheduler import parallel_scheduler as pr
+from crmbuilder_v2.scheduler.coordinating_scheduler import (
     MergeResult,
     MergeStatus,
     TestRunResult,
     _ResolvedAssignment,
 )
-from crmbuilder_v2.runtime.migration_lock import (
+from crmbuilder_v2.scheduler.migration_lock import (
     ExclusiveMigrationLock,
     MigrationPhase,
     can_enter_exclusive,
     dispatch_allowed,
 )
-from crmbuilder_v2.runtime.parallel_runtime import (
-    ParallelCoordinatingRuntime,
-    ParallelRuntimeConfig,
+from crmbuilder_v2.scheduler.parallel_scheduler import (
+    ParallelCoordinatingScheduler,
+    ParallelSchedulerConfig,
 )
 
 
@@ -191,12 +191,12 @@ def test_migration_runs_with_no_live_agent_then_pool_resumes(monkeypatch):
             observed_live_at_migration.append(live["n"])
         time.sleep(0.02)
 
-    cfg = ParallelRuntimeConfig(
+    cfg = ParallelSchedulerConfig(
         max_concurrent=2,
         target_work_tasks=["WTK-1", "WTK-2", "WTK-3"],
         poll_interval=0.02,
     )
-    rt = ParallelCoordinatingRuntime(config=cfg, spawn_fn=fake_spawn, log=lambda m: None,
+    rt = ParallelCoordinatingScheduler(config=cfg, spawn_fn=fake_spawn, log=lambda m: None,
                                      test_runner_fn=_pass_runner)
     rt_holder["rt"] = rt
 

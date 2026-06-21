@@ -153,7 +153,7 @@ def decide_next(
 
 
 @dataclass
-class ReleaseRuntimeConfig:
+class ReleaseSchedulerConfig:
     release_identifier: str
     demands_provider: DemandsProvider
     decomposition_provider: DecompositionProvider
@@ -181,7 +181,7 @@ class ReleaseRunReport:
 # ---------------------------------------------------------------------------
 
 
-class ReleaseRuntime:
+class ReleaseScheduler:
     """Walks one release through the pipeline using the injected agent seams.
 
     Read-decide in a session, then execute outside it — the development-stage ADO
@@ -194,7 +194,7 @@ class ReleaseRuntime:
         StepKind.BLOCKED,
     })
 
-    def __init__(self, config: ReleaseRuntimeConfig):
+    def __init__(self, config: ReleaseSchedulerConfig):
         self.cfg = config
 
     def run(self) -> ReleaseRunReport:
@@ -591,9 +591,9 @@ def ado_pi_runner(
     driven to ``In Review``; the release loop reads its status to confirm delivery.
     """
     def _run(release_identifier: str, planning_item: str) -> None:
-        from crmbuilder_v2.runtime.ado_runtime import AdoRuntime, AdoRuntimeConfig
+        from crmbuilder_v2.scheduler.ado_scheduler import AdoScheduler, AdoSchedulerConfig
 
-        AdoRuntime(AdoRuntimeConfig(
+        AdoScheduler(AdoSchedulerConfig(
             planning_item=planning_item, api_base=api_base, engagement=engagement,
             repo_root=repo_root, base_branch=base_branch,
             max_concurrent=max_concurrent, agent_timeout=agent_timeout,
@@ -638,10 +638,10 @@ def main(argv: list[str] | None = None) -> int:
     ) if args.dev_lane else None
     gate_runner = None
     if args.dev_lane and not args.manual_gates:
-        from crmbuilder_v2.runtime.release_gate import anthropic_gate_runner
+        from crmbuilder_v2.scheduler.release_gate import anthropic_gate_runner
 
         gate_runner = anthropic_gate_runner()
-    report = ReleaseRuntime(ReleaseRuntimeConfig(
+    report = ReleaseScheduler(ReleaseSchedulerConfig(
         release_identifier=args.release_identifier,
         demands_provider=demands_provider,
         decomposition_provider=decomposition_provider,
