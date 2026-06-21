@@ -12,8 +12,8 @@ structured output, and the enum fields must be constrained.
 from __future__ import annotations
 
 import pytest
-from crmbuilder_v2.runtime import release_gate
-from crmbuilder_v2.runtime import release_runtime as rr
+from crmbuilder_v2.scheduler import release_gate
+from crmbuilder_v2.scheduler import release_scheduler as rr
 
 # anthropic's structured-output schema transform — what messages.parse runs.
 transform_schema = pytest.importorskip(

@@ -4,7 +4,7 @@ PRJ-033 (PI-217 + PI-218). These functions wrap the deterministic substrate (the
 PI-209 Option-A spine) and supply the *plumbing* of the reconciliation and
 architecture-planning stages — never the judgment (demands authoring and the
 work-task decomposition *spec* are the LLM agents' job, in
-:mod:`crmbuilder_v2.runtime.release_runtime`). They reimplement no reconcile /
+:mod:`crmbuilder_v2.scheduler.release_scheduler`). They reimplement no reconcile /
 version / gate logic (AL-5): they call the substrate and arrange the calls.
 
 Stage steps

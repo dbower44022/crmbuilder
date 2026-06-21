@@ -240,7 +240,7 @@ def main() -> int:
     print("\n── Runbook (each command sends the test engagement header / repo) ──\n")
     if args.start_design:
         print("Rung 2 — one real agent on one Work Task (Layer 1), smallest test:")
-        print(f"  uv run crmbuilder-v2-runtime --work-task {s['work_task']} --engagement {eng} \\")
+        print(f"  uv run crmbuilder-v2-scheduler --work-task {s['work_task']} --engagement {eng} \\")
         print(f"      --repo-root {repo} --base-branch main --tier developer\n")
     else:
         print("Rung 4 — full driver: one PI scoped→reconciled→built→In Review:")

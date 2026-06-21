@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from crmbuilder_v2.runtime.dispatcher import (
+from crmbuilder_v2.scheduler.dispatcher import (
     is_work_task_eligible,
     select_profile_id,
 )

@@ -110,7 +110,7 @@ def build_agent_prompt(
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``python -m crmbuilder_v2.runtime.agent_runtime <profile> <work_task> [api_base] [engagement]``
+    """``python -m crmbuilder_v2.scheduler.agent_prompt <profile> <work_task> [api_base] [engagement]``
 
     Prints the composed agent prompt — the contract the orchestrator injects when
     it spawns the agent.
@@ -120,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     if len(args) < 2:
         print(
-            "usage: agent_runtime <profile_id> <work_task_id> "
+            "usage: agent_prompt <profile_id> <work_task_id> "
             "[api_base=http://127.0.0.1:8765] [engagement=CRMBUILDER]",
             file=sys.stderr,
         )

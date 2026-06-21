@@ -20,13 +20,13 @@ import urllib.request
 
 import pytest
 import uvicorn
-from crmbuilder_v2.runtime import coordinating_runtime as cr
-from crmbuilder_v2.runtime.coordinating_runtime import (
+from crmbuilder_v2.scheduler import coordinating_scheduler as cr
+from crmbuilder_v2.scheduler.coordinating_scheduler import (
     _TIMEOUT_RC,
-    CoordinatingRuntime,
+    CoordinatingScheduler,
     MergeResult,
     MergeStatus,
-    RuntimeConfig,
+    SchedulerConfig,
     StepResult,
     TestRunResult,
     VerifyOutcome,
@@ -75,9 +75,9 @@ def test_verify_no_commits_when_complete_but_branch_empty():
 _P = "crmbuilder-v2/src/crmbuilder_v2/"
 
 
-def test_select_target_single_mirrored_subtree_runtime():
-    assert select_test_target([f"{_P}runtime/coordinating_runtime.py"]) == (
-        "tests/crmbuilder_v2/runtime"
+def test_select_target_single_mirrored_subtree_scheduler():
+    assert select_test_target([f"{_P}scheduler/coordinating_scheduler.py"]) == (
+        "tests/crmbuilder_v2/scheduler"
     )
 
 
@@ -88,14 +88,14 @@ def test_select_target_single_mirrored_subtree_ui():
 def test_select_target_two_mirrored_subtrees_runs_their_union():
     # PI-200: two mirrored subtrees no longer fall back to the slow full suite —
     # the gate runs just those two fast packages (union, sorted for determinism).
-    target = select_test_target([f"{_P}runtime/a.py", f"{_P}ui/b.py"])
-    assert target == "tests/crmbuilder_v2/runtime tests/crmbuilder_v2/ui"
+    target = select_test_target([f"{_P}scheduler/a.py", f"{_P}ui/b.py"])
+    assert target == "tests/crmbuilder_v2/scheduler tests/crmbuilder_v2/ui"
 
 
 def test_select_target_mirrored_plus_unmirrored_falls_back_to_full_suite():
     # A mirrored subtree alongside one with no mirror package can't be localized
     # to packages-only → conservative full suite (widen, never narrow).
-    target = select_test_target([f"{_P}runtime/a.py", f"{_P}brandnew/b.py"])
+    target = select_test_target([f"{_P}scheduler/a.py", f"{_P}brandnew/b.py"])
     assert target == "tests/crmbuilder_v2"
 
 
@@ -129,8 +129,8 @@ def test_select_target_src_plus_its_mirror_test_stays_localized():
 
 def test_select_target_test_only_change_localizes_to_subtree():
     assert select_test_target(
-        ["tests/crmbuilder_v2/runtime/test_x.py"]
-    ) == "tests/crmbuilder_v2/runtime"
+        ["tests/crmbuilder_v2/scheduler/test_x.py"]
+    ) == "tests/crmbuilder_v2/scheduler"
 
 
 def test_select_target_ignores_docs_in_mixed_change():
@@ -158,7 +158,7 @@ def test_is_doc_only_change_true_for_docs():
 
 def test_is_doc_only_change_false_for_code_or_mixed_or_empty():
     assert is_doc_only_change([f"{_P}ui/foo.py"]) is False
-    assert is_doc_only_change(["spec.md", f"{_P}runtime/x.py"]) is False  # mixed
+    assert is_doc_only_change(["spec.md", f"{_P}scheduler/x.py"]) is False  # mixed
     assert is_doc_only_change([]) is False  # unknown → not doc-only (run the gate)
     assert is_doc_only_change(["pyproject.toml"]) is False  # config can affect tests
 
@@ -206,7 +206,7 @@ def test_run_pytest_timeout_does_not_propagate(monkeypatch):
     # unhandled exception that crashes the whole driver (the real 30-min incident).
     import subprocess as _sp
 
-    from crmbuilder_v2.runtime import coordinating_runtime as cr
+    from crmbuilder_v2.scheduler import coordinating_scheduler as cr
 
     def _boom(*a, **k):
         raise _sp.TimeoutExpired(cmd="pytest", timeout=1800, output="partial output")
@@ -222,7 +222,7 @@ def test_run_pytest_splits_multi_package_target_into_separate_args(monkeypatch):
     # PI-200: select_test_target may return several space-separated packages for
     # a multi-subtree change — run_pytest must pass each as its own pytest path
     # arg, not one bogus space-joined path.
-    from crmbuilder_v2.runtime import coordinating_runtime as cr
+    from crmbuilder_v2.scheduler import coordinating_scheduler as cr
 
     captured = {}
 
@@ -238,12 +238,12 @@ def test_run_pytest_splits_multi_package_target_into_separate_args(monkeypatch):
 
     monkeypatch.setattr(cr.subprocess, "run", _fake_run)
     result = cr.run_pytest(
-        "/tmp/wt", "tests/crmbuilder_v2/runtime tests/crmbuilder_v2/ui"
+        "/tmp/wt", "tests/crmbuilder_v2/scheduler tests/crmbuilder_v2/ui"
     )
     assert result.passed is True
     assert captured["cmd"] == [
         "uv", "run", "pytest",
-        "tests/crmbuilder_v2/runtime", "tests/crmbuilder_v2/ui",
+        "tests/crmbuilder_v2/scheduler", "tests/crmbuilder_v2/ui",
         "-q",
     ]
 
@@ -251,7 +251,7 @@ def test_run_pytest_splits_multi_package_target_into_separate_args(monkeypatch):
 def test_run_pytest_default_timeout_is_raised_for_full_suite_backstop(monkeypatch):
     # PI-200: the default deadline backstops the residual full-suite fallback,
     # which outgrew the old 1800s kill — it must be larger than 1800s.
-    from crmbuilder_v2.runtime import coordinating_runtime as cr
+    from crmbuilder_v2.scheduler import coordinating_scheduler as cr
 
     captured = {}
 
@@ -317,8 +317,8 @@ class _StatefulRunner:
 
 
 def _runtime_for_affected_tests(monkeypatch, runner):
-    cfg = RuntimeConfig(target_work_task="WTK-099", dry_run=False)
-    rt = CoordinatingRuntime(config=cfg, log=lambda m: None, test_runner_fn=runner)
+    cfg = SchedulerConfig(target_work_task="WTK-099", dry_run=False)
+    rt = CoordinatingScheduler(config=cfg, log=lambda m: None, test_runner_fn=runner)
     # Avoid touching the real verify-log dir in a unit test.
     monkeypatch.setattr(rt, "_persist_verify_output", lambda *a, **k: None)
     return rt
@@ -467,9 +467,9 @@ def _pass_runner(worktree_path, target):
 
 def _build_runtime(monkeypatch, *, assignment, task_after, has_commits, merge_result,
                    workstream=None, spawn_rc=0):
-    """Wire a CoordinatingRuntime with all I/O seams stubbed."""
-    cfg = RuntimeConfig(target_work_task="WTK-099", dry_run=False)
-    rt = CoordinatingRuntime(config=cfg, spawn_fn=lambda p, wp: _proc(rc=spawn_rc),
+    """Wire a CoordinatingScheduler with all I/O seams stubbed."""
+    cfg = SchedulerConfig(target_work_task="WTK-099", dry_run=False)
+    rt = CoordinatingScheduler(config=cfg, spawn_fn=lambda p, wp: _proc(rc=spawn_rc),
                              log=lambda m: None, test_runner_fn=_pass_runner)
 
     monkeypatch.setattr(rt, "_next_assignment", lambda: assignment)
@@ -502,8 +502,8 @@ def _assignment(task):
 
 
 def test_drained_when_no_assignment(monkeypatch):
-    cfg = RuntimeConfig()
-    rt = CoordinatingRuntime(config=cfg, log=lambda m: None)
+    cfg = SchedulerConfig()
+    rt = CoordinatingScheduler(config=cfg, log=lambda m: None)
     monkeypatch.setattr(rt, "_next_assignment", lambda: None)
     report = rt.run_one()
     assert report.result is StepResult.DRAINED
@@ -698,8 +698,8 @@ def test_pauses_before_spawn_when_task_pre_flagged(monkeypatch):
 
 def test_dry_run_resolves_but_does_not_spawn(monkeypatch):
     task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
-    cfg = RuntimeConfig(target_work_task="WTK-099", dry_run=True)
-    rt = CoordinatingRuntime(config=cfg, log=lambda m: None)
+    cfg = SchedulerConfig(target_work_task="WTK-099", dry_run=True)
+    rt = CoordinatingScheduler(config=cfg, log=lambda m: None)
     monkeypatch.setattr(rt, "_next_assignment", lambda: _assignment(task))
     monkeypatch.setattr(rt, "_owning_workstream", lambda wt: None)
     report = rt.run_one()
@@ -709,8 +709,8 @@ def test_dry_run_resolves_but_does_not_spawn(monkeypatch):
 
 def test_run_stops_at_first_pause(monkeypatch):
     task = {"work_task_identifier": "WTK-099", "work_task_status": "Ready"}
-    cfg = RuntimeConfig(target_work_task="WTK-099", max_iterations=5, dry_run=True)
-    rt = CoordinatingRuntime(config=cfg, log=lambda m: None)
+    cfg = SchedulerConfig(target_work_task="WTK-099", max_iterations=5, dry_run=True)
+    rt = CoordinatingScheduler(config=cfg, log=lambda m: None)
     monkeypatch.setattr(rt, "_next_assignment", lambda: _assignment(task))
     monkeypatch.setattr(rt, "_owning_workstream", lambda wt: None)
     reports = rt.run()
@@ -835,8 +835,8 @@ def test_flag_needs_attention_flags_owning_workstream_over_real_http(live_api):
     # Drive the real runtime helper over HTTP — no seam: real _owning_workstream
     # + real _patch + real route/schema.
     logs: list[str] = []
-    rt = CoordinatingRuntime(
-        config=RuntimeConfig(api_base=base, engagement="ENG-001"), log=logs.append
+    rt = CoordinatingScheduler(
+        config=SchedulerConfig(api_base=base, engagement="ENG-001"), log=logs.append
     )
     rt._flag_needs_attention(
         wt_id, "verification failed: not_complete (agent rc=1)"

@@ -69,7 +69,7 @@ def test_resolve_contract_reconstructs_reconciliation_agent(v2_env):
 
 
 def test_runtime_resolves_system_prompt_from_registry(v2_env):
-    from crmbuilder_v2.runtime import release_runtime as rr
+    from crmbuilder_v2.scheduler import release_scheduler as rr
 
     with session_scope() as s:
         registry_seed.seed_system_profiles(s)

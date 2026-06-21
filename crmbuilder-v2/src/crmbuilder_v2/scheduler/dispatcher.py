@@ -1,6 +1,6 @@
 """ADO dispatcher — auto-pull the next eligible Work Task and prepare its agent.
 
-The "wrapper" above :mod:`agent_runtime`: instead of an operator hand-picking a
+The "wrapper" above :mod:`agent_prompt`: instead of an operator hand-picking a
 Work Task, the dispatcher pulls the **next eligible** one from the API, selects
 the agent profile for its area/tier, and resolves the ready-to-spawn assignment
 (contract + prompt + a worktree branch name). The orchestrator then spawns the
@@ -23,7 +23,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
-from crmbuilder_v2.runtime.agent_runtime import AgentInvocation, build_agent_prompt
+from crmbuilder_v2.scheduler.agent_prompt import AgentInvocation, build_agent_prompt
 
 _CLAIMABLE_STATUS = "Ready"
 _COMPLETE_STATUS = "Complete"
@@ -191,7 +191,7 @@ def complete(api_base: str, engagement: str, work_task_id: str) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``python -m crmbuilder_v2.runtime.dispatcher [api_base] [engagement]``
+    """``python -m crmbuilder_v2.scheduler.dispatcher [api_base] [engagement]``
 
     Prints the next eligible assignment as JSON (metadata + the agent prompt), or
     a "no eligible work" notice. The orchestrator consumes this to spawn the agent.

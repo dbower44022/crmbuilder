@@ -20,7 +20,7 @@ from crmbuilder_v2.access.repositories import (
     work_tasks,
     workstreams,
 )
-from crmbuilder_v2.runtime import release_gate
+from crmbuilder_v2.scheduler import release_gate
 
 _SUMMARY = (
     "A planning item used by the release-gate tests; it carries enough audience-facing "

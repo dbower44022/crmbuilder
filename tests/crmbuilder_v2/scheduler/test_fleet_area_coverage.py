@@ -14,7 +14,7 @@ developer or architect tier the fallback depends on.
 from __future__ import annotations
 
 from crmbuilder_v2.access.repositories.registry_seed import _SEED_PROFILES
-from crmbuilder_v2.runtime.dispatcher import select_profile_id
+from crmbuilder_v2.scheduler.dispatcher import select_profile_id
 
 # The system-profile view the resolver sees, derived from what the seeder
 # actually creates (area, tier per cell) — not hand-maintained.

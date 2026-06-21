@@ -20,7 +20,7 @@ import urllib.parse
 from dataclasses import dataclass, field
 
 from crmbuilder_v2.access.vocab import FINDING_OPEN_STATUSES
-from crmbuilder_v2.runtime import dispatcher
+from crmbuilder_v2.scheduler import dispatcher
 
 _DEVELOP_PHASE = "Develop"
 _DESIGN_PHASE = "Design"

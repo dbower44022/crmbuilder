@@ -4,7 +4,7 @@ A schema migration rebuilds tables / constraints and locks out or times out any
 *concurrent* writer (the collision seen migrating the four-step constraint). So
 a migration must not run while agents are writing — it must run **alone**. This
 module makes that an exclusive, runtime-owned operation layered over the Layer 2
-pool (:mod:`.parallel_runtime`) without any new locking machinery: it reuses the
+pool (:mod:`.parallel_scheduler`) without any new locking machinery: it reuses the
 pool's own active-agent bookkeeping plus its main-thread serialization (already
 used for merges) as the exclusion primitive.
 

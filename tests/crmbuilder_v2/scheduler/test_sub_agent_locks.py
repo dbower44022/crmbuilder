@@ -22,7 +22,7 @@ from crmbuilder_v2.access.repositories import (
     work_tasks,
     workstreams,
 )
-from crmbuilder_v2.runtime import sub_agent_locks as sal
+from crmbuilder_v2.scheduler import sub_agent_locks as sal
 
 _SUMMARY = (
     "A planning item used by the sub-agent file-lock tests; it carries enough "

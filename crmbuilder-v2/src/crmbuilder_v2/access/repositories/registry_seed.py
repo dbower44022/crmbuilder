@@ -156,7 +156,7 @@ _DEVELOPER_RULES = (
 
 # --- Release pipeline planning org (PI-221, PRJ-033) --------------------------
 # The three planning-org agents the release-pipeline runtime (PI-219) drives,
-# promoted from the inline prompts in release_runtime.py to durable, learnable
+# promoted from the inline prompts in release_scheduler.py to durable, learnable
 # registry rows (AL-7). The {AREA}/{RELEASE}/{PI} placeholders are the
 # per-invocation contract. See release-pipeline-agent-layer-architecture.md §6.
 

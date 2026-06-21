@@ -23,20 +23,20 @@ import threading
 import time
 from pathlib import Path
 
-from crmbuilder_v2.runtime import parallel_runtime as pr
-from crmbuilder_v2.runtime.coordinating_runtime import (
-    CoordinatingRuntime,
+from crmbuilder_v2.scheduler import parallel_scheduler as pr
+from crmbuilder_v2.scheduler.coordinating_scheduler import (
+    CoordinatingScheduler,
     MergeResult,
     MergeStatus,
-    RuntimeConfig,
+    SchedulerConfig,
     TestRunResult,
     VerifyOutcome,
     _ResolvedAssignment,
 )
-from crmbuilder_v2.runtime.parallel_runtime import (
+from crmbuilder_v2.scheduler.parallel_scheduler import (
     ApiProcess,
-    ParallelCoordinatingRuntime,
-    ParallelRuntimeConfig,
+    ParallelCoordinatingScheduler,
+    ParallelSchedulerConfig,
     TaskOutcome,
     select_to_dispatch,
     should_restart_api,
@@ -246,7 +246,7 @@ def _make_runtime(
     max_concurrent: int = 2,
     merge_for=None,
 ):
-    """Build a ParallelCoordinatingRuntime with every I/O seam stubbed.
+    """Build a ParallelCoordinatingScheduler with every I/O seam stubbed.
 
     ``task_sleeps`` maps Work Task id → how long its fake agent runs (to force
     overlap and control completion order). ``merge_for`` maps id → MergeResult
@@ -268,12 +268,12 @@ def _make_runtime(
             recorder.windows[tid] = (start, time.time())
         return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
 
-    cfg = ParallelRuntimeConfig(
+    cfg = ParallelSchedulerConfig(
         max_concurrent=max_concurrent,
         target_work_tasks=list(task_sleeps),
         poll_interval=0.02,
     )
-    rt = ParallelCoordinatingRuntime(
+    rt = ParallelCoordinatingScheduler(
         config=cfg, spawn_fn=fake_spawn, log=lambda m: None,
         test_runner_fn=_pass_runner,
     )
@@ -465,11 +465,11 @@ def test_run_pytest_real_construction(tmp_path):
     # the repo root, asserting the command runs and the verdict maps correctly.
     from pathlib import Path
 
-    from crmbuilder_v2.runtime.coordinating_runtime import run_pytest
+    from crmbuilder_v2.scheduler.coordinating_scheduler import run_pytest
 
     repo_root = str(Path(__file__).resolve().parents[3])
     target = (
-        "tests/crmbuilder_v2/runtime/test_coordinating_runtime.py"
+        "tests/crmbuilder_v2/scheduler/test_coordinating_scheduler.py"
         "::test_verify_ok_requires_complete_and_commits"
     )
     result = run_pytest(repo_root, target)
@@ -485,7 +485,7 @@ def test_run_pytest_real_construction(tmp_path):
 
 
 def test_verify_failure_persists_output_log_parallel(monkeypatch, tmp_path):
-    from crmbuilder_v2.runtime import coordinating_runtime as cr
+    from crmbuilder_v2.scheduler import coordinating_scheduler as cr
 
     rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.05})
     rt._l1.test_runner_fn = lambda wp, target: TestRunResult(
@@ -508,7 +508,7 @@ def test_verify_failure_finding_summary_carries_log_path(monkeypatch, tmp_path):
     # §3.3: the parallel finding summary gets the same " — output: {path}"
     # suffix as the flag reason (``_make_runtime`` stubs ``_record_finding`` to
     # a no-op, so capture it here).
-    from crmbuilder_v2.runtime import coordinating_runtime as cr
+    from crmbuilder_v2.scheduler import coordinating_scheduler as cr
 
     rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.05})
     rt._l1.test_runner_fn = lambda wp, target: TestRunResult(
@@ -528,8 +528,8 @@ def test_run_pytest_real_failure_persists_wide_tail(monkeypatch, tmp_path):
     # §5h: a real red run, persisted through the real _run_affected_tests. Also
     # pins the PI-157 tail-widening — a >2000-char output is preserved (the old
     # cap truncated the traceback away).
-    from crmbuilder_v2.runtime import coordinating_runtime as cr
-    from crmbuilder_v2.runtime.coordinating_runtime import run_pytest
+    from crmbuilder_v2.scheduler import coordinating_scheduler as cr
+    from crmbuilder_v2.scheduler.coordinating_scheduler import run_pytest
 
     repo_root = str(Path(__file__).resolve().parents[3])
     failing = tmp_path / "test_wtk094_deliberate_fail.py"
@@ -543,8 +543,8 @@ def test_run_pytest_real_failure_persists_wide_tail(monkeypatch, tmp_path):
     assert len(result.output) > 2500  # the 2000-char tail was widened
 
     monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
-    rt = CoordinatingRuntime(
-        config=RuntimeConfig(),
+    rt = CoordinatingScheduler(
+        config=SchedulerConfig(),
         log=lambda m: None,
         test_runner_fn=lambda wp, target: result,
     )
@@ -680,7 +680,7 @@ def test_cap_one_happy_path_is_structurally_unchanged(monkeypatch):
 # PI-145 — atomic phase merge: real-git integration (actual merge + reset)
 #
 # The control-flow tests above stub the git helpers; these exercise the real
-# ``CoordinatingRuntime._base_head`` / ``_merge`` / ``_reset_base_to`` against a
+# ``CoordinatingScheduler._base_head`` / ``_merge`` / ``_reset_base_to`` against a
 # throwaway ``tmp_path`` repo, so the git semantics behind the rollback (merge
 # --no-ff landing on main, then ``reset --hard`` undoing every sibling merge) are
 # proven, not just the control flow (spec §8 — "at least one real-git test").
@@ -716,9 +716,9 @@ def _branch_with_file(repo: Path, branch: str, filename: str, content: str) -> N
     _git(repo, "checkout", "-q", "main")
 
 
-def _l1(repo: Path) -> CoordinatingRuntime:
-    return CoordinatingRuntime(
-        config=RuntimeConfig(repo_root=str(repo), base_branch="main"),
+def _l1(repo: Path) -> CoordinatingScheduler:
+    return CoordinatingScheduler(
+        config=SchedulerConfig(repo_root=str(repo), base_branch="main"),
         spawn_fn=None,
         log=lambda _m: None,
     )

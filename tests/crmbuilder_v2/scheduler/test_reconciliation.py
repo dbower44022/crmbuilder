@@ -14,9 +14,9 @@ in the build notes; the decision is pinned deterministically here.
 
 from __future__ import annotations
 
-from crmbuilder_v2.runtime import parallel_runtime as pr
-from crmbuilder_v2.runtime import reconciliation
-from crmbuilder_v2.runtime.reconciliation import (
+from crmbuilder_v2.scheduler import parallel_scheduler as pr
+from crmbuilder_v2.scheduler import reconciliation
+from crmbuilder_v2.scheduler.reconciliation import (
     GateDecision,
     evaluate_develop_gate,
     is_open_blocking,
@@ -193,8 +193,8 @@ def test_develop_gate_passes_non_develop(monkeypatch):
 
 
 def test_pool_excludes_gated_develop_task(monkeypatch):
-    cfg = pr.ParallelRuntimeConfig(target_work_tasks=["WTK-1"], max_concurrent=2)
-    rt = pr.ParallelCoordinatingRuntime(config=cfg, log=lambda m: None)
+    cfg = pr.ParallelSchedulerConfig(target_work_tasks=["WTK-1"], max_concurrent=2)
+    rt = pr.ParallelCoordinatingScheduler(config=cfg, log=lambda m: None)
 
     monkeypatch.setattr(
         pr.dispatcher, "_get",
@@ -217,19 +217,19 @@ def test_pool_excludes_gated_develop_task(monkeypatch):
 
 
 def test_gate_open_helper_logs_and_returns(monkeypatch):
-    from crmbuilder_v2.runtime.coordinating_runtime import (
-        CoordinatingRuntime,
-        RuntimeConfig,
+    from crmbuilder_v2.scheduler.coordinating_scheduler import (
+        CoordinatingScheduler,
+        SchedulerConfig,
     )
 
     logs: list[str] = []
-    rt = CoordinatingRuntime(config=RuntimeConfig(), log=logs.append)
+    rt = CoordinatingScheduler(config=SchedulerConfig(), log=logs.append)
     monkeypatch.setattr(
         reconciliation, "develop_gate",
         lambda api, eng, wt: GateDecision(False, "2 open blocking finding(s)"),
     )
     monkeypatch.setattr(
-        "crmbuilder_v2.runtime.coordinating_runtime.reconciliation.develop_gate",
+        "crmbuilder_v2.scheduler.coordinating_scheduler.reconciliation.develop_gate",
         lambda api, eng, wt: GateDecision(False, "2 open blocking finding(s)"),
     )
     assert rt._reconciliation_gate_open({"work_task_identifier": "WTK-9"}) is False

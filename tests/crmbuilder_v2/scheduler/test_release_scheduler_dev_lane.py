@@ -22,7 +22,7 @@ from crmbuilder_v2.access.repositories import (
     work_tasks,
     workstreams,
 )
-from crmbuilder_v2.runtime import release_runtime as rr
+from crmbuilder_v2.scheduler import release_scheduler as rr
 
 _SUMMARY = (
     "A planning item exercised by the release dev-lane delegation tests; it carries "
@@ -118,14 +118,14 @@ def _deliver_runner(deliver=True):
 def test_loop_drives_ready_to_shipped(v2_env):
     with session_scope() as s:
         rel, pi = _scaffold(s, status="ready")
-    cfg = rr.ReleaseRuntimeConfig(
+    cfg = rr.ReleaseSchedulerConfig(
         release_identifier=rel,
         demands_provider=lambda ctx: [],
         decomposition_provider=lambda ctx: [],
         pi_runner=_deliver_runner(),
         gate_runner=lambda rid, stage: True,
     )
-    report = rr.ReleaseRuntime(cfg).run()
+    report = rr.ReleaseScheduler(cfg).run()
     assert report.final_status == "shipped", report.stopped_reason
     with session_scope() as s:
         assert planning_items.get(s, pi)["status"] == "In Review"
@@ -135,14 +135,14 @@ def test_loop_pauses_when_no_gate_runner(v2_env):
     with session_scope() as s:
         # already in qa with the PI delivered, so the loop owes only the QA gate
         rel, _ = _scaffold(s, status="qa", pi_status="In Review")
-    cfg = rr.ReleaseRuntimeConfig(
+    cfg = rr.ReleaseSchedulerConfig(
         release_identifier=rel,
         demands_provider=lambda ctx: [],
         decomposition_provider=lambda ctx: [],
         pi_runner=_deliver_runner(),
         gate_runner=None,
     )
-    report = rr.ReleaseRuntime(cfg).run()
+    report = rr.ReleaseScheduler(cfg).run()
     assert report.final_status == "qa"
     assert "gate owed" in (report.stopped_reason or "")
 
@@ -150,13 +150,13 @@ def test_loop_pauses_when_no_gate_runner(v2_env):
 def test_loop_halts_when_pi_not_delivered(v2_env):
     with session_scope() as s:
         rel, _ = _scaffold(s, status="development", pi_status="Decomposed")
-    cfg = rr.ReleaseRuntimeConfig(
+    cfg = rr.ReleaseSchedulerConfig(
         release_identifier=rel,
         demands_provider=lambda ctx: [],
         decomposition_provider=lambda ctx: [],
         pi_runner=_deliver_runner(deliver=False),  # leaves the PI undelivered
         gate_runner=lambda rid, stage: True,
     )
-    report = rr.ReleaseRuntime(cfg).run()
+    report = rr.ReleaseScheduler(cfg).run()
     assert report.final_status == "development"
     assert "did not reach a delivered state" in (report.stopped_reason or "")
