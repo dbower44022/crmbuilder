@@ -53,7 +53,9 @@ _TEMPLATE = (
     _REPO_ROOT
     / "PRDs"
     / "product"
-    / "crmbuilder-v2"
+    / "NEW-Master PRDs"
+    / "Agent PRDs"
+    / "Archive"
     / "orchestrator"
     / "child-agent-kickoff-template.md"
 )

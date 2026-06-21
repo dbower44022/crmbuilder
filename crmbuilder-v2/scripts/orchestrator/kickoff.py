@@ -1,7 +1,7 @@
 """Kickoff-template rendering for the orchestrator (PI-081 / PI-082).
 
 Renders the child-agent kickoff template
-(``PRDs/product/crmbuilder-v2/orchestrator/child-agent-kickoff-template.md``)
+(``PRDs/product/NEW-Master PRDs/Agent PRDs/Archive/orchestrator/child-agent-kickoff-template.md``)
 by substituting its ``{{placeholder}}`` markers, then validates that none
 were left unsubstituted. Kept pure so it is unit-testable.
 """

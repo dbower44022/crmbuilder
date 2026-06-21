@@ -104,6 +104,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "area_reopens",
         # PI-203 (PRJ-030) the file-level resource-lock store.
         "resource_locks",
+        # PI-217 (PRJ-033) the agent-layer demand-set store (migration 0073).
+        "release_demands",
     }
 )
 
