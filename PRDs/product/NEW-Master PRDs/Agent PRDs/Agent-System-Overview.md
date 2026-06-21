@@ -130,19 +130,19 @@ flowchart TD
 
     RELplan -->|human FREEZES the plan| FREEZE{{"Plan Freeze<br/>= a transition,<br/>not a switch"}}
 
-    subgraph PIPE["RELEASE PIPELINE — the scheduler (release_runtime.py)"]
+    subgraph PIPE["RELEASE PIPELINE — the scheduler (release_scheduler.py)"]
         FREEZE --> RECON["Reconciliation<br/>merge all demands →<br/>find conflicts<br/>(reconciliation engine)"]
         RECON --> ARCH["Architecture Planning<br/>author designs (versioning spine)<br/>+ decompose into Work Tasks"]
         ARCH --> READY["Release: ready"]
         READY -->|single-occupancy:<br/>one release in the lane| DEV
     end
 
-    subgraph ADO["ADO DEV-ORG — runs each Planning Item (ado_runtime.py)"]
+    subgraph ADO["ADO DEV-ORG — runs each Planning Item (ado_scheduler.py)"]
         DEV["Development lane"] --> PM["Project Manager Agent<br/>dispatch next eligible PI"]
         PM --> LEAD["PI Lead Agent<br/>open each phase in order"]
         LEAD --> DECOMP["Decompose<br/>Plan: Design→Develop→Test<br/>chained by blocked_by"]
         DECOMP --> SCOPE["Phase Specialist Agent<br/>scope phase → Work Tasks"]
-        SCOPE --> POOL["Area Specialist Agents<br/>parallel pool, own git worktrees<br/>(parallel_runtime.py)"]
+        SCOPE --> POOL["Area Specialist Agents<br/>parallel pool, own git worktrees<br/>(parallel_scheduler.py)"]
         POOL --> GATE{{"Reconciliation gate<br/>Design settled +<br/>no blocking findings (FND)?"}}
         GATE -->|yes| MERGE["verify by result →<br/>merge each branch"]
         MERGE --> COMPLETE["complete phase →<br/>PI: In Review"]
@@ -182,10 +182,10 @@ one place or the other**, never both.)*
 ## 3. How the pieces sit together (the one-paragraph version)
 
 The **scheduler** programs walk the work through its stages. The
-**release pipeline** (`release_runtime.py`) is the outermost loop; for each
-Planning Item it calls the **ADO PI driver** (`ado_runtime.py`); the PI driver
-runs each phase as a **parallel pool of Area Specialist Agents** (`parallel_runtime.py`),
-which is built on top of a simpler **serial loop** (`coordinating_runtime.py`).
+**release pipeline** (`release_scheduler.py`) is the outermost loop; for each
+Planning Item it calls the **ADO PI driver** (`ado_scheduler.py`); the PI driver
+runs each phase as a **parallel pool of Area Specialist Agents** (`parallel_scheduler.py`),
+which is built on top of a simpler **serial loop** (`coordinating_scheduler.py`).
 The **registry** sits to the side and hands every spawned agent its contract.
 The **locks** sit underneath the agent pool, keeping parallel agents from
 editing the same files. The **reconciliation gate** sits at the Design→Develop
@@ -421,10 +421,10 @@ This overview was reconciled against code and the live database, not just the
 design docs. Drawn from:
 
 **Code (ground truth):**
-- `crmbuilder-v2/src/crmbuilder_v2/runtime/` — `ado_runtime.py`,
-  `coordinating_runtime.py`, `parallel_runtime.py`, `release_runtime.py`,
+- `crmbuilder-v2/src/crmbuilder_v2/scheduler/` — `ado_scheduler.py`,
+  `coordinating_scheduler.py`, `parallel_scheduler.py`, `release_scheduler.py`,
   `dispatcher.py`, `migration_lock.py`, `reconciliation.py`, `release_gate.py`,
-  `sub_agent_locks.py`, `agent_runtime.py`.
+  `sub_agent_locks.py`, `agent_prompt.py`.
 - `crmbuilder-v2/src/crmbuilder_v2/access/repositories/` — `pm.py`, `lead.py`,
   `decomposition.py`, `scoping.py`, `workstreams.py`, `work_tasks.py`,
   `findings.py`, `releases.py`, `release_demands.py`, `artifact_versions.py`,

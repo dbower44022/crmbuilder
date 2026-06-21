@@ -15,20 +15,21 @@
 > `X-Engagement: CRMBUILDER`) on **2026-06-20**.
 >
 > **⚠️ Built vs. target.** This is the system **as built**. A separate **target
-> redesign** — with different terminology (e.g. "scheduler" not "runtime") and
-> structure — is under active design in `Agent-System-Target-Model.md`. Where the
-> two differ, that doc is the *future direction*, not current reality.
+> redesign** — with different structure (e.g. per-area Architect/Developer/Tester
+> Agents and a uniform task contract) — is under active design in
+> `Agent-System-Target-Model.md`. Where the two differ, that doc is the *future
+> direction*, not current reality.
 
 ---
 
 ## 0. Orientation — the layer cake
 
 ```
-Release pipeline (PRJ-031)        release_runtime.py        ← outermost scheduler
-  └─ ADO PI driver (PI-143)       ado_runtime.py            ← drives ONE Planning Item
-       └─ Parallel pool (PI-139)  parallel_runtime.py       ← runs ONE phase's Work Tasks
-            └─ Serial loop (PI-132) coordinating_runtime.py ← spawn→verify→merge ONE agent
-                 └─ Area Specialist Agent   agent_runtime.py + dispatcher.py
+Release pipeline (PRJ-031)        release_scheduler.py        ← outermost scheduler
+  └─ ADO PI driver (PI-143)       ado_scheduler.py            ← drives ONE Planning Item
+       └─ Parallel pool (PI-139)  parallel_scheduler.py       ← runs ONE phase's Work Tasks
+            └─ Serial loop (PI-132) coordinating_scheduler.py ← spawn→verify→merge ONE agent
+                 └─ Area Specialist Agent   agent_prompt.py + dispatcher.py
 ```
 
 > 📐 **Diagram files:** [`Agent-System-Runtime-Layers.svg`](Agent-System-Runtime-Layers.svg)
@@ -43,15 +44,13 @@ repositories** (the deterministic REST/access functions the schedulers call), th
 **registry** (which supplies each spawned agent its contract), and the
 **concurrency primitives** (locks).
 
-> ⚠️ **Legacy code name.** The five modules above are the **schedulers** — the
-> term this doc uses throughout. In the *code* today they are still the
-> `*_runtime.py` files under `crmbuilder-v2/src/crmbuilder_v2/runtime/`;
-> "runtime" is an overloaded legacy name slated to be renamed to "scheduler."
-> The only "runtime" strings remaining in this doc are those literal file/module
-> paths.
+> ℹ️ **Naming.** The five modules above are the **schedulers** — files
+> `*_scheduler.py` (plus `agent_prompt.py`) under
+> `crmbuilder-v2/src/crmbuilder_v2/scheduler/`. Renamed from the legacy
+> `runtime` / `*_runtime.py` in Phase 0a (REQ-284 / PI-235).
 
 **Two distinct things both called "reconciliation"** — keep them apart:
-1. **ADO Design→Develop reconciliation gate** — `runtime/reconciliation.py` +
+1. **ADO Design→Develop reconciliation gate** — `scheduler/reconciliation.py` +
    `repositories/findings.py` + `lead.complete_phase`. Within one PI; gates
    Develop on a settled Design + zero open blocking findings.
 2. **Release reconciliation engine** — `access/reconciliation.py` (pure merge) +
@@ -106,7 +105,7 @@ All status enums and legal transitions live in
 
 Terminals reachable from any non-terminal: `Resolved`, `Cancelled`, `Deferred`.
 A PI flips to `Resolved` only via a governance `resolves` close-out edge, **not**
-by the scheduler. The ADO marks a finished PI `In Review` (`ado_runtime._DONE_STATUS`).
+by the scheduler. The ADO marks a finished PI `In Review` (`ado_scheduler._DONE_STATUS`).
 
 ### 1.2 Workstream (`WSK-NNN`, the delivery phase) — `WORKSTREAM_STATUS_TRANSITIONS`
 
@@ -229,7 +228,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   Router `api/routers/projects.py` (`backlog`, `eligible_planning_items`),
   `api/routers/planning_items.py` (`dispatch`).
 - **Interactions.** `planning_items`, `projects`, `references`. Consumed by
-  `ado_runtime.ProjectRuntime` (the `crmbuilder-v2-ado-pm` PM loop).
+  `ado_scheduler.ProjectScheduler` (the `crmbuilder-v2-ado-pm` PM loop).
 
 ---
 
@@ -256,7 +255,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   from `decomposition`). Router `api/routers/workstreams.py`
   (`start_execution`, `complete_phase`), `planning_items.py` (`phase_overview`).
 - **Interactions.** `planning_items`, `pm` (interactive backstop), `references`,
-  `workstreams`, `work_tasks`. Driven by `ado_runtime.AdoRuntime`.
+  `workstreams`, `work_tasks`. Driven by `ado_scheduler.AdoScheduler`.
 
 ---
 
@@ -338,12 +337,12 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 - **Name & purpose.** PI-132 / DEC-395. The serial spawn → verify → test-gate →
   merge loop, one agent at a time, each in a throwaway git worktree.
 - **Functionality.** Pull the next Ready Work Task (`_next_assignment`), resolve
-  its contract (`_assignment_for` → `agent_runtime.build_agent_prompt`), spawn one
+  its contract (`_assignment_for` → `agent_prompt.build_agent_prompt`), spawn one
   `claude` agent on branch `ado/<wtk-id>`, verify by **result** (`verify_result`:
   Work Task is `Complete` *and* the branch has commits), run affected tests
   (`select_test_target` → `run_pytest`), and merge `--no-ff` into `base_branch`.
-- **Triggers.** CLI `crmbuilder-v2-runtime` (`coordinating_runtime:main`); also
-  composed as `_l1` inside `parallel_runtime`.
+- **Triggers.** CLI `crmbuilder-v2-scheduler` (`coordinating_scheduler:main`); also
+  composed as `_l1` inside `parallel_scheduler`.
 - **Inputs.** API via `dispatcher` (`/work-tasks?status=Ready`,
   `/agent-profiles`, `/references`, `/workstreams/{id}`); the reconciliation gate
   (`reconciliation.develop_gate` via `_reconciliation_gate_open`); git worktree
@@ -357,9 +356,9 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   spawned agent (per `operating_protocol`) drives its own Work Task
   `claim → In Progress → Complete`; the scheduler gates on the *result*, not the
   agent's exit code (DEC-396).
-- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/runtime/coordinating_runtime.py`.
-- **Interactions.** `dispatcher`, `reconciliation`, `agent_runtime.build_agent_prompt`,
-  `config.verify_log_dir`. Reused wholesale (composition) by `parallel_runtime`.
+- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/scheduler/coordinating_scheduler.py`.
+- **Interactions.** `dispatcher`, `reconciliation`, `agent_prompt.build_agent_prompt`,
+  `config.verify_log_dir`. Reused wholesale (composition) by `parallel_scheduler`.
 
 ---
 
@@ -376,8 +375,8 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   finding (falling back to `needs_attention`). On any non-MERGED task it pauses
   dispatch, drains in-flight, then **hard-resets `base_branch` to `pre_phase_head`**
   (PI-145 all-or-nothing rollback).
-- **Triggers.** CLI `crmbuilder-v2-runtime-pool` (`parallel_runtime:main`);
-  instantiated by `ado_runtime.run_pool_for_workstream` (one pool per phase
+- **Triggers.** CLI `crmbuilder-v2-scheduler-pool` (`parallel_scheduler:main`);
+  instantiated by `ado_scheduler.run_pool_for_workstream` (one pool per phase
   Workstream).
 - **Inputs.** API via `dispatcher` (eligible Work Tasks, `blocked_by` edges,
   `/health`); reconciliation gate via `_l1._reconciliation_gate_open`;
@@ -391,11 +390,11 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 - **States.** `TaskOutcome {merged, verify_failed, merge_conflict}`. Migration
   window phased through the lock (§9). `PoolRunReport` carries `pre_phase_head`,
   `rolled_back`, `migrations`, `.merged`.
-- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/runtime/parallel_runtime.py`.
-- **Interactions.** `dispatcher`, `coordinating_runtime` (reuses
-  `CoordinatingRuntime`, `Worktree`, `spawn_claude_agent`, `verify_result`,
+- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/scheduler/parallel_scheduler.py`.
+- **Interactions.** `dispatcher`, `coordinating_scheduler` (reuses
+  `CoordinatingScheduler`, `Worktree`, `spawn_claude_agent`, `verify_result`,
   `interpret_merge`), `migration_lock`, `sub_agent_locks` + `access.db`
-  (lazy). Driven by `ado_runtime`.
+  (lazy). Driven by `ado_scheduler`.
 
 ---
 
@@ -407,9 +406,9 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 - **Functionality.** `request` (enqueue a migration callable), `dispatch_allowed`,
   `pending_or_running`, `maybe_run(active_count)`; pure predicates
   `dispatch_allowed(phase)`, `can_enter_exclusive(phase, active_count)`.
-- **Triggers.** Consulted each pool tick by `parallel_runtime` (`_fill_slots`
+- **Triggers.** Consulted each pool tick by `parallel_scheduler` (`_fill_slots`
   checks `dispatch_allowed`; the loop calls `maybe_run`/`pending_or_running`).
-  Enqueued via `ParallelCoordinatingRuntime.request_migration` → `lock.request`.
+  Enqueued via `ParallelCoordinatingScheduler.request_migration` → `lock.request`.
 - **Inputs.** A `migration_fn` callable + label; the pool's live in-flight
   `active_count`.
 - **Outputs.** Runs the migration on the main thread; appends a `MigrationRecord`
@@ -419,14 +418,14 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   (request, pauses dispatch); `PENDING → EXCLUSIVE` once `active_count == 0`;
   runs `fn()`; `EXCLUSIVE → OPEN` in `finally` (resumes even on failure).
   `active_at_run` records `0` as proof of exclusion.
-- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/runtime/migration_lock.py`.
-- **Interactions.** Imported only by `parallel_runtime`.
+- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/scheduler/migration_lock.py`.
+- **Interactions.** Imported only by `parallel_scheduler`.
 
 ---
 
 ## 10. Component: ADO Design→Develop reconciliation gate + Finding entity
 
-### 10.1 The gate — `runtime/reconciliation.py`
+### 10.1 The gate — `scheduler/reconciliation.py`
 
 - **Name & purpose.** PI-134 / DEC-400. Withhold Develop Work Tasks until the
   PI's Design phase is settled and there are zero open blocking findings.
@@ -434,8 +433,8 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   + `is_open_blocking(finding)`; I/O resolvers `_owning_workstream`,
   `_planning_item_of`, `_sibling_workstreams`, `_findings_for_targets`,
   `develop_gate(api_base, engagement, work_task)`.
-- **Triggers.** `coordinating_runtime._reconciliation_gate_open` and
-  `parallel_runtime` (via `_l1`) at dispatch; `ado_runtime.develop_gate_open` at
+- **Triggers.** `coordinating_scheduler._reconciliation_gate_open` and
+  `parallel_scheduler` (via `_l1`) at dispatch; `ado_scheduler.develop_gate_open` at
   the phase level before running a Develop pool.
 - **Inputs.** Owning Workstream (`work_task_belongs_to_workstream`), PI
   (`workstream_belongs_to_planning_item`), sibling Workstreams, findings via
@@ -445,9 +444,9 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 - **States.** Design "settled" = Workstream `Complete` or `Not Applicable`;
   a finding holds the gate iff `finding_severity == "blocking"` and
   `finding_status ∈ {open, referred}`.
-- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/runtime/reconciliation.py`.
+- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/scheduler/reconciliation.py`.
 - **Interactions.** `dispatcher`, `access.vocab`. Consumed by both coordinating
-  schedulers and `ado_runtime`.
+  schedulers and `ado_scheduler`.
 
 ### 10.2 The `finding` (`FND-NNN`) entity — `repositories/findings.py`
 
@@ -468,23 +467,23 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 
 ---
 
-## 11. Component: ADO PI driver (`ado_runtime.py`)
+## 11. Component: ADO PI driver (`ado_scheduler.py`)
 
 - **Name & purpose.** PI-143. The PI-level scheduler — the deterministic outer
   loop driving one Planning Item `dispatch → decompose → (per phase: scope →
   start → run pool → complete) → In Review`. Plus a PM-level loop
-  (`ProjectRuntime`) over a Project's backlog.
+  (`ProjectScheduler`) over a Project's backlog.
 - **Functionality.** Pure `decide_next(overview) -> AdoStep` (kinds
-  `scope / start / resume / done / pause / blocked`). `AdoRuntime.run()` is the
+  `scope / start / resume / done / pause / blocked`). `AdoScheduler.run()` is the
   per-PI loop (`_execute_phase`, `_resume_phase`, `_patch_pi_status`).
-  `run_pool_for_workstream` is the pool seam (delegates to `parallel_runtime`).
+  `run_pool_for_workstream` is the pool seam (delegates to `parallel_scheduler`).
   Agent seams: `scope_phase_agent` (Architect Agent scoping), `reconcile_phase_agent`
   (raises findings over a completed Design), `develop_gate_open` (phase-level
   Develop-gate consult), `review_close_pi` (closure reviewer). `task_branch_unmerged`
-  is the PI-145 rollback-residue detector. `ProjectRuntime` adds `select_next_pi`,
+  is the PI-145 rollback-residue detector. `ProjectScheduler` adds `select_next_pi`,
   `eligible_batch`, `drive_planning_item` (PM auto-dispatch, slice 3).
 - **Triggers.** CLI `crmbuilder-v2-ado` (`main`, per-PI) and `crmbuilder-v2-ado-pm`
-  (`project_main`, PM loop). Also called as a library by `release_runtime.ado_pi_runner`.
+  (`project_main`, PM loop). Also called as a library by `release_scheduler.ado_pi_runner`.
 - **Inputs.** Live REST API via `dispatcher` (PI record, `/phase-overview`,
   `/backlog`, edges, `/work-tasks/{id}`, project `execution_mode`); git locally
   (`task_branch_unmerged`).
@@ -499,13 +498,13 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   `"Design"` phase triggers the reconcile runner. RESUME rewinds Work Tasks via
   legal transitions only (skips `Complete` with the PI-145 residue guard;
   `Blocked` → pause).
-- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/runtime/ado_runtime.py`.
+- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/scheduler/ado_scheduler.py`.
 - **Interactions.** `dispatcher`, `reconciliation` (`develop_gate`); composes
-  `parallel_runtime.ParallelCoordinatingRuntime`. Consumed by `release_runtime`.
+  `parallel_scheduler.ParallelCoordinatingScheduler`. Consumed by `release_scheduler`.
 
 ---
 
-## 12. Component: Release scheduler (`release_runtime.py`)
+## 12. Component: Release scheduler (`release_scheduler.py`)
 
 - **Name & purpose.** PI-219. The release-pipeline orchestration loop — walks a
   Release through its stage machine (§1.5), delegating the judgment steps
@@ -514,12 +513,12 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 - **Functionality.** Pure `decide_next(status, ...) -> ReleaseStep` over step
   kinds `AWAIT_FREEZE, AUTHOR_DEMANDS, RESOLVE_CONFLICTS, ADVANCE_RECONCILIATION,
   PLAN, FINALIZE, ENTER_LANE, DEVELOP, TO_QA, RUN_QA, TO_TESTING, RUN_TEST,
-  TO_DEPLOYMENT, SHIP, DONE, BLOCKED`. `ReleaseRuntime.run` / `_execute` /
+  TO_DEPLOYMENT, SHIP, DONE, BLOCKED`. `ReleaseScheduler.run` / `_execute` /
   `_author_demands` / `_plan` / `_finalize` / `_transition` / `_develop_step` /
   `_gate`. Provider seams: `DemandsProvider`, `DecompositionProvider`, `PiRunner`,
   `GateRunner`. Real wirings: `anthropic_providers(model="claude-opus-4-8")`
   (the LLM demands/decomposition authors), `ado_pi_runner` (returns a `PiRunner`
-  that runs `AdoRuntime` with `enable_file_locks=True`),
+  that runs `AdoScheduler` with `enable_file_locks=True`),
   `release_gate.anthropic_gate_runner`. `_HALTS = {AWAIT_FREEZE, RESOLVE_CONFLICTS,
   DONE, BLOCKED}`.
 - **Triggers.** CLI `crmbuilder-v2-release` (`main`); `--dev-lane` enables the
@@ -537,10 +536,10 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   development_planning}`. Pre-freeze halts (waits for the human). Dev lane:
   `ready → development → qa → testing → deployment → shipped`. PI delivery target
   statuses `delivered_statuses = (In Review, Resolved)`.
-- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/runtime/release_runtime.py`.
+- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/scheduler/release_scheduler.py`.
 - **Interactions.** `access.planning`, `access.release_orchestration`, `access.db`,
   `access.engagement_scope`, `access.vocab`; lazily the release repos; wires
-  `ado_runtime.AdoRuntime` and `release_gate.anthropic_gate_runner`.
+  `ado_scheduler.AdoScheduler` and `release_gate.anthropic_gate_runner`.
 
 ---
 
@@ -555,20 +554,20 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
   `anthropic_gate_runner` (the real structured-output judge, registry prompt
   `AGP-005` / `("release","pi_lead")`, inline `_GATE_SYSTEM` fallback). Output
   schema `_Verdict {passed, summary, findings}`.
-- **Triggers.** Wired by `release_runtime.main` when `--dev-lane` and not
-  `--manual-gates`; called from `ReleaseRuntime._gate` for stages `"qa"` and
+- **Triggers.** Wired by `release_scheduler.main` when `--dev-lane` and not
+  `--manual-gates`; called from `ReleaseScheduler._gate` for stages `"qa"` and
   `"testing"`.
 - **Inputs.** Direct DB: in-scope projects/PIs/requirements, Work-Task areas,
   `artifact_versions.versions_for_release`; the Anthropic SDK; the registry
   resolver.
 - **Outputs.** Returns a bool pass/fail (logs verdict + findings). The pass
-  *stamp* is written by `ReleaseRuntime._gate` (`releases.qa_pass`/`test_pass`).
+  *stamp* is written by `ReleaseScheduler._gate` (`releases.qa_pass`/`test_pass`).
 - **States.** Gates the `qa → testing` and `testing → deployment` transitions.
   **Fail-closed:** no confirmed requirements or no authored designs → automatic
   FAIL.
-- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/runtime/release_gate.py`.
+- **Where it lives.** `crmbuilder-v2/src/crmbuilder_v2/scheduler/release_gate.py`.
 - **Interactions.** `access.db`; lazily `artifact_versions`, `planning_items`,
-  `releases`, `work_tasks`; `release_runtime._registry_system_prompt`.
+  `releases`, `work_tasks`; `release_scheduler._registry_system_prompt`.
 
 ---
 
@@ -633,7 +632,7 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
     `resolving_decision_identifier`/`resolved_value`/`resolved_at`);
     `has_open_conflicts`; `list_conflicts`.
 - **Triggers.** `release_orchestration.run_reconciliation` (from
-  `release_runtime`); conflict-resolution endpoints.
+  `release_scheduler`); conflict-resolution endpoints.
 - **Inputs.** `Release` row (status gate); `ReconciliationConflict` rows;
   `artifact_versions.live` snapshots; demand dicts from `release_demands`.
 - **Outputs.** `ReconciliationConflict` rows; resolution fields.
@@ -743,21 +742,21 @@ release, those steps are already done here.
   resources from the real diff — FL-5); `detect_resources(paths)` (`_DETECTION_RULES`
   maps `migrations/*.py → "migration-chain"`); `held_locks`.
 - **Triggers.** The sub-agent scheduler (worktree-per-sub-agent + serialized
-  merge-back) via `runtime/sub_agent_locks.py`; the Resource Locks monitor panel
+  merge-back) via `scheduler/sub_agent_locks.py`; the Resource Locks monitor panel
   (Reclaim/Release operator actions — PI-225).
 - **States.** A lock is **held** (`released_at IS NULL`) or **released**. No
   reacquire of a released row — a fresh acquire creates a new row.
 - **Where it lives.** `access/locks.py`. **Endpoint:** `GET /locks` (live — empty
   now; **`/resource-locks` does not exist**). Live: no locks held.
-- **Interactions.** `_governance`; wrapped by `runtime/sub_agent_locks.py`.
+- **Interactions.** `_governance`; wrapped by `scheduler/sub_agent_locks.py`.
 
-### 19.1 Scheduler wrapper (`runtime/sub_agent_locks.py`)
+### 19.1 Scheduler wrapper (`scheduler/sub_agent_locks.py`)
 
 PI-220. Wraps the lock substrate into acquire/verify/release/reclaim for sub-agent
 fan-out; **a no-op outside a dev-lane release** (`dev_lane_release` gates on
 `release_status ∈ RELEASE_LANE_STATUSES`). `acquire_declared` (FL-2 all-or-nothing),
-`verify_and_release` (FL-5), `reclaim` (FL-6). Called by `parallel_runtime` only
-when `config.enable_file_locks` (turned on by `release_runtime.ado_pi_runner`).
+`verify_and_release` (FL-5), `reclaim` (FL-6). Called by `parallel_scheduler` only
+when `config.enable_file_locks` (turned on by `release_scheduler.ado_pi_runner`).
 
 ### 19.2 Single-owner-per-area (`access/coordination.py`)
 
@@ -860,7 +859,7 @@ resolver does the scope merge explicitly. Binding edges: `agent_profile_has_skil
   `rule_type` drops the system rule) and **disable** (`rule_type = "disable:<target>"`
   suppresses a matching system rule).
 - **Triggers.** `GET /agent-profiles/{id}/contract`; the MCP resolve-contract
-  tool; consumed when an agent is spawned, by `agent_runtime.build_agent_prompt` (§23).
+  tool; consumed when an agent is spawned, by `agent_prompt.build_agent_prompt` (§23).
 - **Where it lives.** `access/repositories/registry_resolver.py`.
 
 ### 22.3 Write-back lifecycle (`repositories/registry_lifecycle.py` + `learnings.py`)
@@ -899,7 +898,7 @@ is string-substituted across areas.
 
 ## 23. Component: Agent prompt builder + dispatcher (the spawn path)
 
-### 23.1 `runtime/agent_runtime.py`
+### 23.1 `scheduler/agent_prompt.py`
 
 - **Purpose.** Resolve a registry contract + a Work Task into the full system
   prompt a spawned agent boots from.
@@ -908,10 +907,10 @@ is string-substituted across areas.
   `GET /agent-profiles/{id}/contract` (system_prompt, tools, enforced_ruleset,
   active_learnings) + `GET /work-tasks/{id}` (area, title, description), with
   placeholder substitution. No writes.
-- **Where it lives.** `runtime/agent_runtime.py`. Called by `dispatcher` and
-  `coordinating_runtime`.
+- **Where it lives.** `scheduler/agent_prompt.py`. Called by `dispatcher` and
+  `coordinating_scheduler`.
 
-### 23.2 `runtime/dispatcher.py`
+### 23.2 `scheduler/dispatcher.py`
 
 - **Purpose.** Auto-pull the next eligible Work Task, select its agent profile,
   resolve a ready-to-spawn assignment; also the shared HTTP I/O
@@ -923,7 +922,7 @@ is string-substituted across areas.
   `claim_and_start` (Work Task `Ready → Claimed → In Progress`); `complete`
   (→ `Complete`). Constants `_CLAIMABLE_STATUS="Ready"`, `_COMPLETE_STATUS="Complete"`,
   `_DEFAULT_TIER="developer"`.
-- **Where it lives.** `runtime/dispatcher.py`. The shared substrate for every
+- **Where it lives.** `scheduler/dispatcher.py`. The shared substrate for every
   other scheduler module.
 
 ---
@@ -961,13 +960,13 @@ From the root `pyproject.toml` `[project.scripts]`:
 | Script | → module:function | Launches |
 |---|---|---|
 | `crmbuilder-v2-api` | `crmbuilder_v2.cli:run_api` | FastAPI/uvicorn REST API on `127.0.0.1:8765` (the server all schedulers hit). |
-| `crmbuilder-v2-ado` | `runtime.ado_runtime:main` | Drives **one** Planning Item through its phases → `In Review`. |
-| `crmbuilder-v2-ado-pm` | `runtime.ado_runtime:project_main` | PM auto-dispatch over a **Project's** eligible PIs. |
-| `crmbuilder-v2-release` | `runtime.release_runtime:main` | Drives a **Release** through the pipeline (LLM agent layer); `--dev-lane` continues development→shipped, `--manual-gates` skips LLM gates. |
-| `crmbuilder-v2-runtime` | `runtime.coordinating_runtime:main` | Layer-1 serial loop (one agent at a time). |
-| `crmbuilder-v2-runtime-pool` | `runtime.parallel_runtime:main` | Layer-2 parallel pool (one phase's Work Tasks). |
+| `crmbuilder-v2-ado` | `scheduler.ado_scheduler:main` | Drives **one** Planning Item through its phases → `In Review`. |
+| `crmbuilder-v2-ado-pm` | `scheduler.ado_scheduler:project_main` | PM auto-dispatch over a **Project's** eligible PIs. |
+| `crmbuilder-v2-release` | `scheduler.release_scheduler:main` | Drives a **Release** through the pipeline (LLM agent layer); `--dev-lane` continues development→shipped, `--manual-gates` skips LLM gates. |
+| `crmbuilder-v2-scheduler` | `scheduler.coordinating_scheduler:main` | Layer-1 serial loop (one agent at a time). |
+| `crmbuilder-v2-scheduler-pool` | `scheduler.parallel_scheduler:main` | Layer-2 parallel pool (one phase's Work Tasks). |
 
-`dispatcher.py` and `agent_runtime.py` have `python -m` CLIs but no console
+`dispatcher.py` and `agent_prompt.py` have `python -m` CLIs but no console
 scripts.
 
 ---
@@ -996,7 +995,7 @@ The authoritative *spec* (per DEC-393, specs live in the DB as topic/requirement
 records, not `.md`). **TOP-005 "Agent System"** has 12 direct children:
 TOP-006 Engagement & Defaults, TOP-007 Agent Roster & Tiers, TOP-008 Agent
 Learning & Self-Governance, TOP-009 Delivery Passes, TOP-010 Reconciliation,
-TOP-011 Releases, TOP-012 Runtime & Scheduling, TOP-013 Governance Recording
+TOP-011 Releases, TOP-012 Scheduling, TOP-013 Governance Recording
 Method, TOP-014 Functionality Intake & PI Creation, TOP-071 Build History
 (Retired & Superseded Approaches), TOP-092 Multi-Agent Coordination, TOP-093
 Source Check-in/Check-out. Query: `GET /topics/TOP-005` then
@@ -1029,9 +1028,9 @@ Source Check-in/Check-out. Query: `GET /topics/TOP-005` then
 ## Sources
 
 **Code (ground truth):**
-- `crmbuilder-v2/src/crmbuilder_v2/runtime/`: `ado_runtime.py`,
-  `coordinating_runtime.py`, `parallel_runtime.py`, `release_runtime.py`,
-  `dispatcher.py`, `agent_runtime.py`, `migration_lock.py`, `reconciliation.py`,
+- `crmbuilder-v2/src/crmbuilder_v2/scheduler/`: `ado_scheduler.py`,
+  `coordinating_scheduler.py`, `parallel_scheduler.py`, `release_scheduler.py`,
+  `dispatcher.py`, `agent_prompt.py`, `migration_lock.py`, `reconciliation.py`,
   `release_gate.py`, `sub_agent_locks.py`, `exceptions.py`.
 - `crmbuilder-v2/src/crmbuilder_v2/access/repositories/`: `pm.py`, `lead.py`,
   `decomposition.py`, `scoping.py`, `workstreams.py`, `work_tasks.py`,
