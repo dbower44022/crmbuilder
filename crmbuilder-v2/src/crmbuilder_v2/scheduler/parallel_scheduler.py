@@ -48,8 +48,6 @@ from enum import Enum
 from crmbuilder_v2.scheduler import dispatcher
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
     CoordinatingScheduler,
-    MergeResult,
-    MergeStatus,
     SchedulerConfig,
     TestRunnerFn,
     Worktree,
@@ -150,7 +148,7 @@ class TaskReport:
     branch: str
     outcome: TaskOutcome
     verify: TaskResult | None = None
-    merge: MergeResult | None = None
+    merge: TaskResult | None = None
     agent_returncode: int | None = None
     spawned_at: float | None = None
     finished_at: float | None = None
@@ -555,7 +553,7 @@ class ParallelCoordinatingScheduler:
             merged_at = time.time()
             run.worktree.remove()
         self.log(f"  [{a.work_task_id}] merge: {merge.status.value}")
-        if merge.status is MergeStatus.CONFLICT:
+        if not merge.ok:
             self._l1._flag_needs_attention(
                 a.work_task_id,
                 f"merge conflict on {a.branch}: {merge.detail[:200]}",

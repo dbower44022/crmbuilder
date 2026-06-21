@@ -20,14 +20,12 @@ import urllib.request
 
 import pytest
 import uvicorn
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler import coordinating_scheduler as cr
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
     _TIMEOUT_RC,
     CoordinatingScheduler,
-    MergeResult,
-    MergeStatus,
     SchedulerConfig,
-    StepResult,
     TestRunResult,
     _is_harness_crash,
     _safe_run_tests,
@@ -385,17 +383,17 @@ def test_pause_default_message_when_no_reason_given():
 
 
 def test_interpret_merge_clean():
-    assert interpret_merge(0, "Merge made by the 'ort' strategy").status is MergeStatus.CLEAN
+    assert interpret_merge(0, "Merge made by the 'ort' strategy").status is TaskStatus.SUCCEEDED
 
 
 def test_interpret_merge_conflict():
     r = interpret_merge(1, "Automatic merge failed; fix conflicts")
-    assert r.status is MergeStatus.CONFLICT
+    assert r.status is TaskStatus.NEEDS_HUMAN
 
 
 def test_interpret_merge_nonzero_without_marker_is_conflict():
     # Any non-zero merge that did not cleanly complete is held for a human.
-    assert interpret_merge(128, "fatal: something").status is MergeStatus.CONFLICT
+    assert interpret_merge(128, "fatal: something").status is TaskStatus.NEEDS_HUMAN
 
 
 # --------------------------------------------------------------------------
@@ -505,7 +503,7 @@ def test_drained_when_no_assignment(monkeypatch):
     rt = CoordinatingScheduler(config=cfg, log=lambda m: None)
     monkeypatch.setattr(rt, "_next_assignment", lambda: None)
     report = rt.run_one()
-    assert report.result is StepResult.DRAINED
+    assert report.result is TaskStatus.NOT_STARTED
 
 
 def test_happy_path_verifies_and_merges(monkeypatch):
@@ -515,12 +513,12 @@ def test_happy_path_verifies_and_merges(monkeypatch):
         assignment=_assignment(task),
         task_after={"work_task_status": "Complete"},
         has_commits=True,
-        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+        merge_result=TaskResult(TaskStatus.SUCCEEDED, "merged"),
     )
     report = rt.run_one()
-    assert report.result is StepResult.MERGED
+    assert report.result is TaskStatus.SUCCEEDED
     assert report.verify.ok
-    assert report.merge.status is MergeStatus.CLEAN
+    assert report.merge.status is TaskStatus.SUCCEEDED
     assert rt._fake_wt.created and rt._fake_wt.removed  # worktree cleaned up
     assert rt._flagged == {}  # nothing flagged on a clean run
 
@@ -532,10 +530,10 @@ def test_pauses_and_flags_when_agent_did_not_complete(monkeypatch):
         assignment=_assignment(task),
         task_after={"work_task_status": "In Progress"},  # agent didn't finish
         has_commits=True,
-        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+        merge_result=TaskResult(TaskStatus.SUCCEEDED, "merged"),
     )
     report = rt.run_one()
-    assert report.result is StepResult.PAUSED
+    assert report.result is TaskStatus.NEEDS_HUMAN
     assert report.verify.detail == "not_complete"
     assert "WTK-099" in rt._flagged  # human-attention flag set
     assert rt._fake_wt.removed
@@ -550,13 +548,13 @@ def test_pauses_and_flags_when_affected_tests_fail(monkeypatch):
         assignment=_assignment(task),
         task_after={"work_task_status": "Complete"},
         has_commits=True,
-        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+        merge_result=TaskResult(TaskStatus.SUCCEEDED, "merged"),
     )
     rt.test_runner_fn = lambda wp, target: TestRunResult(
         passed=False, returncode=1, target=target, output="boom"
     )
     report = rt.run_one()
-    assert report.result is StepResult.PAUSED
+    assert report.result is TaskStatus.NEEDS_HUMAN
     assert report.verify.detail == "tests_failed"
     assert "WTK-099" in rt._flagged  # workstream flagged needs_attention
     assert rt._fake_wt.removed  # branch never merged
@@ -574,7 +572,7 @@ def _tests_failed_runtime(monkeypatch):
         assignment=_assignment(task),
         task_after={"work_task_status": "Complete"},
         has_commits=True,
-        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+        merge_result=TaskResult(TaskStatus.SUCCEEDED, "merged"),
     )
 
 
@@ -602,7 +600,7 @@ def test_green_run_writes_no_verify_log(monkeypatch, tmp_path):
     rt = _tests_failed_runtime(monkeypatch)  # default _pass_runner stays
     monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
     report = rt.run_one()
-    assert report.result is StepResult.MERGED
+    assert report.result is TaskStatus.SUCCEEDED
     assert not (tmp_path / "verify").exists()  # directory not even created
     assert report.verify_log_path is None
 
@@ -614,7 +612,7 @@ def test_not_complete_verdict_writes_no_verify_log(monkeypatch, tmp_path):
         assignment=_assignment(task),
         task_after={"work_task_status": "In Progress"},  # never reaches the test step
         has_commits=True,
-        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+        merge_result=TaskResult(TaskStatus.SUCCEEDED, "merged"),
     )
     monkeypatch.setattr(cr, "verify_log_dir", lambda: tmp_path / "verify")
     report = rt.run_one()
@@ -638,7 +636,7 @@ def test_verify_log_write_failure_never_masks_tests_failed(monkeypatch, tmp_path
     lines: list[str] = []
     rt.log = lines.append
     report = rt.run_one()
-    assert report.result is StepResult.PAUSED
+    assert report.result is TaskStatus.NEEDS_HUMAN
     assert report.verify.detail == "tests_failed"
     assert report.verify_log_path is None
     assert any("could not persist verify output" in ln for ln in lines)
@@ -665,12 +663,12 @@ def test_pauses_on_merge_conflict_after_verify(monkeypatch):
         assignment=_assignment(task),
         task_after={"work_task_status": "Complete"},
         has_commits=True,
-        merge_result=MergeResult(MergeStatus.CONFLICT, "CONFLICT in f.py"),
+        merge_result=TaskResult(TaskStatus.NEEDS_HUMAN, "CONFLICT in f.py"),
     )
     report = rt.run_one()
-    assert report.result is StepResult.PAUSED
+    assert report.result is TaskStatus.NEEDS_HUMAN
     assert report.verify.ok
-    assert report.merge.status is MergeStatus.CONFLICT
+    assert report.merge.status is TaskStatus.NEEDS_HUMAN
     assert "WTK-099" in rt._flagged
 
 
@@ -686,10 +684,10 @@ def test_pauses_before_spawn_when_task_pre_flagged(monkeypatch):
         assignment=_assignment(task),
         task_after={"work_task_status": "Complete"},
         has_commits=True,
-        merge_result=MergeResult(MergeStatus.CLEAN, "merged"),
+        merge_result=TaskResult(TaskStatus.SUCCEEDED, "merged"),
     )
     report = rt.run_one()
-    assert report.result is StepResult.PAUSED
+    assert report.result is TaskStatus.NEEDS_HUMAN
     assert report.pause_reason == "human please look"
     # No agent should have been spawned: the worktree was never created.
     assert rt._fake_wt.created is False
@@ -702,7 +700,7 @@ def test_dry_run_resolves_but_does_not_spawn(monkeypatch):
     monkeypatch.setattr(rt, "_next_assignment", lambda: _assignment(task))
     monkeypatch.setattr(rt, "_owning_workstream", lambda wt: None)
     report = rt.run_one()
-    assert report.result is StepResult.PAUSED
+    assert report.result is TaskStatus.NEEDS_HUMAN
     assert report.pause_reason == "dry-run"
 
 

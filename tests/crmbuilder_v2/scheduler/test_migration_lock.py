@@ -22,10 +22,9 @@ import threading
 import time
 
 import pytest
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler import parallel_scheduler as pr
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
-    MergeResult,
-    MergeStatus,
     TestRunResult,
     _ResolvedAssignment,
 )
@@ -223,7 +222,7 @@ def test_migration_runs_with_no_live_agent_then_pool_resumes(monkeypatch):
         pr.dispatcher, "_get", lambda api, path, eng: {"work_task_status": "Complete"}
     )
     monkeypatch.setattr(
-        rt._l1, "_merge", lambda branch: MergeResult(MergeStatus.CLEAN, "merged")
+        rt._l1, "_merge", lambda branch: TaskResult(TaskStatus.SUCCEEDED, "merged")
     )
     monkeypatch.setattr(rt._l1, "_flag_needs_attention", lambda wt, reason: None)
     monkeypatch.setattr(rt, "_record_finding", lambda wt, summary: None)
