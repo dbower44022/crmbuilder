@@ -358,14 +358,17 @@ def operating_protocol(
     engagement: str,
     branch: str,
     workstream_id: str | None = None,
+    time_budget_seconds: int | None = None,
 ) -> str:
     """The scheduler's per-spawn operating instructions, appended to the contract.
 
     The registry contract says *what kind of agent* this is and what it knows;
-    this block says *exactly how to operate* within the scheduler: first check
-    whether the task is already done or mis-scoped (the no-op and halt exits,
-    REQ-267 / REQ-272), and otherwise claim the task, do the work, commit, and
-    drive it to ``Complete`` — the lifecycle the scheduler verifies afterward.
+    this block says *exactly how to operate* within the scheduler: validate the
+    inputs and check whether the task is already done or mis-scoped (the input
+    check / no-op / halt exits — REQ-279 / REQ-267 / REQ-272 / REQ-268), and
+    otherwise claim the task, do the work, **commit immediately** (REQ-270),
+    self-check synchronously within the time budget (REQ-269 / REQ-271), and drive
+    it to ``Complete`` — the lifecycle the scheduler verifies afterward.
     """
     hdr = "-H 'X-Engagement: " + engagement + "' -H 'Content-Type: application/json'"
     wt_url = f"{api_base}/work-tasks/{work_task_id}"
@@ -378,23 +381,40 @@ def operating_protocol(
     claim_body = '{"claimed_by": "AGP-runtime"}'
     inprog_body = '{"work_task_status": "In Progress"}'
     complete_body = '{"work_task_status": "Complete"}'
+    budget_min = (
+        max(1, time_budget_seconds // 60) if time_budget_seconds else None
+    )
 
     lines = [
         "### How to operate (coordinating scheduler, Layer 1)",
         f"You are running non-interactively in a dedicated git worktree on branch "
         f"`{branch}`. The live V2 API is at `{api_base}` and EVERY request must send "
         f"the header `X-Engagement: {engagement}`.",
+    ]
+    if budget_min is not None:
+        lines.append(
+            f"TIME BUDGET: you have about {budget_min} minute(s). If you approach the "
+            "limit, COMMIT what you have and report — never spin or poll waiting "
+            "(REQ-271)."
+        )
+    lines += [
         "FIRST, before doing any work, run step 0; then exit by exactly one path:",
-        # REQ-267 — the already-satisfied no-op exit.
+        # REQ-279 — validate the inputs before starting.
+        "0. VALIDATE INPUTS: confirm the Work Task is well-formed, complete, and scoped "
+        "to YOUR area only. If it is malformed, missing what you need, or really belongs "
+        "to another area, do not proceed — HALT (0b).",
+        # REQ-267 / REQ-268 — the already-satisfied no-op exit (incl. the design case).
         "0a. NO-OP if the task is ALREADY SATISFIED on this branch (the feature it asks "
-        "for is already present and its tests are green). Do NOT manufacture a filler "
-        "deliverable. Record the no-op with evidence and exit:",
+        "for is already present and its tests are green) — OR, for a Design task, the "
+        "capability already ships or the design already exists. Do NOT manufacture a "
+        "filler deliverable and, for a Design task, do NOT write a superseding document. "
+        "Record the no-op with evidence and exit:",
         f"   curl -s -X PATCH {hdr} {wt_url} -d '{noop_body}'",
         "   then exit WITHOUT committing — an empty branch carrying this note is a valid "
         "no-op, not a failure.",
     ]
-    # REQ-272 — the halt exit flags the owning Workstream's needs_attention; the
-    # scheduler then pauses for a human rather than retrying. With no owning
+    # REQ-272 / REQ-279 — the halt exit flags the owning Workstream's needs_attention;
+    # the scheduler then pauses for a human rather than retrying. With no owning
     # workstream (a standalone task) halt has nowhere to land, so the agent simply
     # stops without inventing a deliverable.
     if workstream_id:
@@ -405,27 +425,36 @@ def operating_protocol(
         )
         ws_url = f"{api_base}/workstreams/{workstream_id}"
         lines += [
-            "0b. HALT if the task is mis-scoped, a duplicate of work already done, or you "
-            "cannot honestly complete it. Do NOT invent a deliverable to look busy. Raise "
-            "it for a human and exit:",
+            "0b. HALT if the inputs are bad, the task is mis-scoped, a duplicate of work "
+            "already done, or you cannot honestly complete it. Do NOT invent a deliverable "
+            "to look busy. Raise it for a human and exit:",
             f"   curl -s -X PATCH {hdr} {ws_url} -d '{halt_body}'",
             "   then exit. Do NOT mark the Work Task Complete.",
         ]
     else:
         lines.append(
-            "0b. HALT: if the task is mis-scoped, duplicated, or impossible to honestly "
-            "complete, stop and exit without inventing a deliverable (no owning "
-            "workstream is available to flag here)."
+            "0b. HALT: if the inputs are bad, the task is mis-scoped, duplicated, or "
+            "impossible to honestly complete, stop and exit without inventing a "
+            "deliverable (no owning workstream is available to flag here)."
         )
     lines += [
-        "If neither 0a nor 0b applies, do the work:",
+        "If step 0 clears, do the work:",
         f"1. Claim your Work Task:  curl -s -X POST {hdr} {wt_url}/claim -d '{claim_body}'",
         f"   then move it to In Progress:  curl -s -X PATCH {hdr} {wt_url} -d '{inprog_body}'",
         "2. Do the work the Work Task describes, here in this worktree.",
-        "3. Commit your changes with git (a clear message naming the Work Task). Do NOT "
-        "push and do NOT merge — the scheduler merges your branch.",
-        f"4. Mark the Work Task Complete:  curl -s -X PATCH {hdr} {wt_url} -d '{complete_body}'",
-        "5. Exit. The scheduler will verify (task Complete + your branch carries commits) "
+        # REQ-270 — commit BEFORE any verification, so an interruption never loses work.
+        "3. COMMIT IMMEDIATELY, before you run or wait on any test: `git commit` with a "
+        "clear message naming the Work Task. Do NOT push and do NOT merge — the scheduler "
+        "merges your branch. Committing first means an interruption never discards your "
+        "work.",
+        # REQ-269 — if you self-check, do it synchronously and bounded; never poll.
+        "4. Only AFTER committing, if you self-check, run the relevant tests in the "
+        "FOREGROUND and wait synchronously with a bounded timeout (e.g. `timeout 300 "
+        "pytest <the files you touched>`). NEVER background a test run and poll its output "
+        "in a loop. The scheduler runs the authoritative affected-tests gate after you "
+        "exit, so a quick scoped check is enough.",
+        f"5. Mark the Work Task Complete:  curl -s -X PATCH {hdr} {wt_url} -d '{complete_body}'",
+        "6. Exit. The scheduler will verify (task Complete + your branch carries commits) "
         "and merge your branch back.",
     ]
     return "\n".join(lines)
@@ -670,6 +699,9 @@ class CoordinatingScheduler:
             engagement=cfg.engagement,
             branch=branch,
             workstream_id=workstream_id,
+            # REQ-271: tell the agent its time budget (the scheduler's spawn deadline)
+            # so it commits-and-reports near the limit instead of being killed mid-work.
+            time_budget_seconds=getattr(cfg, "agent_timeout", None),
         )
         return _ResolvedAssignment(
             work_task=wt,

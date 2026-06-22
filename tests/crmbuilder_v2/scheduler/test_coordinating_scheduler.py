@@ -140,6 +140,52 @@ def test_operating_protocol_json_bodies_are_not_double_braced():
 
 
 # --------------------------------------------------------------------------
+# PI-270 — worker guardrails in the operating protocol
+# --------------------------------------------------------------------------
+
+
+def test_operating_protocol_validates_inputs_first():
+    # REQ-279: a step-0 input-validation gate before any work.
+    p = _protocol(workstream_id="WSK-9")
+    assert "0. VALIDATE INPUTS" in p
+    assert "scoped to YOUR area" in p
+
+
+def test_operating_protocol_design_phase_writes_no_superseding_doc():
+    # REQ-268: a Design task over shipped work is a no-op, not a superseding document.
+    p = _protocol()
+    assert "do NOT write a superseding document" in p
+
+
+def test_operating_protocol_commits_before_verifying():
+    # REQ-270: commit immediately, before running or waiting on any test.
+    p = _protocol()
+    assert "COMMIT IMMEDIATELY, before you run or wait on any test" in p
+    # the commit step precedes the self-check step in the text
+    assert p.index("COMMIT IMMEDIATELY") < p.index("if you self-check")
+
+
+def test_operating_protocol_self_check_is_synchronous_and_bounded():
+    # REQ-269: foreground + bounded wait; never background-and-poll.
+    p = _protocol()
+    assert "FOREGROUND" in p
+    assert "bounded timeout" in p
+    assert "NEVER background a test run and poll" in p
+
+
+def test_operating_protocol_states_the_time_budget():
+    # REQ-271: the agent is told its budget and to commit-and-report near the limit.
+    p = _protocol(time_budget_seconds=1800)
+    assert "TIME BUDGET: you have about 30 minute" in p
+    assert "COMMIT what you have and report" in p
+    assert "never spin or poll" in p
+
+
+def test_operating_protocol_omits_budget_when_unset():
+    assert "TIME BUDGET" not in _protocol()
+
+
+# --------------------------------------------------------------------------
 # PI-147: select_test_target — pure mapping (touched src files → pytest target)
 # --------------------------------------------------------------------------
 
