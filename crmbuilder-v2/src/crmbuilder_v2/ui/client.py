@@ -2097,6 +2097,35 @@ class StorageClient:
             )
         return result
 
+    def publish_validate_instance(self, identifier: str) -> dict[str, Any]:
+        """POST /instances/{id}/publish-validate — generate + validate, no deploy.
+
+        Returns a serialized publish result: ``{engine, target_instance,
+        validate_only, validation_failed, programs, deferrals, manual_config}``
+        (PRJ-042 / REQ-288).
+        """
+        return self._publish_request(
+            f"/instances/{identifier}/publish-validate"
+        )
+
+    def publish_instance(self, identifier: str) -> dict[str, Any]:
+        """POST /instances/{id}/publish — generate, validate, and deploy.
+
+        A program that fails validation is never deployed. Returns the same
+        serialized publish result shape as :meth:`publish_validate_instance`
+        (PRJ-042 / REQ-287).
+        """
+        return self._publish_request(f"/instances/{identifier}/publish")
+
+    def _publish_request(self, path: str) -> dict[str, Any]:
+        result = self._request("POST", path)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message=f"Expected dict body for {path}",
+            )
+        return result
+
     def list_instance_memberships(
         self,
         identifier: str,

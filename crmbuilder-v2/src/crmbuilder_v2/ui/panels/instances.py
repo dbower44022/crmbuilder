@@ -41,6 +41,7 @@ from crmbuilder_v2.ui.dialogs.instance_crud import (
     InstanceDeleteDialog,
     InstanceEditDialog,
 )
+from crmbuilder_v2.ui.dialogs.publish_dialog import PublishDialog
 from crmbuilder_v2.ui.exceptions import (
     NotFoundError,
     StorageClientError,
@@ -209,6 +210,14 @@ class InstancesPanel(ListDetailPanel):
                 lambda _checked=False, r=record: self._on_audit_clicked(r)
             )
             strip_layout.addWidget(audit_btn)
+        # Publish (push) — available for target/both instances that aren't deleted.
+        if not is_deleted and record.get("instance_role") != "source":
+            publish_btn = QPushButton("Publish…")
+            publish_btn.setObjectName("publish_instance_button")
+            publish_btn.clicked.connect(
+                lambda _checked=False, r=record: self._on_publish_clicked(r)
+            )
+            strip_layout.addWidget(publish_btn)
         if not is_deleted:
             delete_btn = destructive_button("Delete")
             delete_btn.setObjectName("delete_instance_button")
@@ -414,6 +423,16 @@ class InstancesPanel(ListDetailPanel):
             on_error=self._on_audit_error,
             parent=self,
         )
+
+    def _on_publish_clicked(self, record: dict[str, Any]) -> None:
+        if not record.get("instance_identifier"):
+            return
+        dialog = PublishDialog(self._client, record, parent=self)
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
+        self.refresh()
 
     def _on_audit_done(self, identifier: str, summary: dict[str, Any]) -> None:
         def _line(name: str, part: dict | None) -> str:
