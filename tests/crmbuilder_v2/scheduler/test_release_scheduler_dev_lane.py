@@ -56,7 +56,9 @@ def test_decide_next_walks_the_lane():
     assert _d("qa", dev_lane_enabled=True, qa_passed=True) is K.TO_TESTING
     assert _d("testing", dev_lane_enabled=True, test_passed=False) is K.RUN_TEST
     assert _d("testing", dev_lane_enabled=True, test_passed=True) is K.TO_DEPLOYMENT
-    assert _d("deployment", dev_lane_enabled=True) is K.SHIP
+    # Ship Approval is a human gate (PI-260): pause at deployment until signed, then ship.
+    assert _d("deployment", dev_lane_enabled=True, ship_signed=False) is K.AWAIT_SHIP_APPROVAL
+    assert _d("deployment", dev_lane_enabled=True, ship_signed=True) is K.SHIP
     assert _d("shipped", dev_lane_enabled=True) is K.DONE
 
 
@@ -115,7 +117,9 @@ def _deliver_runner(deliver=True):
     return _run
 
 
-def test_loop_drives_ready_to_shipped(v2_env):
+def test_loop_pauses_at_deployment_for_ship_approval_then_ships(v2_env):
+    # The autonomous lane drives ready → deployment but PAUSES for the human Ship
+    # Approval (PI-260); recording a fresh ship sign-off lets a second run ship.
     with session_scope() as s:
         rel, pi = _scaffold(s, status="ready")
     cfg = rr.ReleaseSchedulerConfig(
@@ -126,9 +130,16 @@ def test_loop_drives_ready_to_shipped(v2_env):
         gate_runner=lambda rid, stage: True,
     )
     report = rr.ReleaseScheduler(cfg).run()
-    assert report.final_status == "shipped", report.stopped_reason
+    assert report.final_status == "deployment", report.stopped_reason
+    assert "Ship Approval" in (report.stopped_reason or "")
     with session_scope() as s:
         assert planning_items.get(s, pi)["status"] == "In Review"
+        from crmbuilder_v2.access.repositories import release_signoffs
+        release_signoffs.create_signoff(
+            s, rel, stage="ship", reviewer="release-lead",
+            attestation="approved for ship")
+    report = rr.ReleaseScheduler(cfg).run()
+    assert report.final_status == "shipped", report.stopped_reason
 
 
 def test_loop_pauses_when_no_gate_runner(v2_env):

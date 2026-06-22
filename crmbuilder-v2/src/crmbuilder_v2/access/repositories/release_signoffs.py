@@ -15,6 +15,12 @@ unblocks:
   unblocks ``reconciliation → architecture_planning``.
 * ``architecture_planning`` — the authored designs (``artifact_versions`` introduced
   by the release); unblocks ``architecture_planning → ready``.
+* ``design`` — the whole set of current per-area implementation + testable specs
+  (``area_specs``); unblocks ``architecture_planning → ready`` via the consolidated
+  Design Review (PI-246).
+* ``ship`` — the shippable state at deployment (the QA + test pass stamps plus the
+  set of ``artifact_versions`` the release introduced); the human Ship Approval that
+  unblocks ``deployment → shipped``, symmetric to freeze (PI-260).
 """
 
 from __future__ import annotations
@@ -65,9 +71,39 @@ def stage_fingerprint(
     ``design`` fingerprints the **whole set** of current per-area implementation +
     testable specs (the consolidated Design Review is over all of them, so revising
     any one area's spec voids the design sign-off — §4.6 / PI-246).
-    Recomputed from live state each call, so it tracks any change to the output.
+    ``ship`` fingerprints the **shippable state** at deployment: the release's QA +
+    test pass stamps plus the set of artifact versions it introduced (type, identifier,
+    version number — not the snapshots). A bounce clears + re-stamps the gates and a
+    re-authored design bumps a version, so either voids the ship approval (§4.11 /
+    PI-260). Recomputed from live state each call, so it tracks any change to the output.
     """
-    if stage == "design":
+    if stage == "ship":
+        row = session.scalars(
+            select(Release).where(Release.release_identifier == release_identifier)
+        ).first()
+        if row is None:
+            raise NotFoundError("release", release_identifier)
+        versions = artifact_versions.versions_for_release(session, release_identifier)
+        payload = {
+            "qa_passed_at": row.release_qa_passed_at,
+            "test_passed_at": row.release_test_passed_at,
+            "artifact_versions": sorted(
+                (
+                    {
+                        "artifact_type": v["artifact_type"],
+                        "artifact_identifier": v["artifact_identifier"],
+                        "version_number": v["version_number"],
+                    }
+                    for v in versions
+                ),
+                key=lambda v: (
+                    v["artifact_type"],
+                    v["artifact_identifier"],
+                    v["version_number"],
+                ),
+            ),
+        }
+    elif stage == "design":
         specs = area_specs.current_specs(session, release_identifier)
         payload = sorted(
             (

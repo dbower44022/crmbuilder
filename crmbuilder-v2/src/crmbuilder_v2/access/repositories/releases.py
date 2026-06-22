@@ -564,6 +564,23 @@ def _check_architecture_planning_review(session: Session, identifier: str) -> No
     _require_fresh_review_signoff(session, identifier, "architecture_planning")
 
 
+def _check_ship_approval(session: Session, identifier: str) -> None:
+    """Ship gate (PI-260 / REQ-299) — the reopen-cascade revalidations complete (RW4)
+    AND a fresh human **Ship Approval** sign-off, symmetric to freeze. Fresh = the
+    sign-off's captured fingerprint matches the current shippable state (the QA + test
+    pass stamps + the introduced artifact versions), so any change after approval
+    voids it and forces a re-approval."""
+    from crmbuilder_v2.access.repositories import release_signoffs
+
+    _check_revalidations_complete(session, identifier)
+    if release_signoffs.fresh_signoff(session, identifier, "ship") is None:
+        raise ConflictError(
+            f"release {identifier!r} cannot ship: no current human ship approval "
+            f"(record a fresh ship sign-off against the shippable state; a stale "
+            f"approval from before that state changed does not count) (PI-260)."
+        )
+
+
 _GATE_PREDICATES = {
     ("development_planning", "reconciliation"): _check_freeze,
     ("reconciliation", "architecture_planning"): _check_reconciliation_review,
@@ -571,7 +588,7 @@ _GATE_PREDICATES = {
     ("ready", "development"): _check_single_occupancy,
     ("qa", "testing"): _check_qa_passed,
     ("testing", "deployment"): _check_test_passed,
-    ("deployment", "shipped"): _check_revalidations_complete,
+    ("deployment", "shipped"): _check_ship_approval,
 }
 
 

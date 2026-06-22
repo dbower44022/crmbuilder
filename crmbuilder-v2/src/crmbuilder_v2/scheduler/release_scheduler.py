@@ -81,7 +81,8 @@ class StepKind(str, Enum):
     TO_TESTING = "to_testing"            # qa passed → qa → testing
     RUN_TEST = "run_test"                # release-level test gate → test_pass
     TO_DEPLOYMENT = "to_deployment"      # tests passed → testing → deployment
-    SHIP = "ship"                        # deployment → shipped (ship-cascade gate)
+    AWAIT_SHIP_APPROVAL = "await_ship_approval"  # PAUSE — human Ship Approval owed (PI-260)
+    SHIP = "ship"                        # deployment → shipped (ship gate: revalidations + ship sign-off)
     DONE = "done"                        # planning slice complete / release shipped
     BLOCKED = "blocked"
 
@@ -110,6 +111,7 @@ def decide_next(
     back_half: str = "per_pi",
     area_specs_present: bool = False,
     design_signed: bool = False,
+    ship_signed: bool = False,
 ) -> ReleaseStep:
     """The next step owed, from the release's status + a few derived flags.
 
@@ -183,6 +185,15 @@ def decide_next(
             StepKind.TO_DEPLOYMENT if test_passed else StepKind.RUN_TEST
         )
     if status == "deployment":
+        # Ship Approval is the closing human commit, symmetric to freeze (PI-260):
+        # the scheduler pauses at deployment until a fresh human ship sign-off exists,
+        # then performs the deployment → shipped transition (gated on revalidations +
+        # that sign-off).
+        if not ship_signed:
+            return ReleaseStep(
+                StepKind.AWAIT_SHIP_APPROVAL,
+                "shippable release needs a human Ship Approval sign-off (PI-260)",
+            )
         return ReleaseStep(StepKind.SHIP)
     return ReleaseStep(StepKind.DONE, f"status {status!r} (shipped / terminal)")
 
@@ -240,7 +251,7 @@ class ReleaseScheduler:
     _HALTS = frozenset({
         StepKind.AWAIT_FREEZE, StepKind.RESOLVE_CONFLICTS,
         StepKind.AWAIT_RECONCILIATION_REVIEW, StepKind.AWAIT_ARCHITECTURE_REVIEW,
-        StepKind.AWAIT_DESIGN_REVIEW,
+        StepKind.AWAIT_DESIGN_REVIEW, StepKind.AWAIT_SHIP_APPROVAL,
         StepKind.DONE, StepKind.BLOCKED,
     })
 
@@ -283,6 +294,7 @@ class ReleaseScheduler:
                 readiness_ready=snap["readiness_ready"],
                 reconciliation_signed=snap["reconciliation_signed"],
                 architecture_planning_signed=snap["architecture_planning_signed"],
+                ship_signed=snap["ship_signed"],
                 dev_lane_enabled=dev_lane,
                 all_pis_delivered=snap["all_pis_delivered"],
                 qa_passed=snap["qa_passed"],
@@ -488,6 +500,10 @@ class ReleaseScheduler:
                 "area_specs_present": bool(area_specs.current_specs(s, rid)),
                 "design_signed": release_signoffs.fresh_signoff(
                     s, rid, "design") is not None,
+                # Closing human commit (PI-260): a fresh ship sign-off whose
+                # fingerprint still matches the current shippable state.
+                "ship_signed": release_signoffs.fresh_signoff(
+                    s, rid, "ship") is not None,
                 "all_pis_delivered": bool(in_scope) and delivered == set(in_scope),
                 "qa_passed": rel.get("release_qa_passed_at") is not None,
                 "test_passed": rel.get("release_test_passed_at") is not None,

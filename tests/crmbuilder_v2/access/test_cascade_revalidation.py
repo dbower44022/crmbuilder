@@ -13,7 +13,13 @@ from crmbuilder_v2.access._helpers import get_by_identifier
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import ConflictError
 from crmbuilder_v2.access.models import Release
-from crmbuilder_v2.access.repositories import releases
+from crmbuilder_v2.access.repositories import release_signoffs, releases
+
+
+def _ship_signoff(s, rel):
+    # PI-260: deployment → shipped also requires a fresh human ship approval.
+    release_signoffs.create_signoff(
+        s, rel, stage="ship", reviewer="release-lead", attestation="approved")
 
 
 def _dev_release(s, status="development"):
@@ -77,10 +83,12 @@ def test_ship_gate_blocks_until_all_revalidated(v2_env):
         with pytest.raises(ConflictError, match="re-validate"):
             releases.transition(s, rel, "shipped")  # ui still outstanding (no exemption)
         reopen.revalidate_area(s, r["id"], "ui")
+        _ship_signoff(s, rel)
         assert releases.transition(s, rel, "shipped")["release_status"] == "shipped"
 
 
 def test_ship_unaffected_without_reopen(v2_env):
     with session_scope() as s:
         rel = _dev_release(s, status="deployment")
+        _ship_signoff(s, rel)
         assert releases.transition(s, rel, "shipped")["release_status"] == "shipped"

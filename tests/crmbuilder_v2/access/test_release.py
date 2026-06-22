@@ -130,6 +130,7 @@ def _drive_to_shipped(s, rel):
     releases.transition(s, rel, "testing")
     releases.test_pass(s, rel)
     releases.transition(s, rel, "deployment")
+    _signoff(s, rel, "ship")  # PI-260: human Ship Approval gate
     releases.transition(s, rel, "shipped")
 
 
@@ -275,6 +276,7 @@ def test_lane_freed_after_ship(v2_env):
         releases.transition(s, a, "testing")
         releases.test_pass(s, a)
         releases.transition(s, a, "deployment")
+        _signoff(s, a, "ship")  # PI-260: human Ship Approval gate
         releases.transition(s, a, "shipped")
         out = releases.transition(s, b, "development")
         assert out["release_status"] == "development"

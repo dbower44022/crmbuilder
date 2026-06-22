@@ -938,9 +938,11 @@ RECONCILIATION_CONFLICT_TYPES: frozenset[str] = frozenset(
 # at a release stage. The stage names the reviewed output: the reconciled change-set
 # (reconciliation) or the architecture-planning designs (PI-238 front half), or the
 # whole set of per-area implementation + testable specs (design — the matrix back
-# half's consolidated Design Review, PI-246).
+# half's consolidated Design Review, PI-246); the shippable state at deployment
+# (ship — the human Ship Approval gate before deployment → shipped, symmetric to
+# freeze, PI-260).
 RELEASE_SIGNOFF_STAGES: frozenset[str] = frozenset(
-    {"reconciliation", "architecture_planning", "design"}
+    {"reconciliation", "architecture_planning", "design", "ship"}
 )
 
 # `release_back_half` (PI-249 / PRJ-041, REQ-295, Decision 3) — which back half the
