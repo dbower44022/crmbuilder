@@ -20,6 +20,7 @@ from crmbuilder_v2.access import (
 )
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import (
+    area_specs,
     artifact_versions,
     planning_claims,
     reconciliation,
@@ -33,6 +34,7 @@ from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     ArchitecturePlanningIn,
     AreaReopenIn,
+    AreaSpecIn,
     DecomposeIn,
     DemandsIn,
     PlanningClaimIn,
@@ -333,6 +335,46 @@ def create_signoff(identifier: str, body: ReleaseSignoffIn):
                 stage=body.stage, reviewer=body.reviewer,
                 attestation=body.attestation,
                 decision_identifier=body.decision_identifier,
+            )
+        )
+
+
+# --- Per-area specs (matrix back half, PI-244 / REQ-295) ---------------------
+@router.get("/{identifier}/area-specs")
+def area_specs_current(identifier: str):
+    """The current (latest) implementation + testable spec for every area the
+    release has one — the set the Design Review consolidates over (PI-244)."""
+    with readonly_session() as s:
+        return ok(area_specs.current_specs(s, identifier))
+
+
+@router.get("/{identifier}/area-specs/{area}")
+def area_spec_current(identifier: str, area: str):
+    """The current spec for one area, or null (PI-244)."""
+    with readonly_session() as s:
+        return ok(area_specs.current_spec(s, identifier, area))
+
+
+@router.get("/{identifier}/area-specs/{area}/history")
+def area_spec_history(identifier: str, area: str):
+    """An area's full revision chain, oldest → newest — the what-changed-and-why
+    log (PI-244)."""
+    with readonly_session() as s:
+        return ok(area_specs.spec_history(s, identifier, area))
+
+
+@router.post("/{identifier}/area-specs", status_code=201)
+def author_area_spec(identifier: str, body: AreaSpecIn):
+    """Append the next version of an area's implementation + testable spec (PI-244 /
+    REQ-295) — the Design task's output. Never overwrites a prior version; records
+    the change reason + trigger that caused the revision."""
+    with writable_session() as s:
+        return ok(
+            area_specs.author_spec(
+                s, identifier, body.area,
+                implementation=body.implementation, testable=body.testable,
+                change_reason=body.change_reason, trigger_kind=body.trigger_kind,
+                trigger_finding_identifier=body.trigger_finding_identifier,
             )
         )
 

@@ -38,6 +38,7 @@ from sqlalchemy.sql.expression import ColumnElement
 from crmbuilder_v2.access.vocab import (
     AGENT_PROFILE_TIERS,
     AREA_REOPEN_STATUSES,
+    AREA_SPEC_TRIGGER_KINDS,
     ASSOCIATION_CARDINALITIES,
     ASSOCIATION_STATUSES,
     AUTOMATION_STATUSES,
@@ -100,11 +101,11 @@ from crmbuilder_v2.access.vocab import (
     PROJECT_STATUSES,
     RECONCILIATION_CONFLICT_STATUSES,
     RECONCILIATION_CONFLICT_TYPES,
-    RELEASE_SIGNOFF_STAGES,
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
     REGISTRY_STATUSES,
+    RELEASE_SIGNOFF_STAGES,
     RELEASE_STATUSES,
     REOPEN_APPROVAL_TIERS,
     REQUIREMENT_ORIGINS,
@@ -3201,6 +3202,74 @@ class ReleaseSignoff(EngagementScopedMixin, Base):
             "engagement_id",
             "release_identifier",
             "signoff_stage",
+        ),
+    )
+
+
+class AreaSpec(EngagementScopedMixin, Base):
+    """A per-(release, area) implementation + testable spec — the matrix back half's
+    design artifact (PI-244 / PRJ-041, REQ-295).
+
+    The area's Architect authors ``spec_implementation`` (how the area builds the
+    product design — the Developer reads it) and ``spec_testable`` (the acceptance
+    behaviours the Tester implements **blind** to the Developer's code). It is
+    **append-only / versioned**: each revision is a new row with the next
+    ``spec_version`` for its ``(release, area)``, carrying a ``spec_change_reason``
+    and the ``spec_trigger_kind`` (+ optional ``spec_trigger_finding_identifier``)
+    that caused it — so the chain reads as a logbook of what changed and why. The
+    **current** spec is the highest ``spec_version`` for the ``(release, area)``;
+    older rows are never erased. ``spec_fingerprint`` (a content hash of the two
+    specs) drives the Design-Review freshness gate — a new revision voids the prior
+    sign-off. Authored design judgment, not a recomputable derivation (so unlike
+    ``release_change_sets`` it keeps history); a build-process artifact tied to one
+    release, so **not** on the product-design spine (``artifact_versions``).
+    Engagement-scoped satellite, surrogate PK, composite FK to ``releases``; outside
+    the refs/change_log discipline.
+    """
+
+    __tablename__ = "area_specs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    area: Mapped[str] = mapped_column(String(64), nullable=False)
+    spec_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    spec_implementation: Mapped[str] = mapped_column(Text, nullable=False)
+    spec_testable: Mapped[str] = mapped_column(Text, nullable=False)
+    spec_change_reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    spec_trigger_kind: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="initial"
+    )
+    spec_trigger_finding_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    spec_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    spec_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_area_specs_release",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "release_identifier",
+            "area",
+            "spec_version",
+            name="uq_area_specs_version",
+        ),
+        CheckConstraint(
+            _check_in("spec_trigger_kind", AREA_SPEC_TRIGGER_KINDS),
+            name="ck_area_spec_trigger_kind",
+        ),
+        CheckConstraint("spec_version >= 1", name="ck_area_spec_version_positive"),
+        Index(
+            "ix_area_specs_release_area",
+            "engagement_id",
+            "release_identifier",
+            "area",
         ),
     )
 

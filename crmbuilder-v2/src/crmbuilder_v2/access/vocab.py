@@ -942,6 +942,14 @@ RELEASE_SIGNOFF_STAGES: frozenset[str] = frozenset(
     {"reconciliation", "architecture_planning"}
 )
 
+# `area_spec` (PI-244 / PRJ-041, REQ-295) — the per-(release, area) implementation +
+# testable spec the matrix back half resolves. Each revision records the trigger
+# that caused it (the design-review rejection / develop gap / test bounce, or the
+# initial authoring), so the version chain reads as a logbook of what changed and why.
+AREA_SPEC_TRIGGER_KINDS: frozenset[str] = frozenset(
+    {"initial", "design_review", "develop_gap", "test_bounce", "revision"}
+)
+
 # `area_reopen` (PI-212 / PRJ-034, RW2/RW3) — an in-lane reopen of a frozen area;
 # while open, the area is thawing and its downstream areas are paused.
 AREA_REOPEN_STATUSES: frozenset[str] = frozenset({"open", "resolved"})

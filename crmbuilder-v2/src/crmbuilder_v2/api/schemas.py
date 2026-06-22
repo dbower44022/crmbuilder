@@ -1884,6 +1884,16 @@ class ReleaseSignoffIn(_Base):
     decision_identifier: str | None = None
 
 
+# --- Per-area spec (matrix back half, PI-244 / PRJ-041, REQ-295) --------------
+class AreaSpecIn(_Base):
+    area: str
+    implementation: str
+    testable: str
+    change_reason: str = ""
+    trigger_kind: str = "initial"  # initial|design_review|develop_gap|test_bounce|revision
+    trigger_finding_identifier: str | None = None
+
+
 # --- Artifact version (versioned change spine, PI-208 / PRJ-031) ------------
 class ArtifactVersionSnapshotIn(_Base):
     artifact_type: str
