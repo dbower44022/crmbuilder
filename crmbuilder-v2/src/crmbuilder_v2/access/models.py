@@ -70,6 +70,8 @@ from crmbuilder_v2.access.vocab import (
     ENTITY_TYPES,
     EVIDENCE_SUBJECT_TYPES,
     EXECUTION_MODES,
+    FIELD_MAPPING_DECISION_TYPES,
+    FIELD_MAPPING_TRANSLATION_TYPES,
     FIELD_STATUSES,
     FIELD_TYPES,
     FILTERED_TAB_STATUSES,
@@ -90,6 +92,8 @@ from crmbuilder_v2.access.vocab import (
     LEARNING_TIERS,
     MANUAL_CONFIG_CATEGORIES,
     MANUAL_CONFIG_STATUSES,
+    MAPPING_CANDIDATE_TYPES,
+    MAPPING_SUGGESTION_CONFIDENCES,
     MESSAGE_TEMPLATE_STATUSES,
     MIGRATION_MAPPING_DISPOSITIONS,
     MIGRATION_MAPPING_LEVELS,
@@ -127,11 +131,16 @@ from crmbuilder_v2.access.vocab import (
     SESSION_MEDIUMS,
     SESSION_STATUSES,
     SKILL_KINDS,
+    SOURCE_MAPPING_DECISION_TYPES,
+    SOURCE_MAPPING_STALE_REASONS,
+    SOURCE_MAPPING_STALE_SEVERITIES,
+    SOURCE_MAPPING_STATUSES,
     TARGET_ENGINES,
     TEAM_STATUSES,
     TERM_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
+    VALUE_MAPPING_DECISION_TYPES,
     VERSIONED_ARTIFACT_TYPES,
     VIEW_STATUSES,
     WORK_TASK_STATUSES,
@@ -2490,6 +2499,373 @@ class PublishRun(EngagementScopedMixin, Base):
             "engagement_id",
             "instance_identifier",
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Source instance mapping model (PI-255 — PRJ-027 / SES-230). The
+# candidate-gated, human-decision layer governing how objects discovered in a
+# source CRM instance relate to objects in the canonical design. Entity-level
+# (``source_mapping``, ``SMG-``) and field-level (``field_mapping``, ``FMP-``)
+# decisions are prefixed-identifier governance records (change_log + refs
+# participants); their support tables (targets, joins, translations, value
+# mappings) and the reconciler's pre-decision ``mapping_candidate`` are
+# engagement-scoped integer-PK children. Parent links are soft references
+# (no hard FK — the access layer enforces parent existence, matching the
+# ``layout_entity_identifier`` precedent); the only FK is the mixin's
+# engagement FK. See source-mapping-design.md.
+# ---------------------------------------------------------------------------
+
+
+class SourceMapping(EngagementScopedPKMixin, Base):
+    """PI-255 (PRJ-027) — one entity-level source mapping decision (``SMG-NNN``).
+
+    Resolves a source entity discovered by audit into the canonical design via
+    one of four ``decision_type`` outcomes (direct / decomposition / referential
+    / rejected, DEC-575). A mapping is ``unresolved`` until a human confirms it,
+    then ``resolved``; a change on either side flags it ``stale`` (with a graded
+    ``stale_severity`` + ``stale_reason``); replacing it links the new decision
+    via ``superseded_by``. Targets (the design entities), the inherited join key,
+    and field-level decisions hang off this row.
+    """
+
+    __tablename__ = "source_mappings"
+
+    source_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    instance_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_entity_name: Mapped[str] = mapped_column(Text, nullable=False)
+    decision_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="unresolved"
+    )
+    stale_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    stale_severity: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    superseded_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("source_mapping_identifier", ["SMG"]),
+            name="ck_source_mapping_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("decision_type", SOURCE_MAPPING_DECISION_TYPES),
+            name="ck_source_mapping_decision_type",
+        ),
+        CheckConstraint(
+            _check_in("status", SOURCE_MAPPING_STATUSES),
+            name="ck_source_mapping_status",
+        ),
+        CheckConstraint(
+            _check_in("stale_reason", SOURCE_MAPPING_STALE_REASONS),
+            name="ck_source_mapping_stale_reason",
+        ),
+        CheckConstraint(
+            _check_in("stale_severity", SOURCE_MAPPING_STALE_SEVERITIES),
+            name="ck_source_mapping_stale_severity",
+        ),
+        Index("ix_source_mappings_instance", "instance_identifier"),
+        Index("ix_source_mappings_status", "status"),
+        Index("ix_source_mappings_deleted_at", "deleted_at"),
+    )
+
+
+class SourceMappingTarget(EngagementScopedMixin, Base):
+    """PI-255 (PRJ-027) — a design-entity target of a source mapping.
+
+    Separate from ``source_mappings`` because a decomposition maps one source
+    entity onto several design entities. One row per (mapping, design entity).
+    """
+
+    __tablename__ = "source_mapping_targets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    entity_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "engagement_id",
+            "source_mapping_identifier",
+            "entity_identifier",
+            name="uq_source_mapping_target",
+        ),
+        Index(
+            "ix_source_mapping_targets_mapping",
+            "engagement_id",
+            "source_mapping_identifier",
+        ),
+    )
+
+
+class SourceMappingJoin(EngagementScopedMixin, Base):
+    """PI-255 (PRJ-027) — the join key declared at the entity-mapping level.
+
+    One row per source mapping (DEC-577). It names the source join field and the
+    design entity + field that locates the matching design record; every field
+    mapping beneath the source mapping inherits this key rather than restating
+    it. Structured as a table to admit future multi-column joins.
+    """
+
+    __tablename__ = "source_mapping_joins"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    source_field_name: Mapped[str] = mapped_column(Text, nullable=False)
+    design_entity_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    design_field_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "engagement_id",
+            "source_mapping_identifier",
+            name="uq_source_mapping_join",
+        ),
+    )
+
+
+class FieldMapping(EngagementScopedPKMixin, Base):
+    """PI-255 (PRJ-027) — one field-level source mapping decision (``FMP-NNN``).
+
+    Subordinate to a ``source_mapping`` (its ``source_mapping_identifier``), a
+    field mapping declares which design entity + field a source field lands on,
+    via one of four ``decision_type`` outcomes (direct / referential_exact /
+    referential_interpreted / rejected, DEC-576). Shares the source mapping's
+    lifecycle (unresolved / resolved / stale / superseded). Interpreted mappings
+    carry a translation and per-value decisions.
+    """
+
+    __tablename__ = "field_mappings"
+
+    field_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    source_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    source_field_name: Mapped[str] = mapped_column(Text, nullable=False)
+    decision_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="unresolved"
+    )
+    stale_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    stale_severity: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    target_entity_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    target_field_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    superseded_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("field_mapping_identifier", ["FMP"]),
+            name="ck_field_mapping_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("decision_type", FIELD_MAPPING_DECISION_TYPES),
+            name="ck_field_mapping_decision_type",
+        ),
+        CheckConstraint(
+            _check_in("status", SOURCE_MAPPING_STATUSES),
+            name="ck_field_mapping_status",
+        ),
+        CheckConstraint(
+            _check_in("stale_reason", SOURCE_MAPPING_STALE_REASONS),
+            name="ck_field_mapping_stale_reason",
+        ),
+        CheckConstraint(
+            _check_in("stale_severity", SOURCE_MAPPING_STALE_SEVERITIES),
+            name="ck_field_mapping_stale_severity",
+        ),
+        Index(
+            "ix_field_mappings_source_mapping",
+            "source_mapping_identifier",
+        ),
+        Index("ix_field_mappings_status", "status"),
+        Index("ix_field_mappings_deleted_at", "deleted_at"),
+    )
+
+
+class FieldMappingTranslation(EngagementScopedMixin, Base):
+    """PI-255 (PRJ-027) — the translation rule for an interpreted field mapping.
+
+    Present only when ``field_mapping.decision_type == 'referential_interpreted'``
+    (DEC-576). ``value_map`` translations apply per-value substitution (carried
+    by the ``value_mappings`` rows); ``expression`` translations apply a formula.
+    One row per field mapping.
+    """
+
+    __tablename__ = "field_mapping_translations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    field_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    translation_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    expression: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "engagement_id",
+            "field_mapping_identifier",
+            name="uq_field_mapping_translation",
+        ),
+        CheckConstraint(
+            _check_in("translation_type", FIELD_MAPPING_TRANSLATION_TYPES),
+            name="ck_field_mapping_translation_type",
+        ),
+    )
+
+
+class ValueMapping(EngagementScopedMixin, Base):
+    """PI-255 (PRJ-027) — a value-level mapping decision for an enum field.
+
+    Applies the four-outcome structure (direct / interpreted / rejected, DEC-576)
+    to individual source enum values under an interpreted field mapping. A field
+    mapping is not fully resolved until every source value has a decision. Like a
+    rejection at any level, a replaced value mapping is kept and linked by
+    ``superseded_by`` rather than deleted (DEC-579); the access layer enforces a
+    single active row per (field mapping, source value).
+    """
+
+    __tablename__ = "value_mappings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    field_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    source_value: Mapped[str] = mapped_column(Text, nullable=False)
+    decision_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="unresolved"
+    )
+    superseded_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("decision_type", VALUE_MAPPING_DECISION_TYPES),
+            name="ck_value_mapping_decision_type",
+        ),
+        CheckConstraint(
+            _check_in("status", SOURCE_MAPPING_STATUSES),
+            name="ck_value_mapping_status",
+        ),
+        Index(
+            "ix_value_mappings_field_mapping",
+            "engagement_id",
+            "field_mapping_identifier",
+        ),
+    )
+
+
+class MappingCandidate(EngagementScopedMixin, Base):
+    """PI-255 (PRJ-027) — a pre-decision discovery candidate (no prefix, auto-id).
+
+    The reconciler writes candidates here — never directly to the mapping tables
+    (DEC-575). A candidate is an unmatched source entity / field / value surfaced
+    by an audit, optionally carrying a confidence-ranked suggested mapping from
+    name similarity, type match, or a prior source's precedent (DEC-580). A human
+    resolves it, at which point ``resolved`` flips and ``resolved_to_*`` records
+    the mapping created. Integer-PK; in ENTITY_TYPES for change_log participation.
+    """
+
+    __tablename__ = "mapping_candidates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    instance_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    audit_event_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    candidate_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    source_entity_name: Mapped[str] = mapped_column(Text, nullable=False)
+    source_field_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    suggested_source_mapping_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    suggested_field_mapping_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    suggestion_confidence: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )
+    suggestion_basis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    resolved_to_source_mapping_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    resolved_to_field_mapping_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("candidate_type", MAPPING_CANDIDATE_TYPES),
+            name="ck_mapping_candidate_type",
+        ),
+        CheckConstraint(
+            _check_in("suggestion_confidence", MAPPING_SUGGESTION_CONFIDENCES),
+            name="ck_mapping_candidate_suggestion_confidence",
+        ),
+        Index(
+            "ix_mapping_candidates_instance",
+            "engagement_id",
+            "instance_identifier",
+        ),
+        Index("ix_mapping_candidates_resolved", "engagement_id", "resolved"),
     )
 
 

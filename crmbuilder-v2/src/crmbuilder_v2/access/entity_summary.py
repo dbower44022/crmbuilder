@@ -101,6 +101,10 @@ _SPECS: dict[str, _Spec] = {
     "role": _Spec(models.Role, "role_identifier", "role_name", "role_status", "role_created_at", "role_updated_at"),
     "team": _Spec(models.Team, "team_identifier", "team_name", "team_status", "team_created_at", "team_updated_at"),
     "filtered_tab": _Spec(models.FilteredTab, "filtered_tab_identifier", "filtered_tab_label", "filtered_tab_status", "filtered_tab_created_at", "filtered_tab_updated_at"),
+    # Source instance mapping model (PI-255). source_mapping / field_mapping
+    # carry prefixed identifiers; mapping_candidate is integer-PK (in _NO_SUMMARY).
+    "source_mapping": _Spec(models.SourceMapping, "source_mapping_identifier", "source_entity_name", "status", "created_at", "updated_at"),
+    "field_mapping": _Spec(models.FieldMapping, "field_mapping_identifier", "source_field_name", "status", "created_at", "updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "release": _Spec(models.Release, "release_identifier", "release_title", "release_status", "release_created_at", "release_updated_at"),
@@ -128,7 +132,14 @@ _SPECS: dict[str, _Spec] = {
 # string identifier that matches a reference's source_id/target_id. These
 # resolve to ``None`` and the grid shows just identifier + type for them.
 _NO_SUMMARY: frozenset[str] = frozenset(
-    {"charter", "status", "catalog_entity", "catalog_attribute"}
+    {
+        "charter",
+        "status",
+        "catalog_entity",
+        "catalog_attribute",
+        # PI-255 reconciler output — integer PK, no string identifier to match.
+        "mapping_candidate",
+    }
 )
 
 

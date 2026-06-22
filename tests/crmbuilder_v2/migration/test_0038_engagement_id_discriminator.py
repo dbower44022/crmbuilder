@@ -116,6 +116,14 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "cost_events",
         # PRJ-042 publish history — the per-publish run record (landed on main).
         "publish_runs",
+        # PI-255 (PRJ-027) the source instance mapping model (migration 0081).
+        "source_mappings",
+        "source_mapping_targets",
+        "source_mapping_joins",
+        "field_mappings",
+        "field_mapping_translations",
+        "value_mappings",
+        "mapping_candidates",
     }
 )
 

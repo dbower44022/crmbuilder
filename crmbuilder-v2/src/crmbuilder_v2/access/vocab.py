@@ -701,15 +701,79 @@ PUBLISH_RUN_STATUSES: frozenset[str] = frozenset(
 
 # present = exists and matches the canonical design; drifted = exists but at
 # least one attribute differs (captured in the override); absent = a canonical
-# object not found in this instance's last audit.
+# object not found in this instance's last audit; candidate_pending = discovered
+# in a source audit, awaiting a human mapping decision before influencing the
+# canonical design; mapping_stale = an existing mapping became stale due to a
+# change on either the source or the design side (SES-230, DEC-454).
 INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
-    {"present", "drifted", "absent"}
+    {"present", "drifted", "absent", "candidate_pending", "mapping_stale"}
 )
 
 # The canonical design-object kinds a membership row can describe (DEC-433).
 # Extended by PI-193 (layout), PI-194 (role, team), PI-195 (filtered_tab).
 INSTANCE_MEMBERSHIP_MEMBER_TYPES: frozenset[str] = frozenset(
     {"entity", "field", "association", "layout", "role", "team", "filtered_tab"}
+)
+
+# ---------------------------------------------------------------------------
+# Source instance mapping model (PI-255, SES-230 — PRJ-027). The
+# candidate-gated human-decision layer that governs how objects discovered
+# in a source CRM instance relate to objects in the canonical design.
+# Source instances are design inputs, not design authorities. Every discovered
+# object requires an explicit mapping decision before it influences the design.
+# See source-mapping-design.md for the full model.
+# ---------------------------------------------------------------------------
+
+# Entity-level mapping decision types (DEC-451, DEC-452). A source entity may
+# map directly to one design entity, decompose into multiple design entities,
+# map referentially (different surface, same intent), or be explicitly rejected.
+SOURCE_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
+    {"direct", "decomposition", "referential", "rejected"}
+)
+
+# Mapping record lifecycle states (DEC-454). A mapping is unresolved until a
+# human makes the decision, resolved once confirmed, stale when either the
+# source or design changed, and superseded when replaced by a newer decision.
+SOURCE_MAPPING_STATUSES: frozenset[str] = frozenset(
+    {"unresolved", "resolved", "stale", "superseded"}
+)
+
+# Graduated staleness severity (DEC-454). Low = likely still valid (rename);
+# high = translation logic may be wrong (type change, structural change).
+SOURCE_MAPPING_STALE_SEVERITIES: frozenset[str] = frozenset({"low", "high"})
+
+# Why a mapping went stale (DEC-454).
+SOURCE_MAPPING_STALE_REASONS: frozenset[str] = frozenset(
+    {"source_changed", "design_changed"}
+)
+
+# Field-level mapping decision types (DEC-452). Finer than entity-level:
+# direct (same field, identity), referential_exact (same intent, different name),
+# referential_interpreted (requires translation logic), rejected.
+FIELD_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
+    {"direct", "referential_exact", "referential_interpreted", "rejected"}
+)
+
+# Value-level mapping decision types (DEC-452). Applied to individual enum
+# values when field_mapping.decision_type is referential_interpreted.
+VALUE_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
+    {"direct", "interpreted", "rejected"}
+)
+
+# Translation types for field_mapping_translation (DEC-452). value_map applies
+# per-value substitution; expression applies a formula/transformation.
+FIELD_MAPPING_TRANSLATION_TYPES: frozenset[str] = frozenset(
+    {"value_map", "expression"}
+)
+
+# Candidate types surfaced by the reconciler (DEC-451). Entity-level candidates
+# are unmatched source entities; field-level are unmatched source fields; value-
+# level are unmatched enum values on an already-mapped field.
+MAPPING_CANDIDATE_TYPES: frozenset[str] = frozenset({"entity", "field", "value"})
+
+# Confidence levels for reconciler-generated mapping suggestions (DEC-456).
+MAPPING_SUGGESTION_CONFIDENCES: frozenset[str] = frozenset(
+    {"high", "medium", "low"}
 )
 
 # ---------------------------------------------------------------------------
@@ -1582,6 +1646,14 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # PI-205 (PRJ-031) the multi-agent release pipeline keystone (REL-).
         # The born-early forming container whose status is its pipeline stage.
         "release",
+        # PI-255 source instance mapping model (PRJ-027 / SES-230). The
+        # candidate-gated human-decision layer between audit discovery and the
+        # canonical design. source_mapping = entity-level decision (SMG-);
+        # field_mapping = field-level decision (FMP-);
+        # mapping_candidate = pre-decision reconciler output (no prefix — auto-id).
+        "source_mapping",
+        "field_mapping",
+        "mapping_candidate",
     }
 )
 
