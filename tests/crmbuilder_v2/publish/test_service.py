@@ -141,15 +141,23 @@ class _FakeDesignClient:
 
 @pytest.fixture
 def _stub_live(monkeypatch):
-    """Stub the live-target touchpoints: client construction and field
-    discovery. Returns a setter for the server-field map."""
+    """Stub the live-target touchpoints: client construction, field discovery,
+    and the pre-publish backup capture. Returns a setter for the server-field
+    map (``server_fields``) and the backup behaviour (``backup``)."""
     monkeypatch.setattr(service, "EspoAdminClient", lambda profile: object())
-    state = {"server_fields": {}}
+    state = {"server_fields": {}, "backup": {"entities": {}}}
 
     def _gather(_client, _names):
         return state["server_fields"], []
 
+    def _capture(_client, _names):
+        backup = state["backup"]
+        if isinstance(backup, Exception):
+            raise backup
+        return backup
+
     monkeypatch.setattr(service, "gather_server_fields", _gather)
+    monkeypatch.setattr(service, "capture_target_backup", _capture)
     return state
 
 
@@ -369,6 +377,84 @@ def test_publish_scope_deploys_only_selected(monkeypatch, _stub_live):
     )
     assert deployed == ["Account"]
     assert [p.filename for p in res.programs] == ["Account.yaml"]
+
+
+def test_publish_captures_backup_before_deploy(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    _stub_live["backup"] = {"entities": {"Contact": {"fields": {}}}}
+    monkeypatch.setattr(
+        service, "deploy_pipeline", lambda *a, **k: DeployOutcome(report=object())
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+    )
+    assert res.aborted is False
+    assert res.backup == {"entities": {"Contact": {"fields": {}}}}
+    assert res.programs[0].deployed is True
+
+
+def test_publish_aborts_when_backup_fails(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    _stub_live["backup"] = service.BackupCaptureError("no scopes")
+    deployed = []
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: deployed.append(1) or DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+    )
+    assert res.aborted is True
+    assert "no scopes" in res.abort_reason
+    assert res.backup is None
+    assert deployed == []  # never wrote to the target
+    assert all(not p.deployed for p in res.programs)
+    assert res.verification is None  # no verify on an aborted publish
+
+
+def test_publish_allow_no_backup_overrides_gate(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    _stub_live["backup"] = service.BackupCaptureError("no scopes")
+    monkeypatch.setattr(
+        service, "deploy_pipeline", lambda *a, **k: DeployOutcome(report=object())
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+        allow_no_backup=True,
+    )
+    assert res.aborted is False
+    assert res.backup is None
+    assert res.programs[0].deployed is True
+
+
+def test_publish_no_backup_on_preview(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    captured = []
+    monkeypatch.setattr(
+        service, "capture_target_backup",
+        lambda *a, **k: captured.append(1) or {},
+    )
+    monkeypatch.setattr(
+        service, "deploy_pipeline", lambda *a, **k: DeployOutcome(report=object())
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+        preview=True,
+    )
+    assert captured == []  # preview never backs up
+    assert res.backup is None
 
 
 def test_publish_scope_none_deploys_everything(monkeypatch, _stub_live):

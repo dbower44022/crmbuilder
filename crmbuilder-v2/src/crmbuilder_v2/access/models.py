@@ -99,6 +99,7 @@ from crmbuilder_v2.access.vocab import (
     PLANNING_ITEM_TYPES,
     PROCESS_CLASSIFICATIONS,
     PROJECT_STATUSES,
+    PUBLISH_RUN_STATUSES,
     RECONCILIATION_CONFLICT_STATUSES,
     RECONCILIATION_CONFLICT_TYPES,
     REFERENCE_BOOK_KINDS,
@@ -2420,6 +2421,73 @@ class InstanceMembership(EngagementScopedMixin, Base):
             "engagement_id",
             "member_type",
             "member_identifier",
+        ),
+    )
+
+
+class PublishRun(EngagementScopedMixin, Base):
+    """PI-262 (PRJ-042) — one recorded publish to a target instance.
+
+    A lean engagement-scoped operational log (integer PK plus a friendly
+    ``PUB-NNN`` identifier; **not** a prefixed-identifier governance entity —
+    no ``change_log`` / ``refs`` participation, mirroring ``InstanceMembership``).
+    Each row captures a pre-publish JSON ``backup`` of the target's
+    configuration (REQ-292) so a publish is reviewable and reversible, plus the
+    run's ``scope`` (the selected program filenames, or null for the whole
+    design), terminal ``status``, timing, and an outcome ``summary`` of deploy
+    counts + the post-publish verification (REQ-293). The backup content is
+    captured *before* the deploy writes anything; the row is persisted when the
+    publish completes.
+    """
+
+    __tablename__ = "publish_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    publish_run_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    instance_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    publish_run_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    publish_run_scope: Mapped[list | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    publish_run_backup: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    publish_run_summary: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    publish_run_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    publish_run_ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("publish_run_identifier", ["PUB"]),
+            name="ck_publish_run_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("publish_run_status", PUBLISH_RUN_STATUSES),
+            name="ck_publish_run_status",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "publish_run_identifier",
+            name="uq_publish_run_identifier",
+        ),
+        Index(
+            "ix_publish_runs_instance",
+            "engagement_id",
+            "instance_identifier",
         ),
     )
 

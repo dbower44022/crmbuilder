@@ -679,6 +679,18 @@ INSTANCE_AUTH_METHODS: frozenset[str] = frozenset({"api_key", "basic", "hmac"})
 INSTANCE_STATUSES: frozenset[str] = frozenset({"active", "disabled"})
 
 # ---------------------------------------------------------------------------
+# publish_run (PI-262 — PRJ-042). A lean engagement-scoped operational log of
+# publishes to a target instance (NOT a governance entity). Each row carries a
+# pre-publish JSON backup of the target (REQ-292) + the run's scope/outcome
+# (REQ-293). Terminal status: succeeded, succeeded_with_issues (deployed but
+# post-publish verify found gaps), failed (validation/deploy failure), or
+# aborted (the pre-publish backup could not be captured and was not overridden).
+# ---------------------------------------------------------------------------
+PUBLISH_RUN_STATUSES: frozenset[str] = frozenset(
+    {"succeeded", "succeeded_with_issues", "failed", "aborted"}
+)
+
+# ---------------------------------------------------------------------------
 # instance_membership join (PI-185 — PRJ-027). A lightweight engagement-scoped
 # child table (NOT a prefixed-identifier governance entity), one row per
 # (canonical design object, instance), recording whether the object is present,

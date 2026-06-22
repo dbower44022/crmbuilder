@@ -17,6 +17,7 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QHBoxLayout,
     QLabel,
@@ -253,10 +254,36 @@ def render_validate_html(result: dict) -> str:
     return "".join(parts)
 
 
+def _backup_note(result: dict) -> str:
+    """A one-line note on the pre-publish backup / abort state (REQ-292)."""
+    if result.get("aborted"):
+        reason = _esc(result.get("abort_reason") or "the target could not be "
+                      "backed up")
+        return (
+            f"<p style='color:{_RED};font-weight:bold'>&#10007; Publish "
+            f"aborted — {reason}. Nothing was written. Re-try, or override the "
+            f"backup gate to publish without a backup.</p>"
+        )
+    run = result.get("publish_run")
+    run_note = f" Recorded as {_esc(run)}." if run else ""
+    if result.get("backup_captured"):
+        return (
+            f"<p style='color:{_MUTE}'>&#128190; Target backed up before "
+            f"publishing.{run_note}</p>"
+        )
+    return (
+        f"<p style='color:{_AMBER}'>Published without a target backup.{run_note}"
+        f"</p>"
+    )
+
+
 def render_publish_html(result: dict) -> str:
     """Render the publish-phase report as rich text."""
-    programs = result.get("programs", [])
     parts = [_header("Publish", result)]
+    if result.get("aborted"):
+        parts.append(_backup_note(result))
+        return "".join(parts)
+    programs = result.get("programs", [])
     parts.append("<ul style='margin:0;padding-left:18px'>")
     for p in programs:
         fn = _esc(p.get("filename", "?"))
@@ -277,6 +304,7 @@ def render_publish_html(result: dict) -> str:
                 f"{_esc(reason)}</li>"
             )
     parts.append("</ul>")
+    parts.append(_backup_note(result))
     parts.append(render_verification_html(result))
     parts.append(render_manual_config_html(result))
     return "".join(parts)
@@ -332,6 +360,8 @@ def render_preview_html(result: dict) -> str:
 
 
 def _publish_failed(result: dict) -> bool:
+    if result.get("aborted"):
+        return True
     if bool(result.get("validation_failed")) or any(
         not p.get("deployed") for p in result.get("programs", [])
     ):
@@ -382,6 +412,14 @@ class PublishDialog(QDialog):
         self._results.setReadOnly(True)
         self._results.setObjectName("publish_results")
         layout.addWidget(self._results, 1)
+
+        # Backup-gate override (REQ-292): off by default — a publish backs up
+        # the target first and aborts if it can't, unless this is checked.
+        self._allow_no_backup = QCheckBox(
+            "Publish even if the target can't be backed up"
+        )
+        self._allow_no_backup.setObjectName("allow_no_backup_checkbox")
+        layout.addWidget(self._allow_no_backup)
 
         row = QHBoxLayout()
         self._revalidate_btn = QPushButton("Re-validate")
@@ -546,10 +584,13 @@ class PublishDialog(QDialog):
         confirm.setDefaultButton(QMessageBox.StandardButton.Cancel)
         if confirm.exec() != QMessageBox.StandardButton.Ok:
             return
-        self._status.setText(f"Publishing to {self._target_name}…")
+        allow_no_backup = self._allow_no_backup.isChecked()
+        self._status.setText(f"Backing up + publishing to {self._target_name}…")
         self._set_busy(True)
         self._worker = run_in_thread(
-            lambda: self._client.publish_instance(self._identifier, scope),
+            lambda: self._client.publish_instance(
+                self._identifier, scope, allow_no_backup
+            ),
             on_success=self._on_published,
             on_error=self._on_error,
             parent=self,
@@ -557,11 +598,13 @@ class PublishDialog(QDialog):
 
     def _on_published(self, result: dict[str, Any]) -> None:
         self._results.setHtml(render_publish_html(result))
-        self._status.setText(
-            "Publish finished with issues — see the report."
-            if _publish_failed(result)
-            else "Publish complete."
-        )
+        if result.get("aborted"):
+            status = "Publish aborted — the target could not be backed up."
+        elif _publish_failed(result):
+            status = "Publish finished with issues — see the report."
+        else:
+            status = "Publish complete."
+        self._status.setText(status)
         # A fresh validate is required before another publish.
         self._set_busy(False, can_publish=False)
 

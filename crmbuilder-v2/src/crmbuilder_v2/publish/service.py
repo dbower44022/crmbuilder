@@ -32,6 +32,7 @@ from pathlib import Path
 from crmbuilder_v2.adapters.base import GenerationResult
 from crmbuilder_v2.adapters.espocrm.adapter import EspoCrmAdapter
 from crmbuilder_v2.adapters.espocrm.client import DesignClient
+from crmbuilder_v2.publish.backup import BackupCaptureError, capture_target_backup
 from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.comparator import FieldComparator
 from espo_impl.core.config_loader import ConfigLoader
@@ -121,6 +122,11 @@ class PublishResult:
     :ivar manual_config: The MANUAL-CONFIG companion content, if any.
     :ivar verification: The post-publish target verification (REQ-291), or
         ``None`` when no real publish ran (preview / validate-only).
+    :ivar backup: The pre-publish snapshot of the target captured before deploy
+        (REQ-292), or ``None`` (preview / validate-only, or capture skipped).
+    :ivar aborted: True when the publish was abandoned before deploying because
+        the pre-publish backup could not be captured and was not overridden.
+    :ivar abort_reason: Why the publish aborted, when ``aborted``.
     """
 
     engine: str
@@ -132,6 +138,9 @@ class PublishResult:
     deferrals: list = field(default_factory=list)
     manual_config: str | None = None
     verification: VerificationResult | None = None
+    backup: dict | None = None
+    aborted: bool = False
+    abort_reason: str | None = None
 
 
 def build_target_profile(
@@ -381,6 +390,7 @@ def publish(
     validate_only: bool = False,
     preview: bool = False,
     scope: set[str] | None = None,
+    allow_no_backup: bool = False,
     output_fn: OutputFn | None = None,
 ) -> PublishResult:
     """Generate, validate, and (unless ``validate_only``) deploy the design.
@@ -399,6 +409,9 @@ def publish(
         is in this set — a subset publish (REQ-290). ``None`` or empty means
         publish everything (the default). Validation, preview, verification,
         and the manual-config checklist all operate over the scoped subset.
+    :param allow_no_backup: If True, proceed with the publish even when the
+        pre-publish backup cannot be captured (REQ-292 gate override). Default
+        False: a failed backup aborts the publish before any write.
     :param output_fn: Optional deploy log callback; when omitted, each
         program's log is captured into its :class:`ProgramOutcome`.
     :returns: A :class:`PublishResult`.
@@ -450,6 +463,25 @@ def publish(
                 )
             )
         return pub
+
+    # Backup gate (REQ-292): for a real publish, capture a pre-publish snapshot
+    # of the target before writing anything. A total capture failure aborts the
+    # publish unless explicitly overridden. A preview writes nothing, so it
+    # needs no backup.
+    if not preview:
+        try:
+            pub.backup = capture_target_backup(client, _entity_names(programs))
+        except BackupCaptureError as exc:
+            if not allow_no_backup:
+                pub.aborted = True
+                pub.abort_reason = str(exc)
+                for filename, _program in programs:
+                    pub.programs.append(
+                        ProgramOutcome(filename=filename, deployed=False)
+                    )
+                return pub
+            # Overridden: proceed with no backup recorded.
+            pub.backup = None
 
     # Deploy, or (preview) dry-run the deploy engine to report planned actions
     # without writing to the target (REQ-289).

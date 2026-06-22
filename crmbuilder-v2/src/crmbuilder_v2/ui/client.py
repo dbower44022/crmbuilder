@@ -2130,24 +2130,42 @@ class StorageClient:
         )
 
     def publish_instance(
-        self, identifier: str, scope: list[str] | None = None
+        self,
+        identifier: str,
+        scope: list[str] | None = None,
+        allow_no_backup: bool = False,
     ) -> dict[str, Any]:
-        """POST /instances/{id}/publish — generate, validate, and deploy.
+        """POST /instances/{id}/publish — back up, validate, and deploy.
 
-        A program that fails validation is never deployed. Returns the same
-        serialized publish result shape as :meth:`publish_validate_instance`
-        (PRJ-042 / REQ-287). An optional ``scope`` (program filenames) deploys
-        only a subset (REQ-290).
+        Captures a pre-publish backup of the target and records a publish_run
+        (PRJ-042 / REQ-292+293). A program that fails validation is never
+        deployed (REQ-288). An optional ``scope`` (program filenames) deploys
+        only a subset (REQ-290); ``allow_no_backup`` overrides the backup gate.
+        Returns the same serialized publish result shape as
+        :meth:`publish_validate_instance`, plus ``aborted`` / ``backup_captured``
+        / ``publish_run``.
         """
         return self._publish_request(
-            f"/instances/{identifier}/publish", scope
+            f"/instances/{identifier}/publish",
+            scope,
+            allow_no_backup=allow_no_backup,
         )
 
     def _publish_request(
-        self, path: str, scope: list[str] | None = None
+        self,
+        path: str,
+        scope: list[str] | None = None,
+        *,
+        allow_no_backup: bool = False,
     ) -> dict[str, Any]:
-        json_body = {"scope": scope} if scope else None
-        result = self._request("POST", path, json_body=json_body)
+        body: dict[str, Any] = {}
+        if scope:
+            body["scope"] = scope
+        if allow_no_backup:
+            body["allow_no_backup"] = True
+        result = self._request(
+            "POST", path, json_body=body or None
+        )
         if not isinstance(result, dict):
             raise ServerError(
                 status_code=200, errors=[],

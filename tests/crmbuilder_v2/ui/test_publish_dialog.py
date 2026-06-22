@@ -314,6 +314,90 @@ def test_render_publish_includes_verification():
     assert "Verified on target" in out
 
 
+# -- backup / abort (REQ-292) ------------------------------------------------
+
+
+def test_render_publish_backup_captured_note():
+    out = render_publish_html(
+        {
+            "engine": "espocrm",
+            "target_instance": "INST-001",
+            "programs": [{"filename": "Contact.yaml", "deployed": True}],
+            "backup_captured": True,
+            "publish_run": "PUB-007",
+        }
+    )
+    assert "backed up" in out.lower()
+    assert "PUB-007" in out
+
+
+def test_render_publish_aborted_note():
+    out = render_publish_html(
+        {
+            "engine": "espocrm",
+            "target_instance": "INST-001",
+            "programs": [],
+            "aborted": True,
+            "abort_reason": "could not read the target's scopes (HTTP 500)",
+        }
+    )
+    assert "aborted" in out.lower()
+    assert "could not read the target&#x27;s scopes (HTTP 500)" in out or (
+        "could not read the target" in out
+    )
+    # Nothing was deployed — no program list rendered.
+    assert "deployed" not in out.lower()
+
+
+def test_dialog_has_backup_override_unchecked_by_default(qtbot):
+    client = _FakeClient(
+        _validate_result(
+            failed=False,
+            programs=[{"filename": "Contact.yaml", "validation_errors": []}],
+        )
+    )
+    dlg = PublishDialog(client, _RECORD)
+    qtbot.addWidget(dlg)
+    qtbot.waitUntil(lambda: dlg._revalidate_btn.isEnabled(), timeout=3000)
+    # The backup gate is on by default (override unchecked).
+    assert not dlg._allow_no_backup.isChecked()
+
+
+def test_dialog_publish_forwards_scope_and_override(qtbot, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    client = _FakeClient(
+        _validate_result(
+            failed=False,
+            programs=[{"filename": "Contact.yaml", "validation_errors": []}],
+        ),
+        publish_result={
+            "engine": "espocrm",
+            "target_instance": "INST-001",
+            "programs": [{"filename": "Contact.yaml", "deployed": True}],
+            "backup_captured": False,
+        },
+    )
+    dlg = PublishDialog(client, _RECORD)
+    qtbot.addWidget(dlg)
+    qtbot.waitUntil(lambda: dlg._revalidate_btn.isEnabled(), timeout=3000)
+    dlg._allow_no_backup.setChecked(True)
+    # Auto-accept the confirm dialog, then trigger the publish handler.
+    monkeypatch.setattr(
+        "crmbuilder_v2.ui.dialogs.publish_dialog.CopyableMessageBox.exec",
+        lambda self: QMessageBox.StandardButton.Ok,
+    )
+    dlg._on_publish_clicked()
+    qtbot.waitUntil(
+        lambda: any(c[0] == "publish" for c in client.calls), timeout=3000
+    )
+    pub = next(c for c in client.calls if c[0] == "publish")
+    # ("publish", identifier, scope, allow_no_backup)
+    assert pub[1] == "INST-001"
+    assert pub[2] is None  # all programs selected → full scope
+    assert pub[3] is True  # override forwarded
+
+
 # -- client request paths ----------------------------------------------------
 
 
@@ -335,6 +419,8 @@ def test_client_publish_request_paths():
     }
     # A scoped publish sends the selected filenames in the body.
     sc.publish_instance("INST-004", ["Contact.yaml"])
+    # The backup-gate override is sent when set.
+    sc.publish_instance("INST-005", None, allow_no_backup=True)
     assert ("POST", "/instances/INST-001/publish-validate", None) in calls
     assert ("POST", "/instances/INST-002/publish", None) in calls
     assert ("POST", "/instances/INST-003/publish-preview", None) in calls
@@ -342,6 +428,11 @@ def test_client_publish_request_paths():
         "POST",
         "/instances/INST-004/publish",
         {"scope": ["Contact.yaml"]},
+    ) in calls
+    assert (
+        "POST",
+        "/instances/INST-005/publish",
+        {"allow_no_backup": True},
     ) in calls
 
 
@@ -379,8 +470,8 @@ class _FakeClient:
         self.calls.append(("validate", identifier, scope))
         return self._v
 
-    def publish_instance(self, identifier, scope=None):
-        self.calls.append(("publish", identifier, scope))
+    def publish_instance(self, identifier, scope=None, allow_no_backup=False):
+        self.calls.append(("publish", identifier, scope, allow_no_backup))
         return self._p
 
     def publish_preview_instance(self, identifier, scope=None):

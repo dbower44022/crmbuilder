@@ -36,19 +36,24 @@ def _make_instance(client, *, role="target", secret="api-key"):
     return r.json()["data"]["instance_identifier"]
 
 
-def _fake_result(validate_only):
+def _fake_result(validate_only, *, backup=None, aborted=False):
     return PublishResult(
         engine="espocrm",
         target_instance="INST-001",
         validate_only=validate_only,
         validation_failed=False,
-        programs=[
+        programs=[]
+        if aborted
+        else [
             ProgramOutcome(
                 filename="Contact.yaml", deployed=not validate_only
             )
         ],
         deferrals=[],
         manual_config=None,
+        backup=backup,
+        aborted=aborted,
+        abort_reason="no scopes" if aborted else None,
     )
 
 
@@ -161,3 +166,65 @@ def test_publish_no_body_means_full_scope(client, monkeypatch):
     r = client.post(f"/instances/{iid}/publish")
     assert r.status_code == 200, r.text
     assert captured["scope"] is None
+
+
+# -- publish_run recording + backup gate (REQ-292 / REQ-293) -----------------
+
+
+def test_publish_records_run(client, monkeypatch):
+    iid = _make_instance(client)
+    monkeypatch.setattr(
+        publish_service, "publish",
+        lambda *a, **k: _fake_result(
+            validate_only=False, backup={"entities": {}}
+        ),
+    )
+    r = client.post(f"/instances/{iid}/publish")
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    # A real publish records a PUB-NNN run and reports the backup state.
+    assert data["publish_run"] == "PUB-001"
+    assert data["backup_captured"] is True
+    assert data["aborted"] is False
+
+
+def test_publish_aborted_records_run(client, monkeypatch):
+    iid = _make_instance(client)
+    monkeypatch.setattr(
+        publish_service, "publish",
+        lambda *a, **k: _fake_result(validate_only=False, aborted=True),
+    )
+    r = client.post(f"/instances/{iid}/publish")
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["aborted"] is True
+    assert data["backup_captured"] is False
+    # The aborted attempt is still recorded in history.
+    assert data["publish_run"] == "PUB-001"
+
+
+def test_publish_allow_no_backup_threaded(client, monkeypatch):
+    iid = _make_instance(client)
+    captured = {}
+
+    def fake_publish(rec, design_client, *, allow_no_backup=False, **kw):
+        captured["allow_no_backup"] = allow_no_backup
+        return _fake_result(validate_only=False)
+
+    monkeypatch.setattr(publish_service, "publish", fake_publish)
+    r = client.post(
+        f"/instances/{iid}/publish", json={"allow_no_backup": True}
+    )
+    assert r.status_code == 200, r.text
+    assert captured["allow_no_backup"] is True
+
+
+def test_validate_does_not_record_run(client, monkeypatch):
+    iid = _make_instance(client)
+    monkeypatch.setattr(
+        publish_service, "publish",
+        lambda *a, **k: _fake_result(validate_only=True),
+    )
+    r = client.post(f"/instances/{iid}/publish-validate")
+    assert r.status_code == 200, r.text
+    assert "publish_run" not in r.json()["data"]

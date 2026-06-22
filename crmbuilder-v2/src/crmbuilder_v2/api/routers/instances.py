@@ -13,6 +13,7 @@ and, on a backfill create, a ``timestamps`` dict. All responses use the
 from __future__ import annotations
 
 import dataclasses
+import logging
 from datetime import UTC, datetime
 
 from fastapi import APIRouter
@@ -29,6 +30,7 @@ from crmbuilder_v2.access.repositories import (
     instance_membership,
     instances,
     inventory,
+    publish_runs,
 )
 from crmbuilder_v2.adapters.espocrm.client import RestDesignClient
 from crmbuilder_v2.api.deps import readonly_session, writable_session
@@ -335,6 +337,9 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
             if result.verification is not None
             else None
         ),
+        "aborted": result.aborted,
+        "abort_reason": result.abort_reason,
+        "backup_captured": result.backup is not None,
         "programs": [
             {
                 "filename": p.filename,
@@ -348,6 +353,71 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
             for p in result.programs
         ],
     }
+
+
+def _publish_run_status(result: publish_service.PublishResult) -> str:
+    """Map a publish result to a terminal ``publish_run`` status (REQ-293)."""
+    if result.aborted:
+        return "aborted"
+    if result.validation_failed or any(
+        not p.deployed for p in result.programs
+    ):
+        return "failed"
+    verify = result.verification
+    if verify is not None and verify.ran and verify.conclusive and not (
+        verify.all_present
+    ):
+        return "succeeded_with_issues"
+    return "succeeded"
+
+
+def _publish_run_summary(result: publish_service.PublishResult) -> dict:
+    """A compact outcome summary stored on the publish_run row (REQ-293)."""
+    return {
+        "deployed": [p.filename for p in result.programs if p.deployed],
+        "not_deployed": [
+            p.filename for p in result.programs if not p.deployed
+        ],
+        "verification": (
+            dataclasses.asdict(result.verification)
+            if result.verification is not None
+            else None
+        ),
+        "manual_config_items": len(result.deferrals),
+    }
+
+
+def _record_publish_run(
+    identifier: str,
+    result: publish_service.PublishResult,
+    *,
+    scope: list[str] | None,
+    started_at: datetime,
+    ended_at: datetime,
+) -> str | None:
+    """Persist a publish_run row for a completed real publish (best-effort).
+
+    Recording failure never breaks the publish response — the live CRM was
+    already written; a lost log entry is surfaced as a warning, not an error.
+    """
+    try:
+        with writable_session() as s:
+            row = publish_runs.create_publish_run(
+                s,
+                instance_identifier=identifier,
+                status=_publish_run_status(result),
+                scope=scope,
+                backup=result.backup,
+                summary=_publish_run_summary(result),
+                started_at=started_at,
+                ended_at=ended_at,
+            )
+        return row["publish_run_identifier"]
+    except Exception:  # pragma: no cover - defensive; logged, never fatal
+        logging.getLogger(__name__).warning(
+            "failed to record publish_run for %s", identifier, exc_info=True
+        )
+        return None
 
 
 def _resolve_publish_target(identifier: str) -> tuple[dict, str, str | None]:
@@ -396,45 +466,70 @@ def _run_publish(
     validate_only: bool = False,
     preview: bool = False,
     scope: list[str] | None = None,
+    allow_no_backup: bool = False,
 ):
-    """Resolve the target + active-engagement design source, then publish."""
+    """Resolve the target + active-engagement design source, then publish.
+
+    A real publish (not validate-only / preview) captures a pre-publish backup
+    of the target (REQ-292) and records a ``publish_run`` row with the outcome
+    (REQ-293); the run identifier is returned in the response.
+    """
     rec, api_key, secret_key = _resolve_publish_target(identifier)
     engagement = get_active_engagement()
     design_client = RestDesignClient(
         base_url=get_settings().api_base_url, engagement=engagement
     )
-    rendered_at = datetime.now(UTC).isoformat()
+    started_at = datetime.now(UTC)
     result = publish_service.publish(
         rec,
         design_client,
         api_key=api_key,
         secret_key=secret_key,
-        rendered_at=rendered_at,
+        rendered_at=started_at.isoformat(),
         engagement=engagement,
         validate_only=validate_only,
         preview=preview,
         scope=set(scope) if scope else None,
+        allow_no_backup=allow_no_backup,
     )
-    return ok(_serialize_publish_result(result))
+    payload = _serialize_publish_result(result)
+    # Record the run for a real publish only (preview/validate write nothing).
+    if not validate_only and not preview:
+        payload["publish_run"] = _record_publish_run(
+            identifier,
+            result,
+            scope=scope,
+            started_at=started_at,
+            ended_at=datetime.now(UTC),
+        )
+    return ok(payload)
 
 
 class PublishScopeIn(BaseModel):
-    """Optional request body selecting a subset of programs to publish.
+    """Optional request body for a publish.
 
     ``scope`` is a list of generated program filenames (e.g. ``Contact.yaml``);
     omitting it (or sending an empty list) publishes the whole design (REQ-290).
+    ``allow_no_backup`` overrides the pre-publish backup gate so a publish
+    proceeds even when the target snapshot cannot be captured (REQ-292).
     """
 
     model_config = ConfigDict(extra="forbid")
     scope: list[str] | None = None
+    allow_no_backup: bool = False
 
 
 @router.post("/{identifier}/publish")
 def publish_instance(identifier: str, body: PublishScopeIn | None = None):
-    """Generate the canonical design, validate it against this target, and
-    deploy it. A program that fails validation is never deployed (REQ-288).
-    An optional ``scope`` body publishes only a subset of programs (REQ-290)."""
-    return _run_publish(identifier, scope=body.scope if body else None)
+    """Generate the canonical design, validate it against this target, capture a
+    pre-publish backup, and deploy it. A program that fails validation is never
+    deployed (REQ-288); an optional ``scope`` publishes only a subset (REQ-290);
+    a failed backup aborts unless ``allow_no_backup`` (REQ-292)."""
+    return _run_publish(
+        identifier,
+        scope=body.scope if body else None,
+        allow_no_backup=body.allow_no_backup if body else False,
+    )
 
 
 @router.post("/{identifier}/publish-validate")
