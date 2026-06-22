@@ -152,6 +152,55 @@ def render_publish_html(result: dict) -> str:
     return "".join(parts)
 
 
+def _preview_counts(summary: dict | None) -> str:
+    """The actions a program WOULD take, from its dry-run report summary."""
+    s = summary or {}
+    bits: list[str] = []
+    for key, label in (
+        ("created", "create"),
+        ("updated", "update"),
+        ("relationships_created", "relationship(s)"),
+        ("layouts_updated", "layout(s)"),
+    ):
+        if s.get(key):
+            bits.append(f"{s[key]} {label}")
+    unchanged = (
+        (s.get("skipped") or 0)
+        + (s.get("layouts_skipped") or 0)
+        + (s.get("relationships_skipped") or 0)
+    )
+    if unchanged:
+        bits.append(f"{unchanged} unchanged")
+    return ", ".join(bits) or "no changes"
+
+
+def render_preview_html(result: dict) -> str:
+    """Render the preview (dry-run) plan as rich text."""
+    programs = result.get("programs", [])
+    parts = [_header("Preview", result)]
+    parts.append(
+        f"<p style='color:{_GREEN}'>Non-destructive — nothing was written "
+        f"to the target.</p>"
+    )
+    parts.append("<ul style='margin:0;padding-left:18px'>")
+    for p in programs:
+        fn = _esc(p.get("filename", "?"))
+        errs = p.get("validation_errors") or []
+        if errs:
+            parts.append(
+                f"<li><span style='color:{_RED}'>&#10007; {fn}</span> — "
+                f"{len(errs)} validation error(s)</li>"
+            )
+        else:
+            parts.append(
+                f"<li><span style='color:{_AMBER}'>&#9656; {fn}</span> — "
+                f"would: {_esc(_preview_counts(p.get('summary')))}</li>"
+            )
+    parts.append("</ul>")
+    parts.append(_deferral_note(result))
+    return "".join(parts)
+
+
 def _publish_failed(result: dict) -> bool:
     return bool(result.get("validation_failed")) or any(
         not p.get("deployed") for p in result.get("programs", [])
@@ -189,12 +238,19 @@ class PublishDialog(QDialog):
         self._revalidate_btn = QPushButton("Re-validate")
         self._revalidate_btn.setObjectName("revalidate_button")
         self._revalidate_btn.clicked.connect(self._start_validate)
+        self._preview_btn = QPushButton("Preview")
+        self._preview_btn.setObjectName("preview_button")
+        self._preview_btn.setToolTip(
+            "Show what publishing would change — without writing anything."
+        )
+        self._preview_btn.clicked.connect(self._start_preview)
         self._publish_btn = primary_button("Publish ▶")
         self._publish_btn.setObjectName("publish_button")
         self._publish_btn.clicked.connect(self._on_publish_clicked)
         close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.reject)
         row.addWidget(self._revalidate_btn)
+        row.addWidget(self._preview_btn)
         row.addStretch(1)
         row.addWidget(self._publish_btn)
         row.addWidget(close_btn)
@@ -209,6 +265,7 @@ class PublishDialog(QDialog):
         if can_publish is not None:
             self._can_publish = can_publish
         self._revalidate_btn.setEnabled(not busy)
+        self._preview_btn.setEnabled(not busy)
         self._publish_btn.setEnabled(not busy and self._can_publish)
 
     # -- validate phase --------------------------------------------------
@@ -232,6 +289,32 @@ class PublishDialog(QDialog):
             else "Validation failed — fix the errors before publishing."
         )
         self._set_busy(False, can_publish=ok)
+
+    # -- preview phase (non-destructive dry-run) -------------------------
+
+    def _start_preview(self) -> None:
+        self._status.setText("Previewing — building the plan (no writes)…")
+        self._set_busy(True)
+        self._worker = run_in_thread(
+            lambda: self._client.publish_preview_instance(self._identifier),
+            on_success=self._on_previewed,
+            on_error=self._on_error,
+            parent=self,
+        )
+
+    def _on_previewed(self, result: dict[str, Any]) -> None:
+        if result.get("validation_failed"):
+            self._results.setHtml(render_validate_html(result))
+            self._status.setText(
+                "Validation failed — fix the errors before publishing."
+            )
+            self._set_busy(False, can_publish=False)
+            return
+        self._results.setHtml(render_preview_html(result))
+        self._status.setText(
+            "Preview complete — nothing was written. Ready to publish."
+        )
+        self._set_busy(False, can_publish=True)
 
     # -- publish phase ---------------------------------------------------
 

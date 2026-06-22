@@ -74,6 +74,7 @@ class PublishResult:
     :ivar engine: The target engine identifier (e.g. ``espocrm``).
     :ivar target_instance: The target instance identifier.
     :ivar validate_only: Whether deployment was skipped.
+    :ivar preview: Whether this was a non-destructive dry-run (no writes).
     :ivar validation_failed: True if any generated program had validator errors.
     :ivar programs: Per-program outcomes.
     :ivar deferrals: Design constructs the adapter could not express (advisory).
@@ -84,6 +85,7 @@ class PublishResult:
     target_instance: str
     validate_only: bool
     validation_failed: bool
+    preview: bool = False
     programs: list[ProgramOutcome] = field(default_factory=list)
     deferrals: list = field(default_factory=list)
     manual_config: str | None = None
@@ -243,6 +245,7 @@ def publish(
     rendered_at: str,
     engagement: str | None = None,
     validate_only: bool = False,
+    preview: bool = False,
     output_fn: OutputFn | None = None,
 ) -> PublishResult:
     """Generate, validate, and (unless ``validate_only``) deploy the design.
@@ -254,6 +257,9 @@ def publish(
     :param rendered_at: ISO timestamp for the generated provenance header.
     :param engagement: Engagement identifier.
     :param validate_only: If True, stop after validation (deploy nothing).
+    :param preview: If True, run a non-destructive dry-run after validation —
+        the deploy engine reports the action each object *would* take without
+        writing to the target (REQ-289). Ignored when ``validate_only``.
     :param output_fn: Optional deploy log callback; when omitted, each
         program's log is captured into its :class:`ProgramOutcome`.
     :returns: A :class:`PublishResult`.
@@ -281,6 +287,7 @@ def publish(
         engine=result.engine,
         target_instance=target_identifier,
         validate_only=validate_only,
+        preview=preview,
         validation_failed=validation_failed,
         deferrals=list(result.deferrals),
         manual_config=(
@@ -288,8 +295,8 @@ def publish(
         ),
     )
 
-    # Validation gate: never deploy a program that does not pass its own
-    # engine pre-flight (REQ-288). A validate-only run stops here too.
+    # Validation gate: never touch a program that does not pass its own engine
+    # pre-flight (REQ-288). A validate-only run stops here too.
     if validate_only or validation_failed:
         for filename, _program in programs:
             pub.programs.append(
@@ -301,18 +308,20 @@ def publish(
             )
         return pub
 
+    # Deploy, or (preview) dry-run the deploy engine to report planned actions
+    # without writing to the target (REQ-289).
     for filename, program in programs:
         log: list[tuple[str, str]] = []
         ofn: OutputFn = output_fn or (
             lambda m, c, _log=log: _log.append((m, c))
         )
         field_mgr = FieldManager(client, FieldComparator(), ofn)
-        outcome = deploy_pipeline(program, client, field_mgr, ofn)
+        outcome = deploy_pipeline(program, client, field_mgr, ofn, dry_run=preview)
         pub.programs.append(
             ProgramOutcome(
                 filename=filename,
                 validation_errors=[],
-                deployed=True,
+                deployed=not preview,
                 report=outcome.report,
                 log=log,
             )

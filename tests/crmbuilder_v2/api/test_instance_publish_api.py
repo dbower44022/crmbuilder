@@ -113,3 +113,20 @@ def test_publish_source_only_rejected_422(client, monkeypatch):
     r = client.post(f"/instances/{iid}/publish")
     assert r.status_code == 422, r.text
     assert r.json()["errors"][0]["code"] == "not_publishable"
+
+
+def test_publish_preview(client, monkeypatch):
+    iid = _make_instance(client)
+    captured = {}
+
+    def fake_publish(rec, design_client, *, preview=False, validate_only=False, **kw):
+        captured["preview"] = preview
+        result = _fake_result(validate_only=False)
+        result.preview = preview
+        return result
+
+    monkeypatch.setattr(publish_service, "publish", fake_publish)
+    r = client.post(f"/instances/{iid}/publish-preview")
+    assert r.status_code == 200, r.text
+    assert captured["preview"] is True
+    assert r.json()["data"]["preview"] is True

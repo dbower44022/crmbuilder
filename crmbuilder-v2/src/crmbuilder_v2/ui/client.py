@@ -2108,6 +2108,15 @@ class StorageClient:
             f"/instances/{identifier}/publish-validate"
         )
 
+    def publish_preview_instance(self, identifier: str) -> dict[str, Any]:
+        """POST /instances/{id}/publish-preview — non-destructive dry-run.
+
+        Generates + validates, then dry-runs the deploy engine to report the
+        action each object WOULD take (create/update/skip) without writing to
+        the target. Same serialized result shape (PRJ-042 / REQ-289).
+        """
+        return self._publish_request(f"/instances/{identifier}/publish-preview")
+
     def publish_instance(self, identifier: str) -> dict[str, Any]:
         """POST /instances/{id}/publish — generate, validate, and deploy.
 

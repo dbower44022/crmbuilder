@@ -227,3 +227,28 @@ def test_publish_deploys_when_valid(monkeypatch, _stub_live):
     assert contact.deployed is True
     assert contact.report is sentinel_report
     assert ("deploying", "white") in contact.log
+
+
+def test_publish_preview_dry_runs(monkeypatch, _stub_live):
+    from espo_impl.core.deploy_pipeline import DeployOutcome
+
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    captured = {}
+
+    def fake_deploy(program, client, field_mgr, output_fn, *, dry_run=False, **k):
+        captured["dry_run"] = dry_run
+        return DeployOutcome(report=object())
+
+    monkeypatch.setattr(service, "deploy_pipeline", fake_deploy)
+
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+        preview=True,
+    )
+    # Preview runs the deploy engine in dry-run, and marks nothing deployed.
+    assert captured["dry_run"] is True
+    assert res.preview is True
+    assert all(not p.deployed for p in res.programs)

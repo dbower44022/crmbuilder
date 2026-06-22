@@ -325,6 +325,7 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         "engine": result.engine,
         "target_instance": result.target_instance,
         "validate_only": result.validate_only,
+        "preview": result.preview,
         "validation_failed": result.validation_failed,
         "deferrals": [dataclasses.asdict(d) for d in result.deferrals],
         "manual_config": result.manual_config,
@@ -383,7 +384,9 @@ def _resolve_publish_target(identifier: str) -> tuple[dict, str, str | None]:
     return rec, api_key, secret_key
 
 
-def _run_publish(identifier: str, *, validate_only: bool):
+def _run_publish(
+    identifier: str, *, validate_only: bool = False, preview: bool = False
+):
     """Resolve the target + active-engagement design source, then publish."""
     rec, api_key, secret_key = _resolve_publish_target(identifier)
     engagement = get_active_engagement()
@@ -399,6 +402,7 @@ def _run_publish(identifier: str, *, validate_only: bool):
         rendered_at=rendered_at,
         engagement=engagement,
         validate_only=validate_only,
+        preview=preview,
     )
     return ok(_serialize_publish_result(result))
 
@@ -407,10 +411,17 @@ def _run_publish(identifier: str, *, validate_only: bool):
 def publish_instance(identifier: str):
     """Generate the canonical design, validate it against this target, and
     deploy it. A program that fails validation is never deployed (REQ-288)."""
-    return _run_publish(identifier, validate_only=False)
+    return _run_publish(identifier)
 
 
 @router.post("/{identifier}/publish-validate")
 def publish_validate_instance(identifier: str):
     """Generate + validate against this target without deploying (REQ-288)."""
     return _run_publish(identifier, validate_only=True)
+
+
+@router.post("/{identifier}/publish-preview")
+def publish_preview_instance(identifier: str):
+    """Generate + validate, then dry-run the deploy to report the actions each
+    object WOULD take, without writing to the target (REQ-289)."""
+    return _run_publish(identifier, preview=True)

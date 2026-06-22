@@ -10,6 +10,7 @@ from __future__ import annotations
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.dialogs.publish_dialog import (
     PublishDialog,
+    render_preview_html,
     render_publish_html,
     render_validate_html,
 )
@@ -124,8 +125,33 @@ def test_client_publish_request_paths():
         "validation_failed": False
     }
     assert sc.publish_instance("INST-002") == {"validation_failed": False}
+    assert sc.publish_preview_instance("INST-003") == {
+        "validation_failed": False
+    }
     assert ("POST", "/instances/INST-001/publish-validate") in calls
     assert ("POST", "/instances/INST-002/publish") in calls
+    assert ("POST", "/instances/INST-003/publish-preview") in calls
+
+
+def test_render_preview_html():
+    out = render_preview_html(
+        {
+            "engine": "espocrm",
+            "target_instance": "INST-001",
+            "programs": [
+                {
+                    "filename": "Contact.yaml",
+                    "summary": {"created": 3, "skipped": 34},
+                    "validation_errors": [],
+                }
+            ],
+            "deferrals": [],
+        }
+    )
+    assert "Non-destructive" in out
+    assert "would: 3 create" in out
+    assert "34 unchanged" in out
+    assert "&#9656;" in out  # ▸ planned marker
 
 
 # -- dialog behavior ---------------------------------------------------------
