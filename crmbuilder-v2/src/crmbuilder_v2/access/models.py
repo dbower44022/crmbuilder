@@ -70,8 +70,11 @@ from crmbuilder_v2.access.vocab import (
     ENTITY_TYPES,
     EVIDENCE_SUBJECT_TYPES,
     EXECUTION_MODES,
+    FIELD_DEPLOYMENT_STATUSES,
     FIELD_MAPPING_DECISION_TYPES,
     FIELD_MAPPING_TRANSLATION_TYPES,
+    FIELD_PERMISSION_LEVELS,
+    FIELD_PERMISSION_RULE_STATUSES,
     FIELD_STATUSES,
     FIELD_TYPES,
     FILTERED_TAB_STATUSES,
@@ -2274,6 +2277,130 @@ class MessageTemplate(EngagementScopedPKMixin, Base):
         Index(
             "ix_message_templates_message_template_deleted_at",
             "message_template_deleted_at",
+        ),
+    )
+
+
+class FieldPermissionRule(EngagementScopedPKMixin, Base):
+    """Security design record — one (role × target_field) -> permission level.
+
+    WSK-167 / REQ-254, per ``field-permission-rule-design.md`` §8. A sibling of
+    the condition-carrying ``rule`` (``RUL-NNN``), a ``field_permission_rule``
+    (``FPR-NNN``) declares the **unconditional** access level a Role has to a
+    target field, so an adapter can render it into the target CRM's
+    field-permission matrix rather than an administrator configuring it by hand.
+    It carries no condition (unlike ``rule``); conditional editability lives on
+    the ``rule`` / ``visible_when`` surface.
+
+    Two orthogonal status axes (§4): ``field_permission_rule_status`` is the
+    standard four-status design propose-verify lifecycle; the independent
+    ``field_permission_rule_deployment_status`` tracks whether the confirmed
+    intent has been applied to — and still matches — the target CRM (written by
+    the ``deploy_security_configuration`` process, WTK-200, and the PRJ-027
+    drift audit).
+
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``field_permission_rule_identifier``. Both
+    ``field_permission_rule_role`` (``ROL-NNN``) and
+    ``field_permission_rule_target_field`` (``FLD-NNN``) are carried as plain
+    validated prefixed-identifier string columns — not ``refs`` edges — exactly
+    as ``rule_subject_identifier`` resolves its subject (WTK-199 §4 confirms the
+    column choice). Invariant 6.3 (at most one live rule per (role, field)) is
+    enforced both at the access layer and by the partial unique index below.
+    """
+
+    __tablename__ = "field_permission_rules"
+
+    field_permission_rule_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    field_permission_rule_name: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    field_permission_rule_role: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    field_permission_rule_target_field: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    field_permission_rule_permission_level: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    field_permission_rule_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    field_permission_rule_deployment_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="not_deployed"
+    )
+    field_permission_rule_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    field_permission_rule_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    field_permission_rule_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    field_permission_rule_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    field_permission_rule_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^FPR-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("field_permission_rule_identifier", ["FPR"]),
+            name="ck_field_permission_rule_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in(
+                "field_permission_rule_permission_level",
+                FIELD_PERMISSION_LEVELS,
+            ),
+            name="ck_field_permission_rule_permission_level",
+        ),
+        CheckConstraint(
+            _check_in(
+                "field_permission_rule_status", FIELD_PERMISSION_RULE_STATUSES
+            ),
+            name="ck_field_permission_rule_status",
+        ),
+        CheckConstraint(
+            _check_in(
+                "field_permission_rule_deployment_status",
+                FIELD_DEPLOYMENT_STATUSES,
+            ),
+            name="ck_field_permission_rule_deployment_status",
+        ),
+        Index(
+            "ix_field_permission_rules_field_permission_rule_status",
+            "field_permission_rule_status",
+        ),
+        Index(
+            "ix_field_permission_rules_deployment_status",
+            "field_permission_rule_deployment_status",
+        ),
+        Index(
+            "ix_field_permission_rules_field_permission_rule_deleted_at",
+            "field_permission_rule_deleted_at",
+        ),
+        # Invariant 6.3: at most one live ``field_permission_rule`` per
+        # (engagement, role, target_field). A partial unique index on both
+        # dialects backs the access-layer no-contradiction check under
+        # BEGIN IMMEDIATE; it also serves the deploy process's per-role read.
+        Index(
+            "uq_field_permission_rule_role_field",
+            "engagement_id",
+            "field_permission_rule_role",
+            "field_permission_rule_target_field",
+            unique=True,
+            sqlite_where=text("field_permission_rule_deleted_at IS NULL"),
+            postgresql_where=text("field_permission_rule_deleted_at IS NULL"),
         ),
     )
 

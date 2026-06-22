@@ -662,6 +662,46 @@ MESSAGE_TEMPLATE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"confirmed", "rejected"}),
     "rejected": frozenset(),
 }
+
+# ---------------------------------------------------------------------------
+# Security design records (WSK-167 / REQ-254, per
+# ``field-permission-rule-design.md`` §9). A ``field_permission_rule`` (FPR-)
+# declares the unconditional access level a Role has to a target field. The
+# deployment axis (``FIELD_DEPLOYMENT_STATUSES``) is shared with the sibling
+# ``field_visibility_rule`` (WTK-203) — both security-rule types track the
+# same deploy outcome.
+# ---------------------------------------------------------------------------
+
+# The neutral access level a ``field_permission_rule`` grants a role over a
+# field (WTK-197 §3): ``read_write`` (read + edit), ``read_only`` (read, no
+# edit), ``no_access`` (hidden). The adapter maps each onto the target engine's
+# field-permission shape (EspoCRM ``{read, edit}`` / a HubSpot property
+# permission). Edit-without-read is unrepresentable and rejected upstream.
+FIELD_PERMISSION_LEVELS: frozenset[str] = frozenset(
+    {"read_write", "read_only", "no_access"}
+)
+
+# Methodology entity ``field_permission_rule`` design lifecycle (WTK-197 §4.1)
+# — the standard four-status propose-verify gate, identical to ``rule`` / ``view``.
+FIELD_PERMISSION_RULE_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+FIELD_PERMISSION_RULE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
+# The deploy-outcome axis for a security rule (WTK-197 §4.2), orthogonal to the
+# design lifecycle above. Adapted from the ``instance_membership``
+# present/drifted/absent vocabulary to a per-rule deploy outcome. Shared with
+# ``field_visibility_rule`` (WTK-203) — the deploy axis is identical for both.
+FIELD_DEPLOYMENT_STATUSES: frozenset[str] = frozenset(
+    {"not_deployed", "deployed", "drifted", "failed"}
+)
+
 # Instance entity (PI-186 — PRJ-027). One engagement-scoped connection to a
 # live CRM system. See prj-027-multi-instance-audit-inventory-architecture.md
 # §3. The vendor selects the introspection/adapter driver (espocrm first; the
@@ -1643,6 +1683,11 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "team",
         # PI-195 (PRJ-027) net-new filtered-tab design family (FTB-).
         "filtered_tab",
+        # WSK-167 / REQ-254 security design record (FPR-). One
+        # unconditional (role × target_field) -> permission_level declaration,
+        # deployed to the target CRM's field-permission matrix. See
+        # field-permission-rule-design.md §8.
+        "field_permission_rule",
         # PI-205 (PRJ-031) the multi-agent release pipeline keystone (REL-).
         # The born-early forming container whose status is its pipeline stage.
         "release",
