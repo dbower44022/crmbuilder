@@ -935,11 +935,12 @@ RECONCILIATION_CONFLICT_TYPES: frozenset[str] = frozenset(
 )
 
 # `release_signoff` (PI-238 / PRJ-041, REQ-285) — a recorded human review sign-off
-# at a release front-half stage. The stage names the release output reviewed (and
-# the from-status of the transition the sign-off unblocks): the reconciled
-# change-set, or the architecture-planning designs.
+# at a release stage. The stage names the reviewed output: the reconciled change-set
+# (reconciliation) or the architecture-planning designs (PI-238 front half), or the
+# whole set of per-area implementation + testable specs (design — the matrix back
+# half's consolidated Design Review, PI-246).
 RELEASE_SIGNOFF_STAGES: frozenset[str] = frozenset(
-    {"reconciliation", "architecture_planning"}
+    {"reconciliation", "architecture_planning", "design"}
 )
 
 # `area_spec` (PI-244 / PRJ-041, REQ-295) — the per-(release, area) implementation +

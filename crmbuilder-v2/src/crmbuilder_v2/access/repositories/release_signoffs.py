@@ -34,6 +34,7 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.models import Release, ReleaseSignoff
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.repositories import (
+    area_specs,
     artifact_versions,
     release_change_sets,
 )
@@ -60,10 +61,26 @@ def stage_fingerprint(
     """The current content fingerprint of a stage's reviewable output.
 
     ``reconciliation`` fingerprints the persisted reconciled change-set;
-    ``architecture_planning`` fingerprints the designs the release introduced.
+    ``architecture_planning`` fingerprints the designs the release introduced;
+    ``design`` fingerprints the **whole set** of current per-area implementation +
+    testable specs (the consolidated Design Review is over all of them, so revising
+    any one area's spec voids the design sign-off — §4.6 / PI-246).
     Recomputed from live state each call, so it tracks any change to the output.
     """
-    if stage == "reconciliation":
+    if stage == "design":
+        specs = area_specs.current_specs(session, release_identifier)
+        payload = sorted(
+            (
+                {
+                    "area": sp["area"],
+                    "spec_version": sp["spec_version"],
+                    "fingerprint": sp["spec_fingerprint"],
+                }
+                for sp in specs
+            ),
+            key=lambda sp: sp["area"],
+        )
+    elif stage == "reconciliation":
         rows = release_change_sets.list_change_set(session, release_identifier)
         payload = [
             {

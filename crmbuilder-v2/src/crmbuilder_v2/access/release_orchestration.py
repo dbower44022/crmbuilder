@@ -36,6 +36,7 @@ from crmbuilder_v2.access.repositories import (
     planning_items,
     release_change_sets,
     release_demands,
+    release_signoffs,
     releases,
     work_tasks,
 )
@@ -363,6 +364,33 @@ def run_area_design(
         spec["area"] = area  # ensure the key is present for downstream feed-forward
         persisted.append(spec)
     return {"release_identifier": release_identifier, "areas": persisted}
+
+
+# ---------------------------------------------------------------------------
+# Design Review gate (PI-246 / §4.6, the matrix back half)
+# ---------------------------------------------------------------------------
+
+
+def design_review_status(session: Session, release_identifier: str) -> dict:
+    """Whether the release has a *fresh* consolidated Design Review sign-off — the
+    'reviewed / needs (re-)review' read for the per-area back half (PI-246). A
+    revision to any area's spec voids the prior sign-off (the fingerprint is over
+    the whole current spec set), so this re-opens review when any area changes."""
+    return release_signoffs.signoff_status(session, release_identifier, "design")
+
+
+def require_design_review_signoff(session: Session, release_identifier: str) -> None:
+    """Gate the per-area Develop stage (PI-246 / §4.6): the back half does not proceed
+    to Develop until a **fresh** human Design Review sign-off exists over the current
+    set of area specs. Raises :class:`ConflictError` otherwise. Enforced by the Develop
+    fan-out (PI-245's run_area_design produces the specs; this gates what follows)."""
+    if release_signoffs.fresh_signoff(session, release_identifier, "design") is None:
+        raise ConflictError(
+            f"release {release_identifier!r} cannot enter per-area Develop: no "
+            f"current Design Review sign-off over its area specs (record one against "
+            f"the design output; a stale sign-off from before a spec revision does "
+            f"not count) (PI-246)."
+        )
 
 
 # ---------------------------------------------------------------------------
