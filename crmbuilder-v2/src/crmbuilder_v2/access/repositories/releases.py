@@ -222,6 +222,53 @@ def _in_scope_requirements(session: Session, pi_id: str) -> list[str]:
     return sorted({e.target_id for e in edges})
 
 
+# Already-delivered filter (REQ-265): a requirement whose implementing planning
+# item has already reached a delivered state must never be planned, designed, or
+# built a second time. "Delivered" mirrors the release loop's delivered_statuses.
+_DELIVERED_PI_STATUSES: frozenset[str] = frozenset({"In Review", "Resolved"})
+
+
+def _implementing_planning_items(session: Session, req_id: str) -> list[str]:
+    """The planning items that implement ``req_id`` (the reverse of
+    ``_in_scope_requirements``)."""
+    edges = gov.inbound_edges(
+        session,
+        target_type="requirement",
+        target_id=req_id,
+        relationship="planning_item_implements_requirement",
+        source_type="planning_item",
+    )
+    return sorted({e.source_id for e in edges})
+
+
+def requirement_is_delivered(
+    session: Session,
+    req_id: str,
+    delivered_statuses: frozenset[str] = _DELIVERED_PI_STATUSES,
+) -> bool:
+    """True if any planning item implementing ``req_id`` has reached a delivered
+    state, so the requirement is already built and must be excluded from planning
+    (REQ-265). A requirement with no implementing planning item is not delivered."""
+    from crmbuilder_v2.access.repositories import planning_items
+
+    for pi in _implementing_planning_items(session, req_id):
+        row = planning_items.get(session, pi)
+        if row and row.get("status") in delivered_statuses:
+            return True
+    return False
+
+
+def pi_has_undelivered_requirements(session: Session, pi_id: str) -> bool:
+    """True unless the planning item implements requirements and every one is
+    already delivered — i.e. there is genuinely nothing left to build for it
+    (REQ-265). A planning item with no traced requirements is left buildable: we
+    cannot prove it is done, so we do not suppress it."""
+    reqs = _in_scope_requirements(session, pi_id)
+    if not reqs:
+        return True
+    return any(not requirement_is_delivered(session, r) for r in reqs)
+
+
 def _pi_blocked_by(session: Session, pi_id: str) -> list[str]:
     edges = gov.outbound_edges(
         session,
