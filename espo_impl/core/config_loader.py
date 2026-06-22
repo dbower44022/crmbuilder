@@ -114,7 +114,56 @@ class ConfigLoader:
             raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         except yaml.YAMLError as exc:
             raise ValueError(f"Failed to parse YAML: {exc}") from exc
+        return self._build_program(
+            raw, base_dir=path.parent, source_path=path
+        )
 
+    def load_program_from_string(
+        self,
+        text: str,
+        *,
+        source_name: str = "<string>",
+        base_dir: Path | None = None,
+    ) -> ProgramFile:
+        """Parse a YAML program from an in-memory string into a ProgramFile.
+
+        Mirrors :meth:`load_program` for callers that hold the YAML as a
+        string rather than a file on disk (e.g. the PRJ-042 publish service,
+        which deploys adapter-generated YAML without writing it out).
+
+        :param text: The YAML program text.
+        :param source_name: A label for error messages (no disk path exists).
+        :param base_dir: Optional directory used to resolve email-template
+            ``bodyFile`` references; ``None`` when there are no companion files.
+        :returns: Parsed ProgramFile (``source_path`` is ``None``).
+        :raises ValueError: If the text cannot be parsed as YAML.
+        """
+        try:
+            raw = yaml.safe_load(text)
+        except yaml.YAMLError as exc:
+            raise ValueError(
+                f"Failed to parse YAML ({source_name}): {exc}"
+            ) from exc
+        return self._build_program(raw, base_dir=base_dir, source_path=None)
+
+    def _build_program(
+        self,
+        raw: object,
+        *,
+        base_dir: Path | None,
+        source_path: Path | None,
+    ) -> ProgramFile:
+        """Build a :class:`ProgramFile` from already-parsed YAML data.
+
+        Shared by :meth:`load_program` and :meth:`load_program_from_string`.
+
+        :param raw: The parsed top-level YAML mapping.
+        :param base_dir: Directory for resolving email-template body files.
+        :param source_path: The source path stored on the ProgramFile (or
+            ``None`` for string input).
+        :returns: Parsed ProgramFile.
+        :raises ValueError: If ``raw`` is not a mapping.
+        """
         if not isinstance(raw, dict):
             raise ValueError("YAML file must contain a mapping at the top level")
 
@@ -223,7 +272,7 @@ class ConfigLoader:
 
                 # Parse email templates into typed models
                 email_templates = self._parse_email_templates(
-                    email_templates_raw, path.parent if path else None
+                    email_templates_raw, base_dir
                 )
 
                 # Parse workflows into typed models
@@ -274,7 +323,7 @@ class ConfigLoader:
             description=str(raw.get("description", "")),
             content_version=str(raw.get("content_version", "1.0.0")),
             entities=entities,
-            source_path=path,
+            source_path=source_path,
             relationships=relationships,
             roles=roles,
             teams=teams,
