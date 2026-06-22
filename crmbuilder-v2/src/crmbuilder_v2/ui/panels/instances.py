@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
+from crmbuilder_v2.ui.dialogs.audit_progress_dialog import AuditProgressDialog
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.dialogs.instance_crud import (
     InstanceCreateDialog,
@@ -57,7 +58,6 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
-from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.instances")
 
@@ -414,15 +414,17 @@ class InstancesPanel(ListDetailPanel):
         return box
 
     def _on_audit_clicked(self, record: dict[str, Any]) -> None:
-        identifier = record.get("instance_identifier")
-        if not identifier:
+        if not record.get("instance_identifier"):
             return
-        self._audit_worker = run_in_thread(
-            lambda: self._client.audit_instance(identifier),
-            on_success=lambda res: self._on_audit_done(identifier, res),
-            on_error=self._on_audit_error,
-            parent=self,
-        )
+        # Live per-area progress (PI-274): the dialog drives the reconcile areas
+        # one at a time and streams progress, instead of one blocking request.
+        dialog = AuditProgressDialog(self._client, record, parent=self)
+        dialog.connection_lost.connect(self.connection_lost)
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
+        self.refresh()
 
     def _on_publish_clicked(self, record: dict[str, Any]) -> None:
         if not record.get("instance_identifier"):
@@ -433,41 +435,6 @@ class InstancesPanel(ListDetailPanel):
         finally:
             dialog.deleteLater()
         self.refresh()
-
-    def _on_audit_done(self, identifier: str, summary: dict[str, Any]) -> None:
-        def _line(name: str, part: dict | None) -> str:
-            part = part or {}
-            return (
-                f"{name}: {part.get('created', 0)} created, "
-                f"{part.get('present', 0)} present, "
-                f"{part.get('drifted', 0)} drifted, "
-                f"{part.get('absent', 0)} absent"
-            )
-
-        msg = CopyableMessageBox(self)
-        msg.setWindowTitle("Audit complete")
-        msg.setText(
-            f"Audited {identifier}.\n\n"
-            + _line("Entities", summary.get("entities"))
-            + "\n"
-            + _line("Fields", summary.get("fields"))
-            + "\n"
-            + _line("Associations", summary.get("associations"))
-        )
-        msg.exec()
-        self.refresh()
-
-    def _on_audit_error(self, exc: Exception) -> None:
-        if isinstance(exc, StorageConnectionError):
-            self.connection_lost.emit(str(exc))
-            return
-        _log.warning("Audit failed: %s", exc)
-        ErrorDialog(
-            title="Audit failed",
-            message="The audit could not complete.",
-            detail=str(exc),
-            parent=self,
-        ).exec()
 
     def _on_edit_clicked(self, record: dict[str, Any]) -> None:
         identifier = record.get("instance_identifier")

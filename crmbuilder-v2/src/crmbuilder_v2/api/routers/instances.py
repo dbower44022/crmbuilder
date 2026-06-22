@@ -236,86 +236,125 @@ def publish_plan(identifier: str):
         return ok(inventory.publish_plan(s, instance_identifier=identifier))
 
 
+def _audit_introspection_client(s, identifier: str) -> EspoIntrospectionClient:
+    """Resolve an auditable instance + its keyring creds into an introspection
+    client, or raise the same 404 / not_auditable / missing_credentials errors
+    the audit endpoints share."""
+    rec = instances.get_instance(s, identifier)
+    if rec is None:
+        raise NotFoundError("instance", identifier)
+    if rec.get("instance_role") == "target":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "instance_role",
+                    "not_auditable",
+                    "a target-only instance cannot be audited; set its "
+                    "role to source or both",
+                )
+            ]
+        )
+    ref = rec.get("instance_secret_ref")
+    api_key = secrets.get_secret(ref) if ref else ""
+    if not api_key:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "secret",
+                    "missing_credentials",
+                    "instance has no stored credentials to authenticate the "
+                    "audit",
+                )
+            ]
+        )
+    key_ref = rec.get("instance_secret_key_ref")
+    return EspoIntrospectionClient(
+        base_url=rec["instance_url"],
+        api_key=api_key,
+        secret_key=secrets.get_secret(key_ref) if key_ref else None,
+        auth_method=rec.get("instance_auth_method") or "api_key",
+    )
+
+
+#: The audit's reconcile areas in run order (PI-274 — REQ-309). Each maps a URL
+#: slug to a human label + its reconcile function; the per-area endpoint runs
+#: exactly one, so the desktop can drive them in sequence and show live progress.
+_AUDIT_AREAS: dict[str, tuple[str, object]] = {
+    "entities": ("Entities", reconcile_entities),
+    "fields": ("Fields", reconcile_fields),
+    "associations": ("Relationships", reconcile_associations),
+    "layouts": ("Layouts", reconcile_layouts),
+    "roles": ("Roles", reconcile_roles),
+    "teams": ("Teams", reconcile_teams),
+    "filtered-tabs": ("Filtered tabs", reconcile_filtered_tabs),
+}
+
+#: The area slugs in run order — the order the desktop issues per-area calls.
+AUDIT_AREA_ORDER: list[str] = list(_AUDIT_AREAS)
+
+
+@router.get("/audit/areas")
+def audit_areas():
+    """The ordered audit areas the desktop drives, for the progress view."""
+    return ok(
+        [{"area": a, "label": _AUDIT_AREAS[a][0]} for a in AUDIT_AREA_ORDER]
+    )
+
+
 @router.post("/{identifier}/audit")
 def audit(identifier: str):
     """Audit (pull) this instance, reconciling its structure into the inventory.
 
-    Reconciles custom entities, then their custom fields, then custom-to-custom
-    relationships (PI-185 slices 1-2b). Builds an introspection client from the
-    instance's stored connection + keyring secret, then runs the reconcile
-    engine. Returns the per-object-type reconcile summary.
+    Runs every reconcile area in one request and returns the per-object-type
+    summary. This all-in-one form is retained for non-interactive callers; the
+    desktop drives the per-area endpoint below for live progress (PI-274).
     """
     with writable_session() as s:
-        rec = instances.get_instance(s, identifier)
-        if rec is None:
-            raise NotFoundError("instance", identifier)
-        if rec.get("instance_role") == "target":
-            raise UnprocessableError(
-                [
-                    FieldError(
-                        "instance_role",
-                        "not_auditable",
-                        "a target-only instance cannot be audited; set its "
-                        "role to source or both",
-                    )
-                ]
-            )
-        ref = rec.get("instance_secret_ref")
-        api_key = secrets.get_secret(ref) if ref else ""
-        if not api_key:
-            raise UnprocessableError(
-                [
-                    FieldError(
-                        "secret",
-                        "missing_credentials",
-                        "instance has no stored credentials to authenticate the "
-                        "audit",
-                    )
-                ]
-            )
-        key_ref = rec.get("instance_secret_key_ref")
-        client = EspoIntrospectionClient(
-            base_url=rec["instance_url"],
-            api_key=api_key,
-            secret_key=secrets.get_secret(key_ref) if key_ref else None,
-            auth_method=rec.get("instance_auth_method") or "api_key",
-        )
+        client = _audit_introspection_client(s, identifier)
         try:
-            entities = reconcile_entities(
-                s, instance_identifier=identifier, client=client
+            return ok(
+                {
+                    key.replace("-", "_"): fn(
+                        s, instance_identifier=identifier, client=client
+                    )
+                    for key, (_label, fn) in _AUDIT_AREAS.items()
+                }
             )
-            fields = reconcile_fields(
-                s, instance_identifier=identifier, client=client
-            )
-            associations = reconcile_associations(
-                s, instance_identifier=identifier, client=client
-            )
-            layouts = reconcile_layouts(
-                s, instance_identifier=identifier, client=client
-            )
-            roles = reconcile_roles(
-                s, instance_identifier=identifier, client=client
-            )
-            teams = reconcile_teams(
-                s, instance_identifier=identifier, client=client
-            )
-            filtered_tabs = reconcile_filtered_tabs(
-                s, instance_identifier=identifier, client=client
+        except ReconcileError as exc:
+            raise UnprocessableError(
+                [FieldError("audit", "introspection_failed", str(exc))]
+            ) from exc
+
+
+@router.post("/{identifier}/audit/{area}")
+def audit_area(identifier: str, area: str):
+    """Reconcile a single audit area (PI-274 — REQ-308/309/310).
+
+    Runs exactly one reconcile step so the desktop can drive the areas in
+    sequence and show live progress. Returns the area's ``summary`` plus a
+    ``log`` of ``[message, level]`` lines the step surfaced (e.g. an entity
+    whose fields could not be read), for the operator's running audit log.
+    """
+    spec = _AUDIT_AREAS.get(area)
+    if spec is None:
+        raise NotFoundError("audit area", area)
+    label, fn = spec
+    log: list[list[str]] = []
+    with writable_session() as s:
+        client = _audit_introspection_client(s, identifier)
+        try:
+            summary = fn(
+                s,
+                instance_identifier=identifier,
+                client=client,
+                progress=lambda m, lvl: log.append([m, lvl]),
             )
         except ReconcileError as exc:
             raise UnprocessableError(
                 [FieldError("audit", "introspection_failed", str(exc))]
             ) from exc
         return ok(
-            {
-                "entities": entities,
-                "fields": fields,
-                "associations": associations,
-                "layouts": layouts,
-                "roles": roles,
-                "teams": teams,
-                "filtered_tabs": filtered_tabs,
-            }
+            {"area": area, "label": label, "summary": summary, "log": log}
         )
 
 

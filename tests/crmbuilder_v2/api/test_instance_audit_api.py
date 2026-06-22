@@ -145,6 +145,84 @@ def test_audit_missing_credentials_rejected(client, monkeypatch):
     assert r.json()["errors"][0]["code"] == "missing_credentials"
 
 
+# -- per-area audit (PI-274 — REQ-308/309/310) -------------------------------
+
+
+def test_audit_areas_list(client):
+    r = client.get("/instances/audit/areas")
+    assert r.status_code == 200, r.text
+    areas = r.json()["data"]
+    assert [a["area"] for a in areas] == [
+        "entities", "fields", "associations", "layouts",
+        "roles", "teams", "filtered-tabs",
+    ]
+    assert areas[0]["label"] == "Entities"
+    assert areas[2]["label"] == "Relationships"
+
+
+def test_audit_single_area_reconciles(client, monkeypatch):
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client)["instance_identifier"]
+    r = client.post(f"/instances/{iid}/audit/entities")
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["area"] == "entities"
+    assert data["label"] == "Entities"
+    assert data["summary"]["created"] == 2
+    assert data["log"] == []  # the fake reads cleanly — no warnings
+    # Only the entities area ran: no field memberships yet.
+    rows = client.get(f"/instances/{iid}/memberships").json()["data"]
+    assert {row["member_type"] for row in rows} == {"entity"}
+
+
+def test_audit_unknown_area_404(client, monkeypatch):
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client)["instance_identifier"]
+    r = client.post(f"/instances/{iid}/audit/bogus")
+    assert r.status_code == 404
+
+
+class _FieldReadFailsClient(_FakeClient):
+    """A custom entity whose field list cannot be read — the swallowed-read
+    warning REQ-310 surfaces."""
+
+    def get_all_scopes(self):
+        return (200, {
+            "CEngagement": {
+                "entity": True, "customizable": True, "isCustom": True,
+                "stream": False,
+            },
+        })
+
+    def get_entity_field_list(self, entity):
+        return (500, None)
+
+
+def test_audit_area_surfaces_field_read_warning(client, monkeypatch):
+    monkeypatch.setattr(
+        instances_router, "EspoIntrospectionClient", _FieldReadFailsClient
+    )
+    iid = _create(client)["instance_identifier"]
+    # Entities reconcile first (custom entity is created from scopes alone).
+    client.post(f"/instances/{iid}/audit/entities")
+    r = client.post(f"/instances/{iid}/audit/fields")
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    # The unreadable field list is surfaced as a warning, not swallowed.
+    assert any(
+        level == "warning" and "could not read fields" in msg
+        for msg, level in data["log"]
+    )
+
+
+def test_audit_area_role_gate(client, monkeypatch):
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client, instance_role="target")["instance_identifier"]
+    r = client.post(f"/instances/{iid}/audit/entities")
+    assert r.status_code == 422
+    assert r.json()["errors"][0]["code"] == "not_auditable"
+
+
 def test_membership_summary(client, monkeypatch):
     monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
     iid = _create(client)["instance_identifier"]

@@ -2090,14 +2090,42 @@ class StorageClient:
     def audit_instance(self, identifier: str) -> dict[str, Any]:
         """POST /instances/{id}/audit. Reconciles the instance; returns the summary.
 
-        The summary is ``{entities, fields, associations}``, each a
-        ``{seen, created, present, drifted, absent}`` dict.
+        The all-in-one form — every area in one request. The desktop drives the
+        per-area form (:meth:`audit_instance_area`) for live progress (PI-274).
         """
         result = self._request("POST", f"/instances/{identifier}/audit")
         if not isinstance(result, dict):
             raise ServerError(
                 status_code=200, errors=[],
                 message="Expected dict body for audit_instance",
+            )
+        return result
+
+    def list_audit_areas(self) -> list[dict[str, Any]]:
+        """GET /instances/audit/areas — the ordered audit areas to drive (PI-274)."""
+        result = self._request("GET", "/instances/audit/areas")
+        if not isinstance(result, list):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected list body for /instances/audit/areas",
+            )
+        return result
+
+    def audit_instance_area(
+        self, identifier: str, area: str
+    ) -> dict[str, Any]:
+        """POST /instances/{id}/audit/{area} — reconcile one audit area (PI-274).
+
+        Returns ``{area, label, summary, log}`` where ``log`` is a list of
+        ``[message, level]`` lines the step surfaced.
+        """
+        result = self._request(
+            "POST", f"/instances/{identifier}/audit/{area}"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message=f"Expected dict body for audit area {area}",
             )
         return result
 
