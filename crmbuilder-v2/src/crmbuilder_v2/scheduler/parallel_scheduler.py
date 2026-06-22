@@ -43,7 +43,6 @@ import urllib.parse
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from enum import Enum
 
 from crmbuilder_v2.scheduler import dispatcher
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
@@ -55,8 +54,8 @@ from crmbuilder_v2.scheduler.coordinating_scheduler import (
     spawn_claude_agent,
     verify_result,
 )
-from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler.migration_lock import ExclusiveMigrationLock
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 
 # --------------------------------------------------------------------------
 # Pure pool decisions (no I/O — unit-tested directly)
@@ -450,6 +449,19 @@ class ParallelCoordinatingScheduler:
             proc = spawn(assignment.prompt, worktree.path)
             returncode = proc.returncode
             self.log(f"  [{assignment.work_task_id}] agent exited rc={returncode}")
+            # Capture the agent's token spend (best-effort, side-band — PI-264 /
+            # DEC-637: the ADO runtime drives development through THIS Layer-2
+            # scheduler, so the dominant fleet spend is recorded here too).
+            from crmbuilder_v2.scheduler import cost_capture
+
+            cost_capture.record_cli_result(
+                getattr(proc, "stdout", None),
+                engagement=cfg.engagement,
+                work_task=assignment.work_task_id,
+                area=getattr(assignment, "area", None),
+                tier=getattr(cfg, "tier", None),
+                stage="develop",
+            )
         except subprocess.TimeoutExpired:
             self.log(
                 f"  [{assignment.work_task_id}] hit the {cfg.agent_timeout}s "

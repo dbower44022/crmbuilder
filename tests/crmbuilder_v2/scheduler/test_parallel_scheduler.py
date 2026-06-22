@@ -23,7 +23,6 @@ import threading
 import time
 from pathlib import Path
 
-from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler import parallel_scheduler as pr
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
     CoordinatingScheduler,
@@ -39,6 +38,7 @@ from crmbuilder_v2.scheduler.parallel_scheduler import (
     should_restart_api,
     slots_available,
 )
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 
 
 def _pass_runner(worktree_path, target):
@@ -242,6 +242,8 @@ def _make_runtime(
     task_sleeps: dict[str, float],
     max_concurrent: int = 2,
     merge_for=None,
+    spawn_stdout: str = "",
+    engagement: str = "CRMBUILDER",
 ):
     """Build a ParallelCoordinatingScheduler with every I/O seam stubbed.
 
@@ -263,12 +265,15 @@ def _make_runtime(
         with recorder.lock:
             recorder.live -= 1
             recorder.windows[tid] = (start, time.time())
-        return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+        return subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=spawn_stdout, stderr=""
+        )
 
     cfg = ParallelSchedulerConfig(
         max_concurrent=max_concurrent,
         target_work_tasks=list(task_sleeps),
         poll_interval=0.02,
+        engagement=engagement,
     )
     rt = ParallelCoordinatingScheduler(
         config=cfg, spawn_fn=fake_spawn, log=lambda m: None,
@@ -757,3 +762,34 @@ def test_real_git_conflict_then_rollback_leaves_main_at_anchor(tmp_path):
     rt._reset_base_to(anchor)
     assert rt._base_head() == anchor
     assert not (repo / "shared.txt").exists()
+
+
+def test_parallel_run_records_fleet_cost(v2_env, monkeypatch):
+    """Regression (DEC-637): the Layer-2 pool is the path the ADO runtime uses for
+    development, so a coding-agent spawn here must record a claude_cli cost event.
+    PI-264 originally instrumented only the Layer-1 loop, so the dominant fleet spend
+    went uncaptured — a live dev-lane run recorded zero claude_cli events."""
+    from crmbuilder_v2.access.db import session_scope
+    from crmbuilder_v2.access.repositories import cost_events
+
+    blob = (
+        '{"type":"result","total_cost_usd":0.4,'
+        '"usage":{"input_tokens":1000,"output_tokens":500},'
+        '"model":"claude-opus-4-8"}'
+    )
+    # The pool runs agents in worker threads where the main thread's ambient
+    # engagement does NOT propagate, so capture must resolve cfg.engagement. v2_env
+    # seeds ENG-001 (code TESTENG); pass the code, exactly as the live ADO config does.
+    rt = _make_runtime(
+        monkeypatch, task_sleeps={"WTK-1": 0.05}, max_concurrent=1,
+        spawn_stdout=blob, engagement="TESTENG",
+    )
+    rt.run()
+    with session_scope() as s:
+        agg = cost_events.aggregate(s, source="claude_cli")
+        assert agg["event_count"] == 1, "Layer-2 fleet spawn must record a cost event"
+        row = cost_events.recent(s, source="claude_cli")[0]
+    assert row["work_task"] == "WTK-1"
+    assert row["area"] == "api" and row["stage"] == "develop"
+    assert row["cost_reported_usd"] == 0.4
+    assert row["cost_usd"] > 0  # opus priced from tokens

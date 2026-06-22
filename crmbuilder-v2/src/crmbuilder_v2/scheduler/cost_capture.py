@@ -25,13 +25,40 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def _engagement_ctx(engagement: str | None):
-    """Active-engagement context if an engagement is named, else a no-op (rely on the
-    ambient context the caller already established)."""
-    if engagement:
-        from crmbuilder_v2.access.engagement_scope import active_engagement
+def _resolve_engagement(engagement: str) -> str | None:
+    """Resolve an engagement identifier *or* code (e.g. ``CRMBUILDER``) to its
+    canonical ``ENG-NNN`` identifier — the value the ``engagement_id`` FK expects.
+    Returns ``None`` if nothing resolves. (The ADO runtime configs carry the code,
+    not the identifier, so an unresolved value would fail the stamp's FK.)"""
+    try:
+        from crmbuilder_v2.access import engagement as engagement_repo
 
-        return active_engagement(engagement)
+        candidate = (engagement or "").strip()
+        upper = candidate.upper()
+        for e in engagement_repo.list_engagements_unified(include_deleted=False):
+            if e.engagement_identifier == candidate or e.engagement_code.upper() == upper:
+                return e.engagement_identifier
+    except Exception:  # noqa: BLE001 — resolution is best-effort like the capture
+        return None
+    return None
+
+
+def _engagement_ctx(engagement: str | None):
+    """The engagement context to record under. Prefers an ambient active engagement
+    (already a resolved identifier — set by the scheduler around a release run), so the
+    common in-process path just inherits it. Otherwise resolves the explicit engagement
+    (identifier or code) to an ``ENG-NNN`` identifier; a no-op if neither resolves."""
+    from crmbuilder_v2.access.engagement_scope import (
+        active_engagement,
+        get_active_engagement,
+    )
+
+    if get_active_engagement():
+        return contextlib.nullcontext()
+    if engagement:
+        resolved = _resolve_engagement(engagement)
+        if resolved:
+            return active_engagement(resolved)
     return contextlib.nullcontext()
 
 
