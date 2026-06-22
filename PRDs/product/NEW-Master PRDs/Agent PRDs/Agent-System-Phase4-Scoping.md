@@ -143,10 +143,16 @@ These materially shape the build; each is a one-issue discussion.
    area) build artifact does not belong on the product-design spine
    (`artifact_versions`), whose "live = shipped version" semantics describe the
    product across releases, not one build job.
-2. **Touched-area derivation** — "the areas a release touches" = the distinct `area`
-   of the in-scope Work Tasks (from the per-PI decomposition that still runs upstream).
-   Confirm Phase 4 **consumes** the existing decomposition's Work Tasks rather than
-   replacing decomposition. (Lowest-risk; keeps Architecture-Planning unchanged.)
+2. **Touched-area derivation — LOCKED (2026-06-21): Consume.** Phase 4's touched
+   areas = the distinct `area` across all the in-scope PIs' Work Tasks; the per-area
+   Design task gathers that area's Work Tasks from across the PIs and writes one
+   `area_spec`. Architecture-Planning + the decomposer are **unchanged** — Phase 4 is
+   a new *driver* that re-aggregates existing area-tagged Work Tasks by area (a
+   deterministic query, no new judgment). During the parallel-lane period the same
+   Work Tasks carry two organizations — old lane per-PI, new lane per-area — which is
+   precisely what lets the lanes be A/B'd; the per-PI phase-workstream layer is
+   retired only at cutover (Phase 5). (Confirmed the decomposer keeps producing
+   area-tagged Work Tasks.)
 3. **Parallel-lane mechanism** — a boolean on the release (e.g. `back_half = per_pi |
    per_area`) routing the dev lane to the new driver, vs a separate scheduler entry
    point. Determines blast radius and how we A/B the two paths.
