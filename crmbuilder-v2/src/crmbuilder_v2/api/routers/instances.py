@@ -12,9 +12,13 @@ and, on a backfill create, a ``timestamps`` dict. All responses use the
 
 from __future__ import annotations
 
+import dataclasses
+from datetime import UTC, datetime
+
 from fastapi import APIRouter
 
 from crmbuilder_v2 import secrets
+from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.exceptions import (
     FieldError,
     NotFoundError,
@@ -25,6 +29,7 @@ from crmbuilder_v2.access.repositories import (
     instances,
     inventory,
 )
+from crmbuilder_v2.adapters.espocrm.client import RestDesignClient
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
@@ -32,6 +37,7 @@ from crmbuilder_v2.api.schemas import (
     InstancePatchIn,
     InstanceReplaceIn,
 )
+from crmbuilder_v2.config import get_settings
 from crmbuilder_v2.introspect.espo_client import EspoIntrospectionClient
 from crmbuilder_v2.introspect.reconcile import (
     ReconcileError,
@@ -43,6 +49,7 @@ from crmbuilder_v2.introspect.reconcile import (
     reconcile_roles,
     reconcile_teams,
 )
+from crmbuilder_v2.publish import service as publish_service
 
 router = APIRouter(prefix="/instances", tags=["instances"])
 _FIELD_PREFIX = "instance_"
@@ -307,3 +314,103 @@ def audit(identifier: str):
                 "filtered_tabs": filtered_tabs,
             }
         )
+
+
+# ── Publish (PRJ-042 — REQ-287 + REQ-288) ─────────────────────────────────
+
+
+def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
+    """Render a :class:`PublishResult` as a JSON-safe envelope payload."""
+    return {
+        "engine": result.engine,
+        "target_instance": result.target_instance,
+        "validate_only": result.validate_only,
+        "validation_failed": result.validation_failed,
+        "deferrals": [dataclasses.asdict(d) for d in result.deferrals],
+        "manual_config": result.manual_config,
+        "programs": [
+            {
+                "filename": p.filename,
+                "deployed": p.deployed,
+                "validation_errors": p.validation_errors,
+                "summary": (
+                    dataclasses.asdict(p.report.summary) if p.report else None
+                ),
+                "log": [list(line) for line in p.log],
+            }
+            for p in result.programs
+        ],
+    }
+
+
+def _resolve_publish_target(identifier: str) -> tuple[dict, str, str | None]:
+    """Fetch the target instance and resolve its keyring credentials.
+
+    Mirrors the audit resolution, inverted for the target role: a
+    ``source``-only instance cannot be published to, and a target with no
+    stored credentials cannot authenticate the publish.
+    """
+    with readonly_session() as s:
+        rec = instances.get_instance(s, identifier)
+        if rec is None:
+            raise NotFoundError("instance", identifier)
+        if rec.get("instance_role") == "source":
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "instance_role",
+                        "not_publishable",
+                        "a source-only instance cannot be a publish target; "
+                        "set its role to target or both",
+                    )
+                ]
+            )
+        ref = rec.get("instance_secret_ref")
+        api_key = secrets.get_secret(ref) if ref else ""
+        if not api_key:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "secret",
+                        "missing_credentials",
+                        "instance has no stored credentials to authenticate "
+                        "the publish",
+                    )
+                ]
+            )
+        key_ref = rec.get("instance_secret_key_ref")
+        secret_key = secrets.get_secret(key_ref) if key_ref else None
+    return rec, api_key, secret_key
+
+
+def _run_publish(identifier: str, *, validate_only: bool):
+    """Resolve the target + active-engagement design source, then publish."""
+    rec, api_key, secret_key = _resolve_publish_target(identifier)
+    engagement = get_active_engagement()
+    design_client = RestDesignClient(
+        base_url=get_settings().api_base_url, engagement=engagement
+    )
+    rendered_at = datetime.now(UTC).isoformat()
+    result = publish_service.publish(
+        rec,
+        design_client,
+        api_key=api_key,
+        secret_key=secret_key,
+        rendered_at=rendered_at,
+        engagement=engagement,
+        validate_only=validate_only,
+    )
+    return ok(_serialize_publish_result(result))
+
+
+@router.post("/{identifier}/publish")
+def publish_instance(identifier: str):
+    """Generate the canonical design, validate it against this target, and
+    deploy it. A program that fails validation is never deployed (REQ-288)."""
+    return _run_publish(identifier, validate_only=False)
+
+
+@router.post("/{identifier}/publish-validate")
+def publish_validate_instance(identifier: str):
+    """Generate + validate against this target without deploying (REQ-288)."""
+    return _run_publish(identifier, validate_only=True)
