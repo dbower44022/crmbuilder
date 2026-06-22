@@ -153,9 +153,14 @@ These materially shape the build; each is a one-issue discussion.
    precisely what lets the lanes be A/B'd; the per-PI phase-workstream layer is
    retired only at cutover (Phase 5). (Confirmed the decomposer keeps producing
    area-tagged Work Tasks.)
-3. **Parallel-lane mechanism** — a boolean on the release (e.g. `back_half = per_pi |
-   per_area`) routing the dev lane to the new driver, vs a separate scheduler entry
-   point. Determines blast radius and how we A/B the two paths.
+3. **Parallel-lane mechanism — LOCKED (2026-06-21): a `release_back_half ∈ {per_pi,
+   per_area}` field on the release, default `per_pi`.** The release scheduler reads
+   it at the development stage and branches (per_pi → existing PI runner; per_area →
+   the new per-area driver). Durable per-release routing (true A/B — opt one small
+   release into per_area to prove it), one orchestration entry, queryable in the
+   Releases UI. Cutover (Phase 5) flips the default to per_area and later drops the
+   field. Chosen over a separate entry point / launch-flag because the choice should
+   be durable release state, not ephemeral, and recorded for the A/B.
 4. **Blind-test enforcement** — the Tester is an LLM agent; "doesn't read the
    Developer's code" is enforced by **contract + work-inputs** (give it the spec + the
    running build, not the diff), not a hard sandbox. Confirm contract-level enforcement
