@@ -32,7 +32,11 @@ from crmbuilder_v2.ui.exceptions import (
 
 _log = logging.getLogger("crmbuilder_v2.ui.client")
 
-_DEFAULT_TIMEOUT = 5.0
+# Comfortably above the access layer's SQLite ``busy_timeout`` (5s): a request
+# briefly delayed by a contended write lock must complete rather than time out
+# at exactly the lock-wait ceiling and be misread as a lost connection (REQ-297).
+# Also covers legitimately slow operations like an in-sync publish preview.
+_DEFAULT_TIMEOUT = 30.0
 
 
 class StorageClient:

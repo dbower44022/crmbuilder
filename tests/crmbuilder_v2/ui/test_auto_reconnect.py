@@ -11,10 +11,17 @@ here against a fake lifecycle so no real subprocess is spawned.
 
 from __future__ import annotations
 
+import time
+
 import httpx
 import pytest
 from crmbuilder_v2.ui.exceptions import StorageConnectionError
-from crmbuilder_v2.ui.main_window import _MAX_RECONNECT_ATTEMPTS, MainWindow
+from crmbuilder_v2.ui.main_window import (
+    _FLAP_WINDOW_S,
+    _MAX_FLAPS,
+    _MAX_RECONNECT_ATTEMPTS,
+    MainWindow,
+)
 from PySide6.QtCore import QObject, Signal
 
 
@@ -175,6 +182,64 @@ def test_had_first_ready_is_false_before_any_ready(window):
     win, _lifecycle = window
     # Gates app.py's fatal-vs-banner decision on a runtime spawn failure.
     assert win.had_first_ready() is False
+
+
+# ── Flap guard (REQ-297 / PI-254) ──────────────────────────────────────
+
+
+def test_flapping_loss_backs_off_to_manual_banner(window):
+    """A connection loss that recurs right after each /health-only recovery
+    is a flap; after the bound, stop auto-reconnecting and show guidance
+    instead of looping forever."""
+    win, lifecycle = window
+    _make_ready_once(win, lifecycle)
+
+    # Each loss "recovers" on health but the underlying data fault persists.
+    for _ in range(_MAX_FLAPS):
+        win._on_panel_connection_lost("slow data")
+        win._on_lifecycle_ready()  # reconnect succeeds on /health
+    assert lifecycle.start_calls == _MAX_FLAPS  # each flap reconnected
+
+    # The next loss exceeds the flap budget → back off: no new start, and an
+    # actionable manual-Reconnect banner.
+    win._on_panel_connection_lost("slow data")
+    assert lifecycle.start_calls == _MAX_FLAPS
+    assert win._auto_reconnecting is False
+    assert win._lifecycle_ready is False
+    text = win._crash_banner._label.text()
+    assert "Reconnect" in text
+    assert str(win._log_path) in text
+
+
+def test_loss_after_stable_period_reconnects_normally(window):
+    """A loss well after the last recovery is not a flap — the counter resets
+    and normal bounded reconnect resumes."""
+    win, lifecycle = window
+    _make_ready_once(win, lifecycle)
+    win._flap_count = _MAX_FLAPS  # as if we had flapped earlier
+    win._last_ready_at = time.monotonic() - _FLAP_WINDOW_S - 1.0  # but long ago
+
+    win._on_panel_connection_lost("transient")
+
+    assert win._flap_count == 1
+    assert lifecycle.start_calls == 1
+    assert win._auto_reconnecting is True
+
+
+def test_manual_reconnect_clears_flap_count(window):
+    win, lifecycle = window
+    _make_ready_once(win, lifecycle)
+    win._flap_count = _MAX_FLAPS + 5
+    win._on_reconnect_requested()
+    assert win._flap_count == 0
+
+
+def test_default_request_timeout_exceeds_db_busy_timeout():
+    """The UI request timeout must clear the access layer's 5s busy_timeout so a
+    brief lock wait completes rather than being misread as a lost connection."""
+    from crmbuilder_v2.ui.client import _DEFAULT_TIMEOUT
+
+    assert _DEFAULT_TIMEOUT > 5.0
 
 
 # --- heartbeat (PI-111) -------------------------------------------------

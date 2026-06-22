@@ -17,6 +17,7 @@ manual Refresh button.)
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
@@ -84,6 +85,17 @@ _DEFAULT_ENTRY = "Decisions"
 # banner. Each attempt itself probes (1s) then polls a fresh spawn for up
 # to 10s, so this is a hard ceiling on automatic recovery effort.
 _MAX_RECONNECT_ATTEMPTS = 3
+
+# Flap guard (REQ-297). A reconnect "succeeds" the moment ``GET /health``
+# responds — but /health touches no data, so if the real fault is slow/failing
+# *data* requests (e.g. a contended DB) the panel re-reports connection loss
+# right after recovery and the reconnect/refresh cycle repeats forever, the
+# bounded-retry counter resetting on each false recovery. Treat a connection
+# loss that lands within ``_FLAP_WINDOW_S`` of the last successful recovery as
+# a "flap"; after ``_MAX_FLAPS`` consecutive flaps, stop auto-reconnecting and
+# surface the manual-Reconnect banner instead of looping.
+_MAX_FLAPS = 3
+_FLAP_WINDOW_S = 30.0
 
 # Heartbeat: how often the window probes ``GET /health`` while ready, so
 # an API that died between user actions (PI-111) — especially an external
@@ -288,6 +300,11 @@ class MainWindow(QMainWindow):
         self._had_first_ready = False
         self._auto_reconnecting = False
         self._reconnect_attempts = 0
+        # Flap detection (REQ-297): monotonic time of the last successful
+        # recovery and the count of connection losses that landed right after
+        # one, so a healthy-API / slow-data fault backs off instead of looping.
+        self._last_ready_at: float | None = None
+        self._flap_count = 0
         self._base_url = get_settings().api_base_url
         self._log_path = api_log_path()
 
@@ -553,6 +570,7 @@ class MainWindow(QMainWindow):
         # cycle so the click gets a fresh bounded round of attempts.
         _log.info("Manual reconnect requested")
         self._auto_reconnecting = False
+        self._flap_count = 0
         self._begin_auto_reconnect("manual reconnect")
 
     def _on_lifecycle_ready(self) -> None:
@@ -561,6 +579,7 @@ class MainWindow(QMainWindow):
         self._had_first_ready = True
         self._auto_reconnecting = False
         self._reconnect_attempts = 0
+        self._last_ready_at = time.monotonic()
         self._heartbeat_in_flight = False
         # Unconditional hide: a no-op when already hidden, and avoids
         # depending on isVisible() (which is False for an unshown parent).
@@ -573,6 +592,38 @@ class MainWindow(QMainWindow):
 
     def _on_panel_connection_lost(self, message: str) -> None:
         _log.warning("Panel reported connection lost: %s", message)
+        if self._auto_reconnecting:
+            # Already recovering; overlapping reports collapse into one cycle.
+            return
+        # A connection loss that lands right after a successful recovery means
+        # the recovery did not stick — /health is fine but data requests keep
+        # failing. Count these flaps; once they exceed the bound, stop the
+        # reconnect/refresh loop and hand off to the manual Reconnect banner
+        # rather than spinning forever (REQ-297).
+        now = time.monotonic()
+        if (
+            self._last_ready_at is not None
+            and (now - self._last_ready_at) < _FLAP_WINDOW_S
+        ):
+            self._flap_count += 1
+        else:
+            self._flap_count = 1
+        if self._flap_count > _MAX_FLAPS:
+            _log.warning(
+                "Connection flapping (%d losses just after recovery); "
+                "backing off auto-reconnect",
+                self._flap_count,
+            )
+            self._lifecycle_ready = False
+            self._set_content_enabled(False)
+            self._heartbeat_timer.stop()
+            self._crash_banner.show_with_message(
+                f"The storage API at {self._base_url} keeps dropping requests "
+                f"while reporting healthy. Click Reconnect to retry, or run "
+                f"'uv run crmbuilder-v2-api' in a terminal. "
+                f"Logs: {self._log_path}"
+            )
+            return
         self._begin_auto_reconnect("panel connection lost")
 
     def _on_navigate_requested(self, entity_type: str, identifier: str) -> None:
