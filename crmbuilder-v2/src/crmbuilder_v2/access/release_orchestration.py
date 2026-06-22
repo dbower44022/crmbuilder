@@ -33,6 +33,7 @@ from crmbuilder_v2.access.exceptions import ConflictError
 from crmbuilder_v2.access.repositories import (
     area_specs,
     artifact_versions,
+    findings,
     planning_items,
     release_change_sets,
     release_demands,
@@ -460,6 +461,76 @@ def run_area_develop(session: Session, release_identifier: str, develop_provider
         "areas": results,
         "halted_on": halted_on,
         "all_succeeded": halted_on is None and bool(areas),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Per-area blind Test + bounce (PI-248 / §4.8, the matrix back half)
+# ---------------------------------------------------------------------------
+
+_TEST_OK = "succeeded"
+
+
+def run_area_test(session: Session, release_identifier: str, test_provider) -> dict:
+    """Fan out one blind Test task per touched area (PI-248 / §4.8, Decision 4/5).
+
+    For each area the area's Tester (the injected ``(area, tester)`` seam) implements
+    the area's **testable spec** and verifies the build's *behaviour* against it —
+    **blind**: the seam is given the testable spec + the area's Work Tasks, **not** the
+    implementation spec or the Developer's code (blindness enforced at the work-inputs
+    level, Decision 4). Areas are independent (each verifies its own spec), so every
+    area is tested — the run does not halt; failures are collected.
+
+        test_provider({release_identifier, area, testable_spec, work_tasks})
+          -> {status, detail?, bounce_to?}   # bounce_to: "develop" | "design"
+
+    On a non-``succeeded`` area the bounce is **recorded as a coherence finding**
+    (Decision 5 — provenance) and routed to ``develop`` (code bug, default) or
+    ``design`` (spec gap → an area_spec revision); the scheduler (Phase 4f) acts on
+    the bounce. The heavyweight area-reopen is reserved for the outer
+    cross-area/post-freeze case, not this inner loop. Returns
+    ``{release_identifier, areas: [...], bounced: [...], all_passed}``.
+    """
+    areas = touched_areas(session, release_identifier)
+    results: list[dict] = []
+    for area in areas:
+        spec = area_specs.current_spec(session, release_identifier, area)
+        if spec is None:
+            results.append({"area": area, "status": "needs_human",
+                            "detail": "no approved area spec to test against",
+                            "bounce_to": None, "finding": None})
+            continue
+        outcome = test_provider({
+            "release_identifier": release_identifier,
+            "area": area,
+            "testable_spec": spec["spec_testable"],  # blind: spec only, not the code
+            "work_tasks": area_work_tasks(session, release_identifier, area),
+        })
+        status = outcome.get("status", "failed")
+        entry = {"area": area, "status": status,
+                 "detail": outcome.get("detail", ""), "bounce_to": None,
+                 "finding": None}
+        if status != _TEST_OK:
+            bounce_to = outcome.get("bounce_to") or "develop"
+            finding = findings.create_finding(
+                session,
+                type="gap",
+                severity="blocking",
+                summary=(f"{area} failed blind verification against its testable "
+                         f"spec (release {release_identifier})"),
+                description=outcome.get("detail") or None,
+                notes=f"per-area Test bounce -> {bounce_to} (PI-248, REQ-295)",
+            )
+            entry["bounce_to"] = bounce_to
+            entry["finding"] = finding.get("identifier") or finding.get(
+                "finding_identifier")
+        results.append(entry)
+    bounced = [r for r in results if r["status"] != _TEST_OK]
+    return {
+        "release_identifier": release_identifier,
+        "areas": results,
+        "bounced": bounced,
+        "all_passed": not bounced and bool(areas),
     }
 
 
