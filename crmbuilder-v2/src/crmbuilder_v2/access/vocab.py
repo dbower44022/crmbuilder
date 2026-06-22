@@ -808,6 +808,26 @@ TEAM_STATUSES: frozenset[str] = frozenset(
     {"candidate", "confirmed", "deferred", "rejected"}
 )
 
+# RBAC deploy support (PI-051 — §12.5 Role-Aware Visibility). Per-rule
+# lifecycle of a ``field_visibility_rule`` against the target CRM, per the
+# WTK-198 design §4. Unlike the four-status propose-verify lifecycle the design
+# records carry, this enum tracks deployability: a rule is authored ``pending``,
+# the deploy process moves it to ``deployed`` (verified active), ``not_supported``
+# (no platform path — the EspoCRM 9.x steady state per DEC-243), ``manual_required``
+# (an out-of-engine operator step only), or ``error`` (a failed attempt, retryable);
+# the audit/verify round-trip writes ``drift`` when a deployed rule no longer matches
+# live state. ``not_supported`` / ``manual_required`` are platform-derived, never authored.
+FIELD_VISIBILITY_RULE_DEPLOYMENT_STATUSES: frozenset[str] = frozenset(
+    {
+        "pending",
+        "deployed",
+        "not_supported",
+        "manual_required",
+        "drift",
+        "error",
+    }
+)
+
 # Closed transform-rule vocabulary (spec §4) — exactly the Master CRMBuilder
 # PRD v0.2 §8 named set. Per-kind rule-object schema validation (required
 # keys, level applicability, conditional-key consistency — invariant I9)
@@ -1643,6 +1663,13 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "team",
         # PI-195 (PRJ-027) net-new filtered-tab design family (FTB-).
         "filtered_tab",
+        # PI-051 (RBAC deploy support) — one atomic (role, field) -> visible?
+        # decision (FVR-). The §12.5 role-aware-visibility surface compiled to a
+        # storage-trackable record. Role and target_field are plain validated
+        # columns (WTK-199 §4 decision), so no new refs kind is added for them;
+        # the type is admitted here so the record can be a reference target and
+        # be change-log-tracked. See field_visibility_rule-entity.md.
+        "field_visibility_rule",
         # PI-205 (PRJ-031) the multi-agent release pipeline keystone (REL-).
         # The born-early forming container whose status is its pipeline stage.
         "release",

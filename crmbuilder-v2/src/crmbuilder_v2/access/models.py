@@ -74,6 +74,7 @@ from crmbuilder_v2.access.vocab import (
     FIELD_MAPPING_TRANSLATION_TYPES,
     FIELD_STATUSES,
     FIELD_TYPES,
+    FIELD_VISIBILITY_RULE_DEPLOYMENT_STATUSES,
     FILTERED_TAB_STATUSES,
     FINDING_RESOLUTION_METHODS,
     FINDING_SEVERITIES,
@@ -3060,6 +3061,124 @@ class FilteredTab(EngagementScopedPKMixin, Base):
         Index("ix_filtered_tabs_filtered_tab_status", "filtered_tab_status"),
         Index(
             "ix_filtered_tabs_filtered_tab_deleted_at", "filtered_tab_deleted_at"
+        ),
+    )
+
+
+class FieldVisibilityRule(EngagementScopedPKMixin, Base):
+    """PI-051 (RBAC deploy) — one atomic ``(role, field) -> visible?`` decision.
+
+    Per ``field_visibility_rule-entity.md`` (WTK-198) reconciled with the
+    rule->role scoping decision in ``role-persona-and-rule-role-scoping.md``
+    (WTK-199 §4): the storage-trackable, single-source-of-truth form of the
+    §12.5 role-aware-visibility surface. Each row answers exactly one question —
+    whether one field is shown to one Role in the target CRM's UI — so a field
+    visible to two roles and hidden from a third is three rows, not one with a
+    list. ``field_visibility_rule_visible`` is two-valued by design (a rule only
+    ever *overrides* the default-visible state, in one direction).
+
+    Parent-prefix field naming (DEC-046); the primary key is the prefixed-string
+    identifier ``field_visibility_rule_identifier`` (format ``FVR-NNN``). The Role
+    and the target field are carried as plain validated ``ROL-NNN`` / ``FLD-NNN``
+    string columns — **not** ``refs`` edges (WTK-199 §4.2: the dominant composite-
+    construct convention, makes the ``(role, field)`` uniqueness a single DB index,
+    and gives the deploy process a direct per-role read path). The access layer
+    validates each column resolves to a live row of the correct type at write time,
+    exactly as ``Rule`` validates ``rule_subject_identifier`` / ``Association`` its
+    endpoints. At most one live rule per ``(engagement_id, role, target_field)`` —
+    a partial UNIQUE index makes the contradicting-rules case unrepresentable.
+
+    ``field_visibility_rule_deployment_status`` tracks the rule's journey to the
+    target CRM (see ``FIELD_VISIBILITY_RULE_DEPLOYMENT_STATUSES``); a new rule is
+    ``pending`` and the ``deploy_security_configuration`` process (WTK-200) writes
+    every other value. On EspoCRM 9.x role-aware field visibility is
+    ``not_supported`` per DEC-243 — the entity records that decision honestly
+    rather than discarding it, so only the deploy process changes when a real
+    mechanism lands.
+    """
+
+    __tablename__ = "field_visibility_rules"
+
+    field_visibility_rule_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    field_visibility_rule_visible: Mapped[bool] = mapped_column(
+        Boolean, nullable=False
+    )
+    field_visibility_rule_role: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    field_visibility_rule_target_field: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    field_visibility_rule_deployment_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="pending"
+    )
+    field_visibility_rule_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    field_visibility_rule_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    field_visibility_rule_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    field_visibility_rule_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    field_visibility_rule_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^FVR-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck(
+                "field_visibility_rule_identifier", ["FVR"]
+            ),
+            name="ck_field_visibility_rule_identifier_format",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("field_visibility_rule_visible"),
+            name="ck_field_visibility_rule_visible_bool",
+        ),
+        CheckConstraint(
+            _check_in(
+                "field_visibility_rule_deployment_status",
+                FIELD_VISIBILITY_RULE_DEPLOYMENT_STATUSES,
+            ),
+            name="ck_field_visibility_rule_deployment_status",
+        ),
+        # At most one live rule per (role, field) within an engagement — the
+        # contradicting-rules guard (WTK-198 §3 / WTK-199 §5.3) as a DB index, so
+        # the contradiction is unrepresentable at the storage layer. The access
+        # layer pre-checks for a clean 409; this is the concurrency-safe backstop.
+        Index(
+            "uq_field_visibility_rules_role_field",
+            "engagement_id",
+            "field_visibility_rule_role",
+            "field_visibility_rule_target_field",
+            unique=True,
+            sqlite_where=text("field_visibility_rule_deleted_at IS NULL"),
+            postgresql_where=text(
+                "field_visibility_rule_deleted_at IS NULL"
+            ),
+        ),
+        # Per-role deploy read path (the deploy process reads a Role's whole
+        # field matrix at once — WTK-199 §4.2.3).
+        Index(
+            "ix_field_visibility_rules_role", "field_visibility_rule_role"
+        ),
+        Index(
+            "ix_field_visibility_rules_deployment_status",
+            "field_visibility_rule_deployment_status",
+        ),
+        Index(
+            "ix_field_visibility_rules_deleted_at",
+            "field_visibility_rule_deleted_at",
         ),
     )
 
