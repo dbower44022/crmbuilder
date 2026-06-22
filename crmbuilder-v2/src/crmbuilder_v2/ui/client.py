@@ -3266,6 +3266,38 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Cost telemetry (PI-265 / REQ-307) — read-only AI-spend aggregations.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _cost_query(filters: dict[str, Any], extra: dict[str, Any] | None = None) -> str:
+        params = {k: v for k, v in {**(extra or {}), **filters}.items() if v is not None}
+        if not params:
+            return ""
+        return "?" + "&".join(f"{k}={v}" for k, v in params.items())
+
+    def cost_summary(self, **filters: Any) -> dict[str, Any]:
+        """Summed cost + token totals for the active engagement (optional filters)."""
+        return self._expect_dict(
+            self._request("GET", "/cost/summary" + self._cost_query(filters)),
+            op="cost_summary",
+        )
+
+    def cost_by(self, dimension: str, **filters: Any) -> list[dict[str, Any]]:
+        """Cost breakdown grouped by one dimension (release/area/tier/stage/source/model)."""
+        return self._expect_list(
+            self._request("GET", f"/cost/by/{dimension}" + self._cost_query(filters))
+        )
+
+    def cost_events(self, *, limit: int = 50, **filters: Any) -> list[dict[str, Any]]:
+        """The most recent cost events for the active engagement (optional filters)."""
+        return self._expect_list(
+            self._request(
+                "GET", "/cost/events" + self._cost_query(filters, {"limit": limit})
+            )
+        )
+
+    # ------------------------------------------------------------------
     # Review surface (requirements-provenance Phase 6). Read-only topic
     # review tree + read-back document + the three review queues, plus the
     # one write the Requirements Review panel does — recording a sign-off.

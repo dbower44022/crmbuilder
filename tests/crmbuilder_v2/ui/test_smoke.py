@@ -60,9 +60,10 @@ EXPECTED_ENTRIES = (
     "Requirements Review",
     # PI-224: the Release Pipeline group (its own group between Governance
     # and Methodology) with the Releases hub entry; PI-225 adds the
-    # Resource Locks monitor.
+    # Resource Locks monitor; PI-265 adds the Cost monitor.
     "Releases",
     "Resource Locks",
+    "Cost",
     # Methodology group — Domains landed in UI v0.4 slice B,
     # Entities in slice C, Processes in slice D, CRM Candidates in slice E,
     # Personas in v0.5+ (PI-003), Fields in v0.5+ (PI-004 first slice),

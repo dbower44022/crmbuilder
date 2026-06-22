@@ -107,7 +107,7 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     # Methodology.
     (
         "Release Pipeline",
-        ("Releases", "Resource Locks"),
+        ("Releases", "Resource Locks", "Cost"),
     ),
     (
         "Methodology",

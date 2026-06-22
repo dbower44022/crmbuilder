@@ -43,6 +43,7 @@ from crmbuilder_v2.ui.panels.chat import ChatPanel
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
 from crmbuilder_v2.ui.panels.commits import CommitsPanel
 from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
+from crmbuilder_v2.ui.panels.cost import CostPanel
 from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
 from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
@@ -253,6 +254,9 @@ def build_panel(
     # PI-225: the file-level check-out backstop monitor.
     if label == "Resource Locks":
         return ResourceLocksPanel(client)
+    # PI-265: the read-only AI-spend cost monitor.
+    if label == "Cost":
+        return CostPanel(client)
     placeholder = QLabel(f"Panel for {label} — not yet implemented.")
     placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
     placeholder.setObjectName(f"placeholder_{label.lower().replace(' ', '_')}")
