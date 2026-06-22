@@ -90,6 +90,10 @@ def run_worker_sync(program, skip_deletes=False, client=None):
         client.create_entity.return_value = (200, {})
         client.rebuild.return_value = (200, {})
         client.get_field.return_value = (200, {"type": "varchar", "label": "Test"})
+        # wait_for_metadata_ready polls this after entity creation; a
+        # (200, non-empty dict) response means "metadata materialized" so the
+        # poll resolves immediately instead of unpacking an unconfigured mock.
+        client.get_entity_full_metadata.return_value = (200, {"name": "Test"})
 
     output_log: list[tuple[str, str]] = []
 
