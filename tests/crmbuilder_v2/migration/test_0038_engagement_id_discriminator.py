@@ -124,6 +124,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "field_mapping_translations",
         "value_mappings",
         "mapping_candidates",
+        # PI-273 (PRJ-040) the durable pipeline-event log (migration 0082).
+        "pipeline_events",
     }
 )
 
