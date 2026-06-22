@@ -161,10 +161,16 @@ These materially shape the build; each is a one-issue discussion.
    Releases UI. Cutover (Phase 5) flips the default to per_area and later drops the
    field. Chosen over a separate entry point / launch-flag because the choice should
    be durable release state, not ephemeral, and recorded for the A/B.
-4. **Blind-test enforcement** — the Tester is an LLM agent; "doesn't read the
-   Developer's code" is enforced by **contract + work-inputs** (give it the spec + the
-   running build, not the diff), not a hard sandbox. Confirm contract-level enforcement
-   is acceptable for the guarantee.
+4. **Blind-test enforcement — LOCKED (2026-06-21): contract-level + structural, no
+   hard sandbox, no file-reference checker.** Independence comes from (a) a separate
+   Tester agent/contract, (b) the Developer authoring no acceptance tests, (c) the
+   testable spec as the source of truth, (d) the diff not being in the Tester's
+   inputs + the contract rule forbidding its use. A hard no-source sandbox is
+   impractical (Python monorepo — the system must be importable to be exercised) and
+   unnecessary (the guarantee is independent authorship from the spec, not source
+   secrecy). Residual risk (a Tester peeking at the dev code) is accepted; the
+   release-level Test gate (§4.10) is the backstop. The optional file-reference
+   checker is **out of scope** unless a real run shows it is needed.
 5. **Bounce mechanism** — reuse `finding` + area-reopen for Test→Develop bounce, or a
    lighter in-pass retry (Test `failed` → re-dispatch that area's Develop with the
    findings). Affects how rework is recorded vs how fast the loop turns.
