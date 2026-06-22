@@ -57,6 +57,13 @@ def check_reachability(
     db_dir = folder / ".crmbuilder"
     db_path = db_dir / f"{code}.db"
     if not db_path.is_file():
+        if db_path.exists():
+            # The path is occupied by a non-file (e.g. a directory) — the
+            # database cannot be created or opened here.
+            return ReachabilityResult(
+                is_reachable=False,
+                error=f"Database path is not a file: {db_path}",
+            )
         # First activation — the directory and database will be created
         # by run_client_migrations. Just verify the parent folder is
         # writable.

@@ -31,22 +31,28 @@ class TestCheckReachability:
         assert "does not exist" in result.error
 
     def test_missing_crmbuilder_dir(self, tmp_path):
+        # No .crmbuilder dir / DB yet — first activation is reachable; the DB
+        # is created by run_client_migrations on activation.
         result = check_reachability(str(tmp_path), "TST")
-        assert result.is_reachable is False
-        assert "not found" in result.error
+        assert result.is_reachable is True
+        assert result.error is None
 
     def test_missing_db_file(self, tmp_path):
+        # .crmbuilder exists but the DB file does not — still first-activation
+        # reachable.
         (tmp_path / ".crmbuilder").mkdir()
         result = check_reachability(str(tmp_path), "TST")
-        assert result.is_reachable is False
-        assert "not found" in result.error
+        assert result.is_reachable is True
+        assert result.error is None
 
     def test_db_file_exists_but_is_directory(self, tmp_path):
+        # The DB path is occupied by a directory — not reachable (the DB can
+        # neither be opened nor created there).
         db_dir = tmp_path / ".crmbuilder" / "TST.db"
         db_dir.mkdir(parents=True)
         result = check_reachability(str(tmp_path), "TST")
         assert result.is_reachable is False
-        assert "not found" in result.error
+        assert "not a file" in result.error
 
     def test_valid_database(self, tmp_path):
         crmbuilder_dir = tmp_path / ".crmbuilder"
