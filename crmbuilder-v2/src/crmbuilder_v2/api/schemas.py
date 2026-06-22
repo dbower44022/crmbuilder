@@ -1894,6 +1894,13 @@ class AreaSpecIn(_Base):
     trigger_finding_identifier: str | None = None
 
 
+# --- Per-area Design fan-out (matrix back half, PI-245 / REQ-295) -------------
+class RunAreaDesignIn(_Base):
+    # one authored design per touched area: {area, implementation, testable,
+    # change_reason?, trigger_kind?}
+    designs: list[dict[str, Any]]
+
+
 # --- Artifact version (versioned change spine, PI-208 / PRJ-031) ------------
 class ArtifactVersionSnapshotIn(_Base):
     artifact_type: str

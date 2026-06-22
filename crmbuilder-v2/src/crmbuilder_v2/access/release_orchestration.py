@@ -31,6 +31,7 @@ from crmbuilder_v2.access import planning
 from crmbuilder_v2.access import reconciliation as engine
 from crmbuilder_v2.access.exceptions import ConflictError
 from crmbuilder_v2.access.repositories import (
+    area_specs,
     artifact_versions,
     planning_items,
     release_change_sets,
@@ -47,6 +48,7 @@ from crmbuilder_v2.access.repositories.reconciliation import (
     _ARTIFACT_RANK,
     _apply_resolution,
 )
+from crmbuilder_v2.access.vocab import SYSTEM_AREA_RANKS
 
 # ---------------------------------------------------------------------------
 # Reconciliation stage (PI-217)
@@ -266,6 +268,101 @@ def finalize_planning(session: Session, release_identifier: str) -> dict:
         "readiness": readiness,
         "flipped_to_ado": sorted(flipped),
     }
+
+
+# ---------------------------------------------------------------------------
+# Per-area Design fan-out (PI-245 / §4.5, the matrix back half)
+# ---------------------------------------------------------------------------
+
+
+def _area_rank_key(area: str):
+    """Sort key: layer rank (storage 1 -> access 2 -> api 3 -> mcp/ui 4), then
+    unranked areas (rank None -> last), then alphabetical for a stable order."""
+    rank = SYSTEM_AREA_RANKS.get(area)
+    return (rank if rank is not None else 10_000, area)
+
+
+def touched_areas(session: Session, release_identifier: str) -> list[str]:
+    """The distinct areas a release touches, in layer-rank order (PI-245, Decision 2).
+
+    Re-aggregates the existing area-tagged Work Tasks of the release's in-scope
+    Planning Items by ``area`` — the front half's decomposition is consumed, not
+    redone. This is the axis the per-area back half fans Design / Develop / Test out
+    on; the order encodes the feed-forward spine (lower rank designed first).
+    """
+    areas: set[str] = set()
+    for prj in releases._in_scope_projects(session, release_identifier):
+        for pi in releases._in_scope_planning_items(session, prj):
+            for ws in releases._pi_workstreams(session, pi):
+                for wt in releases._ws_work_tasks(session, ws):
+                    row = work_tasks.get_work_task(session, wt)
+                    area = row.get("work_task_area") or row.get("area")
+                    if area:
+                        areas.add(area)
+    return sorted(areas, key=_area_rank_key)
+
+
+def area_work_tasks(
+    session: Session, release_identifier: str, area: str
+) -> list[dict]:
+    """The release's in-scope Work Tasks in one ``area`` (the Design task's work
+    inputs) — across every in-scope Planning Item, regardless of phase."""
+    out: list[dict] = []
+    for prj in releases._in_scope_projects(session, release_identifier):
+        for pi in releases._in_scope_planning_items(session, prj):
+            for ws in releases._pi_workstreams(session, pi):
+                for wt in releases._ws_work_tasks(session, ws):
+                    row = work_tasks.get_work_task(session, wt)
+                    if (row.get("work_task_area") or row.get("area")) == area:
+                        out.append(row)
+    return out
+
+
+def run_area_design(
+    session: Session, release_identifier: str, design_provider
+) -> dict:
+    """Fan out one Design task per touched area, in layer-rank order (PI-245 / §4.5).
+
+    For each touched area the area's Architect (the injected ``design_provider``
+    seam — the ``(area, architect)`` agent) authors the area's implementation +
+    testable spec, which is persisted as the area's next ``area_spec`` version. The
+    provider is called with the feed-forward context — the area, its Work Tasks, and
+    the **lower-rank** areas' just-authored specs (upstream design outputs):
+
+        design_provider({release_identifier, area, work_tasks, prior_area_specs})
+          -> {implementation, testable, change_reason?, trigger_kind?}
+
+    Areas are sequenced here by rank; the runtime (Phase 4f) runs rank-independent
+    areas in parallel. A deterministic substrate driver — the judgment is the
+    provider's; this arranges the calls and persists the specs (mirrors
+    ``run_architecture_planning``). Returns the per-area specs persisted, in order.
+    """
+    areas = touched_areas(session, release_identifier)
+    persisted: list[dict] = []
+    for area in areas:
+        my_rank = SYSTEM_AREA_RANKS.get(area)
+        prior = [
+            p for p in persisted
+            if my_rank is not None
+            and (pr := SYSTEM_AREA_RANKS.get(p["area"])) is not None
+            and pr < my_rank
+        ]
+        design = design_provider({
+            "release_identifier": release_identifier,
+            "area": area,
+            "work_tasks": area_work_tasks(session, release_identifier, area),
+            "prior_area_specs": prior,
+        })
+        spec = area_specs.author_spec(
+            session, release_identifier, area,
+            implementation=design["implementation"],
+            testable=design["testable"],
+            change_reason=design.get("change_reason", ""),
+            trigger_kind=design.get("trigger_kind", "initial"),
+        )
+        spec["area"] = area  # ensure the key is present for downstream feed-forward
+        persisted.append(spec)
+    return {"release_identifier": release_identifier, "areas": persisted}
 
 
 # ---------------------------------------------------------------------------

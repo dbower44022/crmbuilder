@@ -18,7 +18,11 @@ from crmbuilder_v2.access import (
     release_orchestration,
     reopen,
 )
-from crmbuilder_v2.access.exceptions import NotFoundError
+from crmbuilder_v2.access.exceptions import (
+    FieldError,
+    NotFoundError,
+    UnprocessableError,
+)
 from crmbuilder_v2.access.repositories import (
     area_specs,
     artifact_versions,
@@ -47,6 +51,7 @@ from crmbuilder_v2.api.schemas import (
     ReleaseSignoffIn,
     ReleaseTransitionIn,
     RevalidateIn,
+    RunAreaDesignIn,
 )
 
 router = APIRouter(prefix="/releases", tags=["releases"])
@@ -377,6 +382,38 @@ def author_area_spec(identifier: str, body: AreaSpecIn):
                 trigger_finding_identifier=body.trigger_finding_identifier,
             )
         )
+
+
+@router.get("/{identifier}/touched-areas")
+def touched_areas(identifier: str):
+    """The distinct areas the release touches, in layer-rank order (PI-245) — the
+    axis the per-area back half fans Design / Develop / Test out on."""
+    with readonly_session() as s:
+        return ok({
+            "release_identifier": identifier,
+            "areas": release_orchestration.touched_areas(s, identifier),
+        })
+
+
+@router.post("/{identifier}/run-area-design")
+def run_area_design(identifier: str, body: RunAreaDesignIn):
+    """Fan out one Design task per touched area and persist each area's
+    implementation + testable spec (PI-245 / §4.5). The body supplies the
+    architect-authored design per area; the driver sequences by layer rank and
+    feeds each area its lower-rank predecessors' specs."""
+    by_area = {d.get("area"): d for d in body.designs}
+
+    def _provider(ctx: dict) -> dict:
+        design = by_area.get(ctx["area"])
+        if design is None:
+            raise UnprocessableError([
+                FieldError("designs", "missing",
+                           f"no design supplied for touched area {ctx['area']!r}")
+            ])
+        return design
+
+    with writable_session() as s:
+        return ok(release_orchestration.run_area_design(s, identifier, _provider))
 
 
 @router.post("/{identifier}/run-architecture-planning")
