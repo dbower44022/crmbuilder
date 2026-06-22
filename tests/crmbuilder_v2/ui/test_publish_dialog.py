@@ -10,6 +10,7 @@ from __future__ import annotations
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.dialogs.publish_dialog import (
     PublishDialog,
+    render_manual_config_html,
     render_preview_html,
     render_publish_html,
     render_validate_html,
@@ -110,6 +111,106 @@ def test_render_publish_not_deployed():
     )
     assert "&#10007;" in out
     assert "validation error" in out
+
+
+# -- manual-config checklist (REQ-294) ---------------------------------------
+
+
+_DEFERRALS = [
+    {
+        "kind": "view",
+        "identifier": "VIW-1",
+        "name": "Active Mentors",
+        "parent": "Contact",
+        "detail": "saved-view filter is not expressible over REST",
+    },
+    {
+        "kind": "workflow_action",
+        "identifier": "AUT-1",
+        "name": "Send welcome email",
+        "parent": "Contact",
+        "detail": "workflows need the Advanced Pack + admin UI",
+    },
+    {
+        "kind": "dedup_rule",
+        "identifier": "DUP-1",
+        "name": "email match",
+        "parent": "Contact",
+        "detail": "duplicate-check rules have no public write path",
+    },
+]
+
+
+def test_render_manual_config_groups_and_labels():
+    out = render_manual_config_html({"deferrals": _DEFERRALS})
+    # Header names the count.
+    assert "Manual configuration required (3 item(s))" in out
+    # Friendly group labels, not raw kind tokens.
+    assert "Saved views" in out
+    assert "Workflows" in out
+    assert "Duplicate-check rules" in out
+    assert "workflow_action" not in out
+    # Each item is a checklist row with its name + reason.
+    assert "&#9744;" in out  # ballot box (checkbox)
+    assert "Active Mentors" in out
+    assert "saved-view filter is not expressible over REST" in out
+    # Parent context surfaces.
+    assert "Contact" in out
+
+
+def test_render_manual_config_empty_is_blank():
+    assert render_manual_config_html({"deferrals": []}) == ""
+    assert render_manual_config_html({}) == ""
+
+
+def test_render_manual_config_companion_only():
+    out = render_manual_config_html(
+        {"deferrals": [], "manual_config": "# MANUAL-CONFIG\n..."}
+    )
+    assert "MANUAL-CONFIG.md" in out
+
+
+def test_render_manual_config_unknown_kind_falls_back():
+    out = render_manual_config_html(
+        {"deferrals": [{"kind": "some_new_thing", "name": "X"}]}
+    )
+    assert "Some new thing" in out
+
+
+def test_render_manual_config_escapes_html():
+    out = render_manual_config_html(
+        {"deferrals": [{"kind": "view", "name": "<script>x", "detail": "<b>"}]}
+    )
+    assert "<script>" not in out
+    assert "&lt;script&gt;" in out
+
+
+def test_render_publish_includes_checklist():
+    out = render_publish_html(
+        {
+            "engine": "espocrm",
+            "target_instance": "INST-001",
+            "programs": [{"filename": "Contact.yaml", "deployed": True}],
+            "deferrals": _DEFERRALS,
+        }
+    )
+    assert "Manual configuration required" in out
+    assert "Send welcome email" in out
+
+
+def test_render_preview_includes_checklist():
+    out = render_preview_html(
+        {
+            "engine": "espocrm",
+            "target_instance": "INST-001",
+            "programs": [
+                {"filename": "Contact.yaml", "summary": {}, "validation_errors": []}
+            ],
+            "deferrals": _DEFERRALS,
+        }
+    )
+    assert "Manual configuration required" in out
+    assert "email match" in out
 
 
 # -- client request paths ----------------------------------------------------

@@ -69,14 +69,85 @@ def _header(phase: str, result: dict) -> str:
     )
 
 
-def _deferral_note(result: dict) -> str:
+# Friendly headings for the deferral ``kind`` groups, so the checklist names
+# the EspoCRM construct an operator configures by hand rather than the raw
+# internal kind token. Unknown kinds fall back to a title-cased label.
+_DEFERRAL_KIND_LABELS = {
+    "view": "Saved views",
+    "workflow_action": "Workflows",
+    "automation": "Automations / workflows",
+    "dedup_rule": "Duplicate-check rules",
+    "dedup_normalize": "Duplicate-check rules",
+    "message_template": "Message templates",
+    "entity_rule": "Dynamic-logic rules",
+    "field_rule": "Dynamic-logic rules",
+    "derived_field": "Derived (formula) fields",
+    "reference_field": "Reference fields",
+    "field_attribute": "Field attributes",
+    "unmapped_field": "Unmapped fields",
+    "entity_default_sort": "Default sort order",
+}
+
+
+def _kind_label(kind: str) -> str:
+    return _DEFERRAL_KIND_LABELS.get(
+        kind, str(kind).replace("_", " ").capitalize()
+    )
+
+
+def _deferral_line(item: dict) -> str:
+    """One checklist row: ``☐ name (parent) — reason``."""
+    name = _esc(item.get("name") or item.get("identifier") or "?")
+    parent = item.get("parent")
+    where = f" <span style='color:{_MUTE}'>({_esc(parent)})</span>" if parent else ""
+    detail = item.get("detail")
+    why = f" — {_esc(detail)}" if detail else ""
+    return f"<li>&#9744; <b>{name}</b>{where}{why}</li>"
+
+
+def render_manual_config_html(result: dict) -> str:
+    """Render the manual-config checklist from the publish result (REQ-294).
+
+    The publish/preview/validate result already carries structured
+    ``deferrals`` — the design constructs EspoCRM cannot apply over the REST
+    API (saved views, workflows, duplicate-check rules, message templates,
+    dynamic-logic rules, derived/reference fields, …) — plus the adapter's
+    ``MANUAL-CONFIG.md`` companion text. This turns them into a readable,
+    grouped post-publish checklist so an operator knows exactly what is left
+    to configure by hand. Returns ``""`` when there is nothing deferred.
+    """
     defs = result.get("deferrals") or []
     if not defs:
+        # No structured deferrals; note the companion only if it exists.
+        if result.get("manual_config"):
+            return (
+                f"<p style='color:{_AMBER}'>A MANUAL-CONFIG.md companion was "
+                f"generated for this design.</p>"
+            )
         return ""
-    return (
-        f"<p style='color:{_AMBER}'>&#9888; {len(defs)} item(s) need manual "
-        f"configuration (deferred — see the MANUAL-CONFIG checklist).</p>"
-    )
+
+    groups: dict[str, list[dict]] = {}
+    for item in defs:
+        groups.setdefault(item.get("kind") or "other", []).append(item)
+
+    parts = [
+        f"<h4 style='margin:12px 0 4px 0;color:{_AMBER}'>&#9888; Manual "
+        f"configuration required ({len(defs)} item(s))</h4>",
+        "<p style='color:#555;margin:0 0 6px 0'>These are not applied "
+        "automatically — configure them by hand in the target's admin UI:"
+        "</p>",
+    ]
+    # Stable, human order: group by friendly label.
+    for kind in sorted(groups, key=_kind_label):
+        items = groups[kind]
+        parts.append(
+            f"<p style='margin:6px 0 2px 0'><b>{_esc(_kind_label(kind))}</b> "
+            f"<span style='color:{_MUTE}'>({len(items)})</span></p>"
+        )
+        parts.append("<ul style='margin:0;padding-left:18px'>")
+        parts.extend(_deferral_line(i) for i in items)
+        parts.append("</ul>")
+    return "".join(parts)
 
 
 def render_validate_html(result: dict) -> str:
@@ -105,7 +176,7 @@ def render_validate_html(result: dict) -> str:
                 f"valid</li>"
             )
     parts.append("</ul>")
-    parts.append(_deferral_note(result))
+    parts.append(render_manual_config_html(result))
     if result.get("validation_failed"):
         parts.append(
             f"<p style='color:{_RED};font-weight:bold'>Fix the errors above "
@@ -143,12 +214,7 @@ def render_publish_html(result: dict) -> str:
                 f"{_esc(reason)}</li>"
             )
     parts.append("</ul>")
-    parts.append(_deferral_note(result))
-    if result.get("manual_config"):
-        parts.append(
-            f"<p style='color:{_AMBER}'>Some items must be configured by hand "
-            f"— see the MANUAL-CONFIG checklist.</p>"
-        )
+    parts.append(render_manual_config_html(result))
     return "".join(parts)
 
 
@@ -197,7 +263,7 @@ def render_preview_html(result: dict) -> str:
                 f"would: {_esc(_preview_counts(p.get('summary')))}</li>"
             )
     parts.append("</ul>")
-    parts.append(_deferral_note(result))
+    parts.append(render_manual_config_html(result))
     return "".join(parts)
 
 
