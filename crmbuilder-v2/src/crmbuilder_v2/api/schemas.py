@@ -2158,6 +2158,133 @@ class FilteredTabPatchIn(_Base):
     filtered_tab_notes: str | None = None
 
 
+# --- Source mapping (entity-level decision, PI-255 / PRJ-027) --------------
+# Schema fields are ``source_mapping_``-prefixed (the entity prefix); the
+# router strips the prefix to the repo kwargs. The ``status`` lifecycle moves
+# through the gated transitions enforced in the repository (DEC-454/575/579).
+class SourceMappingCreateIn(_Base):
+    source_mapping_instance_identifier: str
+    source_mapping_source_entity_name: str
+    source_mapping_decision_type: str
+    source_mapping_notes: str | None = None
+    source_mapping_identifier: str | None = None
+
+
+class SourceMappingReplaceIn(_Base):
+    source_mapping_source_entity_name: str
+    source_mapping_decision_type: str
+    source_mapping_status: str
+    source_mapping_notes: str | None = None
+    source_mapping_stale_reason: str | None = None
+    source_mapping_stale_severity: str | None = None
+    source_mapping_superseded_by: str | None = None
+    source_mapping_resolved_at: str | None = None
+
+
+class SourceMappingPatchIn(_Base):
+    source_mapping_source_entity_name: str | None = None
+    source_mapping_decision_type: str | None = None
+    source_mapping_notes: str | None = None
+
+
+# --- Field mapping (field-level decision, PI-255 / PRJ-027) ----------------
+class FieldMappingCreateIn(_Base):
+    field_mapping_source_mapping_identifier: str
+    field_mapping_source_field_name: str
+    field_mapping_decision_type: str
+    field_mapping_target_entity_identifier: str | None = None
+    field_mapping_target_field_identifier: str | None = None
+    field_mapping_notes: str | None = None
+    field_mapping_identifier: str | None = None
+
+
+class FieldMappingReplaceIn(_Base):
+    field_mapping_source_field_name: str
+    field_mapping_decision_type: str
+    field_mapping_status: str
+    field_mapping_target_entity_identifier: str | None = None
+    field_mapping_target_field_identifier: str | None = None
+    field_mapping_notes: str | None = None
+    field_mapping_stale_reason: str | None = None
+    field_mapping_stale_severity: str | None = None
+    field_mapping_superseded_by: str | None = None
+    field_mapping_resolved_at: str | None = None
+
+
+class FieldMappingPatchIn(_Base):
+    field_mapping_source_field_name: str | None = None
+    field_mapping_decision_type: str | None = None
+    field_mapping_target_entity_identifier: str | None = None
+    field_mapping_target_field_identifier: str | None = None
+    field_mapping_notes: str | None = None
+
+
+# --- Mark stale (shared by source + field mappings, PI-255 / PRJ-027) ------
+class MarkStaleIn(_Base):
+    reason: str
+    severity: str
+
+
+# --- Source mapping targets (child table, PI-255 / PRJ-027) ----------------
+# Integer-PK child; bodies follow the repo kwarg names directly (no prefix).
+class SourceMappingTargetAddIn(_Base):
+    source_mapping_identifier: str
+    entity_identifier: str
+
+
+class SourceMappingTargetSetIn(_Base):
+    source_mapping_identifier: str
+    entity_identifiers: list[str]
+
+
+class SourceMappingTargetRemoveIn(_Base):
+    source_mapping_identifier: str
+    entity_identifier: str
+
+
+# --- Value mapping (child, integer PK, PI-255 / PRJ-027) -------------------
+class ValueMappingCreateIn(_Base):
+    field_mapping_identifier: str
+    source_value: str
+    decision_type: str
+    target_value: str | None = None
+    notes: str | None = None
+
+
+class ValueMappingUpdateIn(_Base):
+    decision_type: str
+    target_value: str | None = None
+    notes: str | None = None
+    status: str | None = None
+
+
+class ValueMappingSupersedeIn(_Base):
+    replacement_id: int
+
+
+# --- Mapping candidate (reconciler output, integer PK, PI-255 / PRJ-027) ---
+class MappingCandidateCreateIn(_Base):
+    instance_identifier: str
+    candidate_type: str
+    source_entity_name: str
+    source_field_name: str | None = None
+    source_value: str | None = None
+    audit_event_identifier: str | None = None
+    suggested_source_mapping_identifier: str | None = None
+    suggested_field_mapping_identifier: str | None = None
+    suggestion_confidence: str | None = None
+    suggestion_basis: str | None = None
+
+
+class MappingCandidateResolveIn(_Base):
+    resolved_to_source_mapping_identifier: str | None = None
+    resolved_to_field_mapping_identifier: str | None = None
+
+
+class MappingCandidateBulkIn(_Base):
+    candidates: list[MappingCandidateCreateIn]
+
+
 # --- Work Task (single-area unit, PI-112 Phase 4b) -------------------------
 class WorkTaskCreateIn(_Base):
     work_task_title: str

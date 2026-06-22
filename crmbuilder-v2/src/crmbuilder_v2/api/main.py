@@ -49,6 +49,7 @@ from crmbuilder_v2.api.routers import (
     engine_overrides,
     entities,
     field,
+    field_mappings,
     filtered_tabs,
     findings,
     health,
@@ -57,6 +58,7 @@ from crmbuilder_v2.api.routers import (
     layouts,
     locks,
     manual_configs,
+    mapping_candidates,
     message_templates,
     migration_mappings,
     orchestration,
@@ -78,12 +80,15 @@ from crmbuilder_v2.api.routers import (
     roles,
     rules,
     sessions,
+    source_mapping_targets,
+    source_mappings,
     status,
     teams,
     terms,
     test_specs,
     topics,
     utilization_evidence,
+    value_mappings,
     views,
     work_tasks,
     work_tickets,
@@ -211,6 +216,12 @@ def create_app() -> FastAPI:
     app.include_router(filtered_tabs.router)
     app.include_router(roles.router)
     app.include_router(teams.router)
+    # Source-mapping model (PI-255).
+    app.include_router(source_mappings.router)
+    app.include_router(field_mappings.router)
+    app.include_router(source_mapping_targets.router)
+    app.include_router(value_mappings.router)
+    app.include_router(mapping_candidates.router)
     # Agent Profile Registry (PI-122).
     app.include_router(registry.agent_profiles_router)
     app.include_router(registry.skills_router)
