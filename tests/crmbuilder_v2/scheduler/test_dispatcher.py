@@ -45,13 +45,46 @@ def test_select_exact_area_tier():
     assert select_profile_id(_PROFILES, "api", "developer") == "AGP-003"
 
 
-def test_select_falls_back_to_any_system_profile_of_tier():
-    # No (access, developer) profile → fall back to a system developer profile.
-    assert select_profile_id(_PROFILES, "access", "developer") == "AGP-002"
-
-
-def test_select_ignores_engagement_scoped_and_wrong_tier():
-    # architect tier request with no architect for 'mcp' → the storage architect.
-    assert select_profile_id(_PROFILES, "mcp", "architect") == "AGP-001"
+def test_select_refuses_when_no_matching_area_profile():
+    # REQ-273: a task with no matching-area profile is REFUSED (None), never run
+    # under a sibling area's profile (the WTK-176 wrong-area-contract failure).
+    assert select_profile_id(_PROFILES, "access", "developer") is None
+    assert select_profile_id(_PROFILES, "mcp", "architect") is None
     # a tier with no system profile at all → None.
     assert select_profile_id(_PROFILES, "api", "tester") is None
+
+
+def test_select_ignores_engagement_scoped_profiles():
+    # AGP-009 is engagement-scoped, not a system profile → never selected here.
+    assert select_profile_id(_PROFILES, "api", "developer") == "AGP-003"
+
+
+# --- REQ-281: technology-variant routing within one area ------------------
+
+_TECH_PROFILES = [
+    {"identifier": "AGP-ui-qt", "scope": "system", "area": "ui",
+     "tier": "developer", "technology": "qt-desktop"},
+    {"identifier": "AGP-ui-web", "scope": "system", "area": "ui",
+     "tier": "developer", "technology": "web"},
+    {"identifier": "AGP-storage", "scope": "system", "area": "storage",
+     "tier": "developer", "technology": None},
+]
+
+
+def test_select_routes_by_technology_within_an_area():
+    assert select_profile_id(_TECH_PROFILES, "ui", "developer",
+                             technology="qt-desktop") == "AGP-ui-qt"
+    assert select_profile_id(_TECH_PROFILES, "ui", "developer",
+                             technology="web") == "AGP-ui-web"
+
+
+def test_select_refuses_a_technology_with_no_matching_or_agnostic_profile():
+    # Only qt-desktop + web exist for ui; a flutter task is not forced through either.
+    assert select_profile_id(_TECH_PROFILES, "ui", "developer",
+                             technology="flutter") is None
+
+
+def test_select_technology_agnostic_profile_serves_any_technology():
+    # The storage profile has no technology → it serves a storage task regardless.
+    assert select_profile_id(_TECH_PROFILES, "storage", "developer",
+                             technology="anything") == "AGP-storage"

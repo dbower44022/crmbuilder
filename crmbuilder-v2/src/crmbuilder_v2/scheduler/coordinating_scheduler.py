@@ -678,7 +678,9 @@ class CoordinatingScheduler:
             return None
         area = wt["work_task_area"]
         profiles = dispatcher._get(cfg.api_base, "/agent-profiles", cfg.engagement)
-        profile_id = dispatcher.select_profile_id(profiles, area, cfg.tier)
+        profile_id = dispatcher.select_profile_id(
+            profiles, area, cfg.tier, technology=wt.get("work_task_technology")
+        )
         branch = f"ado/{work_task_id.lower()}"
         if profile_id is not None:
             invocation = build_agent_prompt(

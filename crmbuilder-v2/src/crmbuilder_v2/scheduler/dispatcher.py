@@ -46,17 +46,42 @@ def is_work_task_eligible(work_task: dict, blocker_statuses: list[str]) -> bool:
 
 
 def select_profile_id(
-    profiles: list[dict], area: str, tier: str = _DEFAULT_TIER
+    profiles: list[dict],
+    area: str,
+    tier: str = _DEFAULT_TIER,
+    technology: str | None = None,
 ) -> str | None:
-    """Pick the system agent profile for ``(area, tier)``.
+    """Pick the system agent profile for ``(area, technology, tier)``.
 
-    Prefers an exact ``(area, tier)`` system profile; falls back to any
-    system profile of that ``tier`` (the area-parameterized proven prompt).
-    Returns ``None`` when no system profile of the tier exists.
+    Matches the task's **area** strictly: a task is never run under a profile
+    from a different area (REQ-273) — a mis-scoped run like a ui task under the
+    storage profile is the WTK-176 wrong-area-contract failure. When no
+    matching-area system profile of the tier exists, returns ``None`` (the caller
+    then refuses / falls back to the area-parameterized minimal contract, never a
+    sibling area's profile).
+
+    Within the area, technology selects the variant (REQ-281): when the task
+    names a ``technology`` (e.g. ``qt-desktop`` vs ``web`` for the ui area), an
+    exact-technology profile wins; otherwise a technology-agnostic profile
+    (``technology`` null/empty) serves, and a task naming a technology is never
+    forced through another technology's profile. Returns ``None`` if only a
+    different technology's profile exists for the area.
     """
-    system = [p for p in profiles if p.get("scope") == "system" and p.get("tier") == tier]
-    exact = [p for p in system if p.get("area") == area]
-    chosen = exact or system
+    in_area = [
+        p
+        for p in profiles
+        if p.get("scope") == "system"
+        and p.get("tier") == tier
+        and p.get("area") == area
+    ]
+    if not in_area:
+        return None  # REQ-273: refuse rather than fall back to another area
+    agnostic = [p for p in in_area if not p.get("technology")]
+    if technology is not None:
+        exact = [p for p in in_area if p.get("technology") == technology]
+        chosen = exact or agnostic  # an agnostic profile may serve; a wrong-tech one never
+    else:
+        chosen = agnostic or in_area
     return chosen[0]["identifier"] if chosen else None
 
 
@@ -152,7 +177,9 @@ def next_assignment(
     wt = eligible[0]
     area = wt["work_task_area"]
     profiles = _get(api_base, "/agent-profiles", engagement)
-    profile_id = select_profile_id(profiles, area, tier)
+    profile_id = select_profile_id(
+        profiles, area, tier, technology=wt.get("work_task_technology")
+    )
     if profile_id is None:
         return None
     invocation = build_agent_prompt(

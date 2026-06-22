@@ -3289,6 +3289,10 @@ class WorkTask(EngagementScopedPKMixin, Base):
     # areas is enforced at the access layer (a CHECK cannot consult the
     # per-engagement engagement_areas table).
     work_task_area: Mapped[str] = mapped_column(String(64), nullable=False)
+    # The build technology this task targets within its area (PI-271 / REQ-281):
+    # e.g. ``qt-desktop`` vs ``web`` for a ``ui`` task. NULL = technology-agnostic;
+    # the dispatcher routes the task to the matching-technology agent profile.
+    work_task_technology: Mapped[str | None] = mapped_column(String(32), nullable=True)
     work_task_claimed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     work_task_claimed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -5335,6 +5339,10 @@ class AgentProfileRow(Base):
         nullable=True,
     )
     area: Mapped[str] = mapped_column(String(64), nullable=False)
+    # The build technology this profile is specialised for (PI-271 / REQ-281):
+    # e.g. ``qt-desktop`` vs ``web`` within the ``ui`` area. NULL = technology-
+    # agnostic (serves any technology in its area).
+    technology: Mapped[str | None] = mapped_column(String(32), nullable=True)
     tier: Mapped[str] = mapped_column(String(16), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(

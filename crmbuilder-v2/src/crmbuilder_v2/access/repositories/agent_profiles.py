@@ -94,11 +94,14 @@ def list_all(
     return [_enrich(r) for r in session.scalars(stmt).all()]
 
 
-def _new_row(identifier, *, area, tier, description, status, engagement_id) -> AgentProfileRow:
+def _new_row(
+    identifier, *, area, tier, description, status, engagement_id, technology=None
+) -> AgentProfileRow:
     return AgentProfileRow(
         identifier=identifier,
         engagement_id=engagement_id,
         area=area,
+        technology=technology,
         tier=tier,
         description=description,
         status=status,
@@ -136,6 +139,7 @@ def create(
     description: str,
     status: str = "active",
     scope: str | None = None,
+    technology: str | None = None,
 ) -> dict:
     require_string(area, field="area")
     require_string(description, field="description")
@@ -144,6 +148,7 @@ def create(
     engagement_id = resolve_scope(session, scope)
     fields = {
         "area": area,
+        "technology": technology,
         "tier": tier,
         "description": description,
         "status": status,
