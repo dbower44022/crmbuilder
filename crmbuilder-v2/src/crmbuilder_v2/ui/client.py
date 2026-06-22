@@ -2101,37 +2101,53 @@ class StorageClient:
             )
         return result
 
-    def publish_validate_instance(self, identifier: str) -> dict[str, Any]:
+    def publish_validate_instance(
+        self, identifier: str, scope: list[str] | None = None
+    ) -> dict[str, Any]:
         """POST /instances/{id}/publish-validate — generate + validate, no deploy.
 
         Returns a serialized publish result: ``{engine, target_instance,
-        validate_only, validation_failed, programs, deferrals, manual_config}``
-        (PRJ-042 / REQ-288).
+        validate_only, validation_failed, programs, deferrals, manual_config,
+        verification}`` (PRJ-042 / REQ-288). An optional ``scope`` (program
+        filenames) validates only a subset (REQ-290).
         """
         return self._publish_request(
-            f"/instances/{identifier}/publish-validate"
+            f"/instances/{identifier}/publish-validate", scope
         )
 
-    def publish_preview_instance(self, identifier: str) -> dict[str, Any]:
+    def publish_preview_instance(
+        self, identifier: str, scope: list[str] | None = None
+    ) -> dict[str, Any]:
         """POST /instances/{id}/publish-preview — non-destructive dry-run.
 
         Generates + validates, then dry-runs the deploy engine to report the
         action each object WOULD take (create/update/skip) without writing to
-        the target. Same serialized result shape (PRJ-042 / REQ-289).
+        the target. Same serialized result shape (PRJ-042 / REQ-289). An
+        optional ``scope`` previews only a subset (REQ-290).
         """
-        return self._publish_request(f"/instances/{identifier}/publish-preview")
+        return self._publish_request(
+            f"/instances/{identifier}/publish-preview", scope
+        )
 
-    def publish_instance(self, identifier: str) -> dict[str, Any]:
+    def publish_instance(
+        self, identifier: str, scope: list[str] | None = None
+    ) -> dict[str, Any]:
         """POST /instances/{id}/publish — generate, validate, and deploy.
 
         A program that fails validation is never deployed. Returns the same
         serialized publish result shape as :meth:`publish_validate_instance`
-        (PRJ-042 / REQ-287).
+        (PRJ-042 / REQ-287). An optional ``scope`` (program filenames) deploys
+        only a subset (REQ-290).
         """
-        return self._publish_request(f"/instances/{identifier}/publish")
+        return self._publish_request(
+            f"/instances/{identifier}/publish", scope
+        )
 
-    def _publish_request(self, path: str) -> dict[str, Any]:
-        result = self._request("POST", path)
+    def _publish_request(
+        self, path: str, scope: list[str] | None = None
+    ) -> dict[str, Any]:
+        json_body = {"scope": scope} if scope else None
+        result = self._request("POST", path, json_body=json_body)
         if not isinstance(result, dict):
             raise ServerError(
                 status_code=200, errors=[],

@@ -342,6 +342,54 @@ def test_publish_no_verification_on_validate_only(monkeypatch, _stub_live):
     assert res.verification is None
 
 
+# -- scoped publish (REQ-290) ------------------------------------------------
+
+
+def _two_program_result():
+    return _result(
+        ("Contact.yaml", _CLEAN_YAML),
+        ("Account.yaml", _CLEAN_YAML.replace("Contact", "Account")),
+    )
+
+
+def test_publish_scope_deploys_only_selected(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _two_program_result())
+    deployed = []
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda program, *a, **k: deployed.append(program.entities[0].name)
+        or DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+        scope={"Account.yaml"},
+    )
+    assert deployed == ["Account"]
+    assert [p.filename for p in res.programs] == ["Account.yaml"]
+
+
+def test_publish_scope_none_deploys_everything(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _two_program_result())
+    deployed = []
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda program, *a, **k: deployed.append(program.entities[0].name)
+        or DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+        scope=None,
+    )
+    assert sorted(deployed) == ["Account", "Contact"]
+    assert {p.filename for p in res.programs} == {"Contact.yaml", "Account.yaml"}
+
+
 def test_publish_preview_dry_runs(monkeypatch, _stub_live):
     from espo_impl.core.deploy_pipeline import DeployOutcome
 

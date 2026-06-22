@@ -130,3 +130,34 @@ def test_publish_preview(client, monkeypatch):
     assert r.status_code == 200, r.text
     assert captured["preview"] is True
     assert r.json()["data"]["preview"] is True
+
+
+def test_publish_scope_body_threaded(client, monkeypatch):
+    iid = _make_instance(client)
+    captured = {}
+
+    def fake_publish(rec, design_client, *, scope=None, **kw):
+        captured["scope"] = scope
+        return _fake_result(validate_only=False)
+
+    monkeypatch.setattr(publish_service, "publish", fake_publish)
+    # An explicit subset is passed through as a set.
+    r = client.post(
+        f"/instances/{iid}/publish", json={"scope": ["Contact.yaml"]}
+    )
+    assert r.status_code == 200, r.text
+    assert captured["scope"] == {"Contact.yaml"}
+
+
+def test_publish_no_body_means_full_scope(client, monkeypatch):
+    iid = _make_instance(client)
+    captured = {}
+
+    def fake_publish(rec, design_client, *, scope=None, **kw):
+        captured["scope"] = scope
+        return _fake_result(validate_only=False)
+
+    monkeypatch.setattr(publish_service, "publish", fake_publish)
+    r = client.post(f"/instances/{iid}/publish")
+    assert r.status_code == 200, r.text
+    assert captured["scope"] is None

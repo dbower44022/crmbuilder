@@ -319,10 +319,13 @@ def test_render_publish_includes_verification():
 
 def test_client_publish_request_paths():
     sc = StorageClient.__new__(StorageClient)
-    calls: list[tuple[str, str]] = []
-    sc._request = lambda method, path: (
-        calls.append((method, path)) or {"validation_failed": False}
-    )
+    calls: list[tuple[str, str, object]] = []
+
+    def _req(method, path, *, json_body=None):
+        calls.append((method, path, json_body))
+        return {"validation_failed": False}
+
+    sc._request = _req
     assert sc.publish_validate_instance("INST-001") == {
         "validation_failed": False
     }
@@ -330,9 +333,16 @@ def test_client_publish_request_paths():
     assert sc.publish_preview_instance("INST-003") == {
         "validation_failed": False
     }
-    assert ("POST", "/instances/INST-001/publish-validate") in calls
-    assert ("POST", "/instances/INST-002/publish") in calls
-    assert ("POST", "/instances/INST-003/publish-preview") in calls
+    # A scoped publish sends the selected filenames in the body.
+    sc.publish_instance("INST-004", ["Contact.yaml"])
+    assert ("POST", "/instances/INST-001/publish-validate", None) in calls
+    assert ("POST", "/instances/INST-002/publish", None) in calls
+    assert ("POST", "/instances/INST-003/publish-preview", None) in calls
+    assert (
+        "POST",
+        "/instances/INST-004/publish",
+        {"scope": ["Contact.yaml"]},
+    ) in calls
 
 
 def test_render_preview_html():
@@ -360,17 +370,22 @@ def test_render_preview_html():
 
 
 class _FakeClient:
-    def __init__(self, validate_result):
+    def __init__(self, validate_result, publish_result=None):
         self._v = validate_result
-        self.calls: list[tuple[str, str]] = []
+        self._p = publish_result if publish_result is not None else validate_result
+        self.calls: list[tuple] = []
 
-    def publish_validate_instance(self, identifier):
-        self.calls.append(("validate", identifier))
+    def publish_validate_instance(self, identifier, scope=None):
+        self.calls.append(("validate", identifier, scope))
         return self._v
 
-    def publish_instance(self, identifier):  # pragma: no cover - not hit here
-        self.calls.append(("publish", identifier))
-        return self._v
+    def publish_instance(self, identifier, scope=None):
+        self.calls.append(("publish", identifier, scope))
+        return self._p
+
+    def publish_preview_instance(self, identifier, scope=None):
+        self.calls.append(("preview", identifier, scope))
+        return self._p
 
 
 _RECORD = {"instance_identifier": "INST-001", "instance_name": "CBM sandbox"}
@@ -387,7 +402,7 @@ def test_dialog_enables_publish_when_valid(qtbot):
     qtbot.addWidget(dlg)
     # The dialog validates on open; wait for that to settle (busy clears).
     qtbot.waitUntil(lambda: dlg._revalidate_btn.isEnabled(), timeout=3000)
-    assert ("validate", "INST-001") in client.calls
+    assert ("validate", "INST-001", None) in client.calls
     assert dlg._publish_btn.isEnabled()
     assert "ready to publish" in dlg._status.text().lower()
 
@@ -406,3 +421,53 @@ def test_dialog_keeps_publish_disabled_when_invalid(qtbot):
     qtbot.waitUntil(lambda: dlg._revalidate_btn.isEnabled(), timeout=3000)
     assert not dlg._publish_btn.isEnabled()
     assert "failed" in dlg._status.text().lower()
+
+
+# -- scope selection (REQ-290) -----------------------------------------------
+
+
+def _two_program_validate():
+    return _validate_result(
+        failed=False,
+        programs=[
+            {"filename": "Contact.yaml", "validation_errors": []},
+            {"filename": "Account.yaml", "validation_errors": []},
+        ],
+    )
+
+
+def test_dialog_populates_scope_list(qtbot):
+    client = _FakeClient(_two_program_validate())
+    dlg = PublishDialog(client, _RECORD)
+    qtbot.addWidget(dlg)
+    qtbot.waitUntil(lambda: dlg._revalidate_btn.isEnabled(), timeout=3000)
+    # Every generated program is a checked, selectable row.
+    assert dlg._scope_list.count() == 2
+    # All checked → publish everything → scope is None (no body sent).
+    assert dlg._selected_scope() is None
+    assert dlg._publish_btn.isEnabled()
+
+
+def test_dialog_scope_subset_when_unchecked(qtbot):
+    from PySide6.QtCore import Qt
+
+    client = _FakeClient(_two_program_validate())
+    dlg = PublishDialog(client, _RECORD)
+    qtbot.addWidget(dlg)
+    qtbot.waitUntil(lambda: dlg._revalidate_btn.isEnabled(), timeout=3000)
+    # Uncheck Contact.yaml → scope narrows to the remaining selection.
+    dlg._scope_list.item(0).setCheckState(Qt.CheckState.Unchecked)
+    assert dlg._selected_scope() == ["Account.yaml"]
+    assert dlg._publish_btn.isEnabled()
+
+
+def test_dialog_publish_disabled_when_nothing_selected(qtbot):
+    from PySide6.QtCore import Qt
+
+    client = _FakeClient(_two_program_validate())
+    dlg = PublishDialog(client, _RECORD)
+    qtbot.addWidget(dlg)
+    qtbot.waitUntil(lambda: dlg._revalidate_btn.isEnabled(), timeout=3000)
+    for i in range(dlg._scope_list.count()):
+        dlg._scope_list.item(i).setCheckState(Qt.CheckState.Unchecked)
+    assert not dlg._publish_btn.isEnabled()

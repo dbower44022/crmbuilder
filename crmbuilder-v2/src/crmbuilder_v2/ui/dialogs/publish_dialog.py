@@ -15,10 +15,13 @@ import html
 import logging
 from typing import Any
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
     QPushButton,
     QTextEdit,
@@ -365,6 +368,16 @@ class PublishDialog(QDialog):
         self._status.setWordWrap(True)
         layout.addWidget(self._status)
 
+        # Scope selector (REQ-290): the operator can uncheck programs to
+        # publish only a subset. Populated from the validate result.
+        self._scope_label = QLabel("Publish scope (uncheck to exclude):")
+        layout.addWidget(self._scope_label)
+        self._scope_list = QListWidget()
+        self._scope_list.setObjectName("publish_scope_list")
+        self._scope_list.setMaximumHeight(110)
+        self._scope_list.itemChanged.connect(self._on_scope_changed)
+        layout.addWidget(self._scope_list)
+
         self._results = QTextEdit()
         self._results.setReadOnly(True)
         self._results.setObjectName("publish_results")
@@ -400,9 +413,63 @@ class PublishDialog(QDialog):
     def _set_busy(self, busy: bool, *, can_publish: bool | None = None) -> None:
         if can_publish is not None:
             self._can_publish = can_publish
+        self._busy = busy
         self._revalidate_btn.setEnabled(not busy)
         self._preview_btn.setEnabled(not busy)
-        self._publish_btn.setEnabled(not busy and self._can_publish)
+        self._publish_btn.setEnabled(
+            not busy and self._can_publish and self._has_selection()
+        )
+
+    # -- scope selection (REQ-290) ---------------------------------------
+
+    def _populate_scope(self, programs: list[dict]) -> None:
+        """Fill the scope list from the validate result, preserving any prior
+        unchecked selections (a re-validate keeps the operator's choices)."""
+        prev_unchecked = {
+            self._scope_list.item(i).text()
+            for i in range(self._scope_list.count())
+            if self._scope_list.item(i).checkState() != Qt.CheckState.Checked
+        }
+        self._scope_list.blockSignals(True)
+        self._scope_list.clear()
+        for p in programs:
+            fn = p.get("filename", "?")
+            item = QListWidgetItem(fn)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(
+                Qt.CheckState.Unchecked
+                if fn in prev_unchecked
+                else Qt.CheckState.Checked
+            )
+            self._scope_list.addItem(item)
+        self._scope_list.blockSignals(False)
+
+    def _has_selection(self) -> bool:
+        return any(
+            self._scope_list.item(i).checkState() == Qt.CheckState.Checked
+            for i in range(self._scope_list.count())
+        )
+
+    def _selected_scope(self) -> list[str] | None:
+        """The checked filenames, or ``None`` when everything is selected
+        (publish the whole design — the default, sends no scope)."""
+        total = self._scope_list.count()
+        checked = [
+            self._scope_list.item(i).text()
+            for i in range(total)
+            if self._scope_list.item(i).checkState() == Qt.CheckState.Checked
+        ]
+        if total == 0 or len(checked) == total:
+            return None
+        return checked
+
+    def _on_scope_changed(self, _item) -> None:
+        # Re-evaluate the Publish button (needs at least one selected program).
+        self._publish_btn.setEnabled(
+            not getattr(self, "_busy", False)
+            and self._can_publish
+            and self._has_selection()
+        )
 
     # -- validate phase --------------------------------------------------
 
@@ -418,6 +485,9 @@ class PublishDialog(QDialog):
 
     def _on_validated(self, result: dict[str, Any]) -> None:
         self._results.setHtml(render_validate_html(result))
+        # The full program list drives the scope selector (validate is always
+        # run full-scope so every program is selectable).
+        self._populate_scope(result.get("programs", []))
         ok = not result.get("validation_failed", True)
         self._status.setText(
             "Validation passed — ready to publish."
@@ -431,8 +501,11 @@ class PublishDialog(QDialog):
     def _start_preview(self) -> None:
         self._status.setText("Previewing — building the plan (no writes)…")
         self._set_busy(True)
+        scope = self._selected_scope()
         self._worker = run_in_thread(
-            lambda: self._client.publish_preview_instance(self._identifier),
+            lambda: self._client.publish_preview_instance(
+                self._identifier, scope
+            ),
             on_success=self._on_previewed,
             on_error=self._on_error,
             parent=self,
@@ -455,10 +528,16 @@ class PublishDialog(QDialog):
     # -- publish phase ---------------------------------------------------
 
     def _on_publish_clicked(self) -> None:
+        scope = self._selected_scope()
+        what = (
+            "the canonical design"
+            if scope is None
+            else f"{len(scope)} selected program(s)"
+        )
         confirm = CopyableMessageBox(self)
         confirm.setWindowTitle("Confirm publish")
         confirm.setText(
-            f"Deploy the canonical design to {self._target_name}?\n\n"
+            f"Deploy {what} to {self._target_name}?\n\n"
             "This writes configuration to the live instance."
         )
         confirm.setStandardButtons(
@@ -470,7 +549,7 @@ class PublishDialog(QDialog):
         self._status.setText(f"Publishing to {self._target_name}…")
         self._set_busy(True)
         self._worker = run_in_thread(
-            lambda: self._client.publish_instance(self._identifier),
+            lambda: self._client.publish_instance(self._identifier, scope),
             on_success=self._on_published,
             on_error=self._on_error,
             parent=self,

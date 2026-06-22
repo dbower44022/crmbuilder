@@ -16,6 +16,7 @@ import dataclasses
 from datetime import UTC, datetime
 
 from fastapi import APIRouter
+from pydantic import BaseModel, ConfigDict
 
 from crmbuilder_v2 import secrets
 from crmbuilder_v2.access.engagement_scope import get_active_engagement
@@ -390,7 +391,11 @@ def _resolve_publish_target(identifier: str) -> tuple[dict, str, str | None]:
 
 
 def _run_publish(
-    identifier: str, *, validate_only: bool = False, preview: bool = False
+    identifier: str,
+    *,
+    validate_only: bool = False,
+    preview: bool = False,
+    scope: list[str] | None = None,
 ):
     """Resolve the target + active-engagement design source, then publish."""
     rec, api_key, secret_key = _resolve_publish_target(identifier)
@@ -408,25 +413,48 @@ def _run_publish(
         engagement=engagement,
         validate_only=validate_only,
         preview=preview,
+        scope=set(scope) if scope else None,
     )
     return ok(_serialize_publish_result(result))
 
 
+class PublishScopeIn(BaseModel):
+    """Optional request body selecting a subset of programs to publish.
+
+    ``scope`` is a list of generated program filenames (e.g. ``Contact.yaml``);
+    omitting it (or sending an empty list) publishes the whole design (REQ-290).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    scope: list[str] | None = None
+
+
 @router.post("/{identifier}/publish")
-def publish_instance(identifier: str):
+def publish_instance(identifier: str, body: PublishScopeIn | None = None):
     """Generate the canonical design, validate it against this target, and
-    deploy it. A program that fails validation is never deployed (REQ-288)."""
-    return _run_publish(identifier)
+    deploy it. A program that fails validation is never deployed (REQ-288).
+    An optional ``scope`` body publishes only a subset of programs (REQ-290)."""
+    return _run_publish(identifier, scope=body.scope if body else None)
 
 
 @router.post("/{identifier}/publish-validate")
-def publish_validate_instance(identifier: str):
-    """Generate + validate against this target without deploying (REQ-288)."""
-    return _run_publish(identifier, validate_only=True)
+def publish_validate_instance(
+    identifier: str, body: PublishScopeIn | None = None
+):
+    """Generate + validate against this target without deploying (REQ-288).
+    An optional ``scope`` body validates only a subset of programs (REQ-290)."""
+    return _run_publish(
+        identifier, validate_only=True, scope=body.scope if body else None
+    )
 
 
 @router.post("/{identifier}/publish-preview")
-def publish_preview_instance(identifier: str):
+def publish_preview_instance(
+    identifier: str, body: PublishScopeIn | None = None
+):
     """Generate + validate, then dry-run the deploy to report the actions each
-    object WOULD take, without writing to the target (REQ-289)."""
-    return _run_publish(identifier, preview=True)
+    object WOULD take, without writing to the target (REQ-289). An optional
+    ``scope`` body previews only a subset of programs (REQ-290)."""
+    return _run_publish(
+        identifier, preview=True, scope=body.scope if body else None
+    )

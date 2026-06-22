@@ -380,6 +380,7 @@ def publish(
     engagement: str | None = None,
     validate_only: bool = False,
     preview: bool = False,
+    scope: set[str] | None = None,
     output_fn: OutputFn | None = None,
 ) -> PublishResult:
     """Generate, validate, and (unless ``validate_only``) deploy the design.
@@ -394,6 +395,10 @@ def publish(
     :param preview: If True, run a non-destructive dry-run after validation —
         the deploy engine reports the action each object *would* take without
         writing to the target (REQ-289). Ignored when ``validate_only``.
+    :param scope: If given, publish only the programs whose generated filename
+        is in this set — a subset publish (REQ-290). ``None`` or empty means
+        publish everything (the default). Validation, preview, verification,
+        and the manual-config checklist all operate over the scoped subset.
     :param output_fn: Optional deploy log callback; when omitted, each
         program's log is captured into its :class:`ProgramOutcome`.
     :returns: A :class:`PublishResult`.
@@ -410,6 +415,10 @@ def publish(
         design_client, rendered_at=rendered_at, engagement=engagement
     )
     programs = parse_programs(result)
+    # Scoped publish (REQ-290): keep only the selected programs. An empty/None
+    # scope publishes everything.
+    if scope:
+        programs = [(f, p) for f, p in programs if f in scope]
 
     server_fields, _warnings = gather_server_fields(
         client, _entity_names(programs)
