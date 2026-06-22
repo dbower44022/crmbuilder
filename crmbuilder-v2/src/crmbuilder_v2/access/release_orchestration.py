@@ -394,6 +394,76 @@ def require_design_review_signoff(session: Session, release_identifier: str) -> 
 
 
 # ---------------------------------------------------------------------------
+# Per-area Develop fan-out (PI-247 / §4.7, the matrix back half)
+# ---------------------------------------------------------------------------
+
+# The one run-status vocabulary the develop seam reports back (mirrors the
+# scheduler's TaskStatus by value; kept as plain strings so the access layer does
+# not depend on the scheduler layer). "succeeded" is the only ok status.
+_DEVELOP_OK = "succeeded"
+
+
+def run_area_develop(session: Session, release_identifier: str, develop_provider) -> dict:
+    """Fan out one Develop task per touched area, in layer-rank order (PI-247 / §4.7).
+
+    Gated by the Design Review (``require_design_review_signoff``): the back half does
+    not build until the area specs are human-approved. For each area in rank order the
+    area's Developer (the injected ``(area, developer)`` seam — the runtime that claims
+    its Work Tasks in a worktree, builds to the approved spec, self-verifies, and
+    merges) is called with the approved spec + the area's Work Tasks + the prior
+    (lower-rank) areas' merged outputs (feed-forward):
+
+        develop_provider({release_identifier, area, implementation_spec, testable_spec,
+                          work_tasks, prior_area_results}) -> {status, detail?}
+
+    ``status`` is the run-status (``succeeded`` / ``needs_human`` / ``failed``). Areas
+    are sequenced here by rank because higher-rank areas build on lower-rank merged
+    code; the run **halts** at the first non-``succeeded`` area (downstream depends on
+    it — the runtime in Phase 4f parallelises rank-independent areas). A deterministic
+    driver: the build is the seam's; this gates, sequences, feeds forward, and
+    collects. Returns ``{release_identifier, areas: [...], halted_on, all_succeeded}``.
+    """
+    require_design_review_signoff(session, release_identifier)
+    areas = touched_areas(session, release_identifier)
+    results: list[dict] = []
+    halted_on: str | None = None
+    for area in areas:
+        spec = area_specs.current_spec(session, release_identifier, area)
+        if spec is None:
+            results.append({"area": area, "status": "needs_human",
+                            "detail": "no approved area spec to build to"})
+            halted_on = area
+            break
+        my_rank = SYSTEM_AREA_RANKS.get(area)
+        prior = [
+            r for r in results
+            if my_rank is not None
+            and (pr := SYSTEM_AREA_RANKS.get(r["area"])) is not None
+            and pr < my_rank
+        ]
+        outcome = develop_provider({
+            "release_identifier": release_identifier,
+            "area": area,
+            "implementation_spec": spec["spec_implementation"],
+            "testable_spec": spec["spec_testable"],
+            "work_tasks": area_work_tasks(session, release_identifier, area),
+            "prior_area_results": prior,
+        })
+        status = outcome.get("status", "failed")
+        results.append({"area": area, "status": status,
+                        "detail": outcome.get("detail", "")})
+        if status != _DEVELOP_OK:
+            halted_on = area
+            break
+    return {
+        "release_identifier": release_identifier,
+        "areas": results,
+        "halted_on": halted_on,
+        "all_succeeded": halted_on is None and bool(areas),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
