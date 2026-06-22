@@ -4,8 +4,9 @@ Creates the ``cost_events`` table from the ORM ``__table__`` with ``checkfirst``
 (idempotent on the create_all-then-upgrade-head test path). One row per AI spend event
 (an SDK call or a ``claude -p`` agent invocation): token counts + a computed cost_usd +
 nullable attribution tags. A telemetry satellite — outside the refs / change_log
-discipline, so no CHECK rebuilds. SQLite head 0078 -> 0079; companion PG delta
-``migrations/pg/versions/0036_pi_263_cost_events.py``.
+discipline, so no CHECK rebuilds. SQLite head 0079 -> 0080 (chains after the
+``0079_pi_262_publish_runs`` head that landed on main in parallel); companion PG delta
+``migrations/pg/versions/0037_pi_263_cost_events.py``.
 """
 
 from collections.abc import Sequence
@@ -14,8 +15,8 @@ import sqlalchemy as sa
 from alembic import op
 from crmbuilder_v2.access.models import CostEvent
 
-revision: str = "0079_pi_263_cost_events"
-down_revision: str | None = "0078_pi_249_release_back_half"
+revision: str = "0080_pi_263_cost_events"
+down_revision: str | None = "0079_pi_262_publish_runs"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

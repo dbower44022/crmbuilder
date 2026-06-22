@@ -114,6 +114,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "area_specs",
         # PI-263 (PRJ-041) the AI-spend cost-event telemetry satellite (migration 0079).
         "cost_events",
+        # PRJ-042 publish history — the per-publish run record (landed on main).
+        "publish_runs",
     }
 )
 
