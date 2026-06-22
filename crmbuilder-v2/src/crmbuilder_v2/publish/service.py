@@ -68,6 +68,46 @@ class ProgramOutcome:
 
 
 @dataclass
+class EntityVerification:
+    """Post-publish presence check for one declared entity (REQ-291).
+
+    :ivar entity: The entity's natural (YAML) name.
+    :ivar present: Whether the entity was found on the live target after the
+        publish (``None`` when the check was inconclusive — e.g. the target's
+        scopes could not be read).
+    :ivar fields_present: Declared field names confirmed present on the target.
+    :ivar fields_missing: Declared field names not found on the target.
+    :ivar status: ``matching`` | ``partial`` | ``missing`` | ``unverified``.
+    """
+
+    entity: str
+    present: bool | None
+    fields_present: list[str] = field(default_factory=list)
+    fields_missing: list[str] = field(default_factory=list)
+    status: str = "unverified"
+
+
+@dataclass
+class VerificationResult:
+    """The outcome of re-reading the target after a publish (REQ-291).
+
+    :ivar ran: Whether a verification pass was attempted (False for preview /
+        validate-only runs).
+    :ivar conclusive: Whether the target's live state could actually be read;
+        False means the result is advisory only (e.g. scopes unreadable).
+    :ivar all_present: True when every declared entity + field was confirmed.
+    :ivar entities: Per-entity verification detail.
+    :ivar warnings: Best-effort read warnings (unreachable entity, etc.).
+    """
+
+    ran: bool = False
+    conclusive: bool = True
+    all_present: bool = False
+    entities: list[EntityVerification] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+
+
+@dataclass
 class PublishResult:
     """The outcome of a publish (or validate-only) run.
 
@@ -79,6 +119,8 @@ class PublishResult:
     :ivar programs: Per-program outcomes.
     :ivar deferrals: Design constructs the adapter could not express (advisory).
     :ivar manual_config: The MANUAL-CONFIG companion content, if any.
+    :ivar verification: The post-publish target verification (REQ-291), or
+        ``None`` when no real publish ran (preview / validate-only).
     """
 
     engine: str
@@ -89,6 +131,7 @@ class PublishResult:
     programs: list[ProgramOutcome] = field(default_factory=list)
     deferrals: list = field(default_factory=list)
     manual_config: str | None = None
+    verification: VerificationResult | None = None
 
 
 def build_target_profile(
@@ -236,6 +279,97 @@ def _entity_names(programs: list[tuple[str, ProgramFile]]) -> list[str]:
     return names
 
 
+def _declared_fields(
+    programs: list[tuple[str, ProgramFile]]
+) -> dict[str, list[str]]:
+    """Map each declared entity natural name to the field names it declares.
+
+    The union across all programs (a native entity is commonly extended by
+    several domain YAMLs), de-duplicated, preserving first-seen order.
+    """
+    out: dict[str, list[str]] = {}
+    for _, program in programs:
+        for entity in program.entities:
+            bucket = out.setdefault(entity.name, [])
+            for fld in entity.fields:
+                if fld.name not in bucket:
+                    bucket.append(fld.name)
+    return out
+
+
+#: gather_server_fields emits this when the target's scopes can't be read,
+#: which makes a presence check inconclusive rather than "everything missing".
+_SCOPES_UNREADABLE = "Could not read live instance scopes"
+
+
+def verify_publish(
+    programs: list[tuple[str, ProgramFile]],
+    server_fields: dict[str, frozenset[str]],
+    warnings: list[str],
+) -> VerificationResult:
+    """Confirm the declared entities + fields are present on the target.
+
+    Pure comparison of what was published (the parsed programs) against the
+    target's post-publish live field state (``server_fields`` from a re-read
+    via :func:`gather_server_fields`). This is the REQ-291 post-publish gate:
+    it answers "did the publish actually land?" per object.
+
+    :param programs: the ``(filename, ProgramFile)`` pairs that were deployed.
+    :param server_fields: ``{entity_natural_name: frozenset(field_names)}`` read
+        back from the live target after the deploy.
+    :param warnings: best-effort read warnings from the re-read.
+    :returns: a :class:`VerificationResult`.
+    """
+    conclusive = not any(_SCOPES_UNREADABLE in w for w in warnings)
+    declared = _declared_fields(programs)
+    entities: list[EntityVerification] = []
+    all_present = True
+
+    for entity in sorted(declared):
+        want = declared[entity]
+        if not conclusive:
+            entities.append(
+                EntityVerification(entity=entity, present=None, status="unverified")
+            )
+            all_present = False
+            continue
+        live = server_fields.get(entity)
+        if live is None:
+            # Entity not present on the target after publish.
+            entities.append(
+                EntityVerification(
+                    entity=entity,
+                    present=False,
+                    fields_missing=list(want),
+                    status="missing",
+                )
+            )
+            all_present = False
+            continue
+        present_fields = [f for f in want if f in live]
+        missing_fields = [f for f in want if f not in live]
+        status = "matching" if not missing_fields else "partial"
+        if missing_fields:
+            all_present = False
+        entities.append(
+            EntityVerification(
+                entity=entity,
+                present=True,
+                fields_present=present_fields,
+                fields_missing=missing_fields,
+                status=status,
+            )
+        )
+
+    return VerificationResult(
+        ran=True,
+        conclusive=conclusive,
+        all_present=conclusive and all_present,
+        entities=entities,
+        warnings=list(warnings),
+    )
+
+
 def publish(
     instance_record: dict,
     design_client: DesignClient,
@@ -326,4 +460,14 @@ def publish(
                 log=log,
             )
         )
+
+    # Post-publish verify (REQ-291): re-read the live target and confirm the
+    # declared entities + fields landed. Only for a real publish — a preview
+    # writes nothing, so there is nothing to verify.
+    if not preview:
+        post_fields, post_warnings = gather_server_fields(
+            client, _entity_names(programs)
+        )
+        pub.verification = verify_publish(programs, post_fields, post_warnings)
+
     return pub

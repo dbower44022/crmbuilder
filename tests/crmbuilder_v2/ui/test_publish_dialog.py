@@ -14,6 +14,7 @@ from crmbuilder_v2.ui.dialogs.publish_dialog import (
     render_preview_html,
     render_publish_html,
     render_validate_html,
+    render_verification_html,
 )
 
 
@@ -211,6 +212,106 @@ def test_render_preview_includes_checklist():
     )
     assert "Manual configuration required" in out
     assert "email match" in out
+
+
+# -- post-publish verification (REQ-291) -------------------------------------
+
+
+def test_render_verification_all_present():
+    out = render_verification_html(
+        {
+            "verification": {
+                "ran": True,
+                "conclusive": True,
+                "all_present": True,
+                "entities": [
+                    {
+                        "entity": "Contact",
+                        "present": True,
+                        "fields_present": ["nickName"],
+                        "fields_missing": [],
+                        "status": "matching",
+                    }
+                ],
+                "warnings": [],
+            }
+        }
+    )
+    assert "Verified on target" in out
+    assert "Contact" in out
+    assert "&#10003;" in out
+
+
+def test_render_verification_with_gaps():
+    out = render_verification_html(
+        {
+            "verification": {
+                "ran": True,
+                "conclusive": True,
+                "all_present": False,
+                "entities": [
+                    {
+                        "entity": "CEngagement",
+                        "present": False,
+                        "fields_missing": ["stage"],
+                        "status": "missing",
+                    },
+                    {
+                        "entity": "Contact",
+                        "present": True,
+                        "fields_present": ["a"],
+                        "fields_missing": ["nickName"],
+                        "status": "partial",
+                    },
+                ],
+                "warnings": ["CEngagement: not present"],
+            }
+        }
+    )
+    assert "found gaps" in out
+    assert "entity not found on target" in out
+    assert "missing field(s): nickName" in out
+    assert "CEngagement: not present" in out
+
+
+def test_render_verification_inconclusive():
+    out = render_verification_html(
+        {
+            "verification": {
+                "ran": True,
+                "conclusive": False,
+                "all_present": False,
+                "entities": [
+                    {"entity": "Contact", "present": None, "status": "unverified"}
+                ],
+                "warnings": ["Could not read live instance scopes"],
+            }
+        }
+    )
+    assert "inconclusive" in out
+
+
+def test_render_verification_absent_when_not_run():
+    assert render_verification_html({}) == ""
+    assert render_verification_html({"verification": {"ran": False}}) == ""
+
+
+def test_render_publish_includes_verification():
+    out = render_publish_html(
+        {
+            "engine": "espocrm",
+            "target_instance": "INST-001",
+            "programs": [{"filename": "Contact.yaml", "deployed": True}],
+            "verification": {
+                "ran": True,
+                "conclusive": True,
+                "all_present": True,
+                "entities": [{"entity": "Contact", "status": "matching"}],
+                "warnings": [],
+            },
+        }
+    )
+    assert "Verified on target" in out
 
 
 # -- client request paths ----------------------------------------------------

@@ -229,6 +229,119 @@ def test_publish_deploys_when_valid(monkeypatch, _stub_live):
     assert ("deploying", "white") in contact.log
 
 
+# -- verify_publish (REQ-291) ------------------------------------------------
+
+
+def _contact_programs():
+    return service.parse_programs(_result(("Contact.yaml", _CLEAN_YAML)))
+
+
+def test_verify_publish_all_present():
+    res = service.verify_publish(
+        _contact_programs(),
+        {"Contact": frozenset({"nickName", "name"})},
+        [],
+    )
+    assert res.ran is True
+    assert res.conclusive is True
+    assert res.all_present is True
+    ent = res.entities[0]
+    assert ent.entity == "Contact"
+    assert ent.present is True
+    assert ent.status == "matching"
+    assert ent.fields_present == ["nickName"]
+    assert ent.fields_missing == []
+
+
+def test_verify_publish_partial_missing_field():
+    res = service.verify_publish(
+        _contact_programs(),
+        {"Contact": frozenset({"name"})},  # nickName did not land
+        [],
+    )
+    assert res.all_present is False
+    ent = res.entities[0]
+    assert ent.present is True
+    assert ent.status == "partial"
+    assert ent.fields_missing == ["nickName"]
+
+
+def test_verify_publish_missing_entity():
+    res = service.verify_publish(
+        _contact_programs(),
+        {},  # entity not present on target
+        ["Contact: not present on the live instance — ..."],
+    )
+    assert res.conclusive is True
+    assert res.all_present is False
+    ent = res.entities[0]
+    assert ent.present is False
+    assert ent.status == "missing"
+    assert ent.fields_missing == ["nickName"]
+
+
+def test_verify_publish_inconclusive_when_scopes_unreadable():
+    res = service.verify_publish(
+        _contact_programs(),
+        {},
+        ["Could not read live instance scopes (HTTP 500); ..."],
+    )
+    assert res.conclusive is False
+    assert res.all_present is False
+    ent = res.entities[0]
+    assert ent.present is None
+    assert ent.status == "unverified"
+
+
+def test_publish_verifies_after_real_publish(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    _stub_live["server_fields"] = {"Contact": frozenset({"nickName"})}
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+    )
+    assert res.verification is not None
+    assert res.verification.ran is True
+    assert res.verification.all_present is True
+
+
+def test_publish_no_verification_on_preview(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+        preview=True,
+    )
+    assert res.preview is True
+    assert res.verification is None
+
+
+def test_publish_no_verification_on_validate_only(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(service, "deploy_pipeline", lambda *a, **k: None)
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+        validate_only=True,
+    )
+    assert res.verification is None
+
+
 def test_publish_preview_dry_runs(monkeypatch, _stub_live):
     from espo_impl.core.deploy_pipeline import DeployOutcome
 

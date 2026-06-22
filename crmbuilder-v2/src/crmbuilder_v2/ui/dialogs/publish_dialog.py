@@ -150,6 +150,66 @@ def render_manual_config_html(result: dict) -> str:
     return "".join(parts)
 
 
+_VERIFY_GLYPH = {
+    "matching": (_GREEN, "&#10003;"),  # ✓
+    "partial": (_AMBER, "&#9656;"),  # ▸
+    "missing": (_RED, "&#10007;"),  # ✗
+    "unverified": (_MUTE, "?"),
+}
+
+
+def render_verification_html(result: dict) -> str:
+    """Render the post-publish verification section (REQ-291).
+
+    After a real publish the service re-reads the live target and confirms each
+    declared entity + field landed; this renders that per-object result. Returns
+    ``""`` when no verification ran (preview / validate-only).
+    """
+    verify = result.get("verification")
+    if not verify or not verify.get("ran"):
+        return ""
+    entities = verify.get("entities") or []
+    if verify.get("all_present"):
+        head = (
+            f"<h4 style='margin:12px 0 4px 0;color:{_GREEN}'>&#10003; "
+            f"Verified on target — all {len(entities)} object(s) present.</h4>"
+        )
+    elif not verify.get("conclusive"):
+        head = (
+            f"<h4 style='margin:12px 0 4px 0;color:{_AMBER}'>&#9888; "
+            f"Verification inconclusive — could not read the target's live "
+            f"state.</h4>"
+        )
+    else:
+        head = (
+            f"<h4 style='margin:12px 0 4px 0;color:{_RED}'>&#10007; "
+            f"Verification found gaps — some objects did not land.</h4>"
+        )
+    parts = [head, "<ul style='margin:0;padding-left:18px'>"]
+    for ent in entities:
+        status = ent.get("status", "unverified")
+        color, glyph = _VERIFY_GLYPH.get(status, (_MUTE, "?"))
+        name = _esc(ent.get("entity", "?"))
+        missing = ent.get("fields_missing") or []
+        if status == "missing":
+            detail = "entity not found on target"
+        elif missing:
+            detail = f"missing field(s): {_esc(', '.join(missing))}"
+        elif status == "unverified":
+            detail = "not checked"
+        else:
+            n = len(ent.get("fields_present") or [])
+            detail = f"{n} field(s) present"
+        parts.append(
+            f"<li><span style='color:{color}'>{glyph} {name}</span> — "
+            f"{detail}</li>"
+        )
+    parts.append("</ul>")
+    for w in verify.get("warnings") or []:
+        parts.append(f"<p style='color:{_MUTE};margin:2px 0'>{_esc(w)}</p>")
+    return "".join(parts)
+
+
 def render_validate_html(result: dict) -> str:
     """Render the validate-phase report as rich text."""
     programs = result.get("programs", [])
@@ -214,6 +274,7 @@ def render_publish_html(result: dict) -> str:
                 f"{_esc(reason)}</li>"
             )
     parts.append("</ul>")
+    parts.append(render_verification_html(result))
     parts.append(render_manual_config_html(result))
     return "".join(parts)
 
@@ -268,9 +329,18 @@ def render_preview_html(result: dict) -> str:
 
 
 def _publish_failed(result: dict) -> bool:
-    return bool(result.get("validation_failed")) or any(
+    if bool(result.get("validation_failed")) or any(
         not p.get("deployed") for p in result.get("programs", [])
-    )
+    ):
+        return True
+    # A conclusive post-publish verify that found missing objects is an issue
+    # even when every program reported "deployed" (REQ-291).
+    verify = result.get("verification") or {}
+    if verify.get("ran") and verify.get("conclusive") and not verify.get(
+        "all_present"
+    ):
+        return True
+    return False
 
 
 class PublishDialog(QDialog):

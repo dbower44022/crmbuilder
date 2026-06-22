@@ -329,6 +329,11 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         "validation_failed": result.validation_failed,
         "deferrals": [dataclasses.asdict(d) for d in result.deferrals],
         "manual_config": result.manual_config,
+        "verification": (
+            dataclasses.asdict(result.verification)
+            if result.verification is not None
+            else None
+        ),
         "programs": [
             {
                 "filename": p.filename,
