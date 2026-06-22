@@ -7,11 +7,11 @@
 
 ## Purpose
 
-Create `requirement_belongs_to_domain` and `requirement_belongs_to_process` reference links for all requirements under TOP-005 and TOP-099, anchoring them to the Software Delivery domain (DOM-011) and the Release Pipeline process (PROC-009).
+Create `requirement_scopes_to_domain` and `requirement_realized_by_process` reference links for all requirements under TOP-005 and TOP-099, anchoring them to the Software Delivery domain (DOM-011) and the Release Pipeline process (PROC-009).
 
-**Net effect:** 34 new REF-NNN records posted via the V2 API.
-- 17 × `requirement_belongs_to_domain` (REQ → DOM-011)
-- 17 × `requirement_belongs_to_process` (REQ → PROC-009)
+**Net effect:** 40 new REF-NNN records posted via the V2 API.
+- 20 × `requirement_scopes_to_domain` (REQ → DOM-011)
+- 20 × `requirement_realized_by_process` (REQ → PROC-009)
 
 **Requirements in scope:**
 - TOP-005: REQ-014, REQ-252, REQ-258
@@ -41,7 +41,7 @@ curl -s http://127.0.0.1:8765/processes -H "X-Engagement: CRMBUILDER" | python3 
 ```
 Expected: `Release Pipeline`. Do not proceed if not found.
 
-4. Confirm all 17 requirements exist:
+4. Confirm all 20 requirements exist:
 ```bash
 curl -s http://127.0.0.1:8765/requirements -H "X-Engagement: CRMBUILDER" | python3 -c "
 import sys, json
@@ -52,19 +52,19 @@ missing = expected - found
 print('Found:', len(found), '| Missing:', missing if missing else 'none')
 "
 ```
-Expected: Found: 17 | Missing: none. Do not proceed if any are missing.
+Expected: Found: 20 | Missing: none. Do not proceed if any are missing.
 
 5. Capture current reference head:
 ```bash
 curl -s http://127.0.0.1:8765/references -H "X-Engagement: CRMBUILDER" | python3 -c "import sys,json; refs=json.load(sys.stdin)['data']; print('Current head:', sorted([r['reference_identifier'] for r in refs])[-1] if refs else 'none')"
 ```
-Record this — verify advancement by 34 after apply.
+Record this — verify advancement by 40 after apply.
 
 ---
 
 ## Apply
 
-Run this script in full. It POSTs all 34 references in order and prints each as it lands. Do not run partially.
+Run this script in full. It POSTs all 40 references in order and prints each as it lands. Do not run partially.
 
 ```python
 import urllib.request
@@ -99,7 +99,7 @@ for req in REQUIREMENTS:
         "source_id": req,
         "target_type": "domain",
         "target_id": "DOM-011",
-        "relationship": "requirement_belongs_to_domain"
+        "relationship": "requirement_scopes_to_domain"
     })
     ref_id = result["data"]["reference_identifier"]
     print(f"  \u2713 {ref_id} \u2014 {req} \u2192 DOM-011")
@@ -113,7 +113,7 @@ for req in REQUIREMENTS:
         "source_id": req,
         "target_type": "process",
         "target_id": "PROC-009",
-        "relationship": "requirement_belongs_to_process"
+        "relationship": "requirement_realized_by_process"
     })
     ref_id = result["data"]["reference_identifier"]
     print(f"  \u2713 {ref_id} \u2014 {req} \u2192 PROC-009")
@@ -133,38 +133,38 @@ python3 /tmp/link_requirements.py
 
 ## Post-apply verification
 
-1. Confirm domain links landed for all 17 requirements:
+1. Confirm domain links landed for all 20 requirements:
 ```bash
 curl -s http://127.0.0.1:8765/references -H "X-Engagement: CRMBUILDER" | python3 -c "
 import sys, json
 refs = json.load(sys.stdin)['data']
-domain_links = [r for r in refs if r['relationship'] == 'requirement_belongs_to_domain' and r['target_id'] == 'DOM-011']
-print(f'Domain links to DOM-011: {len(domain_links)} (expected 17)')
+domain_links = [r for r in refs if r['relationship'] == 'requirement_scopes_to_domain' and r['target_id'] == 'DOM-011']
+print(f'Domain links to DOM-011: {len(domain_links)} (expected 20)')
 for r in sorted(domain_links, key=lambda x: x['source_id']):
     print(' ', r['reference_identifier'], '|', r['source_id'], '\u2192 DOM-011')
 "
 ```
 
-2. Confirm process links landed for all 17 requirements:
+2. Confirm process links landed for all 20 requirements:
 ```bash
 curl -s http://127.0.0.1:8765/references -H "X-Engagement: CRMBUILDER" | python3 -c "
 import sys, json
 refs = json.load(sys.stdin)['data']
-proc_links = [r for r in refs if r['relationship'] == 'requirement_belongs_to_process' and r['target_id'] == 'PROC-009']
-print(f'Process links to PROC-009: {len(proc_links)} (expected 17)')
+proc_links = [r for r in refs if r['relationship'] == 'requirement_realized_by_process' and r['target_id'] == 'PROC-009']
+print(f'Process links to PROC-009: {len(proc_links)} (expected 20)')
 for r in sorted(proc_links, key=lambda x: x['source_id']):
     print(' ', r['reference_identifier'], '|', r['source_id'], '\u2192 PROC-009')
 "
 ```
 
-3. Confirm reference head advanced by 34 from pre-flight capture.
+3. Confirm reference head advanced by 40 from pre-flight capture.
 
 ---
 
 ## Done
 
 Reply with:
-- Total references created (expected 34)
+- Total references created (expected 40)
 - Domain ref range (first \u2192 last)
 - Process ref range (first \u2192 last)
 - Any errors encountered
