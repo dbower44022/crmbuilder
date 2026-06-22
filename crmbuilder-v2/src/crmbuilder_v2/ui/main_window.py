@@ -52,6 +52,7 @@ from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
 from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
 from crmbuilder_v2.ui.panels.instances import InstancesPanel
+from crmbuilder_v2.ui.panels.publish_history import PublishHistoryPanel
 from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
@@ -240,6 +241,9 @@ def build_panel(
     # PI-186 (PRJ-027): CRM-connection instances.
     if label == "Instances":
         return InstancesPanel(client)
+    # PI-266 (PRJ-042 / REQ-293): read-only publish history.
+    if label == "Publish History":
+        return PublishHistoryPanel(client)
     # requirements-provenance Phase 6b: topic-first review surface.
     if label == "Requirements Review":
         return ReviewPanel(client)

@@ -2151,6 +2151,39 @@ class StorageClient:
             allow_no_backup=allow_no_backup,
         )
 
+    def list_publish_runs(
+        self, instance: str | None = None, limit: int | None = None
+    ) -> list[dict[str, Any]]:
+        """GET /publish-runs — the publish history, newest first (REQ-293).
+
+        Optionally filtered to one target ``instance`` (``INST-NNN``).
+        """
+        path = "/publish-runs"
+        params = []
+        if instance:
+            params.append(f"instance={instance}")
+        if limit is not None:
+            params.append(f"limit={limit}")
+        if params:
+            path = f"{path}?{'&'.join(params)}"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected list body for /publish-runs",
+            )
+        return result
+
+    def get_publish_run(self, identifier: str) -> dict[str, Any]:
+        """GET /publish-runs/{id} — one run's detail incl. backup (REQ-293)."""
+        result = self._request("GET", f"/publish-runs/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message=f"Expected dict body for /publish-runs/{identifier}",
+            )
+        return result
+
     def _publish_request(
         self,
         path: str,

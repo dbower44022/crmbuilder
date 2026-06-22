@@ -53,6 +53,8 @@ EXPECTED_ENTRIES = (
     # PI-186 (PRJ-027): CRM-connection instances, appended to the
     # Governance group after Work Tasks.
     "Instances",
+    # PI-266 (PRJ-042 / REQ-293): read-only publish history, after Instances.
+    "Publish History",
     # requirements-provenance Phase 6b: topic-first review surface,
     # appended to the Governance group after Work Tasks.
     "Requirements Review",

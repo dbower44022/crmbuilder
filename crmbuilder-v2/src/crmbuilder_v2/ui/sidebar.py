@@ -90,6 +90,9 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # PI-186 (PRJ-027): CRM-connection instances (audit/pull source +
             # publish/push target). Appended in the Governance group.
             "Instances",
+            # PI-266 (PRJ-042 / REQ-293): read-only history of publishes to a
+            # target instance (scope, outcome, backup). Sits next to Instances.
+            "Publish History",
             # requirements-provenance Phase 6b: the topic-first review
             # surface (requirement tree + read-back document + queues +
             # sign-off). A read-only review/monitoring panel, so it lives
