@@ -46,6 +46,7 @@ from crmbuilder_v2.access.models import (
 )
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.vocab import (
+    RELEASE_BACK_HALF_MODES,
     RELEASE_LANE_STATUSES,
     RELEASE_STATUS_TRANSITIONS,
     RELEASE_STATUSES,
@@ -787,6 +788,27 @@ def test_pass(session: Session, identifier: str) -> dict:
         session, identifier, require_status="testing",
         column="release_test_passed_at",
     )
+
+
+def set_back_half(session: Session, identifier: str, mode: str) -> dict:
+    """Set the release's back-half mode (PI-249 / Decision 3): ``per_pi`` or
+    ``per_area``. The durable switch the scheduler reads to route the development
+    stage; default ``per_pi`` until a release is deliberately opted into per_area."""
+    mode = gov.require_in(mode, RELEASE_BACK_HALF_MODES, field="release_back_half")
+    row = _get_row(session, identifier)
+    before = to_dict(row)
+    row.release_back_half = mode
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
 
 
 def set_lane_order(session: Session, identifier: str, order: int | None) -> dict:

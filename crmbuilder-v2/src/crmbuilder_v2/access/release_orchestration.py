@@ -535,6 +535,74 @@ def run_area_test(session: Session, release_identifier: str, test_provider) -> d
 
 
 # ---------------------------------------------------------------------------
+# The per-area back half, end-to-end (PI-249 / §4.5-4.8, the matrix back half)
+# ---------------------------------------------------------------------------
+
+
+def run_per_area_development(
+    session: Session,
+    release_identifier: str,
+    *,
+    develop_provider,
+    test_provider,
+    max_rounds: int = 3,
+) -> dict:
+    """The post-Design-Review per-area Develop → blind Test → bounce loop (PI-249),
+    integrating 4d + 4e — the back half's development stage after the design specs are
+    authored (``run_area_design``, 4b) and human-approved (the Design Review, 4c).
+
+    Each round runs ``run_area_develop`` then ``run_area_test``:
+    - **passed** — Test is clean across all areas → done.
+    - **code-bug bounce** (``bounce_to='develop'``) — the next round's Develop fixes
+      the bounced area; re-Test. Repeats up to ``max_rounds``.
+    - **spec-gap bounce** (``bounce_to='design'``) — returns ``needs_redesign``: a new
+      spec + a fresh Design Review are needed (the caller re-runs Design → review →
+      this loop). The inner loop never silently re-designs.
+    - **develop_blocked** — a Develop halt (a lower-rank area failed / needs_human).
+    - **needs_human** — still bouncing after ``max_rounds``.
+
+    Gated by the Design Review via ``run_area_develop`` (which calls
+    ``require_design_review_signoff``); unsigned ⇒ ``ConflictError``. A deterministic
+    orchestrator over the injected ``(area, developer|tester)`` seams; the worktree
+    build + blind verification live in the seams (the scheduler's runtime). Returns
+    ``{release_identifier, status, rounds, ...}``.
+    """
+    rounds: list[dict] = []
+    for round_no in range(1, max_rounds + 1):
+        dev = run_area_develop(session, release_identifier, develop_provider)
+        if not dev["all_succeeded"]:
+            rounds.append({"round": round_no, "develop": dev, "test": None})
+            return {
+                "release_identifier": release_identifier,
+                "status": "develop_blocked",
+                "halted_on": dev["halted_on"],
+                "rounds": rounds,
+            }
+        test = run_area_test(session, release_identifier, test_provider)
+        rounds.append({"round": round_no, "develop": dev, "test": test})
+        if test["all_passed"]:
+            return {
+                "release_identifier": release_identifier,
+                "status": "passed",
+                "rounds": rounds,
+            }
+        if any(b.get("bounce_to") == "design" for b in test["bounced"]):
+            return {
+                "release_identifier": release_identifier,
+                "status": "needs_redesign",
+                "bounced": test["bounced"],
+                "rounds": rounds,
+            }
+        # all bounces are code bugs → the next round's Develop fixes them, then re-Test.
+    return {
+        "release_identifier": release_identifier,
+        "status": "needs_human",
+        "detail": f"still bouncing after {max_rounds} round(s)",
+        "rounds": rounds,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 

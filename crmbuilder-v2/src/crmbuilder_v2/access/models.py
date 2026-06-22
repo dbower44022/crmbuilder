@@ -105,6 +105,7 @@ from crmbuilder_v2.access.vocab import (
     REFERENCE_BOOK_STATUSES,
     REFERENCE_RELATIONSHIPS,
     REGISTRY_STATUSES,
+    RELEASE_BACK_HALF_MODES,
     RELEASE_SIGNOFF_STAGES,
     RELEASE_STATUSES,
     REOPEN_APPROVAL_TIERS,
@@ -2915,6 +2916,12 @@ class Release(EngagementScopedPKMixin, Base):
     release_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     # The human-set lane-entry sequence (REQ-210); NULL until ordered.
     release_lane_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Which back half the scheduler runs the development stage through (PI-249 /
+    # Decision 3): "per_pi" (legacy, default) or "per_area" (the matrix). A durable
+    # per-release switch so the two paths run side-by-side; Phase 5 flips the default.
+    release_back_half: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="per_pi", server_default="per_pi"
+    )
     # The freeze stamp (§9A/§16.7) — also the boundary marking post-freeze
     # versions as frozen drafts (read by PI-208).
     release_frozen_at: Mapped[datetime | None] = mapped_column(
@@ -2959,6 +2966,10 @@ class Release(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _check_in("release_status", RELEASE_STATUSES),
             name="ck_release_status",
+        ),
+        CheckConstraint(
+            _check_in("release_back_half", RELEASE_BACK_HALF_MODES),
+            name="ck_release_back_half",
         ),
         Index("ix_releases_release_status", "release_status"),
         Index("ix_releases_release_deleted_at", "release_deleted_at"),

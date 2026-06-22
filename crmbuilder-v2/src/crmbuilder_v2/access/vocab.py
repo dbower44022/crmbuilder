@@ -943,6 +943,12 @@ RELEASE_SIGNOFF_STAGES: frozenset[str] = frozenset(
     {"reconciliation", "architecture_planning", "design"}
 )
 
+# `release_back_half` (PI-249 / PRJ-041, REQ-295, Decision 3) — which back half the
+# scheduler runs a release's development stage through: the legacy per-Planning-Item
+# path (default) or the per-area matrix. A durable per-release switch so the two run
+# side-by-side; the Phase-5 cutover flips the default to per_area and drops the field.
+RELEASE_BACK_HALF_MODES: frozenset[str] = frozenset({"per_pi", "per_area"})
+
 # `area_spec` (PI-244 / PRJ-041, REQ-295) — the per-(release, area) implementation +
 # testable spec the matrix back half resolves. Each revision records the trigger
 # that caused it (the design-review rejection / develop gap / test bounce, or the
