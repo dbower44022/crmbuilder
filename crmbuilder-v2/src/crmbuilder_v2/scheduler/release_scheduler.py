@@ -48,6 +48,11 @@ DecompositionProvider = Callable[[dict], list[dict]]
 # "testing") and returns whether it passed.
 PiRunner = Callable[[str, str], None]          # (release_identifier, planning_item)
 GateRunner = Callable[[str, str], bool]        # (release_identifier, stage) -> passed
+# Per-area back-half seams (PI-249 / 4f). Each is the area's (area, tier) agent: given
+# the per-area context dict, returns the area's design / develop / test outcome (the
+# shapes run_area_design / run_area_develop / run_area_test consume). Wiring all three
+# enables the per-area dev lane for a release on back_half == "per_area".
+AreaProvider = Callable[[dict], dict]          # (ctx) -> outcome
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +71,11 @@ class StepKind(str, Enum):
     FINALIZE = "finalize"                # readiness + interactive→ado + enter ready
     # --- development lane (the dev-lane delegation) ---
     ENTER_LANE = "enter_lane"            # ready → development (single-occupancy gate)
-    DEVELOP = "develop"                  # run the next eligible in-scope PI via ADO
+    DEVELOP = "develop"                  # per-PI: run the next eligible in-scope PI via ADO
+    # --- per-area back half (PI-249 / 4f; when release_back_half == "per_area") ---
+    RUN_AREA_DESIGN = "run_area_design"  # fan out one Design task per touched area
+    AWAIT_DESIGN_REVIEW = "await_design_review"  # PAUSE — consolidated human Design Review owed
+    RUN_PER_AREA_DEV = "run_per_area_dev"  # Develop → blind Test → bounce loop, then → qa
     TO_QA = "to_qa"                      # all PIs delivered → development → qa
     RUN_QA = "run_qa"                    # release-level QA gate → qa_pass
     TO_TESTING = "to_testing"            # qa passed → qa → testing
@@ -98,6 +107,9 @@ def decide_next(
     all_pis_delivered: bool = False,
     qa_passed: bool = False,
     test_passed: bool = False,
+    back_half: str = "per_pi",
+    area_specs_present: bool = False,
+    design_signed: bool = False,
 ) -> ReleaseStep:
     """The next step owed, from the release's status + a few derived flags.
 
@@ -147,6 +159,20 @@ def decide_next(
     if status == "ready":
         return ReleaseStep(StepKind.ENTER_LANE)
     if status == "development":
+        if back_half == "per_area":
+            # The matrix back half (PI-249 / 4f): Design fan-out → consolidated Design
+            # Review (human pause) → Develop → blind Test → bounce loop. The
+            # RUN_PER_AREA_DEV handler advances development → qa on success, so a clean
+            # run falls through to the release-level QA/test gates below (two-level).
+            if not area_specs_present:
+                return ReleaseStep(StepKind.RUN_AREA_DESIGN)
+            if not design_signed:
+                return ReleaseStep(
+                    StepKind.AWAIT_DESIGN_REVIEW,
+                    "per-area design specs need a consolidated human Design Review "
+                    "sign-off (PI-246)",
+                )
+            return ReleaseStep(StepKind.RUN_PER_AREA_DEV)
         return ReleaseStep(
             StepKind.TO_QA if all_pis_delivered else StepKind.DEVELOP
         )
@@ -180,6 +206,14 @@ class ReleaseSchedulerConfig:
     pi_runner: PiRunner | None = None
     gate_runner: GateRunner | None = None
     delivered_statuses: tuple[str, ...] = ("In Review", "Resolved")
+    # Per-area back half (PI-249 / 4f). When a release is on back_half == "per_area"
+    # and all three are wired, the development stage runs the per-area matrix (Design
+    # fan-out → Design Review pause → Develop → blind Test → bounce) instead of the
+    # per-PI pi_runner. Left None for the legacy per-PI path.
+    design_provider: AreaProvider | None = None
+    develop_provider: AreaProvider | None = None
+    test_provider: AreaProvider | None = None
+    per_area_max_rounds: int = 3
 
 
 @dataclass
@@ -206,6 +240,7 @@ class ReleaseScheduler:
     _HALTS = frozenset({
         StepKind.AWAIT_FREEZE, StepKind.RESOLVE_CONFLICTS,
         StepKind.AWAIT_RECONCILIATION_REVIEW, StepKind.AWAIT_ARCHITECTURE_REVIEW,
+        StepKind.AWAIT_DESIGN_REVIEW,
         StepKind.DONE, StepKind.BLOCKED,
     })
 
@@ -235,7 +270,9 @@ class ReleaseScheduler:
     def _run(self) -> ReleaseRunReport:
         rid = self.cfg.release_identifier
         report = ReleaseRunReport(release_identifier=rid)
-        dev_lane = self.cfg.pi_runner is not None
+        # The dev lane runs when the per-PI runner is wired, OR when the per-area
+        # back-half seams are all wired (PI-249) — either path drives past `ready`.
+        dev_lane = self.cfg.pi_runner is not None or self._per_area_seams_wired()
 
         for _ in range(self.cfg.max_steps):
             snap = self._read_state(rid)
@@ -250,6 +287,9 @@ class ReleaseScheduler:
                 all_pis_delivered=snap["all_pis_delivered"],
                 qa_passed=snap["qa_passed"],
                 test_passed=snap["test_passed"],
+                back_half=snap["back_half"],
+                area_specs_present=snap["area_specs_present"],
+                design_signed=snap["design_signed"],
             )
             report.steps.append(f"{snap['status']} → {step.kind.value}")
             if step.kind in self._HALTS:
@@ -283,6 +323,10 @@ class ReleaseScheduler:
             self._transition(rid, "development")
         elif step.kind is k.DEVELOP:
             return self._develop_step(rid)
+        elif step.kind is k.RUN_AREA_DESIGN:
+            return self._run_area_design(rid)
+        elif step.kind is k.RUN_PER_AREA_DEV:
+            return self._run_per_area_dev(rid)
         elif step.kind is k.TO_QA:
             self._transition(rid, "qa")
         elif step.kind is k.RUN_QA:
@@ -345,6 +389,38 @@ class ReleaseScheduler:
         with session_scope() as s:
             releases.transition(s, rid, to_status)
 
+    # -- per-area back-half handlers (PI-249 / 4f) --------------------------
+
+    def _per_area_seams_wired(self) -> bool:
+        return all((self.cfg.design_provider, self.cfg.develop_provider,
+                    self.cfg.test_provider))
+
+    def _run_area_design(self, rid: str) -> str | None:
+        """Fan out the per-area Design tasks (PI-245), authoring each area's spec via
+        the (area, architect) seam. Loops back; the next iteration pauses for the
+        consolidated Design Review."""
+        with session_scope() as s:
+            orch.run_area_design(s, rid, self.cfg.design_provider)
+        return None
+
+    def _run_per_area_dev(self, rid: str) -> str | None:
+        """Run the per-area Develop → blind Test → bounce loop (PI-247/248/249). On a
+        clean pass, advance development → qa so the next iteration hits the
+        release-level QA gate (two-level testing); otherwise halt with the loop's
+        status (needs_redesign / develop_blocked / needs_human)."""
+        with session_scope() as s:
+            out = orch.run_per_area_development(
+                s, rid,
+                develop_provider=self.cfg.develop_provider,
+                test_provider=self.cfg.test_provider,
+                max_rounds=self.cfg.per_area_max_rounds,
+            )
+        if out["status"] == "passed":
+            self._transition(rid, "qa")
+            return None
+        halted = f" (halted on {out['halted_on']})" if out.get("halted_on") else ""
+        return f"per-area development did not pass: {out['status']}{halted}"
+
     def _develop_step(self, rid: str) -> str | None:
         """Deliver the next eligible in-scope PI via the ADO runner (outside any
         session). Returns a halt reason if nothing is eligible or the PI does not
@@ -384,12 +460,13 @@ class ReleaseScheduler:
     # -- state reads --------------------------------------------------------
 
     def _read_state(self, rid: str) -> dict:
-        from crmbuilder_v2.access.repositories import reconciliation as recon
         from crmbuilder_v2.access.repositories import (
+            area_specs,
             release_demands,
             release_signoffs,
             releases,
         )
+        from crmbuilder_v2.access.repositories import reconciliation as recon
 
         with session_scope() as s:
             rel = releases.get_release(s, rid)
@@ -406,6 +483,11 @@ class ReleaseScheduler:
                     s, rid, "reconciliation") is not None,
                 "architecture_planning_signed": release_signoffs.fresh_signoff(
                     s, rid, "architecture_planning") is not None,
+                # Per-area back half (PI-249 / 4f): the mode + the Design-stage flags.
+                "back_half": rel.get("release_back_half", "per_pi"),
+                "area_specs_present": bool(area_specs.current_specs(s, rid)),
+                "design_signed": release_signoffs.fresh_signoff(
+                    s, rid, "design") is not None,
                 "all_pis_delivered": bool(in_scope) and delivered == set(in_scope),
                 "qa_passed": rel.get("release_qa_passed_at") is not None,
                 "test_passed": rel.get("release_test_passed_at") is not None,
@@ -618,7 +700,10 @@ def ado_pi_runner(
     driven to ``In Review``; the release loop reads its status to confirm delivery.
     """
     def _run(release_identifier: str, planning_item: str) -> None:
-        from crmbuilder_v2.scheduler.ado_scheduler import AdoScheduler, AdoSchedulerConfig
+        from crmbuilder_v2.scheduler.ado_scheduler import (
+            AdoScheduler,
+            AdoSchedulerConfig,
+        )
 
         AdoScheduler(AdoSchedulerConfig(
             planning_item=planning_item, api_base=api_base, engagement=engagement,
