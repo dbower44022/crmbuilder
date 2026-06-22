@@ -963,6 +963,12 @@ RELEASE_SIGNOFF_STAGES: frozenset[str] = frozenset(
 # side-by-side; the Phase-5 cutover flips the default to per_area and drops the field.
 RELEASE_BACK_HALF_MODES: frozenset[str] = frozenset({"per_pi", "per_area"})
 
+# `cost_event` source (PI-263 / PRJ-041, REQ-307, TOP-106) — which spend surface a
+# recorded AI cost came from: an in-process Anthropic SDK call (`sdk`) or a coding-fleet
+# `claude -p` agent invocation (`claude_cli`). The cost telemetry satellite records one
+# row per spend event; cost is computed uniformly from tokens via the price table.
+COST_SOURCES: frozenset[str] = frozenset({"sdk", "claude_cli"})
+
 # `area_spec` (PI-244 / PRJ-041, REQ-295) — the per-(release, area) implementation +
 # testable spec the matrix back half resolves. Each revision records the trigger
 # that caused it (the design-review rejection / develop gap / test bounce, or the

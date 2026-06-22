@@ -57,6 +57,7 @@ from crmbuilder_v2.access.vocab import (
     CHANGE_LOG_OPERATIONS,
     CLOSE_OUT_PAYLOAD_STATUSES,
     CONVERSATION_STATUSES,
+    COST_SOURCES,
     CRM_CANDIDATE_STATUSES,
     DECISION_STATUSES,
     DEDUP_ON_MATCH,
@@ -5154,4 +5155,64 @@ class TermRow(Base):
         CheckConstraint(_check_in("status", TERM_STATUSES), name="ck_term_status"),
         Index("ix_terms_engagement", "engagement_id"),
         Index("ix_terms_name", "name"),
+    )
+
+
+class CostEvent(EngagementScopedMixin, Base):
+    """One recorded AI spend event — a single model call's token usage + computed cost
+    (PI-263 / PRJ-041, REQ-307, topic Cost & Spend Controls).
+
+    The agent system spends on two surfaces: in-process Anthropic SDK calls (the
+    scheduler's demands / decomposition providers and the release-gate judge —
+    ``cost_source='sdk'``) and the ``claude -p`` coding fleet (``cost_source='claude_cli'``).
+    Each call writes one row here with its token counts and a ``cost_usd`` computed
+    uniformly from the per-model price table (``cost_pricing``); for a ``claude_cli`` row
+    the tool's self-reported total is kept in ``cost_reported_usd`` as a cross-check.
+
+    The attribution columns are **nullable tags** the call site fills with what it knows
+    (a release, planning item, work task, area, tier, pipeline stage); every total is a
+    SUM over a filter — there is no separate run id (re-runs are distinguished by time).
+
+    A **telemetry satellite**, not a governance object: engagement-scoped, surrogate PK,
+    append-only, with **no prefixed identifier, no reference edges, and no change_log**
+    discipline (the ``ResourceLock`` / ``AreaSpec`` pattern). High-volume machine rows
+    stay out of the governance graph.
+    """
+
+    __tablename__ = "cost_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    cost_source: Mapped[str] = mapped_column(String(16), nullable=False)
+    cost_model: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    cost_input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cost_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    cost_cache_write_tokens: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    cost_cache_read_tokens: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    cost_reported_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Attribution tags — all nullable; the call site fills what it knows.
+    release_identifier: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    planning_item: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    work_task: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    area: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    tier: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    stage: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    cost_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("cost_source", COST_SOURCES), name="ck_cost_event_source"
+        ),
+        Index(
+            "ix_cost_events_release",
+            "engagement_id",
+            "release_identifier",
+        ),
+        Index("ix_cost_events_created", "engagement_id", "cost_created_at"),
     )
