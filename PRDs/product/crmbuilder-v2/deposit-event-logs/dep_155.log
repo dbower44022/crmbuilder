@@ -1,0 +1,38 @@
+=== Applying close-out payload ===
+Source: ../PRDs/product/crmbuilder-v2/close-out-payloads/ses_230.json
+Label:  SES-230 — Source instance mapping model design (re-keyed from sandbox SES-174)
+Deposit event: DEP-155
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-155 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (2 records) ===
+  ✓ POST planning_items  PI-255 (HTTP 201)
+  ✓ POST planning_items  PI-256 (HTTP 201)
+
+=== decisions (6 records) ===
+  ✓ POST decisions  DEC-575 (HTTP 201)
+  ✓ POST decisions  DEC-576 (HTTP 201)
+  ✓ POST decisions  DEC-577 (HTTP 201)
+  ✓ POST decisions  DEC-578 (HTTP 201)
+  ✓ POST decisions  DEC-579 (HTTP 201)
+  ✓ POST decisions  DEC-580 (HTTP 201)
+
+=== references (10 records) ===
+  ✓ POST references  DEC-575 decided_in SES-230 (HTTP 201)
+  ✓ POST references  DEC-576 decided_in SES-230 (HTTP 201)
+  ✓ POST references  DEC-577 decided_in SES-230 (HTTP 201)
+  ✓ POST references  DEC-578 decided_in SES-230 (HTTP 201)
+  ✓ POST references  DEC-579 decided_in SES-230 (HTTP 201)
+  ✓ POST references  DEC-580 decided_in SES-230 (HTTP 201)
+  ✓ POST references  SES-230 session_follows_from SES-173 (HTTP 201)
+  ✓ POST references  SES-230 is_about PI-184 (HTTP 201)
+  ✓ POST references  PI-255 planning_item_belongs_to_project PRJ-027 (HTTP 201)
+  ✓ POST references  PI-256 planning_item_belongs_to_project PRJ-027 (HTTP 201)
+
+✓ All 20 operations complete.
+
+✓ Recorded apply as deposit_event DEP-155 (HTTP 201).

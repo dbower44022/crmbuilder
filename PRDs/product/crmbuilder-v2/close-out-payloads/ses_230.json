@@ -1,0 +1,140 @@
+{
+  "label": "SES-230 — Source instance mapping model design (re-keyed from sandbox SES-174)",
+  "session": {
+    "session_identifier": "SES-230",
+    "session_title": "Source Instance Mapping Model — Design Session",
+    "session_description": "An in-depth design discussion on how source instances relate to the canonical V2 design. The session opened with a survey of the existing V2 instance architecture (PRJ-027) and the engine-neutral design model (PRJ-025), establishing the gap: no binding between methodology-layer records and live instances, no temporal change model, and an underdeveloped auto-promotion assumption in the PRJ-027 reconcile algorithm. The discussion then narrowed to source vs. target instance semantics — source instances are design inputs; target instances are deployment surfaces — and established the source mapping model: a candidate-gated, human-decision-driven layer governing how source objects relate to canonical design objects. It covered the three mapping decision types (direct, referential-exact, referential-interpreted) plus explicit rejection; the fractal decision structure applying the same four-outcome model at entity, field, and value levels; the join mapping as a standard relational join declared at the entity-mapping level and inherited by field mappings; the principle that no source can drive the design (multiple sources can map to the same design differently); temporal change handling across four scenarios; and the full seven-table data model.",
+    "session_medium": "chat",
+    "session_medium_metadata": {},
+    "session_participants": ["Doug Bower", "Claude"],
+    "session_status": "complete",
+    "session_executive_summary": "Established the source instance mapping model for V2: discovery produces candidates rather than canonical objects (auto-promotion eliminated), with a fractal four-outcome mapping decision structure (direct / referential-exact / referential-interpreted / rejected) applied at entity, field, and value levels; join conditions declared once at the entity level and inherited downward; staleness-signalled temporal change handling that never auto-updates a mapping; rejection records preserved as supersession chains; and per-(source, design) mapping scope with prior mappings as a suggestion engine. Output: the source-mapping-design.md design document plus two follow-on planning items (PI-255 schema/access/reconciler, PI-256 candidate review UI).",
+    "session_notes": "Artifact produced: PRDs/product/crmbuilder-v2/source-mapping-design.md (new design document). In-flight at end: an implementation design session — how to implement the source mapping model (schema migrations, access layer, REST API, reconciler changes, candidate review UI). Re-keyed from the sandbox-authored SES-174 payload after identifier heads advanced past the originally-planned SES-174/CNV-088/DEC-451..456/PI-202..203 (SES-077 re-keying pattern)."
+  },
+  "conversation": {
+    "conversation_identifier": "CNV-155",
+    "conversation_title": "Source instance mapping model design",
+    "conversation_purpose": "Design how source instances map to the canonical V2 design, and the temporal/lifecycle model around those mappings.",
+    "conversation_description": "The design conversation that produced DEC-575..580 and scoped PI-255/PI-256, captured in source-mapping-design.md.",
+    "conversation_status": "complete",
+    "conversation_summary": "Source mapping model designed: candidate-gated mappings, fractal four-outcome decisions, inherited joins, staleness signalling, supersession-based rejection, and per-(source, design) scope with prior-mapping suggestions.",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-155",
+        "target_type": "session",
+        "target_id": "SES-230",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "work_tickets": [],
+  "planning_items": [
+    {
+      "identifier": "PI-255",
+      "title": "Source mapping model — schema, access layer, and reconciler integration",
+      "item_type": "pending_work",
+      "description": "Implement the source mapping data model established in SES-230. Scope: seven new tables (source_mapping, source_mapping_target, source_mapping_join, field_mapping, field_mapping_translation, value_mapping, mapping_candidate) with SQLite and Postgres migrations; access-layer repositories for each; REST endpoints; integration with the PRJ-027 reconciler to write candidates instead of auto-promoting; two new instance_membership states (candidate_pending, mapping_stale). Blocked by PI-185 (PRJ-027 design pass).",
+      "status": "Draft",
+      "executive_summary": "Build the source mapping data model (seven tables + access layer + REST + reconciler integration) so discovered source objects become human-gated candidates rather than auto-promoted canonical design objects."
+    },
+    {
+      "identifier": "PI-256",
+      "title": "Candidate review UI — desktop panel for resolving mapping candidates",
+      "item_type": "pending_work",
+      "description": "Design and build the desktop panel for reviewing and resolving mapping candidates surfaced by the reconciler. Includes: candidate list grouped by confidence bucket; decision workflow for each candidate; staleness review workflow; supersession chain display for rejected-then-reinstated mappings. Blocked by PI-255.",
+      "status": "Draft",
+      "executive_summary": "Build the desktop panel that lets a human review and resolve the mapping candidates the reconciler produces. It groups candidates by suggestion confidence bucket, drives the per-candidate mapping decision workflow (direct / referential-exact / referential-interpreted / reject), surfaces the staleness review queue when source or design changes flag a mapping, and renders the supersession chain for rejected-then-reinstated mappings. Blocked by PI-255."
+    }
+  ],
+  "commits": [],
+  "decisions": [
+    {
+      "identifier": "DEC-575",
+      "title": "Source instances are design inputs requiring explicit mapping decisions; auto-promotion is eliminated",
+      "context": "PRJ-027's reconcile algorithm (§6, step 3) specified that when no canonical match exists for a discovered source object, the system automatically creates a canonical design object. This was convenient but incorrect: it treats discovery as authorization, which fails when multiple sources have different structures that should map differently to the same design.",
+      "decision": "Discovery produces candidates, not canonical design objects. The `mapping_candidate` table is the reconciler's output surface. Candidates become mapping records only when a human makes an explicit mapping decision. The four mapping decision outcomes are: direct map (1:1 identity), referential-exact (same intent, different surface), referential-interpreted (requires translation logic), and explicit rejection. Every discovered source object requires one of these four decisions before it influences the canonical design.",
+      "rationale": "Multiple source instances can map to the same canonical design, and each may have a different mapping. Therefore no source can drive the design — the design must stand independently of any source. This is the same principle as a semantic layer in business intelligence: the source data informs the design but does not author it. Eliminating auto-promotion enforces this boundary explicitly.",
+      "alternatives_considered": "Auto-promotion with a review step (rejected: this still creates canonical records before a decision is made, polluting the design with unapproved objects). Source-driven design for single-source engagements with manual override for multi-source (rejected: creates two modes of operation that diverge over time and complicate the temporal change model).",
+      "consequences": "The PRJ-027 reconcile algorithm step 3 is superseded. The `instance_membership` join gains two new states: `candidate_pending` and `mapping_stale`. A `mapping_candidate` table must be added to the schema. The PI-185 design pass must incorporate this model.",
+      "decision_date": "2026-06-22",
+      "status": "Active",
+      "executive_summary": "Discovery produces human-gated candidates rather than canonical design objects, and auto-promotion is eliminated. Every discovered source object requires one of four explicit decisions — direct map, referential-exact, referential-interpreted, or rejection — before it can influence the canonical design. Because multiple sources can map to the same design differently, no single source is allowed to author the design; the design stands independently, like a BI semantic layer informed by but not written by its sources."
+    },
+    {
+      "identifier": "DEC-576",
+      "title": "Mapping decisions are fractal: the same four-outcome structure applies at entity, field, and value levels",
+      "context": "The mapping decision model needed to handle structural mismatches between source and design — not just field-level name differences but entity-level structural differences (one source entity mapping to multiple design entities) and value-level differences (source enum values that don't correspond directly to design enum values).",
+      "decision": "The four-outcome mapping decision structure (direct, referential-exact, referential-interpreted, rejected) applies at three levels: entity level (establishes structural frame), field level (subordinate to entity mapping, inherits structural frame), and value level (for interpreted enum fields, subordinate to field mapping). A field mapping with interpreted type translation is not fully resolved until every source enum value has an explicit value-level mapping decision. Partially resolved is a distinct status from fully resolved.",
+      "rationale": "The CBM Mentor example demonstrates why entity-level structure matters: a source `Mentor` entity may decompose into design `Contact` + `MentorProfile`. Field mappings cannot stand alone — they resolve within the structural context the entity mapping establishes. The value-level extension follows naturally: the same type mismatch that requires a field-level translation function may produce untranslatable individual values, which are themselves mapping decisions.",
+      "alternatives_considered": "Flat field-level mapping only (rejected: cannot handle entity decomposition, which is a real structural pattern in CRM consulting). Separate mapping models per level (rejected: introduces unnecessary complexity; the same four outcomes are correct at every level).",
+      "consequences": "The data model requires three distinct mapping tables (source_mapping, field_mapping, value_mapping) plus supporting tables (source_mapping_target, source_mapping_join, field_mapping_translation). Completeness is trackable: a mapping is fully resolved only when all levels beneath it are resolved.",
+      "decision_date": "2026-06-22",
+      "status": "Active",
+      "executive_summary": "The same four-outcome mapping decision (direct/referential-exact/referential-interpreted/rejected) applies fractally at entity, field, and value levels, with completeness rolling up from value to entity."
+    },
+    {
+      "identifier": "DEC-577",
+      "title": "The join condition belongs to the entity mapping and is inherited by all field mappings beneath it",
+      "context": "When a source entity maps to multiple design entities (decomposition), field mappings need a mechanism to locate the correct design record. The join condition involves field names on both sides that may differ between source and design.",
+      "decision": "The join condition is declared once at the entity mapping level in a `source_mapping_join` record. It carries: source entity + source join field, and design entity + design join field. Field names on either side may differ and are declared explicitly. All field mappings beneath the entity mapping inherit this join implicitly — they do not re-declare it. The traversal from the matched design entity to a further-related design entity is implicit from the design relationship between those entities. Completeness rule: if the entity mapping declares a decomposition into multiple design entities, those design entities must have a declared relationship between them in the design layer.",
+      "rationale": "This matches standard relational database join semantics — the strongest available precedent. The join is a property of the relationship between the source entity and the design entity graph, not a property of individual fields. Declaring it once at the entity level and inheriting it downward avoids redundancy and ensures consistency. The multi-hop traversal being implicit from the design relationship enforces the single-source-of-truth principle.",
+      "alternatives_considered": "Per-field join declaration (rejected: redundant and creates inconsistency risk). Join as part of the mapping record itself (rejected: violates single source of truth).",
+      "consequences": "The `source_mapping_join` table is structured as a table to support future multi-column join keys. Current scope is single-column joins. Multi-column join support is deferred.",
+      "decision_date": "2026-06-22",
+      "status": "Active",
+      "executive_summary": "The join condition is declared once at the entity-mapping level in a source_mapping_join record (source entity + source join field, design entity + design join field, names allowed to differ) and is inherited implicitly by every field mapping beneath it, following standard relational join semantics. Multi-hop traversal to further-related design entities is implicit from the design relationship, preserving a single source of truth; the join is modelled as a table to allow future multi-column keys, though current scope is single-column."
+    },
+    {
+      "identifier": "DEC-578",
+      "title": "Mapping changes produce staleness signals; mappings never update automatically",
+      "context": "Both the source instance and the canonical design can change after a mapping is established. The system needed a temporal change model that preserves mapping history and ensures human oversight of every change.",
+      "decision": "When a design object changes (rename, type change, structural change), affected mapping records transition to `stale` with a graduated severity: low (rename only) or high (type change or structural change). When a source audit discovers changes, affected mapping records go stale with signal source_changed. In both cases the mapping is preserved in its last-known-good state until human resolution. Mappings are never silently updated. Staleness clears only when a human resolves the mapping decision.",
+      "rationale": "Silent automatic updates would erase the audit trail of what was decided and when. The staleness signal with graduated severity gives the human the right amount of urgency. This is the correct application of the principle: the system suggests, the human decides.",
+      "alternatives_considered": "Lazy invalidation via last_audited_at timestamp only (rejected: doesn't distinguish stale-from-design-change from current). Automatic update for low-severity changes (rejected: erases the audit trail).",
+      "consequences": "The `source_mapping` and `field_mapping` tables require `status`, `stale_reason`, and `stale_severity` fields. The `instance_membership` join gains a `mapping_stale` state. The reconciler must check mapping records against current design state on every audit run.",
+      "decision_date": "2026-06-22",
+      "status": "Active",
+      "executive_summary": "When a design object changes (rename → low severity; type or structural change → high severity) or a source audit discovers changes (signal source_changed), affected mapping records transition to stale and are preserved in their last-known-good state. Mappings are never silently auto-updated; staleness clears only when a human resolves the mapping decision. This keeps the audit trail intact and applies the system-suggests / human-decides principle, requiring status, stale_reason, and stale_severity fields plus a mapping_stale membership state."
+    },
+    {
+      "identifier": "DEC-579",
+      "title": "Rejection records are lifecycle records with supersession chains; they are never deleted",
+      "context": "An explicit rejection is a decision: this source object was seen and deliberately excluded. The question was what happens when a client later needs that excluded object to be in the design.",
+      "decision": "When a rejected source object needs to be promoted: (1) the rejection record is closed with a timestamp and reversal reason; (2) a new unresolved candidate is created for the current state of the source field; (3) the standard mapping decision process applies against the current state of both source and design. The rejection record is never deleted — it is superseded. A `superseded_by` self-referential field on each mapping table makes the chain navigable in both directions.",
+      "rationale": "The rejection was a decision made at a point in time with a rationale. Deleting it loses that context permanently. Additionally, the source and design may both have changed since the rejection, so a reversal is not a simple undo — it is a fresh decision against the current state of both sides.",
+      "alternatives_considered": "Simple flag flip to un-rejected (rejected: loses history). Soft delete of rejection record + new candidate (rejected: soft delete is still effectively deletion from the audit trail perspective).",
+      "consequences": "Every mapping table requires a `superseded_by` self-referential nullable foreign key. The active record is always the one with `superseded_by = null` and `status != superseded`.",
+      "decision_date": "2026-06-22",
+      "status": "Active",
+      "executive_summary": "An explicit rejection is a lifecycle decision that is never deleted. Reversing it closes the rejection record with a timestamp and reversal reason, creates a new unresolved candidate for the source object's current state, and runs the standard mapping decision process against the current state of both source and design — so a reversal is a fresh decision, not an undo. A superseded_by self-referential foreign key on every mapping table makes the supersession chain navigable in both directions; the active record always has superseded_by = null."
+    },
+    {
+      "identifier": "DEC-580",
+      "title": "Mapping decisions are scoped per (source instance, canonical design) pair; prior mappings are the suggestion engine for new sources",
+      "context": "When a second source instance is added to an engagement, the question was whether its objects could inherit the mapping decisions already made for the first source.",
+      "decision": "Mapping decisions are per-(source instance, canonical design) pair. A second source starts with all objects as unresolved candidates. The prior source's resolved mappings serve as the suggestion engine, bucketed into confident suggestions (identical structure), partial suggestions (related but different), and net-new discoveries. Human confirmation is required for every candidate regardless of bucket.",
+      "rationale": "Each source has its own history and may have made configuration choices that diverge from another source even when the business intent is the same. Inheriting mappings automatically would suppress those differences. Making prior mappings the suggestion engine rather than the authority respects source independence while dramatically reducing onboarding friction.",
+      "alternatives_considered": "Automatic inheritance for identical objects (rejected: suppresses legitimate differences and violates the human-gates-every-mapping principle). No suggestions from prior sources (rejected: forces the second source to be mapped from scratch).",
+      "consequences": "The `mapping_candidate` table requires `suggestion_confidence` and `suggestion_basis` fields. The reconciler must query prior source mappings when generating candidates for a new source.",
+      "decision_date": "2026-06-22",
+      "status": "Active",
+      "executive_summary": "Mapping decisions are scoped per (source instance, canonical design) pair, so a second source begins with all of its objects as unresolved candidates rather than inheriting the first source's decisions. The prior source's resolved mappings act as a suggestion engine, bucketed into confident suggestions (identical structure), partial suggestions (related but different), and net-new discoveries — but human confirmation is required for every candidate regardless of bucket. This respects source independence while reducing onboarding friction, and requires suggestion_confidence and suggestion_basis fields on mapping_candidate."
+    }
+  ],
+  "references": [
+    { "source_type": "decision", "source_id": "DEC-575", "target_type": "session", "target_id": "SES-230", "relationship": "decided_in" },
+    { "source_type": "decision", "source_id": "DEC-576", "target_type": "session", "target_id": "SES-230", "relationship": "decided_in" },
+    { "source_type": "decision", "source_id": "DEC-577", "target_type": "session", "target_id": "SES-230", "relationship": "decided_in" },
+    { "source_type": "decision", "source_id": "DEC-578", "target_type": "session", "target_id": "SES-230", "relationship": "decided_in" },
+    { "source_type": "decision", "source_id": "DEC-579", "target_type": "session", "target_id": "SES-230", "relationship": "decided_in" },
+    { "source_type": "decision", "source_id": "DEC-580", "target_type": "session", "target_id": "SES-230", "relationship": "decided_in" },
+    { "source_type": "session", "source_id": "SES-230", "target_type": "session", "target_id": "SES-173", "relationship": "session_follows_from" },
+    { "source_type": "session", "source_id": "SES-230", "target_type": "planning_item", "target_id": "PI-184", "relationship": "is_about" },
+    { "source_type": "session", "source_id": "SES-230", "target_type": "project", "target_id": "PRJ-027", "relationship": "session_belongs_to_project" },
+    { "source_type": "planning_item", "source_id": "PI-255", "target_type": "project", "target_id": "PRJ-027", "relationship": "planning_item_belongs_to_project" },
+    { "source_type": "planning_item", "source_id": "PI-256", "target_type": "project", "target_id": "PRJ-027", "relationship": "planning_item_belongs_to_project" }
+  ],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
