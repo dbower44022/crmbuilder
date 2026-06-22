@@ -375,6 +375,7 @@ class ReleaseScheduler:
         with session_scope() as s:
             delta_sets = orch.reconciled_delta_sets(s, rid)
             orch.run_architecture_planning(s, rid, delta_sets)
+            artifact_reqs = _artifact_requirement_map(s, rid)
             pending = [
                 pi
                 for prj in releases._in_scope_projects(s, rid)
@@ -384,9 +385,15 @@ class ReleaseScheduler:
                 # delivered — there is nothing left to decompose or build for it.
                 and releases.pi_has_undelivered_requirements(s, pi)
             ]
+            pi_reqs = {
+                pi: set(releases._in_scope_requirements(s, pi)) for pi in pending
+            }
         for pi in pending:  # the decomposition agent runs outside the session
+            # REQ-266: hand the decomposer only this planning item's own designs,
+            # so its plan cannot absorb work that belongs to sibling items.
+            designs = _scope_designs_to_pi(delta_sets, artifact_reqs, pi_reqs[pi])
             spec = self.cfg.decomposition_provider(
-                {"release_identifier": rid, "planning_item": pi, "designs": delta_sets}
+                {"release_identifier": rid, "planning_item": pi, "designs": designs}
             )
             if spec:
                 with session_scope() as s:
@@ -447,6 +454,17 @@ class ReleaseScheduler:
         if pi is None:
             return ("development blocked: no eligible in-scope planning item "
                     "(unmet dependencies among the in-scope items)")
+        # REQ-274: re-validate the (possibly inherited) decomposition immediately
+        # before executing it — a stale or malformed phase graph from an earlier
+        # run is refused, not run.
+        from crmbuilder_v2.access.exceptions import ConflictError
+
+        with session_scope() as s:
+            try:
+                orch.validate_decomposition(s, pi)
+            except ConflictError as exc:
+                return (f"planning item {pi} has a malformed decomposition; "
+                        f"refusing to execute it — re-decompose first: {exc}")
         self.cfg.pi_runner(rid, pi)  # long; spawns ADO agents under the file lock
         with session_scope() as s:
             status = planning_items.get(s, pi)["status"]
@@ -832,3 +850,36 @@ def _confirmed_requirements(session, rid: str) -> list[dict]:
                     "acceptance_summary": row.requirement_acceptance_summary,
                 })
     return out
+
+
+def _artifact_requirement_map(session, rid: str) -> dict[tuple[str, str], set[str]]:
+    """Map each touched artifact to the requirements that demanded changes to it.
+
+    Built from the release's persisted demands (each carries its source
+    ``requirement_identifier`` + the artifact it changes), so a design delta-set
+    can be traced back to the requirements — and thus the planning item — it
+    belongs to (REQ-266).
+    """
+    from crmbuilder_v2.access.repositories import release_demands
+
+    out: dict[tuple[str, str], set[str]] = {}
+    for d in release_demands.as_reconcile_input(session, rid):
+        key = (d["artifact_type"], d["artifact_identifier"])
+        out.setdefault(key, set()).add(d["requirement_identifier"])
+    return out
+
+
+def _scope_designs_to_pi(
+    delta_sets: list[dict],
+    artifact_reqs: dict[tuple[str, str], set[str]],
+    pi_reqs: set[str],
+) -> list[dict]:
+    """REQ-266: keep only the design delta-sets whose artifact was demanded by one
+    of this planning item's own requirements, so its decomposition input cannot
+    reach sibling items' work."""
+    return [
+        ds
+        for ds in delta_sets
+        if artifact_reqs.get((ds["artifact_type"], ds["artifact_identifier"]), set())
+        & pi_reqs
+    ]

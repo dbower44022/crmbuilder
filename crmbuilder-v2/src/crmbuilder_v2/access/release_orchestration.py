@@ -162,6 +162,74 @@ def run_architecture_planning(
     return planning.plan_release(session, release_identifier, delta_sets)
 
 
+# The three delivery phases run strictly in this order; a decomposition's phases
+# must be a subsequence of it and every blocked_by edge must point from a later
+# phase to an earlier one (REQ-258 / REQ-274).
+_PHASE_RANK = {"Design": 0, "Develop": 1, "Test": 2}
+
+# REQ-276: a generous runaway-fan-out backstop. A single planning item's
+# decomposition above this many work tasks is rejected rather than dispatched —
+# proportionality is driven by scoping the decomposition to one planning item's
+# own designs (REQ-266); this only catches absurd over-production.
+_MAX_WORK_TASKS_PER_PLANNING_ITEM = 40
+
+
+def _ws_blocked_by(session: Session, ws_id: str) -> list[str]:
+    """The workstreams a workstream is ``blocked_by`` (its phase predecessors)."""
+    from crmbuilder_v2.access.repositories import _governance as gov
+
+    edges = gov.outbound_edges(
+        session, source_type="workstream", source_id=ws_id,
+        relationship="blocked_by", target_type="workstream",
+    )
+    return [e.target_id for e in edges]
+
+
+def validate_decomposition(session: Session, pi_identifier: str) -> None:
+    """Re-validate an existing decomposition as well-formed before execution (REQ-274).
+
+    Checks the *persisted* phase graph — not the authoring spec — so a stale or
+    malformed decomposition inherited from an earlier run is rejected rather than
+    run: at most one workstream per phase, phases drawn from the known set, and
+    every ``blocked_by`` edge pointing from a later phase to an earlier one
+    (which also makes the phase graph acyclic). Raises :class:`ConflictError` on a
+    malformed graph; a planning item with no (live) decomposition validates
+    vacuously. This is the execute-time counterpart to the create-time checks in
+    :func:`decompose_planning_item_direct` (extending REQ-258 to re-validation).
+    """
+    phase_of: dict[str, str] = {}
+    for ws_id in releases._pi_workstreams(session, pi_identifier):
+        ws = ws_repo.get_workstream(session, ws_id)
+        if ws is None or ws.get("workstream_deleted_at"):
+            continue  # a cleared/soft-deleted phase is not part of the live graph
+        phase_of[ws_id] = ws["workstream_phase_type"]
+    if not phase_of:
+        return
+    types = list(phase_of.values())
+    dups = sorted({p for p in types if types.count(p) > 1})
+    if dups:
+        raise ConflictError(
+            f"decomposition of {pi_identifier!r} repeats phase(s) {dups}: a "
+            "planning item has at most one workstream per delivery phase"
+        )
+    unknown = sorted({p for p in types if p not in _PHASE_RANK})
+    if unknown:
+        raise ConflictError(
+            f"decomposition of {pi_identifier!r} has unknown phase(s) {unknown}; "
+            f"phases must be among {sorted(_PHASE_RANK)}"
+        )
+    for ws_id, phase in phase_of.items():
+        for blocker in _ws_blocked_by(session, ws_id):
+            if blocker not in phase_of:
+                continue
+            if _PHASE_RANK[phase_of[blocker]] >= _PHASE_RANK[phase]:
+                raise ConflictError(
+                    f"decomposition of {pi_identifier!r} is malformed: the "
+                    f"{phase} phase is blocked_by the {phase_of[blocker]} phase, "
+                    "but phases must run Design -> Develop -> Test in order"
+                )
+
+
 def decompose_planning_item_direct(
     session: Session, pi_identifier: str, workstreams: list[dict]
 ) -> dict:
@@ -201,6 +269,30 @@ def decompose_planning_item_direct(
             f"decomposition of {pi_identifier!r} repeats phase(s) "
             f"{duplicates}: a planning item has at most one workstream per "
             "delivery phase (a well-formed, serially-ordered phase structure)"
+        )
+    # The spec's phases must be a valid Design -> Develop -> Test subsequence; the
+    # workstreams are chained in spec order, so an out-of-order spec would build a
+    # malformed (e.g. Design-blocked_by-Test) graph (REQ-258 / REQ-274).
+    unknown = sorted({p for p in phase_types if p not in _PHASE_RANK})
+    if unknown:
+        raise ConflictError(
+            f"decomposition of {pi_identifier!r} has unknown phase(s) {unknown}; "
+            f"phases must be among {sorted(_PHASE_RANK)}"
+        )
+    ranks = [_PHASE_RANK[p] for p in phase_types]
+    if ranks != sorted(ranks):
+        raise ConflictError(
+            f"decomposition of {pi_identifier!r} orders phases {phase_types}: "
+            "phases must be a Design -> Develop -> Test subsequence"
+        )
+    # REQ-276: refuse a runaway decomposition rather than dispatch a fleet for it.
+    total_tasks = sum(len(spec.get("work_tasks", [])) for spec in workstreams)
+    if total_tasks > _MAX_WORK_TASKS_PER_PLANNING_ITEM:
+        raise ConflictError(
+            f"decomposition of {pi_identifier!r} has {total_tasks} work tasks, "
+            f"over the {_MAX_WORK_TASKS_PER_PLANNING_ITEM} cap for one planning "
+            "item — scope it to the item's own requirements (it likely absorbed "
+            "sibling work)"
         )
     created_ws: list[dict] = []
     created_wt: list[dict] = []

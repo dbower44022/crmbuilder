@@ -768,6 +768,11 @@ def transition(
     # status and the ``release_shipped_at`` stamp commit atomically.
     if to_status == "shipped":
         _complete_delivered_projects(session, identifier)
+    # REQ-275: cancelling a release clears its planning items' phase plans, so a
+    # later run never inherits a stale decomposition. Runs inside the cancel
+    # transaction.
+    if to_status == "cancelled":
+        _clear_decompositions(session, identifier)
     session.flush()
 
     after = to_dict(row)
@@ -813,6 +818,56 @@ def _complete_delivered_projects(
         projects.patch_project(session, project_id, status="complete")
         completed.append(project_id)
     return completed
+
+
+def _clear_decompositions(
+    session: Session, release_identifier: str
+) -> list[str]:
+    """Clear the phase plans of a cancelled release's planning items (REQ-275).
+
+    For every in-scope planning item, delete each workstream's work tasks and the
+    workstream itself, removing the ``work_task_belongs_to_workstream``,
+    ``blocked_by`` and ``workstream_belongs_to_planning_item`` edges so the
+    edge-based :func:`_pi_workstreams` no longer returns them — a later run sees
+    no leftover decomposition and re-plans from scratch. Returns the cleared
+    workstream identifiers.
+    """
+    from crmbuilder_v2.access.repositories import (
+        references,
+        work_tasks,
+        workstreams,
+    )
+
+    cleared: list[str] = []
+    for prj in _in_scope_projects(session, release_identifier):
+        for pi in _in_scope_planning_items(session, prj):
+            for ws in _pi_workstreams(session, pi):
+                for wt in _ws_work_tasks(session, ws):
+                    references.delete(
+                        session, source_type="work_task", source_id=wt,
+                        target_type="workstream", target_id=ws,
+                        relationship="work_task_belongs_to_workstream",
+                        _skip_cardinality_check=True,
+                    )
+                    work_tasks.delete_work_task(session, wt)
+                for blocker in gov.outbound_edges(
+                    session, source_type="workstream", source_id=ws,
+                    relationship="blocked_by", target_type="workstream",
+                ):
+                    references.delete(
+                        session, source_type="workstream", source_id=ws,
+                        target_type="workstream", target_id=blocker.target_id,
+                        relationship="blocked_by", _skip_cardinality_check=True,
+                    )
+                references.delete(
+                    session, source_type="workstream", source_id=ws,
+                    target_type="planning_item", target_id=pi,
+                    relationship="workstream_belongs_to_planning_item",
+                    _skip_cardinality_check=True,
+                )
+                workstreams.delete_workstream(session, ws)
+                cleared.append(ws)
+    return cleared
 
 
 def _record_pass(
