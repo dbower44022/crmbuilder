@@ -116,9 +116,12 @@ per-PI path** throughout — nothing here removes the per-PI path (that is Phase
 
 - **4e — Per-area blind Test + bounce (NEW).** One Test task per area on the `(area,
   tester)` contract, implementing the **testable spec blind** to the Developer's code,
-  verifying behaviour; on `failed` it **bounces to that area's Develop** (reusing the
-  findings/area-reopen substrate). *Areas:* scheduler + build areas. *Verify:* a
-  seeded defect is caught by the blind Tester and bounced to Develop.
+  verifying behaviour; on `failed` it **bounces to that area's Develop** via a lighter
+  in-pass retry recording a `finding` per bounce (Decision 5) — routing to Develop
+  (code bug) or Design (spec gap → a new `area_spec` revision); the governed
+  area-reopen is reserved for the outer cross-area/post-freeze case. *Areas:*
+  scheduler + build areas. *Verify:* a seeded defect is caught by the blind Tester and
+  bounced to Develop.
 
 - **4f — Two-level wiring + parallel-lane proof (EXTEND).** Wire per-area Test under
   the existing release-level QA/Test gates; put the whole per-area back half behind a
@@ -171,9 +174,19 @@ These materially shape the build; each is a one-issue discussion.
    secrecy). Residual risk (a Tester peeking at the dev code) is accepted; the
    release-level Test gate (§4.10) is the backstop. The optional file-reference
    checker is **out of scope** unless a real run shows it is needed.
-5. **Bounce mechanism** — reuse `finding` + area-reopen for Test→Develop bounce, or a
-   lighter in-pass retry (Test `failed` → re-dispatch that area's Develop with the
-   findings). Affects how rework is recorded vs how fast the loop turns.
+5. **Bounce mechanism — LOCKED (2026-06-21): lighter in-pass retry, recording a
+   `finding` per bounce.** Test `failed` → the scheduler re-dispatches that area's
+   Develop with the failing criteria as input → Develop fixes → Test re-runs; each
+   bounce is recorded as a `finding` (provenance) but drives the retry directly, no
+   approval gate. If a bounce reveals a *spec gap* (not a code bug), the finding
+   becomes the trigger link on a new `area_spec` revision (Decision 1) and the
+   Architect re-designs — so a bounce routes to Develop (code) or Design (spec), with
+   the finding as the durable record either way. The heavyweight area-reopen (PI-212,
+   blast radius + approval tier) is **reserved for the outer case** — a later area
+   finding an already-frozen earlier area insufficient (cross-area, post-freeze) — and
+   is left unchanged. Chosen over wrapping the tight inner Test→Develop loop in
+   governed reopens (overkill: the area is not yet frozen; this is intra-area
+   iteration).
 
 ---
 
