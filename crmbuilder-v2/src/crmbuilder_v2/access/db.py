@@ -35,6 +35,14 @@ def _enable_sqlite_pragmas(dbapi_conn, _conn_record) -> None:
     # the concurrent-POST identifier-assignment tests spin up several writers
     # at once.
     cursor.execute("PRAGMA busy_timeout=5000")
+    # WAL journal mode (REQ-296): a reader never blocks while another connection
+    # is writing (and vice versa), so concurrent access from the desktop app,
+    # the API, the MCP server, and background agents does not freeze reads. In
+    # rollback-journal (delete) mode a single writer blocks all readers, which
+    # timed out the desktop UI's periodic refresh and cascaded into a reconnect
+    # loop. WAL is persistent at the database-file level; re-asserting it on each
+    # connect is idempotent.
+    cursor.execute("PRAGMA journal_mode=WAL")
     cursor.close()
     # Disable pysqlite's legacy autocommit-emulation: by default the driver
     # opens transactions lazily and runs DDL / SAVEPOINT statements in
