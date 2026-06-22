@@ -96,6 +96,29 @@ def get(identifier: str, include_deleted: bool = False):
         return ok(record)
 
 
+@router.get("/{identifier}/history")
+def history(identifier: str, limit: int = 1000):
+    """The release's durable progress account (PI-273 / REQ-314).
+
+    Returns the release's current pipeline position plus the ordered sequence of
+    progress events — stage transitions, agent dispatches, verifies, merges,
+    halts, no-ops, and per-agent ``agent_outcome`` records — reconstructed from
+    the ``pipeline_events`` log, so an operator can read how the release got to
+    where it is without assembling it from console output or transcripts.
+    """
+    from crmbuilder_v2.access.repositories import pipeline_events
+
+    with readonly_session() as s:
+        record = releases.get_release(s, identifier)
+        if record is None:
+            raise NotFoundError("release", identifier)
+        return ok({
+            "release_identifier": identifier,
+            "status": record["release_status"],
+            "events": pipeline_events.history(s, identifier, limit=limit),
+        })
+
+
 @router.get("/{identifier}/composition")
 def composition(identifier: str):
     """The release's release-scoped Projects and their Planning Items (derived)."""

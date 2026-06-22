@@ -5592,3 +5592,60 @@ class CostEvent(EngagementScopedMixin, Base):
         ),
         Index("ix_cost_events_created", "engagement_id", "cost_created_at"),
     )
+
+
+# The kinds of pipeline-progress event the scheduler records (REQ-313), plus the
+# outcome classes an agent invocation can resolve to (REQ-312).
+PIPELINE_EVENT_KINDS: frozenset[str] = frozenset(
+    {"transition", "step", "dispatch", "verify", "merge", "halt", "no_op",
+     "agent_outcome"}
+)
+AGENT_OUTCOMES: frozenset[str] = frozenset(
+    {"delivered", "no_op", "halted", "failed", "timed_out"}
+)
+
+
+class PipelineEvent(EngagementScopedMixin, Base):
+    """One durable pipeline-progress / agent-activity event (PI-273, REQ-312/313/314).
+
+    A telemetry satellite like :class:`CostEvent`: engagement-scoped, surrogate PK,
+    append-only, with **no prefixed identifier, no reference edges, and no
+    change_log** discipline. The release pipeline writes one row per step it takes
+    — a stage transition, an agent dispatch, a verify, a merge, a halt, a no-op —
+    and one ``agent_outcome`` row per agent invocation carrying its outcome class,
+    reasoning summary, touched files, commit, and transcript pointer. The nullable
+    correlation tags (release / planning item / workstream / work task) let a
+    single query reconstruct where a release is and how it got there (REQ-314).
+    """
+
+    __tablename__ = "pipeline_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    # An ``agent_outcome`` event's invocation outcome class; NULL for other kinds.
+    outcome: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    # A short human-readable summary: the step detail or the agent's reasoning.
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Structured extras: from/to status, touched_files, commit_sha, transcript_path.
+    detail: Mapped[dict | None] = mapped_column(JSONColumnNoneAsNull, nullable=True)
+    # Correlation tags — all nullable; the call site fills what it knows (REQ-314).
+    release_identifier: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    planning_item: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    workstream: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    work_task: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    area: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    tier: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    pipeline_event_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("event_kind", PIPELINE_EVENT_KINDS),
+            name="ck_pipeline_event_kind",
+        ),
+        Index("ix_pipeline_events_release", "engagement_id",
+              "release_identifier", "pipeline_event_created_at"),
+        Index("ix_pipeline_events_created", "engagement_id",
+              "pipeline_event_created_at"),
+    )

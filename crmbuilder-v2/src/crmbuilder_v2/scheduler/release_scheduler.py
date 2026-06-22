@@ -409,7 +409,18 @@ class ReleaseScheduler:
         from crmbuilder_v2.access.repositories import releases
 
         with session_scope() as s:
+            before = releases.get_release(s, rid)
+            from_status = (before or {}).get("release_status")
             releases.transition(s, rid, to_status)
+        # REQ-313: the conductor's stage transition is a durable pipeline event.
+        from crmbuilder_v2.scheduler import event_capture
+
+        event_capture.emit(
+            self._release_engagement(), kind="transition",
+            summary=f"{from_status} -> {to_status}",
+            detail={"from": from_status, "to": to_status},
+            release_identifier=rid,
+        )
 
     # -- per-area back-half handlers (PI-249 / 4f) --------------------------
 

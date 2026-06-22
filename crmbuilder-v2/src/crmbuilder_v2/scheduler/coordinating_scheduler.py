@@ -695,6 +695,19 @@ class CoordinatingScheduler:
         )
         return {e["source_id"] for e in edges if e.get("source_type") == "work_task"}
 
+    def _emit(
+        self, kind, work_task_id, *, workstream=None, area=None,
+        outcome=None, summary=None, detail=None,
+    ):
+        """Record one durable pipeline event (PI-273), best-effort — never raises."""
+        from crmbuilder_v2.scheduler import event_capture
+
+        event_capture.emit(
+            self.config.engagement, kind=kind, outcome=outcome,
+            summary=summary, detail=detail, work_task=work_task_id,
+            workstream=workstream, area=area, tier=getattr(self.config, "tier", None),
+        )
+
     # --- one iteration: spawn → verify → merge / pause -------------------
     def run_one(self) -> IterationReport:
         cfg = self.config
@@ -714,9 +727,16 @@ class CoordinatingScheduler:
                 pause_reason=reason,
             )
 
+        ws_id = (workstream or {}).get("workstream_identifier")
         self.log(
             f"▶ dispatching {assignment.work_task_id} (area={assignment.area}, "
             f"profile={assignment.profile_id}) → worktree branch {assignment.branch}"
+        )
+        # REQ-313: the dispatch is a durable pipeline event, not just a log line.
+        self._emit(
+            "dispatch", assignment.work_task_id, workstream=ws_id, area=assignment.area,
+            summary=f"dispatch to {assignment.profile_id} on {assignment.branch}",
+            detail={"profile_id": assignment.profile_id, "branch": assignment.branch},
         )
         if cfg.dry_run:
             self.log("  (dry-run) resolved contract; not spawning")
@@ -743,6 +763,7 @@ class CoordinatingScheduler:
             # self-terminate is killed at the deadline; we still verify, and a
             # completed-and-committed result merges anyway (DEC: verify-by-result).
             returncode: int | None = None
+            timed_out = False
             try:
                 proc = spawn(assignment.prompt, worktree.path)
                 returncode = proc.returncode
@@ -759,6 +780,7 @@ class CoordinatingScheduler:
                     stage="develop",
                 )
             except subprocess.TimeoutExpired:
+                timed_out = True
                 self.log(
                     f"  agent hit the {cfg.agent_timeout}s deadline and was "
                     "killed — verifying by result anyway"
@@ -776,6 +798,11 @@ class CoordinatingScheduler:
             halt_reason = pause_reason_for(refreshed, halt_ws)
             if halt_reason:
                 self.log(f"⏸ agent halted {assignment.work_task_id}: {halt_reason}")
+                self._emit(
+                    "agent_outcome", assignment.work_task_id, workstream=ws_id,
+                    area=assignment.area, outcome="halted", summary=halt_reason,
+                    detail={"agent_returncode": returncode},
+                )
                 return IterationReport(
                     result=TaskStatus.NEEDS_HUMAN,
                     work_task_id=assignment.work_task_id,
@@ -793,6 +820,11 @@ class CoordinatingScheduler:
                 self.log(
                     f"○ {assignment.work_task_id} no-op — already satisfied; "
                     "nothing to merge"
+                )
+                self._emit(
+                    "agent_outcome", assignment.work_task_id, workstream=ws_id,
+                    area=assignment.area, outcome="no_op",
+                    summary=(refreshed.get("work_task_notes") or "")[:500],
                 )
                 return IterationReport(
                     result=TaskStatus.SUCCEEDED,
@@ -818,6 +850,14 @@ class CoordinatingScheduler:
                 if verify_log_path:
                     reason += f" — output: {verify_log_path}"
                 self._flag_needs_attention(assignment.work_task_id, reason)
+                self._emit(
+                    "agent_outcome", assignment.work_task_id, workstream=ws_id,
+                    area=assignment.area,
+                    outcome="timed_out" if timed_out else "failed",
+                    summary=reason,
+                    detail={"agent_returncode": returncode,
+                            "verify_log_path": verify_log_path},
+                )
                 return IterationReport(
                     result=TaskStatus.NEEDS_HUMAN,
                     work_task_id=assignment.work_task_id,
@@ -847,6 +887,17 @@ class CoordinatingScheduler:
 
             self.log(
                 f"✔ {assignment.work_task_id} verified + merged into {cfg.base_branch}"
+            )
+            self._emit(
+                "merge", assignment.work_task_id, workstream=ws_id,
+                area=assignment.area,
+                summary=f"merged {assignment.branch} into {cfg.base_branch}",
+            )
+            self._emit(
+                "agent_outcome", assignment.work_task_id, workstream=ws_id,
+                area=assignment.area, outcome="delivered",
+                summary=f"verified + merged into {cfg.base_branch}",
+                detail={"branch": assignment.branch, "agent_returncode": returncode},
             )
             return IterationReport(
                 result=TaskStatus.SUCCEEDED,
