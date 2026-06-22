@@ -219,7 +219,55 @@ The Technical Reference marks each component "verified in code" vs "designed."
 
 ---
 
-## 5. Glossary (every term, explained as if to a five-year-old)
+## 5. Planned hardening — the SES-216 architecture walk (designed, pending approval)
+
+> **Status:** design direction only. The requirements below are **candidate /
+> awaiting human approval** in the Requirements Review panel; **nothing here is
+> built.** The authoritative records live in the V2 database — topics **TOP-099**
+> ("Release Pipeline Agent Guardrails") and **TOP-100** ("Pipeline Observability
+> and Progress Reporting") — not in this doc. Full narrative:
+> `Archive/agent-pipeline-annotated-map.md`. This complements the broader
+> `Agent-System-Target-Model.md` (same folder), which is designing the same
+> direction from first principles.
+
+A structured walk of the *running* pipeline — prompted by the costly REL-005 run,
+which spent roughly two hours and ~$40 rebuilding work that was already shipped —
+traced, agent by agent, *why* it went wrong, and turned the findings into
+requirements. The thrust, in plain language:
+
+- **Strict, database-stored contracts (REQ-278).** Every agent's instruction
+  sheet must be a *strict* job card — its role and hard limits, a checkable
+  definition of "done," and a required end-of-run report — and it must match what
+  the agent actually does. Today the cards are generic and advisory.
+- **Hard, area-specific rules + technology variants (REQ-280, REQ-281).** A
+  screen agent and a database agent must carry *different* enforced rules
+  (framework, design-and-color, conventions, tests); and one area (e.g. the UI)
+  must support more than one technology — a desktop UI *and* a web UI — as
+  distinct agents, even within a single customer.
+- **Stop-and-check guardrails (REQ-265…276).** Don't plan or build work that is
+  already shipped; check before starting (and stop if it's already done); commit
+  before verifying; verify within a time budget; and give every agent a real
+  "halt and ask a human" exit.
+- **Verify every handoff (REQ-279).** A receiving agent validates the inputs it
+  was handed before starting, instead of trusting them blindly.
+- **One area, one batch (REQ-283).** An Area Specialist Agent builds *all* of its
+  area's work for a phase in one go, across the whole release — not a fresh agent
+  per tiny Work Task — so context loads once and the agent sequences its own
+  steps. (This amends the older per-item split, REQ-024, and lifts the coherence
+  check to release scope, REQ-027/031.)
+- **Real observability (REQ-277).** One durable, queryable record of where a
+  release is and how it got there — replacing today's scatter of database
+  statuses, vanishing console output, and per-agent transcript files.
+
+The single sharpest finding: the system already contains one *excellent* example
+of how an agent gate should work — the release QA/Test gate, with its
+deterministic "fail-closed floor" plus grounded judgment plus structured
+findings. Most of the redesign is **propagating that one good pattern down** to
+the levels that were built without it.
+
+---
+
+## 6. Glossary (every term, explained as if to a five-year-old)
 
 Ordered so you can read top to bottom: the big ideas first, then the org, then
 the named "things" (entities), then the verbs and the safety mechanisms. An
