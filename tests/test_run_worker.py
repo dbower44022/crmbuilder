@@ -955,7 +955,7 @@ def test_entity_creations_partial_failure_marks_step_failed():
 
     call_count = {"value": 0}
 
-    def _fake_create(self_arg, _entity_def):
+    def _fake_create(self_arg, _entity_def, dry_run=False):
         call_count["value"] += 1
         # Second call fails.
         return call_count["value"] != 2
@@ -1489,11 +1489,11 @@ def test_security_step_teams_then_roles():
     ) as mock_team_cls, patch(
         "espo_impl.workers.run_worker.RoleManager"
     ) as mock_role_cls:
-        def _process_teams(_teams):
+        def _process_teams(_teams, dry_run=False):
             call_order.append("teams")
             return [TeamResult(name="Mentors", status=TeamStatus.CREATED)]
 
-        def _process_roles(_roles):
+        def _process_roles(_roles, dry_run=False):
             call_order.append("roles")
             return [RoleResult(name="Mentor", status=RoleStatus.CREATED)]
 

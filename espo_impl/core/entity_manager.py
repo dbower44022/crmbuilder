@@ -183,10 +183,14 @@ class EntityManager:
         self.output_fn("[WAIT]    Metadata cache ready", "green")
         return True
 
-    def _delete_entity(self, entity_def: EntityDefinition) -> bool:
+    def _delete_entity(
+        self, entity_def: EntityDefinition, dry_run: bool = False
+    ) -> bool:
         """Delete a custom entity from the instance.
 
         :param entity_def: Entity definition to delete.
+        :param dry_run: If True, log the planned delete and return
+            without issuing the API write.
         :returns: True if deleted or didn't exist, False on error.
         """
         espo_name = get_espo_entity_name(entity_def.name)
@@ -211,6 +215,11 @@ class EntityManager:
 
         # Delete the entity
         self.output_fn(f"[DELETE]  {espo_name} ...", "white")
+        if dry_run:
+            self.output_fn(
+                f"[DELETE]  {espo_name} ... would delete (preview)", "gray"
+            )
+            return True
         status_code, body = self.client.remove_entity(espo_name)
 
         if status_code == 401:
@@ -226,10 +235,14 @@ class EntityManager:
         self.output_fn(f"          {_format_error_detail(body)}", "red")
         return False
 
-    def _create_entity(self, entity_def: EntityDefinition) -> bool:
+    def _create_entity(
+        self, entity_def: EntityDefinition, dry_run: bool = False
+    ) -> bool:
         """Create a custom entity on the instance.
 
         :param entity_def: Entity definition to create.
+        :param dry_run: If True, log the planned create and return
+            without issuing the API write.
         :returns: True if created or already exists, False on error.
         """
         espo_name = get_espo_entity_name(entity_def.name)
@@ -260,6 +273,11 @@ class EntityManager:
         }
 
         self.output_fn(f"[CREATE]  {espo_name} ...", "white")
+        if dry_run:
+            self.output_fn(
+                f"[CREATE]  {espo_name} ... would create (preview)", "gray"
+            )
+            return True
         status_code, body = self.client.create_entity(payload)
 
         if status_code == 401:

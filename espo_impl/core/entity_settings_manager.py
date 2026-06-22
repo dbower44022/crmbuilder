@@ -41,11 +41,13 @@ class EntitySettingsManager:
         self.output_fn = output_fn
 
     def process_settings(
-        self, program: ProgramFile
+        self, program: ProgramFile, dry_run: bool = False
     ) -> list[SettingsResult]:
         """Apply entity settings for all entities in the program.
 
         :param program: Parsed and validated program file.
+        :param dry_run: If True, log planned settings updates and return
+            without issuing API writes.
         :returns: List of per-entity settings results.
         :raises EntitySettingsManagerError: On authentication failure.
         """
@@ -57,17 +59,19 @@ class EntitySettingsManager:
             if entity_def.settings is None:
                 continue
 
-            result = self._process_entity_settings(entity_def)
+            result = self._process_entity_settings(entity_def, dry_run)
             results.append(result)
 
         return results
 
     def _process_entity_settings(
-        self, entity_def: EntityDefinition
+        self, entity_def: EntityDefinition, dry_run: bool = False
     ) -> SettingsResult:
         """CHECK->ACT for a single entity's settings.
 
         :param entity_def: Entity definition with settings.
+        :param dry_run: If True, log the planned update and return
+            without issuing the API write.
         :returns: SettingsResult for this entity.
         :raises EntitySettingsManagerError: On authentication failure.
         """
@@ -125,6 +129,17 @@ class EntitySettingsManager:
         self.output_fn(
             f"[UPDATE]  {prefix} settings ({change_str}) ...", "yellow"
         )
+
+        if dry_run:
+            self.output_fn(
+                f"[UPDATE]  {prefix} settings ... would update (preview)",
+                "gray",
+            )
+            return SettingsResult(
+                entity=entity_def.name,
+                status=SettingsStatus.UPDATED,
+                changes=changes,
+            )
 
         payload = self._build_payload(entity_def, settings)
         act_status, act_body = self.client.update_entity(payload)

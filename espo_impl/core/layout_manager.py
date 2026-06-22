@@ -71,11 +71,14 @@ class LayoutManager:
         self,
         entity_def: EntityDefinition,
         field_definitions: list[FieldDefinition],
+        dry_run: bool = False,
     ) -> list[LayoutResult]:
         """Process all layouts defined for an entity.
 
         :param entity_def: Entity definition with layouts.
         :param field_definitions: Field definitions for c-prefix resolution.
+        :param dry_run: If True, log planned layout updates and return
+            without issuing API writes.
         :returns: List of layout results.
         """
         results: list[LayoutResult] = []
@@ -112,6 +115,7 @@ class LayoutManager:
                     field_definitions,
                     custom_field_names,
                     auto_place_name=auto_place_name,
+                    dry_run=dry_run,
                 )
             except LayoutManagerError:
                 self.output_fn(
@@ -139,6 +143,7 @@ class LayoutManager:
         field_definitions: list[FieldDefinition],
         custom_field_names: set[str],
         auto_place_name: bool,
+        dry_run: bool = False,
     ) -> LayoutResult:
         """Process a single layout: check → apply → verify.
 
@@ -150,6 +155,8 @@ class LayoutManager:
         :param custom_field_names: Set of custom field names (need c-prefix).
         :param auto_place_name: Whether to auto-prepend `name` to
             detail/edit layouts that do not place it explicitly.
+        :param dry_run: If True, log the planned update and return
+            without issuing the API write.
         :returns: LayoutResult.
         :raises LayoutManagerError: If 401 received.
         """
@@ -239,6 +246,15 @@ class LayoutManager:
 
         # Apply
         self.output_fn(f"[LAYOUT]  {prefix} ... APPLYING", "white")
+        if dry_run:
+            self.output_fn(
+                f"[LAYOUT]  {prefix} ... would update (preview)", "gray"
+            )
+            return LayoutResult(
+                entity=yaml_name,
+                layout_type=layout_type,
+                status=EntityLayoutStatus.UPDATED,
+            )
         put_status, put_body = self.client.save_layout(
             espo_name, layout_type, payload
         )

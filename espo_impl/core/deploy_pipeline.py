@@ -548,6 +548,7 @@ def deploy_pipeline(
     output_fn: OutputFn,
     *,
     skip_deletes: bool = False,
+    dry_run: bool = False,
     managers: DeployManagers | None = None,
 ) -> DeployOutcome:
     """Execute entity operations then field operations — the 12-step pipeline.
@@ -563,6 +564,10 @@ def deploy_pipeline(
     :param field_mgr: Field manager for field operations and report building.
     :param output_fn: ``(message, color)`` log callback.
     :param skip_deletes: If True, skip all entity delete operations.
+    :param dry_run: If True, run a non-destructive preview (PRJ-042 REQ-289):
+        every manager reports the action it *would* take (create/update/skip)
+        without writing to the target. Fields use ``field_mgr.preview``; email
+        templates are skipped (not previewable) and noted. Nothing is applied.
     :param managers: Manager classes to instantiate (defaults to the real set).
     :returns: A :class:`DeployOutcome` with the report and security results.
     :raises AuthenticationError: On any authentication failure during a step.
@@ -611,10 +616,11 @@ def deploy_pipeline(
             output_fn("", "white")
             output_fn("=== ENTITY DELETIONS ===", "white")
             for entity_def in deletes:
-                ok = entity_mgr._delete_entity(entity_def)
+                ok = entity_mgr._delete_entity(entity_def, dry_run=dry_run)
                 if not ok:
                     delete_fail_count["value"] += 1
-            entity_mgr.rebuild_cache()
+            if not dry_run:
+                entity_mgr.rebuild_cache()
             had_entity_ops_state["value"] = True
 
         def _entity_deletions_failure_check(_: Any) -> str | None:
@@ -646,7 +652,7 @@ def deploy_pipeline(
         output_fn("=== ENTITY CREATION ===", "white")
         successful_creates: list[str] = []
         for entity_def in creates:
-            ok = entity_mgr._create_entity(entity_def)
+            ok = entity_mgr._create_entity(entity_def, dry_run=dry_run)
             if not ok:
                 create_fail_count["value"] += 1
             else:
@@ -657,9 +663,10 @@ def deploy_pipeline(
                 # short-circuit when an entity is already cached. The poll is
                 # a single GET /Metadata, which is cheap.
                 successful_creates.append(entity_def.name)
-        entity_mgr.rebuild_cache()
-        if successful_creates:
-            entity_mgr.wait_for_metadata_ready(successful_creates)
+        if not dry_run:
+            entity_mgr.rebuild_cache()
+            if successful_creates:
+                entity_mgr.wait_for_metadata_ready(successful_creates)
         had_entity_ops_state["value"] = True
 
     def _entity_creations_failure_check(_: Any) -> str | None:
@@ -686,7 +693,7 @@ def deploy_pipeline(
         output_fn("", "white")
         output_fn("=== ENTITY SETTINGS ===", "white")
         settings_mgr = managers.entity_settings(client, output_fn)
-        return settings_mgr.process_settings(program)
+        return settings_mgr.process_settings(program, dry_run=dry_run)
 
     step_result, settings_out = run_step(
         "entity_settings",
@@ -701,10 +708,19 @@ def deploy_pipeline(
     settings_results = settings_out or []
 
     # --- Step 4: Email templates -------------------------------------
-    has_email_templates = any(
+    # Email templates have no preview path (compare + write are entangled), so
+    # a dry-run skips them and notes that they are not previewed.
+    _has_email_templates_declared = any(
         e.email_templates and e.action != EntityAction.DELETE
         for e in program.entities
     )
+    if dry_run and _has_email_templates_declared:
+        output_fn("", "white")
+        output_fn(
+            "=== EMAIL TEMPLATES === (not previewed — applied on deploy)",
+            "yellow",
+        )
+    has_email_templates = _has_email_templates_declared and not dry_run
 
     def _email_templates_body() -> list[Any]:
         output_fn("", "white")
@@ -782,7 +798,7 @@ def deploy_pipeline(
         if had_entity_ops:
             output_fn("", "white")
             output_fn("=== FIELD OPERATIONS ===", "white")
-        return field_mgr.run(program)
+        return field_mgr.preview(program) if dry_run else field_mgr.run(program)
 
     def _fields_failure_check(fr: Any) -> str | None:
         if fr is None:
@@ -813,7 +829,9 @@ def deploy_pipeline(
         # Either fields were skipped (no work) or fields failed. Either way we
         # still need a valid report to attach the remaining results and step
         # summary to.
-        report = field_mgr._build_report(program, "run", [])
+        report = field_mgr._build_report(
+            program, "preview" if dry_run else "run", []
+        )
 
     # Attach pre-field results to the report
     attach_settings_results(report, settings_results)
@@ -838,7 +856,7 @@ def deploy_pipeline(
             if not entity_def.layouts:
                 continue
             layout_results = layout_mgr.process_layouts(
-                entity_def, entity_def.fields
+                entity_def, entity_def.fields, dry_run=dry_run
             )
             report.layout_results.extend(layout_results)
 
@@ -908,7 +926,9 @@ def deploy_pipeline(
         output_fn("", "white")
         output_fn("=== RELATIONSHIP OPERATIONS ===", "white")
         rel_mgr = managers.relationship(client, output_fn)
-        rel_results = rel_mgr.process_relationships(program.relationships)
+        rel_results = rel_mgr.process_relationships(
+            program.relationships, dry_run=dry_run
+        )
         report.relationship_results.extend(rel_results)
 
         for rr in rel_results:
@@ -1016,12 +1036,16 @@ def deploy_pipeline(
         # Teams first — no dependencies on entities or roles.
         if program.teams:
             team_mgr = managers.team(client, output_fn)
-            team_results.extend(team_mgr.process_teams(program.teams))
+            team_results.extend(
+                team_mgr.process_teams(program.teams, dry_run=dry_run)
+            )
         # Roles second — pre-flight runs inside process_roles and validates
         # scope_access against server state.
         if program.roles:
             role_mgr = managers.role(client, output_fn)
-            role_results.extend(role_mgr.process_roles(program.roles))
+            role_results.extend(
+                role_mgr.process_roles(program.roles, dry_run=dry_run)
+            )
 
     def _security_failure_check(_: Any) -> str | None:
         team_errors = sum(
@@ -1059,7 +1083,7 @@ def deploy_pipeline(
         output_fn("", "white")
         output_fn("=== FILTERED TABS ===", "white")
         ft_mgr = managers.filtered_tab(client, output_fn)
-        return ft_mgr.process_filtered_tabs(program)
+        return ft_mgr.process_filtered_tabs(program, dry_run=dry_run)
 
     step_result, ft_out = run_step(
         "filtered_tabs",
@@ -1079,7 +1103,9 @@ def deploy_pipeline(
 
     # Attach step results to the report
     if report is None:
-        report = field_mgr._build_report(program, "run", [])
+        report = field_mgr._build_report(
+            program, "preview" if dry_run else "run", []
+        )
     report.step_results = all_step_results
 
     # --- Emit manual-configuration advisory -----------------------------

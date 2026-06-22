@@ -88,7 +88,7 @@ class FilteredTabManager:
         self._run_ts = run_timestamp or datetime.datetime.now(datetime.UTC)
 
     def process_filtered_tabs(
-        self, program: ProgramFile,
+        self, program: ProgramFile, dry_run: bool = False,
     ) -> list[FilteredTabResult]:
         """Process every filtered tab declared in the program.
 
@@ -107,6 +107,9 @@ class FilteredTabManager:
         Tab List steps that must be done in the EspoCRM admin UI.
 
         :param program: Parsed and validated program file.
+        :param dry_run: If True, log planned Report Filter creates and
+            return without issuing API writes. The deploy bundle is
+            still written.
         :returns: One result per declared filtered tab.
         """
         results: list[FilteredTabResult] = []
@@ -131,6 +134,7 @@ class FilteredTabManager:
             for tab in entity_def.filtered_tabs:
                 result = self._process_tab(
                     entity_def, espo_name, tab, advanced_pack_state,
+                    dry_run,
                 )
                 results.append(result)
 
@@ -158,6 +162,7 @@ class FilteredTabManager:
         espo_name: str,
         tab: FilteredTab,
         advanced_pack_state: dict[str, Any],
+        dry_run: bool = False,
     ) -> FilteredTabResult:
         """CHECK->ACT for a single filtered tab.
 
@@ -165,6 +170,8 @@ class FilteredTabManager:
         :param espo_name: EspoCRM internal entity name (C-prefixed for custom).
         :param tab: Desired filtered tab from YAML.
         :param advanced_pack_state: Shared dict tracking AP availability.
+        :param dry_run: If True, log the planned Report Filter create and
+            return without issuing the API write.
         :returns: Result for this tab.
         """
         prefix = f"{entity_def.name}.filteredTabs[{tab.id}]"
@@ -258,6 +265,17 @@ class FilteredTabManager:
             )
 
         self.output_fn(f"[CREATE]  {prefix} ReportFilter ...", "white")
+        if dry_run:
+            self.output_fn(
+                f"[CREATE]  {prefix} ReportFilter ... would create (preview)",
+                "gray",
+            )
+            return FilteredTabResult(
+                entity=entity_def.name,
+                tab_id=tab.id,
+                scope=tab.scope,
+                status=FilteredTabStatus.CREATED,
+            )
         status_code, body = self.client.create_report_filter(payload)
 
         if status_code == 401:

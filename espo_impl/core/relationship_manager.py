@@ -60,17 +60,20 @@ class RelationshipManager:
     def process_relationships(
         self,
         relationships: list[RelationshipDefinition],
+        dry_run: bool = False,
     ) -> list[RelationshipResult]:
         """Process all relationships.
 
         :param relationships: List of relationship definitions.
+        :param dry_run: If True, log planned creates and return without
+            issuing API writes.
         :returns: List of relationship results.
         """
         results: list[RelationshipResult] = []
 
         for rel in relationships:
             try:
-                result = self._process_one(rel)
+                result = self._process_one(rel, dry_run)
             except RelationshipManagerError:
                 self.output_fn(
                     "[ERROR]   Authentication failed (HTTP 401) — aborting",
@@ -91,11 +94,13 @@ class RelationshipManager:
         return results
 
     def _process_one(
-        self, rel: RelationshipDefinition
+        self, rel: RelationshipDefinition, dry_run: bool = False
     ) -> RelationshipResult:
         """Process a single relationship.
 
         :param rel: Relationship definition.
+        :param dry_run: If True, log the planned create and return
+            without issuing the API write.
         :returns: RelationshipResult.
         :raises RelationshipManagerError: If 401 received.
         """
@@ -174,6 +179,18 @@ class RelationshipManager:
         )
 
         payload = self._build_payload(rel)
+        if dry_run:
+            self.output_fn(
+                f"[RELATIONSHIP]  {prefix} ... would create (preview)",
+                "gray",
+            )
+            return RelationshipResult(
+                name=rel.name,
+                entity=rel.entity,
+                entity_foreign=rel.entity_foreign,
+                link=rel.link,
+                status=RelationshipStatus.CREATED,
+            )
         status_code, body = self.client.create_link(payload)
 
         if status_code == 401:
