@@ -20,9 +20,9 @@ import urllib.request
 
 import pytest
 import uvicorn
-from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler import coordinating_scheduler as cr
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
+    _NO_OP_MARKER,
     _TIMEOUT_RC,
     CoordinatingScheduler,
     SchedulerConfig,
@@ -31,12 +31,14 @@ from crmbuilder_v2.scheduler.coordinating_scheduler import (
     _safe_run_tests,
     interpret_merge,
     is_doc_only_change,
+    is_no_op,
     minimal_contract_prompt,
     operating_protocol,
     pause_reason_for,
     select_test_target,
     verify_result,
 )
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 
 # --------------------------------------------------------------------------
 # Pure decision helpers
@@ -63,6 +65,78 @@ def test_verify_no_commits_when_complete_but_branch_empty():
         verify_result({"work_task_status": "Complete"}, False)
        .detail == "no_commits"
     )
+
+
+# --------------------------------------------------------------------------
+# REQ-267 — the no-op (already-satisfied) exit
+# --------------------------------------------------------------------------
+
+
+def test_is_no_op_detects_marker_in_notes():
+    assert is_no_op({"work_task_notes": _NO_OP_MARKER + " already shipped in x.py"})
+    assert not is_no_op({"work_task_notes": "ordinary progress note"})
+    assert not is_no_op({"work_task_notes": None})
+    assert not is_no_op({})
+
+
+def test_verify_no_op_is_success_with_empty_branch():
+    # Complete + empty branch + the no-op marker is a legitimate no-op, not NO_COMMITS.
+    wt = {
+        "work_task_status": "Complete",
+        "work_task_notes": _NO_OP_MARKER + " feature present; tests green",
+    }
+    result = verify_result(wt, False)
+    assert result.ok
+    assert result.detail == "no_op"
+
+
+def test_verify_empty_branch_without_marker_still_fails():
+    # No marker → the empty branch is still suspect (regression guard for the no-op path).
+    assert verify_result({"work_task_status": "Complete"}, False).detail == "no_commits"
+
+
+# --------------------------------------------------------------------------
+# REQ-267 / REQ-272 — the operating protocol's step-0 exits
+# --------------------------------------------------------------------------
+
+
+def _protocol(**kw):
+    base = {
+        "work_task_id": "WTK-1", "area": "storage", "api_base": "http://api",
+        "engagement": "ENG", "branch": "ado/wtk-1",
+    }
+    base.update(kw)
+    return operating_protocol(**base)
+
+
+def test_operating_protocol_has_no_op_step_zero():
+    p = _protocol()
+    assert "0a. NO-OP" in p
+    assert _NO_OP_MARKER in p
+    assert "WITHOUT committing" in p
+
+
+def test_operating_protocol_has_halt_with_workstream():
+    p = _protocol(workstream_id="WSK-9")
+    assert "0b. HALT" in p
+    assert "workstreams/WSK-9" in p
+    assert "workstream_needs_attention" in p
+    assert "Do NOT mark the Work Task Complete" in p
+
+
+def test_operating_protocol_halt_degrades_without_workstream():
+    p = _protocol(workstream_id=None)
+    assert "0b. HALT" in p
+    assert "no owning workstream" in p
+    assert "workstream_needs_attention" not in p
+
+
+def test_operating_protocol_json_bodies_are_not_double_braced():
+    # The JSON curl bodies must render with single braces (f-string escaping guard).
+    p = _protocol(workstream_id="WSK-9")
+    assert '{"work_task_status": "Complete"}' in p
+    assert '{"claimed_by": "AGP-runtime"}' in p
+    assert "{{" not in p and "}}" not in p
 
 
 # --------------------------------------------------------------------------

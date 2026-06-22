@@ -79,17 +79,33 @@ class IterationReport:
 # --------------------------------------------------------------------------
 
 
+# REQ-267: an agent that finds its task already satisfied records a no-op — it
+# writes this marker (plus the evidence) into the Work Task notes, marks the task
+# Complete, and exits WITHOUT committing. The empty branch is then a legitimate
+# no-op, not the suspect NO_COMMITS case. Kept as a first-class, greppable signal.
+_NO_OP_MARKER = "[NO-OP]"
+
+
+def is_no_op(work_task: dict) -> bool:
+    """True if the agent recorded a no-op (already-satisfied) in the task notes."""
+    return _NO_OP_MARKER in (work_task.get("work_task_notes") or "")
+
+
 def verify_result(work_task: dict, branch_has_commits: bool) -> TaskResult:
     """Decide whether an agent's finished work is safe to advance (REQ-057).
 
     A result is ``OK`` only when the agent drove the Work Task to ``Complete``
     *and* left commits on its branch. A task that is not ``Complete`` is sent
     back (``NOT_COMPLETE``); a task marked ``Complete`` with an empty branch is
-    suspect and held (``NO_COMMITS``) rather than merged.
+    suspect and held (``NO_COMMITS``) rather than merged — UNLESS the agent
+    recorded a no-op (REQ-267), in which case the empty branch is correct and the
+    run succeeds with nothing to merge.
     """
     if work_task.get("work_task_status") != dispatcher._COMPLETE_STATUS:
         return TaskResult(TaskStatus.FAILED, "not_complete")
     if not branch_has_commits:
+        if is_no_op(work_task):
+            return TaskResult(TaskStatus.SUCCEEDED, "no_op")
         return TaskResult(TaskStatus.FAILED, "no_commits")
     return TaskResult(TaskStatus.SUCCEEDED)
 
@@ -335,36 +351,84 @@ def interpret_merge(returncode: int, output: str) -> TaskResult:
 
 
 def operating_protocol(
-    *, work_task_id: str, area: str, api_base: str, engagement: str, branch: str
+    *,
+    work_task_id: str,
+    area: str,
+    api_base: str,
+    engagement: str,
+    branch: str,
+    workstream_id: str | None = None,
 ) -> str:
-    """The runtime's per-spawn operating instructions, appended to the contract.
+    """The scheduler's per-spawn operating instructions, appended to the contract.
 
     The registry contract says *what kind of agent* this is and what it knows;
-    this block says *exactly how to operate* within the runtime: claim the task,
-    do the work in this worktree, commit, and drive the task to ``Complete`` —
-    the lifecycle the runtime verifies afterward.
+    this block says *exactly how to operate* within the scheduler: first check
+    whether the task is already done or mis-scoped (the no-op and halt exits,
+    REQ-267 / REQ-272), and otherwise claim the task, do the work, commit, and
+    drive it to ``Complete`` — the lifecycle the scheduler verifies afterward.
     """
-    return (
-        "### How to operate (coordinating runtime, Layer 1)\n"
-        "You are running non-interactively in a dedicated git worktree on branch "
-        f"`{branch}`. The live V2 API is at `{api_base}` and EVERY request must "
-        f"send the header `X-Engagement: {engagement}`. Do exactly this and then "
-        "exit:\n"
-        f"1. Claim your Work Task:\n"
-        f"   `curl -s -X POST -H 'X-Engagement: {engagement}' -H 'Content-Type: application/json' "
-        f"{api_base}/work-tasks/{work_task_id}/claim -d '{{\"claimed_by\": \"AGP-runtime\"}}'`\n"
-        f"   then move it to In Progress:\n"
-        f"   `curl -s -X PATCH -H 'X-Engagement: {engagement}' -H 'Content-Type: application/json' "
-        f"{api_base}/work-tasks/{work_task_id} -d '{{\"work_task_status\": \"In Progress\"}}'`\n"
-        "2. Do the work the Work Task describes, here in this worktree.\n"
-        "3. Commit your changes with git (a clear message naming the Work Task). "
-        "Do NOT push and do NOT merge — the runtime merges your branch.\n"
-        f"4. Mark the Work Task Complete:\n"
-        f"   `curl -s -X PATCH -H 'X-Engagement: {engagement}' -H 'Content-Type: application/json' "
-        f"{api_base}/work-tasks/{work_task_id} -d '{{\"work_task_status\": \"Complete\"}}'`\n"
-        "5. Exit. The runtime will verify (task Complete + your branch carries "
-        "commits) and merge your branch back."
+    hdr = "-H 'X-Engagement: " + engagement + "' -H 'Content-Type: application/json'"
+    wt_url = f"{api_base}/work-tasks/{work_task_id}"
+    # JSON bodies as plain values (single braces) so no f-string escaping is needed.
+    noop_body = (
+        '{"work_task_notes": "' + _NO_OP_MARKER
+        + ' <evidence: the file/symbol/test that already satisfies this>",'
+        ' "work_task_status": "Complete"}'
     )
+    claim_body = '{"claimed_by": "AGP-runtime"}'
+    inprog_body = '{"work_task_status": "In Progress"}'
+    complete_body = '{"work_task_status": "Complete"}'
+
+    lines = [
+        "### How to operate (coordinating scheduler, Layer 1)",
+        f"You are running non-interactively in a dedicated git worktree on branch "
+        f"`{branch}`. The live V2 API is at `{api_base}` and EVERY request must send "
+        f"the header `X-Engagement: {engagement}`.",
+        "FIRST, before doing any work, run step 0; then exit by exactly one path:",
+        # REQ-267 — the already-satisfied no-op exit.
+        "0a. NO-OP if the task is ALREADY SATISFIED on this branch (the feature it asks "
+        "for is already present and its tests are green). Do NOT manufacture a filler "
+        "deliverable. Record the no-op with evidence and exit:",
+        f"   curl -s -X PATCH {hdr} {wt_url} -d '{noop_body}'",
+        "   then exit WITHOUT committing — an empty branch carrying this note is a valid "
+        "no-op, not a failure.",
+    ]
+    # REQ-272 — the halt exit flags the owning Workstream's needs_attention; the
+    # scheduler then pauses for a human rather than retrying. With no owning
+    # workstream (a standalone task) halt has nowhere to land, so the agent simply
+    # stops without inventing a deliverable.
+    if workstream_id:
+        halt_body = (
+            '{"workstream_needs_attention": true, "workstream_needs_attention_reason":'
+            ' "<one concrete sentence: what is wrong and why you cannot complete this'
+            ' task>"}'
+        )
+        ws_url = f"{api_base}/workstreams/{workstream_id}"
+        lines += [
+            "0b. HALT if the task is mis-scoped, a duplicate of work already done, or you "
+            "cannot honestly complete it. Do NOT invent a deliverable to look busy. Raise "
+            "it for a human and exit:",
+            f"   curl -s -X PATCH {hdr} {ws_url} -d '{halt_body}'",
+            "   then exit. Do NOT mark the Work Task Complete.",
+        ]
+    else:
+        lines.append(
+            "0b. HALT: if the task is mis-scoped, duplicated, or impossible to honestly "
+            "complete, stop and exit without inventing a deliverable (no owning "
+            "workstream is available to flag here)."
+        )
+    lines += [
+        "If neither 0a nor 0b applies, do the work:",
+        f"1. Claim your Work Task:  curl -s -X POST {hdr} {wt_url}/claim -d '{claim_body}'",
+        f"   then move it to In Progress:  curl -s -X PATCH {hdr} {wt_url} -d '{inprog_body}'",
+        "2. Do the work the Work Task describes, here in this worktree.",
+        "3. Commit your changes with git (a clear message naming the Work Task). Do NOT "
+        "push and do NOT merge — the scheduler merges your branch.",
+        f"4. Mark the Work Task Complete:  curl -s -X PATCH {hdr} {wt_url} -d '{complete_body}'",
+        "5. Exit. The scheduler will verify (task Complete + your branch carries commits) "
+        "and merge your branch back.",
+    ]
+    return "\n".join(lines)
 
 
 _MINIMAL_TIER = dispatcher._DEFAULT_TIER
@@ -595,12 +659,17 @@ class CoordinatingScheduler:
         else:
             profile_id = "AGP-runtime"  # built-in fallback identity
             base_prompt = minimal_contract_prompt(wt, area=area)
+        # REQ-272: the agent needs its owning workstream's id to raise the halt
+        # (needs_attention) signal; resolve it now so the protocol can name it.
+        owning_ws = self._owning_workstream(work_task_id)
+        workstream_id = (owning_ws or {}).get("workstream_identifier")
         protocol = operating_protocol(
             work_task_id=work_task_id,
             area=area,
             api_base=cfg.api_base,
             engagement=cfg.engagement,
             branch=branch,
+            workstream_id=workstream_id,
         )
         return _ResolvedAssignment(
             work_task=wt,
@@ -699,8 +768,40 @@ class CoordinatingScheduler:
             refreshed = dispatcher._get(
                 cfg.api_base, f"/work-tasks/{assignment.work_task_id}", cfg.engagement
             )
+
+            # REQ-272: the agent may have HALTED by flagging its workstream
+            # needs_attention. Honor that before verifying — a halted task pauses
+            # for a human, it is not verified, merged, or retried as a failure.
+            halt_ws = self._owning_workstream(assignment.work_task_id)
+            halt_reason = pause_reason_for(refreshed, halt_ws)
+            if halt_reason:
+                self.log(f"⏸ agent halted {assignment.work_task_id}: {halt_reason}")
+                return IterationReport(
+                    result=TaskStatus.NEEDS_HUMAN,
+                    work_task_id=assignment.work_task_id,
+                    agent_returncode=returncode,
+                    branch=assignment.branch,
+                    pause_reason=halt_reason,
+                )
+
             has_commits = worktree.has_commits_beyond(cfg.base_branch)
             verdict = verify_result(refreshed, has_commits)
+
+            # REQ-267: a recorded no-op is already complete with an intentionally
+            # empty branch — there is nothing to test and nothing to merge.
+            if verdict.ok and verdict.detail == "no_op":
+                self.log(
+                    f"○ {assignment.work_task_id} no-op — already satisfied; "
+                    "nothing to merge"
+                )
+                return IterationReport(
+                    result=TaskStatus.SUCCEEDED,
+                    work_task_id=assignment.work_task_id,
+                    verify=verdict,
+                    agent_returncode=returncode,
+                    branch=assignment.branch,
+                )
+
             verify_log_path = None
             if verdict.ok:
                 # PI-147: a lifecycle-clean task still must not break the suite.

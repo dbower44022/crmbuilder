@@ -380,6 +380,9 @@ class ReleaseScheduler:
                 for prj in releases._in_scope_projects(s, rid)
                 for pi in releases._in_scope_planning_items(s, prj)
                 if not releases._pi_workstreams(s, pi)
+                # REQ-265: skip a planning item whose every requirement is already
+                # delivered — there is nothing left to decompose or build for it.
+                and releases.pi_has_undelivered_requirements(s, pi)
             ]
         for pi in pending:  # the decomposition agent runs outside the session
             spec = self.cfg.decomposition_provider(
@@ -817,6 +820,10 @@ def _confirmed_requirements(session, rid: str) -> list[dict]:
                     session, Requirement, Requirement.requirement_identifier, req
                 )
                 if row is None or row.requirement_status != "confirmed":
+                    continue
+                # REQ-265: never feed the demands agent a requirement that is
+                # already built and delivered — it must not be planned again.
+                if releases.requirement_is_delivered(session, req):
                     continue
                 out.append({
                     "identifier": req,
