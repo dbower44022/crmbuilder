@@ -32,7 +32,216 @@ Read `CLAUDE.md` at the repo root before making any changes. Read `src/crmbuilde
 
 ---
 
-## Step 1 — Extend `vocab.py`
+## Step 0 — Governance pre-step (REQUIRED before any code)
+
+Per CLAUDE.md: confirmed requirements + implementing PI must exist before any code is written.
+
+PI-255 and PI-256 exist in the governance DB (created by SES-230 apply). Requirements do not yet exist. Create and approve them now via the live API before touching any source files.
+
+### 0a. Verify API is running and check heads
+
+```python
+import json, urllib.request, urllib.error
+
+BASE = "http://127.0.0.1:8765"
+ENG = "CRMBUILDER"
+HEADERS = {"Content-Type": "application/json", "X-Engagement": ENG}
+
+def api(method, path, body=None):
+    url = f"{BASE}{path}"
+    data = json.dumps(body).encode() if body else None
+    req = urllib.request.Request(url, data=data, headers=HEADERS, method=method)
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read())["data"]
+
+# Check heads
+reqs = api("GET", "/requirements?sort=requirement_identifier&order=desc&limit=1")
+decs = api("GET", "/decisions?sort=identifier&order=desc&limit=1")
+print("Last REQ:", reqs[0]["requirement_identifier"] if reqs else "none")
+print("Last DEC:", decs[0]["identifier"] if decs else "none")
+
+# Confirm PI-255 exists
+pi = api("GET", "/planning-items/PI-255")
+print("PI-255:", pi["planning_item_title"])
+```
+
+### 0b. Find the right topic for source mapping requirements
+
+```python
+# List topics to find the correct parent for PRJ-027 / instance work
+# Try the most likely candidates
+for tid in ["TOP-063", "TOP-013", "TOP-079"]:
+    try:
+        t = api("GET", f"/topics/{tid}")
+        print(f"{tid}: {t.get('topic_name') or t.get('topic_title') or t}")
+    except Exception as e:
+        print(f"{tid}: not found ({e})")
+```
+
+Use whichever topic is the correct home for PRJ-027 / instance mapping work. If none are right, list all topics: `api("GET", "/topics?limit=100")` and pick the correct one. Set `TOPIC_ID` to the correct identifier before proceeding.
+
+### 0c. Create the three requirements
+
+```python
+from datetime import date
+TODAY = date.today().isoformat()
+TOPIC_ID = "TOP-063"  # UPDATE if the topic check above shows a different ID
+
+REQ_SPECS = [
+    {
+        "requirement_title": "Source mapping foundation — vocab, schema, and repositories",
+        "requirement_description": (
+            "The V2 application must provide a candidate-gated source instance mapping "
+            "layer governing how objects discovered during a source CRM audit relate to "
+            "the canonical design. Required: (1) extended vocab for mapping decision "
+            "types, statuses, staleness, and candidate confidence; (2) two new "
+            "instance_membership states (candidate_pending, mapping_stale); (3) seven "
+            "ORM models and migration 0079 for source_mappings, source_mapping_targets, "
+            "source_mapping_joins, field_mappings, field_mapping_translations, "
+            "value_mappings, mapping_candidates; (4) five access-layer repositories. "
+            "No source object may influence the canonical design without an explicit "
+            "human mapping decision (DEC-575)."
+        ),
+        "requirement_origin": "human_defined",
+        "requirement_priority": "should",
+        "requirement_status": "candidate",
+    },
+    {
+        "requirement_title": "Source mapping REST API — endpoints for all mapping tables",
+        "requirement_description": (
+            "The V2 REST API must expose endpoints for the source mapping layer: "
+            "/source-mappings (CRUD + mark_stale), /source-mapping-targets "
+            "(set/add/remove), /field-mappings (CRUD + mark_stale), /value-mappings "
+            "(CRUD + supersede), and /mapping-candidates (create, list, resolve, "
+            "bulk-create). All endpoints follow the existing {data, meta, errors} "
+            "envelope pattern and are covered by integration tests."
+        ),
+        "requirement_origin": "human_defined",
+        "requirement_priority": "should",
+        "requirement_status": "candidate",
+    },
+    {
+        "requirement_title": "Source mapping reconciler — candidates not auto-promotion",
+        "requirement_description": (
+            "When a source instance audit discovers objects not matched by an existing "
+            "source mapping, the reconciler must write mapping_candidate records rather "
+            "than auto-promoting to canonical design objects. Instance membership for "
+            "unmatched source objects must be set to candidate_pending. Existing mappings "
+            "that become stale due to source or design changes must transition membership "
+            "state to mapping_stale. Prior source mapping decisions must be surfaced as "
+            "suggestions when generating candidates for a new source (DEC-580)."
+        ),
+        "requirement_origin": "human_defined",
+        "requirement_priority": "should",
+        "requirement_status": "candidate",
+    },
+]
+
+created_reqs = []
+for spec in REQ_SPECS:
+    r = api("POST", "/requirements", spec)
+    print(f"Created {r['requirement_identifier']}: {r['requirement_title'][:55]}")
+    created_reqs.append(r["requirement_identifier"])
+
+print("Requirements:", created_reqs)
+```
+
+### 0d. Create the approving decision
+
+```python
+dec = api("POST", "/decisions", {
+    "title": "Approve source instance mapping requirements (PI-255)",
+    "context": (
+        "SES-230 established the source mapping model design (DEC-575..580): "
+        "candidate-gated human-decision layer, fractal decision structure at "
+        "entity/field/value levels, join mapping inherited by field mappings, "
+        "staleness signals, rejection lifecycle chains, and per-(source instance, "
+        "design) pair scoping. PI-255 implements the foundation and API/reconciler. "
+        "Requirements authored as human_defined per ENG-001 provenance model."
+    ),
+    "decision": (
+        "Approve three requirements covering: (1) source mapping vocab/schema/"
+        "repositories, (2) REST API endpoints, (3) reconciler behavior change "
+        "from auto-promotion to candidate-gating. All three implement PI-255."
+    ),
+    "rationale": (
+        "The source mapping model was designed in SES-230 and governed as "
+        "DEC-575..580. Human review and approval is required per ENG-001 "
+        "before any code is written."
+    ),
+    "status": "Active",
+    "decision_date": TODAY,
+})
+DEC_ID = dec["identifier"]
+print(f"Created {DEC_ID}: {dec['title'][:55]}")
+```
+
+### 0e. Wire all governance edges
+
+```python
+# decided_in: decision -> session
+api("POST", "/references", {
+    "source_type": "decision", "source_id": DEC_ID,
+    "target_type": "session", "target_id": "SES-230",
+    "relationship": "decided_in",
+})
+print(f"{DEC_ID} -> SES-230 (decided_in)")
+
+for rid in created_reqs:
+    # requirement -> topic
+    api("POST", "/references", {
+        "source_type": "requirement", "source_id": rid,
+        "target_type": "topic", "target_id": TOPIC_ID,
+        "relationship": "requirement_belongs_to_topic",
+    })
+    # requirement -> conversation (provenance: CNV-155 is SES-230's conversation)
+    api("POST", "/references", {
+        "source_type": "requirement", "source_id": rid,
+        "target_type": "conversation", "target_id": "CNV-155",
+        "relationship": "requirement_defined_in_conversation",
+    })
+    # requirement_approved_by_decision edge
+    api("POST", "/references", {
+        "source_type": "requirement", "source_id": rid,
+        "target_type": "decision", "target_id": DEC_ID,
+        "relationship": "requirement_approved_by_decision",
+    })
+    # Activate the requirement (transition candidate -> confirmed)
+    # Try activate-by-decision endpoint first; fall back to PATCH
+    try:
+        api("POST", f"/requirements/{rid}/activate-by-decision",
+            {"decision_identifier": DEC_ID})
+        print(f"{rid}: confirmed via activate-by-decision")
+    except Exception:
+        api("PATCH", f"/requirements/{rid}", {"requirement_status": "confirmed"})
+        print(f"{rid}: confirmed via PATCH")
+    # planning_item_implements_requirement: PI-255 -> requirement
+    api("POST", "/references", {
+        "source_type": "planning_item", "source_id": "PI-255",
+        "target_type": "requirement", "target_id": rid,
+        "relationship": "planning_item_implements_requirement",
+    })
+    print(f"PI-255 -> {rid} (planning_item_implements_requirement)")
+
+print("\nGovernance pre-step complete.")
+print(f"Requirements: {created_reqs}")
+print(f"Approving decision: {DEC_ID}")
+print("Proceeding to build steps...")
+```
+
+Verify all requirements show `requirement_status: confirmed` before continuing:
+
+```python
+for rid in created_reqs:
+    r = api("GET", f"/requirements/{rid}")
+    print(f"{rid}: {r['requirement_status']} -- {r['requirement_title'][:50]}")
+```
+
+Only proceed to Step 1 when all three show `confirmed`.
+
+---
+
+## Step 1 -- Extend `vocab.py`
 
 Add the following constants. Insert each block adjacent to the related existing constants as noted.
 
@@ -62,7 +271,7 @@ INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
 
 ```python
 # ---------------------------------------------------------------------------
-# Source instance mapping model (PI-255, SES-230 — PRJ-027). The
+# Source instance mapping model (PI-255, SES-230 -- PRJ-027). The
 # candidate-gated human-decision layer that governs how objects discovered
 # in a source CRM instance relate to objects in the canonical design.
 # Source instances are design inputs, not design authorities. Every discovered
@@ -70,460 +279,203 @@ INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
 # See source-mapping-design.md for the full model.
 # ---------------------------------------------------------------------------
 
-# Entity-level mapping decision types (DEC-451, DEC-452). A source entity may
+# Entity-level mapping decision types (DEC-575, DEC-576). A source entity may
 # map directly to one design entity, decompose into multiple design entities,
 # map referentially (different surface, same intent), or be explicitly rejected.
 SOURCE_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
     {"direct", "decomposition", "referential", "rejected"}
 )
 
-# Mapping record lifecycle states (DEC-454). A mapping is unresolved until a
+# Mapping record lifecycle states (DEC-578). A mapping is unresolved until a
 # human makes the decision, resolved once confirmed, stale when either the
 # source or design changed, and superseded when replaced by a newer decision.
 SOURCE_MAPPING_STATUSES: frozenset[str] = frozenset(
     {"unresolved", "resolved", "stale", "superseded"}
 )
 
-# Graduated staleness severity (DEC-454). Low = likely still valid (rename);
+# Graduated staleness severity (DEC-578). Low = likely still valid (rename);
 # high = translation logic may be wrong (type change, structural change).
 SOURCE_MAPPING_STALE_SEVERITIES: frozenset[str] = frozenset({"low", "high"})
 
-# Why a mapping went stale (DEC-454).
+# Why a mapping went stale (DEC-578).
 SOURCE_MAPPING_STALE_REASONS: frozenset[str] = frozenset(
     {"source_changed", "design_changed"}
 )
 
-# Field-level mapping decision types (DEC-452). Finer than entity-level:
+# Field-level mapping decision types (DEC-576). Finer than entity-level:
 # direct (same field, identity), referential_exact (same intent, different name),
 # referential_interpreted (requires translation logic), rejected.
 FIELD_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
     {"direct", "referential_exact", "referential_interpreted", "rejected"}
 )
 
-# Value-level mapping decision types (DEC-452). Applied to individual enum
+# Value-level mapping decision types (DEC-576). Applied to individual enum
 # values when field_mapping.decision_type is referential_interpreted.
 VALUE_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
     {"direct", "interpreted", "rejected"}
 )
 
-# Translation types for field_mapping_translation (DEC-452). value_map applies
+# Translation types for field_mapping_translation (DEC-576). value_map applies
 # per-value substitution; expression applies a formula/transformation.
 FIELD_MAPPING_TRANSLATION_TYPES: frozenset[str] = frozenset(
     {"value_map", "expression"}
 )
 
-# Candidate types surfaced by the reconciler (DEC-451). Entity-level candidates
+# Candidate types surfaced by the reconciler (DEC-575). Entity-level candidates
 # are unmatched source entities; field-level are unmatched source fields; value-
 # level are unmatched enum values on an already-mapped field.
 MAPPING_CANDIDATE_TYPES: frozenset[str] = frozenset({"entity", "field", "value"})
 
-# Confidence levels for reconciler-generated mapping suggestions (DEC-456).
+# Confidence levels for reconciler-generated mapping suggestions (DEC-580).
 MAPPING_SUGGESTION_CONFIDENCES: frozenset[str] = frozenset(
     {"high", "medium", "low"}
 )
 ```
 
-**1c. Add `source_mapping` and related types to `ENTITY_TYPES` and `CHANGE_LOG_ENTITY_TYPES`.**
+**1c. Add `source_mapping` and related types to `ENTITY_TYPES`.**
 
-`source_mapping`, `field_mapping`, and `mapping_candidate` are engagement-scoped methodology records that participate in the change_log. Add them to `ENTITY_TYPES`:
+`source_mapping`, `field_mapping`, and `mapping_candidate` participate in change_log. Add to `ENTITY_TYPES` before the closing brace:
 
-Find the block ending with:
-```python
-        "release",
-    }
-)
-```
-
-Add before the closing brace:
 ```python
         # PI-255 source instance mapping model (PRJ-027 / SES-230). The
         # candidate-gated human-decision layer between audit discovery and the
         # canonical design. source_mapping = entity-level decision (SMG-);
         # field_mapping = field-level decision (FMP-);
-        # mapping_candidate = pre-decision reconciler output (no prefix — auto-id).
+        # mapping_candidate = pre-decision reconciler output (no prefix -- auto-id).
         "source_mapping",
         "field_mapping",
         "mapping_candidate",
 ```
 
-`source_mapping_target`, `source_mapping_join`, `field_mapping_translation`, and `value_mapping` are child/support tables with no prefixed identifier and no `change_log` participation (same pattern as `instance_membership`, `field_options`). Do NOT add them to `ENTITY_TYPES`.
+`source_mapping_target`, `source_mapping_join`, `field_mapping_translation`, and `value_mapping` are child/support tables with no prefixed identifier and no `change_log` participation. Do NOT add them to `ENTITY_TYPES`.
 
 ---
 
-## Step 2 — Add ORM models to `models.py`
+## Step 2 -- Add ORM models to `models.py`
 
-Read the full `models.py` first. Add the following seven model classes after the `InstanceMembership` model. Follow the exact patterns in that model for naming, column declarations, constraint naming, and the `__tablename__` / `__table_args__` style.
+Read the full `models.py` first. Add seven model classes after `InstanceMembership`, following its exact patterns for naming, column declarations, constraint naming, and `__tablename__` / `__table_args__` style.
 
 **Naming conventions:**
 - Table names: `source_mappings`, `source_mapping_targets`, `source_mapping_joins`, `field_mappings`, `field_mapping_translations`, `value_mappings`, `mapping_candidates`
-- Column prefix matches table singular: `source_mapping_*`, `field_mapping_*`, `value_mapping_*`, `mapping_candidate_*`
-- All string columns use `Text` (not `String(n)`) per the codebase pattern
+- Column prefix matches table singular
+- All string columns use `Text` (not `String(n)`)
 - Datetimes: `DateTime(timezone=True)`, nullable, no server default
-- Engagement-scoped: all seven tables get `engagement_id` (Text, nullable, same FK pattern as `InstanceMembership`)
-- No prefixed identifier on `source_mapping_target`, `source_mapping_join`, `field_mapping_translation`, `value_mapping` — use plain integer PK
-- `source_mapping` and `field_mapping` and `mapping_candidate` get prefixed identifiers (`SMG-NNN`, `FMP-NNN`, no prefix on candidate — use auto-increment int PK)
+- All seven tables get `engagement_id` (Text, nullable, same FK pattern as `InstanceMembership`)
+- No prefixed identifier on `source_mapping_target`, `source_mapping_join`, `field_mapping_translation`, `value_mapping` -- use plain integer PK
+- `source_mapping` gets prefix `SMG-NNN`; `field_mapping` gets `FMP-NNN`; `mapping_candidate` uses auto-increment int PK
 
-**Model 1: `SourceMapping`** (`source_mappings` table)
+**Model 1: `SourceMapping`** (`source_mappings`)
+- `id`, `engagement_id` (FK engagements, nullable, CASCADE), `source_mapping_identifier` (UNIQUE), `instance_identifier`, `source_entity_name`, `decision_type` (CHECK SOURCE_MAPPING_DECISION_TYPES), `status` (CHECK SOURCE_MAPPING_STATUSES, default 'unresolved'), `stale_reason` (nullable, CHECK SOURCE_MAPPING_STALE_REASONS allow NULL), `stale_severity` (nullable, CHECK SOURCE_MAPPING_STALE_SEVERITIES allow NULL), `superseded_by` (nullable Text), `notes` (nullable), `resolved_at`, `created_at`, `updated_at`, `deleted_at`
 
-Columns:
-- `id` — Integer PK autoincrement
-- `engagement_id` — Text FK → engagements.engagement_identifier, nullable, ON DELETE CASCADE
-- `source_mapping_identifier` — Text, NOT NULL, UNIQUE (e.g. `SMG-001`)
-- `instance_identifier` — Text, NOT NULL (FK to instances table)
-- `source_entity_name` — Text, NOT NULL
-- `decision_type` — Text, NOT NULL, CHECK in `SOURCE_MAPPING_DECISION_TYPES`
-- `status` — Text, NOT NULL, default `'unresolved'`, CHECK in `SOURCE_MAPPING_STATUSES`
-- `stale_reason` — Text, nullable, CHECK in `SOURCE_MAPPING_STALE_REASONS` (allow NULL)
-- `stale_severity` — Text, nullable, CHECK in `SOURCE_MAPPING_STALE_SEVERITIES` (allow NULL)
-- `superseded_by` — Text, nullable (self-referential: identifier of the superseding SMG)
-- `notes` — Text, nullable
-- `resolved_at` — DateTime(timezone=True), nullable
-- `created_at` — DateTime(timezone=True), nullable
-- `updated_at` — DateTime(timezone=True), nullable
-- `deleted_at` — DateTime(timezone=True), nullable
+**Model 2: `SourceMappingTarget`** (`source_mapping_targets`)
+- `id`, `engagement_id`, `source_mapping_identifier`, `entity_identifier`
+- UNIQUE on `(source_mapping_identifier, entity_identifier)`
 
-Constraints: UNIQUE on `source_mapping_identifier`, CHECK on `decision_type`, CHECK on `status`.
+**Model 3: `SourceMappingJoin`** (`source_mapping_joins`)
+- `id`, `engagement_id`, `source_mapping_identifier` (UNIQUE), `source_field_name`, `design_entity_identifier`, `design_field_identifier`
 
-**Model 2: `SourceMappingTarget`** (`source_mapping_targets` table)
+**Model 4: `FieldMapping`** (`field_mappings`)
+- `id`, `engagement_id`, `field_mapping_identifier` (UNIQUE), `source_mapping_identifier`, `source_field_name`, `decision_type` (CHECK FIELD_MAPPING_DECISION_TYPES), `status` (CHECK SOURCE_MAPPING_STATUSES, default 'unresolved'), `stale_reason` (nullable, allow NULL), `stale_severity` (nullable, allow NULL), `target_entity_identifier` (nullable), `target_field_identifier` (nullable), `superseded_by` (nullable Text), `notes` (nullable), `resolved_at`, `created_at`, `updated_at`, `deleted_at`
 
-Join table: one source_mapping → one or more design entities (decomposition support).
+**Model 5: `FieldMappingTranslation`** (`field_mapping_translations`)
+- `id`, `engagement_id`, `field_mapping_identifier` (UNIQUE), `translation_type` (CHECK FIELD_MAPPING_TRANSLATION_TYPES), `expression` (nullable)
 
-Columns:
-- `id` — Integer PK autoincrement
-- `engagement_id` — Text, nullable
-- `source_mapping_identifier` — Text, NOT NULL (FK to source_mappings.source_mapping_identifier)
-- `entity_identifier` — Text, NOT NULL (the design entity ENT-NNN this mapping targets)
+**Model 6: `ValueMapping`** (`value_mappings`)
+- `id`, `engagement_id`, `field_mapping_identifier`, `source_value`, `decision_type` (CHECK VALUE_MAPPING_DECISION_TYPES), `target_value` (nullable), `status` (CHECK SOURCE_MAPPING_STATUSES, default 'unresolved'), `superseded_by` (nullable Integer, self-ref FK to `value_mappings.id`), `notes` (nullable), `created_at`, `updated_at`
 
-Constraints: UNIQUE on `(source_mapping_identifier, entity_identifier)`.
-
-**Model 3: `SourceMappingJoin`** (`source_mapping_joins` table)
-
-The join key declared at entity-mapping level (inherited by all field mappings).
-
-Columns:
-- `id` — Integer PK autoincrement
-- `engagement_id` — Text, nullable
-- `source_mapping_identifier` — Text, NOT NULL UNIQUE (one join per source_mapping)
-- `source_field_name` — Text, NOT NULL
-- `design_entity_identifier` — Text, NOT NULL (ENT-NNN — which design entity holds the join field)
-- `design_field_identifier` — Text, NOT NULL (FLD-NNN — the join field on the design entity)
-
-Constraints: UNIQUE on `source_mapping_identifier` (one join per entity mapping).
-
-**Model 4: `FieldMapping`** (`field_mappings` table)
-
-Columns:
-- `id` — Integer PK autoincrement
-- `engagement_id` — Text, nullable
-- `field_mapping_identifier` — Text, NOT NULL, UNIQUE (e.g. `FMP-001`)
-- `source_mapping_identifier` — Text, NOT NULL (FK to source_mappings.source_mapping_identifier)
-- `source_field_name` — Text, NOT NULL
-- `decision_type` — Text, NOT NULL, CHECK in `FIELD_MAPPING_DECISION_TYPES`
-- `status` — Text, NOT NULL, default `'unresolved'`, CHECK in `SOURCE_MAPPING_STATUSES`
-- `stale_reason` — Text, nullable, CHECK in `SOURCE_MAPPING_STALE_REASONS` (allow NULL)
-- `stale_severity` — Text, nullable, CHECK in `SOURCE_MAPPING_STALE_SEVERITIES` (allow NULL)
-- `target_entity_identifier` — Text, nullable (ENT-NNN — which design entity this field lands on)
-- `target_field_identifier` — Text, nullable (FLD-NNN — the design field)
-- `superseded_by` — Text, nullable (identifier of the superseding FMP)
-- `notes` — Text, nullable
-- `resolved_at` — DateTime(timezone=True), nullable
-- `created_at` — DateTime(timezone=True), nullable
-- `updated_at` — DateTime(timezone=True), nullable
-- `deleted_at` — DateTime(timezone=True), nullable
-
-**Model 5: `FieldMappingTranslation`** (`field_mapping_translations` table)
-
-Only present when `field_mapping.decision_type = 'referential_interpreted'`.
-
-Columns:
-- `id` — Integer PK autoincrement
-- `engagement_id` — Text, nullable
-- `field_mapping_identifier` — Text, NOT NULL UNIQUE (one translation per field_mapping)
-- `translation_type` — Text, NOT NULL, CHECK in `FIELD_MAPPING_TRANSLATION_TYPES`
-- `expression` — Text, nullable (for expression-based translations)
-
-**Model 6: `ValueMapping`** (`value_mappings` table)
-
-Value-level mapping decision for individual enum values.
-
-Columns:
-- `id` — Integer PK autoincrement
-- `engagement_id` — Text, nullable
-- `field_mapping_identifier` — Text, NOT NULL (FK to field_mappings.field_mapping_identifier)
-- `source_value` — Text, NOT NULL
-- `decision_type` — Text, NOT NULL, CHECK in `VALUE_MAPPING_DECISION_TYPES`
-- `target_value` — Text, nullable (null when rejected)
-- `status` — Text, NOT NULL, default `'unresolved'`, CHECK in `SOURCE_MAPPING_STATUSES`
-- `superseded_by` — Integer, nullable (FK to value_mappings.id — self-referential by PK since no prefix)
-- `notes` — Text, nullable
-- `created_at` — DateTime(timezone=True), nullable
-- `updated_at` — DateTime(timezone=True), nullable
-
-Constraints: UNIQUE on `(field_mapping_identifier, source_value)` where `superseded_by IS NULL` — enforced at the access layer, not as a DB constraint (partial unique indexes not portable).
-
-**Model 7: `MappingCandidate`** (`mapping_candidates` table)
-
-Pre-decision reconciler output. Auto-increment PK, no SMG/FMP prefix.
-
-Columns:
-- `id` — Integer PK autoincrement
-- `engagement_id` — Text, nullable
-- `instance_identifier` — Text, NOT NULL
-- `audit_event_identifier` — Text, nullable (the deposit_event identifier that surfaced this)
-- `candidate_type` — Text, NOT NULL, CHECK in `MAPPING_CANDIDATE_TYPES`
-- `source_entity_name` — Text, NOT NULL
-- `source_field_name` — Text, nullable (null for entity-level candidates)
-- `source_value` — Text, nullable (null for entity/field candidates)
-- `suggested_source_mapping_identifier` — Text, nullable (SMG-NNN suggestion)
-- `suggested_field_mapping_identifier` — Text, nullable (FMP-NNN suggestion)
-- `suggestion_confidence` — Text, nullable, CHECK in `MAPPING_SUGGESTION_CONFIDENCES` (allow NULL)
-- `suggestion_basis` — Text, nullable (free text: "identical_to_INST-001", "name_similarity", etc.)
-- `resolved` — Boolean (stored as Integer 0/1 per SQLite pattern), NOT NULL, default 0
-- `resolved_at` — DateTime(timezone=True), nullable
-- `resolved_to_source_mapping_identifier` — Text, nullable
-- `resolved_to_field_mapping_identifier` — Text, nullable
-- `created_at` — DateTime(timezone=True), nullable
+**Model 7: `MappingCandidate`** (`mapping_candidates`)
+- `id`, `engagement_id`, `instance_identifier`, `audit_event_identifier` (nullable), `candidate_type` (CHECK MAPPING_CANDIDATE_TYPES), `source_entity_name`, `source_field_name` (nullable), `source_value` (nullable), `suggested_source_mapping_identifier` (nullable), `suggested_field_mapping_identifier` (nullable), `suggestion_confidence` (nullable, CHECK MAPPING_SUGGESTION_CONFIDENCES allow NULL), `suggestion_basis` (nullable Text), `resolved` (Integer NOT NULL default 0), `resolved_at` (nullable), `resolved_to_source_mapping_identifier` (nullable), `resolved_to_field_mapping_identifier` (nullable), `created_at`
 
 ---
 
-## Step 3 — Write migration `0079_pi_255_source_mapping_tables.py`
+## Step 3 -- Write migration `0079_pi_255_source_mapping_tables.py`
 
 Location: `migrations/versions/0079_pi_255_source_mapping_tables.py`
 
-Follow the exact pattern of `0059_pi_185_instance_membership.py`:
-
-```python
-"""PI-255 (PRJ-027/SES-230) — source instance mapping model tables.
-
-Creates seven new tables for the candidate-gated source mapping layer:
-source_mappings, source_mapping_targets, source_mapping_joins,
-field_mappings, field_mapping_translations, value_mappings,
-mapping_candidates.
-
-Also rebuilds the instance_memberships state CHECK to add
-'candidate_pending' and 'mapping_stale' (via batch ALTER on SQLite).
-
-SQLite chain head 0078 -> 0079.
-"""
-
-from collections.abc import Sequence
-import sqlalchemy as sa
-from alembic import op
-from crmbuilder_v2.access.models import (
-    SourceMapping,
-    SourceMappingTarget,
-    SourceMappingJoin,
-    FieldMapping,
-    FieldMappingTranslation,
-    ValueMapping,
-    MappingCandidate,
-    InstanceMembership,
-)
-from crmbuilder_v2.access.vocab import INSTANCE_MEMBERSHIP_STATES
-
-revision: str = "0079_pi_255_source_mapping_tables"
-down_revision: str | None = "0078_pi_249_release_back_half"
-branch_labels: str | Sequence[str] | None = None
-depends_on: str | Sequence[str] | None = None
-
-
-def _tables() -> set[str]:
-    return set(sa.inspect(op.get_bind()).get_table_names())
-
-
-def upgrade() -> None:
-    # Create the seven new tables from ORM __table__ definitions.
-    for model in (
-        SourceMapping,
-        SourceMappingTarget,
-        SourceMappingJoin,
-        FieldMapping,
-        FieldMappingTranslation,
-        ValueMapping,
-        MappingCandidate,
-    ):
-        model.__table__.create(op.get_bind(), checkfirst=True)
-
-    # Rebuild the instance_memberships state CHECK to include the two new states.
-    # SQLite requires batch mode for CHECK constraint changes.
-    existing = _tables()
-    if InstanceMembership.__tablename__ in existing:
-        states_check = ", ".join(f"'{s}'" for s in sorted(INSTANCE_MEMBERSHIP_STATES))
-        with op.batch_alter_table(InstanceMembership.__tablename__) as batch_op:
-            batch_op.drop_constraint("ck_instance_memberships_state", type_="check")
-            batch_op.create_check_constraint(
-                "ck_instance_memberships_state",
-                f"state IN ({states_check})",
-            )
-
-
-def downgrade() -> None:
-    existing = _tables()
-    for model in reversed((
-        SourceMapping,
-        SourceMappingTarget,
-        SourceMappingJoin,
-        FieldMapping,
-        FieldMappingTranslation,
-        ValueMapping,
-        MappingCandidate,
-    )):
-        if model.__tablename__ in existing:
-            model.__table__.drop(op.get_bind())
-    # Revert the instance_memberships state CHECK to the original three states.
-    if InstanceMembership.__tablename__ in existing:
-        original = frozenset({"present", "drifted", "absent"})
-        states_check = ", ".join(f"'{s}'" for s in sorted(original))
-        with op.batch_alter_table(InstanceMembership.__tablename__) as batch_op:
-            batch_op.drop_constraint("ck_instance_memberships_state", type_="check")
-            batch_op.create_check_constraint(
-                "ck_instance_memberships_state",
-                f"state IN ({states_check})",
-            )
-```
-
-**Important:** Check the actual constraint name for the instance_memberships state CHECK by reading the existing migration `0059_pi_185_instance_membership.py` and confirming the constraint name used. Use whatever name is actually in the existing migration — do not assume `ck_instance_memberships_state` if it differs.
+Follow the pattern of `0059_pi_185_instance_membership.py`. Key points:
+- `revision = "0079_pi_255_source_mapping_tables"`
+- `down_revision = "0078_pi_249_release_back_half"`
+- Create all seven tables via `Model.__table__.create(op.get_bind(), checkfirst=True)`
+- Rebuild the `instance_memberships` state CHECK (SQLite batch mode) to add `candidate_pending` and `mapping_stale` -- check the actual constraint name in migration 0059 first
+- Downgrade drops all seven tables and reverts the CHECK to the original three states
 
 ---
 
-## Step 4 — Write repository modules
+## Step 4 -- Write repository modules
 
 Create five files in `src/crmbuilder_v2/access/repositories/`:
 
-### 4a. `source_mapping.py`
+### 4a. `source_mapping.py` (prefix `SMG`)
+- `_ENTITY_TYPE`, `_IDENTIFIER_PREFIX`, `_IDENTIFIER_RE`, `_PATCHABLE_FIELDS`
+- `list_source_mappings(session, *, instance_identifier=None, status=None, include_deleted=False)`
+- `get_source_mapping`, `next_source_mapping_identifier`
+- `create_source_mapping(*, instance_identifier, source_entity_name, decision_type, notes=None, identifier=None)` -- status='unresolved', emits change_log
+- `update_source_mapping` -- validates transitions: `unresolved->{resolved,stale,superseded}`, `resolved->{stale,superseded}`, `stale->{resolved,superseded}`, `superseded->{}`
+- `patch_source_mapping`, `delete_source_mapping`, `restore_source_mapping`
+- `mark_stale(session, identifier, *, reason, severity)` -- sets status=stale, stale_reason, stale_severity
 
-Module-level docstring: PI-255 source mapping entity-level repository. Backs `/source-mappings` REST endpoints (Slice 2). Follows the `instances.py` and `migration_mapping.py` patterns.
+### 4b. `source_mapping_targets.py` (no prefix, no change_log)
+- `list_targets(session, *, source_mapping_identifier)`
+- `add_target` (idempotent), `remove_target` (hard delete), `set_targets` (atomic replace)
 
-Provide:
-- `_ENTITY_TYPE = "source_mapping"`, `_IDENTIFIER_PREFIX = "SMG"`, `_IDENTIFIER_RE`
-- `_PATCHABLE_FIELDS` frozenset
-- `_require_decision_type`, `_require_status`, `_require_stale_reason`, `_require_stale_severity` helpers (using `gov.require_in`)
-- `_get_row(session, identifier) -> SourceMapping`
-- `list_source_mappings(session, *, instance_identifier=None, status=None, include_deleted=False) -> list[dict]`
-- `get_source_mapping(session, identifier, *, include_deleted=False) -> dict | None`
-- `next_source_mapping_identifier(session) -> str`
-- `create_source_mapping(session, *, instance_identifier, source_entity_name, decision_type, notes=None, identifier=None) -> dict` — creates with `status='unresolved'`, emits change_log
-- `update_source_mapping(session, identifier, *, source_entity_name, decision_type, status, notes=None, stale_reason=None, stale_severity=None, superseded_by=None, resolved_at=None) -> dict` — validates status transitions (unresolved→resolved, any→stale, resolved→superseded), emits change_log
-- `patch_source_mapping(session, identifier, **fields) -> dict` — patches patchable fields
-- `delete_source_mapping(session, identifier) -> dict` — soft-delete
-- `restore_source_mapping(session, identifier) -> dict` — clears deleted_at
-- `mark_stale(session, identifier, *, reason, severity) -> dict` — convenience: sets status=stale, stale_reason, stale_severity
+### 4c. `field_mapping.py` (prefix `FMP`)
+Same shape as `source_mapping.py`. Same status transition rules.
+- `list_field_mappings(session, *, source_mapping_identifier=None, status=None, include_deleted=False)`
+- `get_field_mapping`, `next_field_mapping_identifier`
+- `create_field_mapping(*, source_mapping_identifier, source_field_name, decision_type, target_entity_identifier=None, target_field_identifier=None, notes=None, identifier=None)`
+- `update_field_mapping`, `patch_field_mapping`, `delete_field_mapping`, `restore_field_mapping`, `mark_stale`
 
-Status transition rules: `unresolved → {resolved, stale, superseded}`, `resolved → {stale, superseded}`, `stale → {resolved, superseded}`, `superseded → {}`.
+### 4d. `value_mapping.py` (integer PK, no change_log)
+- `list_value_mappings(session, *, field_mapping_identifier, include_superseded=False)` -- active only by default (superseded_by IS NULL)
+- `get_value_mapping(session, id_)`
+- `create_value_mapping(*, field_mapping_identifier, source_value, decision_type, target_value=None, notes=None)` -- validates no active duplicate on (field_mapping_identifier, source_value)
+- `update_value_mapping(session, id_, *, decision_type, target_value=None, notes=None, status=None)`
+- `supersede_value_mapping(session, id_, *, replacement_id)` -- sets superseded_by
 
-### 4b. `source_mapping_targets.py`
-
-Simple child-table repository for `SourceMappingTarget`. No prefixed identifier, no change_log.
-
-Provide:
-- `list_targets(session, *, source_mapping_identifier) -> list[dict]`
-- `add_target(session, *, source_mapping_identifier, entity_identifier) -> dict` — idempotent (no-op if already exists)
-- `remove_target(session, *, source_mapping_identifier, entity_identifier) -> None` — hard delete (child table, no soft-delete)
-- `set_targets(session, *, source_mapping_identifier, entity_identifiers: list[str]) -> list[dict]` — replace all targets atomically (delete old, add new)
-
-### 4c. `field_mapping.py`
-
-Same pattern as `source_mapping.py` but for `FieldMapping`. Prefix `FMP`.
-
-Provide:
-- `list_field_mappings(session, *, source_mapping_identifier=None, status=None, include_deleted=False) -> list[dict]`
-- `get_field_mapping(session, identifier, *, include_deleted=False) -> dict | None`
-- `next_field_mapping_identifier(session) -> str`
-- `create_field_mapping(session, *, source_mapping_identifier, source_field_name, decision_type, target_entity_identifier=None, target_field_identifier=None, notes=None, identifier=None) -> dict`
-- `update_field_mapping(session, identifier, *, source_field_name, decision_type, status, target_entity_identifier=None, target_field_identifier=None, notes=None, stale_reason=None, stale_severity=None, superseded_by=None, resolved_at=None) -> dict`
-- `patch_field_mapping(session, identifier, **fields) -> dict`
-- `delete_field_mapping(session, identifier) -> dict`
-- `restore_field_mapping(session, identifier) -> dict`
-- `mark_stale(session, identifier, *, reason, severity) -> dict`
-
-Same status transition rules as source_mapping.
-
-### 4d. `value_mapping.py`
-
-Simple repository for `ValueMapping`. No prefixed identifier; uses integer PK. No change_log (same pattern as `instance_membership`).
-
-Provide:
-- `list_value_mappings(session, *, field_mapping_identifier) -> list[dict]` — returns only active (superseded_by IS NULL) unless `include_superseded=True`
-- `get_value_mapping(session, id_: int) -> dict | None`
-- `create_value_mapping(session, *, field_mapping_identifier, source_value, decision_type, target_value=None, notes=None) -> dict` — validates no existing active mapping for (field_mapping_identifier, source_value)
-- `update_value_mapping(session, id_: int, *, decision_type, target_value=None, notes=None, status=None) -> dict`
-- `supersede_value_mapping(session, id_: int, *, replacement_id: int) -> dict` — sets superseded_by on the old row
-
-### 4e. `mapping_candidate.py`
-
-Repository for `MappingCandidate`. Auto-increment PK.
-
-Provide:
-- `list_candidates(session, *, instance_identifier=None, candidate_type=None, resolved=None) -> list[dict]`
-- `get_candidate(session, id_: int) -> dict | None`
-- `create_candidate(session, *, instance_identifier, candidate_type, source_entity_name, source_field_name=None, source_value=None, audit_event_identifier=None, suggested_source_mapping_identifier=None, suggested_field_mapping_identifier=None, suggestion_confidence=None, suggestion_basis=None) -> dict`
-- `resolve_candidate(session, id_: int, *, resolved_to_source_mapping_identifier=None, resolved_to_field_mapping_identifier=None) -> dict` — sets resolved=True, resolved_at, resolved_to_*
-- `bulk_create_candidates(session, candidates: list[dict]) -> list[dict]` — batch insert for reconciler use
+### 4e. `mapping_candidate.py` (integer PK)
+- `list_candidates(session, *, instance_identifier=None, candidate_type=None, resolved=None)`
+- `get_candidate(session, id_)`
+- `create_candidate(*, instance_identifier, candidate_type, source_entity_name, source_field_name=None, source_value=None, audit_event_identifier=None, suggested_source_mapping_identifier=None, suggested_field_mapping_identifier=None, suggestion_confidence=None, suggestion_basis=None)`
+- `resolve_candidate(session, id_, *, resolved_to_source_mapping_identifier=None, resolved_to_field_mapping_identifier=None)` -- sets resolved=True, resolved_at
+- `bulk_create_candidates(session, candidates: list[dict])` -- batch insert
 
 ---
 
-## Step 5 — Write tests
+## Step 5 -- Write tests
 
 Create `tests/test_source_mapping_foundation.py`.
 
-Test coverage required:
+**Vocab:** INSTANCE_MEMBERSHIP_STATES contains 'candidate_pending' and 'mapping_stale'; all new frozensets non-empty.
 
-**Vocab:**
-- `INSTANCE_MEMBERSHIP_STATES` contains `'candidate_pending'` and `'mapping_stale'`
-- `SOURCE_MAPPING_DECISION_TYPES`, `SOURCE_MAPPING_STATUSES`, `FIELD_MAPPING_DECISION_TYPES`, `VALUE_MAPPING_DECISION_TYPES`, `MAPPING_CANDIDATE_TYPES` all non-empty frozensets
+**Migration:** 0079 creates all seven tables; downgrade/upgrade round-trip succeeds.
 
-**Migration:**
-- Migration `0079` creates all seven tables (use the standard migration round-trip pattern from existing tests)
-- All seven tables survive a downgrade and re-upgrade cycle
+**source_mapping repo:** create (status='unresolved'), list by instance_identifier, patch notes, mark_stale, soft-delete/restore, invalid decision_type raises UnprocessableError, invalid status transition raises StatusTransitionError.
 
-**Repository — source_mapping:**
-- Create with `decision_type='direct'`, verify `status='unresolved'`
-- List by `instance_identifier` filter
-- Patch `notes` field
-- `mark_stale` transitions status to `'stale'` with reason and severity
-- Soft-delete and restore round-trip
-- Invalid `decision_type` raises `UnprocessableError`
-- Invalid status transition raises `StatusTransitionError`
+**source_mapping_targets repo:** add_target idempotent, set_targets atomic, remove_target removes one.
 
-**Repository — source_mapping_targets:**
-- `add_target` is idempotent
-- `set_targets` replaces atomically
-- `remove_target` removes one without affecting others
+**field_mapping repo:** create, list by source_mapping_identifier, mark_stale, soft-delete.
 
-**Repository — field_mapping:**
-- Create, list by `source_mapping_identifier`, mark_stale, soft-delete
+**value_mapping repo:** create, list (active only), supersede round-trip, duplicate active raises conflict.
 
-**Repository — value_mapping:**
-- Create, list (active only by default), supersede round-trip
-- Duplicate (field_mapping_identifier, source_value) on active rows raises conflict
-
-**Repository — mapping_candidate:**
-- Create entity-level candidate, field-level candidate
-- `resolve_candidate` sets `resolved=True` and `resolved_to_*`
-- `bulk_create_candidates` inserts multiple records
+**mapping_candidate repo:** create entity/field candidates, resolve_candidate, bulk_create_candidates.
 
 ---
 
-## Step 6 — Run tests, verify migration
+## Step 6 -- Run tests and verify
 
 ```bash
-# Run just the new test file
 uv run pytest tests/test_source_mapping_foundation.py -v
-
-# Run the full suite to check for regressions
 uv run pytest tests/ -x -q
-
-# Verify migration head
 uv run alembic -c migrations/alembic.ini heads
 ```
 
 ---
 
-## Step 7 — Commit
+## Step 7 -- Commit
 
 ```bash
 git add -A
-git commit -m "v2: PI-255 slice 1 — source mapping foundation (vocab, models, migration 0079, repositories)"
+git commit -m "v2: PI-255 slice 1 -- source mapping foundation (governance pre-step, vocab, models, migration 0079, repositories)"
 ```
 
 Do NOT push. Doug pushes.
@@ -533,6 +485,7 @@ Do NOT push. Doug pushes.
 ## Done
 
 Reply with:
+- Governance pre-step result (requirements created, DEC identifier, all confirmed)
 - Test results summary (passed/failed counts)
 - Migration head after upgrade
 - Any deviations from this spec and why
