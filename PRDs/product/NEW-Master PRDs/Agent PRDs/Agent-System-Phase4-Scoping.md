@@ -81,10 +81,19 @@ runtime, keyed by area + spec).
 Sequenced; each ends with a concrete verification. Built **parallel to the live
 per-PI path** throughout — nothing here removes the per-PI path (that is Phase 5).
 
-- **4a — Testable-spec artifact (NEW, foundation).** A per-(release, area) durable,
-  versioned, reviewable **implementation spec + testable spec** record (schema +
-  access + API), alongside `artifact_versions`. *Areas:* storage/access/api.
-  *Verify:* author + read back a spec for an area; survives re-run.
+- **4a — Testable-spec artifact (NEW, foundation).** *(Decision 1 — LOCKED.)* A
+  **dedicated `area_spec` entity** (not a new `artifact_versions` type): per-(release,
+  area), engagement-scoped, composite FK to `releases`, holding an **implementation
+  spec** (the Builder reads) + a **testable spec** (the Tester implements blind). It
+  is **append-only / versioned with a `change_reason` + a trigger link** (the
+  Design-Review rejection / Develop gap / Test bounce that caused the revision) — old
+  entries are superseded, never erased; **current = the latest live entry**; the full
+  revision chain is the design provenance. A per-entry **content fingerprint** drives
+  the freshness gate (a new entry voids the prior approval). Mirrors the proven
+  release-satellite pattern (`release_change_sets` / `release_signoffs`) but
+  authored-and-versioned, not overwrite-on-rerun. *Areas:* storage/access/api.
+  *Verify:* author a spec, approve it, author a revision with a reason → the chain is
+  preserved, current = latest, the prior approval is voided.
 
 - **4b — Per-area Design fan-out (CHANGE/NEW).** The scheduler driver that, for a
   release, computes the **touched areas** (from the in-scope Work Tasks), fans out
@@ -126,10 +135,14 @@ per-PI path** throughout — nothing here removes the per-PI path (that is Phase
 
 These materially shape the build; each is a one-issue discussion.
 
-1. **Testable-spec artifact shape** — a new `artifact_type` on the existing
-   `artifact_versions` spine (reuse versioning/review/live-resolution), or a new
-   dedicated entity (`area_spec`)? Trade-off: reuse vs a cleaner per-(release,area)
-   keying that isn't a product-artifact.
+1. **Testable-spec artifact shape — LOCKED (2026-06-21): dedicated `area_spec`
+   entity, append-only/versioned with a `change_reason` + trigger link, current =
+   latest live entry, per-entry sign-off.** Rationale: the spec is *authored design
+   judgment*, not a recomputable derivation (unlike `release_change_sets`), so its
+   revision history is genuine provenance the system must keep — and a per-(release,
+   area) build artifact does not belong on the product-design spine
+   (`artifact_versions`), whose "live = shipped version" semantics describe the
+   product across releases, not one build job.
 2. **Touched-area derivation** — "the areas a release touches" = the distinct `area`
    of the in-scope Work Tasks (from the per-PI decomposition that still runs upstream).
    Confirm Phase 4 **consumes** the existing decomposition's Work Tasks rather than
