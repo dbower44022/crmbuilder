@@ -181,6 +181,14 @@ def anthropic_gate_runner(model: str = _MODEL, *, log: Callable[[str], None] = p
                                      ("requirements", "designs", "delivered")}, indent=2)}],
             output_format=_Verdict,
         )
+        # Record the gate judgment's spend (best-effort; relies on the scheduler's
+        # ambient active-engagement context — PI-264).
+        from crmbuilder_v2.scheduler import cost_capture
+
+        cost_capture.record_sdk_usage(
+            getattr(resp, "usage", None), model,
+            stage=ctx.get("stage"), release_identifier=ctx.get("release_identifier"),
+        )
         return resp.parsed_output.model_dump()
 
     return make_gate_runner(_judge, log=log)

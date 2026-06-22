@@ -86,6 +86,17 @@ def record(
     cost_usd = cost_pricing.compute_cost_usd(
         model, input_tokens, output_tokens, cache_write_tokens, cache_read_tokens
     )
+    # Decision 4: cost_usd is computed uniformly from the price table. But a claude_cli
+    # session can span model(s) we cannot price from one id; when the model is unpriced
+    # and the tool reported its own total, fall back to that authoritative number so the
+    # dominant fleet spend still shows a real dollar figure (reported is also kept as a
+    # cross-check column).
+    if (
+        cost_usd == 0.0
+        and reported_usd is not None
+        and not cost_pricing.is_priced(model or "")
+    ):
+        cost_usd = float(reported_usd)
     row = CostEvent(
         cost_source=source,
         cost_model=model or "",

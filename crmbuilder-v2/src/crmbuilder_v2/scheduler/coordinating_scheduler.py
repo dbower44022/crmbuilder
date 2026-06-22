@@ -47,12 +47,11 @@ import urllib.parse
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
 
 from crmbuilder_v2.config import verify_log_dir
-from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler import dispatcher, reconciliation
 from crmbuilder_v2.scheduler.agent_prompt import build_agent_prompt
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 
 # --------------------------------------------------------------------------
 # Outcomes (small enums + records the loop and its tests reason over)
@@ -465,12 +464,19 @@ def spawn_claude_agent(
     Non-interactive (``-p``), permissions bypassed so it can use Bash/Write
     without prompting, scoped to the worktree. The agent boots from the contract
     + operating protocol, does the task, and exits.
+
+    ``--output-format json`` makes the final stdout a single result object carrying the
+    session's token usage + ``total_cost_usd`` (captured for cost telemetry, PI-264).
+    The agent's work is unchanged and is still verified by result (git + DB state, not
+    stdout), and ``returncode`` semantics are preserved.
     """
     return subprocess.run(
         [
             "claude",
             "-p",
             prompt,
+            "--output-format",
+            "json",
             "--permission-mode",
             "bypassPermissions",
             "--add-dir",
@@ -672,6 +678,17 @@ class CoordinatingScheduler:
                 proc = spawn(assignment.prompt, worktree.path)
                 returncode = proc.returncode
                 self.log(f"  agent exited rc={returncode}")
+                # Capture the agent's token spend (best-effort, side-band — PI-264).
+                from crmbuilder_v2.scheduler import cost_capture
+
+                cost_capture.record_cli_result(
+                    getattr(proc, "stdout", None),
+                    engagement=cfg.engagement,
+                    work_task=assignment.work_task_id,
+                    area=getattr(assignment, "area", None),
+                    tier=getattr(cfg, "tier", None),
+                    stage="develop",
+                )
             except subprocess.TimeoutExpired:
                 self.log(
                     f"  agent hit the {cfg.agent_timeout}s deadline and was "

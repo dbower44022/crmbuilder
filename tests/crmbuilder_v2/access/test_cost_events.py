@@ -76,6 +76,26 @@ def test_record_keeps_reported_cost_crosscheck(v2_env):
     assert row["cost_source"] == "claude_cli"
 
 
+def test_record_unpriced_claude_cli_falls_back_to_reported(v2_env):
+    # An unpriced model + a reported cost → cost_usd uses the tool's authoritative total.
+    with session_scope() as s:
+        row = cost_events.record(
+            s, source="claude_cli", model="some-internal-model",
+            input_tokens=1000, reported_usd=0.99)
+    assert row["cost_usd"] == pytest.approx(0.99)
+    assert row["cost_reported_usd"] == pytest.approx(0.99)
+
+
+def test_record_priced_model_ignores_reported_for_cost(v2_env):
+    # A priced model computes uniformly from tokens; reported is kept only as cross-check.
+    with session_scope() as s:
+        row = cost_events.record(
+            s, source="claude_cli", model="claude-sonnet-4-6",
+            input_tokens=1_000_000, reported_usd=999.0)
+    assert row["cost_usd"] == pytest.approx(3.0)
+    assert row["cost_reported_usd"] == pytest.approx(999.0)
+
+
 def test_record_rejects_bad_source(v2_env):
     with session_scope() as s, pytest.raises(UnprocessableError):
         cost_events.record(s, source="nope", model="claude-sonnet-4-6")

@@ -670,12 +670,19 @@ def anthropic_providers(model: str = _MODEL):
         _registry_system_prompt("planning", "architect") or _DECOMPOSE_SYSTEM
     )
 
-    def _parse(system, user, schema):
+    def _parse(system, user, schema, *, stage, **attribution):
         resp = client.messages.parse(
             model=model, max_tokens=16000,
             thinking={"type": "adaptive"}, output_config={"effort": "high"},
             system=system, messages=[{"role": "user", "content": user}],
             output_format=schema,
+        )
+        # Record the call's spend (best-effort; relies on the scheduler's ambient
+        # active-engagement context — PI-264).
+        from crmbuilder_v2.scheduler import cost_capture
+
+        cost_capture.record_sdk_usage(
+            getattr(resp, "usage", None), model, stage=stage, **attribution
         )
         return resp.parsed_output
 
@@ -686,6 +693,8 @@ def anthropic_providers(model: str = _MODEL):
             f"{context['release_identifier']} from these confirmed requirements:\n"
             + json.dumps(context["requirements"], indent=2),
             _DemandSet,
+            stage="demands",
+            release_identifier=context.get("release_identifier"),
         )
         return [d.model_dump() for d in out.demands]
 
@@ -696,6 +705,9 @@ def anthropic_providers(model: str = _MODEL):
             f"{context['release_identifier']}. The versioned design deltas:\n"
             + json.dumps(context["designs"], indent=2),
             _Decomposition,
+            stage="decomposition",
+            release_identifier=context.get("release_identifier"),
+            planning_item=context.get("planning_item"),
         )
         return [w.model_dump() for w in out.workstreams]
 
