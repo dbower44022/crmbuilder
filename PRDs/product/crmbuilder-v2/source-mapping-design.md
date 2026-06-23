@@ -12,6 +12,7 @@
 | Version | Date | Author | Summary |
 |---------|------|--------|---------|
 | 1.0 | 06-22-26 | Doug Bower / Claude (SES-174) | Initial design. Establishes the source mapping model: candidate-gated mapping decisions, fractal decision structure, entity/field/value levels, join mapping, temporal change handling across four scenarios. |
+| 1.1 | 06-22-26 | Doug Bower / Claude (SES-247) | Reconciler design pass (§12, DEC-648…654): role-as-switch, no auto-promotion on source audits, membership stays canonical-only (resolves §11), fractal multi-pass surfacing, staleness on the mapping. Adds associations as a first-class `association_mapping` (§8.8). |
 
 ---
 
@@ -265,6 +266,32 @@ mapping_candidate
   created_at
 ```
 
+### 8.8 `association_mapping` — relationship-level mapping decision
+
+Added by the reconciler design pass (§12). A discovered source relationship maps
+to a canonical association through its own first-class record, parallel to
+`field_mapping`. Identifier prefix `AMP-`. Decision types are `direct`,
+`referential`, `rejected` — no `decomposition` (an association is already the
+edge between two entities). An association candidate is only resolvable once
+**both** endpoint entities are mapped. `candidate_type` (§8.7) gains the value
+`association`.
+
+```
+association_mapping
+  id
+  association_mapping_identifier   AMP-NNN
+  instance_identifier              the source instance
+  source_association_name          what the auditor found
+  decision_type                    direct | referential | rejected
+  status                           unresolved | resolved | stale | superseded
+  stale_reason                     source_changed | design_changed | null
+  stale_severity                   low | high | null
+  target_association_identifier    the canonical association (nullable until resolved)
+  superseded_by                    self-referential chain (nullable)
+  notes
+  resolved_at / created_at / updated_at / deleted_at
+```
+
 ---
 
 ## 9. Key invariants
@@ -289,10 +316,13 @@ These invariants hold across the entire mapping model:
 
 ## 10. Relationship to PRJ-027
 
-This design extends and partially supersedes PRJ-027's reconcile algorithm (§6). The changes are:
+This design extends and partially supersedes PRJ-027's reconcile algorithm (§6).
+**The reconciler design pass (§12) settles how this lands; where this section and
+§12 differ, §12 governs** (notably: candidate-gating runs only on *source*-role
+audits, and the `instance_membership` join is left unchanged). The changes are:
 
-- Step 3 ("no canonical match → create a canonical design object; mark membership present") is replaced by: "no canonical match → create a `mapping_candidate`; mark as unresolved; membership state is `candidate_pending` until resolved."
-- The `instance_membership` join gains two new states beyond `present/drifted/absent`: `candidate_pending` (discovered, awaiting mapping decision) and `mapping_stale` (mapping existed but has become stale).
+- Step 3 ("no canonical match → create a canonical design object; mark membership present") is replaced, **on a source-role audit**, by: "no canonical match → create a `mapping_candidate`; the canonical object is created only on human resolution." Target-role audits keep the existing drift reconcile unchanged (§12).
+- The `instance_membership` join is **unchanged** — it stays canonical-only (`present` / `drifted` / `absent`). The `candidate_pending` / `mapping_stale` states once proposed here are **not** needed: candidacy lives in `mapping_candidate`, staleness on the mapping record's `status` (§12).
 - The `mapping_candidate` table is new; all other PRJ-027 structures remain valid.
 
 The PRJ-027 open question on canonical object identity (§12) is partially answered by this model: identity matching is the reconciler's suggestion function (name similarity + type + enum values), but it is always human-confirmed, so a miss in the matching heuristic is recoverable through the candidate resolution workflow.
@@ -307,7 +337,64 @@ The PRJ-027 open question on canonical object identity (§12) is partially answe
 
 - **Candidate UI surface.** The desktop panel for reviewing and resolving candidates is not designed here. It is a follow-on PI under PRJ-027.
 
-- **Membership state extensions.** The two new `instance_membership` states (`candidate_pending`, `mapping_stale`) need to be formally added to the PRJ-027 §5 membership join spec. Deferred to the PI-185 design pass.
+- **Membership state extensions.** ~~The two new `instance_membership` states (`candidate_pending`, `mapping_stale`) need to be formally added to the PRJ-027 §5 membership join spec.~~ **RESOLVED by the design pass (§12, DEC-650):** no membership extensions are needed — the membership join stays canonical-only, candidacy lives in `mapping_candidate`, and staleness on the mapping record's `status`. The two states are removed from the vocab.
+
+---
+
+## 12. Reconciler integration & membership resolution (design pass)
+
+This section is the output of the reconciler design pass (governance **SES-247**,
+decisions **DEC-648…654**, against **REQ-300** / **PI-255** / topic **TOP-105**). It
+discharges §11's membership-state deferral and adds associations to the model.
+Where it differs from §10, this section governs.
+
+1. **Instance role is the switch (DEC-648).** The candidate-gated mapping pass runs
+   only on a **source**-role (or `both`-role, treated as source) audit. A
+   **target**-role audit keeps the existing `present`/`drifted`/`absent` drift
+   reconcile **unchanged** — the canonical design is the authority there, and the
+   audit checks deployment fidelity.
+
+2. **No auto-promotion on a source audit (DEC-649).** The reconciler never
+   auto-creates canonical objects and never auto-marks a match `present` by name.
+   Every discovered object becomes a `mapping_candidate`; name/type similarity is a
+   non-binding **suggestion** only. On re-audit, a discovered object is matched to
+   the design through its **resolved `source_mapping`** (the human decision), not by
+   name. The first audit of a fresh source instance yields all candidates.
+
+3. **Membership stays canonical-only (DEC-650).** `instance_membership` keeps
+   `present`/`drifted`/`absent` and is keyed to a canonical object. Candidacy →
+   `mapping_candidate`; decisions/rejections → `source_mapping` / `field_mapping` /
+   `association_mapping`; staleness → those records' `status`. `candidate_pending`
+   and `mapping_stale` are **removed** from `INSTANCE_MEMBERSHIP_STATES`.
+
+4. **Fractal multi-pass surfacing (DEC-651).** A candidate surfaces only when its
+   dependencies are resolved: an entity candidate immediately; a **field** candidate
+   once its parent entity is mapped; an **association** candidate once **both**
+   endpoint entities are mapped; a **value** candidate once its interpreted enum
+   field is mapped. A rejected/unmapped dependency keeps its dependents deferred.
+   In practice this is a multi-pass flow over successive re-audits.
+
+5. **Staleness on the mapping (DEC-652).** Source-side staleness — a re-audit finds
+   a mapped source object renamed/retyped/gone — flips the mapping to
+   `status=stale, source_changed` and surfaces the changed object as a fresh
+   suggestion-candidate; this ships with the reconciler build (it falls out of
+   re-audit comparison). Design-side staleness — editing a canonical object flips
+   the mappings targeting it to `design_changed` — needs canonical-edit hooks and is
+   a **thin follow-on**.
+
+6. **Scope (DEC-653).** A source audit candidate-gates **entity / field / value /
+   association** only. Layouts, roles, teams, filtered-tabs are **not** reconciled on
+   a source audit (target/drift model + a possible future extension).
+
+7. **Associations are first-class (DEC-654).** A source relationship maps through a
+   new `association_mapping` entity (`AMP-`, table `association_mappings`, see §8.8),
+   parallel to `field_mapping`, with decision types `direct`/`referential`/`rejected`
+   (no decomposition). `candidate_type` gains `association`. Canonical-association
+   membership is unchanged.
+
+**Deferred follow-ons:** the candidate-resolution UI (§11), the design-side staleness
+trigger (DEC-652), cross-source suggestion buckets (§7.3), and any extension of
+candidate-gating to layouts/roles/teams/filtered-tabs.
 
 ---
 
