@@ -137,6 +137,14 @@ class Settings(BaseSettings):
     # engagement selection is validated against the principal's assignments.
     principal_auth_enabled: bool = False
 
+    # REQ-324 (PI-288): gate the release-scoped development enforcement
+    # (REQ-323 — a planning item cannot be developed outside a frozen release).
+    # Default OFF so in-flight work drains under the prior model before the gate
+    # is turned on; flip ON (env CRMBUILDER_V2_RELEASE_SCOPED_GATE_ENABLED=true)
+    # once the open backlog has migrated into release-scoped projects and no
+    # planning item remains in development outside a release.
+    release_scoped_gate_enabled: bool = False
+
     api_base_url: str = "http://127.0.0.1:8765"
     mcp_http_port: int = 8810
 
