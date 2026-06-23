@@ -38,6 +38,11 @@ _log = logging.getLogger("crmbuilder_v2.ui.client")
 # Also covers legitimately slow operations like an in-sync publish preview.
 _DEFAULT_TIMEOUT = 30.0
 
+# A single audit area (e.g. layouts) reverse-engineers a live CRM with many
+# upstream HTTP round-trips and can legitimately run minutes; it must not trip
+# the 30s default and be misread as a lost connection (PRJ-027 live audit).
+_AUDIT_TIMEOUT = 600.0
+
 
 class StorageClient:
     """Synchronous HTTP client for the v2 storage REST API.
@@ -2093,7 +2098,9 @@ class StorageClient:
         The all-in-one form — every area in one request. The desktop drives the
         per-area form (:meth:`audit_instance_area`) for live progress (PI-274).
         """
-        result = self._request("POST", f"/instances/{identifier}/audit")
+        result = self._request(
+            "POST", f"/instances/{identifier}/audit", timeout=_AUDIT_TIMEOUT
+        )
         if not isinstance(result, dict):
             raise ServerError(
                 status_code=200, errors=[],
@@ -2117,10 +2124,14 @@ class StorageClient:
         """POST /instances/{id}/audit/{area} — reconcile one audit area (PI-274).
 
         Returns ``{area, label, summary, log}`` where ``log`` is a list of
-        ``[message, level]`` lines the step surfaced.
+        ``[message, level]`` lines the step surfaced. A single area (e.g.
+        layouts) can run minutes of upstream introspection, so this uses the
+        long audit timeout, not the 30s default — a slow area must not look like
+        a lost connection (the cause of the auto-reconnect storm in PI-274 use).
         """
         result = self._request(
-            "POST", f"/instances/{identifier}/audit/{area}"
+            "POST", f"/instances/{identifier}/audit/{area}",
+            timeout=_AUDIT_TIMEOUT,
         )
         if not isinstance(result, dict):
             raise ServerError(
@@ -2535,14 +2546,19 @@ class StorageClient:
         path: str,
         *,
         json_body: dict[str, Any] | None = None,
+        timeout: float | None = None,
     ) -> Any:
         _log.debug("%s %s", method, path)
         headers = (
             {"X-Engagement": self._engagement} if self._engagement else None
         )
+        # ``timeout`` overrides the client default for inherently-long calls
+        # (e.g. a live audit area, which can run minutes of upstream HTTP), so a
+        # slow-but-healthy operation is not mistaken for a lost connection.
+        kw: dict[str, Any] = {"timeout": timeout} if timeout is not None else {}
         try:
             resp = self._client.request(
-                method, path, json=json_body, headers=headers
+                method, path, json=json_body, headers=headers, **kw
             )
         except (
             httpx.ConnectError,

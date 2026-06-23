@@ -1326,3 +1326,25 @@ def test_create_session_propagates_identifier_collision():
     client = _client(handler)
     with pytest.raises(ConflictError):
         client.create_session(_session_body())
+
+
+def test_audit_area_uses_long_timeout():
+    """A per-area audit must use the long audit timeout, not the 30s default,
+    so a slow live area isn't misread as a lost connection (PRJ-027)."""
+    import httpx
+    from crmbuilder_v2.ui.client import _AUDIT_TIMEOUT, StorageClient
+    seen = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen[req.url.path] = req.extensions["timeout"]["read"]
+        data = [] if req.url.path.endswith("/audit/areas") else {
+            "area": "layouts", "summary": {}}
+        return httpx.Response(200, json={"data": data, "meta": {}, "errors": None})
+
+    c = StorageClient(base_url="http://t",
+                      client=httpx.Client(base_url="http://t",
+                                          transport=httpx.MockTransport(handler)))
+    c.audit_instance_area("INST-001", "layouts")
+    c.list_audit_areas()  # a normal call -> NOT the long audit timeout
+    assert seen["/instances/INST-001/audit/layouts"] == _AUDIT_TIMEOUT
+    assert seen["/instances/audit/areas"] != _AUDIT_TIMEOUT
