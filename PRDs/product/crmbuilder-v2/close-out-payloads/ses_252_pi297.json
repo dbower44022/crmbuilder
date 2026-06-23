@@ -1,0 +1,15 @@
+{
+  "label": "PI-297 build close-out — activity-tracking base-type round-trip (REQ-337)",
+  "note": "Records were entered in real time via direct API POST (DEC-383, the Claude Code path), not batched-and-applied. This manifest is the close_out_payload artifact for the Model A git-tracked deposit-event trail (dep_155.log / DEP-156).",
+  "engagement": "CRMBUILDER",
+  "session": "SES-252",
+  "conversation": "CNV-190",
+  "release": "REL-019",
+  "project": "PRJ-053",
+  "resolves_planning_items": ["PI-297"],
+  "implements_requirement": "REQ-337",
+  "decisions": ["DEC-678 (design standard + record-now-build-later)", "DEC-687 (implementation)"],
+  "commits": ["07b0998e (branch pi-297-activity-tracking-roundtrip; merged to main as adfd1631)"],
+  "migrations": ["SQLite 0084_pi_297_entity_tracks_activities", "PG 0041_pi_297_entity_tracks_activities"],
+  "summary": "Built the neutral entity_tracks_activities attribute so an entity's activity-tracking base type round-trips audit->deploy: model + migrations + access/API/MCP/UI; EspoCRM adapter emits BasePlus; audit reconcile captures it; V1 validator accepts BasePlus. Live v2-unified.db column added via direct ALTER (DEFAULT 0); alembic stays 0081. All tests green."
+}

@@ -1,0 +1,21 @@
+DEP-156 — Apply of COP-231 (PI-297 build close-out), 2026-06-23
+Engagement: CRMBUILDER
+Outcome: success
+Runner: claude_code (real-time API per DEC-383; manifest ses_252_pi297.json)
+
+Build: REQ-337 / PI-297 — round-trip entity activity-tracking (BasePlus).
+Branch pi-297-activity-tracking-roundtrip, commit 07b0998e, merged to main as adfd1631.
+
+Records (entered in real time via direct API POST):
+  - conversation CNV-190  (build execution, belongs to SES-252)
+  - decision     DEC-687  (implementation; is_about PI-297)
+  - decision     DEC-678  (design standard; recorded pre-build)
+  - commit       CM-0169  (07b0998e, attributed to SES-252)
+  - planning_item PI-297  resolved (CNV-190 resolves PI-297)  Draft -> Resolved
+  - requirement  REQ-337  confirmed (DEC-681); PI-297 implements REQ-337
+
+Schema: SQLite migration 0084 / PG 0041 added entity_tracks_activities.
+Live v2-unified.db: column added via direct ALTER (NOT NULL DEFAULT 0); alembic
+stays at 0081 (migration 0084 inspector-guarded, a future alembic run is a no-op).
+
+records_summary: 1 conversation, 2 decisions, 1 commit, 1 planning_item resolved.
