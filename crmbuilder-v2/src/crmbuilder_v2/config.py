@@ -181,6 +181,15 @@ class Settings(BaseSettings):
     # fine for the localhost flow where auth is off.
     mcp_token: str = ""
 
+    # PI-285 / REQ-316: retention bound for the durable pipeline-event log. The
+    # progress history lives in the ``pipeline_events`` table in the v2 database
+    # (``db_path`` / ``database_url``) — DATABASE storage, distinct from the
+    # rotating file-based service log at ``api_log_path``. The prune command
+    # (``crmbuilder-v2-prune-events``) deletes events older than this many days so
+    # the history does not accumulate without bound; <= 0 disables pruning (keep
+    # everything). Binds from ``CRMBUILDER_V2_PIPELINE_EVENT_RETENTION_DAYS``.
+    pipeline_event_retention_days: int = 90
+
     # --- MCP OAuth 2.1 authorization server (streamable-http only) ---
     # We run our own OAuth AS (mcp SDK's OAuthAuthorizationServerProvider)
     # instead of Cloudflare Managed OAuth, which drops the per-request

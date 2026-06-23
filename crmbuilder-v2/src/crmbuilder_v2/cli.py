@@ -127,6 +127,66 @@ def run_api() -> None:
     )
 
 
+def run_prune_events() -> None:
+    """``crmbuilder-v2-prune-events`` — enforce the pipeline-event retention bound (REQ-316).
+
+    Deletes ``pipeline_events`` older than the configured retention bound
+    (``CRMBUILDER_V2_PIPELINE_EVENT_RETENTION_DAYS``; default 90), across all
+    engagements, so the durable pipeline-progress log does not accumulate without
+    end. Intended for an operator or a scheduled job. ``--dry-run`` reports the
+    count without deleting; ``--days`` overrides the configured bound.
+    """
+    import argparse
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import func, select
+
+    from crmbuilder_v2.access.db import session_scope
+    from crmbuilder_v2.access.models import PipelineEvent
+    from crmbuilder_v2.access.repositories import pipeline_events
+    from crmbuilder_v2.config import get_settings
+
+    parser = argparse.ArgumentParser(
+        prog="crmbuilder-v2-prune-events",
+        description=(
+            "Delete pipeline_events older than the retention bound, across all "
+            "engagements, so the durable pipeline-progress log does not grow "
+            "without end (REQ-316)."
+        ),
+    )
+    parser.add_argument(
+        "--days", type=int, default=None,
+        help="Override the retention bound (days). Default: the configured value.",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Report how many events WOULD be pruned, without deleting.",
+    )
+    args = parser.parse_args()
+
+    keep_days = (
+        args.days if args.days is not None
+        else get_settings().pipeline_event_retention_days
+    )
+    if args.dry_run:
+        with session_scope() as s:
+            if keep_days <= 0:
+                n = 0
+            else:
+                cutoff = datetime.now(UTC) - timedelta(days=keep_days)
+                n = s.scalar(
+                    select(func.count(PipelineEvent.id)).where(
+                        PipelineEvent.pipeline_event_created_at < cutoff
+                    )
+                ) or 0
+        print(f"DRY RUN: would prune {n} pipeline event(s) older than "
+              f"{keep_days} day(s).")
+        return
+    with session_scope() as s:
+        deleted = pipeline_events.prune(s, keep_days=keep_days)
+    print(f"Pruned {deleted} pipeline event(s) older than {keep_days} day(s).")
+
+
 def run_mcp() -> None:
     import argparse
 

@@ -9,12 +9,22 @@ active-engagement filter/stamp is applied transparently, so callers never pass
   pipeline steps), surviving the process that produced it;
 * :func:`history` — reconstruct, for one release, the ordered account of how it
   got to where it is, drillable to each agent invocation (REQ-314);
-* :func:`recent` — the newest events over any correlation filter.
+* :func:`recent` — the newest events over any correlation filter;
+* :func:`prune` — enforce the retention bound, so the log does not accumulate
+  without end (REQ-316).
+
+**Storage location (REQ-316):** these rows live in the ``pipeline_events`` table of
+the v2 database — database storage, distinct from the rotating file-based service
+log (``config.api_log_path``). Retention is bounded by
+``Settings.pipeline_event_retention_days`` and applied by :func:`prune` (the
+``crmbuilder-v2-prune-events`` command).
 """
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from datetime import UTC, datetime, timedelta
+
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import to_dict
@@ -137,3 +147,25 @@ def history(session: Session, release_identifier: str, *, limit: int = 1000) -> 
         .limit(limit)
     )
     return [to_dict(r) for r in session.scalars(stmt)]
+
+
+def prune(session: Session, *, keep_days: int) -> int:
+    """Delete pipeline events older than ``keep_days`` days (REQ-316).
+
+    Enforces the retention bound so the durable log does not accumulate without
+    end. ``keep_days <= 0`` is a no-op (retention disabled — keep everything).
+    This is a **maintenance operation that prunes across all engagements** by
+    event age — a bulk delete, run by the ``crmbuilder-v2-prune-events`` command
+    outside any engagement context, not a per-request action. Returns the number
+    of events deleted.
+    """
+    if keep_days <= 0:
+        return 0
+    cutoff = datetime.now(UTC) - timedelta(days=keep_days)
+    result = session.execute(
+        delete(PipelineEvent).where(
+            PipelineEvent.pipeline_event_created_at < cutoff
+        )
+    )
+    session.flush()
+    return int(result.rowcount or 0)

@@ -122,3 +122,46 @@ def test_history_empty_for_release_with_no_events(v2_env):
     with session_scope() as s:
         rel, *_ = _release_with_decomp(s)
         assert pe.history(s, rel) == []
+
+
+# --- REQ-316: retention / prune --------------------------------------------
+
+
+def _backdate(s, work_task, days):
+    from datetime import UTC, datetime, timedelta
+
+    from crmbuilder_v2.access.models import PipelineEvent
+    row = s.query(PipelineEvent).filter(
+        PipelineEvent.work_task == work_task
+    ).one()
+    row.pipeline_event_created_at = datetime.now(UTC) - timedelta(days=days)
+    s.flush()
+
+
+def test_prune_deletes_old_keeps_recent(v2_env):
+    with session_scope() as s:
+        _rec(s, kind="dispatch", work_task="OLD-1")
+        _rec(s, kind="dispatch", work_task="OLD-2")
+        _rec(s, kind="dispatch", work_task="NEW-1")
+        _backdate(s, "OLD-1", 100)
+        _backdate(s, "OLD-2", 91)
+        _backdate(s, "NEW-1", 10)
+        deleted = pe.prune(s, keep_days=90)
+        assert deleted == 2
+        remaining = {e["work_task"] for e in pe.recent(s)}
+        assert remaining == {"NEW-1"}
+
+
+def test_prune_disabled_when_keep_days_not_positive(v2_env):
+    with session_scope() as s:
+        _rec(s, kind="dispatch", work_task="OLD-1")
+        _backdate(s, "OLD-1", 1000)
+        assert pe.prune(s, keep_days=0) == 0
+        assert pe.prune(s, keep_days=-5) == 0
+        assert len(pe.recent(s)) == 1
+
+
+def test_retention_default_is_configured():
+    from crmbuilder_v2.config import Settings
+
+    assert Settings().pipeline_event_retention_days == 90
