@@ -793,3 +793,33 @@ def test_parallel_run_records_fleet_cost(v2_env, monkeypatch):
     assert row["area"] == "api" and row["stage"] == "develop"
     assert row["cost_reported_usd"] == 0.4
     assert row["cost_usd"] > 0  # opus priced from tokens
+
+
+def test_worker_error_pauses_not_hangs(monkeypatch):
+    """DEC-645 (PI-139 defect): a worker whose post-agent verify call raises (e.g. the
+    API 500s) must still report a failure, so the pool drains and pauses. Pre-fix the
+    unreported task pinned `active` and the pool hung forever — so this runs the pool
+    in a thread with a deadline and asserts it actually returned."""
+    import threading
+
+    rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.02}, max_concurrent=1)
+
+    def boom(api, path, eng):  # the verify-by-result HTTP call fails
+        raise RuntimeError("API 500 during verify")
+
+    monkeypatch.setattr(pr.dispatcher, "_get", boom)
+
+    result: dict = {}
+
+    def go():
+        result["report"] = rt.run()
+
+    t = threading.Thread(target=go)
+    t.start()
+    t.join(timeout=15)
+    assert not t.is_alive(), "pool hung — a worker error was not reported (DEC-645)"
+    report = result["report"]
+    assert report.paused is True
+    outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-1"] is TaskStatus.FAILED
+    assert "WTK-1" in rt._flagged  # surfaced for a human

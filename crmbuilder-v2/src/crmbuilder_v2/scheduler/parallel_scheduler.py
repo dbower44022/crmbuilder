@@ -178,12 +178,17 @@ class _AgentRun:
     """A worker thread's result, handed to the main thread for verify + merge."""
 
     assignment: _ResolvedAssignment
-    worktree: Worktree
+    worktree: Worktree | None
     returncode: int | None
     refreshed_task: dict
     has_commits: bool
     spawned_at: float
     finished_at: float
+    # Set when the worker itself died (e.g. an unprotected verify HTTP/git call
+    # raised) rather than the agent producing a verifiable result. A worker MUST
+    # still report — an unreported worker pins the task in ``active`` and hangs the
+    # pool forever (DEC-645 / PI-139 defect) — so this carries the failure across.
+    error: str | None = None
 
 
 # --------------------------------------------------------------------------
@@ -485,11 +490,65 @@ class ParallelCoordinatingScheduler:
         )
 
     def _worker(self, assignment: _ResolvedAssignment) -> None:
-        self._completed.put(self._spawn_one(assignment))
+        # The pool's core invariant: every dispatched task produces EXACTLY ONE
+        # result on the completion queue. ``_spawn_one`` makes unprotected I/O calls
+        # after the agent runs (the verify ``dispatcher._get`` HTTP call + a git
+        # read); if one raises, this worker must NOT die silently — an unreported
+        # task is never discarded from ``active`` and the main loop waits forever
+        # (the DEC-645 hang). Catch everything and report a synthesized failure so a
+        # transient error becomes a visible pause, not a permanent hang.
+        try:
+            result = self._spawn_one(assignment)
+        except Exception as exc:  # noqa: BLE001 — a worker must always report
+            now = time.time()
+            self.log(
+                f"  [{assignment.work_task_id}] worker error: {exc!r} — "
+                "reporting as failed (would otherwise hang the pool)"
+            )
+            result = _AgentRun(
+                assignment=assignment,
+                worktree=None,
+                returncode=None,
+                refreshed_task={},
+                has_commits=False,
+                spawned_at=now,
+                finished_at=now,
+                error=str(exc),
+            )
+        self._completed.put(result)
 
     # --- integrate one completed agent (main thread, serialized) --------
+    def _failed_report(
+        self, assignment: _ResolvedAssignment, reason: str, run: _AgentRun | None
+    ) -> TaskReport:
+        """Flag + record a worker/verify failure and return a FAILED ``TaskReport``
+        (no retry, no merge). Cleans up the worktree if one exists. Used when a
+        worker died (DEC-645) so the pool drains and pauses rather than hangs."""
+        self.log(f"  [{assignment.work_task_id}] {reason} — failing the task")
+        self._l1._flag_needs_attention(assignment.work_task_id, reason)
+        self._record_finding(assignment.work_task_id, reason)
+        self._reclaim_locks(assignment.work_task_id)  # PI-220: free the child's locks
+        if run is not None and run.worktree is not None:
+            try:
+                run.worktree.remove()
+            except Exception as exc:  # noqa: BLE001 — cleanup is best-effort
+                self.log(f"  [{assignment.work_task_id}] (cleanup) {exc}")
+        return TaskReport(
+            work_task_id=assignment.work_task_id,
+            branch=assignment.branch,
+            outcome=TaskStatus.FAILED,
+            agent_returncode=(run.returncode if run is not None else None),
+            spawned_at=(run.spawned_at if run is not None else None),
+            finished_at=(run.finished_at if run is not None else None),
+        )
+
     def _integrate(self, run: _AgentRun) -> TaskReport:
         a = run.assignment
+        # A worker that died (e.g. an unprotected verify HTTP/git call raised) is a
+        # hard failure — short-circuit before the verify/retry/merge logic, which
+        # assumes a real worktree + result (DEC-645).
+        if run.error is not None:
+            return self._failed_report(a, f"worker error: {run.error}", run)
         verdict = verify_result(run.refreshed_task, run.has_commits)
         if verdict.detail in ("not_complete", "no_commits"):
             # Per-agent retry: an agent that exits without driving its task to
@@ -503,7 +562,10 @@ class ParallelCoordinatingScheduler:
                 "— retrying agent once"
             )
             run.worktree.remove()
-            run = self._spawn_one(a)
+            try:
+                run = self._spawn_one(a)
+            except Exception as exc:  # noqa: BLE001 — the retry's verify can raise too
+                return self._failed_report(a, f"retry worker error: {exc}", None)
             verdict = verify_result(run.refreshed_task, run.has_commits)
         verify_log_path = None
         if verdict.ok:
