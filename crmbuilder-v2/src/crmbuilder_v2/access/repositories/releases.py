@@ -442,7 +442,18 @@ def _has_cycle(adjacency: dict[str, set[str]]) -> bool:
 
 
 def _check_planned_completely(session: Session, identifier: str) -> None:
-    """Planned-completely gate — frozen + decomposed + sequenced (REQ-190)."""
+    """Planned-completely gate — frozen + decomposed + sequenced (REQ-190).
+
+    REQ-336 / DEC-661: an **interactive** in-scope planning item is delivered by
+    hand, never by the automated pipeline — the ADO is forbidden from decomposing
+    it (DEC-425), so it can never have phase workstreams. It is "planned" by being
+    hand-executed, so this gate treats it as already planned rather than demanding
+    a decomposition it cannot have. A manually-driven release (all in-scope items
+    interactive) therefore reaches ``ready`` from its recorded review evidence,
+    without automated decomposition; an ADO item still requires its phase plan.
+    """
+    from crmbuilder_v2.access.repositories import pm
+
     row = _get_row(session, identifier)
     if row.release_frozen_at is None:
         raise ConflictError(
@@ -458,6 +469,9 @@ def _check_planned_completely(session: Session, identifier: str) -> None:
         )
     work_tasks: set[str] = set()
     for pi in pis:
+        # Interactive items are hand-delivered — treat as already planned.
+        if pm.is_ado_interactive(session, pi):
+            continue
         wss = _pi_workstreams(session, pi)
         if not wss:
             raise ConflictError(
