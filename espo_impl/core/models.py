@@ -251,7 +251,10 @@ class EntityAction(Enum):
     DELETE_AND_CREATE = "delete_and_create"
 
 
-SUPPORTED_ENTITY_TYPES: set[str] = {"Base", "Person", "Company", "Event"}
+# ``BasePlus`` (REQ-337 / PI-297) is a Base entity that also carries the
+# Activities/History/Tasks panels — the deploy validator accepts it and the
+# EntityManager passes it through to ``createEntity`` unchanged.
+SUPPORTED_ENTITY_TYPES: set[str] = {"Base", "BasePlus", "Person", "Company", "Event"}
 
 VALID_SETTINGS_KEYS: set[str] = {
     "labelSingular", "labelPlural", "stream", "disabled",

@@ -135,6 +135,15 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         vocab=frozenset(_TRACK_ACTIVITY_CHOICES),
         default="false",
     ),
+    # REQ-337 / PI-297 — neutral activity-tracking (EspoCRM BasePlus) flag,
+    # distinct from the stream/feed flag above.
+    FieldSchema(
+        key="entity_tracks_activities",
+        label="Track activities (meetings/calls/tasks)",
+        widget="combo",
+        vocab=frozenset(_TRACK_ACTIVITY_CHOICES),
+        default="false",
+    ),
 ]
 
 

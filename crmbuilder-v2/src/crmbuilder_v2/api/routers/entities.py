@@ -99,6 +99,7 @@ def create(body: EntityCreateIn):
                 default_sort_field=body.entity_default_sort_field,
                 default_sort_direction=body.entity_default_sort_direction,
                 track_activity=body.entity_track_activity,
+                tracks_activities=body.entity_tracks_activities,
             )
         )
 
@@ -119,6 +120,7 @@ def replace(identifier: str, body: EntityReplaceIn):
                 default_sort_field=body.entity_default_sort_field,
                 default_sort_direction=body.entity_default_sort_direction,
                 track_activity=body.entity_track_activity,
+                tracks_activities=body.entity_tracks_activities,
             )
         )
 

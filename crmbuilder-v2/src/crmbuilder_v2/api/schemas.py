@@ -457,6 +457,8 @@ class EntityCreateIn(_Base):
     entity_default_sort_field: str | None = None
     entity_default_sort_direction: str | None = None
     entity_track_activity: bool | None = None
+    # REQ-337 / PI-297 — neutral activity-tracking (EspoCRM BasePlus) flag.
+    entity_tracks_activities: bool | None = None
 
 
 class EntityReplaceIn(_Base):
@@ -478,6 +480,7 @@ class EntityReplaceIn(_Base):
     entity_default_sort_field: str | None = None
     entity_default_sort_direction: str | None = None
     entity_track_activity: bool | None = None
+    entity_tracks_activities: bool | None = None
 
 
 class EntityPatchIn(_Base):
@@ -497,6 +500,7 @@ class EntityPatchIn(_Base):
     entity_default_sort_field: str | None = None
     entity_default_sort_direction: str | None = None
     entity_track_activity: bool | None = None
+    entity_tracks_activities: bool | None = None
 
 
 # ---------- Personas (methodology entity, v0.5+) ----------

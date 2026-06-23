@@ -147,10 +147,15 @@ def _audited_entity_attrs(scope_meta: dict[str, Any]) -> dict[str, Any]:
     """Derive the neutral entity attributes the inventory compares on.
 
     First slice: only ``entity_track_activity`` (from the EspoCRM ``stream``
-    flag). Additional neutral attributes (default sort, etc.) join the
-    comparison as the reconcile deepens.
+    flag). REQ-337 / PI-297 adds ``entity_tracks_activities`` from the
+    EspoCRM base ``type`` (``BasePlus`` carries Activities/History/Tasks).
+    Additional neutral attributes (default sort, etc.) join the comparison
+    as the reconcile deepens.
     """
-    return {"entity_track_activity": bool(scope_meta.get("stream", False))}
+    return {
+        "entity_track_activity": bool(scope_meta.get("stream", False)),
+        "entity_tracks_activities": scope_meta.get("type") == "BasePlus",
+    }
 
 
 def _entity_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict:

@@ -42,6 +42,8 @@ _EXPECTED_COLUMNS = {
     "entity_default_sort_field": "TEXT",
     "entity_default_sort_direction": "TEXT",
     "entity_track_activity": "BOOLEAN",
+    # REQ-337 / PI-297 — neutral activity-tracking (EspoCRM BasePlus) flag.
+    "entity_tracks_activities": "BOOLEAN",
     "entity_created_at": "DATETIME",
     "entity_updated_at": "DATETIME",
     "entity_deleted_at": "DATETIME",
@@ -197,6 +199,25 @@ def test_create_and_get_round_trip(v2_env):
         fetched = entity.get_entity(s, "ENT-001")
     assert fetched["entity_name"] == "Mentor"
     assert fetched["entity_notes"] == "consultant scratchpad"
+
+
+def test_tracks_activities_round_trip(v2_env):
+    # REQ-337 / PI-297 — the neutral activity-tracking flag persists on
+    # create, surfaces on read, defaults False, and is patchable; it is
+    # independent of entity_track_activity (stream).
+    with session_scope() as s:
+        created = entity.create_entity(
+            s, name="MentorProfile", description="d", tracks_activities=True
+        )
+    assert created["entity_tracks_activities"] is True
+    assert created["entity_track_activity"] is False  # independent of stream
+    with session_scope() as s:
+        default = entity.create_entity(s, name="Plain", description="d")
+    assert default["entity_tracks_activities"] is False
+    with session_scope() as s:
+        entity.patch_entity(s, "ENT-001", tracks_activities=False)
+    with session_scope() as s:
+        assert entity.get_entity(s, "ENT-001")["entity_tracks_activities"] is False
 
 
 def test_get_entity_missing_returns_none(v2_env):

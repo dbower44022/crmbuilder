@@ -142,6 +142,27 @@ def test_validate_unsupported_type(loader, tmp_path):
     assert any("unsupported" in e for e in errors)
 
 
+def test_validate_accepts_baseplus_entity_type(loader, tmp_path):
+    # REQ-337 / PI-297 — BasePlus (Base + Activities/History/Tasks) is a
+    # supported base entity type; the validator must not reject it.
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          MentorProfile:
+            type: BasePlus
+            fields:
+              - name: status
+                type: varchar
+                label: "Status"
+    """)
+    path = tmp_path / "baseplus.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any("unsupported entity type" in e for e in errors)
+
+
 def test_validate_field_link_type_emits_specific_message(loader, tmp_path):
     """A field with ``type: link`` is rejected with a message that
     points the operator to the top-level relationships block."""
