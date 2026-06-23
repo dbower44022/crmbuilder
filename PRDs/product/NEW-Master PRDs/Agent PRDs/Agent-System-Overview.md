@@ -21,6 +21,30 @@
 > release and runs the whole org safely. The ADO sits *inside* the release
 > pipeline.
 
+> **Built vs. Target at a glance.** This Overview teaches the system **as built**.
+> The target redesign (`Agent-System-Target-Model.md`) inverts three things at
+> the structural level — keep these in mind so you don't mistake the built shape
+> for the destination:
+>
+> 1. **Org shape.** Built = a four-tier hierarchy (Project Manager → PI Lead →
+>    Phase Specialist → Area Specialist Agents) running one generic agent prompt.
+>    Target = a per-`(area, tier)` **matrix** of named experts (e.g. *Storage
+>    Developer Agent*, *API Architect Agent*); the Project-Manager and
+>    Phase-Specialist *tiers dissolve* into the scheduler (an app) doing
+>    deterministic area routing — "no managing Agent."
+> 2. **Task & status model.** Built = many separate lifecycles (Planning Item,
+>    Workstream, Work Task, Release) plus a `needs_attention` flag. Target = one
+>    **uniform task contract** (declared inputs / persisted outputs) with a single
+>    status vocabulary `not_started → in_progress → succeeded | needs_human |
+>    failed`; the scheduler reads only the status.
+> 3. **Where humans stand.** Built = humans plan and **freeze**, then the org runs
+>    hands-off until an agent raises `needs_attention`. Target = humans also do
+>    explicit **review tasks mid-pipeline** (after Reconciliation, Architecture
+>    Planning, and Design) and a final **Ship Approval** (symmetric to freeze).
+>
+> Everything below describes the built shape; §4 lists what is thin or partial,
+> and §5 + the target doc describe the intended direction.
+
 ---
 
 ## 1. The story, told as a software company
