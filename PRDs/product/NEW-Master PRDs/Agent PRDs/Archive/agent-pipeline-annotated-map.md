@@ -1,8 +1,20 @@
 # The multi-agent release pipeline — annotated whole-picture map
 
 **Document type:** Architecture orientation / synthesis (the running pipeline, end to end, with every gap + decision marked).
-**Status:** Working map from the SES-216 architecture walk (PRJ-039 / TOP-099; observability PRJ-040 / TOP-100). **DB requirement/decision records are authoritative; everything here points to them.** Requirements are candidate / needs_review — nothing built from this walk yet.
-**Last updated:** 06-20-26 (SES-216)
+**Status:** Working map from the SES-216 architecture walk (PRJ-039 / TOP-099; observability PRJ-040 / TOP-100). The DEC-613 build order has since executed — see `prj-039-build-completion.md` (this folder).
+**Last updated:** 06-22-26 (PI-272 verification correction).
+
+> **⚠️ CORRECTION (06-22-26).** This map below states the cross-area coherence
+> check (REQ-027/031) is **UNBUILT** and the area-phase execution model is a future
+> change. That is **true only of the older PM→Lead→Phase→Area path**
+> (`lead.complete_phase`, which advances on "all tasks Complete"). The **newer
+> per-area matrix back half — PI-245…249, all Resolved — is the actual target
+> execution model and DOES enforce the coherence gate**: the Design Review gate
+> (`require_design_review_signoff`) plus the finding-based `develop_gate` (whose
+> code explicitly cites REQ-027/031) hold Develop until the cross-area design is
+> reviewed and no blocking finding is open. So REQ-024/027/031/283 were **verified
+> already-built** (PI-272) and re-traced, not rebuilt. The "🔴 UNBUILT" marks below
+> are left in place as the SES-216 snapshot, but read them with this correction.
 
 ---
 
@@ -69,9 +81,10 @@ LAYER C — ADO DEV-ORG (mostly ⚙️ substrate; only the workers are 🤖)
    │      🟡 "Complete" is a soft signal (no acceptance criterion behind it).
    │
    ├─ PHASE GATE (PI Lead `complete_phase`)  ⚙️  — advances a phase when ALL tasks Complete.
-   │      🔴 the confirmed CROSS-AREA COHERENCE CHECK (REQ-027/031) is UNBUILT — the `finding`
-   │         substrate (PI-134) exists but is not wired; phase advances on "all Complete" alone.
-   │         (REQ-027/031 amended to RELEASE scope, DEC-556; gate-wiring is a build gap.)
+   │      🟡 in THIS (older Lead) path the CROSS-AREA COHERENCE CHECK (REQ-027/031) is not wired —
+   │         phase advances on "all Complete" alone. BUT the per-area matrix back half (PI-245…249,
+   │         the target model) DOES enforce it: the Design Review gate + finding-based develop_gate
+   │         (cites REQ-027/031). So REQ-027/031 are BUILT in the per-area path (PI-272 verified).
    │
    ▼
 LAYER A again — RELEASE-LEVEL GATES  (the conductor, via the Release Lead)
@@ -82,8 +95,8 @@ LAYER A again — RELEASE-LEVEL GATES  (the conductor, via the Release Lead)
    │      QA = design COVERS every requirement, no cross-area contradiction.
    │      Test = key processes hold END-TO-END across areas ("a green per-area unit is NOT a process").
    │      🟡 AGP-005 enforced_ruleset empty (3 advisory rules); 🟡 prompt over-claims like AGP-003 (REQ-278)
-   │      ⚠️ currently the ONLY place cross-area coherence is checked (because the phase gate isn't) —
-   │         so a mismatch is caught at the finish line, after all build cost is spent.
+   │      ⚠️ a release-level backstop; in the OLDER Lead path it was the only coherence check, but the
+   │         per-area model (PI-245…249) also checks coherence earlier, at the Design→Develop boundary.
    │
    ▼
    deployment → shipped
@@ -140,8 +153,9 @@ LAYER A again — RELEASE-LEVEL GATES  (the conductor, via the Release Lead)
 | Worker | hard tech/design constraints | REQ-280 | candidate · refines REQ-021 |
 | Worker | technology variants of one area | REQ-281 | candidate · refines REQ-018 |
 | Worker | build unit = area-phase batch | REQ-283 | candidate · refines REQ-061 (DEC-554) |
-| Phase gate | coherence check unbuilt + per-PI scope | REQ-027, REQ-031 | needs_review, release scope (DEC-556); UNBUILT |
-| Plan layout | per-PI granularity superseded | REQ-024 | needs_review (DEC-555) |
+| Phase gate | coherence check (release scope) | REQ-027, REQ-031 | confirmed; BUILT in the per-area path (PI-246/develop_gate) — PI-272 verified, re-traced |
+| Plan layout | per-area pass layout | REQ-024 | confirmed; BUILT by per-area Design fan-out (PI-245) |
+| Execution | build unit = area-phase batch | REQ-283 | confirmed; BUILT by the per-area back half (PI-245/247/248) — PI-272 verified |
 | Whole pipeline | progress/activity not durable/queryable | REQ-277 | candidate (TOP-100) |
 | (rejected) | catalog of defaults — already confirmed | REQ-282 | REJECTED dup (DEC-553) |
 
