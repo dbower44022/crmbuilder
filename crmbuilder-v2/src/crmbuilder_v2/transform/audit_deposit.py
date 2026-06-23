@@ -586,6 +586,10 @@ def plan_deposit(
                 ]
             ),
             "status": "candidate",
+            # REQ-337 / PI-297 — capture the neutral activity-tracking
+            # intent from the EspoCRM base type so a BasePlus source entity
+            # round-trips back to BasePlus on re-deploy.
+            "tracks_activities": entity.get("entity_type") == "BasePlus",
         }
         if kind is not None:
             payload["kind"] = kind

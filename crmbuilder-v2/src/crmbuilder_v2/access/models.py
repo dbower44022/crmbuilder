@@ -841,6 +841,16 @@ class Entity(EngagementScopedPKMixin, Base):
     entity_track_activity: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    # ``entity_tracks_activities`` (REQ-337 / PI-297) is the neutral
+    # "entity has activity tracking" intent — meetings, calls, tasks, and
+    # emails as linked activities + history. DISTINCT from
+    # ``entity_track_activity`` above (the stream/feed flag, EspoCRM
+    # ``settings.stream``): the EspoCRM adapter maps THIS flag to the
+    # ``BasePlus`` base type, while ``entity_track_activity`` maps to
+    # ``stream``. HubSpot models both as always-on activity timelines.
+    entity_tracks_activities: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     entity_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -876,6 +886,11 @@ class Entity(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _BooleanDomainCheck("entity_track_activity"),
             name="ck_entity_track_activity_boolean",
+        ),
+        # REQ-337 / PI-297 — neutral activity-tracking (BasePlus) flag CHECK.
+        CheckConstraint(
+            _BooleanDomainCheck("entity_tracks_activities"),
+            name="ck_entity_tracks_activities_boolean",
         ),
         Index("ix_entities_entity_status", "entity_status"),
         Index("ix_entities_entity_deleted_at", "entity_deleted_at"),

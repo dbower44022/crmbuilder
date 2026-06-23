@@ -31,6 +31,7 @@ def _entity(identifier="ENT-001", name="Mentor Application", **over):
         "entity_kind": None,
         "entity_description": "An application to mentor",
         "entity_track_activity": False,
+        "entity_tracks_activities": False,
         "entity_default_sort_field": None,
         "entity_default_sort_direction": None,
     }
@@ -240,6 +241,31 @@ def test_entity_labels_and_stream():
 def test_no_stream_when_track_activity_false():
     model = build_program_model([_entity()], [], [], rendered_at=RENDERED_AT)
     assert "stream" not in _only_entity_block(model)["settings"]
+
+
+@pytest.mark.parametrize(
+    "kind, tracks, expected",
+    [
+        # REQ-337 / PI-297 — activity-tracking lifts an otherwise-Base
+        # entity to BasePlus; the person/organization/event templates
+        # already carry activities and are left unchanged.
+        (None, True, "BasePlus"),
+        (None, False, "Base"),
+        ("transaction", True, "BasePlus"),
+        ("other", True, "BasePlus"),
+        ("event", True, "Event"),
+        ("person", True, "Person"),
+        ("organization", True, "Company"),
+    ],
+)
+def test_entity_tracks_activities_maps_to_baseplus(kind, tracks, expected):
+    model = build_program_model(
+        [_entity(entity_kind=kind, entity_tracks_activities=tracks)],
+        [],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    assert _only_entity_block(model)["type"] == expected
 
 
 # ---------------------------------------------------------------------------

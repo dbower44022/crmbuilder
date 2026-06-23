@@ -897,6 +897,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         default_sort_field: str | None = None,
         default_sort_direction: str | None = None,
         track_activity: bool | None = None,
+        tracks_activities: bool | None = None,
     ) -> Any:
         """Create an entity (methodology) record.
 
@@ -926,6 +927,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 entity_default_sort_field=default_sort_field,
                 entity_default_sort_direction=default_sort_direction,
                 entity_track_activity=track_activity,
+                entity_tracks_activities=tracks_activities,
             ).items()
             if v is not None
         }
@@ -941,6 +943,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         default_sort_field: str | None = None,
         default_sort_direction: str | None = None,
         track_activity: bool | None = None,
+        tracks_activities: bool | None = None,
     ) -> Any:
         """Update fields on an entity record (PATCH). Pass only the fields
         to change. Lifecycle status transitions are validated by the
@@ -960,6 +963,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 default_sort_field=default_sort_field,
                 default_sort_direction=default_sort_direction,
                 track_activity=track_activity,
+                tracks_activities=tracks_activities,
             ).items()
             if v is not None
         }

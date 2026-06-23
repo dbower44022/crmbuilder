@@ -581,7 +581,15 @@ def _build_field(
 
 
 def _entity_type(entity_row: dict) -> str:
-    return _KIND_TO_TYPE.get(entity_row.get("entity_kind"), "Base")
+    # §6 kind → base type. REQ-337 / PI-297: an entity flagged
+    # ``entity_tracks_activities`` upgrades a plain ``Base`` to ``BasePlus``
+    # (the EspoCRM template carrying Activities/History/Tasks). The
+    # person/organization/event templates already carry activities, so the
+    # flag only lifts the otherwise-``Base`` result.
+    base = _KIND_TO_TYPE.get(entity_row.get("entity_kind"), "Base")
+    if base == "Base" and entity_row.get("entity_tracks_activities"):
+        return "BasePlus"
+    return base
 
 
 @dataclass

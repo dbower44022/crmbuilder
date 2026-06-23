@@ -87,6 +87,7 @@ _PATCHABLE_FIELDS = frozenset(
         "default_sort_field",
         "default_sort_direction",
         "track_activity",
+        "tracks_activities",
     }
 )
 
@@ -314,6 +315,7 @@ def _new_entity_row(
     default_sort_field: str | None = None,
     default_sort_direction: str | None = None,
     track_activity: bool = False,
+    tracks_activities: bool = False,
 ) -> Entity:
     return Entity(
         entity_identifier=identifier,
@@ -325,6 +327,7 @@ def _new_entity_row(
         entity_default_sort_field=default_sort_field,
         entity_default_sort_direction=default_sort_direction,
         entity_track_activity=track_activity,
+        entity_tracks_activities=tracks_activities,
     )
 
 
@@ -338,6 +341,7 @@ def _insert_with_autoassign(
     default_sort_field: str | None = None,
     default_sort_direction: str | None = None,
     track_activity: bool = False,
+    tracks_activities: bool = False,
 ) -> Entity:
     """Insert an entity with a server-assigned identifier, collision-safe.
 
@@ -362,6 +366,7 @@ def _insert_with_autoassign(
             default_sort_field,
             default_sort_direction,
             track_activity,
+            tracks_activities,
         )
         session.add(row)
         try:
@@ -394,6 +399,7 @@ def create_entity(
     default_sort_field: str | None = None,
     default_sort_direction: str | None = None,
     track_activity: bool | None = None,
+    tracks_activities: bool | None = None,
 ) -> dict:
     """Create an entity.
 
@@ -419,12 +425,14 @@ def create_entity(
     default_sort_field = _coerce_sort_field(default_sort_field)
     default_sort_direction = _coerce_sort_direction(default_sort_direction)
     track_activity = bool(track_activity)
+    tracks_activities = bool(tracks_activities)
     _reject_duplicate_name(session, name)
 
     if identifier is None:
         row = _insert_with_autoassign(
             session, name, description, notes, status, kind,
             default_sort_field, default_sort_direction, track_activity,
+            tracks_activities,
         )
     else:
         _require_identifier_format(identifier)
@@ -433,6 +441,7 @@ def create_entity(
         row = _new_entity_row(
             identifier, name, description, notes, status, kind,
             default_sort_field, default_sort_direction, track_activity,
+            tracks_activities,
         )
         session.add(row)
         session.flush()
@@ -463,6 +472,7 @@ def update_entity(
     default_sort_field: str | None = None,
     default_sort_direction: str | None = None,
     track_activity: bool | None = None,
+    tracks_activities: bool | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -528,6 +538,7 @@ def update_entity(
         default_sort_direction
     )
     row.entity_track_activity = bool(track_activity)
+    row.entity_tracks_activities = bool(tracks_activities)
     session.flush()
 
     after = to_dict(row)
@@ -616,6 +627,8 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
         )
     if "track_activity" in fields:
         row.entity_track_activity = bool(fields["track_activity"])
+    if "tracks_activities" in fields:
+        row.entity_tracks_activities = bool(fields["tracks_activities"])
 
     session.flush()
     after = to_dict(row)

@@ -37,17 +37,21 @@ from crmbuilder_v2.ui.dialogs._entity_schema import entity_fields
 _IDENTIFIER_FIELD = "entity_identifier"
 
 
-def _coerce_track_activity(body: dict[str, Any]) -> dict[str, Any]:
-    """Convert ``entity_track_activity`` string ("true"/"false") to bool.
+# Boolean entity intrinsics modelled as string combos in the dialog
+# (the EntityCrudDialog base only supports string widgets) that the access
+# layer expects as Python bools: ``entity_track_activity`` (PRJ-025 PI-182
+# §6 stream/feed) and ``entity_tracks_activities`` (REQ-337 / PI-297
+# activity-tracking / EspoCRM BasePlus).
+_BOOL_INTRINSICS = ("entity_track_activity", "entity_tracks_activities")
 
-    The PRJ-025 PI-182 §6 ``entity_track_activity`` intrinsic is modelled
-    as a string combo (the EntityCrudDialog base only supports string
-    widgets); the access layer expects a Python bool. Mirrors the
-    ``field_required`` coercion in ``field_crud.py``."""
-    if "entity_track_activity" in body:
-        value = body["entity_track_activity"]
-        if isinstance(value, str):
-            body["entity_track_activity"] = value.strip().lower() == "true"
+
+def _coerce_track_activity(body: dict[str, Any]) -> dict[str, Any]:
+    """Convert the boolean entity intrinsics ("true"/"false") to real bools.
+
+    Mirrors the ``field_required`` coercion in ``field_crud.py``."""
+    for key in _BOOL_INTRINSICS:
+        if key in body and isinstance(body[key], str):
+            body[key] = body[key].strip().lower() == "true"
     return body
 
 
@@ -89,9 +93,10 @@ class EntityEditDialog(EntityCrudDialog):
         identifier = str(record.get(_IDENTIFIER_FIELD) or "")
         title = f"Edit {identifier}" if identifier else "Edit entity"
         normalised = dict(record)
-        raw = normalised.get("entity_track_activity")
-        if isinstance(raw, bool):
-            normalised["entity_track_activity"] = "true" if raw else "false"
+        for _bool_key in _BOOL_INTRINSICS:
+            raw = normalised.get(_bool_key)
+            if isinstance(raw, bool):
+                normalised[_bool_key] = "true" if raw else "false"
         super().__init__(
             client,
             entity_fields(include_identifier=True),
