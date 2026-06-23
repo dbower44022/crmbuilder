@@ -279,6 +279,23 @@ def update(session: Session, identifier: str, **fields) -> dict:
         check_transition(
             row.status, fields["status"], PLANNING_ITEM_STATUS_TRANSITIONS
         )
+        # REQ-323 / PI-288: transitioning a planning item into development
+        # (In Progress) or delivery (Resolved) requires it to be in a frozen
+        # release's scope. Covers the conversation ``resolves`` edge too — it
+        # routes through ``update(status="Resolved")``. No-op when the gate flag
+        # is off (REQ-324). Lazy import avoids a module-load cycle.
+        if fields["status"] in ("In Progress", "Resolved"):
+            from crmbuilder_v2.access import release_gate
+
+            release_gate.assert_developable(
+                session,
+                identifier,
+                action=(
+                    "moved to In Progress"
+                    if fields["status"] == "In Progress"
+                    else "resolved"
+                ),
+            )
     if "executive_summary" in fields:
         # NOT NULL since PI-075 — a present value must be a valid
         # 200-800 char string; the column cannot be cleared via update.

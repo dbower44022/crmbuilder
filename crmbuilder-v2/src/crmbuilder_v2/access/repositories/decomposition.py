@@ -81,6 +81,13 @@ def decompose_planning_item(
             f"resolved manually."
         )
 
+    # REQ-323 / PI-288: decomposing a planning item for build is a development
+    # action — it requires the PI to be in a frozen release's scope. No-op when
+    # the gate flag is off (REQ-324). Lazy import avoids a module-load cycle.
+    from crmbuilder_v2.access import release_gate
+
+    release_gate.assert_developable(session, pi_identifier, action="decomposed")
+
     already = existing_phase_workstreams(session, pi_identifier)
     if already:
         raise ConflictError(
