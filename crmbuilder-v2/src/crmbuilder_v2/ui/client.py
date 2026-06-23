@@ -3063,6 +3063,15 @@ class StorageClient:
             self._request("GET", f"/releases/{identifier}"), op="get_release"
         )
 
+    def get_release_history(self, identifier: str) -> dict[str, Any]:
+        """GET /releases/{id}/history — the release's durable progress account
+        (PI-273 / REQ-314): its current pipeline position + the ordered sequence of
+        progress events and per-agent outcome records."""
+        return self._expect_dict(
+            self._request("GET", f"/releases/{identifier}/history"),
+            op="get_release_history",
+        )
+
     def create_release(self, body: dict[str, Any]) -> dict[str, Any]:
         """POST /releases (PI-226 human planning). ``body`` keys: ``release_title``,
         ``release_description`` (required), optional ``release_notes`` /

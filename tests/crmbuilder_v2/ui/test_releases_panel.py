@@ -132,6 +132,23 @@ _PROJECTS = [
 ]
 
 
+_HISTORY = {
+    "release_identifier": "REL-001",
+    "status": "development",
+    "events": [
+        {"event_kind": "transition", "outcome": None,
+         "summary": "ready -> development", "work_task": None, "area": None,
+         "pipeline_event_created_at": "2026-06-22T10:00:00+00:00"},
+        {"event_kind": "dispatch", "outcome": None, "summary": "dispatch WTK-9",
+         "work_task": "WTK-9", "area": "storage",
+         "pipeline_event_created_at": "2026-06-22T10:01:00+00:00"},
+        {"event_kind": "agent_outcome", "outcome": "delivered",
+         "summary": "verified + merged", "work_task": "WTK-9", "area": "storage",
+         "pipeline_event_created_at": "2026-06-22T10:05:00+00:00"},
+    ],
+}
+
+
 def _full_extras(**overrides: Any) -> dict[str, Any]:
     extras = {
         "errors": {},
@@ -145,6 +162,7 @@ def _full_extras(**overrides: Any) -> dict[str, Any]:
         "area_ownership": _AREA_OWNERSHIP,
         "lane_holder": _LANE_HOLDER,
         "edges": _EDGES,
+        "history": _HISTORY,
     }
     extras.update(overrides)
     return extras
@@ -186,6 +204,8 @@ def _handler(releases=_RELEASES, *, captured: list | None = None):
             return httpx.Response(200, json=envelope_ok(_CONFLICTS))
         if method == "GET" and path.endswith("/area-reopens"):
             return httpx.Response(200, json=envelope_ok(_REOPENS))
+        if method == "GET" and path.endswith("/history"):
+            return httpx.Response(200, json=envelope_ok(_HISTORY))
         if method == "GET" and path.endswith("/area-ownership"):
             return httpx.Response(200, json=envelope_ok(_AREA_OWNERSHIP))
         if method == "GET" and path.endswith("/reopen-impact"):
@@ -244,15 +264,38 @@ def test_detail_badges_and_action_row(qtbot):
     } <= buttons
 
 
-def test_detail_has_four_tabs(qtbot):
+def test_detail_has_five_tabs(qtbot):
     panel = ReleasesPanel(build_client(_handler()))
     qtbot.addWidget(panel)
     detail = panel.render_detail(_RELEASES[0], _full_extras())
     tabs = detail.findChild(QTabWidget)
     assert tabs is not None
     assert [tabs.tabText(i) for i in range(tabs.count())] == [
-        "Overview", "Composition", "Conflicts", "Reopens",
+        "Overview", "Composition", "Conflicts", "Reopens", "History",
     ]
+
+
+def test_history_tab_shows_position_and_events(qtbot):
+    # REQ-315: the History tab surfaces the pipeline position + ordered events.
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    detail = panel.render_detail(_RELEASES[0], _full_extras())
+    text = " ".join(
+        lbl.text() for lbl in detail.findChildren(QLabel) if lbl.text()
+    )
+    assert "Pipeline position:" in text
+    assert "ready -> development" in text          # a transition event
+    assert "agent_outcome" in text and "[delivered]" in text  # an agent outcome
+    assert "WTK-9" in text                          # correlation tag
+
+
+def test_history_tab_degrades_when_unavailable(qtbot):
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    extras = _full_extras(history=None, errors={"history": "boom"})
+    detail = panel.render_detail(_RELEASES[0], extras)
+    text = " ".join(lbl.text() for lbl in detail.findChildren(QLabel) if lbl.text())
+    assert "History unavailable: boom" in text
 
 
 def test_overview_readiness_and_area_ownership(qtbot):

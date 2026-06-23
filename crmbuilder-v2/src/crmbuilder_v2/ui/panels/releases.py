@@ -192,6 +192,7 @@ class ReleasesPanel(ListDetailPanel):
             lambda: self._client.release_reconciliation_conflicts(identifier),
         )
         _safe("reopens", lambda: self._client.release_area_reopens(identifier))
+        _safe("history", lambda: self._client.get_release_history(identifier))
         _safe(
             "area_ownership",
             lambda: self._client.release_area_ownership(identifier),
@@ -248,6 +249,7 @@ class ReleasesPanel(ListDetailPanel):
         tabs.addTab(self._composition_tab(identifier, extras), "Composition")
         tabs.addTab(self._conflicts_tab(identifier, extras), "Conflicts")
         tabs.addTab(self._reopens_tab(identifier, extras), "Reopens")
+        tabs.addTab(self._history_tab(record, extras), "History")
         outer.addWidget(tabs, stretch=1)
 
         scroll = QScrollArea()
@@ -501,6 +503,59 @@ class ReleasesPanel(ListDetailPanel):
             dim.setStyleSheet(_DIM_STYLE)
             row.addWidget(dim)
         return w
+
+    def _history_tab(self, record: dict[str, Any], extras: dict[str, Any]) -> QWidget:
+        """REQ-315 — the release's pipeline position + the ordered progress/agent
+        history (read-only) over the durable pipeline_events log built by PI-273."""
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(8, 8, 8, 8)
+        v.setSpacing(6)
+        status = record.get("release_status") or "—"
+        pos = QLabel(f"Pipeline position: <b>{status}</b>")
+        pos.setTextFormat(Qt.TextFormat.RichText)
+        pos.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        v.addWidget(pos)
+        v.addWidget(separator())
+
+        err = extras.get("errors", {}).get("history")
+        if err:
+            v.addWidget(self._dim(f"History unavailable: {err}"))
+            v.addStretch(1)
+            return w
+        data = extras.get("history")
+        events = data.get("events") if isinstance(data, dict) else None
+        if not events:
+            v.addWidget(self._dim("No progress events recorded yet."))
+            v.addStretch(1)
+            return w
+
+        caption = QLabel(f"{len(events)} event(s), oldest first:")
+        caption.setStyleSheet(_DIM_STYLE)
+        v.addWidget(caption)
+        for e in events:
+            v.addWidget(self._history_row(e))
+        v.addStretch(1)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(w)
+        return scroll
+
+    def _history_row(self, e: dict[str, Any]) -> QWidget:
+        kind = e.get("event_kind") or ""
+        outcome = e.get("outcome")
+        ts = format_timestamp(e.get("pipeline_event_created_at"))
+        summary = e.get("summary") or ""
+        tags = " · ".join(t for t in (e.get("work_task"), e.get("area")) if t)
+        head = f"{ts} — {kind}" + (f" [{outcome}]" if outcome else "")
+        if tags:
+            head += f" · {tags}"
+        text = head + (f"\n    {summary}" if summary else "")
+        label = QLabel(text)
+        label.setWordWrap(True)
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        return label
 
     def _reopens_tab(self, identifier: str, extras: dict[str, Any]) -> QWidget:
         w = QWidget()
