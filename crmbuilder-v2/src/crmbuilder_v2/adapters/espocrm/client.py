@@ -65,6 +65,21 @@ class DesignClient:
         """Message-template records — the ``emailTemplates:`` source (slice 3)."""
         raise NotImplementedError
 
+    def list_field_permission_rules(self) -> list[dict]:
+        """Field-permission-rule records — the ``fieldPermissions:`` source
+        (PI-051 / REQ-129)."""
+        raise NotImplementedError
+
+    def list_field_visibility_rules(self) -> list[dict]:
+        """Field-visibility-rule records — the ``fieldVisibility:`` source
+        (PI-051 / REQ-128)."""
+        raise NotImplementedError
+
+    def list_roles(self) -> list[dict]:
+        """Role records — resolves a rule's ``ROL-NNN`` to its ``role_name``
+        for the emitted security blocks (PI-051)."""
+        raise NotImplementedError
+
 
 class RestDesignClient(DesignClient):
     """REST client of the live V2 API — GET requests only.
@@ -138,3 +153,12 @@ class RestDesignClient(DesignClient):
 
     def list_message_templates(self) -> list[dict]:
         return self._get("/message-templates")
+
+    def list_field_permission_rules(self) -> list[dict]:
+        return self._get("/field-permission-rules")
+
+    def list_field_visibility_rules(self) -> list[dict]:
+        return self._get("/field-visibility-rules")
+
+    def list_roles(self) -> list[dict]:
+        return self._get("/roles")
