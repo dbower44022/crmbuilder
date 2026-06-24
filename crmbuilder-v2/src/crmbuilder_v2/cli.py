@@ -111,6 +111,29 @@ def run_api() -> None:
 
     settings = get_settings()
 
+    # PI-308 / REQ-343 — active startup drift gate. Refuse to serve a DB whose
+    # schema is behind the code (or un-stamped): silently serving it risks a
+    # 500 on the first query that hits a not-yet-migrated table or column. This
+    # fails at cold start (before first-ready), so it routes to app.py's fatal
+    # startup dialog, NOT the desktop's post-first-ready auto-restart loop.
+    # Covers --check-only too (a cheap diagnostic).
+    from crmbuilder_v2.migration.version_info import (
+        SchemaDriftError,
+        assert_schema_current,
+    )
+
+    try:
+        assert_schema_current()
+    except SchemaDriftError as exc:
+        _fail_loud(
+            "REFUSING TO START: database schema is behind the code.\n"
+            f"  applied revision: {exc.current or '(un-stamped / empty DB)'}\n"
+            f"  code expects head: {exc.head}\n"
+            "  remedy: run  crmbuilder-v2-bootstrap-db  to apply pending "
+            "migrations,\n"
+            "          then relaunch."
+        )
+
     if args.check_only:
         print(f"OK: unified DB at db_path={settings.db_path}")
         return

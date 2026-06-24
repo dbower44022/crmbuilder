@@ -185,14 +185,39 @@ def _ensure_db_dir(db_path: Path) -> None:
 
 
 def bootstrap_database(settings: Settings | None = None) -> None:
-    """Materialise the schema on a fresh database file.
+    """Bring the unified DB up to the migration chain head (PI-308 / REQ-343).
 
-    For v0.1 we use ``Base.metadata.create_all`` rather than running Alembic
-    explicitly — Alembic is set up for forward migrations after v0.1, but
-    the v0.1 baseline migration is itself ``create_all`` against
-    ``Base.metadata``. The Alembic environment imports the same metadata so
-    ``alembic upgrade head`` produces the same result.
+    Closes the gap that left the live DB silently behind head: ``create_all``
+    only creates *absent tables* and never ``ALTER``s existing ones, so a
+    column-only or CHECK-only migration stays invisible. This applies the real
+    delta — columns and constraints included — and leaves ``applied == head``.
+
+    Two paths, chosen by whether the DB is stamped (``alembic_version``):
+
+    * **Un-stamped DB** (fresh/empty, or an old ``create_all`` DB never stamped)
+      → ``create_all`` then ``stamp head``. We deliberately do **not**
+      ``upgrade`` from base here: the from-base chain runs the ``0004``
+      catalog-seed migration, which requires the gitignored base-entity-catalog
+      directory and would fail on a clean checkout. ``create_all`` materialises
+      the head schema catalog-independently; the catalog *data* seed is a
+      separate concern.
+    * **Stamped DB** (behind or at head) → ``alembic upgrade head`` applies only
+      the pending delta. This skips the already-applied ``0004`` (no catalog
+      needed) and is a no-op when already at head (idempotent).
+
+    Dialect-aware via :func:`make_alembic_config` (the SQLite vs PG chain head).
     """
+    from alembic import command
+
+    from crmbuilder_v2.migration.version_info import (
+        _current_revision,
+        make_alembic_config,
+    )
+
     s = settings or get_settings()
-    engine = get_engine(s)
-    Base.metadata.create_all(engine)
+    cfg = make_alembic_config(s.db_url)
+    if _current_revision(s.db_url) is None:
+        Base.metadata.create_all(get_engine(s))
+        command.stamp(cfg, "head")
+    else:
+        command.upgrade(cfg, "head")
