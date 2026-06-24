@@ -38,6 +38,27 @@ def test_strip_field_c_prefix(api_name: str, expected: str) -> None:
     assert strip_field_c_prefix(api_name) == expected
 
 
+@pytest.mark.parametrize(
+    ("api_name", "is_native", "expected"),
+    [
+        # Native entity: platform prefix stripped.
+        ("cContactType", True, "contactType"),
+        # Custom entity: natural names are left untouched, including a name
+        # that legitimately begins with c+Uppercase (the REQ-342 bug case).
+        ("cBMValueProvided", False, "cBMValueProvided"),
+        ("cContactType", False, "cContactType"),
+        ("amount", False, "amount"),
+        # Native behavior on a c+Uppercase name is still to strip (documents
+        # why the entity context is required to disambiguate).
+        ("cBMValueProvided", True, "bMValueProvided"),
+    ],
+)
+def test_strip_field_c_prefix_native_only(
+    api_name: str, is_native: bool, expected: str
+) -> None:
+    assert strip_field_c_prefix(api_name, entity_is_native=is_native) == expected
+
+
 # --- strip_entity_c_prefix / get_yaml_entity_name ---------------------------
 
 
