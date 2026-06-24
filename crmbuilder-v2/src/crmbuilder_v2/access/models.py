@@ -139,6 +139,9 @@ from crmbuilder_v2.access.vocab import (
     SOURCE_MAPPING_STALE_SEVERITIES,
     SOURCE_MAPPING_STATUSES,
     TARGET_ENGINES,
+    TASK_TRANSITION_OUTCOMES,
+    TASK_TRANSITION_STATUSES,
+    TASK_TRANSITION_TASK_TYPES,
     TEAM_STATUSES,
     TERM_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
@@ -4679,6 +4682,125 @@ class DepositEvent(EngagementScopedPKMixin, Base):
             "ix_deposit_events_deposit_event_created_at",
             "deposit_event_created_at",
         ),
+    )
+
+
+class TaskTransitionRow(EngagementScopedPKMixin, Base):
+    """Append-only task-transition log row — one per status change (PI-304, DEC-692).
+
+    Phase 6a of the Agent System Redesign. The **semantic lifecycle account** of a
+    task: one row is created on *every* status change of a parent task, recording
+    ``from_status``/``to_status``, the ``at`` timestamp, and a human-readable
+    ``reason``. When the transition moves the task into a *run-ending* status the
+    row additionally carries the Agent's terminal report (``outcome``,
+    ``reasoning_summary``, ``escalation``).
+
+    **Born-terminal append-only** — mirroring :class:`DepositEvent`: no
+    ``_updated_at``, no ``_deleted_at``, one ``_created_at`` timestamp; the row
+    carries content (``outcome``) instead of a transitioning ``_status`` and is
+    created exclusively via the repository ``record`` path, never updated or
+    deleted. The append-only construction structurally guarantees REQ-264
+    (cleanup never destroys the record): there is no mutate or delete path.
+
+    The parent task is identified **polymorphically** by
+    (``task_transition_task_type``, ``task_transition_task_identifier``) rather
+    than a typed FK, so the log outlives a retired/retained parent (the
+    ``role_assignments`` "not a FK so the audit log outlives a deleted principal"
+    pattern). The graph form of the same pointer is the
+    ``task_transition_records_task`` reference edge.
+
+    Per-task ordering is the monotonic ``task_transition_sequence`` (1, 2, 3, …),
+    assigned ``MAX(sequence) + 1`` per parent under SAVEPOINT-retry at the
+    repository layer; the UNIQUE ``(engagement_id, task_type, task_identifier,
+    sequence)`` constraint forbids a duplicate ordinal per task. The conditional
+    field rules (terminal ⇒ report present; non-terminal ⇒ report NULL; chain
+    consistency) are repository-enforced — a CHECK cannot see the prior row or
+    express "required when to_status terminal" portably across SQLite + Postgres.
+    """
+
+    __tablename__ = "task_transitions"
+
+    task_transition_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    # Polymorphic parent pointer — NOT a FK (the log must outlive a retained
+    # parent). ``task_type`` ∈ TASK_TRANSITION_TASK_TYPES; ``task_identifier`` is
+    # the parent's prefixed identifier, e.g. ``WTK-213``.
+    task_transition_task_type: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    task_transition_task_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    # NULL only for the inaugural transition (no prior status). When set, the
+    # repository enforces it equals the prior row's to_status. CHECK admits NULL
+    # or a member of the union task vocabulary (``NULL IN (...)`` passes).
+    task_transition_from_status: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )
+    task_transition_to_status: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    task_transition_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    # Per-task monotonically increasing ordinal (1, 2, 3, …) — see the class
+    # docstring; repository-assigned MAX+1 under SAVEPOINT-retry.
+    task_transition_sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    task_transition_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    # Terminal-report fields — populated iff ``to_status`` is run-ending
+    # (repository-enforced). ``outcome`` ∈ TASK_TRANSITION_OUTCOMES.
+    task_transition_outcome: Mapped[str | None] = mapped_column(
+        String(16), nullable=True
+    )
+    task_transition_reasoning_summary: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    task_transition_escalation: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    task_transition_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("task_transition_identifier", ["TXN"]),
+            name="ck_task_transition_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("task_transition_task_type", TASK_TRANSITION_TASK_TYPES),
+            name="ck_task_transition_task_type",
+        ),
+        CheckConstraint(
+            # The status CHECK union per PI-304 defect #1 — the REAL task
+            # vocabularies, not the target-model contract set.
+            _check_in("task_transition_to_status", TASK_TRANSITION_STATUSES),
+            name="ck_task_transition_to_status",
+        ),
+        CheckConstraint(
+            # NULL (inaugural row) or a member of the union; ``NULL IN (...)``
+            # is unknown and passes the CHECK.
+            _check_in("task_transition_from_status", TASK_TRANSITION_STATUSES),
+            name="ck_task_transition_from_status",
+        ),
+        CheckConstraint(
+            _check_in("task_transition_outcome", TASK_TRANSITION_OUTCOMES),
+            name="ck_task_transition_outcome",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "task_transition_task_type",
+            "task_transition_task_identifier",
+            "task_transition_sequence",
+            name="uq_task_transition_task_sequence",
+        ),
+        Index(
+            "ix_task_transitions_task",
+            "task_transition_task_type",
+            "task_transition_task_identifier",
+        ),
+        Index("ix_task_transitions_at", "task_transition_at"),
     )
 
 

@@ -1205,6 +1205,26 @@ WORK_TASK_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "Failed": frozenset({"Ready"}),
 }
 
+# Phase 6a (PI-304, DEC-692) — the append-only ``task_transition`` log
+# (governance-schema-specs/task-transition.md). One row per status change of a
+# parent task. The record is *polymorphic*: its parent is a ``work_task`` or a
+# ``workstream`` — the two concrete task entities that realize the uniform task
+# contract today — so the from/to status CHECK admits the **union of the real
+# task vocabularies** ``WORK_TASK_STATUSES ∪ WORKSTREAM_STATUSES``. It does NOT
+# use the target-model ``{not_started, in_progress, succeeded, needs_human,
+# failed}`` set: nothing in this build produces those statuses — the stamp fires
+# on real ``work_task_status`` / ``workstream_status`` changes (PI-304 defect
+# resolution #1). ``TASK_TRANSITION_OUTCOMES`` mirrors ``models.AGENT_OUTCOMES``
+# (the run-ending agent-outcome classes), redeclared here because ``vocab``
+# cannot import ``models`` — the dependency runs the other way.
+TASK_TRANSITION_TASK_TYPES: frozenset[str] = frozenset(
+    {"work_task", "workstream"}
+)
+TASK_TRANSITION_STATUSES: frozenset[str] = WORK_TASK_STATUSES | WORKSTREAM_STATUSES
+TASK_TRANSITION_OUTCOMES: frozenset[str] = frozenset(
+    {"delivered", "no_op", "halted", "failed", "timed_out"}
+)
+
 # `finding` (FND-) — PI-134 reconciliation gate (DEC-400, REQ-031..036 /
 # TOP-010). A cross-area coherence problem found at the end of Design. Four
 # types (REQ-032), two severities (REQ-033), and a three-state lifecycle: a
@@ -1574,6 +1594,13 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # release" route. Distinct from supersedes (a shipped release is not
         # superseded by a follow-up correction).
         "release_corrects_release",
+        # Phase 6a (PI-304, task-transition.md §3.3.1). The append-only
+        # ``task_transition`` log's single outbound edge to the parent task it
+        # records — the queryable graph form of the denormalized
+        # (task_type, task_identifier) pointer. Polymorphic target: the two
+        # concrete task entities (work_task, workstream). Mirrors the
+        # ``deposit_event_wrote_record`` precedent.
+        "task_transition_records_task",
     }
 )
 
@@ -1714,6 +1741,13 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "source_mapping",
         "field_mapping",
         "mapping_candidate",
+        # Phase 6a (PI-304, DEC-692). The append-only task-transition log
+        # (TXN-). One row per status change of a parent task; born-terminal
+        # append-only, mirroring ``deposit_event``. Admitted here so a
+        # transition row can be a reference source (its
+        # ``task_transition_records_task`` parent edge) and change-log-tracked.
+        # See governance-schema-specs/task-transition.md.
+        "task_transition",
     }
 )
 
@@ -2080,6 +2114,11 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("release_corrects_release")
     if source_type == "release" and target_type == "reference_book":
         kinds.add("release_planned_in_reference_book")
+    # Phase 6a (PI-304, task-transition.md §3.3.1). The append-only transition
+    # log's single outbound edge to the parent task it records. Polymorphic
+    # target: the two concrete task entities (work_task, workstream).
+    if source_type == "task_transition" and target_type in ("work_task", "workstream"):
+        kinds.add("task_transition_records_task")
     return frozenset(kinds)
 
 

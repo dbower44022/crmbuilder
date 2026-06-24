@@ -120,6 +120,9 @@ _SPECS: dict[str, _Spec] = {
     "close_out_payload": _Spec(models.CloseOutPayload, "close_out_payload_identifier", "close_out_payload_title", "close_out_payload_status", "close_out_payload_created_at", "close_out_payload_updated_at"),
     "deposit_event": _Spec(models.DepositEvent, "deposit_event_identifier", "deposit_event_title", "deposit_event_outcome", "deposit_event_created_at", None),
     "commit": _Spec(models.Commit, "commit_identifier", "commit_message_first_line", None, "commit_created_at", "commit_updated_at"),
+    # Append-only task-transition log (PI-304). Born-terminal: no updated_at; the
+    # to_status fills the status slot, the reason the title slot.
+    "task_transition": _Spec(models.TaskTransitionRow, "task_transition_identifier", "task_transition_reason", "task_transition_to_status", "task_transition_created_at", None),
     # Agent Profile Registry (PI-122). Unprefixed ``identifier``; title is the
     # most human-readable field (description / name / body / content).
     "agent_profile": _Spec(models.AgentProfileRow, "identifier", "description", "status", "created_at", "updated_at"),

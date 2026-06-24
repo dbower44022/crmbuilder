@@ -31,6 +31,7 @@ from crmbuilder_v2.access.exceptions import (
 )
 from crmbuilder_v2.access.models import WorkTask
 from crmbuilder_v2.access.repositories import _governance as gov
+from crmbuilder_v2.access.repositories import task_transitions
 from crmbuilder_v2.access.repositories.engagement_areas import valid_area_names
 from crmbuilder_v2.access.vocab import (
     WORK_TASK_STATUS_TRANSITIONS,
@@ -48,6 +49,13 @@ _STATUS_TIMESTAMP = {
     "In Progress": "work_task_started_at",
     "Complete": "work_task_completed_at",
 }
+
+# Run-ending statuses (NOT graph sinks) — the set the agent reports at, per the
+# stamping design §2 edge case (PI-304). ``Blocked``/``Failed`` are recoverable
+# in the lifecycle but are exactly the halt points the failed-run rollup anchors
+# on, so the agent reports at every run-ending outcome, including a recoverable
+# halt. Mirrors ``task_transitions._TERMINAL_STATUSES``.
+_TERMINAL_STATUSES = frozenset({"Complete", "Failed", "Blocked"})
 
 
 def _require_status(status: object) -> str:
@@ -295,14 +303,46 @@ def create_work_task(
     return after
 
 
-def _apply_status(row: WorkTask, status: str) -> None:
+def _apply_status(
+    row: WorkTask,
+    status: str,
+    *,
+    session: Session,
+    reason: str | None = None,
+    agent_report: dict | None = None,
+) -> None:
+    """Apply a Work Task status change and stamp its task-transition row (PI-304).
+
+    The single chokepoint every status-changing path funnels through. Inside the
+    existing real-change branch (``status != current``, *after* the transition is
+    validated) it captures ``from_status`` and appends exactly one
+    ``task_transition`` row in the caller's transaction — so a status change with
+    no transition row, or a row with no status change, is impossible by
+    construction (stamping design §2/§3). A no-op (status unchanged) skips the
+    branch and stamps nothing; a rejected transition raises before the assignment.
+
+    ``reason`` defaults to a non-empty ``"<from> → <to>"`` summary (PI-304 defect
+    #2) so internal stamps without an explicit reason satisfy the repository's
+    non-empty rule. ``agent_report`` is attached **only** at a run-ending
+    (terminal) transition and ignored otherwise (DEC-692).
+    """
     _require_status(status)
     if status != row.work_task_status:
         gov.check_transition(
             row.work_task_status, status, WORK_TASK_STATUS_TRANSITIONS
         )
+        from_status = row.work_task_status
         row.work_task_status = status
         gov.set_status_timestamp(row, status, _STATUS_TIMESTAMP)
+        task_transitions.record(
+            session,
+            task_type=_ENTITY_TYPE,
+            task_identifier=row.work_task_identifier,
+            from_status=from_status,
+            to_status=status,
+            reason=reason or f"{from_status or 'init'} → {status}",
+            agent_report=agent_report if status in _TERMINAL_STATUSES else None,
+        )
 
 
 def update_work_task(
@@ -317,6 +357,8 @@ def update_work_task(
     status: str | None = None,
     resolved_agent_profile: str | None = None,
     references: list[dict] | None = None,
+    status_reason: str | None = None,
+    agent_report: dict | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
     if work_task_identifier is not None and work_task_identifier != identifier:
@@ -342,7 +384,13 @@ def update_work_task(
     gov.apply_reference_list(session, references)
 
     if status is not None:
-        _apply_status(row, status)
+        _apply_status(
+            row,
+            status,
+            session=session,
+            reason=status_reason,
+            agent_report=agent_report,
+        )
 
     row.work_task_title = title
     row.work_task_area = area
@@ -364,7 +412,13 @@ def update_work_task(
 
 
 def patch_work_task(
-    session: Session, identifier: str, *, references: list[dict] | None = None, **fields
+    session: Session,
+    identifier: str,
+    *,
+    references: list[dict] | None = None,
+    status_reason: str | None = None,
+    agent_report: dict | None = None,
+    **fields,
 ) -> dict:
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
@@ -393,7 +447,13 @@ def patch_work_task(
     if "notes" in fields:
         row.work_task_notes = fields["notes"]
     if "status" in fields:
-        _apply_status(row, fields["status"])
+        _apply_status(
+            row,
+            fields["status"],
+            session=session,
+            reason=status_reason,
+            agent_report=agent_report,
+        )
     if "resolved_agent_profile" in fields:
         # Validate against the row's current area (which already reflects any
         # area change applied above).
@@ -461,7 +521,7 @@ def claim_work_task(session: Session, identifier: str, *, claimed_by: str) -> di
     row.work_task_claimed_by = claimed_by
     row.work_task_claimed_at = datetime.now(UTC)
     if row.work_task_status == "Ready":
-        _apply_status(row, "Claimed")
+        _apply_status(row, "Claimed", session=session)
     session.flush()
     after = to_dict(row)
     emit(
