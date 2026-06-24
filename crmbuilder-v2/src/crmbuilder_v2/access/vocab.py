@@ -662,6 +662,58 @@ MESSAGE_TEMPLATE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "deferred": frozenset({"confirmed", "rejected"}),
     "rejected": frozenset(),
 }
+
+# ---------------------------------------------------------------------------
+# Security design records (PI-051 — REQ-128 role-aware visibility + REQ-129
+# field-level permissions). Two sibling entities — ``field_permission_rule``
+# (FPR-) and ``field_visibility_rule`` (FVR-) — each declare one unconditional
+# (role × target_field) security intent. Per the reconciliation decision
+# DEC-698: the role and target field are PLAIN VALIDATED STRING COLUMNS (not
+# ``refs`` edges, matching ``rule``), BOTH carry the standard design lifecycle
+# ``status``, and BOTH share ONE deployment-outcome vocabulary.
+# ---------------------------------------------------------------------------
+
+# The neutral access level a ``field_permission_rule`` grants a role over a
+# field: ``read_write`` (read + edit), ``read_only`` (read, no edit),
+# ``no_access`` (hidden). The adapter maps each onto the target engine's
+# field-permission shape (EspoCRM ``{read, edit}`` / a HubSpot property
+# permission). Edit-without-read is unrepresentable and rejected upstream.
+FIELD_PERMISSION_LEVELS: frozenset[str] = frozenset(
+    {"read_write", "read_only", "no_access"}
+)
+
+# Shared design lifecycle for both security-rule entities — the standard
+# four-status propose-verify gate, identical to ``rule`` / ``view``.
+FIELD_RULE_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+FIELD_RULE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
+# The shared deploy-outcome axis (DEC-698), orthogonal to the design lifecycle.
+# Shared by ``field_permission_rule`` and ``field_visibility_rule``: a rule is
+# authored ``pending``; the deploy process moves it to ``deployed`` (verified
+# active), ``not_supported`` (no platform path — the EspoCRM 9.x §12.5 steady
+# state per DEC-243), ``manual_required`` (an out-of-engine operator step only),
+# or ``error`` (a failed attempt, retryable); the audit/verify round-trip writes
+# ``drift`` when a deployed rule no longer matches live state. ``not_supported``
+# / ``manual_required`` are platform-derived, never authored.
+FIELD_RULE_DEPLOYMENT_STATUSES: frozenset[str] = frozenset(
+    {
+        "pending",
+        "deployed",
+        "not_supported",
+        "manual_required",
+        "drift",
+        "error",
+    }
+)
+
 # Instance entity (PI-186 — PRJ-027). One engagement-scoped connection to a
 # live CRM system. See prj-027-multi-instance-audit-inventory-architecture.md
 # §3. The vendor selects the introspection/adapter driver (espocrm first; the
@@ -1643,6 +1695,14 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "team",
         # PI-195 (PRJ-027) net-new filtered-tab design family (FTB-).
         "filtered_tab",
+        # PI-051 (REQ-128 / REQ-129) the two security design families: one
+        # unconditional (role × target_field) permission-level declaration
+        # (FPR-) and one atomic (role, field) -> visible? decision (FVR-).
+        # Role and target_field are plain validated columns, not refs edges
+        # (DEC-698); the types are admitted here so a record can be a
+        # reference target / change-log-tracked.
+        "field_permission_rule",
+        "field_visibility_rule",
         # PI-205 (PRJ-031) the multi-agent release pipeline keystone (REL-).
         # The born-early forming container whose status is its pipeline stage.
         "release",

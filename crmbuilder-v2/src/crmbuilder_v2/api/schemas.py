@@ -992,6 +992,111 @@ class RulePatchIn(_Base):
     rule_status: str | None = None
 
 
+# ---- Field permission rules (security design record, PI-051 / REQ-129) ----
+
+
+class FieldPermissionRuleCreateIn(_Base):
+    """POST /field-permission-rules body (PI-051, DEC-698).
+
+    ``field_permission_rule_identifier`` is server-assigned when omitted;
+    ``field_permission_rule_status`` defaults to ``candidate`` and
+    ``field_permission_rule_deployment_status`` to ``pending`` server-side.
+    ``field_permission_rule_role`` (``ROL-NNN``) and
+    ``field_permission_rule_target_field`` (``FLD-NNN``) are validated live and
+    the (role, field) pair is checked unique among live rows."""
+
+    field_permission_rule_name: str
+    field_permission_rule_role: str
+    field_permission_rule_target_field: str
+    field_permission_rule_permission_level: str
+    field_permission_rule_status: str | None = None
+    field_permission_rule_deployment_status: str | None = None
+    field_permission_rule_description: str | None = None
+    field_permission_rule_notes: str | None = None
+    field_permission_rule_identifier: str | None = None
+
+
+class FieldPermissionRuleReplaceIn(_Base):
+    """PUT /field-permission-rules/{identifier} body — full replace."""
+
+    field_permission_rule_identifier: str | None = None
+    field_permission_rule_name: str
+    field_permission_rule_role: str
+    field_permission_rule_target_field: str
+    field_permission_rule_permission_level: str
+    field_permission_rule_status: str
+    field_permission_rule_deployment_status: str
+    field_permission_rule_description: str | None = None
+    field_permission_rule_notes: str | None = None
+
+
+class FieldPermissionRulePatchIn(_Base):
+    """PATCH /field-permission-rules/{identifier} body — partial update.
+
+    Consumed with ``model_dump(exclude_unset=True)`` so an explicit null
+    (clear) is distinguished from an omitted key (leave unchanged)."""
+
+    field_permission_rule_name: str | None = None
+    field_permission_rule_role: str | None = None
+    field_permission_rule_target_field: str | None = None
+    field_permission_rule_permission_level: str | None = None
+    field_permission_rule_status: str | None = None
+    field_permission_rule_deployment_status: str | None = None
+    field_permission_rule_description: str | None = None
+    field_permission_rule_notes: str | None = None
+
+
+# ---- Field visibility rules (security design record, PI-051 / REQ-128) ----
+
+
+class FieldVisibilityRuleCreateIn(_Base):
+    """POST /field-visibility-rules body (PI-051, DEC-698).
+
+    ``field_visibility_rule_identifier`` is server-assigned when omitted;
+    ``field_visibility_rule_status`` defaults to ``candidate`` and
+    ``field_visibility_rule_deployment_status`` to ``pending`` server-side.
+    ``field_visibility_rule_role`` / ``field_visibility_rule_target_field`` are
+    validated live and the (role, field) pair is checked unique among live
+    rows."""
+
+    field_visibility_rule_name: str
+    field_visibility_rule_role: str
+    field_visibility_rule_target_field: str
+    field_visibility_rule_visible: bool
+    field_visibility_rule_status: str | None = None
+    field_visibility_rule_deployment_status: str | None = None
+    field_visibility_rule_description: str | None = None
+    field_visibility_rule_notes: str | None = None
+    field_visibility_rule_identifier: str | None = None
+
+
+class FieldVisibilityRuleReplaceIn(_Base):
+    """PUT /field-visibility-rules/{identifier} body — full replace."""
+
+    field_visibility_rule_identifier: str | None = None
+    field_visibility_rule_name: str
+    field_visibility_rule_role: str
+    field_visibility_rule_target_field: str
+    field_visibility_rule_visible: bool
+    field_visibility_rule_status: str
+    field_visibility_rule_deployment_status: str
+    field_visibility_rule_description: str | None = None
+    field_visibility_rule_notes: str | None = None
+
+
+class FieldVisibilityRulePatchIn(_Base):
+    """PATCH /field-visibility-rules/{identifier} body — partial update."""
+
+    field_visibility_rule_name: str | None = None
+    field_visibility_rule_role: str | None = None
+    field_visibility_rule_target_field: str | None = None
+    field_visibility_rule_visible: bool | None = None
+    field_visibility_rule_status: str | None = None
+    field_visibility_rule_deployment_status: str | None = None
+    field_visibility_rule_description: str | None = None
+    field_visibility_rule_notes: str | None = None
+
+
 # ---------- Views (condition-carrying design record, PRJ-025 PI-189) ---------
 
 
