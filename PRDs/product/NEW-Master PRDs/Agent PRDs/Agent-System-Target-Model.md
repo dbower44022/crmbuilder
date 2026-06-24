@@ -12,6 +12,26 @@
 > per difference we decide *keep-built* vs *change-to-target*. Decisions are
 > logged in §6.
 
+> **⚠️ Source of truth & partial supersession (2026-06-23).** Reconciling this
+> target model against the REL-005 guardrails surfaced two open deltas, now
+> **resolved and confirmed in the V2 database** — which, per the requirement-first
+> rule, is the authoritative source, not this doc:
+> - **DEC-677 — agent selection by capability-description search (REQ-334).**
+>   Agents are located by a *searchable capability description*, matched by the
+>   architect at planning time and stamped for deterministic execution — **not by
+>   name or a fixed key.** This **supersedes §1.6 (naming) and §4.12 (the
+>   area×tier roster) as the *primary* locator**; the `(area, tier)` key and any
+>   technology-as-area split drop to a **coarse structural anchor + safety
+>   backstop**, with a per-area-family generalist fallback and specialist
+>   sub-splits (refines REQ-283).
+> - **DEC-692 — observability derived from the task records (REQ-335).** Each task
+>   gains an append-only transition log (outcome, reasoning summary, escalation);
+>   the single durable account (REQ-277) is a run-level rollup over those logs;
+>   cleanup is retain-not-delete (REQ-263/264).
+>
+> Sections below predating these decisions (esp. §4.12 and §1.6) are **partially
+> superseded** — read them through DEC-677/DEC-692.
+
 ---
 
 ## 1. Governing principles (DECIDED)
