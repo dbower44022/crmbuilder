@@ -119,5 +119,8 @@ A markdown report at `~/Dropbox/Projects/ClevelandBusinessMentors/audit-dev-vs-p
   is recommended for the diagnosis pass.
 
 ---
-*Open against the governing planning item / work ticket (see ENG-002 governance created
-alongside this file). This prompt file is the work_ticket_file_path for that kickoff.*
+*Governance (ENG-002, release-scoped): release **REL-003** "CBM dev->prod parity
+reconciliation" -> project **PRJ-004** "Dev->prod relationship reconciliation" ->
+**PI-007** (this audit) <- **WT-001** (this kickoff; this file is its
+work_ticket_file_path). Remediation PIs the audit produces are born in PRJ-004 too.
+Open against PI-007.*
