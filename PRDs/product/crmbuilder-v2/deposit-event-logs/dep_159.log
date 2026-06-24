@@ -1,0 +1,16 @@
+DEP-160 — Apply of COP-235 (PI-051 V2 adapter security-rule rendering), 2026-06-24
+Engagement: CRMBUILDER | Outcome: success | Runner: claude_code (real-time API, DEC-383)
+PI-051 / REQ-128+129 — V2 adapter renders field_permission_rule/field_visibility_rule into
+fieldPermissions:/fieldVisibility: program blocks, bridging the V2 design model to the V1 deploy
+engine (DEC-703). Branch pi-051-adapter-security-render, build commit 28d0d1cd, merged 0c6d13ca.
+ADDRESSES (not resolves) PI-051.
+Records: conversation CNV-202, decision DEC-705, commit CM-0173.
+Built: build_program_model consumes field_permission_rules/field_visibility_rules/roles and emits
+top-level fieldPermissions:/fieldVisibility: blocks on each owning entity program; an entry renders
+only when the rule is confirmed, its target_field resolves to an emitted field on a confirmed entity,
+and its role (ROL-NNN) resolves to a role_name; the rest route to field_permission/field_visibility
+deferrals (MANUAL-CONFIG). Sorted (role,field) for byte-stability; identical V1/V2 level vocab.
+client.py adds list_field_permission_rules/list_field_visibility_rules/list_roles; emit.py adds the two
+deferral titles; adapter.py threads the reads through run()/generate(). 169 adapter tests pass, ruff
+clean. V2 adapter code only — no V2 schema/migration/live-DB change.
+records_summary: 1 conversation, 1 decision, 1 commit.

@@ -1,0 +1,4 @@
+{"label":"PI-051 V2 adapter security-rule rendering close-out (REQ-128+129)","note":"Real-time API (DEC-383). Model A trail dep_159.log / DEP-160. Addresses PI-051.",
+"engagement":"CRMBUILDER","session":"SES-252","conversation":"CNV-202","release":"REL-019","project":"PRJ-017",
+"addresses_planning_items":["PI-051"],"implements_requirements":["REQ-128","REQ-129"],"decisions":["DEC-705"],"commits":["28d0d1cd (merged 0c6d13ca)"],
+"summary":"V2 EspoCRM adapter renders field_permission_rule/field_visibility_rule into top-level fieldPermissions:/fieldVisibility: program blocks, bridging the V2 design model to the V1 deploy engine (DEC-703). Confirmed+emitted-field+role-resolved entries only; rest -> deferrals. Sorted byte-stable. 169 adapter tests, ruff clean. No schema/migration/live-DB change."}
