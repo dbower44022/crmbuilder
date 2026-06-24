@@ -5360,6 +5360,16 @@ class AgentProfileRow(Base):
     technology: Mapped[str | None] = mapped_column(String(32), nullable=True)
     tier: Mapped[str] = mapped_column(String(16), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    # Searchable capability description (PI-301 / DEC-677): the structured-plus-
+    # prose object an LLM reads to *pick* an agent, of shape ``{"summary": str,
+    # "specialties": [str], "builds": [str], "constraints": [str]}``. SEPARATE
+    # from ``description`` (which is the agent's system prompt). NULL = no
+    # capability description authored yet. The deterministic ``search_agents``
+    # pre-filter uses the columnar facets (``area``/``technology``/``status``);
+    # this object supplies the LLM-facing detail.
+    capability_description: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="active"
     )
