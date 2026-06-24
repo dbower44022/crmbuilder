@@ -19,6 +19,7 @@ import yaml
 
 from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.audit_utils import (
+    NATIVE_ENTITIES,
     EntityClass,
     FieldClass,
     classify_entity,
@@ -1568,11 +1569,21 @@ class AuditManager:
                     foreign_entity, strip_entity_c_prefix(foreign_entity)
                 )
 
-                custom_names = self._custom_field_names.get(entity.espo_name, set())
-                yaml_link = self._reverse_field_name(link_name, custom_names)
-
-                foreign_custom = self._custom_field_names.get(foreign_entity, set())
-                yaml_link_foreign = self._reverse_field_name(foreign_link, foreign_custom)
+                # Reverse-map link names by stripping the platform c-prefix
+                # that EspoCRM applies to custom links ONLY on native entities
+                # (REQ-344 / PI-309). Emitting the prefixed form (cChildAccounts)
+                # makes the next deploy double-prefix it (cCChildAccounts) since
+                # EspoCRM re-applies the prefix. Custom-entity links keep their
+                # natural names. Symmetric to the field fix in PI-307; keyed off
+                # the link's own entity, not the field custom-name set.
+                yaml_link = strip_field_c_prefix(
+                    link_name,
+                    entity_is_native=(entity.espo_name in NATIVE_ENTITIES),
+                )
+                yaml_link_foreign = strip_field_c_prefix(
+                    foreign_link,
+                    entity_is_native=(foreign_entity in NATIVE_ENTITIES),
+                )
 
                 # Build a descriptive name
                 rel_name = f"{yaml_entity.lower()}To{yaml_foreign}"
