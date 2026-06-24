@@ -1,0 +1,16 @@
+DEP-158 — Apply of COP-233 (PI-308 migration-drift safety), 2026-06-24
+Engagement: CRMBUILDER | Outcome: success | Runner: claude_code (real-time API, DEC-383)
+
+PI-308 / REQ-343 — migration-drift detection + honest schema-apply.
+Branch pi-308-migration-drift-safety, commit b5495abc, merged 42a71215. RESOLVES PI-308.
+
+Records: conversation CNV-199, decision DEC-702, commit CM-0171; CNV-199 resolves PI-308 (Draft->Resolved).
+
+Built: dialect-aware make_alembic_config; SchemaDriftError + assert_schema_current; honest
+bootstrap_database (un-stamped->create_all+stamp, stamped->upgrade); refuse-to-serve gate in run_api.
+9 tests, ruff clean, no migration/model/vocab change.
+
+Deploy: live v2-unified.db schema already at head (create_all-managed); stamped 0084->0087
+(metadata only, NO migrations re-run, no batch recreate) so the gate passes on next API restart.
+
+records_summary: 1 conversation, 1 decision, 1 commit.

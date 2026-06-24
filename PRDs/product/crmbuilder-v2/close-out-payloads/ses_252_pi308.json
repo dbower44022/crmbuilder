@@ -1,0 +1,10 @@
+{
+  "label": "PI-308 migration-drift safety close-out (REQ-343)",
+  "note": "Records via real-time API (DEC-383). Model A git-tracked trail (dep_157.log / DEP-158). Resolves PI-308.",
+  "engagement": "CRMBUILDER", "session": "SES-252", "conversation": "CNV-199",
+  "release": "REL-011", "project": "PRJ-059",
+  "resolves_planning_items": ["PI-308"], "implements_requirements": ["REQ-343"],
+  "decisions": ["DEC-702"], "commits": ["b5495abc (merged 42a71215)"],
+  "summary": "Startup migration-drift gate + honest bootstrap_database + dialect-aware schema-version. Live DB stamped to head (0084->0087, schema already current). No schema change.",
+  "deploy_note": "Live DB schema was already at head (create_all-managed); stamped to head (metadata only, no migrations re-run) so the new refuse-to-serve gate passes on the next API restart."
+}
