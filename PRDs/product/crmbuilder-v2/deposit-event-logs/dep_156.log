@@ -1,0 +1,29 @@
+DEP-157 — Apply of COP-232 (PI-051 RBAC security-rule foundation), 2026-06-24
+Engagement: CRMBUILDER
+Outcome: success
+Runner: claude_code (real-time API per DEC-383; manifest ses_252_pi051.json)
+
+Build: PI-051 (REQ-128 role-aware visibility + REQ-129 field-level permissions).
+Branch pi-051-security-rules-foundation, commit 3cd8ccd5, merged to main as 8a289e0e.
+Foundation slice — ADDRESSES (does not resolve) PI-051.
+
+Records (entered in real time via direct API POST):
+  - conversation CNV-197  (build execution, belongs to SES-252)
+  - decision     DEC-699  (build)
+  - decision     DEC-698  (reconciliation; recorded pre-build)
+  - commit       CM-0170  (3cd8ccd5, attributed to SES-252)
+  - reference    CNV-197 -[addresses]-> PI-051  (non-resolving)
+  - PI-051 implements REQ-128 + REQ-129 (DEC-695); re-homed into REL-019 ⊃ PRJ-017
+
+Built: models FieldPermissionRule (FPR-) + FieldVisibilityRule (FVR-), vocab,
+migration 0086 (SQLite) / 0043 (PG), access repositories with full invariant
+enforcement, API routers+schemas; 46 tests green, ruff clean.
+
+LIVE-DB INCIDENT: direct application of the migration delta to v2-unified.db
+corrupted change_log via a batch table-recreate run concurrently with the open
+API ("database disk image is malformed"). Recovered by restoring the pre-apply
+backup (v2-unified.db.bak-pre0086); the corrupt file is kept at
+v2-unified.db.corrupt-0086. The live DB does NOT yet carry the two tables or the
+CHECK rebuild — deferred to a safe application (API stopped, or a proper migration).
+
+records_summary: 1 conversation, 2 decisions, 1 commit.

@@ -1,0 +1,16 @@
+{
+  "label": "PI-051 RBAC security-rule foundation close-out (REQ-128 + REQ-129)",
+  "note": "Records entered in real time via direct API POST (DEC-383). This manifest is the close_out_payload artifact for the Model A git-tracked deposit-event trail (dep_156.log / DEP-157). Foundation slice — ADDRESSES (does not resolve) PI-051.",
+  "engagement": "CRMBUILDER",
+  "session": "SES-252",
+  "conversation": "CNV-197",
+  "release": "REL-019",
+  "project": "PRJ-017",
+  "addresses_planning_items": ["PI-051"],
+  "implements_requirements": ["REQ-128", "REQ-129"],
+  "decisions": ["DEC-698 (reconciliation)", "DEC-699 (build)"],
+  "commits": ["3cd8ccd5 (branch pi-051-security-rules-foundation; merged to main as 8a289e0e)"],
+  "migrations": ["SQLite 0086_pi_051_security_rules", "PG 0043_pi_051_security_rules"],
+  "summary": "Built the storage->access->API foundation for the two reconciled RBAC security-rule entities (field_permission_rule FPR-, field_visibility_rule FVR-) with full invariant enforcement + 46 tests. Foundation only; deploy/audit/program-file/role-scoping are later slices.",
+  "live_db_note": "Direct live-DB application of the migration delta CORRUPTED change_log via a batch table-recreate run concurrently with the open API; recovered from backup v2-unified.db.bak-pre0086. The live DB does NOT yet carry the two tables / CHECK rebuild — deferred to a safe application (API stopped, or a proper migration). The corrupt file is preserved at v2-unified.db.corrupt-0086."
+}
