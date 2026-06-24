@@ -21,6 +21,7 @@ from espo_impl.core.layout_types import (
     structure_class,
 )
 from espo_impl.core.models import (
+    FIELD_PERMISSION_LEVELS,
     SCOPE_ACCESS_VALUES,
     SUPPORTED_ENTITY_TYPES,
     SYSTEM_PERMISSION_FLAG_KEYS,
@@ -40,6 +41,8 @@ from espo_impl.core.models import (
     EntityDefinition,
     EntitySettings,
     FieldDefinition,
+    FieldPermissionSpec,
+    FieldVisibilitySpec,
     FilteredTab,
     Formula,
     LayoutSpec,
@@ -319,6 +322,14 @@ class ConfigLoader:
         roles = self._parse_roles(raw.get("roles"))
         teams = self._parse_teams(raw.get("teams"))
 
+        # Parse top-level field-level permissions / visibility (Section 12.7)
+        field_permissions = self._parse_field_permissions(
+            raw.get("fieldPermissions")
+        )
+        field_visibility = self._parse_field_visibility(
+            raw.get("fieldVisibility")
+        )
+
         return ProgramFile(
             version=str(raw.get("version", "")),
             description=str(raw.get("description", "")),
@@ -328,6 +339,8 @@ class ConfigLoader:
             relationships=relationships,
             roles=roles,
             teams=teams,
+            field_permissions=field_permissions,
+            field_visibility=field_visibility,
             deprecation_warnings=deprecation_warnings,
         )
 
@@ -367,6 +380,8 @@ class ConfigLoader:
                 and not program.relationships
                 and not program.roles
                 and not program.teams
+                and not program.field_permissions
+                and not program.field_visibility
             ):
                 errors.append(
                     "Missing or empty 'entities' and 'relationships' sections"
@@ -388,6 +403,10 @@ class ConfigLoader:
             # Section 12 — roles and teams
             errors.extend(self._validate_roles(program))
             errors.extend(self._validate_teams(program))
+
+            # Section 12.7 — field-level permissions and visibility
+            errors.extend(self._validate_field_permissions(program))
+            errors.extend(self._validate_field_visibility(program))
 
             # Section 12.5.2 — layout-variant coverage rule
             errors.extend(self._validate_layout_variants(program))
@@ -2204,6 +2223,137 @@ class ConfigLoader:
             ))
 
         return teams
+
+    def _parse_field_permissions(
+        self, raw: Any,
+    ) -> list[FieldPermissionSpec]:
+        """Parse the top-level ``fieldPermissions:`` list (Section 12.7).
+
+        Hard-rejects structural problems (non-list root, non-dict entry)
+        by raising ``ValueError`` — matching the roles/teams parsers.
+        Value-level checks (empty role/entity/field, invalid ``level``)
+        are deferred to :meth:`_validate_field_permissions`, mirroring
+        the savedViews parse-then-validate split.
+
+        :param raw: Raw value from ``raw.get("fieldPermissions")``.
+        :returns: Parsed specs (possibly empty).
+        :raises ValueError: On malformed structure.
+        """
+        if raw is None:
+            return []
+        if not isinstance(raw, list):
+            raise ValueError(
+                "Top-level 'fieldPermissions' must be a list of "
+                "field-permission rules"
+            )
+        specs: list[FieldPermissionSpec] = []
+        for idx, item in enumerate(raw):
+            if not isinstance(item, dict):
+                raise ValueError(
+                    f"fieldPermissions[{idx}] must be a mapping, got "
+                    f"{type(item).__name__}"
+                )
+            specs.append(FieldPermissionSpec(
+                role=str(item.get("role", "")),
+                entity=str(item.get("entity", "")),
+                field=str(item.get("field", "")),
+                level=str(item.get("level", "")),
+            ))
+        return specs
+
+    def _parse_field_visibility(
+        self, raw: Any,
+    ) -> list[FieldVisibilitySpec]:
+        """Parse the top-level ``fieldVisibility:`` list (Section 12.5).
+
+        Hard-rejects structural problems; value checks (empty role/
+        entity/field, non-boolean ``visible``) are deferred to
+        :meth:`_validate_field_visibility`. Every visibility rule is
+        recorded NOT_SUPPORTED at deploy time (DEC-243).
+
+        :param raw: Raw value from ``raw.get("fieldVisibility")``.
+        :returns: Parsed specs (possibly empty).
+        :raises ValueError: On malformed structure.
+        """
+        if raw is None:
+            return []
+        if not isinstance(raw, list):
+            raise ValueError(
+                "Top-level 'fieldVisibility' must be a list of "
+                "field-visibility rules"
+            )
+        specs: list[FieldVisibilitySpec] = []
+        for idx, item in enumerate(raw):
+            if not isinstance(item, dict):
+                raise ValueError(
+                    f"fieldVisibility[{idx}] must be a mapping, got "
+                    f"{type(item).__name__}"
+                )
+            specs.append(FieldVisibilitySpec(
+                role=str(item.get("role", "")),
+                entity=str(item.get("entity", "")),
+                field=str(item.get("field", "")),
+                visible=item.get("visible"),
+            ))
+        return specs
+
+    def _validate_field_permissions(
+        self, program: ProgramFile,
+    ) -> list[str]:
+        """Validate the ``fieldPermissions:`` block (Section 12.7).
+
+        Each rule needs a non-empty ``role``, ``entity`` and ``field``,
+        and a ``level`` in :data:`FIELD_PERMISSION_LEVELS`.
+
+        :param program: Parsed program file.
+        :returns: List of error messages. Empty list means valid.
+        """
+        errors: list[str] = []
+        for idx, fp in enumerate(program.field_permissions):
+            prefix = f"fieldPermissions[{idx}]"
+            if not fp.role:
+                errors.append(f"{prefix}: missing required property 'role'")
+            if not fp.entity:
+                errors.append(f"{prefix}: missing required property 'entity'")
+            if not fp.field:
+                errors.append(f"{prefix}: missing required property 'field'")
+            if not fp.level:
+                errors.append(f"{prefix}: missing required property 'level'")
+            elif fp.level not in FIELD_PERMISSION_LEVELS:
+                errors.append(
+                    f"{prefix}: invalid level '{fp.level}' (must be one of "
+                    f"{', '.join(sorted(FIELD_PERMISSION_LEVELS))})"
+                )
+        return errors
+
+    def _validate_field_visibility(
+        self, program: ProgramFile,
+    ) -> list[str]:
+        """Validate the ``fieldVisibility:`` block (Section 12.5).
+
+        Each rule needs a non-empty ``role``, ``entity`` and ``field``,
+        and a boolean ``visible``. The rules are NOT_SUPPORTED at deploy
+        (DEC-243) but are still validated so malformed YAML is rejected
+        rather than silently surfaced as a manual-config line.
+
+        :param program: Parsed program file.
+        :returns: List of error messages. Empty list means valid.
+        """
+        errors: list[str] = []
+        for idx, fv in enumerate(program.field_visibility):
+            prefix = f"fieldVisibility[{idx}]"
+            if not fv.role:
+                errors.append(f"{prefix}: missing required property 'role'")
+            if not fv.entity:
+                errors.append(f"{prefix}: missing required property 'entity'")
+            if not fv.field:
+                errors.append(f"{prefix}: missing required property 'field'")
+            if not isinstance(fv.visible, bool):
+                errors.append(
+                    f"{prefix}: 'visible' must be a boolean (got "
+                    f"{fv.visible!r})"
+                )
+        return errors
 
     def _parse_email_templates(
         self, raw: list | None, yaml_dir: Path | None,

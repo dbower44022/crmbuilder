@@ -841,6 +841,98 @@ class RoleResult:
     error: str | None = None
 
 
+# --- Section 12.7 field-level permissions / role-aware visibility ---
+
+# The three permission levels a field-level rule may declare (Section 12.7).
+# Each maps to a read/edit cell in the Role record's ``fieldData`` JSON column
+# — see :class:`espo_impl.core.security_rule_manager.SecurityRuleManager`.
+FIELD_PERMISSION_LEVELS: frozenset[str] = frozenset({
+    "read_write", "read_only", "no_access",
+})
+
+
+@dataclass
+class FieldPermissionSpec:
+    """A single field-level permission rule from ``fieldPermissions:``.
+
+    Declared at the top level of a program file. Field-level permissions
+    are stored on the EspoCRM Role record's ``fieldData`` JSON column
+    (parallel to the entity-scope ``data`` column the RoleManager writes)
+    and are fully deployable via the Role REST PATCH path.
+
+    :param role: EspoCRM Role name (must match a deployed Role).
+    :param entity: EspoCRM entity wire name (C-prefixed for custom).
+    :param field: Field name the permission applies to.
+    :param level: One of :data:`FIELD_PERMISSION_LEVELS` —
+        ``read_write`` / ``read_only`` / ``no_access``.
+    """
+
+    role: str
+    entity: str
+    field: str
+    level: str
+
+
+@dataclass
+class FieldVisibilitySpec:
+    """A single role-aware field-visibility rule from ``fieldVisibility:``.
+
+    Role-aware visibility has no EspoCRM 9.x deploy path — EspoCRM's
+    Dynamic Logic has no role-condition type (DEC-243). Every rule is
+    recorded NOT_SUPPORTED and surfaced in the MANUAL CONFIGURATION
+    REQUIRED block; nothing is ever written to the target.
+
+    :param role: EspoCRM Role name.
+    :param entity: EspoCRM entity wire name.
+    :param field: Field name the visibility rule applies to.
+    :param visible: Whether the field should be visible to the role.
+    """
+
+    role: str
+    entity: str
+    field: str
+    visible: bool | None = None
+
+
+class SecurityRuleStatus(Enum):
+    """Outcome status for a field-level security rule operation.
+
+    CREATED — the field-permission cell did not exist and was written.
+    UPDATED — the cell existed with a different value and was changed.
+    MATCHES — the cell already held the intended value (no PATCH).
+    NOT_SUPPORTED — a role-aware visibility rule (no EspoCRM 9.x deploy
+        path; surfaced in MANUAL CONFIGURATION REQUIRED, never written).
+    ERROR — the rule could not be applied (role missing, PATCH failure,
+        verification mismatch).
+    """
+
+    CREATED = "created"
+    UPDATED = "updated"
+    MATCHES = "matches"
+    NOT_SUPPORTED = "not_supported"
+    ERROR = "error"
+
+
+@dataclass
+class SecurityRuleResult:
+    """Result of processing a single field-level security rule.
+
+    :param role: Role name from YAML (also the match key).
+    :param entity: Entity wire name the rule targets.
+    :param field: Field name the rule targets.
+    :param status: Outcome status.
+    :param role_id: Server-assigned Role record ID, when known.
+    :param error: Error message if status is ERROR.
+    """
+
+    role: str
+    entity: str
+    field: str
+    status: SecurityRuleStatus
+    role_id: str | None = None
+    error: str | None = None
+
+
 class TooltipStatus(Enum):
     """Outcome status for a tooltip import operation."""
 
@@ -907,6 +999,8 @@ class ProgramFile:
     relationships: list[RelationshipDefinition] = field(default_factory=list)
     roles: list[RoleDefinition] = field(default_factory=list)
     teams: list[TeamDefinition] = field(default_factory=list)
+    field_permissions: list[FieldPermissionSpec] = field(default_factory=list)
+    field_visibility: list[FieldVisibilitySpec] = field(default_factory=list)
     deprecation_warnings: list[str] = field(default_factory=list)
     condition_warnings: list[str] = field(default_factory=list)
 
@@ -1417,6 +1511,7 @@ class RunReport:
     email_template_results: list[EmailTemplateResult] = field(default_factory=list)
     workflow_results: list[WorkflowResult] = field(default_factory=list)
     filtered_tab_results: list[FilteredTabResult] = field(default_factory=list)
+    security_rule_results: list[SecurityRuleResult] = field(default_factory=list)
     step_results: list[StepResult] = field(default_factory=list)
     not_supported_role_clauses: list[NotSupportedRoleClauseRecord] = field(
         default_factory=list,

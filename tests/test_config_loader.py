@@ -3914,3 +3914,155 @@ def test_panel_visibleWhen_role_clause_accepted(loader, tmp_path):
     program = loader.load_program(path)
     errors = loader.validate_program(program)
     assert errors == []
+
+
+# =================================================================
+# PI-051 — top-level fieldPermissions: / fieldVisibility: (Section 12.7)
+# =================================================================
+
+
+def test_load_field_permissions_block(loader, tmp_path):
+    """A valid fieldPermissions: block populates ProgramFile.field_permissions."""
+    path = _write(tmp_path, "fp.yaml", """\
+        version: "1.0"
+        description: "Field permissions only"
+        fieldPermissions:
+          - role: "Mentor Role"
+            entity: CMentorProfile
+            field: mentorStatus
+            level: read_only
+          - role: "Mentor Role"
+            entity: CMentorProfile
+            field: ssn
+            level: no_access
+    """)
+    program = loader.load_program(path)
+    assert len(program.field_permissions) == 2
+    first = program.field_permissions[0]
+    assert first.role == "Mentor Role"
+    assert first.entity == "CMentorProfile"
+    assert first.field == "mentorStatus"
+    assert first.level == "read_only"
+    assert program.field_permissions[1].level == "no_access"
+
+
+def test_load_field_visibility_block(loader, tmp_path):
+    """A valid fieldVisibility: block populates ProgramFile.field_visibility."""
+    path = _write(tmp_path, "fv.yaml", """\
+        version: "1.0"
+        description: "Field visibility only"
+        fieldVisibility:
+          - role: "Mentor Role"
+            entity: CMentorProfile
+            field: internalNote
+            visible: false
+    """)
+    program = loader.load_program(path)
+    assert len(program.field_visibility) == 1
+    rule = program.field_visibility[0]
+    assert rule.role == "Mentor Role"
+    assert rule.field == "internalNote"
+    assert rule.visible is False
+
+
+def test_load_program_without_field_security_blocks(loader, valid_yaml):
+    """Programs without the blocks still load with empty lists."""
+    program = loader.load_program(valid_yaml)
+    assert program.field_permissions == []
+    assert program.field_visibility == []
+
+
+def test_validate_field_permissions_valid(loader, tmp_path):
+    path = _write(tmp_path, "fp_ok.yaml", """\
+        version: "1.0"
+        description: "Valid field permissions"
+        fieldPermissions:
+          - role: "Mentor Role"
+            entity: CMentorProfile
+            field: mentorStatus
+            level: read_write
+    """)
+    program = loader.load_program(path)
+    assert loader.validate_program(program) == []
+
+
+def test_validate_field_permissions_bad_level(loader, tmp_path):
+    path = _write(tmp_path, "fp_bad_level.yaml", """\
+        version: "1.0"
+        description: "Bad level"
+        fieldPermissions:
+          - role: "Mentor Role"
+            entity: CMentorProfile
+            field: mentorStatus
+            level: readwrite
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("invalid level 'readwrite'" in e for e in errors)
+
+
+def test_validate_field_permissions_missing_field(loader, tmp_path):
+    path = _write(tmp_path, "fp_missing_field.yaml", """\
+        version: "1.0"
+        description: "Missing field"
+        fieldPermissions:
+          - role: "Mentor Role"
+            entity: CMentorProfile
+            level: read_only
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any(
+        "missing required property 'field'" in e for e in errors
+    )
+
+
+def test_validate_field_permissions_missing_role_and_entity(loader, tmp_path):
+    path = _write(tmp_path, "fp_missing.yaml", """\
+        version: "1.0"
+        description: "Missing role and entity"
+        fieldPermissions:
+          - field: mentorStatus
+            level: read_only
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("missing required property 'role'" in e for e in errors)
+    assert any("missing required property 'entity'" in e for e in errors)
+
+
+def test_validate_field_visibility_non_boolean(loader, tmp_path):
+    path = _write(tmp_path, "fv_bad.yaml", """\
+        version: "1.0"
+        description: "Non-boolean visible"
+        fieldVisibility:
+          - role: "Mentor Role"
+            entity: CMentorProfile
+            field: internalNote
+            visible: maybe
+    """)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("'visible' must be a boolean" in e for e in errors)
+
+
+def test_field_permissions_top_level_must_be_list(loader, tmp_path):
+    path = _write(tmp_path, "fp_not_list.yaml", """\
+        version: "1.0"
+        description: "Bad fieldPermissions"
+        fieldPermissions:
+          role: "Mentor Role"
+    """)
+    with pytest.raises(ValueError, match="must be a list"):
+        loader.load_program(path)
+
+
+def test_field_visibility_entry_must_be_mapping(loader, tmp_path):
+    path = _write(tmp_path, "fv_not_map.yaml", """\
+        version: "1.0"
+        description: "Bad fieldVisibility entry"
+        fieldVisibility:
+          - "not a mapping"
+    """)
+    with pytest.raises(ValueError, match="must be a mapping"):
+        loader.load_program(path)

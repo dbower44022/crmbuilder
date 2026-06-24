@@ -44,6 +44,7 @@ from espo_impl.core.models import (
 from espo_impl.core.relationship_manager import RelationshipManager
 from espo_impl.core.role_manager import RoleManager
 from espo_impl.core.saved_view_manager import SavedViewManager
+from espo_impl.core.security_rule_manager import SecurityRuleManager
 from espo_impl.core.team_manager import TeamManager
 from espo_impl.core.workflow_manager import WorkflowManager
 
@@ -140,6 +141,7 @@ class RunWorker(QThread):
             layout=LayoutManager,
             relationship=RelationshipManager,
             role=RoleManager,
+            security_rule=SecurityRuleManager,
             team=TeamManager,
             workflow=WorkflowManager,
             filtered_tab=FilteredTabManager,

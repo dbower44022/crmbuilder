@@ -52,6 +52,7 @@ from espo_impl.core.models import (
     RoleStatus,
     RunReport,
     SavedViewStatus,
+    SecurityRuleStatus,
     SettingsStatus,
     StepResult,
     StepStatus,
@@ -66,6 +67,10 @@ from espo_impl.core.role_manager import RoleManager, RoleManagerError
 from espo_impl.core.saved_view_manager import (
     SavedViewManager,
     SavedViewManagerError,
+)
+from espo_impl.core.security_rule_manager import (
+    SecurityRuleManager,
+    SecurityRuleManagerError,
 )
 from espo_impl.core.team_manager import TeamManager, TeamManagerError
 from espo_impl.core.workflow_manager import (
@@ -88,6 +93,7 @@ MANAGER_ERROR_TYPES: tuple[type[Exception], ...] = (
     LayoutManagerError,
     RelationshipManagerError,
     RoleManagerError,
+    SecurityRuleManagerError,
     TeamManagerError,
     WorkflowManagerError,
     FilteredTabManagerError,
@@ -127,6 +133,7 @@ class DeployManagers:
     layout: type = LayoutManager
     relationship: type = RelationshipManager
     role: type = RoleManager
+    security_rule: type = SecurityRuleManager
     team: type = TeamManager
     workflow: type = WorkflowManager
     filtered_tab: type = FilteredTabManager
@@ -144,6 +151,7 @@ class DeployOutcome:
     report: RunReport
     security_team_results: list[Any] = field(default_factory=list)
     security_role_results: list[Any] = field(default_factory=list)
+    security_rule_results: list[Any] = field(default_factory=list)
 
 
 def is_authentication_message(message: str) -> bool:
@@ -455,6 +463,13 @@ def emit_manual_config_block(output_fn: OutputFn, report: RunReport) -> None:
         for r in report.layout_results
         if r.status == EntityLayoutStatus.NOT_SUPPORTED
     ]
+    # Section 12.7 field-level role-aware visibility (NOT_SUPPORTED on
+    # EspoCRM 9.x per DEC-243 — no role-condition in Dynamic Logic).
+    field_visibility_items = [
+        f"  {r.entity}.{r.field} (role: {r.role})"
+        for r in report.security_rule_results
+        if r.status == SecurityRuleStatus.NOT_SUPPORTED
+    ]
 
     if not (
         saved_view_items
@@ -465,6 +480,7 @@ def emit_manual_config_block(output_fn: OutputFn, report: RunReport) -> None:
         or role_field_items
         or role_panel_items
         or variant_layout_items
+        or field_visibility_items
     ):
         return
 
@@ -535,6 +551,22 @@ def emit_manual_config_block(output_fn: OutputFn, report: RunReport) -> None:
         "yellow",
     )
 
+    # Section 12.7 — field-level role-aware visibility (NOT_SUPPORTED on
+    # EspoCRM 9.x per DEC-243; no role-condition type in Dynamic Logic).
+    output_fn("", "yellow")
+    output_fn(
+        "Section 12.7 field-level visibility "
+        "(NOT_SUPPORTED on EspoCRM 9.x):",
+        "yellow",
+    )
+    for line in (field_visibility_items or ["  (none)"]):
+        output_fn(line, "yellow")
+    output_fn(
+        "  Configure manually via Dynamic Handler JS or role-scoped "
+        "Layout Sets (see schema §12.7 Deploy Support).",
+        "yellow",
+    )
+
     output_fn("===========================================", "yellow")
 
 
@@ -584,6 +616,7 @@ def deploy_pipeline(
     filtered_tab_results: list[Any] = []
     team_results: list[Any] = []
     role_results: list[Any] = []
+    security_rule_results: list[Any] = []
 
     had_entity_ops_state = {"value": False}
 
@@ -1028,7 +1061,12 @@ def deploy_pipeline(
     all_step_results.append(step_result)
 
     # --- Step 11: Security ------------------------------------------
-    has_security = bool(program.roles or program.teams)
+    has_security = bool(
+        program.roles
+        or program.teams
+        or program.field_permissions
+        or program.field_visibility
+    )
 
     def _security_body() -> None:
         output_fn("", "white")
@@ -1046,6 +1084,17 @@ def deploy_pipeline(
             role_results.extend(
                 role_mgr.process_roles(program.roles, dry_run=dry_run)
             )
+        # Field-level permissions / visibility third — they patch the
+        # Role record's fieldData, so they run after roles are deployed.
+        if program.field_permissions or program.field_visibility:
+            sec_mgr = managers.security_rule(client, output_fn)
+            security_rule_results.extend(
+                sec_mgr.process_security_rules(
+                    program.field_permissions,
+                    program.field_visibility,
+                    dry_run=dry_run,
+                )
+            )
 
     def _security_failure_check(_: Any) -> str | None:
         team_errors = sum(
@@ -1054,7 +1103,11 @@ def deploy_pipeline(
         role_errors = sum(
             1 for r in role_results if r.status == RoleStatus.ERROR
         )
-        total = team_errors + role_errors
+        rule_errors = sum(
+            1 for r in security_rule_results
+            if r.status == SecurityRuleStatus.ERROR
+        )
+        total = team_errors + role_errors + rule_errors
         if total == 0:
             return None
         parts: list[str] = []
@@ -1062,6 +1115,8 @@ def deploy_pipeline(
             parts.append(f"{team_errors} team error(s)")
         if role_errors:
             parts.append(f"{role_errors} role error(s)")
+        if rule_errors:
+            parts.append(f"{rule_errors} field-permission error(s)")
         return ", ".join(parts)
 
     step_result, _ = run_step(
@@ -1072,6 +1127,7 @@ def deploy_pipeline(
         failure_check=_security_failure_check,
     )
     all_step_results.append(step_result)
+    report.security_rule_results.extend(security_rule_results)
 
     # --- Step 12: Filtered tabs --------------------------------------
     has_filtered_tabs = any(
@@ -1115,6 +1171,7 @@ def deploy_pipeline(
         report=report,
         security_team_results=team_results,
         security_role_results=role_results,
+        security_rule_results=security_rule_results,
     )
 
 
