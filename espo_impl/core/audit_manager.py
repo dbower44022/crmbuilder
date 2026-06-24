@@ -884,6 +884,9 @@ class AuditManager:
             return
 
         custom_names: set[str] = set()
+        # Only native-entity custom fields carry the platform c-prefix;
+        # custom-entity fields keep their natural names (REQ-342).
+        is_native = entity.entity_class == EntityClass.NATIVE
 
         for api_name, meta in fields_meta.items():
             if not isinstance(meta, dict):
@@ -898,8 +901,14 @@ class AuditManager:
                 continue
 
             if field_class == FieldClass.CUSTOM:
-                yaml_name = strip_field_c_prefix(api_name)
-                custom_names.add(api_name)
+                yaml_name = strip_field_c_prefix(
+                    api_name, entity_is_native=is_native
+                )
+                # custom_names drives layout-name reversal; only native
+                # customs need it, so custom-entity fields are not added
+                # (their layout names are already natural — REQ-342).
+                if is_native:
+                    custom_names.add(api_name)
             else:
                 yaml_name = api_name
 

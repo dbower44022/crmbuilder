@@ -394,9 +394,14 @@ def reconcile_fields(
             for f in field_repo.list_fields(session, entity_identifier=parent_id)
         }
 
+        # Only native-entity custom fields carry the platform c-prefix;
+        # custom-entity fields keep their natural names (REQ-342).
+        is_native = entity_class is EntityClass.NATIVE
         for field_name, field_meta in custom_fields:
             summary["seen"] += 1
-            neutral_field = strip_field_c_prefix(field_name)
+            neutral_field = strip_field_c_prefix(
+                field_name, entity_is_native=is_native
+            )
             audited = _audited_field_attrs(field_meta)
 
             match = canon.get(_ci(neutral_field))

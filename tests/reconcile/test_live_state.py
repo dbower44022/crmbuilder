@@ -21,25 +21,49 @@ class _FakeClient:
         return self._responses.get(espo_name, (404, None))
 
 
-def test_custom_field_prefix_stripped_and_label_enriched():
+def test_native_custom_field_prefix_stripped_and_label_enriched():
+    # On a NATIVE entity, EspoCRM c-prefixes custom fields, so the prefix
+    # is stripped back to the natural YAML name.
     client = _FakeClient({
-        "CSession": (200, {
-            "cSessionType": {"type": "enum", "isCustom": True},
+        "Account": (200, {
+            "cIndustry": {"type": "enum", "isCustom": True},
             _SYS: {"type": "varchar"},
         }),
     })
     cap = LiveStateCapture(
-        client, label_resolver=lambda espo, api, fb: {"cSessionType": "Session Type"}.get(api, fb)
+        client, label_resolver=lambda espo, api, fb: {"cIndustry": "Industry"}.get(api, fb)
     )
 
-    live, warnings = cap.capture_fields([EntitySpec("Session", "CSession", "Base")])
+    live, warnings = cap.capture_fields([EntitySpec("Account", "Account", "Company")])
 
     assert warnings == []
-    session = live["Session"]
-    assert _SYS not in session                      # system field skipped
-    assert "sessionType" in session                  # c-prefix stripped
-    assert session["sessionType"]["type"] == "enum"
-    assert session["sessionType"]["label"] == "Session Type"  # i18n enrichment
+    account = live["Account"]
+    assert _SYS not in account                       # system field skipped
+    assert "industry" in account                     # c-prefix stripped
+    assert account["industry"]["type"] == "enum"
+    assert account["industry"]["label"] == "Industry"  # i18n enrichment
+
+
+def test_custom_entity_field_name_not_stripped():
+    # On a CUSTOM entity, fields keep their natural names. A name that
+    # legitimately begins with c+Uppercase must NOT be stripped (REQ-342).
+    client = _FakeClient({
+        "CPartnerProfile": (200, {
+            "cBMValueProvided": {"type": "text", "isCustom": True},
+            "areaOfFocus": {"type": "varchar", "isCustom": True},
+        }),
+    })
+    cap = LiveStateCapture(client)
+
+    live, warnings = cap.capture_fields(
+        [EntitySpec("PartnerProfile", "CPartnerProfile", "Base")]
+    )
+
+    assert warnings == []
+    pp = live["PartnerProfile"]
+    assert "cBMValueProvided" in pp                   # NOT mangled to bMValueProvided
+    assert "bMValueProvided" not in pp
+    assert "areaOfFocus" in pp
 
 
 def test_native_inclusion_toggle():
@@ -70,7 +94,8 @@ def test_http_error_warns_and_omits_entity():
 
 
 def test_default_resolver_uses_fallback_name():
-    client = _FakeClient({"CSession": (200, {"cTopic": {"type": "varchar", "isCustom": True}})})
+    # Custom-entity field keeps its natural name (no c-prefix to strip).
+    client = _FakeClient({"CSession": (200, {"topic": {"type": "varchar", "isCustom": True}})})
     live, _ = LiveStateCapture(client).capture_fields([EntitySpec("Session", "CSession")])
     # No resolver supplied -> label falls back to the yaml field name.
     assert live["Session"]["topic"]["label"] == "topic"
@@ -108,7 +133,8 @@ def test_gather_server_fields_maps_strips_and_warns_unmapped():
                 _SYS: {"type": "varchar"},
             }),
             "CEngagement": (200, {
-                "cStage": {"type": "enum", "isCustom": True},
+                # Custom-entity field — natural name, no platform prefix.
+                "stage": {"type": "enum", "isCustom": True},
             }),
         },
     )
@@ -121,7 +147,7 @@ def test_gather_server_fields_maps_strips_and_warns_unmapped():
     assert "accountType" in server_fields["Account"]
     assert "name" in server_fields["Account"]
     assert _SYS not in server_fields["Account"]          # system skipped
-    # Custom entity (CEngagement) keyed back to its natural YAML name.
+    # Custom entity (CEngagement) keeps its natural field name.
     assert server_fields["Engagement"] == frozenset({"stage"})
     # Entity absent from the live instance is reported, not fatal.
     assert any("Ghost" in w for w in warnings)

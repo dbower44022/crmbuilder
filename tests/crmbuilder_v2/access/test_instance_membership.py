@@ -239,20 +239,21 @@ def test_reconcile_fields_creates_under_parent(v2_env):
             {"CEngagement": _custom()},
             fields={"CEngagement": {
                 "name": {"type": "varchar"},  # native base -> skipped
-                "cStatus": _field("enum", required=True),
-                "cAmount": _field("currency"),
+                # Custom-entity fields are stored under their natural names
+                # (no platform c-prefix), so they round-trip unchanged.
+                "status": _field("enum", required=True),
+                "amount": _field("currency"),
             }},
         )
         summary = reconcile_fields(s, instance_identifier=iid, client=client)
         assert summary["seen"] == 2
         assert summary["created"] == 2
         assert summary["present"] == 2
-        # Parent entity ensured + fields created with neutral names + mapped type.
+        # Parent entity ensured + fields created with their natural names.
         ent = [e for e in entity_repo.list_entities(s)
                if e["entity_name"] == "Engagement"][0]
         flds = {f["field_name"]: f for f in
                 field_repo.list_fields(s, entity_identifier=ent["entity_identifier"])}
-        # Neutral field names are lowercase-first (cStatus -> status).
         assert set(flds) == {"status", "amount"}
         assert flds["status"]["field_type"] == "enum"
         assert flds["status"]["field_required"] is True
@@ -271,7 +272,7 @@ def test_reconcile_fields_drift_with_override(v2_env):
         )
         client = _FakeClient(
             {"CEngagement": _custom()},
-            fields={"CEngagement": {"cStatus": _field("enum", required=True)}},
+            fields={"CEngagement": {"status": _field("enum", required=True)}},
         )
         summary = reconcile_fields(s, instance_identifier=iid, client=client)
         assert summary["created"] == 0 and summary["drifted"] == 1

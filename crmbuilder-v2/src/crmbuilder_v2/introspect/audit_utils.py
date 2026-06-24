@@ -227,14 +227,28 @@ _SYSTEM_SCOPES: set[str] = {
 }
 
 
-def strip_field_c_prefix(api_name: str) -> str:
-    """Reverse the c-prefix on a custom field name.
+def strip_field_c_prefix(api_name: str, entity_is_native: bool = True) -> str:
+    """Reverse the platform c-prefix on a custom field name.
 
-    ``cContactType`` -> ``contactType``
+    EspoCRM auto-applies the ``c`` prefix to custom fields ONLY when the
+    parent entity is native (Contact, Account, ...). On a *custom* entity
+    custom fields keep their natural names, so a name that legitimately
+    begins with a lowercase ``c`` followed by an uppercase letter — e.g.
+    ``cBMValueProvided`` from a label "CBM Value Provided" — must be left
+    untouched; stripping it corrupts the field identity on re-deploy
+    (REQ-342).
+
+    ``cContactType`` (native) -> ``contactType``;
+    ``cBMValueProvided`` (custom entity) -> ``cBMValueProvided``.
 
     :param api_name: Field name from the EspoCRM API.
+    :param entity_is_native: Whether the field's parent entity is native.
+        Only then does EspoCRM apply the platform prefix; defaults to
+        ``True`` for callers without entity context.
     :returns: YAML natural field name.
     """
+    if not entity_is_native:
+        return api_name
     if len(api_name) > 1 and api_name[0] == "c" and api_name[1].isupper():
         return api_name[1].lower() + api_name[2:]
     return api_name

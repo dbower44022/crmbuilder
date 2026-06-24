@@ -173,7 +173,12 @@ class LiveStateCapture:
                     continue
 
                 if fclass is FieldClass.CUSTOM:
-                    yaml_name = strip_field_c_prefix(api_name)
+                    # Native entities (espo == yaml name) carry the platform
+                    # c-prefix; custom entities keep natural names (REQ-342).
+                    yaml_name = strip_field_c_prefix(
+                        api_name,
+                        entity_is_native=(spec.espo_name == spec.yaml_name),
+                    )
                 else:
                     yaml_name = api_name
 

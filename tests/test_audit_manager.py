@@ -1263,3 +1263,60 @@ def test_run_audit_profile_opt_out(tmp_path, monkeypatch):
     report = manager.run_audit(tmp_path)
     assert report.errors == []
     assert not (tmp_path / "utilization-profile.json").exists()
+
+
+# --- c-prefix field-name fidelity (REQ-342 / PI-307) -----------------------
+
+
+def _field_yaml_names(entity):
+    return {f.yaml_name for f in entity.fields}
+
+
+def test_custom_entity_field_name_not_stripped_in_audit():
+    """A custom-entity field starting c+Uppercase keeps its natural name."""
+    client = _make_client(
+        get_entity_field_list=(200, {
+            "cBMValueProvided": {"type": "text", "isCustom": True},
+            "areaOfFocus": {"type": "varchar", "isCustom": True},
+        }),
+        get_layout=(200, [{"label": "P", "rows": [[
+            {"name": "cBMValueProvided"}, {"name": "areaOfFocus"}]]}]),
+        get_i18n=(200, {}),
+    )
+    mgr, _ = _make_manager(client)
+    entity = EntityAuditResult(
+        yaml_name="PartnerProfile", espo_name="CPartnerProfile",
+        entity_class=EntityClass.CUSTOM, entity_type="Base",
+    )
+    mgr._extract_fields(entity, _empty_report())
+
+    names = _field_yaml_names(entity)
+    assert "cBMValueProvided" in names        # NOT mangled to bMValueProvided
+    assert "bMValueProvided" not in names
+
+    # Layout reverse must also leave the custom-entity field name intact.
+    mgr._extract_layout(entity, "detail", _empty_report())
+    serialized = repr(entity.layouts)
+    assert "cBMValueProvided" in serialized
+    assert "bMValueProvided" not in serialized
+
+
+def test_native_entity_custom_field_name_stripped_in_audit():
+    """A native-entity custom field still has its platform c-prefix stripped."""
+    client = _make_client(
+        get_entity_field_list=(200, {
+            "cRegion": {"type": "enum", "isCustom": True},
+        }),
+        get_layout=(200, [{"label": "P", "rows": [[{"name": "cRegion"}]]}]),
+        get_i18n=(200, {}),
+    )
+    mgr, _ = _make_manager(client)
+    entity = EntityAuditResult(
+        yaml_name="Account", espo_name="Account",
+        entity_class=EntityClass.NATIVE, entity_type="Company",
+    )
+    mgr._extract_fields(entity, _empty_report())
+    assert "region" in _field_yaml_names(entity)
+
+    mgr._extract_layout(entity, "detail", _empty_report())
+    assert "region" in repr(entity.layouts)
