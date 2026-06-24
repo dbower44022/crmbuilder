@@ -50,6 +50,8 @@ from crmbuilder_v2.api.routers import (
     entities,
     field,
     field_mappings,
+    field_permission_rules,
+    field_visibility_rules,
     filtered_tabs,
     findings,
     health,
@@ -205,6 +207,8 @@ def create_app() -> FastAPI:
     app.include_router(associations.router)
     app.include_router(engine_overrides.router)
     app.include_router(rules.router)
+    app.include_router(field_permission_rules.router)
+    app.include_router(field_visibility_rules.router)
     app.include_router(views.router)
     app.include_router(automations.router)
     app.include_router(dedup_rules.router)

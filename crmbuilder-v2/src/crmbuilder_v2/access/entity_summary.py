@@ -101,6 +101,9 @@ _SPECS: dict[str, _Spec] = {
     "role": _Spec(models.Role, "role_identifier", "role_name", "role_status", "role_created_at", "role_updated_at"),
     "team": _Spec(models.Team, "team_identifier", "team_name", "team_status", "team_created_at", "team_updated_at"),
     "filtered_tab": _Spec(models.FilteredTab, "filtered_tab_identifier", "filtered_tab_label", "filtered_tab_status", "filtered_tab_created_at", "filtered_tab_updated_at"),
+    # Security design records (PI-051 / DEC-698). (role x target_field) -> level / visible?.
+    "field_permission_rule": _Spec(models.FieldPermissionRule, "field_permission_rule_identifier", "field_permission_rule_name", "field_permission_rule_status", "field_permission_rule_created_at", "field_permission_rule_updated_at"),
+    "field_visibility_rule": _Spec(models.FieldVisibilityRule, "field_visibility_rule_identifier", "field_visibility_rule_name", "field_visibility_rule_status", "field_visibility_rule_created_at", "field_visibility_rule_updated_at"),
     # Source instance mapping model (PI-255). source_mapping / field_mapping
     # carry prefixed identifiers; mapping_candidate is integer-PK (in _NO_SUMMARY).
     "source_mapping": _Spec(models.SourceMapping, "source_mapping_identifier", "source_entity_name", "status", "created_at", "updated_at"),

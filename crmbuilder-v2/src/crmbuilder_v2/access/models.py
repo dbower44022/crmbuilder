@@ -72,6 +72,9 @@ from crmbuilder_v2.access.vocab import (
     EXECUTION_MODES,
     FIELD_MAPPING_DECISION_TYPES,
     FIELD_MAPPING_TRANSLATION_TYPES,
+    FIELD_PERMISSION_LEVELS,
+    FIELD_RULE_DEPLOYMENT_STATUSES,
+    FIELD_RULE_STATUSES,
     FIELD_STATUSES,
     FIELD_TYPES,
     FILTERED_TAB_STATUSES,
@@ -1967,6 +1970,250 @@ class Rule(EngagementScopedPKMixin, Base):
             "rule_subject_identifier",
         ),
         Index("ix_rules_rule_deleted_at", "rule_deleted_at"),
+    )
+
+
+class FieldPermissionRule(EngagementScopedPKMixin, Base):
+    """Security design record — one (role × target_field) -> permission level.
+
+    PI-051 (REQ-129 field-level permissions), per DEC-698. A sibling of the
+    condition-carrying ``rule`` (``RUL-NNN``), a ``field_permission_rule``
+    (``FPR-NNN``) declares the **unconditional** access level a Role has to a
+    target field, so an adapter can render it into the target CRM's
+    field-permission matrix rather than an administrator configuring it by
+    hand. It carries no condition (unlike ``rule``).
+
+    Two orthogonal status axes: ``field_permission_rule_status`` is the standard
+    four-status design propose-verify lifecycle (default ``candidate``); the
+    independent ``field_permission_rule_deployment_status`` tracks whether the
+    confirmed intent has been applied to — and still matches — the target CRM
+    (default ``pending``, the shared deploy vocabulary with
+    ``field_visibility_rule``).
+
+    Parent-prefix field naming (DEC-046); the primary key is the prefixed-string
+    identifier. Both ``field_permission_rule_role`` (``ROL-NNN``) and
+    ``field_permission_rule_target_field`` (``FLD-NNN``) are carried as plain
+    validated prefixed-identifier string columns — not ``refs`` edges (DEC-698)
+    — exactly as ``rule_subject_identifier`` resolves its subject. At most one
+    live rule per (engagement, role, target_field) is enforced both at the
+    access layer and by the partial unique index below.
+    """
+
+    __tablename__ = "field_permission_rules"
+
+    field_permission_rule_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    field_permission_rule_name: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    field_permission_rule_role: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    field_permission_rule_target_field: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    field_permission_rule_permission_level: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    field_permission_rule_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    field_permission_rule_deployment_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="pending"
+    )
+    field_permission_rule_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    field_permission_rule_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    field_permission_rule_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    field_permission_rule_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    field_permission_rule_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^FPR-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("field_permission_rule_identifier", ["FPR"]),
+            name="ck_field_permission_rule_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in(
+                "field_permission_rule_permission_level",
+                FIELD_PERMISSION_LEVELS,
+            ),
+            name="ck_field_permission_rule_permission_level",
+        ),
+        CheckConstraint(
+            _check_in("field_permission_rule_status", FIELD_RULE_STATUSES),
+            name="ck_field_permission_rule_status",
+        ),
+        CheckConstraint(
+            _check_in(
+                "field_permission_rule_deployment_status",
+                FIELD_RULE_DEPLOYMENT_STATUSES,
+            ),
+            name="ck_field_permission_rule_deployment_status",
+        ),
+        Index(
+            "ix_field_permission_rules_status",
+            "field_permission_rule_status",
+        ),
+        Index(
+            "ix_field_permission_rules_deployment_status",
+            "field_permission_rule_deployment_status",
+        ),
+        Index(
+            "ix_field_permission_rules_deleted_at",
+            "field_permission_rule_deleted_at",
+        ),
+        # At most one live rule per (engagement, role, target_field). A partial
+        # unique index on both dialects backs the access-layer no-contradiction
+        # check under BEGIN IMMEDIATE; it also serves the deploy process's
+        # per-role read.
+        Index(
+            "uq_field_permission_rules_role_field",
+            "engagement_id",
+            "field_permission_rule_role",
+            "field_permission_rule_target_field",
+            unique=True,
+            sqlite_where=text("field_permission_rule_deleted_at IS NULL"),
+            postgresql_where=text(
+                "field_permission_rule_deleted_at IS NULL"
+            ),
+        ),
+    )
+
+
+class FieldVisibilityRule(EngagementScopedPKMixin, Base):
+    """Security design record — one atomic ``(role, field) -> visible?``.
+
+    PI-051 (REQ-128 role-aware visibility), per DEC-698. The storage-trackable,
+    single-source-of-truth form of the §12.5 role-aware-visibility surface. Each
+    row answers exactly one question — whether one field is shown to one Role in
+    the target CRM's UI — so a field visible to two roles and hidden from a
+    third is three rows. ``field_visibility_rule_visible`` is two-valued by
+    design (a rule only ever *overrides* the default-visible state).
+
+    Two orthogonal status axes: ``field_visibility_rule_status`` is the standard
+    four-status design propose-verify lifecycle (default ``candidate``);
+    ``field_visibility_rule_deployment_status`` (default ``pending``) tracks the
+    rule's journey to the target CRM via the shared deploy vocabulary. On
+    EspoCRM 9.x role-aware field visibility is ``not_supported`` per DEC-243 —
+    the entity records the design intent honestly rather than discarding it.
+
+    Parent-prefix field naming (DEC-046); the primary key is the prefixed-string
+    identifier. The Role (``ROL-NNN``) and the target field (``FLD-NNN``) are
+    plain validated string columns — not ``refs`` edges (DEC-698) — validated to
+    resolve to a live row of the correct type at write time. At most one live
+    rule per (engagement, role, target_field), enforced at the access layer and
+    by the partial unique index below.
+    """
+
+    __tablename__ = "field_visibility_rules"
+
+    field_visibility_rule_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    field_visibility_rule_name: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    field_visibility_rule_role: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    field_visibility_rule_target_field: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    field_visibility_rule_visible: Mapped[bool] = mapped_column(
+        Boolean, nullable=False
+    )
+    field_visibility_rule_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    field_visibility_rule_deployment_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="pending"
+    )
+    field_visibility_rule_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    field_visibility_rule_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    field_visibility_rule_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    field_visibility_rule_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    field_visibility_rule_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^FVR-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck(
+                "field_visibility_rule_identifier", ["FVR"]
+            ),
+            name="ck_field_visibility_rule_identifier_format",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("field_visibility_rule_visible"),
+            name="ck_field_visibility_rule_visible_bool",
+        ),
+        CheckConstraint(
+            _check_in("field_visibility_rule_status", FIELD_RULE_STATUSES),
+            name="ck_field_visibility_rule_status",
+        ),
+        CheckConstraint(
+            _check_in(
+                "field_visibility_rule_deployment_status",
+                FIELD_RULE_DEPLOYMENT_STATUSES,
+            ),
+            name="ck_field_visibility_rule_deployment_status",
+        ),
+        Index(
+            "ix_field_visibility_rules_status",
+            "field_visibility_rule_status",
+        ),
+        Index(
+            "ix_field_visibility_rules_role", "field_visibility_rule_role"
+        ),
+        Index(
+            "ix_field_visibility_rules_deployment_status",
+            "field_visibility_rule_deployment_status",
+        ),
+        Index(
+            "ix_field_visibility_rules_deleted_at",
+            "field_visibility_rule_deleted_at",
+        ),
+        # At most one live rule per (engagement, role, target_field) — the
+        # contradicting-rules guard as a DB index. The access layer pre-checks
+        # for a clean 409; this is the concurrency-safe backstop.
+        Index(
+            "uq_field_visibility_rules_role_field",
+            "engagement_id",
+            "field_visibility_rule_role",
+            "field_visibility_rule_target_field",
+            unique=True,
+            sqlite_where=text("field_visibility_rule_deleted_at IS NULL"),
+            postgresql_where=text(
+                "field_visibility_rule_deleted_at IS NULL"
+            ),
+        ),
     )
 
 
