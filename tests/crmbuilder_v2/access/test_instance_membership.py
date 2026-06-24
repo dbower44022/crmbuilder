@@ -594,3 +594,26 @@ def test_reconcile_filtered_tabs_create_drift_and_advanced_pack_absent(v2_env):
         s3 = reconcile_filtered_tabs(
             s, instance_identifier=iid, client=_FakeClient({"CEngagement": _custom()}))
         assert s3["seen"] == 0 and s3["absent"] == 1
+
+
+def test_reconcile_associations_strips_native_link_prefix(v2_env):
+    """A custom link on a NATIVE entity reconciles under its natural name,
+    not the platform-prefixed form (REQ-344)."""
+    with session_scope() as s:
+        iid = _make_instance(s)
+        entity_repo.create_entity(s, name="Account", description="x")
+        entity_repo.create_entity(s, name="Contribution", description="x")
+        client = _FakeClient(
+            {"Account": _native(), "CContribution": _custom()},
+            links={
+                "Account": {"cContributions": {
+                    "type": "hasMany", "entity": "CContribution"}},
+                "CContribution": {"donorAccount": {
+                    "type": "belongsTo", "entity": "Account"}},
+            },
+        )
+        reconcile_associations(s, instance_identifier=iid, client=client)
+        names = {a["association_name"]
+                 for a in association_repo.list_associations(s)}
+        assert "contributions" in names      # native link prefix stripped
+        assert "cContributions" not in names

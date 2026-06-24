@@ -37,6 +37,7 @@ from crmbuilder_v2.access.repositories import roles as role_repo
 from crmbuilder_v2.access.repositories import teams as team_repo
 from crmbuilder_v2.access.vocab import LAYOUT_TYPES
 from crmbuilder_v2.introspect.audit_utils import (
+    NATIVE_ENTITIES,
     EntityClass,
     FieldClass,
     classify_entity,
@@ -538,7 +539,13 @@ def reconcile_associations(
                 seen_relation_names.add(relation_name)
                 assoc_name = relation_name
             else:
-                assoc_name = link_name
+                # Strip the platform c-prefix EspoCRM applies to custom links
+                # on native entities, so the association name is natural and a
+                # later YAML export/deploy does not double-prefix it (REQ-344).
+                assoc_name = strip_field_c_prefix(
+                    link_name,
+                    entity_is_native=(scope_name in NATIVE_ENTITIES),
+                )
 
             summary["seen"] += 1
             match = canon.get(_ci(assoc_name))

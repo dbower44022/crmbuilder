@@ -1320,3 +1320,61 @@ def test_native_entity_custom_field_name_stripped_in_audit():
 
     mgr._extract_layout(entity, "detail", _empty_report())
     assert "region" in repr(entity.layouts)
+
+
+# --- link-name c-prefix fidelity (REQ-344 / PI-309) ------------------------
+
+
+def test_discover_relationships_strips_native_link_prefix():
+    """A custom link on a NATIVE entity is emitted under its natural name,
+    not the platform-prefixed form (else the next deploy double-prefixes)."""
+    client = _make_client(get_i18n=(200, {}))
+    links = {
+        "Account": {"cContributions": {
+            "type": "hasMany", "entity": "CContribution",
+            "foreign": "donorAccount", "isCustom": True}},
+        "CContribution": {"donorAccount": {
+            "type": "belongsTo", "entity": "Account",
+            "foreign": "cContributions", "isCustom": True}},
+    }
+    client.get_all_links.side_effect = lambda e: (200, links.get(e, {}))
+    mgr, _ = _make_manager(client)
+    ents = [
+        EntityAuditResult(yaml_name="Account", espo_name="Account",
+                          entity_class=EntityClass.NATIVE, entity_type="Company"),
+        EntityAuditResult(yaml_name="Contribution", espo_name="CContribution",
+                          entity_class=EntityClass.CUSTOM, entity_type="Base"),
+    ]
+    rels = mgr._discover_relationships(ents, _empty_report())
+    assert len(rels) == 1
+    r = rels[0]
+    # Account (native) side stripped to natural; CContribution (custom) side kept.
+    assert r.link == "contributions"
+    assert r.link_foreign == "donorAccount"
+    assert "cContributions" not in (r.link, r.link_foreign)
+
+
+def test_discover_relationships_keeps_custom_entity_link_name():
+    """A link on a CUSTOM entity whose name begins c+Uppercase is NOT stripped."""
+    client = _make_client(get_i18n=(200, {}))
+    links = {
+        "CSponsorProfile": {"cBMSponsorManager": {
+            "type": "belongsTo", "entity": "CMentorProfile",
+            "foreign": "managedSponsors", "isCustom": True}},
+        "CMentorProfile": {"managedSponsors": {
+            "type": "hasMany", "entity": "CSponsorProfile",
+            "foreign": "cBMSponsorManager", "isCustom": True}},
+    }
+    client.get_all_links.side_effect = lambda e: (200, links.get(e, {}))
+    mgr, _ = _make_manager(client)
+    ents = [
+        EntityAuditResult(yaml_name="SponsorProfile", espo_name="CSponsorProfile",
+                          entity_class=EntityClass.CUSTOM, entity_type="Base"),
+        EntityAuditResult(yaml_name="MentorProfile", espo_name="CMentorProfile",
+                          entity_class=EntityClass.CUSTOM, entity_type="Base"),
+    ]
+    rels = mgr._discover_relationships(ents, _empty_report())
+    assert len(rels) == 1
+    names = {rels[0].link, rels[0].link_foreign}
+    assert "cBMSponsorManager" in names        # custom entity -> untouched
+    assert "bMSponsorManager" not in names
