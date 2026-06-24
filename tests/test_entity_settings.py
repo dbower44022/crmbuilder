@@ -543,3 +543,224 @@ def test_manager_skips_no_settings():
     )
     results = mgr.process_settings(program)
     assert results == []
+
+
+# ─── Collection-Settings Tests (PI-300 / REQ-340) ────────────────
+
+
+def test_parse_settings_collection(loader, tmp_path):
+    """Collection settings parse into EntitySettings."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            settings:
+              orderBy: "lastName"
+              order: "asc"
+              textFilterFields:
+                - name
+                - emailAddress
+              fullTextSearch: true
+              fullTextSearchMinLength: 4
+            fields:
+              - name: email
+                type: varchar
+                label: "Email"
+    """)
+    path = tmp_path / "collection_settings.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    s = program.entities[0].settings
+    assert s is not None
+    assert s.orderBy == "lastName"
+    assert s.order == "asc"
+    assert s.textFilterFields == ["name", "emailAddress"]
+    assert s.fullTextSearch is True
+    assert s.fullTextSearchMinLength == 4
+
+
+def test_validate_settings_collection_valid(loader, tmp_path):
+    """A well-formed collection block validates clean."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            settings:
+              orderBy: "lastName"
+              order: "desc"
+              textFilterFields: ["name"]
+              fullTextSearch: false
+            fields:
+              - name: email
+                type: varchar
+                label: "Email"
+    """)
+    path = tmp_path / "collection_valid.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert not any("settings." in e for e in errors)
+
+
+def test_validate_settings_order_invalid(loader, tmp_path):
+    """order must be asc or desc."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            settings:
+              order: "ascending"
+            fields:
+              - name: email
+                type: varchar
+                label: "Email"
+    """)
+    path = tmp_path / "order_invalid.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("settings.order: must be one of" in e for e in errors)
+
+
+def test_validate_settings_text_filter_fields_not_list(loader, tmp_path):
+    """textFilterFields must be a list of strings."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            settings:
+              textFilterFields: "name"
+            fields:
+              - name: email
+                type: varchar
+                label: "Email"
+    """)
+    path = tmp_path / "tff_not_list.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("textFilterFields: must be a list" in e for e in errors)
+
+
+def test_validate_settings_full_text_search_not_bool(loader, tmp_path):
+    """fullTextSearch must be a boolean."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            settings:
+              fullTextSearch: "yes"
+            fields:
+              - name: email
+                type: varchar
+                label: "Email"
+    """)
+    path = tmp_path / "fts_not_bool.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("fullTextSearch: must be a boolean" in e for e in errors)
+
+
+def test_validate_settings_ftsml_not_int(loader, tmp_path):
+    """fullTextSearchMinLength must be an integer (not a bool)."""
+    content = dedent("""\
+        version: "1.0"
+        description: "Test"
+        entities:
+          Contact:
+            settings:
+              fullTextSearchMinLength: true
+            fields:
+              - name: email
+                type: varchar
+                label: "Email"
+    """)
+    path = tmp_path / "ftsml_not_int.yaml"
+    path.write_text(content)
+    program = loader.load_program(path)
+    errors = loader.validate_program(program)
+    assert any("fullTextSearchMinLength: must be an integer" in e for e in errors)
+
+
+def test_manager_collection_match_skips():
+    """Collection settings already matching metadata -> SKIP, no update."""
+    mgr, client, log = _make_settings_manager()
+    client.get_entity_full_metadata.return_value = (
+        200,
+        {
+            "collection": {
+                "orderBy": "lastName",
+                "order": "asc",
+                "textFilterFields": ["name", "emailAddress"],
+                "fullTextSearch": True,
+            }
+        },
+    )
+    settings = EntitySettings(
+        orderBy="lastName",
+        order="asc",
+        textFilterFields=["name", "emailAddress"],
+        fullTextSearch=True,
+    )
+    program = _make_program_with_settings(settings)
+    results = mgr.process_settings(program)
+
+    assert results[0].status == SettingsStatus.SKIPPED
+    client.update_entity.assert_not_called()
+
+
+def test_manager_collection_differs_updates_and_maps_payload():
+    """Differing collection settings -> UPDATE with Entity Manager params."""
+    mgr, client, log = _make_settings_manager()
+    client.get_entity_full_metadata.return_value = (
+        200,
+        {
+            "collection": {
+                "orderBy": "createdAt",
+                "order": "desc",
+                "textFilterFields": ["name"],
+                "fullTextSearch": False,
+            }
+        },
+    )
+    client.update_entity.return_value = (200, {})
+    settings = EntitySettings(
+        orderBy="lastName",
+        order="asc",
+        textFilterFields=["name", "emailAddress"],
+        fullTextSearch=True,
+        fullTextSearchMinLength=4,
+    )
+    program = _make_program_with_settings(settings)
+    results = mgr.process_settings(program)
+
+    assert results[0].status == SettingsStatus.UPDATED
+    for ch in ("orderBy", "order", "textFilterFields", "fullTextSearch"):
+        assert ch in results[0].changes
+
+    payload = client.update_entity.call_args[0][0]
+    # orderBy/order map onto the Entity Manager sortBy/sortDirection params.
+    assert payload["sortBy"] == "lastName"
+    assert payload["sortDirection"] == "asc"
+    assert payload["textFilterFields"] == ["name", "emailAddress"]
+    assert payload["fullTextSearch"] is True
+    assert payload["fullTextSearchMinLength"] == 4
+
+
+def test_manager_collection_missing_collection_key_treated_as_change():
+    """Metadata with no collection block still applies desired settings."""
+    mgr, client, log = _make_settings_manager()
+    client.get_entity_full_metadata.return_value = (200, {"stream": False})
+    client.update_entity.return_value = (200, {})
+    settings = EntitySettings(orderBy="lastName", order="asc")
+    program = _make_program_with_settings(settings)
+    results = mgr.process_settings(program)
+
+    assert results[0].status == SettingsStatus.UPDATED
+    assert "orderBy" in results[0].changes

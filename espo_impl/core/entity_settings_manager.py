@@ -204,6 +204,34 @@ class EntitySettingsManager:
             if current != settings.labelPlural:
                 changes.append("labelPlural")
 
+        # Collection-level settings (PI-300 / REQ-340) live under
+        # entityDefs.<Entity>.collection in the metadata payload.
+        collection = meta.get("collection") or {}
+
+        if settings.orderBy is not None:
+            if collection.get("orderBy") != settings.orderBy:
+                changes.append("orderBy")
+
+        if settings.order is not None:
+            if collection.get("order") != settings.order:
+                changes.append("order")
+
+        if settings.textFilterFields is not None:
+            if collection.get("textFilterFields") != settings.textFilterFields:
+                changes.append("textFilterFields")
+
+        if settings.fullTextSearch is not None:
+            current = collection.get("fullTextSearch", False)
+            if current != settings.fullTextSearch:
+                changes.append("fullTextSearch")
+
+        if settings.fullTextSearchMinLength is not None:
+            if (
+                collection.get("fullTextSearchMinLength")
+                != settings.fullTextSearchMinLength
+            ):
+                changes.append("fullTextSearchMinLength")
+
         return changes
 
     @staticmethod
@@ -227,5 +255,22 @@ class EntitySettingsManager:
             payload["stream"] = settings.stream
         if settings.disabled is not None:
             payload["disabled"] = settings.disabled
+
+        # Collection-level settings (PI-300 / REQ-340). The Entity Manager
+        # update action takes the default sort as sortBy/sortDirection
+        # (mapped to collection.orderBy/order), and textFilterFields /
+        # fullTextSearch / fullTextSearchMinLength directly.
+        if settings.orderBy is not None:
+            payload["sortBy"] = settings.orderBy
+        if settings.order is not None:
+            payload["sortDirection"] = settings.order
+        if settings.textFilterFields is not None:
+            payload["textFilterFields"] = settings.textFilterFields
+        if settings.fullTextSearch is not None:
+            payload["fullTextSearch"] = settings.fullTextSearch
+        if settings.fullTextSearchMinLength is not None:
+            payload["fullTextSearchMinLength"] = (
+                settings.fullTextSearchMinLength
+            )
 
         return payload

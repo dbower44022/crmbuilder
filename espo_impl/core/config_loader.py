@@ -27,6 +27,7 @@ from espo_impl.core.models import (
     SYSTEM_PERMISSION_SCOPE_KEYS,
     VALID_NORMALIZE_VALUES,
     VALID_ON_MATCH_VALUES,
+    VALID_ORDER_VALUES,
     VALID_SETTINGS_KEYS,
     VALID_SYSTEM_PERMISSION_KEYS,
     AggregateFormula,
@@ -1272,6 +1273,11 @@ class ConfigLoader:
             stream=raw.get("stream"),
             disabled=raw.get("disabled"),
             autoPlaceName=raw.get("autoPlaceName"),
+            orderBy=raw.get("orderBy"),
+            order=raw.get("order"),
+            textFilterFields=raw.get("textFilterFields"),
+            fullTextSearch=raw.get("fullTextSearch"),
+            fullTextSearchMinLength=raw.get("fullTextSearchMinLength"),
         )
 
     @staticmethod
@@ -2748,6 +2754,41 @@ class ConfigLoader:
         ):
             errors.append(
                 f"{entity.name}.settings.autoPlaceName: must be a boolean"
+            )
+
+        # Collection-level settings (PI-300 / REQ-340).
+        order_by_val = entity.settings_raw.get("orderBy")
+        if order_by_val is not None and not isinstance(order_by_val, str):
+            errors.append(
+                f"{entity.name}.settings.orderBy: must be a string (field name)"
+            )
+        order_val = entity.settings_raw.get("order")
+        if order_val is not None and order_val not in VALID_ORDER_VALUES:
+            errors.append(
+                f"{entity.name}.settings.order: must be one of "
+                f"{sorted(VALID_ORDER_VALUES)}"
+            )
+        tff_val = entity.settings_raw.get("textFilterFields")
+        if tff_val is not None:
+            if not isinstance(tff_val, list) or not all(
+                isinstance(f, str) for f in tff_val
+            ):
+                errors.append(
+                    f"{entity.name}.settings.textFilterFields: must be a list "
+                    f"of field-name strings"
+                )
+        fts_val = entity.settings_raw.get("fullTextSearch")
+        if fts_val is not None and not isinstance(fts_val, bool):
+            errors.append(
+                f"{entity.name}.settings.fullTextSearch: must be a boolean"
+            )
+        ftsml_val = entity.settings_raw.get("fullTextSearchMinLength")
+        if ftsml_val is not None and (
+            isinstance(ftsml_val, bool) or not isinstance(ftsml_val, int)
+        ):
+            errors.append(
+                f"{entity.name}.settings.fullTextSearchMinLength: must be an "
+                f"integer"
             )
 
         # Label requirement for create actions is handled by the existing

@@ -195,6 +195,13 @@ class EntityAuditResult:
     label_singular: str | None = None
     label_plural: str | None = None
     stream: bool = False
+    # Collection-level settings captured from entityDefs.<Entity>.collection
+    # (PI-300 / REQ-340): default sort, text-filter fields, full-text search.
+    order_by: str | None = None
+    order: str | None = None
+    text_filter_fields: list[str] | None = None
+    full_text_search: bool | None = None
+    full_text_search_min_length: int | None = None
     fields: list[FieldAuditResult] = field(default_factory=list)
     layouts: list[LayoutAuditResult] = field(default_factory=list)
     filtered_tabs: list["FilteredTabAuditResult"] = field(default_factory=list)
@@ -591,6 +598,7 @@ class AuditManager:
                 "white",
             )
             self._extract_fields(entity, report)
+            self._extract_entity_settings(entity, report)
 
             if self._options.include_field_dynamic_logic:
                 self._apply_field_dynamic_logic(entity, report)
@@ -814,6 +822,47 @@ class AuditManager:
             ))
 
         return results
+
+    # ------------------------------------------------------------------
+    # Entity collection-settings extraction (PI-300 / REQ-340)
+    # ------------------------------------------------------------------
+
+    def _extract_entity_settings(
+        self, entity: EntityAuditResult, report: AuditReport
+    ) -> None:
+        """Capture collection-level settings from the entity's metadata.
+
+        Reads ``entityDefs.<Entity>.collection`` and records the default
+        sort (``orderBy``/``order``), the quick-search ``textFilterFields``,
+        and full-text search configuration onto ``entity`` so they can be
+        re-emitted in the YAML ``settings:`` block and re-deployed.
+
+        :param entity: Entity to capture settings for (mutated in place).
+        :param report: Report to append warnings to on failure.
+        """
+        status, meta = self._client.get_entity_full_metadata(entity.espo_name)
+        if status != 200 or not isinstance(meta, dict):
+            report.warnings.append(
+                f"{entity.yaml_name}: could not read entity metadata for "
+                f"collection settings (HTTP {status})"
+            )
+            return
+
+        collection = meta.get("collection")
+        if not isinstance(collection, dict):
+            return
+
+        entity.order_by = collection.get("orderBy")
+        entity.order = collection.get("order")
+        tff = collection.get("textFilterFields")
+        if isinstance(tff, list):
+            entity.text_filter_fields = tff
+        fts = collection.get("fullTextSearch")
+        if isinstance(fts, bool):
+            entity.full_text_search = fts
+        ftsml = collection.get("fullTextSearchMinLength")
+        if isinstance(ftsml, int) and not isinstance(ftsml, bool):
+            entity.full_text_search_min_length = ftsml
 
     # ------------------------------------------------------------------
     # Field extraction
@@ -2285,6 +2334,26 @@ class AuditManager:
             if entity.label_plural:
                 entity_block["labelPlural"] = entity.label_plural
             entity_block["stream"] = entity.stream
+
+        # Collection-level settings (PI-300 / REQ-340) — emitted in a
+        # settings: block so they round-trip through deploy. Applies to
+        # native and custom entities alike; only non-None captures are
+        # written so an unchanged re-audit/deploy stays a no-op.
+        settings_block: dict[str, Any] = {}
+        if entity.order_by is not None:
+            settings_block["orderBy"] = entity.order_by
+        if entity.order is not None:
+            settings_block["order"] = entity.order
+        if entity.text_filter_fields is not None:
+            settings_block["textFilterFields"] = entity.text_filter_fields
+        if entity.full_text_search is not None:
+            settings_block["fullTextSearch"] = entity.full_text_search
+        if entity.full_text_search_min_length is not None:
+            settings_block["fullTextSearchMinLength"] = (
+                entity.full_text_search_min_length
+            )
+        if settings_block:
+            entity_block["settings"] = settings_block
 
         # Fields
         if entity.fields:
