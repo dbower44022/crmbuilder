@@ -62,10 +62,13 @@ def test_catalog_build_area_resolves_its_own_profile():
             )
 
 
-def test_noncatalog_area_falls_back_to_the_proven_profile():
+def test_noncatalog_area_refuses_rather_than_cross_area():
     """A genuinely unseeded area (e.g. a per-engagement area) has no per-area
-    profile, so it falls back to a proven area-parameterized profile of the tier
-    (the storage cell, first in seed order)."""
-    by_cell = {(p["area"], p["tier"]): p["identifier"] for p in _SYSTEM}
-    assert select_profile_id(_SYSTEM, "billing", "developer") == by_cell[("storage", "developer")]
-    assert select_profile_id(_SYSTEM, "billing", "architect") == by_cell[("storage", "architect")]
+    profile. Per REQ-273 the dispatcher refuses to route it under a different
+    area's profile and returns ``None`` (the caller then uses the
+    area-parameterized minimal contract — never a sibling area's profile).
+
+    This codifies the WTK-176 wrong-area-contract fix landed by PI-271; the
+    earlier cross-area fallback behaviour was removed by that requirement."""
+    assert select_profile_id(_SYSTEM, "billing", "developer") is None
+    assert select_profile_id(_SYSTEM, "billing", "architect") is None

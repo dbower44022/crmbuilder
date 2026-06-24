@@ -9,10 +9,12 @@ dispatcher again. That repetition is the continuous loop.
 
 Eligibility (Area-Specialist pull): a Work Task is dispatchable when it is
 ``Ready``, unclaimed, and every Work Task it is ``blocked_by`` is ``Complete``.
-Profile selection: the system profile for the task's exact ``(area, tier)`` if
-one exists, else any system profile of that tier (the proven Area-Specialist
-prompt is area-parameterized via ``{AREA}``, so one developer profile serves any
-area). The pure decision helpers are separated from the HTTP I/O so they are
+Profile selection: a Work Task's authoritative ``work_task_resolved_agent_profile``
+stamp (REQ-334) wins when present and valid; otherwise the system profile for the
+task's exact ``(area, tier)``. Per REQ-273 it never falls back to a different
+area's profile — when no matching-area profile of the tier exists it returns
+``None`` and the caller uses the area-parameterized minimal contract. The pure
+decision helpers are separated from the HTTP I/O so they are
 unit-testable without a server.
 """
 
