@@ -112,7 +112,13 @@ def area_ownership(session: Session, release_id: str) -> dict[str, str]:
     """``{area: owner}`` for a release's claimed Work Tasks (coordination read)."""
     owners: dict[str, str] = {}
     for wt in _work_tasks_of_release(session, release_id):
-        if wt.work_task_claimed_by is not None:
+        # A stamped task is a deliberately-assigned specialist sub-split
+        # (REQ-283 refinement / DEC-677) — it brings its own owner and is not
+        # part of an area's single generalist ownership.
+        if (
+            wt.work_task_claimed_by is not None
+            and wt.work_task_resolved_agent_profile is None
+        ):
             owners.setdefault(wt.work_task_area, wt.work_task_claimed_by)
     return owners
 
@@ -120,17 +126,25 @@ def area_ownership(session: Session, release_id: str) -> dict[str, str]:
 def area_owner(session: Session, release_id: str, area: str) -> str | None:
     """The single owner of a ``(release, area)``'s claimed Work Tasks, or None."""
     for wt in _work_tasks_of_release(session, release_id):
-        if wt.work_task_area == area and wt.work_task_claimed_by is not None:
+        if (
+            wt.work_task_area == area
+            and wt.work_task_claimed_by is not None
+            and wt.work_task_resolved_agent_profile is None
+        ):
             return wt.work_task_claimed_by
     return None
 
 
 def assert_area_owner(session: Session, work_task_id: str, claimed_by: str) -> None:
-    """Single-owner-per-area gate (REQ-191).
+    """Single-owner-per-area gate (REQ-191) with the specialist sub-split exemption.
 
     A no-op unless the Work Task's release is in the development lane. Within the
-    lane, a claim on a task whose ``(release, area)`` is already owned by a
-    different agent is refused — an area has one owner that fans out sub-agents.
+    lane, a claim on an *unstamped* task whose ``(release, area)`` is already
+    owned by a different agent is refused — an area's auto-routed (generalist)
+    work has one owner that fans out sub-agents. A task carrying a
+    ``work_task_resolved_agent_profile`` stamp is a deliberately-assigned
+    specialist sub-split (REQ-283 refinement / DEC-677): it is exempt — it brings
+    its own designated owner, and neither blocks nor is blocked by the area owner.
     """
     release_id = release_of_work_task(session, work_task_id)
     if release_id is None:
@@ -143,11 +157,16 @@ def assert_area_owner(session: Session, work_task_id: str, claimed_by: str) -> N
     ).first()
     if wt is None:
         return
+    # The claimed task is itself a specialist sub-split — exempt (it has its own
+    # designated owner; it is never blocked by the area's generalist owner).
+    if wt.work_task_resolved_agent_profile is not None:
+        return
     for sibling in _work_tasks_of_release(session, release_id):
         if (
             sibling.work_task_area == wt.work_task_area
             and sibling.work_task_claimed_by is not None
             and sibling.work_task_claimed_by != claimed_by
+            and sibling.work_task_resolved_agent_profile is None
         ):
             raise ConflictError(
                 f"area {wt.work_task_area!r} of release {release_id!r} is already "
