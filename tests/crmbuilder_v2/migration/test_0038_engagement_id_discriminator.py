@@ -129,6 +129,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         # PI-051 (PRJ-017) the RBAC security-rule design entities (migration 0086).
         "field_permission_rules",
         "field_visibility_rules",
+        # PI-304 (PRJ-041) the append-only task-transition log (migration 0088).
+        "task_transitions",
     }
 )
 
