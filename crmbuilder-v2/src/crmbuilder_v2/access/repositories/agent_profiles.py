@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -34,7 +34,9 @@ _ENTITY_TYPE = "agent_profile"
 _IDENTIFIER_PREFIX = "AGP"
 _IDENTIFIER_RE = re.compile(r"^AGP-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
-_UPDATABLE_FIELDS = frozenset({"area", "tier", "description", "status"})
+_UPDATABLE_FIELDS = frozenset(
+    {"area", "tier", "description", "status", "capability_description"}
+)
 
 
 def compute_next_identifier(session: Session) -> str:
@@ -94,8 +96,89 @@ def list_all(
     return [_enrich(r) for r in session.scalars(stmt).all()]
 
 
+def search_agents(
+    session: Session,
+    *,
+    area: str,
+    technology: str | None = None,
+    needs: list[str] | None = None,
+    status: str = "active",
+    engagement_id: str | None = None,
+) -> list[dict]:
+    """Deterministic structured pre-filter over agent profiles (PI-301 / DEC-677).
+
+    The coarse, *safety-backstop* retrieval primitive that narrows the registry to
+    the agents a downstream LLM may then pick from for one (area × technology)
+    build need. It never crosses the ``area`` anchor and never returns an
+    out-of-technology agent, so a downstream mistake cannot reach an inapplicable
+    profile. The actual LLM pick and the stamp happen in a later slice; this is the
+    pre-filter only.
+
+    :param area: the functional area anchor; only profiles in this area are
+        returned (the hard backstop).
+    :param technology: when given, keep profiles whose ``technology`` matches it OR
+        is ``NULL`` (NULL = technology-agnostic, always eligible); when ``None``, do
+        not filter on technology.
+    :param needs: optional capability hints; when supplied, results are ordered by
+        the count of ``needs`` that overlap a candidate's ``capability_description``
+        ``specialties``/``builds`` facets (more overlap first). This is an ordering
+        hint only, never a hard filter — the real pick is downstream.
+    :param status: the registry status to require (default ``"active"``).
+    :param engagement_id: the active engagement for the system∪engagement scope
+        merge; a row is in scope iff its ``engagement_id`` is ``NULL`` (a system
+        row) or equals this value. ``None`` keeps only system rows.
+    :returns: serialized agent_profile records in a stable, deterministic order —
+        by descending ``needs`` overlap when ``needs`` is given, then by
+        ``identifier``.
+    """
+    stmt = (
+        select(AgentProfileRow)
+        .where(AgentProfileRow.area == area)
+        .where(AgentProfileRow.status == status)
+        .where(
+            or_(
+                AgentProfileRow.engagement_id.is_(None),
+                AgentProfileRow.engagement_id == engagement_id,
+            )
+        )
+    )
+    if technology is not None:
+        stmt = stmt.where(
+            or_(
+                AgentProfileRow.technology == technology,
+                AgentProfileRow.technology.is_(None),
+            )
+        )
+    stmt = stmt.order_by(AgentProfileRow.identifier)
+    records = [_enrich(r) for r in session.scalars(stmt).all()]
+    if needs:
+        wanted = {n for n in needs if isinstance(n, str)}
+
+        def _overlap(record: dict) -> int:
+            cap = record.get("capability_description") or {}
+            facets: set[str] = set()
+            for key in ("specialties", "builds"):
+                values = cap.get(key)
+                if isinstance(values, list):
+                    facets.update(v for v in values if isinstance(v, str))
+            return len(wanted & facets)
+
+        # Stable sort by descending overlap; the query already ordered rows by
+        # identifier, so equal-overlap candidates keep that deterministic order.
+        records.sort(key=_overlap, reverse=True)
+    return records
+
+
 def _new_row(
-    identifier, *, area, tier, description, status, engagement_id, technology=None
+    identifier,
+    *,
+    area,
+    tier,
+    description,
+    status,
+    engagement_id,
+    technology=None,
+    capability_description=None,
 ) -> AgentProfileRow:
     return AgentProfileRow(
         identifier=identifier,
@@ -105,6 +188,7 @@ def _new_row(
         tier=tier,
         description=description,
         status=status,
+        capability_description=capability_description,
     )
 
 
@@ -140,6 +224,7 @@ def create(
     status: str = "active",
     scope: str | None = None,
     technology: str | None = None,
+    capability_description: dict | None = None,
 ) -> dict:
     require_string(area, field="area")
     require_string(description, field="description")
@@ -153,6 +238,7 @@ def create(
         "description": description,
         "status": status,
         "engagement_id": engagement_id,
+        "capability_description": capability_description,
     }
 
     if identifier is None:

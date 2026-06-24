@@ -28,6 +28,41 @@ def test_agent_profile_crud(client):
     assert client.get("/agent-profiles/AGP-001").status_code == 404
 
 
+def test_agent_profile_capability_description_round_trips(client):
+    # PI-301 (DEC-677): the searchable capability object round-trips via the API.
+    cap = {
+        "summary": "Builds PySide6 desktop panels.",
+        "specialties": ["forms", "tables"],
+        "builds": ["dialogs"],
+        "constraints": ["never raw QMessageBox"],
+    }
+    resp = client.post(
+        "/agent-profiles",
+        json={
+            "area": "ui", "tier": "developer", "description": "Qt UI dev.",
+            "capability_description": cap,
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    identifier = resp.json()["data"]["identifier"]
+    assert resp.json()["data"]["capability_description"] == cap
+    assert client.get(
+        f"/agent-profiles/{identifier}"
+    ).json()["data"]["capability_description"] == cap
+
+    # Omitted on create → null; settable via PATCH.
+    bare = client.post(
+        "/agent-profiles",
+        json={"area": "ui", "tier": "developer", "description": "No cap doc."},
+    ).json()["data"]
+    assert bare["capability_description"] is None
+    patched = client.patch(
+        f"/agent-profiles/{bare['identifier']}",
+        json={"capability_description": cap},
+    )
+    assert patched.json()["data"]["capability_description"] == cap
+
+
 def test_skill_and_rule_create(client):
     s = client.post(
         "/skills",

@@ -235,6 +235,7 @@ class AgentProfileCreateIn(_Base):
     description: str
     status: str = "active"
     scope: str | None = None
+    capability_description: dict | None = None
 
 
 class AgentProfileUpdateIn(_Base):
@@ -243,6 +244,7 @@ class AgentProfileUpdateIn(_Base):
     description: str | None = None
     status: str | None = None
     scope: str | None = None
+    capability_description: dict | None = None
 
 
 class SkillCreateIn(_Base):
