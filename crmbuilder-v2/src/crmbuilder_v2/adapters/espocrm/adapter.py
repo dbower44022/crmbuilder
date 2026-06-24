@@ -78,6 +78,9 @@ class EspoCrmAdapter(CrmAdapter):
         automations: list[dict] | None = None,
         dedup_rules: list[dict] | None = None,
         message_templates: list[dict] | None = None,
+        field_permission_rules: list[dict] | None = None,
+        field_visibility_rules: list[dict] | None = None,
+        roles: list[dict] | None = None,
         rendered_at: str,
         engagement: str | None = None,
     ) -> GenerationResult:
@@ -97,6 +100,9 @@ class EspoCrmAdapter(CrmAdapter):
             automations=automations,
             dedup_rules=dedup_rules,
             message_templates=message_templates,
+            field_permission_rules=field_permission_rules,
+            field_visibility_rules=field_visibility_rules,
+            roles=roles,
             rendered_at=rendered_at,
             engagement=engagement,
         )
@@ -172,6 +178,9 @@ class EspoCrmAdapter(CrmAdapter):
         automations = client.list_automations()
         dedup_rules = client.list_dedup_rules()
         message_templates = client.list_message_templates()
+        field_permission_rules = client.list_field_permission_rules()
+        field_visibility_rules = client.list_field_visibility_rules()
+        roles = client.list_roles()
         result = self.generate(
             entities,
             fields,
@@ -182,6 +191,9 @@ class EspoCrmAdapter(CrmAdapter):
             automations=automations,
             dedup_rules=dedup_rules,
             message_templates=message_templates,
+            field_permission_rules=field_permission_rules,
+            field_visibility_rules=field_visibility_rules,
+            roles=roles,
             rendered_at=rendered_at,
             engagement=engagement,
         )

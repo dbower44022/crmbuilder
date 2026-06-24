@@ -21,7 +21,10 @@ from crmbuilder_v2.access.repositories import (
     engine_override,
     entity,
     field,
+    field_permission_rule,
+    field_visibility_rule,
     message_template,
+    roles,
     rule,
     view,
 )
@@ -77,6 +80,18 @@ class AccessDesignClient(DesignClient):
     def list_message_templates(self) -> list[dict]:
         with session_scope() as s:
             return message_template.list_message_templates(s)
+
+    def list_field_permission_rules(self) -> list[dict]:
+        with session_scope() as s:
+            return field_permission_rule.list_field_permission_rules(s)
+
+    def list_field_visibility_rules(self) -> list[dict]:
+        with session_scope() as s:
+            return field_visibility_rule.list_field_visibility_rules(s)
+
+    def list_roles(self) -> list[dict]:
+        with session_scope() as s:
+            return roles.list_roles(s)
 
 
 def _seed() -> None:
@@ -823,6 +838,132 @@ def test_adapter_uses_engine_override_formula(v2_env, tmp_path):
     fields = {f.name: f for f in prog.entities[0].fields}
     assert fields["handTuned"].formula.type == "concat"
     assert not any(d.kind == "derived_field" for d in result.deferrals)
+
+
+# ---------------------------------------------------------------------------
+# PI-051 — security rules → fieldPermissions: / fieldVisibility: (REQ-128/129)
+# ---------------------------------------------------------------------------
+
+
+def _seed_security() -> None:
+    """One confirmed entity + field, a role, a confirmed field_permission_rule
+    and a confirmed field_visibility_rule on that field, plus a candidate
+    permission rule (excluded) and a permission rule on a candidate field
+    (deferred — not emitted)."""
+    with session_scope() as s:
+        app = entity.create_entity(
+            s,
+            name="Mentor Application",
+            description="An application submitted by a prospective mentor",
+            kind="person",
+            status="confirmed",
+        )
+        app_id = app["entity_identifier"]
+
+        ssn_field = field.create_field(
+            s,
+            field_belongs_to_entity_identifier=app_id,
+            name="ssn",
+            description="sensitive id",
+            type="text",
+            status="confirmed",
+        )
+        ssn_fid = ssn_field["field_identifier"]
+        # A candidate field — never emitted; a rule targeting it must defer.
+        draft = field.create_field(
+            s,
+            field_belongs_to_entity_identifier=app_id,
+            name="draft_only",
+            description="scratch",
+            type="text",
+            status="candidate",
+        )
+        draft_fid = draft["field_identifier"]
+
+        role = roles.create_role(s, name="Mentor Coordinator", status="confirmed")
+        rol_id = role["role_identifier"]
+
+        # Confirmed permission rule: read_only on the ssn field.
+        field_permission_rule.create_field_permission_rule(
+            s,
+            name="Coordinator read-only SSN",
+            role=rol_id,
+            target_field=ssn_fid,
+            permission_level="read_only",
+            status="confirmed",
+        )
+        # Confirmed visibility rule: hide ssn from the role.
+        field_visibility_rule.create_field_visibility_rule(
+            s,
+            name="Coordinator cannot see SSN",
+            role=rol_id,
+            target_field=ssn_fid,
+            visible=False,
+            status="confirmed",
+        )
+        # A confirmed permission rule on a candidate (non-emitted) field →
+        # deferred.
+        field_permission_rule.create_field_permission_rule(
+            s,
+            name="Coordinator on draft field",
+            role=rol_id,
+            target_field=draft_fid,
+            permission_level="read_write",
+            status="confirmed",
+        )
+
+
+def test_adapter_emits_security_rule_blocks(v2_env, tmp_path):
+    _seed_security()
+    adapter = EspoCrmAdapter()
+    result = adapter.run(
+        AccessDesignClient(), tmp_path, rendered_at=RENDERED_AT,
+        engagement="ENG-008",
+    )
+
+    # Hard bar: the emitted YAML (with the new blocks) passes validate_program.
+    program = result.programs[0]
+    written = (tmp_path / program.filename).read_text(encoding="utf-8")
+    assert validate_yaml_text(written) == []
+    assert adapter.self_check(result) == {}
+    assert "fieldPermissions:" in written
+    assert "fieldVisibility:" in written
+
+    from espo_impl.core.config_loader import ConfigLoader
+
+    loader = ConfigLoader()
+    prog = loader.load_program(tmp_path / program.filename)
+    assert loader.validate_program(prog) == []
+
+    # One confirmed permission cell — role NAME (not the ROL- id), the entity
+    # key the program uses, the emitted internal field name, the level.
+    assert len(prog.field_permissions) == 1
+    fp = prog.field_permissions[0]
+    assert fp.role == "Mentor Coordinator"
+    assert fp.entity == "Mentor Application"
+    assert fp.field == "ssn"
+    assert fp.level == "read_only"
+
+    # One confirmed visibility cell.
+    assert len(prog.field_visibility) == 1
+    fv = prog.field_visibility[0]
+    assert fv.role == "Mentor Coordinator"
+    assert fv.entity == "Mentor Application"
+    assert fv.field == "ssn"
+    assert fv.visible is False
+
+    # The rule on the non-emitted (candidate) field deferred.
+    kinds = {d.kind for d in result.deferrals}
+    assert "field_permission" in kinds  # the draft-field rule
+    manual = (tmp_path / "MANUAL-CONFIG.md").read_text(encoding="utf-8")
+    assert "fieldPermissions" in manual
+
+    # Determinism: a second run is byte-identical.
+    result2 = adapter.run(
+        AccessDesignClient(), tmp_path / "again", rendered_at=RENDERED_AT,
+        engagement="ENG-008",
+    )
+    assert result2.programs[0].content == program.content
 
 
 def test_adapter_defers_derived_field_without_formula(v2_env, tmp_path):

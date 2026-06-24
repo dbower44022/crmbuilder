@@ -1111,6 +1111,187 @@ def _apply_associations(
 
 
 # ---------------------------------------------------------------------------
+# Security rules → fieldPermissions: / fieldVisibility: (PI-051, REQ-128/129)
+# ---------------------------------------------------------------------------
+
+
+def _resolve_security_field(
+    target_field: str | None,
+    builds: dict[str, _EntityBuild],
+    field_entity: dict[str, str],
+) -> tuple[_EntityBuild, str] | None:
+    """Resolve a rule's ``target_field`` (``FLD-NNN``) to its owning entity's
+    build and its emitted internal field name, or ``None`` if the field is not
+    emitted (deferred/unmapped field, or its parent entity is not confirmed).
+
+    Mirrors the field-rule resolution: a rule is rendered only against a field
+    that actually reached the deploy YAML, so a permission/visibility cell can
+    never name a field the artifact does not declare.
+    """
+    if target_field is None:
+        return None
+    eid = field_entity.get(target_field)
+    build = builds.get(eid) if eid is not None else None
+    if build is None:
+        return None
+    internal = build.ref_map.get(target_field)
+    if internal is None:
+        return None
+    return build, internal
+
+
+def _apply_field_permissions(
+    field_permission_rules: list[dict],
+    builds: dict[str, _EntityBuild],
+    field_entity: dict[str, str],
+    role_name_by_id: dict[str, str],
+    deferrals: list[Deferral],
+) -> None:
+    """Attach a top-level ``fieldPermissions:`` block to each owning entity's
+    program (PI-051 / REQ-129).
+
+    A confirmed ``field_permission_rule`` renders an entry only when its
+    ``target_field`` resolves to an emitted field on a confirmed entity and its
+    ``role`` resolves to a ``role_name``. The ``entity:`` value is the same
+    entity key the program uses (the entity name, as ``relationships:`` /
+    ``savedViews:`` reference it). Anything unrenderable routes to a deferral.
+    """
+    for rule in sorted(
+        field_permission_rules,
+        key=lambda r: r["field_permission_rule_identifier"],
+    ):
+        if rule.get("field_permission_rule_status") != "confirmed":
+            continue
+        rid = rule["field_permission_rule_identifier"]
+        rname = rule.get("field_permission_rule_name", "")
+        target_field = rule.get("field_permission_rule_target_field")
+        role_id = rule.get("field_permission_rule_role")
+
+        resolved = _resolve_security_field(target_field, builds, field_entity)
+        if resolved is None:
+            deferrals.append(
+                Deferral(
+                    kind="field_permission",
+                    identifier=rid,
+                    name=rname,
+                    parent=target_field,
+                    detail=(
+                        f"target field {target_field} is not an emitted field "
+                        "on a confirmed entity (deferred/unmapped field or "
+                        "non-confirmed entity) — fieldPermission not rendered"
+                    ),
+                )
+            )
+            continue
+        build, internal = resolved
+        ename = build.program.entity_name
+
+        role_name = role_name_by_id.get(role_id)
+        if not role_name:
+            deferrals.append(
+                Deferral(
+                    kind="field_permission",
+                    identifier=rid,
+                    name=rname,
+                    parent=ename,
+                    detail=(
+                        f"role {role_id!r} did not resolve to a role name — "
+                        "fieldPermission not rendered"
+                    ),
+                )
+            )
+            continue
+
+        entry = {
+            "role": role_name,
+            "entity": ename,
+            "field": internal,
+            "level": rule.get("field_permission_rule_permission_level"),
+        }
+        build.program.program.setdefault("fieldPermissions", []).append(entry)
+
+    for build in builds.values():
+        block = build.program.program.get("fieldPermissions")
+        if block:
+            block.sort(key=lambda e: (e["role"], e["field"]))
+
+
+def _apply_field_visibility(
+    field_visibility_rules: list[dict],
+    builds: dict[str, _EntityBuild],
+    field_entity: dict[str, str],
+    role_name_by_id: dict[str, str],
+    deferrals: list[Deferral],
+) -> None:
+    """Attach a top-level ``fieldVisibility:`` block to each owning entity's
+    program (PI-051 / REQ-128).
+
+    Same resolution/filtering as :func:`_apply_field_permissions`, emitting a
+    ``visible`` boolean instead of a ``level``. (The deploy engine records each
+    visibility rule NOT_SUPPORTED — DEC-243 — but the block is still emitted,
+    schema-valid, so the design intent travels with the artifact.)
+    """
+    for rule in sorted(
+        field_visibility_rules,
+        key=lambda r: r["field_visibility_rule_identifier"],
+    ):
+        if rule.get("field_visibility_rule_status") != "confirmed":
+            continue
+        rid = rule["field_visibility_rule_identifier"]
+        rname = rule.get("field_visibility_rule_name", "")
+        target_field = rule.get("field_visibility_rule_target_field")
+        role_id = rule.get("field_visibility_rule_role")
+
+        resolved = _resolve_security_field(target_field, builds, field_entity)
+        if resolved is None:
+            deferrals.append(
+                Deferral(
+                    kind="field_visibility",
+                    identifier=rid,
+                    name=rname,
+                    parent=target_field,
+                    detail=(
+                        f"target field {target_field} is not an emitted field "
+                        "on a confirmed entity (deferred/unmapped field or "
+                        "non-confirmed entity) — fieldVisibility not rendered"
+                    ),
+                )
+            )
+            continue
+        build, internal = resolved
+        ename = build.program.entity_name
+
+        role_name = role_name_by_id.get(role_id)
+        if not role_name:
+            deferrals.append(
+                Deferral(
+                    kind="field_visibility",
+                    identifier=rid,
+                    name=rname,
+                    parent=ename,
+                    detail=(
+                        f"role {role_id!r} did not resolve to a role name — "
+                        "fieldVisibility not rendered"
+                    ),
+                )
+            )
+            continue
+
+        entry = {
+            "role": role_name,
+            "entity": ename,
+            "field": internal,
+            "visible": bool(rule.get("field_visibility_rule_visible")),
+        }
+        build.program.program.setdefault("fieldVisibility", []).append(entry)
+
+    for build in builds.values():
+        block = build.program.program.get("fieldVisibility")
+        if block:
+            block.sort(key=lambda e: (e["role"], e["field"]))
+
+
+# ---------------------------------------------------------------------------
 # Composite constructs (design §8, schema §5.5–§5.8) — slice 3
 # views → savedViews: / automations → workflows: / dedup_rules →
 # duplicateChecks: / message_templates → emailTemplates:
@@ -1671,6 +1852,9 @@ def build_program_model(
     automations: list[dict] | None = None,
     dedup_rules: list[dict] | None = None,
     message_templates: list[dict] | None = None,
+    field_permission_rules: list[dict] | None = None,
+    field_visibility_rules: list[dict] | None = None,
+    roles: list[dict] | None = None,
     rendered_at: str,
     engagement: str | None = None,
 ) -> GenerationModel:
@@ -1685,6 +1869,12 @@ def build_program_model(
     ``association`` records whose both endpoints are emitted) and field-level
     ``requiredWhen`` / ``visibleWhen`` (from ``confirmed`` field ``rule``
     records). ``valid_when`` and entity-subject rules route to deferrals.
+
+    PI-051 adds the two security-rule blocks as top-level program blocks (like
+    ``relationships:``): ``field_permission_rule`` → ``fieldPermissions:`` and
+    ``field_visibility_rule`` → ``fieldVisibility:``. Only ``confirmed`` rules
+    whose ``target_field`` is emitted and whose ``role`` resolves to a
+    ``role_name`` are rendered; the rest route to deferrals.
 
     Slice 3 adds the four remaining composite constructs as entity-level
     blocks on each owning entity's program: ``view`` → ``savedViews:``,
@@ -1701,6 +1891,9 @@ def build_program_model(
     automations = automations or []
     dedup_rules = dedup_rules or []
     message_templates = message_templates or []
+    field_permission_rules = field_permission_rules or []
+    field_visibility_rules = field_visibility_rules or []
+    roles = roles or []
     index = _override_index(overrides)
 
     confirmed_entities = sorted(
@@ -1749,6 +1942,20 @@ def build_program_model(
         confirmed_entity_ids,
         index,
         deferrals,
+    )
+
+    # PI-051: security rules → fieldPermissions: / fieldVisibility: (top-level
+    # blocks on each owning entity's program, like relationships:). Only
+    # confirmed rules whose target field is emitted and whose role resolves to
+    # a role_name are rendered; the rest route to deferrals.
+    role_name_by_id = {
+        r["role_identifier"]: r.get("role_name") for r in roles
+    }
+    _apply_field_permissions(
+        field_permission_rules, builds, field_entity, role_name_by_id, deferrals
+    )
+    _apply_field_visibility(
+        field_visibility_rules, builds, field_entity, role_name_by_id, deferrals
     )
 
     # PI-197: derived fields → formula: blocks (concat/arithmetic resolve

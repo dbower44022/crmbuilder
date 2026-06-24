@@ -106,6 +106,10 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
         "dedup_rule": "Dedup rules not rendered as duplicateChecks",
         "dedup_normalize": "Dedup normalization tokens not expressible",
         "message_template": "Message templates not rendered as emailTemplates",
+        "field_permission": "Field-permission rules not rendered as "
+        "fieldPermissions",
+        "field_visibility": "Field-visibility rules not rendered as "
+        "fieldVisibility",
         "composite_constructs": "Composite constructs (later slices)",
     }
     for kind in sorted(by_kind):

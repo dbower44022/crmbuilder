@@ -890,6 +890,169 @@ def test_candidate_rule_skipped_silently():
     assert not any(d.kind == "field_rule" for d in model.deferrals)
 
 
+# ---------------------------------------------------------------------------
+# Security rules → fieldPermissions: / fieldVisibility: (PI-051, REQ-128/129)
+# ---------------------------------------------------------------------------
+
+
+def _role(identifier="ROL-001", name="Coordinator"):
+    return {"role_identifier": identifier, "role_name": name}
+
+
+def _fpr(
+    identifier="FPR-001",
+    name="perm",
+    role="ROL-001",
+    target_field="FLD-001",
+    level="read_only",
+    status="confirmed",
+):
+    return {
+        "field_permission_rule_identifier": identifier,
+        "field_permission_rule_name": name,
+        "field_permission_rule_role": role,
+        "field_permission_rule_target_field": target_field,
+        "field_permission_rule_permission_level": level,
+        "field_permission_rule_status": status,
+    }
+
+
+def _fvr(
+    identifier="FVR-001",
+    name="vis",
+    role="ROL-001",
+    target_field="FLD-001",
+    visible=False,
+    status="confirmed",
+):
+    return {
+        "field_visibility_rule_identifier": identifier,
+        "field_visibility_rule_name": name,
+        "field_visibility_rule_role": role,
+        "field_visibility_rule_target_field": target_field,
+        "field_visibility_rule_visible": visible,
+        "field_visibility_rule_status": status,
+    }
+
+
+@pytest.mark.parametrize("level", ["read_write", "read_only", "no_access"])
+def test_field_permission_renders_entry(level):
+    model = build_program_model(
+        [_entity()],
+        [_field(identifier="FLD-001", name="ssn", type="text")],
+        [],
+        field_permission_rules=[_fpr(level=level)],
+        roles=[_role(name="Coordinator")],
+        rendered_at=RENDERED_AT,
+    )
+    fps = _program_for(model, "Mentor Application")["fieldPermissions"]
+    assert fps == [
+        {
+            "role": "Coordinator",
+            "entity": "Mentor Application",
+            "field": "ssn",
+            "level": level,
+        }
+    ]
+    assert not any(
+        d.kind == "field_permission" for d in model.deferrals
+    )
+
+
+def test_field_visibility_renders_entry():
+    model = build_program_model(
+        [_entity()],
+        [_field(identifier="FLD-001", name="ssn", type="text")],
+        [],
+        field_visibility_rules=[_fvr(visible=False)],
+        roles=[_role(name="Coordinator")],
+        rendered_at=RENDERED_AT,
+    )
+    fvs = _program_for(model, "Mentor Application")["fieldVisibility"]
+    assert fvs == [
+        {
+            "role": "Coordinator",
+            "entity": "Mentor Application",
+            "field": "ssn",
+            "visible": False,
+        }
+    ]
+
+
+def test_candidate_security_rule_skipped_silently():
+    model = build_program_model(
+        [_entity()],
+        [_field(identifier="FLD-001", name="ssn", type="text")],
+        [],
+        field_permission_rules=[_fpr(status="candidate")],
+        roles=[_role()],
+        rendered_at=RENDERED_AT,
+    )
+    assert "fieldPermissions" not in _program_for(model, "Mentor Application")
+    assert not any(d.kind == "field_permission" for d in model.deferrals)
+
+
+def test_permission_rule_for_unemitted_field_deferred():
+    # The target field is a deferred reference field → not emitted → deferral.
+    model = build_program_model(
+        [_entity()],
+        [_field(identifier="FLD-001", name="account", type="reference")],
+        [],
+        field_permission_rules=[_fpr(target_field="FLD-001")],
+        roles=[_role()],
+        rendered_at=RENDERED_AT,
+    )
+    assert "fieldPermissions" not in _program_for(model, "Mentor Application")
+    assert any(d.kind == "field_permission" for d in model.deferrals)
+
+
+def test_permission_rule_on_nonconfirmed_entity_deferred():
+    # The field's parent entity is candidate → never emitted → deferral.
+    model = build_program_model(
+        [_entity(identifier="ENT-001", entity_status="candidate")],
+        [_field(identifier="FLD-001", name="ssn", parent="ENT-001")],
+        [],
+        field_permission_rules=[_fpr(target_field="FLD-001")],
+        roles=[_role()],
+        rendered_at=RENDERED_AT,
+    )
+    assert model.programs == []
+    assert any(d.kind == "field_permission" for d in model.deferrals)
+
+
+def test_permission_rule_with_unresolvable_role_deferred():
+    model = build_program_model(
+        [_entity()],
+        [_field(identifier="FLD-001", name="ssn", type="text")],
+        [],
+        field_permission_rules=[_fpr(role="ROL-999")],
+        roles=[_role(identifier="ROL-001")],  # no ROL-999
+        rendered_at=RENDERED_AT,
+    )
+    assert "fieldPermissions" not in _program_for(model, "Mentor Application")
+    assert any(d.kind == "field_permission" for d in model.deferrals)
+
+
+def test_security_blocks_byte_stable():
+    args = (
+        [_entity()],
+        [_field(identifier="FLD-001", name="ssn", type="text")],
+        [],
+    )
+    kw = {
+        "field_permission_rules": [_fpr()],
+        "field_visibility_rules": [_fvr()],
+        "roles": [_role()],
+    }
+    m1 = build_program_model(*args, **kw, rendered_at=RENDERED_AT)
+    m2 = build_program_model(*args, **kw, rendered_at=RENDERED_AT)
+    y1 = emit_program_yaml(m1.programs[0], rendered_at=RENDERED_AT)
+    y2 = emit_program_yaml(m2.programs[0], rendered_at=RENDERED_AT)
+    assert y1 == y2
+    assert "fieldPermissions:" in y1
+    assert "fieldVisibility:" in y1
+
+
 def test_emit_is_byte_stable():
     args = ([_entity()], [_field(type="enum", field_options=[{"option_value": "x", "option_order": 0}])], [])
     m1 = build_program_model(*args, rendered_at=RENDERED_AT)
