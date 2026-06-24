@@ -1,0 +1,10 @@
+DEP-159 — Apply of COP-234 (PI-051 field-permission deploy), 2026-06-24
+Engagement: CRMBUILDER | Outcome: success | Runner: claude_code (real-time API, DEC-383)
+PI-051 / REQ-129 — deploy field-level permissions to EspoCRM Role fieldData. Branch
+pi-051-rbac-deploy-fieldperms, commit 3b80bec3, merged. ADDRESSES (not resolves) PI-051.
+Records: conversation CNV-200, decision DEC-703, commit CM-0172.
+Built: fieldPermissions:/fieldVisibility: program blocks; SecurityRuleManager (CHECK->ACT->VERIFY,
+level->fieldData {read,edit}, whitelist merge, verify by re-read); Step-11 pipeline integration;
+field_visibility -> NOT_SUPPORTED (DEC-243). 18 tests + config_loader, ruff clean. V1 code only —
+no V2 schema/migration/live-DB change.
+records_summary: 1 conversation, 1 decision, 1 commit.

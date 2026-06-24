@@ -1,0 +1,4 @@
+{"label":"PI-051 field-permission deploy close-out (REQ-129)","note":"Real-time API (DEC-383). Model A trail dep_158.log / DEP-159. Addresses PI-051.",
+"engagement":"CRMBUILDER","session":"SES-252","conversation":"CNV-200","release":"REL-019","project":"PRJ-017",
+"addresses_planning_items":["PI-051"],"implements_requirements":["REQ-129"],"decisions":["DEC-703"],"commits":["3b80bec3 (merged main)"],
+"summary":"V1 deploy of field-level permissions to EspoCRM Role fieldData: fieldPermissions: block + SecurityRuleManager (CHECK/ACT/VERIFY) + Step-11 wiring. Visibility NOT_SUPPORTED (DEC-243). No schema/migration/live-DB change."}
