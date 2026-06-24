@@ -126,3 +126,23 @@ def test_search_needs_ordering_is_deterministic(v2_env):
         no_overlap = agent_profiles.search_agents(s, area="ui", needs=["nonexistent"])
         assert [r["identifier"] for r in no_overlap] == [
             r["identifier"] for r in default]
+
+
+def test_search_tier_filter(v2_env):
+    # tier given → only that tier; tier None (default) → no tier filter.
+    with session_scope() as s:
+        dev = agent_profiles.create(
+            s, area="ui", tier="developer", description="UI dev.", scope="system")
+        arch = agent_profiles.create(
+            s, area="ui", tier="architect", description="UI architect.", scope="system")
+
+        devs = {r["identifier"] for r in
+                agent_profiles.search_agents(s, area="ui", tier="developer")}
+        assert devs == {dev["identifier"]}
+
+        architects = {r["identifier"] for r in
+                      agent_profiles.search_agents(s, area="ui", tier="architect")}
+        assert architects == {arch["identifier"]}
+
+        both = {r["identifier"] for r in agent_profiles.search_agents(s, area="ui")}
+        assert both == {dev["identifier"], arch["identifier"]}

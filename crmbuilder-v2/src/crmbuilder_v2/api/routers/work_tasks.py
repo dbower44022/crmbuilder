@@ -71,6 +71,7 @@ def create(body: WorkTaskCreateIn):
                 notes=body.work_task_notes,
                 status=body.work_task_status or "Planned",
                 identifier=body.work_task_identifier,
+                resolved_agent_profile=body.work_task_resolved_agent_profile,
                 references=_edges(body),
                 timestamps=body.timestamps,
             )
@@ -90,6 +91,7 @@ def replace(identifier: str, body: WorkTaskReplaceIn):
                 description=body.work_task_description,
                 notes=body.work_task_notes,
                 status=body.work_task_status,
+                resolved_agent_profile=body.work_task_resolved_agent_profile,
                 references=_edges(body),
             )
         )

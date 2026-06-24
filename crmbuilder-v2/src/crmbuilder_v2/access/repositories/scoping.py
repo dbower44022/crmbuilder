@@ -113,8 +113,9 @@ def scope_workstream(
 
     :param work_tasks: the Work Task specs the specialist decided on — each a
         dict with ``title`` and ``area`` (plus optional ``description`` /
-        ``notes``). An empty / omitted list is the ``Not Applicable`` assertion
-        (§4.3): the phase was evaluated and has no work.
+        ``notes`` / ``resolved_agent_profile``). An empty / omitted list is the
+        ``Not Applicable`` assertion (§4.3): the phase was evaluated and has no
+        work.
     :returns: ``{workstream, work_tasks}`` — the Workstream at its new status and
         the created Work Tasks (in spec order).
     :raises NotFoundError: the Workstream does not exist.
@@ -156,6 +157,7 @@ def scope_workstream(
             description=spec.get("description"),
             notes=spec.get("notes"),
             status="Planned",
+            resolved_agent_profile=spec.get("resolved_agent_profile"),
         )
         references.create(
             session,

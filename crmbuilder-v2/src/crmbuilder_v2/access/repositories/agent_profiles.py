@@ -101,6 +101,7 @@ def search_agents(
     *,
     area: str,
     technology: str | None = None,
+    tier: str | None = None,
     needs: list[str] | None = None,
     status: str = "active",
     engagement_id: str | None = None,
@@ -119,6 +120,8 @@ def search_agents(
     :param technology: when given, keep profiles whose ``technology`` matches it OR
         is ``NULL`` (NULL = technology-agnostic, always eligible); when ``None``, do
         not filter on technology.
+    :param tier: when given, keep only profiles of this tier (architect / developer
+        / tester); when ``None``, do not filter on tier.
     :param needs: optional capability hints; when supplied, results are ordered by
         the count of ``needs`` that overlap a candidate's ``capability_description``
         ``specialties``/``builds`` facets (more overlap first). This is an ordering
@@ -149,6 +152,8 @@ def search_agents(
                 AgentProfileRow.technology.is_(None),
             )
         )
+    if tier is not None:
+        stmt = stmt.where(AgentProfileRow.tier == tier)
     stmt = stmt.order_by(AgentProfileRow.identifier)
     records = [_enrich(r) for r in session.scalars(stmt).all()]
     if needs:

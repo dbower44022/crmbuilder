@@ -19,11 +19,14 @@ unit-testable without a server.
 from __future__ import annotations
 
 import json
+import logging
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
 from crmbuilder_v2.scheduler.agent_prompt import AgentInvocation, build_agent_prompt
+
+log = logging.getLogger(__name__)
 
 _CLAIMABLE_STATUS = "Ready"
 _COMPLETE_STATUS = "Complete"
@@ -83,6 +86,66 @@ def select_profile_id(
     else:
         chosen = agnostic or in_area
     return chosen[0]["identifier"] if chosen else None
+
+
+def select_stamped_profile_id(
+    profiles: list[dict], stamp: str, area: str, tier: str
+) -> str | None:
+    """Re-validate a Work Task's ``work_task_resolved_agent_profile`` stamp (PI-302).
+
+    The architect's chosen specialist is authoritative *only while it still holds*:
+    the stamped profile must exist among ``profiles``, be ``active``, share the
+    task's ``area`` (the hard backstop, REQ-273), and match the ``tier`` the
+    dispatcher resolved. Returns the stamp when all four hold, else ``None`` so the
+    caller falls back to generalist ``(area, tier)`` selection. Pure — no I/O.
+    """
+    for profile in profiles:
+        if profile.get("identifier") != stamp:
+            continue
+        if profile.get("status") != "active":
+            return None
+        if profile.get("area") != area:
+            return None
+        if profile.get("tier") != tier:
+            return None
+        return stamp
+    return None  # stamp names no known profile
+
+
+def resolve_profile_for_task(
+    profiles: list[dict],
+    *,
+    area: str,
+    tier: str = _DEFAULT_TIER,
+    technology: str | None = None,
+    stamp: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Decide the agent profile for a task, honouring an authoritative stamp first.
+
+    A non-empty ``stamp`` (the Work Task's ``work_task_resolved_agent_profile``) is
+    re-validated via :func:`select_stamped_profile_id`; when it holds, that profile
+    wins outright. When the stamp is absent the task routes through the existing
+    generalist :func:`select_profile_id`; when the stamp is *present but fails
+    re-validation* (inactive / wrong area / wrong tier / unknown) the task still
+    falls back to generalist selection, and a non-``None`` warning message is
+    returned so the caller can surface it (a warning, never an error). Pure — no I/O.
+
+    :returns: ``(profile_id, warning)`` — ``profile_id`` may be ``None`` when no
+        generalist profile exists either; ``warning`` is ``None`` unless a present
+        stamp failed re-validation.
+    """
+    if stamp:
+        stamped = select_stamped_profile_id(profiles, stamp, area, tier)
+        if stamped is not None:
+            return stamped, None
+        fallback = select_profile_id(profiles, area, tier, technology=technology)
+        warning = (
+            f"resolved_agent_profile {stamp!r} failed re-validation for area "
+            f"{area!r} / tier {tier!r}; falling back to generalist (area, tier) "
+            f"selection ({fallback!r})"
+        )
+        return fallback, warning
+    return select_profile_id(profiles, area, tier, technology=technology), None
 
 
 # --------------------------------------------------------------------------
@@ -177,9 +240,15 @@ def next_assignment(
     wt = eligible[0]
     area = wt["work_task_area"]
     profiles = _get(api_base, "/agent-profiles", engagement)
-    profile_id = select_profile_id(
-        profiles, area, tier, technology=wt.get("work_task_technology")
+    profile_id, warning = resolve_profile_for_task(
+        profiles,
+        area=area,
+        tier=tier,
+        technology=wt.get("work_task_technology"),
+        stamp=wt.get("work_task_resolved_agent_profile"),
     )
+    if warning:
+        log.warning("work_task %s: %s", wt["work_task_identifier"], warning)
     if profile_id is None:
         return None
     invocation = build_agent_prompt(
