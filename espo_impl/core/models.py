@@ -259,7 +259,15 @@ SUPPORTED_ENTITY_TYPES: set[str] = {"Base", "BasePlus", "Person", "Company", "Ev
 VALID_SETTINGS_KEYS: set[str] = {
     "labelSingular", "labelPlural", "stream", "disabled",
     "autoPlaceName",
+    # Collection-level settings (PI-300 / REQ-340) — the entity's default
+    # sort, its quick-search text-filter fields, and its full-text search
+    # configuration. All live in EspoCRM's entityDefs.<Entity>.collection.
+    "orderBy", "order", "textFilterFields",
+    "fullTextSearch", "fullTextSearchMinLength",
 }
+
+# Valid values for settings.order (the default sort direction).
+VALID_ORDER_VALUES: set[str] = {"asc", "desc"}
 
 VALID_NORMALIZE_VALUES: set[str] = {
     "none", "lowercase-trim", "case-fold-trim", "e164",
@@ -303,6 +311,19 @@ class EntitySettings:
         YAML does not explicitly place it. Default True. Set False
         for entities whose `name` is computed via formula or
         workflow and should not surface as a manual input.
+    :param orderBy: Default sort field for the entity's list view
+        (EspoCRM ``collection.orderBy``). Deployed via the Entity
+        Manager ``sortBy`` parameter.
+    :param order: Default sort direction, ``"asc"`` or ``"desc"``
+        (EspoCRM ``collection.order``). Deployed via ``sortDirection``.
+    :param textFilterFields: Field names searched by the quick-search
+        text filter (EspoCRM ``collection.textFilterFields``).
+    :param fullTextSearch: Whether full-text search is enabled for the
+        entity (EspoCRM ``collection.fullTextSearch``).
+    :param fullTextSearchMinLength: Minimum query length before
+        full-text search engages (EspoCRM
+        ``collection.fullTextSearchMinLength``); ``None`` leaves the
+        platform default.
     """
 
     labelSingular: str | None = None
@@ -310,6 +331,11 @@ class EntitySettings:
     stream: bool | None = None
     disabled: bool | None = None
     autoPlaceName: bool | None = None
+    orderBy: str | None = None
+    order: str | None = None
+    textFilterFields: list[str] | None = None
+    fullTextSearch: bool | None = None
+    fullTextSearchMinLength: int | None = None
 
 
 @dataclass

@@ -1,8 +1,8 @@
 # CRM Builder — YAML Program File Schema
 
-**Version:** 1.3
+**Version:** 1.3.2
 **Status:** Current
-**Last Updated:** 05-22-26 14:30
+**Last Updated:** 06-23-26
 **Applies To:** All YAML program files used by CRM Builder
 
 ---
@@ -20,6 +20,7 @@
 | 1.2.4 | 05-04-26 00:00 | Adds field-level `optionsDeferred: bool` flag on enum/multiEnum fields (Section 6.3). When `true`, the validator accepts an empty `options:` list — used for fields whose value list cannot be expressed at YAML-authoring time and is configured post-deploy via the EspoCRM admin UI per a `MANUAL-CONFIG.md` companion entry. Default `false` preserves the existing strict validator behavior. New Section 6.4.1 documents the deferred-options pattern with worked example and companion-artifact rule. Validator-only change; deploy engine behavior unchanged. |
 | 1.2.5 | 05-19-26 | Adds `foreign` field type (Section 6.2, new Section 6.8) for mirroring a scalar field from a linked entity onto the current entity's detail/list/edit views — the platform's "Foreign" field. Requires `link:` (a manyToOne or oneToOne link name declared in the top-level `relationships:` block) and `field:` (the name of the field on the linked entity to mirror). Validator rejects: missing `link:` or `field:`; `required: true` (foreign fields are read-only mirrors — set the constraint on the source field); `formula:` (mirroring and computing are mutually exclusive); `link:`/`field:` on any non-foreign type. New validation rules added to Section 10. Deploy ordering note: because the regular field step runs before the relationship step, a YAML that introduces a brand-new relationship and a foreign field referencing it in the same file needs a second Configure run after the link exists. Subsequent re-runs are idempotent. |
 | 1.3.1 | 05-27-26 | Adds `oneToOne` to the set of valid `linkType:` values in the top-level `relationships:` block (Section 8.1 property table; Section 8.2 link-types table with notes on EspoCRM's asymmetric internal metadata; Section 10 Relationship-level validation rules). EspoCRM's `EntityManager/action/createLink` API has always accepted `oneToOne`; the validator just rejected it, so requirements captured through the methodology that called for a true 1:1 link had to fall back to `manyToOne` plus an operator-discipline uniqueness rule (the original CBM trigger was `MN-Partner-TEST.yaml` / `MN-Sponsor-TEST.yaml`, 2026-05-19). PI-018. |
+| 1.3.2 | 06-23-26 | Adds collection-level entity settings to the `settings:` block (Section 5.4): `orderBy` (default sort field), `order` (`asc`/`desc`), `textFilterFields` (quick-search field list), `fullTextSearch` (bool), `fullTextSearchMinLength` (int). All five live in EspoCRM's `entityDefs.<Entity>.collection`, are captured by the audit into a `settings:` block, and re-deployed via the `EntityManager` update action (`sortBy`/`sortDirection`/`textFilterFields`/`fullTextSearch`/`fullTextSearchMinLength`) — closing an audit→deploy round-trip gap where an entity's default sort, text filters, and full-text search did not transfer source→target. Validation rules added to Section 10/5.4. PI-300 / REQ-340. |
 | 1.3 | 05-22-26 14:30 | Adds Category 6 Parts A–E (Role-Based Access Control) per `yaml-schema-gap-analysis-MR-pilot.md` Section 6, as amended 05-20-26 21:18 (Option C reordering — scope-level access lands here, field-level access defers). New top-level keys `roles:` and `teams:` extend the program-file shape — a file may now contain any combination of `entities:`, `relationships:`, `roles:`, and `teams:` (Section 3.1). Operational convention is a dedicated `programs/security.yaml` file, but the schema does not enforce a file-type distinction; the loader queues any file declaring `roles:` or `teams:` ahead of files referencing them (Section 12.6). New Section 12 ties the five Parts together: 12.1 Roles, 12.2 Teams, 12.3 Scope-Level Entity Access (per-role `scope_access:` block with whitelist semantics — entities not listed are denied), 12.4 System Permissions (per-role `system_permissions:` block for non-entity controls), 12.5 Role-Aware Visibility (12.5.1 `role:` leaf clause in Section 11 condition expressions, valid only in `visibleWhen:` contexts; 12.5.2 `forRoles:` on layout declarations). Section 3.1 lists the new top-level keys. Section 7.2 adds `forRoles:` to the layout property table. Section 11.2 extends the leaf-clause syntax to permit `role:` as an alternative discriminator to `field:`, with Section 11.5 adding rejection rules for `role:` in non-`visibleWhen:` contexts. Section 10 gains a new Roles/Teams/Layout-`forRoles:` validation block. Field-level permissions and permission presets (gap-analysis Section 6, "Deferred to v1.3") remain out of scope and will land in a future schema bump; "v1.3" in the gap analysis refers to feature-scope ordering, not the doc revision in which they ship. Note: "v1.2" in the gap analysis and the kickoff prompts is similarly feature-scope language — by the time Parts A–E reach the schema spec, the doc had advanced through v1.2.1–v1.2.5 patches, so this addition is the next minor bump (v1.2.5 → v1.3). |
 
 ---
@@ -312,6 +313,20 @@ entities:
 | `stream` | boolean | no | Enable the Stream (activity feed) panel. Default for custom entities: `false`. For native entities: omit unless overriding the CRM default |
 | `disabled` | boolean | no | Mark the entity as disabled. Default: `false` |
 | `autoPlaceName` | boolean | no | When `true` (default), `LayoutManager` auto-prepends the required system `name` field to detail/edit layouts that do not explicitly place it. Set to `false` for entities whose `name` is computed by formula or workflow and should not surface as a manual input. |
+| `orderBy` | string | no | Default sort field for the entity's list view (field name). Maps to EspoCRM `collection.orderBy`; deployed via the Entity Manager `sortBy` parameter. |
+| `order` | string | no | Default sort direction — `asc` or `desc`. Maps to `collection.order`; deployed via `sortDirection`. |
+| `textFilterFields` | list of strings | no | Field names searched by the quick-search text filter (maps to `collection.textFilterFields`). Order is preserved. Related-entity dotted paths (e.g. `contactRecord.lastName`) are permitted. |
+| `fullTextSearch` | boolean | no | Enable full-text search for the entity (maps to `collection.fullTextSearch`). |
+| `fullTextSearchMinLength` | integer | no | Minimum query length before full-text search engages (maps to `collection.fullTextSearchMinLength`). Omit to leave the platform default. |
+
+**Collection settings (PI-300 / REQ-340).** `orderBy`, `order`,
+`textFilterFields`, `fullTextSearch`, and `fullTextSearchMinLength`
+configure an entity's default list sort and its search behavior. All
+five live in EspoCRM's `entityDefs.<Entity>.collection` and apply to
+native and custom entities alike. They are captured by the audit (into
+a `settings:` block) and re-deployed through the same `EntityManager`
+update action the engine already uses for `stream`/labels — so an
+audit → deploy → re-audit round trip on these settings is a no-op.
 
 **`autoPlaceName` rationale.** EspoCRM treats `name` as required on
 every entity. YAMLs that build detail layouts from category-driven
