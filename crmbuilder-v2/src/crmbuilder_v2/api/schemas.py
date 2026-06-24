@@ -1960,6 +1960,7 @@ class WorkTaskSpecIn(_Base):
     area: str
     description: str | None = None
     notes: str | None = None
+    resolved_agent_profile: str | None = None
 
 
 class WorkstreamScopeIn(_Base):
@@ -2298,6 +2299,7 @@ class WorkTaskCreateIn(_Base):
     work_task_description: str | None = None
     work_task_notes: str | None = None
     work_task_status: str | None = None
+    work_task_resolved_agent_profile: str | None = None
     work_task_identifier: str | None = None
     references: list[GovernanceEdgeIn] | None = None
     timestamps: dict[str, Any] | None = None
@@ -2310,6 +2312,7 @@ class WorkTaskReplaceIn(_Base):
     work_task_description: str | None = None
     work_task_notes: str | None = None
     work_task_status: str
+    work_task_resolved_agent_profile: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -2319,6 +2322,7 @@ class WorkTaskPatchIn(_Base):
     work_task_description: str | None = None
     work_task_notes: str | None = None
     work_task_status: str | None = None
+    work_task_resolved_agent_profile: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 

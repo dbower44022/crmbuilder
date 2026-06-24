@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from crmbuilder_v2.scheduler.dispatcher import (
     is_work_task_eligible,
+    resolve_profile_for_task,
     select_profile_id,
+    select_stamped_profile_id,
 )
 
 
@@ -88,3 +90,58 @@ def test_select_technology_agnostic_profile_serves_any_technology():
     # The storage profile has no technology → it serves a storage task regardless.
     assert select_profile_id(_TECH_PROFILES, "storage", "developer",
                              technology="anything") == "AGP-storage"
+
+
+# --- PI-302: resolved-agent-profile stamp routing -------------------------
+
+_STAMP_PROFILES = [
+    {"identifier": "AGP-010", "scope": "system", "area": "storage",
+     "tier": "developer", "status": "active"},
+    {"identifier": "AGP-011", "scope": "system", "area": "storage",
+     "tier": "developer", "status": "active"},
+    {"identifier": "AGP-012", "scope": "system", "area": "api",
+     "tier": "developer", "status": "active"},
+    {"identifier": "AGP-013", "scope": "system", "area": "storage",
+     "tier": "developer", "status": "retired"},
+]
+
+
+def test_select_stamped_profile_id_valid_stamp_holds():
+    assert select_stamped_profile_id(
+        _STAMP_PROFILES, "AGP-011", "storage", "developer") == "AGP-011"
+
+
+def test_select_stamped_profile_id_rejects_wrong_area_tier_status_unknown():
+    # Wrong area (AGP-012 is api), wrong tier, inactive, and an unknown id all None.
+    assert select_stamped_profile_id(
+        _STAMP_PROFILES, "AGP-012", "storage", "developer") is None
+    assert select_stamped_profile_id(
+        _STAMP_PROFILES, "AGP-010", "storage", "tester") is None
+    assert select_stamped_profile_id(
+        _STAMP_PROFILES, "AGP-013", "storage", "developer") is None
+    assert select_stamped_profile_id(
+        _STAMP_PROFILES, "AGP-999", "storage", "developer") is None
+
+
+def test_resolve_prefers_a_valid_stamp():
+    profile_id, warning = resolve_profile_for_task(
+        _STAMP_PROFILES, area="storage", tier="developer", stamp="AGP-011")
+    assert profile_id == "AGP-011"
+    assert warning is None
+
+
+def test_resolve_falls_back_to_generalist_when_unstamped():
+    # No stamp → existing (area, tier) selection (first matching, AGP-010).
+    profile_id, warning = resolve_profile_for_task(
+        _STAMP_PROFILES, area="storage", tier="developer", stamp=None)
+    assert profile_id == "AGP-010"
+    assert warning is None
+
+
+def test_resolve_falls_back_with_warning_when_stamp_fails_revalidation():
+    # Inactive stamp → generalist fallback (AGP-010) AND a warning message.
+    profile_id, warning = resolve_profile_for_task(
+        _STAMP_PROFILES, area="storage", tier="developer", stamp="AGP-013")
+    assert profile_id == "AGP-010"
+    assert warning is not None
+    assert "AGP-013" in warning

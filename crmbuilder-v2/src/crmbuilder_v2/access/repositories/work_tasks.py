@@ -41,7 +41,9 @@ _ENTITY_TYPE = "work_task"
 _IDENTIFIER_PREFIX = "WTK"
 _IDENTIFIER_RE = re.compile(r"^WTK-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
-_PATCHABLE_FIELDS = frozenset({"title", "description", "notes", "status", "area"})
+_PATCHABLE_FIELDS = frozenset(
+    {"title", "description", "notes", "status", "area", "resolved_agent_profile"}
+)
 _STATUS_TIMESTAMP = {
     "In Progress": "work_task_started_at",
     "Complete": "work_task_completed_at",
@@ -69,6 +71,71 @@ def _require_area(session: Session, area: object) -> str:
             ]
         )
     return area
+
+
+def _validate_resolved_agent_profile(
+    session: Session, value: object, area: str
+) -> str | None:
+    """Validate a ``work_task_resolved_agent_profile`` stamp (PI-302, the area backstop).
+
+    A non-null stamp must name an existing, ``active`` agent_profile whose ``area``
+    equals the task's ``area`` — the hard backstop that an architect's chosen
+    specialist is never routed to out-of-area work. ``None`` is always allowed (it
+    clears the stamp, returning the task to ``(area, tier)`` generalist routing).
+
+    :returns: the validated identifier, or ``None`` when ``value`` is ``None``.
+    :raises UnprocessableError: the profile is missing, not active, or a different area.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "work_task_resolved_agent_profile",
+                    "invalid",
+                    "resolved_agent_profile must be an agent_profile identifier or null",
+                )
+            ]
+        )
+    # Lazy import to keep this low-level repo free of a module-level dependency on
+    # the registry repo (mirrors the pm/coordination/reopen lazy imports below).
+    from crmbuilder_v2.access.repositories import agent_profiles
+
+    try:
+        profile = agent_profiles.get(session, value)
+    except NotFoundError as exc:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "work_task_resolved_agent_profile",
+                    "unknown_profile",
+                    f"agent_profile {value!r} does not exist",
+                )
+            ]
+        ) from exc
+    if profile["status"] != "active":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "work_task_resolved_agent_profile",
+                    "inactive_profile",
+                    f"agent_profile {value!r} is {profile['status']!r}, not 'active'",
+                )
+            ]
+        )
+    if profile["area"] != area:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "work_task_resolved_agent_profile",
+                    "area_mismatch",
+                    f"agent_profile {value!r} area {profile['area']!r} does not "
+                    f"match the work task area {area!r}",
+                )
+            ]
+        )
+    return value
 
 
 def _get_row(session: Session, identifier: str) -> WorkTask:
@@ -122,7 +189,9 @@ def next_work_task_identifier(session: Session) -> str:
 # --- writes -----------------------------------------------------------------
 
 
-def _new_row(identifier, title, description, area, notes, status) -> WorkTask:
+def _new_row(
+    identifier, title, description, area, notes, status, resolved_agent_profile=None
+) -> WorkTask:
     return WorkTask(
         work_task_identifier=identifier,
         work_task_title=title,
@@ -130,15 +199,20 @@ def _new_row(identifier, title, description, area, notes, status) -> WorkTask:
         work_task_area=area,
         work_task_notes=notes,
         work_task_status=status,
+        work_task_resolved_agent_profile=resolved_agent_profile,
     )
 
 
-def _insert_with_autoassign(session, title, description, area, notes, status):
+def _insert_with_autoassign(
+    session, title, description, area, notes, status, resolved_agent_profile=None
+):
     candidate = next_work_task_identifier(session)
     last_error: IntegrityError | None = None
     for _ in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
-        row = _new_row(candidate, title, description, area, notes, status)
+        row = _new_row(
+            candidate, title, description, area, notes, status, resolved_agent_profile
+        )
         session.add(row)
         try:
             session.flush()
@@ -164,6 +238,7 @@ def create_work_task(
     notes: str | None = None,
     status: str = "Planned",
     identifier: str | None = None,
+    resolved_agent_profile: str | None = None,
     references: list[dict] | None = None,
     timestamps: dict | None = None,
 ) -> dict:
@@ -171,17 +246,22 @@ def create_work_task(
 
     ``references`` typically carries the ``work_task_belongs_to_workstream``
     edge to its parent Workstream. ``area`` must be a member of System ∪ this
-    engagement's Engagement areas.
+    engagement's Engagement areas. ``resolved_agent_profile`` optionally stamps the
+    architect-chosen specialist (PI-302); when set it is validated against the
+    area backstop (must be an active agent_profile of the same area).
     """
     title = gov.require_nonempty(title, field="work_task_title")
     area = _require_area(session, area)
     if status is None:
         status = "Planned"
     _require_status(status)
+    resolved_agent_profile = _validate_resolved_agent_profile(
+        session, resolved_agent_profile, area
+    )
 
     if identifier is None:
         row = _insert_with_autoassign(
-            session, title, description, area, notes, status
+            session, title, description, area, notes, status, resolved_agent_profile
         )
     else:
         gov.require_identifier_format(
@@ -190,7 +270,9 @@ def create_work_task(
         )
         if get_by_identifier(session, WorkTask, WorkTask.work_task_identifier, identifier) is not None:
             raise ConflictError(f"work_task {identifier!r} already exists")
-        row = _new_row(identifier, title, description, area, notes, status)
+        row = _new_row(
+            identifier, title, description, area, notes, status, resolved_agent_profile
+        )
         session.add(row)
         session.flush()
 
@@ -233,6 +315,7 @@ def update_work_task(
     description: str | None = None,
     notes: str | None = None,
     status: str | None = None,
+    resolved_agent_profile: str | None = None,
     references: list[dict] | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
@@ -250,6 +333,11 @@ def update_work_task(
 
     title = gov.require_nonempty(title, field="work_task_title")
     area = _require_area(session, area)
+    # Replace semantics: the stamp is validated against the (possibly new) area and
+    # set outright — an omitted value clears it back to generalist routing.
+    resolved_agent_profile = _validate_resolved_agent_profile(
+        session, resolved_agent_profile, area
+    )
 
     gov.apply_reference_list(session, references)
 
@@ -260,6 +348,7 @@ def update_work_task(
     row.work_task_area = area
     row.work_task_description = description
     row.work_task_notes = notes
+    row.work_task_resolved_agent_profile = resolved_agent_profile
     session.flush()
 
     after = to_dict(row)
@@ -305,6 +394,12 @@ def patch_work_task(
         row.work_task_notes = fields["notes"]
     if "status" in fields:
         _apply_status(row, fields["status"])
+    if "resolved_agent_profile" in fields:
+        # Validate against the row's current area (which already reflects any
+        # area change applied above).
+        row.work_task_resolved_agent_profile = _validate_resolved_agent_profile(
+            session, fields["resolved_agent_profile"], row.work_task_area
+        )
 
     session.flush()
 

@@ -3308,6 +3308,16 @@ class WorkTask(EngagementScopedPKMixin, Base):
     # e.g. ``qt-desktop`` vs ``web`` for a ``ui`` task. NULL = technology-agnostic;
     # the dispatcher routes the task to the matching-technology agent profile.
     work_task_technology: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # The architect-chosen specialist (an ``AGP-NNN`` agent_profile) that this
+    # task is authoritatively routed to (PI-302 / Phase 5b). NULL = unstamped, so
+    # the dispatcher falls back to its ``(area, tier)`` generalist selection. A
+    # plain identifier-bearing column like ``work_task_claimed_by`` — no FK to
+    # agent_profiles (nothing references it by FK; cross-governance relationships
+    # are refs edges) and no CHECK; the access layer enforces the backstop
+    # (the profile must exist, be active, and share this task's ``area``).
+    work_task_resolved_agent_profile: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
     work_task_claimed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
     work_task_claimed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
