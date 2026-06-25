@@ -413,6 +413,89 @@ def test_manager_settings_differ_updates():
     client.update_entity.assert_called_once()
 
 
+def test_manager_deploys_entitydefs_options():
+    """optimisticConcurrencyControl + countDisabled deploy via updateEntity."""
+    mgr, client, log = _make_settings_manager()
+    client.get_entity_full_metadata.return_value = (
+        200,
+        {"optimisticConcurrencyControl": False, "collection": {"countDisabled": False}},
+    )
+    client.update_entity.return_value = (200, {})
+
+    settings = EntitySettings(optimisticConcurrencyControl=True, countDisabled=True)
+    results = mgr.process_settings(_make_program_with_settings(settings))
+
+    assert results[0].status == SettingsStatus.UPDATED
+    assert set(results[0].changes) == {"optimisticConcurrencyControl", "countDisabled"}
+    payload = client.update_entity.call_args[0][0]
+    assert payload["optimisticConcurrencyControl"] is True
+    assert payload["countDisabled"] is True
+    # No clientDefs option declared -> no clientDefs CHECK.
+    client.get_client_defs.assert_not_called()
+
+
+def test_manager_deploys_clientdefs_options():
+    """iconClass + color drift is read from clientDefs and deployed."""
+    mgr, client, log = _make_settings_manager()
+    client.get_entity_full_metadata.return_value = (200, {})
+    client.get_client_defs.return_value = (200, {"iconClass": "fas fa-old", "color": None})
+    client.update_entity.return_value = (200, {})
+
+    settings = EntitySettings(iconClass="fas fa-new", color="#f01010")
+    results = mgr.process_settings(_make_program_with_settings(settings))
+
+    assert results[0].status == SettingsStatus.UPDATED
+    assert set(results[0].changes) == {"iconClass", "color"}
+    payload = client.update_entity.call_args[0][0]
+    assert payload["iconClass"] == "fas fa-new"
+    assert payload["color"] == "#f01010"
+    client.get_client_defs.assert_called_once()
+
+
+def test_manager_clientdefs_option_matches_skips():
+    """An icon that already matches clientDefs is not redeployed."""
+    mgr, client, log = _make_settings_manager()
+    client.get_entity_full_metadata.return_value = (200, {})
+    client.get_client_defs.return_value = (200, {"iconClass": "fas fa-truck"})
+
+    settings = EntitySettings(iconClass="fas fa-truck")
+    results = mgr.process_settings(_make_program_with_settings(settings))
+
+    assert results[0].status == SettingsStatus.SKIPPED
+    client.update_entity.assert_not_called()
+
+
+def test_manager_multiple_assigned_users_manual_config():
+    """multipleAssignedUsers drift -> NOT_SUPPORTED manual-config, never deployed."""
+    mgr, client, log = _make_settings_manager()
+    # Live entity has no assignedUsers field -> multiple-assignment is off.
+    client.get_entity_full_metadata.return_value = (200, {"fields": {"name": {}}})
+
+    settings = EntitySettings(multipleAssignedUsers=True)
+    results = mgr.process_settings(_make_program_with_settings(settings))
+
+    statuses = [r.status for r in results]
+    assert SettingsStatus.NOT_SUPPORTED in statuses
+    mau = next(r for r in results if r.status == SettingsStatus.NOT_SUPPORTED)
+    assert mau.changes == ["multipleAssignedUsers"]
+    # It is never deployed and never counts as an error.
+    client.update_entity.assert_not_called()
+    assert SettingsStatus.ERROR not in statuses
+
+
+def test_manager_multiple_assigned_users_match_no_manual_config():
+    """When multiple-assignment already matches, no manual-config item is raised."""
+    mgr, client, log = _make_settings_manager()
+    client.get_entity_full_metadata.return_value = (
+        200, {"fields": {"assignedUsers": {"type": "linkMultiple"}}}
+    )
+
+    settings = EntitySettings(multipleAssignedUsers=True)
+    results = mgr.process_settings(_make_program_with_settings(settings))
+
+    assert all(r.status != SettingsStatus.NOT_SUPPORTED for r in results)
+
+
 def test_manager_settings_auth_error():
     """401 from API raises EntitySettingsManagerError."""
     mgr, client, log = _make_settings_manager()

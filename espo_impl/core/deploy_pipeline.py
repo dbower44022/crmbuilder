@@ -470,6 +470,13 @@ def emit_manual_config_block(output_fn: OutputFn, report: RunReport) -> None:
         for r in report.security_rule_results
         if r.status == SecurityRuleStatus.NOT_SUPPORTED
     ]
+    # Entity options with no REST write path (PI-313 / REQ-351) — currently
+    # multipleAssignedUsers (a structural assignment-field toggle).
+    settings_items = [
+        f"  {r.entity}.settings[{', '.join(r.changes or [])}]"
+        for r in report.settings_results
+        if r.status == SettingsStatus.NOT_SUPPORTED
+    ]
 
     if not (
         saved_view_items
@@ -481,6 +488,7 @@ def emit_manual_config_block(output_fn: OutputFn, report: RunReport) -> None:
         or role_panel_items
         or variant_layout_items
         or field_visibility_items
+        or settings_items
     ):
         return
 
@@ -564,6 +572,17 @@ def emit_manual_config_block(output_fn: OutputFn, report: RunReport) -> None:
     output_fn(
         "  Configure manually via Dynamic Handler JS or role-scoped "
         "Layout Sets (see schema §12.7 Deploy Support).",
+        "yellow",
+    )
+
+    # Entity options with no REST write path (PI-313 / REQ-351).
+    output_fn("", "yellow")
+    output_fn("Entity options (no REST write path):", "yellow")
+    for line in (settings_items or ["  (none)"]):
+        output_fn(line, "yellow")
+    output_fn(
+        "  Enable via Admin > Entity Manager > edit entity "
+        "(e.g. 'Enable Multiple Assigned Users').",
         "yellow",
     )
 

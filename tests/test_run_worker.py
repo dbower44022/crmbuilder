@@ -1186,6 +1186,33 @@ def test_manual_config_block_emitted_when_not_supported_present():
     assert any("Workflows:" in m for m in messages)
 
 
+def test_manual_config_block_lists_settings_not_supported():
+    """A NOT_SUPPORTED settings result (multipleAssignedUsers) surfaces in the block."""
+    from espo_impl.core.deploy_pipeline import emit_manual_config_block
+    from espo_impl.core.models import RunReport, SettingsResult, SettingsStatus
+
+    report = RunReport(
+        timestamp="2026-06-25T00:00:00",
+        instance_name="Test",
+        espocrm_url="https://test.com",
+        program_file="x.yaml",
+        operation="run",
+    )
+    report.settings_results.append(
+        SettingsResult(
+            entity="Account",
+            status=SettingsStatus.NOT_SUPPORTED,
+            changes=["multipleAssignedUsers"],
+        )
+    )
+    log: list[str] = []
+    emit_manual_config_block(lambda m, c: log.append(m), report)
+
+    assert any("MANUAL CONFIGURATION REQUIRED" in m for m in log)
+    assert any("Entity options (no REST write path):" in m for m in log)
+    assert any("Account.settings[multipleAssignedUsers]" in m for m in log)
+
+
 def test_manual_config_block_suppressed_when_no_not_supported():
     """No MANUAL CONFIGURATION block when no NOT_SUPPORTED items exist."""
     program = make_program([
