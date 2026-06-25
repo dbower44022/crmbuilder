@@ -348,6 +348,24 @@ class EntitiesPanel(ListDetailPanel):
         )
         sort_dir_value.setObjectName("entity_default_sort_direction_value")
         intrinsic_row.addRow(QLabel("Default sort direction"), sort_dir_value)
+        # REQ-340 / PI-300 — neutral collection-search settings, read-only.
+        _text_filter = record.get("entity_text_filter_fields")
+        text_filter_value = _read_only_line(
+            ", ".join(str(p) for p in _text_filter)
+            if isinstance(_text_filter, list)
+            else "",
+            placeholder="—",
+        )
+        text_filter_value.setObjectName("entity_text_filter_fields_value")
+        intrinsic_row.addRow(QLabel("Quick-search fields"), text_filter_value)
+        _fts_min = record.get("entity_full_text_search_min_length")
+        fts_min_value = _read_only_line(
+            "" if _fts_min is None else str(_fts_min), placeholder="—"
+        )
+        fts_min_value.setObjectName("entity_full_text_search_min_length_value")
+        intrinsic_row.addRow(
+            QLabel("Full-text search min length"), fts_min_value
+        )
         outer.addLayout(intrinsic_row)
 
         track_checkbox = QCheckBox("Track activity feed")
@@ -355,6 +373,12 @@ class EntitiesPanel(ListDetailPanel):
         track_checkbox.setChecked(bool(record.get("entity_track_activity")))
         track_checkbox.setEnabled(False)
         outer.addWidget(track_checkbox)
+
+        fts_checkbox = QCheckBox("Full-text search")
+        fts_checkbox.setObjectName("entity_full_text_search_value")
+        fts_checkbox.setChecked(bool(record.get("entity_full_text_search")))
+        fts_checkbox.setEnabled(False)
+        outer.addWidget(fts_checkbox)
 
         # PI-108: created / last-edited audit timestamps.
         outer.addWidget(_separator())

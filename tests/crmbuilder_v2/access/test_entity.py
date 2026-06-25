@@ -44,6 +44,10 @@ _EXPECTED_COLUMNS = {
     "entity_track_activity": "BOOLEAN",
     # REQ-337 / PI-297 — neutral activity-tracking (EspoCRM BasePlus) flag.
     "entity_tracks_activities": "BOOLEAN",
+    # REQ-340 / PI-300 — neutral collection-search settings.
+    "entity_text_filter_fields": "JSON",
+    "entity_full_text_search": "BOOLEAN",
+    "entity_full_text_search_min_length": "INTEGER",
     "entity_created_at": "DATETIME",
     "entity_updated_at": "DATETIME",
     "entity_deleted_at": "DATETIME",
@@ -218,6 +222,46 @@ def test_tracks_activities_round_trip(v2_env):
         entity.patch_entity(s, "ENT-001", tracks_activities=False)
     with session_scope() as s:
         assert entity.get_entity(s, "ENT-001")["entity_tracks_activities"] is False
+
+
+def test_collection_settings_round_trip(v2_env):
+    # REQ-340 / PI-300 — the five collection-search settings persist on create,
+    # surface on read, default null/null/None/False/None, and are patchable.
+    with session_scope() as s:
+        created = entity.create_entity(
+            s,
+            name="Engagement",
+            description="d",
+            default_sort_field="createdAt",
+            default_sort_direction="desc",
+            text_filter_fields=["name", "emailAddress"],
+            full_text_search=True,
+            full_text_search_min_length=4,
+        )
+    assert created["entity_default_sort_field"] == "createdAt"
+    assert created["entity_default_sort_direction"] == "desc"
+    assert created["entity_text_filter_fields"] == ["name", "emailAddress"]
+    assert created["entity_full_text_search"] is True
+    assert created["entity_full_text_search_min_length"] == 4
+    with session_scope() as s:
+        default = entity.create_entity(s, name="Plain", description="d")
+    assert default["entity_text_filter_fields"] is None
+    assert default["entity_full_text_search"] is False
+    assert default["entity_full_text_search_min_length"] is None
+    with session_scope() as s:
+        entity.patch_entity(
+            s,
+            "ENT-001",
+            text_filter_fields=[],
+            full_text_search=False,
+            full_text_search_min_length=None,
+        )
+    with session_scope() as s:
+        fetched = entity.get_entity(s, "ENT-001")
+    # An empty quick-search list collapses to None.
+    assert fetched["entity_text_filter_fields"] is None
+    assert fetched["entity_full_text_search"] is False
+    assert fetched["entity_full_text_search_min_length"] is None
 
 
 def test_get_entity_missing_returns_none(v2_env):

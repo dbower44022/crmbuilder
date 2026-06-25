@@ -34,6 +34,9 @@ def _entity(identifier="ENT-001", name="Mentor Application", **over):
         "entity_tracks_activities": False,
         "entity_default_sort_field": None,
         "entity_default_sort_direction": None,
+        "entity_text_filter_fields": None,
+        "entity_full_text_search": False,
+        "entity_full_text_search_min_length": None,
     }
     base.update(over)
     return base
@@ -641,7 +644,7 @@ def test_derived_aggregate_dangling_association_defers_formula():
     assert any(d.kind == "derived_field" for d in model.deferrals)
 
 
-def test_field_attribute_and_default_sort_deferred():
+def test_field_attribute_deferred():
     model = build_program_model(
         [_entity(entity_default_sort_field="createdAt", entity_default_sort_direction="desc")],
         [_field(name="note", type="text", field_tooltip="hint", field_unique=True)],
@@ -651,10 +654,60 @@ def test_field_attribute_and_default_sort_deferred():
     attr_kinds = [d.detail for d in model.deferrals if d.kind == "field_attribute"]
     assert any("tooltip" in d for d in attr_kinds)
     assert any("unique" in d for d in attr_kinds)
-    assert any(d.kind == "entity_default_sort" for d in model.deferrals)
+    # REQ-340 / PI-300: the default-sort intent now emits to settings:
+    # (v1.3.2 §5.4), so it is no longer deferred.
+    assert not any(d.kind == "entity_default_sort" for d in model.deferrals)
     # Slice 3 emits the composite-construct blocks, so the standing
     # composite_constructs deferral no longer exists.
     assert not any(d.kind == "composite_constructs" for d in model.deferrals)
+
+
+def test_collection_settings_emit_to_settings():
+    # REQ-340 / PI-300: all five collection settings render into the
+    # entity-level settings: block per the v1.3.2 EspoCRM schema keys.
+    model = build_program_model(
+        [
+            _entity(
+                entity_default_sort_field="createdAt",
+                entity_default_sort_direction="desc",
+                entity_text_filter_fields=["name", "emailAddress"],
+                entity_full_text_search=True,
+                entity_full_text_search_min_length=4,
+            )
+        ],
+        [],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    program = model.programs[0].program
+    settings = program["entities"]["Mentor Application"]["settings"]
+    assert settings["orderBy"] == "createdAt"
+    assert settings["order"] == "desc"
+    assert settings["textFilterFields"] == ["name", "emailAddress"]
+    assert settings["fullTextSearch"] is True
+    assert settings["fullTextSearchMinLength"] == 4
+    # No default-sort deferral is produced when the settings emit.
+    assert not any(d.kind == "entity_default_sort" for d in model.deferrals)
+
+
+def test_collection_settings_omitted_when_unset():
+    # An entity with no collection settings emits only the label keys (+ no
+    # collection keys), and orderBy defaults order to asc when only the sort
+    # field is set.
+    model = build_program_model(
+        [_entity(entity_default_sort_field="name")],
+        [],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    settings = model.programs[0].program["entities"]["Mentor Application"][
+        "settings"
+    ]
+    assert settings["orderBy"] == "name"
+    assert settings["order"] == "asc"
+    assert "textFilterFields" not in settings
+    assert "fullTextSearch" not in settings
+    assert "fullTextSearchMinLength" not in settings
 
 
 def test_scope_filter_excludes_non_confirmed():

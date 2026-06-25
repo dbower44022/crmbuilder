@@ -96,7 +96,6 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
         "derived_field": "Derived / formula fields not rendered",
         "unmapped_field": "Unmapped fields",
         "field_attribute": "Field attributes with no deploy-validated YAML key",
-        "entity_default_sort": "Entity default-sort intent",
         "association": "Associations not rendered as relationships",
         "field_rule": "Field rules not emitted (valid_when / unrenderable)",
         "entity_rule": "Entity-subject rules",

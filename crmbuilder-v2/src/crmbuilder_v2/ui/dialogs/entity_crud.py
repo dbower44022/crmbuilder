@@ -40,18 +40,40 @@ _IDENTIFIER_FIELD = "entity_identifier"
 # Boolean entity intrinsics modelled as string combos in the dialog
 # (the EntityCrudDialog base only supports string widgets) that the access
 # layer expects as Python bools: ``entity_track_activity`` (PRJ-025 PI-182
-# §6 stream/feed) and ``entity_tracks_activities`` (REQ-337 / PI-297
-# activity-tracking / EspoCRM BasePlus).
-_BOOL_INTRINSICS = ("entity_track_activity", "entity_tracks_activities")
+# §6 stream/feed), ``entity_tracks_activities`` (REQ-337 / PI-297
+# activity-tracking / EspoCRM BasePlus), and ``entity_full_text_search``
+# (REQ-340 / PI-300 full-text-search toggle).
+_BOOL_INTRINSICS = (
+    "entity_track_activity",
+    "entity_tracks_activities",
+    "entity_full_text_search",
+)
+
+# REQ-340 / PI-300 — collection settings modelled as line widgets the access
+# layer expects as a ``list[str]`` (comma-separated text) and an ``int`` (the
+# min length). The blank string clears each to NULL.
+_TEXT_FILTER_FIELD = "entity_text_filter_fields"
+_FTS_MIN_LENGTH_FIELD = "entity_full_text_search_min_length"
 
 
 def _coerce_track_activity(body: dict[str, Any]) -> dict[str, Any]:
     """Convert the boolean entity intrinsics ("true"/"false") to real bools.
 
-    Mirrors the ``field_required`` coercion in ``field_crud.py``."""
+    Mirrors the ``field_required`` coercion in ``field_crud.py``. The REQ-340
+    collection settings are coerced too: the comma-separated quick-search text
+    to a ``list[str]`` (empty → None) and the min-length text to an ``int``
+    (empty → None)."""
     for key in _BOOL_INTRINSICS:
         if key in body and isinstance(body[key], str):
             body[key] = body[key].strip().lower() == "true"
+    if _TEXT_FILTER_FIELD in body and isinstance(body[_TEXT_FILTER_FIELD], str):
+        parts = [p.strip() for p in body[_TEXT_FILTER_FIELD].split(",")]
+        body[_TEXT_FILTER_FIELD] = [p for p in parts if p] or None
+    if _FTS_MIN_LENGTH_FIELD in body and isinstance(
+        body[_FTS_MIN_LENGTH_FIELD], str
+    ):
+        raw = body[_FTS_MIN_LENGTH_FIELD].strip()
+        body[_FTS_MIN_LENGTH_FIELD] = int(raw) if raw.isdigit() else None
     return body
 
 
@@ -97,6 +119,18 @@ class EntityEditDialog(EntityCrudDialog):
             raw = normalised.get(_bool_key)
             if isinstance(raw, bool):
                 normalised[_bool_key] = "true" if raw else "false"
+        # REQ-340 / PI-300 — render the list/int collection settings as the
+        # strings their line widgets expect (None → blank).
+        _filter = normalised.get(_TEXT_FILTER_FIELD)
+        if isinstance(_filter, list):
+            normalised[_TEXT_FILTER_FIELD] = ", ".join(str(p) for p in _filter)
+        elif _filter is None:
+            normalised[_TEXT_FILTER_FIELD] = ""
+        _min_len = normalised.get(_FTS_MIN_LENGTH_FIELD)
+        if _min_len is None:
+            normalised[_FTS_MIN_LENGTH_FIELD] = ""
+        elif not isinstance(_min_len, str):
+            normalised[_FTS_MIN_LENGTH_FIELD] = str(_min_len)
         super().__init__(
             client,
             entity_fields(include_identifier=True),

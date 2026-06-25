@@ -28,7 +28,8 @@ class _FakeClient:
     """Minimal introspection client: scopes + per-entity field/link lists."""
 
     def __init__(self, scopes, fields=None, links=None, layouts=None,
-                 roles=None, teams=None, report_filters=None, status=200):
+                 roles=None, teams=None, report_filters=None, status=200,
+                 collections=None):
         self._scopes = scopes
         self._fields = fields or {}
         self._links = links or {}
@@ -37,12 +38,18 @@ class _FakeClient:
         self._teams = teams or []
         self._report_filters = report_filters or {}  # {scope: [filter rows]}
         self._status = status
+        self._collections = collections or {}  # {scope: collection dict}
 
     def get_all_scopes(self):
         return (self._status, self._scopes)
 
     def get_entity_field_list(self, entity):
         return (200, self._fields.get(entity, {}))
+
+    def get_collection(self, entity):
+        if entity in self._collections:
+            return (200, self._collections[entity])
+        return (404, None)
 
     def get_all_links(self, entity):
         return (200, self._links.get(entity, {}))
@@ -177,6 +184,58 @@ def test_reconcile_detects_drift_with_override(v2_env):
         row = mb.list_memberships(s, instance_identifier=iid)[0]
         assert row["state"] == "drifted"
         assert row["override"] == {"entity_track_activity": True}
+
+
+def test_reconcile_captures_collection_settings(v2_env):
+    # REQ-340 / PI-300: the five collection-search settings are captured from
+    # the entityDefs.{Entity}.collection block on create.
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            collections={
+                "CEngagement": {
+                    "orderBy": "createdAt",
+                    "order": "desc",
+                    "textFilterFields": ["name", "emailAddress"],
+                    "fullTextSearch": True,
+                    "fullTextSearchMinLength": 4,
+                }
+            },
+        )
+        summary = reconcile_entities(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 1
+        row = [
+            e for e in entity_repo.list_entities(s)
+            if e["entity_name"] == "Engagement"
+        ][0]
+        assert row["entity_default_sort_field"] == "createdAt"
+        assert row["entity_default_sort_direction"] == "desc"
+        assert row["entity_text_filter_fields"] == ["name", "emailAddress"]
+        assert row["entity_full_text_search"] is True
+        assert row["entity_full_text_search_min_length"] == 4
+
+
+def test_reconcile_detects_collection_settings_drift(v2_env):
+    # An existing canonical entity with no collection settings drifts against
+    # an audited instance that carries them.
+    with session_scope() as s:
+        iid = _make_instance(s)
+        entity_repo.create_entity(s, name="Engagement", description="x")
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            collections={
+                "CEngagement": {"orderBy": "name", "order": "asc"}
+            },
+        )
+        summary = reconcile_entities(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 0
+        assert summary["drifted"] == 1
+        row = mb.list_memberships(s, instance_identifier=iid)[0]
+        assert row["override"] == {
+            "entity_default_sort_field": "name",
+            "entity_default_sort_direction": "asc",
+        }
 
 
 def test_reconcile_marks_absent(v2_env):

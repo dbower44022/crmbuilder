@@ -461,6 +461,10 @@ class EntityCreateIn(_Base):
     entity_track_activity: bool | None = None
     # REQ-337 / PI-297 — neutral activity-tracking (EspoCRM BasePlus) flag.
     entity_tracks_activities: bool | None = None
+    # REQ-340 / PI-300 — neutral collection-search settings.
+    entity_text_filter_fields: list[str] | None = None
+    entity_full_text_search: bool | None = None
+    entity_full_text_search_min_length: int | None = None
 
 
 class EntityReplaceIn(_Base):
@@ -483,6 +487,9 @@ class EntityReplaceIn(_Base):
     entity_default_sort_direction: str | None = None
     entity_track_activity: bool | None = None
     entity_tracks_activities: bool | None = None
+    entity_text_filter_fields: list[str] | None = None
+    entity_full_text_search: bool | None = None
+    entity_full_text_search_min_length: int | None = None
 
 
 class EntityPatchIn(_Base):
@@ -503,6 +510,9 @@ class EntityPatchIn(_Base):
     entity_default_sort_direction: str | None = None
     entity_track_activity: bool | None = None
     entity_tracks_activities: bool | None = None
+    entity_text_filter_fields: list[str] | None = None
+    entity_full_text_search: bool | None = None
+    entity_full_text_search_min_length: int | None = None
 
 
 # ---------- Personas (methodology entity, v0.5+) ----------

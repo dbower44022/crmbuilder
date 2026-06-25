@@ -74,6 +74,8 @@ class _FieldsClient(_ScopesClient, Protocol):
 
     def get_entity_field_list(self, entity: str) -> tuple[int, dict | None]: ...
 
+    def get_collection(self, entity: str) -> tuple[int, dict | None]: ...
+
 
 class _LinksClient(_ScopesClient, Protocol):
     """Adds the per-entity link listing the association reconcile needs."""
@@ -147,26 +149,69 @@ class ReconcileError(RuntimeError):
     """Raised when introspection returns an unusable response."""
 
 
-def _audited_entity_attrs(scope_meta: dict[str, Any]) -> dict[str, Any]:
+# Audited entity attributes compared as booleans (the rest compare by value —
+# the sort field/direction strings, the text-filter list, the FTS min length).
+_ENTITY_BOOL_ATTRS = frozenset(
+    {
+        "entity_track_activity",
+        "entity_tracks_activities",
+        "entity_full_text_search",
+    }
+)
+
+
+def _audited_entity_attrs(
+    scope_meta: dict[str, Any],
+    collection: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Derive the neutral entity attributes the inventory compares on.
 
-    First slice: only ``entity_track_activity`` (from the EspoCRM ``stream``
-    flag). REQ-337 / PI-297 adds ``entity_tracks_activities`` from the
-    EspoCRM base ``type`` (``BasePlus`` carries Activities/History/Tasks).
-    Additional neutral attributes (default sort, etc.) join the comparison
-    as the reconcile deepens.
+    ``entity_track_activity`` comes from the EspoCRM ``stream`` flag and
+    ``entity_tracks_activities`` (REQ-337 / PI-297) from the base ``type``
+    (``BasePlus`` carries Activities/History/Tasks). REQ-340 / PI-300 adds the
+    five collection-search settings from the ``entityDefs.{Entity}.collection``
+    block (``orderBy``, ``order``, ``textFilterFields``, ``fullTextSearch``,
+    ``fullTextSearchMinLength``) — passed in via ``collection`` since the
+    collection block is not part of ``scope_meta``.
     """
+    coll = collection if isinstance(collection, dict) else {}
+    order_by = coll.get("orderBy")
+    order = coll.get("order")
+    text_filter_fields = coll.get("textFilterFields")
+    fts_min = coll.get("fullTextSearchMinLength")
     return {
         "entity_track_activity": bool(scope_meta.get("stream", False)),
         "entity_tracks_activities": scope_meta.get("type") == "BasePlus",
+        "entity_default_sort_field": (
+            order_by if isinstance(order_by, str) and order_by else None
+        ),
+        "entity_default_sort_direction": (
+            order if isinstance(order, str) and order else None
+        ),
+        "entity_text_filter_fields": (
+            text_filter_fields if isinstance(text_filter_fields, list) else None
+        ),
+        "entity_full_text_search": bool(coll.get("fullTextSearch", False)),
+        "entity_full_text_search_min_length": (
+            fts_min if isinstance(fts_min, int) and not isinstance(fts_min, bool)
+            else None
+        ),
     }
 
 
 def _entity_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict:
-    """Return the sparse per-attribute deviation (DEC-432), or ``{}`` if none."""
+    """Return the sparse per-attribute deviation (DEC-432), or ``{}`` if none.
+
+    Boolean flags compare by truthiness; the value-carrying attributes (sort
+    field/direction, text-filter list, FTS min length) compare by equality so a
+    ``None`` audited value does not falsely equal a non-empty canonical one.
+    """
     override: dict[str, Any] = {}
     for key, audited_value in audited.items():
-        if bool(canonical.get(key)) != bool(audited_value):
+        if key in _ENTITY_BOOL_ATTRS:
+            if bool(canonical.get(key)) != bool(audited_value):
+                override[key] = audited_value
+        elif canonical.get(key) != audited_value:
             override[key] = audited_value
     return override
 
@@ -237,7 +282,13 @@ def reconcile_entities(
 
         summary["seen"] += 1
         neutral = strip_entity_c_prefix(scope_name)
-        audited = _audited_entity_attrs(scope_meta)
+        # The collection-search settings (REQ-340 / PI-300) live in the
+        # ``entityDefs.{Entity}.collection`` block, not in ``scope_meta`` — fetch
+        # them per entity. A non-200 or non-dict response is treated as empty.
+        c_status, collection = client.get_collection(scope_name)
+        if c_status != 200 or not isinstance(collection, dict):
+            collection = {}
+        audited = _audited_entity_attrs(scope_meta, collection)
 
         match = canonical.get(_ci(neutral))
         if match is None:
@@ -250,6 +301,14 @@ def reconcile_entities(
                     f"{instance_identifier}."
                 ),
                 track_activity=audited["entity_track_activity"],
+                tracks_activities=audited["entity_tracks_activities"],
+                default_sort_field=audited["entity_default_sort_field"],
+                default_sort_direction=audited["entity_default_sort_direction"],
+                text_filter_fields=audited["entity_text_filter_fields"],
+                full_text_search=audited["entity_full_text_search"],
+                full_text_search_min_length=(
+                    audited["entity_full_text_search_min_length"]
+                ),
             )
             canonical[neutral] = created
             member_id = created["entity_identifier"]

@@ -89,7 +89,6 @@ _DEFERRAL_KIND_LABELS = {
     "reference_field": "Reference fields",
     "field_attribute": "Field attributes",
     "unmapped_field": "Unmapped fields",
-    "entity_default_sort": "Default sort order",
 }
 
 

@@ -254,7 +254,11 @@ def test_detail_pane_renders_seven_fields_in_order(qtbot, entity_client):
         # PRJ-025 PI-182 §6: engine-neutral default-sort + activity intent.
         "entity_default_sort_field_value",
         "entity_default_sort_direction_value",
+        # REQ-340 / PI-300: neutral collection-search settings.
+        "entity_text_filter_fields_value",
+        "entity_full_text_search_min_length_value",
         "entity_track_activity_value",
+        "entity_full_text_search_value",
     ]
 
     # Identifier is a read-only label; name a read-only line editor;

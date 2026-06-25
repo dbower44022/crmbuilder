@@ -150,6 +150,54 @@ def test_patch_entity_intrinsics(client):
     assert data["entity_default_sort_direction"] == "asc"
 
 
+def test_post_entity_with_collection_settings(client):
+    # REQ-340 / PI-300 — the five collection-search settings round-trip via REST.
+    resp = client.post(
+        "/entities",
+        json={
+            "entity_name": "Engagement",
+            "entity_description": "d",
+            "entity_text_filter_fields": ["name", "emailAddress"],
+            "entity_full_text_search": True,
+            "entity_full_text_search_min_length": 4,
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    data = resp.json()["data"]
+    assert data["entity_text_filter_fields"] == ["name", "emailAddress"]
+    assert data["entity_full_text_search"] is True
+    assert data["entity_full_text_search_min_length"] == 4
+
+
+def test_patch_entity_collection_settings(client):
+    eid = _seed_entity(client, "Partner")
+    resp = client.patch(
+        f"/entities/{eid}",
+        json={
+            "entity_text_filter_fields": ["name"],
+            "entity_full_text_search": True,
+            "entity_full_text_search_min_length": 3,
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["entity_text_filter_fields"] == ["name"]
+    assert data["entity_full_text_search"] is True
+    assert data["entity_full_text_search_min_length"] == 3
+
+
+def test_post_entity_rejects_bad_fts_min_length(client):
+    resp = client.post(
+        "/entities",
+        json={
+            "entity_name": "BadFts",
+            "entity_description": "d",
+            "entity_full_text_search_min_length": -1,
+        },
+    )
+    assert resp.status_code == 422, resp.text
+
+
 def test_post_entity_rejects_bad_sort_direction(client):
     resp = client.post(
         "/entities",
