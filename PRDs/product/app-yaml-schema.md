@@ -1,8 +1,8 @@
 # CRM Builder — YAML Program File Schema
 
-**Version:** 1.3.2
+**Version:** 1.3.3
 **Status:** Current
-**Last Updated:** 06-23-26
+**Last Updated:** 06-24-26
 **Applies To:** All YAML program files used by CRM Builder
 
 ---
@@ -20,6 +20,7 @@
 | 1.2.4 | 05-04-26 00:00 | Adds field-level `optionsDeferred: bool` flag on enum/multiEnum fields (Section 6.3). When `true`, the validator accepts an empty `options:` list — used for fields whose value list cannot be expressed at YAML-authoring time and is configured post-deploy via the EspoCRM admin UI per a `MANUAL-CONFIG.md` companion entry. Default `false` preserves the existing strict validator behavior. New Section 6.4.1 documents the deferred-options pattern with worked example and companion-artifact rule. Validator-only change; deploy engine behavior unchanged. |
 | 1.2.5 | 05-19-26 | Adds `foreign` field type (Section 6.2, new Section 6.8) for mirroring a scalar field from a linked entity onto the current entity's detail/list/edit views — the platform's "Foreign" field. Requires `link:` (a manyToOne or oneToOne link name declared in the top-level `relationships:` block) and `field:` (the name of the field on the linked entity to mirror). Validator rejects: missing `link:` or `field:`; `required: true` (foreign fields are read-only mirrors — set the constraint on the source field); `formula:` (mirroring and computing are mutually exclusive); `link:`/`field:` on any non-foreign type. New validation rules added to Section 10. Deploy ordering note: because the regular field step runs before the relationship step, a YAML that introduces a brand-new relationship and a foreign field referencing it in the same file needs a second Configure run after the link exists. Subsequent re-runs are idempotent. |
 | 1.3.1 | 05-27-26 | Adds `oneToOne` to the set of valid `linkType:` values in the top-level `relationships:` block (Section 8.1 property table; Section 8.2 link-types table with notes on EspoCRM's asymmetric internal metadata; Section 10 Relationship-level validation rules). EspoCRM's `EntityManager/action/createLink` API has always accepted `oneToOne`; the validator just rejected it, so requirements captured through the methodology that called for a true 1:1 link had to fall back to `manyToOne` plus an operator-discipline uniqueness rule (the original CBM trigger was `MN-Partner-TEST.yaml` / `MN-Sponsor-TEST.yaml`, 2026-05-19). PI-018. |
+| 1.3.3 | 06-24-26 | Documents the link-name authoring convention in Section 8.2: `link`/`linkForeign` use natural names with no platform prefix (e.g. `childAccounts`, not `cChildAccounts`) — EspoCRM applies its `c`-prefix to a custom link only on a *native* entity, and pre-prefixing a native-side link name doubles it on deploy (`cChildAccounts` → `cCChildAccounts`). The audit reverse-maps native link names to their natural form so the round trip is clean (PI-309 / REQ-344, the link sibling of the field-name fix PI-307). Documentation-only; no schema or validator change. |
 | 1.3.2 | 06-23-26 | Adds collection-level entity settings to the `settings:` block (Section 5.4): `orderBy` (default sort field), `order` (`asc`/`desc`), `textFilterFields` (quick-search field list), `fullTextSearch` (bool), `fullTextSearchMinLength` (int). All five live in EspoCRM's `entityDefs.<Entity>.collection`, are captured by the audit into a `settings:` block, and re-deployed via the `EntityManager` update action (`sortBy`/`sortDirection`/`textFilterFields`/`fullTextSearch`/`fullTextSearchMinLength`) — closing an audit→deploy round-trip gap where an entity's default sort, text filters, and full-text search did not transfer source→target. Validation rules added to Section 10/5.4. PI-300 / REQ-340. |
 | 1.3 | 05-22-26 14:30 | Adds Category 6 Parts A–E (Role-Based Access Control) per `yaml-schema-gap-analysis-MR-pilot.md` Section 6, as amended 05-20-26 21:18 (Option C reordering — scope-level access lands here, field-level access defers). New top-level keys `roles:` and `teams:` extend the program-file shape — a file may now contain any combination of `entities:`, `relationships:`, `roles:`, and `teams:` (Section 3.1). Operational convention is a dedicated `programs/security.yaml` file, but the schema does not enforce a file-type distinction; the loader queues any file declaring `roles:` or `teams:` ahead of files referencing them (Section 12.6). New Section 12 ties the five Parts together: 12.1 Roles, 12.2 Teams, 12.3 Scope-Level Entity Access (per-role `scope_access:` block with whitelist semantics — entities not listed are denied), 12.4 System Permissions (per-role `system_permissions:` block for non-entity controls), 12.5 Role-Aware Visibility (12.5.1 `role:` leaf clause in Section 11 condition expressions, valid only in `visibleWhen:` contexts; 12.5.2 `forRoles:` on layout declarations). Section 3.1 lists the new top-level keys. Section 7.2 adds `forRoles:` to the layout property table. Section 11.2 extends the leaf-clause syntax to permit `role:` as an alternative discriminator to `field:`, with Section 11.5 adding rejection rules for `role:` in non-`visibleWhen:` contexts. Section 10 gains a new Roles/Teams/Layout-`forRoles:` validation block. Field-level permissions and permission presets (gap-analysis Section 6, "Deferred to v1.3") remain out of scope and will land in a future schema bump; "v1.3" in the gap analysis refers to feature-scope ordering, not the doc revision in which they ship. Note: "v1.2" in the gap analysis and the kickoff prompts is similarly feature-scope language — by the time Parts A–E reach the schema spec, the doc had advanced through v1.2.1–v1.2.5 patches, so this addition is the next minor bump (v1.2.5 → v1.3). |
 
@@ -1872,6 +1873,21 @@ relationships:
 Entity names in relationship definitions use natural names without any
 platform-specific prefix. The tool applies prefix transformations at
 deployment time.
+
+**Link names use natural names too — never pre-prefix them.** Like entity
+and field names, the `link` and `linkForeign` values are authored as
+natural names with no platform prefix (e.g. `childAccounts`, not
+`cChildAccounts`). EspoCRM auto-applies its `c`-prefix to a custom link
+**only when that link's entity is native** (Account, Contact, …); on a
+*custom* entity the link keeps its natural name. The audit→deploy round
+trip handles this automatically: the audit emits the natural name and the
+deploy lets EspoCRM apply the single prefix. Pre-prefixing a native-side
+link name re-prefixes on deploy and produces a doubled name —
+`cChildAccounts` becomes `cCChildAccounts`. The audit reverse-maps native
+link names to their natural form so this round-trips cleanly (PI-309 /
+REQ-344); before that fix a re-audited native link could be emitted
+pre-prefixed and double on the next deploy. (The same native-only rule
+governs field names — see Section 6.2.)
 
 **`oneToOne` notes.** EspoCRM models a 1:1 link asymmetrically in its
 internal metadata — the side that owns the foreign-key column reads as
