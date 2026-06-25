@@ -1002,7 +1002,9 @@ def test_run_audit_no_filtered_tab_discovery_when_disabled(tmp_path: Path):
 
     manager.run_audit(tmp_path)
 
-    client.get_client_defs.assert_not_called()
+    # clientDefs is now also read by entity-settings extraction (PI-312 icon/
+    # color/kanban capture), so it is no longer a filtered-tab signal; the
+    # ReportFilter calls remain the authoritative no-filtered-tab-discovery check.
     client.list_report_filters.assert_not_called()
     yaml_path = tmp_path / "Engagement.yaml"
     if yaml_path.exists():

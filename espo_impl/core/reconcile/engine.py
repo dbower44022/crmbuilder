@@ -17,19 +17,21 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from espo_impl.core.reconcile.diff_engine import (
+    diff_entity_options,
     diff_fields,
     diff_layouts,
     diff_relationships,
 )
+from espo_impl.core.reconcile.layout_reverse import reverse_layout_payload
 from espo_impl.core.reconcile.live_state import (
     LiveStateCapture,
     build_label_resolver,
     map_entity_specs,
 )
-from espo_impl.core.reconcile.layout_reverse import reverse_layout_payload
 from espo_impl.core.reconcile.models import ConfigType, DiffCategory, Difference
 from espo_impl.core.reconcile.provenance import (
     FieldCollision,
+    build_entity_option_desired,
     build_field_provenance,
     build_layout_desired,
     build_relationship_provenance,
@@ -77,9 +79,12 @@ def detect_drift(
     field_prov, field_collisions = build_field_provenance(program_files)
     rel_prov, rel_collisions = build_relationship_provenance(program_files)
     layout_desired, layout_files = build_layout_desired(program_files)
+    option_desired = build_entity_option_desired(program_files)
     roles, role_files, teams, team_files = build_security_provenance(program_files)
 
-    entity_names = set(field_prov) | set(rel_prov) | set(layout_desired)
+    entity_names = (
+        set(field_prov) | set(rel_prov) | set(layout_desired) | set(option_desired)
+    )
     if entities is not None:
         entity_names &= set(entities)
 
@@ -105,6 +110,7 @@ def detect_drift(
     field_prov = {e: v for e, v in field_prov.items() if e in mapped}
     rel_prov = {e: v for e, v in rel_prov.items() if e in mapped}
     layout_desired = {e: v for e, v in layout_desired.items() if e in mapped}
+    option_desired = {e: v for e, v in option_desired.items() if e in mapped}
 
     cap = LiveStateCapture(
         client,
@@ -115,8 +121,9 @@ def detect_drift(
     live_fields, w_fields = cap.capture_fields(specs)
     live_rels, w_rels = cap.capture_relationships(specs)
     live_layouts, w_layouts = cap.capture_layouts(specs)
+    live_options, w_options = cap.capture_entity_options(specs)
     roles_live, teams_live, w_security = cap.capture_roles_teams()
-    report.warnings += w_fields + w_rels + w_layouts + w_security
+    report.warnings += w_fields + w_rels + w_layouts + w_options + w_security
 
     # --- diff each type ---
     report.differences += diff_fields(field_prov, live_fields)
@@ -128,6 +135,7 @@ def detect_drift(
     )
     _attach_layout_write_bodies(layout_diffs, cap, specs)
     report.differences += layout_diffs
+    report.differences += diff_entity_options(option_desired, live_options)
     role_diffs = diff_roles(roles, roles_live, source_files=role_files)
     team_diffs = diff_teams(teams, teams_live, source_files=team_files)
     _attach_security_insert_bodies(role_diffs, ConfigType.ROLE, report.warnings)

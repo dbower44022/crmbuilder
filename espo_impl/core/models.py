@@ -264,6 +264,12 @@ VALID_SETTINGS_KEYS: set[str] = {
     # configuration. All live in EspoCRM's entityDefs.<Entity>.collection.
     "orderBy", "order", "textFilterFields",
     "fullTextSearch", "fullTextSearchMinLength",
+    # Entity-level options reconciled both ways (PI-312 / REQ-346). icon/color/
+    # kanban live in clientDefs; optimisticConcurrencyControl and countDisabled
+    # in entityDefs; multipleAssignedUsers is the platform multiple-assignment
+    # toggle (assignedUsers field / collaborators link).
+    "iconClass", "color", "kanbanViewMode", "statusField",
+    "optimisticConcurrencyControl", "countDisabled", "multipleAssignedUsers",
 }
 
 # Valid values for settings.order (the default sort direction).
@@ -336,6 +342,17 @@ class EntitySettings:
     textFilterFields: list[str] | None = None
     fullTextSearch: bool | None = None
     fullTextSearchMinLength: int | None = None
+    # Entity-level options (PI-312 / REQ-346). iconClass/color/kanbanViewMode/
+    # statusField surface in clientDefs; optimisticConcurrencyControl and
+    # countDisabled in entityDefs; multipleAssignedUsers is the platform
+    # multiple-assignment toggle. All ``None`` => leave the platform default.
+    iconClass: str | None = None
+    color: str | None = None
+    kanbanViewMode: bool | None = None
+    statusField: str | None = None
+    optimisticConcurrencyControl: bool | None = None
+    countDisabled: bool | None = None
+    multipleAssignedUsers: bool | None = None
 
 
 @dataclass

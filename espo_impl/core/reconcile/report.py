@@ -22,7 +22,7 @@ _MAX_LOG_VALUE = 80
 def _item_name(diff) -> str:
     """A label for the item a difference concerns (field/link/layout/role/team)."""
     loc = diff.locator
-    for attr in ("field_name", "rel_name", "layout_type", "role", "team"):
+    for attr in ("field_name", "rel_name", "layout_type", "role", "team", "option"):
         val = getattr(loc, attr, None)
         if val:
             return val

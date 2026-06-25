@@ -36,6 +36,9 @@ class ConfigType(Enum):
     SAVED_VIEW = "saved_view"
     DUP_CHECK = "dup_check"
     WORKFLOW = "workflow"
+    #: An entity-level option (icon, color, multiple-assigned-users,
+    #: optimistic-concurrency, list-count, kanban) — PI-312 / REQ-346.
+    ENTITY_OPTION = "entity_option"
 
 
 @dataclass(frozen=True)

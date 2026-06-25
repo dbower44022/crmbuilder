@@ -213,3 +213,36 @@ def build_security_provenance(
                 team_files[team.name] = path
 
     return roles, role_files, teams, team_files
+
+
+def build_entity_option_desired(
+    program_files: Iterable[Path], *, loader: ConfigLoader | None = None
+) -> dict[str, tuple[dict[str, object], Path]]:
+    """Build the entity-option desired index (PI-312 / REQ-346).
+
+    Returns ``{entity: ({option: value}, source_file)}`` shaped for
+    :func:`...diff_engine.diff_entity_options`, reading each entity's typed
+    ``settings`` for the :data:`...diff_engine.ENTITY_OPTION_KEYS` subset. Only
+    keys the YAML actually sets (non-``None``) are included, so the comparator's
+    absent-vs-default normalization governs drift. First entity occurrence wins.
+    """
+    from espo_impl.core.reconcile.diff_engine import ENTITY_OPTION_KEYS
+
+    loader = loader or ConfigLoader()
+    desired: dict[str, tuple[dict[str, object], Path]] = {}
+
+    for raw_path in program_files:
+        path = Path(raw_path)
+        program = loader.load_program(path)
+        for entity in program.entities:
+            if entity.name in desired or entity.settings is None:
+                continue
+            opts = {
+                key: getattr(entity.settings, key)
+                for key in ENTITY_OPTION_KEYS
+                if getattr(entity.settings, key, None) is not None
+            }
+            if opts:
+                desired[entity.name] = (opts, path)
+
+    return desired

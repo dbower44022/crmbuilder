@@ -323,6 +323,62 @@ class LiveStateCapture:
         teams = {t.name: t for t in audit._discover_teams(report)}
         return roles, teams, report.warnings + report.errors
 
+    def capture_entity_options(
+        self, entities: Iterable[EntitySpec]
+    ) -> tuple[dict[str, dict[str, Any]], list[str]]:
+        """Capture entity-level options for ``entities`` (PI-312 / REQ-346).
+
+        Reads each entity's ``entityDefs`` (``get_entity_full_metadata``) and
+        ``clientDefs`` (``get_client_defs``) and projects them to the canonical
+        option dict ``diff_entity_options`` compares — keys
+        ``iconClass`` / ``color`` / ``kanbanViewMode`` / ``statusField`` (from
+        clientDefs), ``optimisticConcurrencyControl`` and ``countDisabled`` (from
+        entityDefs / its ``collection``), and the derived ``multipleAssignedUsers``
+        (true when the entity carries an ``assignedUsers`` field or a
+        ``collaborators`` link). Only keys present in the metadata are set; an
+        absent key is left out so absent-vs-default normalization can apply.
+
+        :returns: ``({yaml_entity: {option: value}}, warnings)``; an entity whose
+            entityDefs cannot be fetched is omitted with a warning (clientDefs
+            failure is non-fatal — those options are simply absent).
+        """
+        live: dict[str, dict[str, Any]] = {}
+        warnings: list[str] = []
+
+        for spec in entities:
+            e_status, edefs = self._client.get_entity_full_metadata(spec.espo_name)
+            if e_status != 200 or not isinstance(edefs, dict):
+                warnings.append(
+                    f"{spec.yaml_name}: failed to fetch entityDefs for entity "
+                    f"options (HTTP {e_status})"
+                )
+                continue
+
+            opts: dict[str, Any] = {}
+            if "optimisticConcurrencyControl" in edefs:
+                opts["optimisticConcurrencyControl"] = edefs[
+                    "optimisticConcurrencyControl"
+                ]
+            collection = edefs.get("collection")
+            if isinstance(collection, dict) and "countDisabled" in collection:
+                opts["countDisabled"] = collection["countDisabled"]
+
+            fields = edefs.get("fields") or {}
+            links = edefs.get("links") or {}
+            opts["multipleAssignedUsers"] = (
+                "assignedUsers" in fields or "collaborators" in links
+            )
+
+            c_status, cdefs = self._client.get_client_defs(spec.espo_name)
+            if c_status == 200 and isinstance(cdefs, dict):
+                for key in ("iconClass", "color", "kanbanViewMode", "statusField"):
+                    if key in cdefs:
+                        opts[key] = cdefs[key]
+
+            live[spec.yaml_name] = opts
+
+        return live, warnings
+
 
 def gather_server_fields(
     client, entity_names: Iterable[str]

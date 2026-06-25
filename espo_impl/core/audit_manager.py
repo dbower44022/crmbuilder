@@ -203,6 +203,16 @@ class EntityAuditResult:
     text_filter_fields: list[str] | None = None
     full_text_search: bool | None = None
     full_text_search_min_length: int | None = None
+    # Entity-level options captured for both-way reconcile (PI-312 / REQ-346):
+    # icon/color/kanban from clientDefs, optimistic-concurrency/count from
+    # entityDefs, and the derived multiple-assignment toggle.
+    icon_class: str | None = None
+    color: str | None = None
+    kanban_view_mode: bool | None = None
+    status_field: str | None = None
+    optimistic_concurrency_control: bool | None = None
+    count_disabled: bool | None = None
+    multiple_assigned_users: bool | None = None
     fields: list[FieldAuditResult] = field(default_factory=list)
     layouts: list[LayoutAuditResult] = field(default_factory=list)
     filtered_tabs: list["FilteredTabAuditResult"] = field(default_factory=list)
@@ -850,20 +860,48 @@ class AuditManager:
             return
 
         collection = meta.get("collection")
-        if not isinstance(collection, dict):
-            return
+        if isinstance(collection, dict):
+            entity.order_by = collection.get("orderBy")
+            entity.order = collection.get("order")
+            tff = collection.get("textFilterFields")
+            if isinstance(tff, list):
+                entity.text_filter_fields = tff
+            fts = collection.get("fullTextSearch")
+            if isinstance(fts, bool):
+                entity.full_text_search = fts
+            ftsml = collection.get("fullTextSearchMinLength")
+            if isinstance(ftsml, int) and not isinstance(ftsml, bool):
+                entity.full_text_search_min_length = ftsml
+            cd = collection.get("countDisabled")
+            if isinstance(cd, bool):
+                entity.count_disabled = cd
 
-        entity.order_by = collection.get("orderBy")
-        entity.order = collection.get("order")
-        tff = collection.get("textFilterFields")
-        if isinstance(tff, list):
-            entity.text_filter_fields = tff
-        fts = collection.get("fullTextSearch")
-        if isinstance(fts, bool):
-            entity.full_text_search = fts
-        ftsml = collection.get("fullTextSearchMinLength")
-        if isinstance(ftsml, int) and not isinstance(ftsml, bool):
-            entity.full_text_search_min_length = ftsml
+        # Entity-level options (PI-312 / REQ-346). entityDefs top-level +
+        # the derived multiple-assignment toggle, plus clientDefs for the
+        # presentation options (icon/color/kanban).
+        occ = meta.get("optimisticConcurrencyControl")
+        if isinstance(occ, bool):
+            entity.optimistic_concurrency_control = occ
+        fields_meta = meta.get("fields") or {}
+        links_meta = meta.get("links") or {}
+        entity.multiple_assigned_users = (
+            "assignedUsers" in fields_meta or "collaborators" in links_meta
+        )
+
+        c_status, cdefs = self._client.get_client_defs(entity.espo_name)
+        if c_status == 200 and isinstance(cdefs, dict):
+            icon = cdefs.get("iconClass")
+            if isinstance(icon, str):
+                entity.icon_class = icon
+            color = cdefs.get("color")
+            if isinstance(color, str):
+                entity.color = color
+            kanban = cdefs.get("kanbanViewMode")
+            if isinstance(kanban, bool):
+                entity.kanban_view_mode = kanban
+            sfield = cdefs.get("statusField")
+            if isinstance(sfield, str):
+                entity.status_field = sfield
 
     # ------------------------------------------------------------------
     # Field extraction
@@ -2371,6 +2409,27 @@ class AuditManager:
         if entity.full_text_search_min_length is not None:
             settings_block["fullTextSearchMinLength"] = (
                 entity.full_text_search_min_length
+            )
+        # Entity-level options (PI-312 / REQ-346). Only non-default values are
+        # emitted so an unchanged re-audit/deploy/reconcile stays a no-op (the
+        # reconcile comparator normalizes absent == platform default).
+        if entity.icon_class is not None:
+            settings_block["iconClass"] = entity.icon_class
+        if entity.color is not None:
+            settings_block["color"] = entity.color
+        if entity.status_field is not None:
+            settings_block["statusField"] = entity.status_field
+        if entity.kanban_view_mode:
+            settings_block["kanbanViewMode"] = entity.kanban_view_mode
+        if entity.optimistic_concurrency_control:
+            settings_block["optimisticConcurrencyControl"] = (
+                entity.optimistic_concurrency_control
+            )
+        if entity.count_disabled:
+            settings_block["countDisabled"] = entity.count_disabled
+        if entity.multiple_assigned_users:
+            settings_block["multipleAssignedUsers"] = (
+                entity.multiple_assigned_users
             )
         if settings_block:
             entity_block["settings"] = settings_block
