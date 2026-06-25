@@ -76,6 +76,14 @@ class _FakeClient:
             return (200, [{"name": "name", "width": 40}])   # width drift 30->40
         return (200, False)
 
+    def get_entity_full_metadata(self, espo_name):
+        # Live carries multiple-assigned-users (assignedUsers field); the YAML
+        # declares no entity options -> a CRM_ONLY (CRM-ahead) entity-option diff.
+        return (200, {"fields": {"assignedUsers": {"type": "linkMultiple"}}})
+
+    def get_client_defs(self, espo_name):
+        return (200, {})
+
     def get_roles(self):
         return (200, {"list": [{"name": "Mentor", "description": "Changed mentor desc"}]})
 
@@ -118,6 +126,12 @@ def test_detect_drift_composes_all_types(tmp_path):
 
     # The matching relationship produces no drift (the path still ran).
     assert ConfigType.RELATIONSHIP not in by_type
+
+    # Entity-option drift composes too: live has multiple-assigned-users, the
+    # YAML declares none -> a single CRM_ONLY (CRM-ahead) difference.
+    option = by_type[ConfigType.ENTITY_OPTION]
+    assert [d.property for d in option] == ["multipleAssignedUsers"]
+    assert option[0].category is DiffCategory.CRM_ONLY
 
 
 def test_detect_drift_reports_unmapped_entity(tmp_path):

@@ -40,6 +40,10 @@ _REPORT_ONLY_LAYOUT = (
     "report-only: layout write-back needs payload->YAML reverse-mapping "
     "(not yet wired); detected but not applied"
 )
+_REPORT_ONLY_ENTITY_OPTION = (
+    "report-only: entity-option apply (write-back / deploy) is a follow-on "
+    "slice; detected and surfaced but not applied"
+)
 
 
 @dataclass
@@ -116,6 +120,9 @@ def _apply_one(doc: YamlDocument, diff: Difference) -> str | None:
             apply_team_change(doc, diff.locator, diff.crm_value)
             return None
         return _REPORT_ONLY
+
+    if ct is ConfigType.ENTITY_OPTION:
+        return _REPORT_ONLY_ENTITY_OPTION  # PI-312: detection slice, apply deferred
 
     return f"unsupported config_type {ct.value}"
 

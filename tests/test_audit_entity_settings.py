@@ -70,7 +70,8 @@ _COLLECTION = {
 
 def test_extract_entity_settings_captures_collection():
     client = _client(
-        get_entity_full_metadata=(200, {"collection": dict(_COLLECTION)})
+        get_entity_full_metadata=(200, {"collection": dict(_COLLECTION)}),
+        get_client_defs=(404, None),
     )
     mgr = _manager(client)
     entity = _entity()
@@ -85,13 +86,49 @@ def test_extract_entity_settings_captures_collection():
     client.get_entity_full_metadata.assert_called_once_with("CMentorProfile")
 
 
-def test_extract_entity_settings_no_collection_is_noop():
-    client = _client(get_entity_full_metadata=(200, {"stream": True}))
+def test_extract_entity_settings_captures_entity_options():
+    # PI-312 / REQ-346: icon/color/kanban from clientDefs, optimistic-concurrency
+    # and count from entityDefs, multiple-assignment derived from assignedUsers.
+    client = _client(
+        get_entity_full_metadata=(200, {
+            "optimisticConcurrencyControl": True,
+            "collection": {"countDisabled": True},
+            "fields": {"assignedUsers": {"type": "linkMultiple"}},
+        }),
+        get_client_defs=(200, {
+            "iconClass": "fas fa-anchor", "color": "#f01010",
+            "kanbanViewMode": True, "statusField": "status",
+        }),
+    )
     mgr = _manager(client)
     entity = _entity()
 
     mgr._extract_entity_settings(entity, _report())
 
+    assert entity.optimistic_concurrency_control is True
+    assert entity.count_disabled is True
+    assert entity.multiple_assigned_users is True
+    assert entity.icon_class == "fas fa-anchor"
+    assert entity.color == "#f01010"
+    assert entity.kanban_view_mode is True
+    assert entity.status_field == "status"
+
+
+def test_extract_entity_settings_no_collection_is_noop():
+    client = _client(
+        get_entity_full_metadata=(200, {"stream": True}),
+        get_client_defs=(404, None),
+    )
+    mgr = _manager(client)
+    entity = _entity()
+
+    mgr._extract_entity_settings(entity, _report())
+
+    # The derived multiple-assignment toggle resolves to False (no assignedUsers
+    # field / collaborators link present); collection settings stay unset.
+    assert entity.multiple_assigned_users is False
+    assert entity.optimistic_concurrency_control is None
+    assert entity.icon_class is None
     assert entity.order_by is None
     assert entity.text_filter_fields is None
     assert entity.full_text_search is None

@@ -23,11 +23,90 @@ from espo_impl.core.comparator import FOREIGN_PROPERTY_MAP, FieldComparator
 from espo_impl.core.layout_manager import LayoutManager
 from espo_impl.core.models import FieldDefinition, RelationshipDefinition
 from espo_impl.core.reconcile.locators import (
+    EntityOptionLocator,
     FieldLocator,
     LayoutLocator,
     RelationshipLocator,
 )
 from espo_impl.core.reconcile.models import ConfigType, DiffCategory, Difference
+
+# Entity-level options reconciled both ways (PI-312 / REQ-346). Each maps to the
+# entity's ``settings:`` block key and to a live-metadata location captured by
+# ``LiveStateCapture.capture_entity_options``. ``ENTITY_OPTION_DEFAULTS`` is the
+# EspoCRM platform default each option falls back to when the metadata key is
+# absent — used to suppress absent-vs-explicit-default false drift (the dominant
+# noise source in the CBMTEST-vs-production scan: ``<absent>`` vs explicit
+# ``false``). A side "declares" an option only when it carries a non-None value
+# that differs from the default; otherwise it is treated as not-set.
+ENTITY_OPTION_DEFAULTS: dict[str, Any] = {
+    "iconClass": None,
+    "color": None,
+    "kanbanViewMode": False,
+    "statusField": None,
+    "optimisticConcurrencyControl": False,
+    "countDisabled": False,
+    "multipleAssignedUsers": False,
+}
+ENTITY_OPTION_KEYS: tuple[str, ...] = tuple(ENTITY_OPTION_DEFAULTS)
+
+
+def diff_entity_options(
+    desired: dict[str, tuple[dict[str, Any], Path | None]],
+    live: dict[str, dict[str, Any]],
+) -> list[Difference]:
+    """Compute entity-level option drift across all entities, both directions.
+
+    Each side is a per-entity option dict keyed by :data:`ENTITY_OPTION_KEYS`:
+
+    * ``desired`` — ``{entity: ({option: value}, source_file)}`` built from the
+      YAML ``settings:`` blocks (with provenance) by the caller.
+    * ``live`` — ``{entity: {option: value}}`` captured from the instance's
+      entityDefs/clientDefs metadata.
+
+    A value of ``None`` or one equal to the platform default counts as not-set,
+    so absent-vs-default never produces drift. Emits CHANGED (both sides declare
+    the option with differing values), CRM_ONLY (only the live side declares it —
+    "CRM is ahead"), and YAML_ONLY (only the design declares it — "design is
+    ahead"). Ordering is stable: entities, then options in canonical order.
+    """
+    diffs: list[Difference] = []
+
+    for entity in sorted(set(desired) | set(live)):
+        d_opts, source_file = desired.get(entity, ({}, None))
+        l_opts = live.get(entity, {})
+
+        for opt in ENTITY_OPTION_KEYS:
+            default = ENTITY_OPTION_DEFAULTS[opt]
+            dv = d_opts.get(opt)
+            lv = l_opts.get(opt)
+            d_eff = default if dv is None else dv
+            l_eff = default if lv is None else lv
+            if d_eff == l_eff:
+                continue  # equal under platform-default normalization: no drift
+
+            d_set = dv is not None and dv != default
+            l_set = lv is not None and lv != default
+            if d_set and l_set:
+                category = DiffCategory.CHANGED
+            elif l_set:
+                category = DiffCategory.CRM_ONLY
+            else:
+                category = DiffCategory.YAML_ONLY
+
+            diffs.append(
+                Difference(
+                    config_type=ConfigType.ENTITY_OPTION,
+                    category=category,
+                    entity=entity,
+                    locator=EntityOptionLocator(entity, opt),
+                    property=opt,
+                    yaml_value=dv,
+                    crm_value=lv,
+                    source_file=source_file,
+                )
+            )
+
+    return diffs
 
 # Relationship properties compared between the YAML RelationshipDefinition and the
 # live RelationshipAuditResult-shaped dict. These are exactly the attributes the

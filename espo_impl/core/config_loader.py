@@ -1297,6 +1297,14 @@ class ConfigLoader:
             textFilterFields=raw.get("textFilterFields"),
             fullTextSearch=raw.get("fullTextSearch"),
             fullTextSearchMinLength=raw.get("fullTextSearchMinLength"),
+            # Entity-level options (PI-312 / REQ-346).
+            iconClass=raw.get("iconClass"),
+            color=raw.get("color"),
+            kanbanViewMode=raw.get("kanbanViewMode"),
+            statusField=raw.get("statusField"),
+            optimisticConcurrencyControl=raw.get("optimisticConcurrencyControl"),
+            countDisabled=raw.get("countDisabled"),
+            multipleAssignedUsers=raw.get("multipleAssignedUsers"),
         )
 
     @staticmethod
@@ -2940,6 +2948,26 @@ class ConfigLoader:
                 f"{entity.name}.settings.fullTextSearchMinLength: must be an "
                 f"integer"
             )
+
+        # Entity-level options (PI-312 / REQ-346). Three string-valued and four
+        # boolean-valued options; each is optional (None leaves the default).
+        for str_key in ("iconClass", "color", "statusField"):
+            val = entity.settings_raw.get(str_key)
+            if val is not None and not isinstance(val, str):
+                errors.append(
+                    f"{entity.name}.settings.{str_key}: must be a string"
+                )
+        for bool_key in (
+            "kanbanViewMode",
+            "optimisticConcurrencyControl",
+            "countDisabled",
+            "multipleAssignedUsers",
+        ):
+            val = entity.settings_raw.get(bool_key)
+            if val is not None and not isinstance(val, bool):
+                errors.append(
+                    f"{entity.name}.settings.{bool_key}: must be a boolean"
+                )
 
         # Label requirement for create actions is handled by the existing
         # entity-level check in _validate_entity, which sees labels from

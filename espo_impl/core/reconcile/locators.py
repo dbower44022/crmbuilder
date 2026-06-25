@@ -57,6 +57,22 @@ class LayoutLocator:
 
 
 @dataclass(frozen=True)
+class EntityOptionLocator:
+    """One entity-level option on an entity (PI-312 / REQ-346).
+
+    Entity options are single scalar values living in the entity's ``settings:``
+    block (icon, color, multiple-assigned-users, optimistic-concurrency,
+    list-count, kanban), so a difference is addressed by entity + option key.
+
+    :param entity: entity name as it appears under ``entities:``.
+    :param option: the canonical option key (e.g. ``"iconClass"``).
+    """
+
+    entity: str
+    option: str
+
+
+@dataclass(frozen=True)
 class RoleLocator:
     """A role, or one property within it, in the top-level ``roles:`` list.
 
