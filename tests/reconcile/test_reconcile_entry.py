@@ -115,3 +115,43 @@ def test_diff_label_and_helpers_are_compact():
     # addition (no source file yet) does not.
     assert "[MN-Contact.yaml]" in _diff_label(_changed())
     assert "[" not in _diff_label(_crm_only())
+
+
+def test_entity_option_labels_read_cleanly():
+    from automation.ui.deployment.reconcile_entry import (
+        _config_type_label,
+        _diff_label,
+        _locator_name,
+    )
+    from espo_impl.core.reconcile.locators import EntityOptionLocator
+
+    changed = Difference(
+        config_type=ConfigType.ENTITY_OPTION,
+        category=DiffCategory.CHANGED,
+        entity="Account",
+        locator=EntityOptionLocator("Account", "iconClass"),
+        property="iconClass",
+        yaml_value="fas fa-old",
+        crm_value="fas fa-new",
+        source_file=Path("CR-Account.yaml"),
+    )
+    crm_only = Difference(
+        config_type=ConfigType.ENTITY_OPTION,
+        category=DiffCategory.CRM_ONLY,
+        entity="Account",
+        locator=EntityOptionLocator("Account", "color"),
+        property="color",
+        crm_value="#f01010",
+        source_file=Path("CR-Account.yaml"),
+    )
+
+    assert _locator_name(changed) == "iconClass"
+    # Item and property are the same key -> no "iconClass.iconClass" duplication.
+    label = _diff_label(changed)
+    assert label.startswith("iconClass:")
+    assert "iconClass.iconClass" not in label
+    assert "fas fa-old" in label and "fas fa-new" in label
+    assert _diff_label(crm_only).startswith("color")
+    # Friendly group header, not the raw enum value.
+    assert _config_type_label(ConfigType.ENTITY_OPTION.value) == "Entity options"
+    assert _config_type_label("entity_option") != "entity_option"
