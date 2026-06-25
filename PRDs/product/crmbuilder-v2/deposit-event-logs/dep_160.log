@@ -1,0 +1,15 @@
+DEP-161 — Apply of COP-236 (PI-051 field-permission audit-IN + drift), 2026-06-24
+Engagement: CRMBUILDER | Outcome: success | Runner: claude_code (real-time API, DEC-383)
+PI-051 / REQ-129 — audit-IN + drift for field-level permissions, completing the REQ-129
+round-trip (deploy half already shipped: DEC-703 engine, DEC-705 adapter rendering). Branch
+pi-051-audit-fieldperms, build commit 43533055, merged 5c7d3bf9. ADDRESSES (not resolves) PI-051.
+Records: conversation CNV-204, decision DEC-707, commit CM-0174.
+Built: reconcile_field_permissions reads each live Role's fieldData matrix into
+field_permission_rule records — new cells captured as candidate (pending); a confirmed rule
+matching live -> deployment_status=deployed, diverging or absent -> drift (permission_level intent
+preserved); non-confirmed rules untouched; orphan cells (no design entity/field) and empty/inherit
+cells skipped+logged. Entity/field resolution mirrors reconcile_fields; cell->level is the inverse
+of security_rule_manager._LEVEL_TO_CELL. Wired as audit area "field-permissions" after roles. No V2
+schema/migration/live-DB change (field_permission_rule table exists from the PI-051 foundation).
+9 reconcile unit tests + updated audit-areas-list assertion; 160 related tests pass, ruff clean.
+records_summary: 1 conversation, 1 decision, 1 commit.

@@ -1,0 +1,4 @@
+{"label":"PI-051 field-permission audit-IN + drift close-out (REQ-129)","note":"Real-time API (DEC-383). Model A trail dep_160.log / DEP-161. Addresses PI-051.",
+"engagement":"CRMBUILDER","session":"SES-252","conversation":"CNV-204","release":"REL-019","project":"PRJ-017",
+"addresses_planning_items":["PI-051"],"implements_requirements":["REQ-129"],"decisions":["DEC-707"],"commits":["43533055 (merged 5c7d3bf9)"],
+"summary":"reconcile_field_permissions reads a live Role's fieldData into field_permission_rule records: candidate-on-new, deployed/drift on confirmed (intent preserved), orphan/empty cells skip+log. New audit area field-permissions after roles. Completes REQ-129 round-trip (deploy half shipped). No schema/migration/live-DB change."}
