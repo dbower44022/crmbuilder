@@ -77,10 +77,28 @@ def _short(value: object) -> str:
     return text if len(text) <= _MAX_VALUE_LEN else text[: _MAX_VALUE_LEN - 1] + "…"
 
 
+# Friendly group-header labels for each diff config_type (keyed by the enum
+# value used to group the tree); falls back to the raw value for any unmapped
+# type so a new config_type never renders blank.
+_CONFIG_TYPE_LABELS: dict[str, str] = {
+    ConfigType.FIELD.value: "Fields",
+    ConfigType.RELATIONSHIP.value: "Relationships",
+    ConfigType.LAYOUT.value: "Layouts",
+    ConfigType.ROLE.value: "Roles",
+    ConfigType.TEAM.value: "Teams",
+    ConfigType.ENTITY_OPTION.value: "Entity options",
+}
+
+
+def _config_type_label(ctype_value: str) -> str:
+    """Human-readable group header for a config_type enum value."""
+    return _CONFIG_TYPE_LABELS.get(ctype_value, ctype_value)
+
+
 def _locator_name(diff) -> str:
     """A human label for the item a difference concerns."""
     loc = diff.locator
-    for attr in ("field_name", "rel_name", "layout_type", "role", "team"):
+    for attr in ("field_name", "rel_name", "layout_type", "role", "team", "option"):
         val = getattr(loc, attr, None)
         if val:
             return val
@@ -98,8 +116,11 @@ def _diff_label(diff) -> str:
     name = _locator_name(diff)
     suffix = _source_suffix(diff)
     if diff.category is DiffCategory.CHANGED:
+        # For an entity option the item and the property are the same key, so
+        # render "iconClass: old → new" rather than "iconClass.iconClass: ...".
+        head = name if (diff.property in (None, name)) else f"{name}.{diff.property}"
         return (
-            f"{name}.{diff.property}:  {_short(diff.yaml_value)}  →  "
+            f"{head}:  {_short(diff.yaml_value)}  →  "
             f"{_short(diff.crm_value)}{suffix}"
         )
     if diff.category is DiffCategory.CRM_ONLY:
@@ -311,7 +332,7 @@ class ReconcileEntry(QWidget):
             for idx, diff in by_entity[entity]:
                 by_type.setdefault(diff.config_type.value, []).append((idx, diff))
             for ctype in sorted(by_type):
-                type_item = QTreeWidgetItem([ctype])
+                type_item = QTreeWidgetItem([_config_type_label(ctype)])
                 type_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
                 ent_item.addChild(type_item)
                 for idx, diff in by_type[ctype]:
