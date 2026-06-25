@@ -61,6 +61,10 @@ class _FakeClient:
             return (200, {"dueses": {"type": "hasMany", "entity": "CDues"}})
         return (200, {"engagement": {"type": "belongsTo", "entity": "CEngagement"}})
 
+    def get_collection(self, entity):
+        # No collection-search settings under test here (REQ-340 / PI-300).
+        return (200, {})
+
     def get_layout(self, entity, layout_type):
         # CEngagement detail layout only; other types/entities have none.
         if entity == "CEngagement" and layout_type == "detail":

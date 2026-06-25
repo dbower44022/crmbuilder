@@ -627,6 +627,23 @@ def _build_entity_program(
     }
     if entity_row.get("entity_track_activity"):
         settings["stream"] = True
+    # REQ-340 / PI-300 — neutral collection settings emit to the v1.3.2
+    # EspoCRM ``settings:`` keys (orderBy/order/textFilterFields/
+    # fullTextSearch/fullTextSearchMinLength), applied by the V1 engine via
+    # ``EntityManager/action/updateEntity``. The default-sort intent was
+    # previously deferred (no schema key existed); v1.3.2 §5.4 added the keys.
+    sort_field = entity_row.get("entity_default_sort_field")
+    if sort_field:
+        settings["orderBy"] = sort_field
+        settings["order"] = entity_row.get("entity_default_sort_direction") or "asc"
+    text_filter_fields = entity_row.get("entity_text_filter_fields")
+    if text_filter_fields:
+        settings["textFilterFields"] = text_filter_fields
+    if entity_row.get("entity_full_text_search"):
+        settings["fullTextSearch"] = True
+    fts_min = entity_row.get("entity_full_text_search_min_length")
+    if fts_min is not None:
+        settings["fullTextSearchMinLength"] = fts_min
 
     entity_block: dict = {
         "action": "create",
@@ -651,24 +668,6 @@ def _build_entity_program(
                 ref_map[fname] = internal_name
     if field_blocks:
         entity_block["fields"] = [b.payload for b in field_blocks]
-
-    # Entity default-sort intent has no EspoCRM entity-level YAML key in
-    # the v1.x schema (settings: carries no sort) → deferred.
-    if entity_row.get("entity_default_sort_field"):
-        direction = entity_row.get("entity_default_sort_direction") or "asc"
-        deferrals.append(
-            Deferral(
-                kind="entity_default_sort",
-                identifier=eid,
-                name=ename,
-                parent=None,
-                detail=(
-                    f"default sort {entity_row['entity_default_sort_field']} "
-                    f"{direction} — no entity-level sort key in the EspoCRM "
-                    "YAML schema; configure via the admin UI"
-                ),
-            )
-        )
 
     program = {
         "version": "1.0.0",

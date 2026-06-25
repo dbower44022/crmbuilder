@@ -832,8 +832,10 @@ class StorageClient:
 
         PRJ-025 PI-182: the optional §6 intrinsics
         (``entity_default_sort_field``, ``entity_default_sort_direction``,
-        ``entity_track_activity``) are forwarded verbatim — ``body`` is
-        passed straight through.
+        ``entity_track_activity``) and the REQ-340 / PI-300 collection
+        settings (``entity_text_filter_fields``, ``entity_full_text_search``,
+        ``entity_full_text_search_min_length``) are forwarded verbatim —
+        ``body`` is passed straight through.
         """
         result = self._request("POST", "/entities", json_body=body)
         if not isinstance(result, dict):

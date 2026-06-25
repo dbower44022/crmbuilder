@@ -88,6 +88,9 @@ _PATCHABLE_FIELDS = frozenset(
         "default_sort_direction",
         "track_activity",
         "tracks_activities",
+        "text_filter_fields",
+        "full_text_search",
+        "full_text_search_min_length",
     }
 )
 
@@ -197,6 +200,50 @@ def _coerce_sort_field(value: object) -> str | None:
         )
     value = value.strip()
     return value or None
+
+
+def _coerce_text_filter_fields(value: object) -> list[str] | None:
+    """Normalise ``entity_text_filter_fields`` (REQ-340 / PI-300).
+
+    ``None`` / empty list clears; otherwise must be a list of non-empty
+    strings (the quick-search field names). Members are stripped; an
+    all-empty list collapses to ``None``.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "entity_text_filter_fields",
+                    "invalid_value",
+                    "must be a list of strings or null",
+                )
+            ]
+        )
+    cleaned = [v.strip() for v in value if v.strip()]
+    return cleaned or None
+
+
+def _coerce_fts_min_length(value: object) -> int | None:
+    """Validate ``entity_full_text_search_min_length`` (REQ-340 / PI-300).
+
+    ``None`` clears; otherwise must be a non-negative integer (``bool`` is
+    rejected — it is an ``int`` subclass but never a valid length).
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "entity_full_text_search_min_length",
+                    "invalid_value",
+                    "must be a non-negative integer or null",
+                )
+            ]
+        )
+    return value
 
 
 def _check_transition(current: str, requested: str) -> None:
@@ -316,6 +363,9 @@ def _new_entity_row(
     default_sort_direction: str | None = None,
     track_activity: bool = False,
     tracks_activities: bool = False,
+    text_filter_fields: list[str] | None = None,
+    full_text_search: bool = False,
+    full_text_search_min_length: int | None = None,
 ) -> Entity:
     return Entity(
         entity_identifier=identifier,
@@ -328,6 +378,9 @@ def _new_entity_row(
         entity_default_sort_direction=default_sort_direction,
         entity_track_activity=track_activity,
         entity_tracks_activities=tracks_activities,
+        entity_text_filter_fields=text_filter_fields,
+        entity_full_text_search=full_text_search,
+        entity_full_text_search_min_length=full_text_search_min_length,
     )
 
 
@@ -342,6 +395,9 @@ def _insert_with_autoassign(
     default_sort_direction: str | None = None,
     track_activity: bool = False,
     tracks_activities: bool = False,
+    text_filter_fields: list[str] | None = None,
+    full_text_search: bool = False,
+    full_text_search_min_length: int | None = None,
 ) -> Entity:
     """Insert an entity with a server-assigned identifier, collision-safe.
 
@@ -367,6 +423,9 @@ def _insert_with_autoassign(
             default_sort_direction,
             track_activity,
             tracks_activities,
+            text_filter_fields,
+            full_text_search,
+            full_text_search_min_length,
         )
         session.add(row)
         try:
@@ -400,6 +459,9 @@ def create_entity(
     default_sort_direction: str | None = None,
     track_activity: bool | None = None,
     tracks_activities: bool | None = None,
+    text_filter_fields: list[str] | None = None,
+    full_text_search: bool | None = None,
+    full_text_search_min_length: int | None = None,
 ) -> dict:
     """Create an entity.
 
@@ -426,13 +488,17 @@ def create_entity(
     default_sort_direction = _coerce_sort_direction(default_sort_direction)
     track_activity = bool(track_activity)
     tracks_activities = bool(tracks_activities)
+    text_filter_fields = _coerce_text_filter_fields(text_filter_fields)
+    full_text_search = bool(full_text_search)
+    full_text_search_min_length = _coerce_fts_min_length(full_text_search_min_length)
     _reject_duplicate_name(session, name)
 
     if identifier is None:
         row = _insert_with_autoassign(
             session, name, description, notes, status, kind,
             default_sort_field, default_sort_direction, track_activity,
-            tracks_activities,
+            tracks_activities, text_filter_fields, full_text_search,
+            full_text_search_min_length,
         )
     else:
         _require_identifier_format(identifier)
@@ -441,7 +507,8 @@ def create_entity(
         row = _new_entity_row(
             identifier, name, description, notes, status, kind,
             default_sort_field, default_sort_direction, track_activity,
-            tracks_activities,
+            tracks_activities, text_filter_fields, full_text_search,
+            full_text_search_min_length,
         )
         session.add(row)
         session.flush()
@@ -473,6 +540,9 @@ def update_entity(
     default_sort_direction: str | None = None,
     track_activity: bool | None = None,
     tracks_activities: bool | None = None,
+    text_filter_fields: list[str] | None = None,
+    full_text_search: bool | None = None,
+    full_text_search_min_length: int | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -539,6 +609,11 @@ def update_entity(
     )
     row.entity_track_activity = bool(track_activity)
     row.entity_tracks_activities = bool(tracks_activities)
+    row.entity_text_filter_fields = _coerce_text_filter_fields(text_filter_fields)
+    row.entity_full_text_search = bool(full_text_search)
+    row.entity_full_text_search_min_length = _coerce_fts_min_length(
+        full_text_search_min_length
+    )
     session.flush()
 
     after = to_dict(row)
@@ -629,6 +704,16 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
         row.entity_track_activity = bool(fields["track_activity"])
     if "tracks_activities" in fields:
         row.entity_tracks_activities = bool(fields["tracks_activities"])
+    if "text_filter_fields" in fields:
+        row.entity_text_filter_fields = _coerce_text_filter_fields(
+            fields["text_filter_fields"]
+        )
+    if "full_text_search" in fields:
+        row.entity_full_text_search = bool(fields["full_text_search"])
+    if "full_text_search_min_length" in fields:
+        row.entity_full_text_search_min_length = _coerce_fts_min_length(
+            fields["full_text_search_min_length"]
+        )
 
     session.flush()
     after = to_dict(row)

@@ -898,6 +898,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         default_sort_direction: str | None = None,
         track_activity: bool | None = None,
         tracks_activities: bool | None = None,
+        text_filter_fields: list[str] | None = None,
+        full_text_search: bool | None = None,
+        full_text_search_min_length: int | None = None,
     ) -> Any:
         """Create an entity (methodology) record.
 
@@ -910,6 +913,11 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         ``default_sort_field`` (the field the entity sorts by) +
         ``default_sort_direction`` (``asc``/``desc``), and
         ``track_activity`` (whether to track an activity feed).
+
+        REQ-340 / PI-300 — neutral collection-search settings (all
+        optional): ``text_filter_fields`` (quick-search field list),
+        ``full_text_search`` (toggle), and
+        ``full_text_search_min_length`` (its minimum query length).
 
         Domain affiliations are NOT inlined here — attach them with a
         separate ``add_reference`` call using the
@@ -928,6 +936,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 entity_default_sort_direction=default_sort_direction,
                 entity_track_activity=track_activity,
                 entity_tracks_activities=tracks_activities,
+                entity_text_filter_fields=text_filter_fields,
+                entity_full_text_search=full_text_search,
+                entity_full_text_search_min_length=full_text_search_min_length,
             ).items()
             if v is not None
         }
@@ -944,6 +955,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         default_sort_direction: str | None = None,
         track_activity: bool | None = None,
         tracks_activities: bool | None = None,
+        text_filter_fields: list[str] | None = None,
+        full_text_search: bool | None = None,
+        full_text_search_min_length: int | None = None,
     ) -> Any:
         """Update fields on an entity record (PATCH). Pass only the fields
         to change. Lifecycle status transitions are validated by the
@@ -951,7 +965,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
 
         PRJ-025 PI-182 — the engine-neutral design-intent attributes
         ``default_sort_field`` / ``default_sort_direction`` (asc/desc) /
-        ``track_activity`` are settable here too."""
+        ``track_activity`` are settable here too. REQ-340 / PI-300 — the
+        collection-search settings ``text_filter_fields`` /
+        ``full_text_search`` / ``full_text_search_min_length`` too."""
         body = {
             f"entity_{k}": v
             for k, v in dict(
@@ -964,6 +980,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 default_sort_direction=default_sort_direction,
                 track_activity=track_activity,
                 tracks_activities=tracks_activities,
+                text_filter_fields=text_filter_fields,
+                full_text_search=full_text_search,
+                full_text_search_min_length=full_text_search_min_length,
             ).items()
             if v is not None
         }

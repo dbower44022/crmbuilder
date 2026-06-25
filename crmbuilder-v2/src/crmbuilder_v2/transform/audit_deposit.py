@@ -591,6 +591,27 @@ def plan_deposit(
             # round-trips back to BasePlus on re-deploy.
             "tracks_activities": entity.get("entity_type") == "BasePlus",
         }
+        # REQ-340 / PI-300 — carry the collection-search settings when the
+        # manifest captured them (in the entity's ``collection`` block), so a
+        # source entity's sort/quick-search/full-text config round-trips on
+        # re-deploy. Absent from older manifests → keys simply omitted.
+        _collection = entity.get("collection")
+        if isinstance(_collection, dict):
+            _order_by = _collection.get("orderBy")
+            if isinstance(_order_by, str) and _order_by:
+                payload["default_sort_field"] = _order_by
+                _order = _collection.get("order")
+                payload["default_sort_direction"] = (
+                    _order if isinstance(_order, str) and _order else "asc"
+                )
+            _text_filter = _collection.get("textFilterFields")
+            if isinstance(_text_filter, list) and _text_filter:
+                payload["text_filter_fields"] = _text_filter
+            if _collection.get("fullTextSearch"):
+                payload["full_text_search"] = True
+            _fts_min = _collection.get("fullTextSearchMinLength")
+            if isinstance(_fts_min, int) and not isinstance(_fts_min, bool):
+                payload["full_text_search_min_length"] = _fts_min
         if kind is not None:
             payload["kind"] = kind
         evidence = {

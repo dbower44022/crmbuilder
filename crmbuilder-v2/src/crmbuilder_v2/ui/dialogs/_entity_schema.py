@@ -144,6 +144,29 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         vocab=frozenset(_TRACK_ACTIVITY_CHOICES),
         default="false",
     ),
+    # REQ-340 / PI-300 — neutral collection-search settings. The list field
+    # round-trips comma-separated text ↔ list[str] and the min-length field
+    # text ↔ int in `entity_crud.py`; the full-text-search flag is a bool
+    # combo like the activity flags above.
+    FieldSchema(
+        key="entity_text_filter_fields",
+        label="Quick-search fields",
+        widget="line",
+        placeholder="Comma-separated field names searched by quick search",
+    ),
+    FieldSchema(
+        key="entity_full_text_search",
+        label="Full-text search",
+        widget="combo",
+        vocab=frozenset(_TRACK_ACTIVITY_CHOICES),
+        default="false",
+    ),
+    FieldSchema(
+        key="entity_full_text_search_min_length",
+        label="Full-text search min length",
+        widget="line",
+        placeholder="Minimum query length for full-text search (optional)",
+    ),
 ]
 
 

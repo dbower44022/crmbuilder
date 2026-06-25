@@ -350,6 +350,22 @@ class EspoIntrospectionClient:
         url = f"{self.api_url}/Metadata?key=entityDefs.{entity}.fields"
         return self._request("GET", url)
 
+    def get_collection(
+        self, entity: str
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Fetch the collection-search settings for an entity (REQ-340).
+
+        The ``entityDefs.{Entity}.collection`` block carries the neutral
+        collection settings: ``orderBy``, ``order``, ``textFilterFields``,
+        ``fullTextSearch``, ``fullTextSearchMinLength``.
+
+        :param entity: EspoCRM entity name (e.g. "Contact").
+        :returns: Tuple of ``(status_code, {orderBy, order,
+            textFilterFields, fullTextSearch, ...} or None)``.
+        """
+        url = f"{self.api_url}/Metadata?key=entityDefs.{entity}.collection"
+        return self._request("GET", url)
+
     def get_all_links(
         self, entity: str
     ) -> tuple[int, dict[str, dict] | None]:

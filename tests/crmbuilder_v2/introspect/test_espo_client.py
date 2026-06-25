@@ -190,6 +190,17 @@ def test_get_entity_field_list(
     assert rec.last["url"] == f"{API}/Metadata?key=entityDefs.Contact.fields"
 
 
+def test_get_collection(
+    client_and_recorder: tuple[EspoIntrospectionClient, Recorder],
+) -> None:
+    client, rec = client_and_recorder
+    rec.response = FakeResponse(200, {"orderBy": "createdAt", "order": "desc"})
+    status, body = client.get_collection("Contact")
+    assert status == 200
+    assert body == {"orderBy": "createdAt", "order": "desc"}
+    assert rec.last["url"] == f"{API}/Metadata?key=entityDefs.Contact.collection"
+
+
 def test_get_all_links(
     client_and_recorder: tuple[EspoIntrospectionClient, Recorder],
 ) -> None:

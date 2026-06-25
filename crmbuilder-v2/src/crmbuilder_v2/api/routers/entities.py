@@ -100,6 +100,9 @@ def create(body: EntityCreateIn):
                 default_sort_direction=body.entity_default_sort_direction,
                 track_activity=body.entity_track_activity,
                 tracks_activities=body.entity_tracks_activities,
+                text_filter_fields=body.entity_text_filter_fields,
+                full_text_search=body.entity_full_text_search,
+                full_text_search_min_length=body.entity_full_text_search_min_length,
             )
         )
 
@@ -121,6 +124,9 @@ def replace(identifier: str, body: EntityReplaceIn):
                 default_sort_direction=body.entity_default_sort_direction,
                 track_activity=body.entity_track_activity,
                 tracks_activities=body.entity_tracks_activities,
+                text_filter_fields=body.entity_text_filter_fields,
+                full_text_search=body.entity_full_text_search,
+                full_text_search_min_length=body.entity_full_text_search_min_length,
             )
         )
 

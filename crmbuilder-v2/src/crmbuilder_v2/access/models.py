@@ -857,6 +857,21 @@ class Entity(EngagementScopedPKMixin, Base):
     entity_tracks_activities: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    # ``entity_text_filter_fields`` / ``entity_full_text_search`` /
+    # ``entity_full_text_search_min_length`` (REQ-340 / PI-300) are the
+    # remaining neutral collection-search settings. The EspoCRM adapter maps
+    # them to ``settings.textFilterFields`` (the quick-search field list),
+    # ``settings.fullTextSearch`` (the full-text-search toggle), and
+    # ``settings.fullTextSearchMinLength`` (its minimum query length).
+    entity_text_filter_fields: Mapped[list[str] | None] = mapped_column(
+        JSONColumn, nullable=True
+    )
+    entity_full_text_search: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    entity_full_text_search_min_length: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     entity_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -897,6 +912,11 @@ class Entity(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _BooleanDomainCheck("entity_tracks_activities"),
             name="ck_entity_tracks_activities_boolean",
+        ),
+        # REQ-340 / PI-300 — neutral full-text-search toggle domain CHECK.
+        CheckConstraint(
+            _BooleanDomainCheck("entity_full_text_search"),
+            name="ck_entity_full_text_search_boolean",
         ),
         Index("ix_entities_entity_status", "entity_status"),
         Index("ix_entities_entity_deleted_at", "entity_deleted_at"),
