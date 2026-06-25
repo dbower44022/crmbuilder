@@ -59,20 +59,28 @@ class EntitySettingsManager:
             if entity_def.settings is None:
                 continue
 
-            result = self._process_entity_settings(entity_def, dry_run)
-            results.append(result)
+            results.extend(self._process_entity_settings(entity_def, dry_run))
 
         return results
 
+    # Entity-option keys that live in clientDefs (vs entityDefs); their CHECK
+    # needs a separate get_client_defs read (PI-313 / REQ-351).
+    _CLIENT_DEF_OPTIONS = ("iconClass", "color", "kanbanViewMode", "statusField")
+
     def _process_entity_settings(
         self, entity_def: EntityDefinition, dry_run: bool = False
-    ) -> SettingsResult:
+    ) -> list[SettingsResult]:
         """CHECK->ACT for a single entity's settings.
+
+        Returns a list: the deployable-settings result (UPDATED / SKIPPED /
+        ERROR), plus — when the entity declares ``multipleAssignedUsers`` and it
+        differs from the live value — a NOT_SUPPORTED manual-config result, since
+        that option has no REST write path (PI-313 / REQ-351).
 
         :param entity_def: Entity definition with settings.
         :param dry_run: If True, log the planned update and return
             without issuing the API write.
-        :returns: SettingsResult for this entity.
+        :returns: One or two SettingsResults for this entity.
         :raises EntitySettingsManagerError: On authentication failure.
         """
         espo_name = get_espo_entity_name(entity_def.name)
@@ -94,25 +102,46 @@ class EntitySettingsManager:
             self.output_fn(
                 f"[ERROR]   {prefix} settings ... CONNECTION ERROR", "red"
             )
-            return SettingsResult(
+            return [SettingsResult(
                 entity=entity_def.name,
                 status=SettingsStatus.ERROR,
                 error="Connection error",
-            )
+            )]
 
         if status_code != 200 or meta is None:
             self.output_fn(
                 f"[ERROR]   {prefix} settings ... HTTP {status_code}",
                 "red",
             )
-            return SettingsResult(
+            return [SettingsResult(
                 entity=entity_def.name,
                 status=SettingsStatus.ERROR,
                 error=f"HTTP {status_code}",
-            )
+            )]
 
-        # Compare desired vs current
-        changes = self._compute_changes(settings, meta)
+        # clientDefs CHECK only when an icon/color/kanban/statusField is declared.
+        client_defs: dict = {}
+        if any(getattr(settings, k) is not None for k in self._CLIENT_DEF_OPTIONS):
+            c_status, cdefs = self.client.get_client_defs(espo_name)
+            if c_status == 200 and isinstance(cdefs, dict):
+                client_defs = cdefs
+
+        # Compare desired vs current (deployable options only)
+        changes = self._compute_changes(settings, meta, client_defs)
+        results = [self._apply_deployable(entity_def, settings, changes, dry_run)]
+
+        # multipleAssignedUsers: no REST write path -> manual-config when it drifts.
+        mau = self._multiple_assigned_users_result(entity_def, meta)
+        if mau is not None:
+            results.append(mau)
+
+        return results
+
+    def _apply_deployable(
+        self, entity_def, settings, changes: list[str], dry_run: bool
+    ) -> SettingsResult:
+        """Apply the deployable settings changes (or report SKIPPED)."""
+        prefix = entity_def.name
 
         if not changes:
             self.output_fn(
@@ -124,7 +153,6 @@ class EntitySettingsManager:
                 status=SettingsStatus.SKIPPED,
             )
 
-        # Phase 2: ACT — update entity settings
         change_str = ", ".join(changes)
         self.output_fn(
             f"[UPDATE]  {prefix} settings ({change_str}) ...", "yellow"
@@ -174,13 +202,55 @@ class EntitySettingsManager:
         )
 
     @staticmethod
-    def _compute_changes(settings, meta: dict) -> list[str]:
+    def _multiple_assigned_users_current(meta: dict) -> bool:
+        """Whether the live entity has multiple-assignment enabled."""
+        fields = meta.get("fields") or {}
+        links = meta.get("links") or {}
+        return "assignedUsers" in fields or "collaborators" in links
+
+    def _multiple_assigned_users_result(
+        self, entity_def, meta: dict
+    ) -> SettingsResult | None:
+        """Manual-config result when ``multipleAssignedUsers`` drifts.
+
+        The toggle restructures the entity's assignment fields and has no
+        updateEntity param (verified by the PI-313 probe), so a difference is
+        surfaced as NOT_SUPPORTED manual-config rather than deployed or silently
+        skipped (REQ-351). Returns ``None`` when undeclared or already matching.
+        """
+        desired = entity_def.settings.multipleAssignedUsers
+        if desired is None:
+            return None
+        current = self._multiple_assigned_users_current(meta)
+        if desired == current:
+            return None
+        self.output_fn(
+            f"[NOT SUPPORTED] {entity_def.name}.settings.multipleAssignedUsers — "
+            f"desired {desired}, current {current}; manual config required "
+            "(no REST write path)",
+            "yellow",
+        )
+        return SettingsResult(
+            entity=entity_def.name,
+            status=SettingsStatus.NOT_SUPPORTED,
+            changes=["multipleAssignedUsers"],
+        )
+
+    @staticmethod
+    def _compute_changes(settings, meta: dict, client_defs: dict | None = None) -> list[str]:
         """Compare desired settings against current metadata.
 
         :param settings: Desired EntitySettings.
-        :param meta: Current entity metadata from the API.
-        :returns: List of setting names that differ.
+        :param meta: Current entityDefs metadata from the API.
+        :param client_defs: Current clientDefs metadata (icon/color/kanban/
+            statusField live here); ``None`` treated as empty.
+        :returns: List of deployable setting names that differ.
+
+        Note: ``multipleAssignedUsers`` is intentionally NOT computed here — it
+        has no REST write path and is handled separately as manual-config
+        (PI-313 / REQ-351).
         """
+        client_defs = client_defs or {}
         changes: list[str] = []
 
         if settings.stream is not None:
@@ -232,6 +302,35 @@ class EntitySettingsManager:
             ):
                 changes.append("fullTextSearchMinLength")
 
+        # Entity-level options (PI-313 / REQ-346 + REQ-351). countDisabled and
+        # optimisticConcurrencyControl live in entityDefs; iconClass / color /
+        # kanbanViewMode / statusField in clientDefs. All deploy via the same
+        # EntityManager updateEntity action (verified by the PI-313 probe).
+        if settings.countDisabled is not None:
+            if collection.get("countDisabled", False) != settings.countDisabled:
+                changes.append("countDisabled")
+
+        if settings.optimisticConcurrencyControl is not None:
+            current = meta.get("optimisticConcurrencyControl", False)
+            if current != settings.optimisticConcurrencyControl:
+                changes.append("optimisticConcurrencyControl")
+
+        if settings.iconClass is not None:
+            if client_defs.get("iconClass") != settings.iconClass:
+                changes.append("iconClass")
+
+        if settings.color is not None:
+            if client_defs.get("color") != settings.color:
+                changes.append("color")
+
+        if settings.kanbanViewMode is not None:
+            if client_defs.get("kanbanViewMode", False) != settings.kanbanViewMode:
+                changes.append("kanbanViewMode")
+
+        if settings.statusField is not None:
+            if client_defs.get("statusField") != settings.statusField:
+                changes.append("statusField")
+
         return changes
 
     @staticmethod
@@ -272,5 +371,23 @@ class EntitySettingsManager:
             payload["fullTextSearchMinLength"] = (
                 settings.fullTextSearchMinLength
             )
+
+        # Entity-level options (PI-313). Each is accepted by updateEntity at its
+        # own key (verified by the PI-313 throwaway-entity probe); the action
+        # routes entityDefs vs clientDefs keys internally.
+        if settings.countDisabled is not None:
+            payload["countDisabled"] = settings.countDisabled
+        if settings.optimisticConcurrencyControl is not None:
+            payload["optimisticConcurrencyControl"] = (
+                settings.optimisticConcurrencyControl
+            )
+        if settings.iconClass is not None:
+            payload["iconClass"] = settings.iconClass
+        if settings.color is not None:
+            payload["color"] = settings.color
+        if settings.kanbanViewMode is not None:
+            payload["kanbanViewMode"] = settings.kanbanViewMode
+        if settings.statusField is not None:
+            payload["statusField"] = settings.statusField
 
         return payload

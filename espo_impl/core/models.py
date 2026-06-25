@@ -1256,6 +1256,10 @@ class SettingsStatus(Enum):
     UPDATED = "updated"
     SKIPPED = "skipped"
     ERROR = "error"
+    #: An option with no REST write path (e.g. multipleAssignedUsers, a
+    #: structural toggle) — surfaced as manual-config, not a deploy failure
+    #: (PI-313 / REQ-351).
+    NOT_SUPPORTED = "not_supported"
 
 
 @dataclass

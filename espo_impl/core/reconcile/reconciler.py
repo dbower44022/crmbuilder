@@ -41,8 +41,8 @@ _REPORT_ONLY_LAYOUT = (
     "(not yet wired); detected but not applied"
 )
 _REPORT_ONLY_ENTITY_OPTION = (
-    "report-only: entity-option apply (write-back / deploy) is a follow-on "
-    "slice; detected and surfaced but not applied"
+    "report-only: design-ahead entity option belongs to the deploy direction "
+    "(YAML->CRM via Configure), not YAML write-back"
 )
 
 
@@ -122,7 +122,14 @@ def _apply_one(doc: YamlDocument, diff: Difference) -> str | None:
         return _REPORT_ONLY
 
     if ct is ConfigType.ENTITY_OPTION:
-        return _REPORT_ONLY_ENTITY_OPTION  # PI-312: detection slice, apply deferred
+        if cat is DiffCategory.YAML_ONLY:
+            # Design-ahead: the design already declares it; reconciling it means
+            # deploying to the CRM (Configure), not editing the YAML.
+            return _REPORT_ONLY_ENTITY_OPTION
+        # CHANGED / CRM_ONLY: adopt the live (CRM-ahead) value into the entity's
+        # settings: block, creating the block/key if absent.
+        doc.set_entity_option(diff.entity, diff.locator.option, diff.crm_value)
+        return None
 
     return f"unsupported config_type {ct.value}"
 
