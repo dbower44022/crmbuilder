@@ -259,3 +259,101 @@ def test_post_reopen_approval_returns_review_state_to_current(review_client, qtb
         timeout=3000,
     )
     assert _requirement(review_client, rid)["requirement_status"] == "confirmed"
+
+
+# -- Drift tab: re-approve / clear-drift action (PI-311 / REQ-345) -----------
+
+
+def _drift_flagged(client, name) -> str:
+    """A confirmed, human_defined requirement flagged needs_review by living
+    drift (a parent's meaning changed). Unlike ``_reopen`` (which drops to
+    candidate), this stays confirmed — the exact state only the Drift tab shows."""
+    parent = _rooted(client, f"{name} parent")
+    child = _make(client, f"{name} child")
+    _edge(client, child, "requirement_refines_requirement", "requirement", parent)
+    did = client._request("POST", "/decisions", json_body={
+        "title": f"Approve {child}", "decision_date": "2026-06-18",
+        "status": "Active", "executive_summary": _EXEC_SUMMARY})["identifier"]
+    _edge(client, child, "requirement_approved_by_decision", "decision", did)
+    client._request("PATCH", f"/requirements/{parent}", json_body={
+        "requirement_description": "A different thing the system must do for users."})
+    return child
+
+
+def test_reapprove_button_and_multiselect_present(review_client, qtbot):
+    panel = ReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    assert panel.findChild(QPushButton, "reapprove_drift_button") is not None
+    assert (
+        panel._drift_tree.selectionMode()
+        == QAbstractItemView.SelectionMode.ExtendedSelection
+    )
+
+
+def test_drift_selected_ids_read_column_zero(review_client, qtbot):
+    panel = ReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    panel._fill_drift([
+        {"identifier": "REQ-100", "name": "A", "status": "confirmed", "origin": "human_defined"},
+        {"identifier": "REQ-101", "name": "B", "status": "confirmed", "origin": "human_defined"},
+    ])
+    panel._drift_tree.selectAll()
+    assert panel._selected_drift_ids() == ["REQ-100", "REQ-101"]
+
+
+def test_right_click_offers_reapprove_action_wired_to_handler(
+    review_client, qtbot, monkeypatch
+):
+    panel = ReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    panel._fill_drift([
+        {"identifier": "REQ-100", "name": "A", "status": "confirmed", "origin": "human_defined"},
+    ])
+    panel._drift_tree.selectAll()
+
+    called: list[bool] = []
+    monkeypatch.setattr(panel, "_on_reapprove_drift", lambda: called.append(True))
+
+    menu = panel._build_drift_context_menu()
+    assert menu is not None
+    actions = [a for a in menu.actions() if not a.isSeparator()]
+    assert [a.text() for a in actions] == ["Re-approve selected (clear drift)…"]
+    actions[0].trigger()
+    assert called == [True]
+
+
+def test_drift_right_click_with_no_selection_builds_no_menu(review_client, qtbot):
+    panel = ReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    panel._fill_drift([
+        {"identifier": "REQ-100", "name": "A", "status": "confirmed", "origin": "human_defined"},
+    ])
+    panel._drift_tree.clearSelection()
+    assert panel._build_drift_context_menu() is None
+
+
+def test_reapprove_drift_clears_flag_via_panel(review_client, qtbot, monkeypatch):
+    """End-to-end: a confirmed+needs_review row is re-approved from the Drift tab
+    and its flag clears — the gap REQ-242 hit, now fixed (PI-311)."""
+    cid = _drift_flagged(review_client, "Drifted")
+    rec = _requirement(review_client, cid)
+    assert rec["requirement_status"] == "confirmed"
+    assert rec["requirement_review_state"] == "needs_review"
+
+    panel = ReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    panel._fill_drift([
+        {"identifier": cid, "name": "Drifted child", "status": "confirmed", "origin": "human_defined"},
+    ])
+    panel._drift_tree.selectAll()
+    assert panel._selected_drift_ids() == [cid]
+
+    monkeypatch.setattr(_ApproveDialog, "exec", lambda self: QDialog.DialogCode.Accepted)
+    monkeypatch.setattr(_ApproveDialog, "values", lambda self: ("Doug Bower", None))
+
+    panel._on_reapprove_drift()
+    qtbot.waitUntil(lambda: "approved" in panel._status_label.text(), timeout=3000)
+
+    cleared = _requirement(review_client, cid)
+    assert cleared["requirement_review_state"] == "current"
+    assert cleared["requirement_status"] == "confirmed"
