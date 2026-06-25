@@ -26,11 +26,20 @@ def _cols(table: str) -> set[str]:
     return {c["name"] for c in insp.get_columns(table)}
 
 
+def _has_table(table: str) -> bool:
+    return table in sa.inspect(op.get_bind()).get_table_names()
+
+
 def upgrade() -> None:
-    if "technology" not in _cols("agent_profiles"):
+    # Guard on table existence, not just column existence: a mid-stream chain
+    # entry (a DB stamped past 0032, where agent_profiles/work_tasks are created)
+    # leaves these tables absent, and _cols() returns an empty set for a missing
+    # table — so the column-absence check alone would ALTER a nonexistent table.
+    # Mirrors the table-existence guard in 0085 / 0087.
+    if _has_table("agent_profiles") and "technology" not in _cols("agent_profiles"):
         with op.batch_alter_table("agent_profiles") as batch:
             batch.add_column(sa.Column("technology", sa.String(32), nullable=True))
-    if "work_task_technology" not in _cols("work_tasks"):
+    if _has_table("work_tasks") and "work_task_technology" not in _cols("work_tasks"):
         with op.batch_alter_table("work_tasks") as batch:
             batch.add_column(
                 sa.Column("work_task_technology", sa.String(32), nullable=True)
