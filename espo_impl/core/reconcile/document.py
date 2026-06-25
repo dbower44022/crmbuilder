@@ -329,6 +329,59 @@ class YamlDocument:
             rendered = "\n" + rendered
         self._edits.append(_Edit(insert_at, insert_at, rendered))
 
+    def set_entity_option(self, entity: str, option: str, value) -> None:
+        """Set or insert one entity-level option under ``entities[entity].settings``.
+
+        Three cases, all surgical (comments and unrelated lines untouched):
+
+        * the option already exists in a ``settings:`` block -> replace its value
+          in place via :meth:`set_scalar`;
+        * a ``settings:`` block exists but lacks the option -> append the option
+          line at the end of that block;
+        * the entity has no ``settings:`` block -> create one (with the option
+          line) at the end of the entity's mapping.
+
+        The value is rendered through the round-trip dumper so quoting is correct
+        (notably a ``#``-leading colour string is quoted, not read as a comment).
+        Used by entity-option reconcile write-back (PI-313 / REQ-351). Raises
+        :class:`KeyError` if the entity is absent from this file.
+        """
+        entities = self.data.get("entities") or {}
+        if entity not in entities:
+            raise KeyError(f"entity {entity!r} not found in this file")
+        entity_map = entities[entity]
+
+        if "settings" in entity_map:
+            settings = entity_map["settings"]
+            if option in settings:
+                self.set_scalar(settings, option, value)
+                return
+            key_line, key_col = entity_map.lc.key("settings")
+            rendered = self._render_option_line(option, value, key_col + 2)
+        else:
+            key_line, key_col = entities.lc.key(entity)
+            settings_indent = key_col + 2
+            rendered = f"{' ' * settings_indent}settings:\n" + self._render_option_line(
+                option, value, settings_indent + 2
+            )
+
+        last = self._block_last_content_line(key_line, key_col)
+        insert_at = (
+            self._line_starts[last + 1]
+            if last + 1 < len(self._line_starts)
+            else len(self._text)
+        )
+        if insert_at > 0 and self._text[insert_at - 1] != "\n":
+            rendered = "\n" + rendered
+        self._edits.append(_Edit(insert_at, insert_at, rendered))
+
+    def _render_option_line(self, option, value, indent: int) -> str:
+        """Render ``option: value`` as one indented YAML line via the dumper."""
+        buf = io.StringIO()
+        self._yaml.dump({option: value}, buf)
+        line = buf.getvalue().rstrip("\n")
+        return " " * indent + line + "\n"
+
     def render_block_body(self, value, indent: int) -> str:
         """Render a Python value as an indented YAML block body (no key line)."""
         buf = io.StringIO()

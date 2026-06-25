@@ -31,6 +31,7 @@ from espo_impl.core.reconcile.live_state import (
 from espo_impl.core.reconcile.models import ConfigType, DiffCategory, Difference
 from espo_impl.core.reconcile.provenance import (
     FieldCollision,
+    build_entity_file_index,
     build_entity_option_desired,
     build_field_provenance,
     build_layout_desired,
@@ -135,7 +136,9 @@ def detect_drift(
     )
     _attach_layout_write_bodies(layout_diffs, cap, specs)
     report.differences += layout_diffs
-    report.differences += diff_entity_options(option_desired, live_options)
+    option_diffs = diff_entity_options(option_desired, live_options)
+    _attach_entity_option_files(option_diffs, build_entity_file_index(program_files))
+    report.differences += option_diffs
     role_diffs = diff_roles(roles, roles_live, source_files=role_files)
     team_diffs = diff_teams(teams, teams_live, source_files=team_files)
     _attach_security_insert_bodies(role_diffs, ConfigType.ROLE, report.warnings)
@@ -144,6 +147,20 @@ def detect_drift(
     report.differences += team_diffs
 
     return report
+
+
+def _attach_entity_option_files(
+    diffs: list[Difference], entity_files: dict
+) -> None:
+    """Fill ``source_file`` on a CRM-ahead entity-option diff whose entity has no
+    ``settings:`` block (so the desired builder recorded no owning file), so the
+    write-back can target the file that declares the entity. ``Difference`` is
+    frozen, so we swap in copies."""
+    from dataclasses import replace
+
+    for i, diff in enumerate(diffs):
+        if diff.source_file is None and diff.entity in entity_files:
+            diffs[i] = replace(diff, source_file=entity_files[diff.entity])
 
 
 def _attach_relationship_insert_bodies(diffs: list[Difference]) -> None:

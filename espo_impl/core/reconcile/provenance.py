@@ -246,3 +246,23 @@ def build_entity_option_desired(
                 desired[entity.name] = (opts, path)
 
     return desired
+
+
+def build_entity_file_index(
+    program_files: Iterable[Path], *, loader: ConfigLoader | None = None
+) -> dict[str, Path]:
+    """Map each entity name to the first program file that declares it.
+
+    Targets entity-option write-back for a CRM-ahead option on an entity that
+    has no ``settings:`` block yet (so :func:`build_entity_option_desired`
+    recorded no owning file). First occurrence wins, matching the other
+    provenance builders.
+    """
+    loader = loader or ConfigLoader()
+    index: dict[str, Path] = {}
+    for raw_path in program_files:
+        path = Path(raw_path)
+        program = loader.load_program(path)
+        for entity in program.entities:
+            index.setdefault(entity.name, path)
+    return index
