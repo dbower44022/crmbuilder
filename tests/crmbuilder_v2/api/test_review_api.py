@@ -140,3 +140,68 @@ def test_signoff_requires_a_reviewer(client):
         },
     )
     assert r.status_code == 422, r.text
+
+
+# -- Drift re-approval (PI-311 / REQ-345) -----------------------------------
+# A confirmed, human_defined requirement that living drift flags needs_review
+# stays confirmed (only ai_derived reopens to candidate). The governed approvals
+# endpoint must re-affirm it — record a fresh approving decision + edge that
+# clears the flag — rather than short-circuiting to already_confirmed.
+
+
+def _get_req(client, rid):
+    return client.get(f"/requirements/{rid}").json()["data"]
+
+
+def _approve(client, rid):
+    r = client.post("/review/approvals", json={
+        "requirement_identifiers": [rid],
+        "reviewer": "doug@x.com", "decision_date": "2026-06-24"})
+    assert r.status_code == 201, r.text
+    return r.json()["data"][0]
+
+
+def test_reapprove_clears_drift_on_confirmed_human_defined(client):
+    pid = _make(client, "Parent capability")
+    cid = _make(client, "Child capability")
+    _refines(client, cid, pid)
+    _ref(client, "requirement", pid, "conversation", "CNV-001",
+         "requirement_defined_in_conversation")
+    _topic(client, pid, "TOP-001")
+    # first approval through the governed endpoint -> real decision, child confirmed
+    first = _approve(client, cid)
+    assert first["outcome"] == "confirmed", first
+    assert _get_req(client, cid)["requirement_status"] == "confirmed"
+
+    # editing the parent's meaning flags the human_defined child needs_review
+    # but leaves it confirmed (not reopened to candidate)
+    client.patch(f"/requirements/{pid}",
+                 json={"requirement_description": "A different thing now."})
+    child = _get_req(client, cid)
+    assert child["requirement_status"] == "confirmed"
+    assert child["requirement_review_state"] == "needs_review"
+
+    # re-approval records a SECOND approving decision + edge and clears the flag
+    second = _approve(client, cid)
+    assert second["outcome"] == "confirmed", second
+    assert second["decision_identifier"], second
+    assert second["decision_identifier"] != first["decision_identifier"]
+
+    cleared = _get_req(client, cid)
+    assert cleared["requirement_status"] == "confirmed"
+    assert cleared["requirement_review_state"] == "current"
+
+
+def test_reapprove_confirmed_current_is_noop(client):
+    # a confirmed + current requirement is unchanged: already_confirmed, no
+    # new decision recorded.
+    rid = _make(client, "Solo capability")
+    _ref(client, "requirement", rid, "conversation", "CNV-001",
+         "requirement_defined_in_conversation")
+    _topic(client, rid, "TOP-001")
+    assert _approve(client, rid)["outcome"] == "confirmed"
+    assert _get_req(client, rid)["requirement_review_state"] == "current"
+
+    again = _approve(client, rid)
+    assert again["outcome"] == "already_confirmed", again
+    assert again["decision_identifier"] is None, again

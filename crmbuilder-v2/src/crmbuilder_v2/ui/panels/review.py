@@ -251,14 +251,36 @@ class ReviewPanel(ListDetailPanel):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(
-            QLabel("Requirements flagged NEEDS REVIEW by living drift.")
+        header = QHBoxLayout()
+        header.addWidget(
+            QLabel(
+                "Requirements flagged NEEDS REVIEW by living drift — select one "
+                "or more and Re-approve to record a fresh sign-off and clear the "
+                "flag."
+            ),
+            stretch=1,
         )
+        self._reapprove_button = QPushButton("Re-approve selected (clear drift)…")
+        self._reapprove_button.setObjectName("reapprove_drift_button")
+        self._reapprove_button.clicked.connect(self._on_reapprove_drift)
+        header.addWidget(self._reapprove_button)
+        layout.addLayout(header)
+
         self._drift_tree = QTreeWidget()
         self._drift_tree.setHeaderLabels(["Identifier", "Name", "Status", "Origin"])
         self._drift_tree.setColumnWidth(0, 110)
         self._drift_tree.setColumnWidth(1, 320)
         self._drift_tree.setAlternatingRowColors(True)
+        # Multi-select + right-click Re-approve, mirroring the Approval tab.
+        self._drift_tree.setSelectionMode(
+            QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        self._drift_tree.setContextMenuPolicy(
+            Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self._drift_tree.customContextMenuRequested.connect(
+            self._on_drift_context_menu
+        )
         layout.addWidget(self._drift_tree)
         return page
 
@@ -709,6 +731,53 @@ class ReviewPanel(ListDetailPanel):
             on_success=_on_done,
             on_error=self._on_error,
         )
+
+    # -- Re-approve / clear-drift action (PI-311 / REQ-345) ------------------
+
+    def _selected_drift_ids(self) -> list[str]:
+        seen: list[str] = []
+        for item in self._drift_tree.selectedItems():
+            rid = item.text(0)
+            if rid and rid not in seen:
+                seen.append(rid)
+        return seen
+
+    def _build_drift_context_menu(self) -> QMenu | None:
+        """Right-click menu for the drift queue, or ``None`` if nothing is
+        selected. Returned (not exec'd) so the wiring is unit-testable,
+        mirroring ``_build_approval_context_menu``."""
+        if not self._drift_tree.selectedItems():
+            return None
+        menu = QMenu(self._drift_tree)
+        act = menu.addAction("Re-approve selected (clear drift)…")
+        act.triggered.connect(self._on_reapprove_drift)
+        return menu
+
+    def _on_drift_context_menu(self, position) -> None:
+        menu = self._build_drift_context_menu()
+        if menu is None:
+            return
+        menu.exec(self._drift_tree.viewport().mapToGlobal(position))
+
+    def _on_reapprove_drift(self) -> None:
+        ids = self._selected_drift_ids()
+        if not ids:
+            self._status_label.setText(
+                "Select one or more drift-flagged requirements to re-approve."
+            )
+            return
+        # Re-approval reuses the governed approvals path: for a confirmed +
+        # needs_review row it records a fresh approving decision that clears the
+        # flag; the queues then refresh, dropping the cleared rows.
+        dialog = _ApproveDialog(ids, parent=self)
+        self._dialogs.append(dialog)
+        try:
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                reviewer, note = dialog.values()
+                self._submit_approvals(ids, reviewer, note)
+        finally:
+            self._dialogs.remove(dialog)
+            dialog.deleteLater()
 
     # -- Approve action (REQ-251) --------------------------------------------
 

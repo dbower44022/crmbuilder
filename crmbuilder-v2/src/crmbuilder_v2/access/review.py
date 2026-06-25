@@ -287,13 +287,29 @@ def _approve_one(
         return {"identifier": rid, "outcome": "failed",
                 "decision_identifier": None,
                 "reason": f"requirement {rid} not found"}
-    if row["requirement_status"] == "confirmed":
+    # A confirmed requirement that living drift flagged needs_review is re-approved
+    # (re-affirmed) here: it falls through to record a fresh approving decision +
+    # edge, which triggers activate_by_decision and clears the flag (REQ-249). A
+    # confirmed *and* current requirement is a genuine no-op. Without the
+    # needs_review carve-out, a human_defined drift item — confirmed, never
+    # reopened to candidate — is un-clearable through this governed path (the gap
+    # behind PI-311 / REQ-345).
+    drift_reaffirm = (
+        row["requirement_status"] == "confirmed"
+        and row["requirement_review_state"] == "needs_review"
+    )
+    if row["requirement_status"] == "confirmed" and not drift_reaffirm:
         return {"identifier": rid, "outcome": "already_confirmed",
                 "decision_identifier": None, "reason": None}
 
     note_clause = f" Reviewer note: {note}" if note else ""
+    act = (
+        "re-review and re-approval after a living-drift needs-review flag"
+        if drift_reaffirm else "review and approval"
+    )
+    verb = "Re-approve" if drift_reaffirm else "Approve"
     summary = (
-        f"Records {reviewer}'s human review and approval of requirement {rid} "
+        f"Records {reviewer}'s human {act} of requirement {rid} "
         "for delivery. The reviewer examined the requirement's current statement "
         "in the Requirements Review panel and approved it through the governed "
         "approving-decision path, which confirms the requirement only after its "
@@ -304,7 +320,7 @@ def _approve_one(
         with session.begin_nested():
             dec = _decisions.create(
                 session,
-                title=f"Approve {rid} for delivery",
+                title=f"{verb} {rid} for delivery",
                 decision_date=decision_date,
                 status="Active",
                 context=(
@@ -312,7 +328,7 @@ def _approve_one(
                     f"Review panel and approved it for delivery.{note_clause}"
                 ),
                 decision=(
-                    f"Approve {rid} for delivery through the governed "
+                    f"{verb} {rid} for delivery through the governed "
                     "approving-decision path."
                 ),
                 rationale=(
