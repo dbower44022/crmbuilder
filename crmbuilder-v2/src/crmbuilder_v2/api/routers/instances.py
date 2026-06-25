@@ -46,6 +46,7 @@ from crmbuilder_v2.introspect.reconcile import (
     ReconcileError,
     reconcile_associations,
     reconcile_entities,
+    reconcile_field_permissions,
     reconcile_fields,
     reconcile_filtered_tabs,
     reconcile_layouts,
@@ -285,6 +286,7 @@ _AUDIT_AREAS: dict[str, tuple[str, object]] = {
     "associations": ("Relationships", reconcile_associations),
     "layouts": ("Layouts", reconcile_layouts),
     "roles": ("Roles", reconcile_roles),
+    "field-permissions": ("Field permissions", reconcile_field_permissions),
     "teams": ("Teams", reconcile_teams),
     "filtered-tabs": ("Filtered tabs", reconcile_filtered_tabs),
 }

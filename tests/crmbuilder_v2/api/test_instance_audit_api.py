@@ -154,7 +154,7 @@ def test_audit_areas_list(client):
     areas = r.json()["data"]
     assert [a["area"] for a in areas] == [
         "entities", "fields", "associations", "layouts",
-        "roles", "teams", "filtered-tabs",
+        "roles", "field-permissions", "teams", "filtered-tabs",
     ]
     assert areas[0]["label"] == "Entities"
     assert areas[2]["label"] == "Relationships"

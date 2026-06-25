@@ -30,6 +30,9 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.repositories import (
+    field_permission_rule as field_permission_rule_repo,
+)
 from crmbuilder_v2.access.repositories import filtered_tabs as filtered_tab_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
 from crmbuilder_v2.access.repositories import layouts as layout_repo
@@ -617,6 +620,18 @@ class _SecurityClient(Protocol):
     def get_teams(self) -> tuple[int, dict | None]: ...
 
 
+class _FieldPermissionsClient(_ScopesClient, Protocol):
+    """Adds the role listing the field-permission reconcile needs.
+
+    Field-permission reconcile reads each Role's ``fieldData`` (``get_roles``)
+    and resolves its ``(entity, field)`` cells against the design model, which
+    needs the scope metadata (``get_all_scopes``) to classify native vs custom
+    entities for the c-prefix strip — exactly as :func:`reconcile_fields` does.
+    """
+
+    def get_roles(self) -> tuple[int, dict | None]: ...
+
+
 def reconcile_layouts(
     session: Session,
     *,
@@ -764,6 +779,240 @@ def reconcile_roles(
         present_member_identifiers=seen_ids, last_audited_at=stamp,
     )
     return summary
+
+
+#: EspoCRM Role ``fieldData`` cell ``{"read","edit"}`` → neutral permission
+#: level — the exact reverse of ``security_rule_manager._LEVEL_TO_CELL``. Any
+#: cell that is not one of these three (an empty/default cell, or the
+#: nonsensical read=no/edit=yes) is not a field-permission *rule* and is skipped.
+_CELL_TO_LEVEL: dict[tuple[str, str], str] = {
+    ("yes", "yes"): "read_write",
+    ("yes", "no"): "read_only",
+    ("no", "no"): "no_access",
+}
+
+
+def _cell_to_level(cell: dict) -> str | None:
+    """Reverse-map an EspoCRM ``fieldData`` cell to a neutral permission level.
+
+    Returns ``None`` for a cell that does not encode one of the three rule
+    levels (e.g. an empty/inherit cell, or read=no/edit=yes) so the caller can
+    skip it — only an explicit restriction is a field-permission rule.
+    """
+    return _CELL_TO_LEVEL.get((cell.get("read"), cell.get("edit")))
+
+
+def reconcile_field_permissions(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _FieldPermissionsClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Reconcile a live instance's field-level permissions into rule records.
+
+    The audit-IN half of REQ-129 (PI-051): each EspoCRM Role carries a
+    ``fieldData`` matrix ``{entity: {field: {"read","edit"}}}`` — the field-level
+    permissions the deploy side writes. This routine reads that matrix and
+    materialises it as ``field_permission_rule`` design records, then verifies
+    the round-trip:
+
+    * A ``(role, field, level)`` cell with **no** matching design rule is
+      captured as a new ``candidate`` rule (``deployment_status=pending``) —
+      live state proposed as design intent, awaiting human confirmation.
+    * A cell matching an existing **confirmed** rule whose level agrees flips
+      the rule to ``deployment_status=deployed`` (verified active).
+    * A confirmed rule whose live level **diverges**, or whose cell is **absent**
+      from live state, flips to ``deployment_status=drift``. The design's
+      ``permission_level`` is never overwritten by the audit — drift is recorded
+      on the deploy axis, not by mutating intent.
+    * Non-confirmed (candidate/deferred) rules are left untouched — the
+      confirmed-before-deploy gate forbids a non-pending deploy status on them.
+
+    A live cell whose entity or field has no design record, or whose cell does
+    not encode a rule level, is **skipped and logged** (DEC: orphan cells stay
+    out of the design model, mirroring the deploy side which only emits rules
+    for design fields). Resolution mirrors :func:`reconcile_fields`: the entity
+    is matched by neutral name, the field by neutral name after the
+    native/custom c-prefix strip.
+
+    :returns: A summary ``{seen, created, deployed, drifted, present, skipped,
+        absent}``.
+    :raises ReconcileError: If the scopes or roles call fails.
+    """
+    s_status, scopes = client.get_all_scopes()
+    if s_status != 200 or not isinstance(scopes, dict):
+        raise ReconcileError(
+            f"get_all_scopes returned status={s_status}; expected 200 + dict"
+        )
+    r_status, roles_body = client.get_roles()
+    if r_status != 200:
+        raise ReconcileError(f"get_roles returned status={r_status}")
+
+    # Resolve EspoCRM (scope, field) → design records, the same way
+    # reconcile_fields matches: entity by neutral name, field by neutral name
+    # after the native/custom c-prefix strip.
+    ent_by_name = {
+        _ci(e["entity_name"]): e["entity_identifier"]
+        for e in entity_repo.list_entities(session)
+    }
+    entity_id_by_scope: dict[str, str] = {}
+    is_native_by_scope: dict[str, bool] = {}
+    field_id_by_cell: dict[tuple[str, str], str] = {}
+    for scope_name, scope_meta in scopes.items():
+        if not isinstance(scope_meta, dict):
+            continue
+        entity_class = classify_entity(scope_name, scope_meta)
+        if entity_class is EntityClass.CUSTOM:
+            is_native = False
+        elif entity_class is EntityClass.NATIVE:
+            is_native = True
+        else:
+            continue
+        eid = ent_by_name.get(_ci(strip_entity_c_prefix(scope_name)))
+        if eid is None:
+            continue
+        entity_id_by_scope[scope_name] = eid
+        is_native_by_scope[scope_name] = is_native
+        for f in field_repo.list_fields(session, entity_identifier=eid):
+            field_id_by_cell[(scope_name, _ci(f["field_name"]))] = f[
+                "field_identifier"
+            ]
+
+    role_id_by_name = {
+        _ci(r["role_name"]): r["role_identifier"]
+        for r in role_repo.list_roles(session)
+    }
+    rule_by_pair = {
+        (
+            r["field_permission_rule_role"],
+            r["field_permission_rule_target_field"],
+        ): r
+        for r in field_permission_rule_repo.list_field_permission_rules(session)
+    }
+
+    summary = {
+        "seen": 0, "created": 0, "deployed": 0, "drifted": 0,
+        "present": 0, "skipped": 0, "absent": 0,
+    }
+    seen_pairs: set[tuple[str, str]] = set()
+
+    for row in _rows_of(roles_body):
+        role_name = row.get("name")
+        if not role_name:
+            continue
+        role_id = role_id_by_name.get(_ci(role_name))
+        if role_id is None:
+            _note(
+                progress,
+                f"role {role_name!r} not in inventory (run the Roles audit "
+                f"first) — its field permissions were skipped",
+                "warning",
+            )
+            continue
+        field_data = row.get("fieldData") or {}
+        if not isinstance(field_data, dict):
+            continue
+        for scope_name, cells in field_data.items():
+            if not isinstance(cells, dict):
+                continue
+            eid = entity_id_by_scope.get(scope_name)
+            is_native = is_native_by_scope.get(scope_name, False)
+            for espo_field, cell in cells.items():
+                if not isinstance(cell, dict):
+                    continue
+                level = _cell_to_level(cell)
+                if level is None:
+                    continue  # empty/inherit cell — not a restriction rule
+                summary["seen"] += 1
+                neutral_field = strip_field_c_prefix(
+                    espo_field, entity_is_native=is_native
+                )
+                fid = (
+                    field_id_by_cell.get((scope_name, _ci(neutral_field)))
+                    if eid is not None
+                    else None
+                )
+                if fid is None:
+                    summary["skipped"] += 1
+                    _note(
+                        progress,
+                        f"{role_name}: field permission on "
+                        f"{scope_name}.{espo_field} has no design field — "
+                        f"skipped",
+                        "warning",
+                    )
+                    continue
+                pair = (role_id, fid)
+                seen_pairs.add(pair)
+                existing = rule_by_pair.get(pair)
+                if existing is None:
+                    field_permission_rule_repo.create_field_permission_rule(
+                        session,
+                        name=f"{role_name}: {neutral_field} {level}",
+                        role=role_id,
+                        target_field=fid,
+                        permission_level=level,
+                        description=(
+                            "Captured by auditing instance "
+                            f"{instance_identifier}."
+                        ),
+                    )
+                    summary["created"] += 1
+                    continue
+                if existing["field_permission_rule_status"] != "confirmed":
+                    # Non-confirmed rules can't carry a non-pending deploy
+                    # status (confirmed-before-deploy gate) — leave untouched.
+                    summary["present"] += 1
+                    continue
+                matches = (
+                    existing["field_permission_rule_permission_level"] == level
+                )
+                new_deploy = "deployed" if matches else "drift"
+                _set_field_permission_deploy_status(
+                    session, existing, new_deploy
+                )
+                summary["deployed" if matches else "drifted"] += 1
+
+    # Absent sweep: a confirmed rule previously verified ``deployed`` whose cell
+    # is no longer present live has drifted (the live CRM dropped it).
+    for (role_id, fid), rule in rule_by_pair.items():
+        if (role_id, fid) in seen_pairs:
+            continue
+        if (
+            rule["field_permission_rule_status"] == "confirmed"
+            and rule["field_permission_rule_deployment_status"] == "deployed"
+        ):
+            _set_field_permission_deploy_status(session, rule, "drift")
+            summary["absent"] += 1
+
+    return summary
+
+
+def _set_field_permission_deploy_status(
+    session: Session, rule: dict, deployment_status: str
+) -> None:
+    """Flip a confirmed rule's ``deployment_status`` without touching intent.
+
+    A full-replace PUT that passes every current value through unchanged except
+    ``deployment_status`` — the design ``permission_level`` and lifecycle
+    ``status`` are preserved (drift is a deploy-axis fact, not an intent edit).
+    No-op when already at the requested status.
+    """
+    if rule["field_permission_rule_deployment_status"] == deployment_status:
+        return
+    field_permission_rule_repo.update_field_permission_rule(
+        session,
+        rule["field_permission_rule_identifier"],
+        name=rule["field_permission_rule_name"],
+        role=rule["field_permission_rule_role"],
+        target_field=rule["field_permission_rule_target_field"],
+        permission_level=rule["field_permission_rule_permission_level"],
+        status=rule["field_permission_rule_status"],
+        deployment_status=deployment_status,
+        description=rule.get("field_permission_rule_description"),
+        notes=rule.get("field_permission_rule_notes"),
+    )
 
 
 def reconcile_teams(
