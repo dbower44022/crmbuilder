@@ -157,12 +157,14 @@ def test_master_pane_columns_and_order(qtbot, entity_client):
     assert [c.title for c in columns] == [
         "Identifier",
         "Name",
+        "Label",
         "Status",
         "Created",
     ]
     assert [c.field for c in columns] == [
         "entity_identifier",
         "entity_name",
+        "entity_label",
         "entity_status",
         "created_at_display",
     ]

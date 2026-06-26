@@ -156,6 +156,8 @@ class EntitiesPanel(ListDetailPanel):
                 field="entity_identifier", title="Identifier", width=120
             ),
             ColumnSpec(field="entity_name", title="Name"),
+            # REL-025 / REQ-365: the source CRM display label captured by audit.
+            ColumnSpec(field="entity_label", title="Label"),
             ColumnSpec(field="entity_status", title="Status", width=110),
             ColumnSpec(
                 field="created_at_display", title="Created", width=140

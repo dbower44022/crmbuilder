@@ -194,3 +194,26 @@ def test_three_way_compare_groups_presence_and_attribute(v2_env):
         )
         assert drill["scope"] == eid
         assert all(g["entity_identifier"] == eid for g in drill["groups"])
+
+
+def test_compare_group_carries_entity_label(v2_env):
+    """REL-025 / REQ-365: a group surfaces the entity's captured display label."""
+    from crmbuilder_v2.access.repositories import entity as entity_repo
+    with session_scope() as s:
+        a = _inst(s, "alpha2", "source")
+        b = _inst(s, "beta2", "target")
+        eid = entity_repo.create_entity(s, name="MentorProfile", description="x")[
+            "entity_identifier"
+        ]
+        entity_repo.patch_entity(s, eid, label="CBM Member")
+        fid = field_repo.create_field(
+            s, field_belongs_to_entity_identifier=eid, name="code",
+            description="x", type="text", required=False,
+        )["field_identifier"]
+        mb.upsert_membership(s, instance_identifier=a, member_type="field",
+                             member_identifier=fid, state="drifted",
+                             override={"field_type": "varchar"})
+        res = three_way_compare(s, instance_a=a, instance_b=b)
+        grp = next(g for g in res["groups"] if g["entity_identifier"] == eid)
+        assert grp["entity"] == "MentorProfile"
+        assert grp["entity_label"] == "CBM Member"
