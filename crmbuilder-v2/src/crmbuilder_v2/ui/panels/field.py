@@ -284,6 +284,8 @@ class FieldsPanel(ListDetailPanel):
                 field="field_identifier", title="Identifier", width=120
             ),
             ColumnSpec(field="field_name", title="Name"),
+            # REL-025 / REQ-366: source CRM display label captured by audit.
+            ColumnSpec(field="field_label", title="Label"),
             ColumnSpec(field="parent_entity_name", title="Entity", width=160),
             ColumnSpec(field="field_type", title="Type", width=110),
             ColumnSpec(field="field_status", title="Status", width=110),

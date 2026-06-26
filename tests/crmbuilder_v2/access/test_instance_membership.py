@@ -717,3 +717,22 @@ def test_reconcile_without_i18n_leaves_label_empty(v2_env):
             if e["entity_name"] == "MentorProfile"
         )
         assert ent["entity_label"] is None
+
+
+def test_reconcile_fields_captures_field_label(v2_env):
+    """REL-025 / REQ-366: the audit captures each field's display label from
+    i18n (<Entity>.fields.<field>) and stores it on the canonical field."""
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            fields={"CEngagement": {"amount": _field("currency")}},
+            i18n={"CEngagement": {"fields": {"amount": "Deal Amount"}}},
+        )
+        reconcile_fields(s, instance_identifier=iid, client=client)
+        ent = [e for e in entity_repo.list_entities(s)
+               if e["entity_name"] == "Engagement"][0]
+        fld = [f for f in field_repo.list_fields(
+            s, entity_identifier=ent["entity_identifier"]
+        ) if f["field_name"] == "amount"][0]
+        assert fld["field_label"] == "Deal Amount"

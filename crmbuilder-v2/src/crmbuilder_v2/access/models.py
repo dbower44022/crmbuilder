@@ -958,6 +958,9 @@ class Field(EngagementScopedPKMixin, Base):
     field_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
     field_name: Mapped[str] = mapped_column(String(255), nullable=False)
     field_description: Mapped[str] = mapped_column(Text, nullable=False)
+    # REL-025 / REQ-366: the source CRM's display label for the field, captured
+    # during audit alongside the internal/neutral field name (descriptive only).
+    field_label: Mapped[str | None] = mapped_column(Text, nullable=True)
     field_type: Mapped[str] = mapped_column(String(32), nullable=False)
     field_required: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
