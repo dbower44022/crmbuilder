@@ -11,7 +11,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
-from crmbuilder_v2.access import reconcile_apply, reconcile_compare
+from crmbuilder_v2.access import (
+    reconcile_apply,
+    reconcile_compare,
+    reconcile_dataloss,
+)
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import instances
 from crmbuilder_v2.access.repositories import reconcile_transactions as txn_repo
@@ -84,6 +88,17 @@ def capture(body: CaptureIn):
                 note=body.note,
             )
         )
+
+
+@router.get("/transactions/{transaction_id}/assess-revert")
+def assess_revert(transaction_id: int):
+    """Analyze a revert's impact and flag possible data loss (REQ-361).
+
+    The UI calls this before confirming a live-instance revert; when
+    ``requires_confirmation`` is true the operator is warned with the reasons.
+    """
+    with readonly_session() as s:
+        return ok(reconcile_dataloss.assess_revert(txn_repo.get(s, transaction_id)))
 
 
 @router.post("/transactions/{transaction_id}/rollback")
