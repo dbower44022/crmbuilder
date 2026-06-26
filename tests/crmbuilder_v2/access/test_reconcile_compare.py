@@ -134,3 +134,63 @@ def test_override_attrs_unions_and_sorts():
         "field_required",
         "field_type",
     ]
+
+
+# --- DB integration ---------------------------------------------------------
+
+from crmbuilder_v2.access.db import session_scope  # noqa: E402
+from crmbuilder_v2.access.reconcile_compare import three_way_compare  # noqa: E402
+from crmbuilder_v2.access.repositories import entity as entity_repo  # noqa: E402
+from crmbuilder_v2.access.repositories import field as field_repo  # noqa: E402
+from crmbuilder_v2.access.repositories import instance_membership as mb  # noqa: E402
+from crmbuilder_v2.access.repositories import instances as inst_repo  # noqa: E402
+
+
+def _inst(s, name, role):
+    return inst_repo.create_instance(
+        s, name=name, url=f"https://{name}.example.org", role=role
+    )["instance_identifier"]
+
+
+def test_three_way_compare_groups_presence_and_attribute(v2_env):
+    """End-to-end: a field drifted on A and absent on B yields both a presence
+    and an attribute row under the parent entity's group; the entity (present on
+    both) yields no row."""
+    with session_scope() as s:
+        a = _inst(s, "alpha", "source")
+        b = _inst(s, "beta", "target")
+        eid = entity_repo.create_entity(s, name="Account", description="x")[
+            "entity_identifier"
+        ]
+        fid = field_repo.create_field(
+            s, field_belongs_to_entity_identifier=eid, name="phone",
+            description="x", type="text", required=False,
+        )["field_identifier"]
+
+        mb.upsert_membership(
+            s, instance_identifier=a, member_type="field", member_identifier=fid,
+            state="drifted", override={"field_type": "varchar"},
+        )
+        mb.upsert_membership(
+            s, instance_identifier=b, member_type="field", member_identifier=fid,
+            state="absent",
+        )
+        for inst in (a, b):
+            mb.upsert_membership(
+                s, instance_identifier=inst, member_type="entity",
+                member_identifier=eid, state="present",
+            )
+
+        result = three_way_compare(s, instance_a=a, instance_b=b)
+        grp = next(g for g in result["groups"] if g["entity_identifier"] == eid)
+        kinds = {(r["member_type"], r["kind"]) for r in grp["rows"]}
+        assert ("field", "presence") in kinds
+        assert ("field", "attribute") in kinds
+        # entity present on both -> no entity row
+        assert not any(r["member_type"] == "entity" for r in grp["rows"])
+
+        drill = three_way_compare(
+            s, instance_a=a, instance_b=b, entity_identifier=eid
+        )
+        assert drill["scope"] == eid
+        assert all(g["entity_identifier"] == eid for g in drill["groups"])

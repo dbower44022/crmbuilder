@@ -22,9 +22,14 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.repositories import filtered_tabs as filtered_tab_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
+from crmbuilder_v2.access.repositories import layouts as layout_repo
+from crmbuilder_v2.access.repositories import roles as role_repo
+from crmbuilder_v2.access.repositories import teams as team_repo
 
 #: A source carries the member on the instance (its value participates in diffs).
 PRESENT = "present"
@@ -141,6 +146,75 @@ def _override_attrs(*memberships: dict[str, Any] | None) -> list[str]:
     return sorted(keys)
 
 
+#: Synthetic group for members not scoped to a single entity (roles, teams,
+#: filtered tabs).
+GLOBAL_GROUP = "(global)"
+
+# (member_type, canonical-list callable, identifier key, display-name key) —
+# every member type the inventory tracks (mirrors inventory._MEMBER_SOURCES).
+_MEMBER_SOURCES = (
+    ("entity", entity_repo.list_entities, "entity_identifier", "entity_name"),
+    ("field", field_repo.list_fields, "field_identifier", "field_name"),
+    (
+        "association",
+        association_repo.list_associations,
+        "association_identifier",
+        "association_name",
+    ),
+    ("layout", layout_repo.list_layouts, "layout_identifier", "layout_type"),
+    ("role", role_repo.list_roles, "role_identifier", "role_name"),
+    ("team", team_repo.list_teams, "team_identifier", "team_name"),
+    (
+        "filtered_tab",
+        filtered_tab_repo.list_filtered_tabs,
+        "filtered_tab_identifier",
+        "filtered_tab_label",
+    ),
+)
+
+
+def _membership_index(
+    session: Session, instance: str
+) -> dict[tuple[str, str], dict[str, Any]]:
+    """``{(member_type, member_identifier): membership_row}`` for one instance."""
+    return {
+        (m["member_type"], m["member_identifier"]): m
+        for m in membership_repo.list_memberships(
+            session, instance_identifier=instance
+        )
+    }
+
+
+def _field_parent_map(session: Session) -> dict[str, str]:
+    """``{field_identifier: parent entity_identifier}`` for entity grouping."""
+    out: dict[str, str] = {}
+    for ent in entity_repo.list_entities(session):
+        eid = ent["entity_identifier"]
+        for fld in field_repo.list_fields(session, entity_identifier=eid):
+            out[fld["field_identifier"]] = eid
+    return out
+
+
+def _group_ids(member_type: str, obj: dict[str, Any], field_parent: dict[str, str]) -> list[str]:
+    """The entity group(s) a member belongs under.
+
+    A relationship is dual-listed under both endpoint entities (REQ-355); a field
+    under its parent entity; a layout under its entity; entity members under
+    themselves; roles/teams/filtered tabs under the synthetic global group.
+    """
+    if member_type == "entity":
+        return [obj["entity_identifier"]]
+    if member_type == "field":
+        return [field_parent.get(obj["field_identifier"], GLOBAL_GROUP)]
+    if member_type == "association":
+        ids = [obj.get("association_source_entity"), obj.get("association_target_entity")]
+        deduped = [i for i in dict.fromkeys(ids) if i]
+        return deduped or [GLOBAL_GROUP]
+    if member_type == "layout":
+        return [obj.get("layout_entity_identifier") or GLOBAL_GROUP]
+    return [GLOBAL_GROUP]
+
+
 def three_way_compare(
     session: Session,
     *,
@@ -150,67 +224,63 @@ def three_way_compare(
 ) -> dict[str, Any]:
     """Compute the three-way diff across the design and two instances (PI-316).
 
-    Reads the canonical entities and fields plus each instance's membership
-    snapshot and returns the differing rows grouped by entity. When
-    ``entity_identifier`` is given, the comparison is scoped to that one entity
-    and its fields — the per-entity drill (REQ-353); otherwise it spans every
-    entity (the full scan). Only entities with at least one differing row appear.
+    Reads every canonical member type (entities, fields, relationships, layouts,
+    roles, teams, filtered tabs) plus each instance's membership snapshot and
+    returns the differing rows grouped by entity. A relationship is dual-listed
+    under both endpoint entities (REQ-355); roles/teams/filtered tabs fall under a
+    synthetic global group. When ``entity_identifier`` is given the comparison is
+    scoped to that one entity — the per-entity drill (REQ-353); otherwise it spans
+    everything (the full scan). Only groups with at least one differing row appear.
 
     :returns: ``{instance_a, instance_b, scope, groups: [{entity,
         entity_identifier, rows: [...]}], row_count}``.
     """
-    def index(instance: str) -> dict[tuple[str, str], dict[str, Any]]:
-        return {
-            (m["member_type"], m["member_identifier"]): m
-            for m in membership_repo.list_memberships(
-                session, instance_identifier=instance
-            )
-        }
+    idx_a = _membership_index(session, instance_a)
+    idx_b = _membership_index(session, instance_b)
+    field_parent = _field_parent_map(session)
+    entity_name = {
+        e["entity_identifier"]: e.get("entity_name")
+        for e in entity_repo.list_entities(session)
+    }
 
-    idx_a, idx_b = index(instance_a), index(instance_b)
-
-    entities = entity_repo.list_entities(session)
-    if entity_identifier is not None:
-        entities = [e for e in entities if e["entity_identifier"] == entity_identifier]
-
-    groups: list[dict[str, Any]] = []
-    row_count = 0
-    for ent in entities:
-        eid = ent["entity_identifier"]
-        rows: list[dict[str, Any]] = []
-
-        # The entity member itself.
-        rows.extend(compute_member_rows(
-            member_type="entity",
-            member_identifier=eid,
-            member_name=ent.get("entity_name"),
-            design_obj=ent,
-            attributes=_override_attrs(idx_a.get(("entity", eid)), idx_b.get(("entity", eid))),
-            membership_a=idx_a.get(("entity", eid)),
-            membership_b=idx_b.get(("entity", eid)),
-        ))
-
-        # Its fields.
-        for fld in field_repo.list_fields(session, entity_identifier=eid):
-            fid = fld["field_identifier"]
-            ma, mb = idx_a.get(("field", fid)), idx_b.get(("field", fid))
-            rows.extend(compute_member_rows(
-                member_type="field",
-                member_identifier=fid,
-                member_name=fld.get("field_name"),
-                design_obj=fld,
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for member_type, list_fn, id_key, name_key in _MEMBER_SOURCES:
+        for obj in list_fn(session):
+            mid = obj[id_key]
+            ma, mb = idx_a.get((member_type, mid)), idx_b.get((member_type, mid))
+            group_ids = _group_ids(member_type, obj, field_parent)
+            if entity_identifier is not None:
+                if entity_identifier not in group_ids:
+                    continue
+                group_ids = [entity_identifier]  # drill shows it under this entity
+            rows = compute_member_rows(
+                member_type=member_type,
+                member_identifier=mid,
+                member_name=obj.get(name_key),
+                design_obj=obj,
                 attributes=_override_attrs(ma, mb),
                 membership_a=ma,
                 membership_b=mb,
-            ))
+            )
+            if not rows:
+                continue
+            for gid in group_ids:
+                grouped.setdefault(gid, []).extend(rows)
 
-        if rows:
-            groups.append({
-                "entity": ent.get("entity_name"),
-                "entity_identifier": eid,
-                "rows": rows,
-            })
-            row_count += len(rows)
+    def _order(gid: str) -> tuple[bool, str]:
+        # Entities first (alphabetical by name), the global group last.
+        return (gid == GLOBAL_GROUP, str(entity_name.get(gid, gid) or gid))
+
+    groups: list[dict[str, Any]] = []
+    row_count = 0
+    for gid in sorted(grouped, key=_order):
+        rows = grouped[gid]
+        groups.append({
+            "entity": GLOBAL_GROUP if gid == GLOBAL_GROUP else entity_name.get(gid, gid),
+            "entity_identifier": None if gid == GLOBAL_GROUP else gid,
+            "rows": rows,
+        })
+        row_count += len(rows)
 
     return {
         "instance_a": instance_a,
