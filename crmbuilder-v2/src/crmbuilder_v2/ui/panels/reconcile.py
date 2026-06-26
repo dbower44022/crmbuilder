@@ -216,10 +216,11 @@ class ReconcilePanel(QWidget):
         if not row:
             QMessageBox.information(self, "Reconcile", "Select a difference row first.")
             return
-        if row.get("member_type") != "field" or row.get("kind") != "attribute":
+        if not row.get("actionable"):
             QMessageBox.information(
                 self, "Reconcile",
-                "Capture currently applies to field-attribute rows only.",
+                "This difference is shown for visibility but cannot be reconciled "
+                "from here yet (field-attribute differences are actionable).",
             )
             return
         instance = self._combo_a.currentData() if source == "instance_a" else self._combo_b.currentData()

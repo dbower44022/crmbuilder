@@ -87,6 +87,10 @@ def compute_member_rows(
     pres_a = _presence(membership_a)
     pres_b = _presence(membership_b)
     rows: list[dict[str, Any]] = []
+    # A row is actionable when the apply engine can reconcile it. This slice
+    # supports field-attribute capture; other rows are shown but non-actionable
+    # so the UI never offers an action it cannot perform (REQ-358).
+    attr_actionable = member_type == "field"
 
     # Presence: the design always carries the member; flag any instance that does
     # not (absent or never audited).
@@ -101,6 +105,7 @@ def compute_member_rows(
             "instance_a": pres_a,
             "instance_b": pres_b,
             "differs": True,
+            "actionable": False,
         })
 
     # Attributes: compare effective values across the design and the instances
@@ -132,6 +137,7 @@ def compute_member_rows(
             "instance_a": a_value if a_carries else pres_a,
             "instance_b": b_value if b_carries else pres_b,
             "differs": True,
+            "actionable": attr_actionable,
         })
 
     return rows
