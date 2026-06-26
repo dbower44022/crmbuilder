@@ -123,6 +123,9 @@ _SPECS: dict[str, _Spec] = {
     # Append-only task-transition log (PI-304). Born-terminal: no updated_at; the
     # to_status fills the status slot, the reason the title slot.
     "task_transition": _Spec(models.TaskTransitionRow, "task_transition_identifier", "task_transition_reason", "task_transition_to_status", "task_transition_created_at", None),
+    # Run-outcome satellite (PI-326). Born-terminal: no updated_at; the outcome
+    # fills the status slot, the (nullable) cause the title slot.
+    "release_run": _Spec(models.ReleaseRunRow, "release_run_identifier", "release_run_cause", "release_run_outcome", "release_run_created_at", None),
     # Agent Profile Registry (PI-122). Unprefixed ``identifier``; title is the
     # most human-readable field (description / name / body / content).
     "agent_profile": _Spec(models.AgentProfileRow, "identifier", "description", "status", "created_at", "updated_at"),

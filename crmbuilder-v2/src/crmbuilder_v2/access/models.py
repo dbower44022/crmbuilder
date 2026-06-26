@@ -117,6 +117,7 @@ from crmbuilder_v2.access.vocab import (
     REFERENCE_RELATIONSHIPS,
     REGISTRY_STATUSES,
     RELEASE_BACK_HALF_MODES,
+    RELEASE_RUN_OUTCOMES,
     RELEASE_SIGNOFF_STAGES,
     RELEASE_STATUSES,
     REOPEN_APPROVAL_TIERS,
@@ -4778,6 +4779,99 @@ class DepositEvent(EngagementScopedPKMixin, Base):
         Index(
             "ix_deposit_events_deposit_event_created_at",
             "deposit_event_created_at",
+        ),
+    )
+
+
+class ReleaseRunRow(EngagementScopedPKMixin, Base):
+    """Run-outcome satellite — one record of one run of a release (PI-326, DEC-742).
+
+    PRJ-065 / REQ-262 ("a queryable run-outcome record"). Written when a run of a
+    release through the lane *closes* (abandon / ship), the first-class answer to
+    "what did this run attempt and where did it die?" — the release-grain analogue
+    of ``deposit_event``'s "what did this apply write?".
+
+    **Born-terminal append-only**, mirroring :class:`DepositEvent`: created via the
+    repository ``record`` path, never updated, never deleted — one
+    ``release_run_created_at`` timestamp, no ``_updated_at`` / ``_deleted_at``. It
+    carries content (``release_run_outcome``) rather than a transitioning status.
+    The append-only construction is itself the REQ-264 guarantee that cleaning up a
+    failed run can never destroy the record of what it scoped and where it stopped.
+
+    **Not 1:1 with the release.** A release may run the lane more than once (rework
+    bounce-backs, or a re-attempt under a correction release), so there can be more
+    than one ``release_run`` row per release. It is a release-scoped satellite with
+    a composite FK to ``releases`` (``(engagement_id, release_identifier)``,
+    mirroring ``release_demands`` / ``artifact_versions`` / ``reconciliation_conflicts``)
+    and a server-assigned ``RUN-NNN`` identifier PK.
+
+    The captured fields (design §3.3): ``release_run_scope`` is a JSON snapshot of
+    the projects and planning items in the run at close; ``release_run_phases_run``
+    is the JSON list of each phase workstream and its terminal status;
+    ``release_run_halt_point`` names the stage/phase where it stopped (NULL for a
+    shipped run); ``release_run_cause`` (+ optional structured ``release_run_cause_code``)
+    explains why (NULL when there is nothing to explain); and ``release_run_outcome``
+    ∈ ``RELEASE_RUN_OUTCOMES``. Links to any ``finding`` (FND-) the run produced are
+    ``release_run_relates_to_finding`` refs edges, not FK columns. See
+    preserve-failed-run-history-design.md §3.3.
+    """
+
+    __tablename__ = "release_runs"
+
+    release_run_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    # The release this run belongs to — composite FK to ``releases`` (the
+    # release_demands / artifact_versions / reconciliation_conflicts pattern).
+    release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Snapshot of the run's composition at close: the projects and planning items
+    # in scope (design §3.2 backstop). A JSON object so the panel can render the
+    # preserved composition even after edges are legitimately re-pointed.
+    release_run_scope: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
+    # Each phase workstream and its terminal status at close, e.g.
+    # ``[{"workstream": "WSK-144", "phase_type": "Design",
+    #     "terminal_status": "Complete"}, ...]``.
+    release_run_phases_run: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False
+    )
+    # The stage/phase the run stopped at (e.g. ``development``) — NULL for a
+    # shipped run that ran to completion.
+    release_run_halt_point: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    # Free-text cause + an optional structured code (e.g.
+    # ``malformed_decomposition``) — both NULL when there is nothing to explain.
+    release_run_cause: Mapped[str | None] = mapped_column(Text, nullable=True)
+    release_run_cause_code: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    release_run_outcome: Mapped[str] = mapped_column(String(16), nullable=False)
+    release_run_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "release_identifier"],
+            ["releases.engagement_id", "releases.release_identifier"],
+            name="fk_release_runs_release",
+        ),
+        CheckConstraint(
+            _IdentifierFormatCheck("release_run_identifier", ["RUN"]),
+            name="ck_release_run_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("release_run_outcome", RELEASE_RUN_OUTCOMES),
+            name="ck_release_run_outcome",
+        ),
+        Index(
+            "ix_release_runs_release",
+            "engagement_id",
+            "release_identifier",
+        ),
+        Index(
+            "ix_release_runs_release_run_created_at",
+            "release_run_created_at",
         ),
     )
 
