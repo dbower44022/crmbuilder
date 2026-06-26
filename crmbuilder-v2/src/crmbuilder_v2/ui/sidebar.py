@@ -113,6 +113,15 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
         "Release Pipeline",
         ("Releases", "Resource Locks", "Cost"),
     ),
+    # PI-330 (REL-026 / REQ-367): the Agent Profile Registry configuration
+    # surface. The agent roster (area x tier), the skills and governance rules
+    # bound to each agent, and the learnings — all fully editable, with system
+    # defaults and per-engagement overlays/overrides. Its own group between
+    # Release Pipeline and Methodology.
+    (
+        "Agent Registry",
+        ("Agent Profiles", "Skills", "Governance Rules", "Learnings"),
+    ),
     (
         "Methodology",
         (

@@ -38,6 +38,7 @@ from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.detail_window_manager import DetailWindowManager
 from crmbuilder_v2.ui.exceptions import StorageConnectionError
+from crmbuilder_v2.ui.panels.agent_profiles import AgentProfilesPanel
 from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.chat import ChatPanel
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
@@ -53,15 +54,18 @@ from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
 from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
 from crmbuilder_v2.ui.panels.instances import InstancesPanel
-from crmbuilder_v2.ui.panels.reconcile import ReconcilePanel
-from crmbuilder_v2.ui.panels.publish_history import PublishHistoryPanel
 from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
 from crmbuilder_v2.ui.panels.projects import ProjectsPanel
+from crmbuilder_v2.ui.panels.publish_history import PublishHistoryPanel
+from crmbuilder_v2.ui.panels.reconcile import ReconcilePanel
 from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
+from crmbuilder_v2.ui.panels.registry_learnings import LearningsPanel
+from crmbuilder_v2.ui.panels.registry_rules import GovernanceRulesPanel
+from crmbuilder_v2.ui.panels.registry_skills import SkillsPanel
 from crmbuilder_v2.ui.panels.releases import ReleasesPanel
 from crmbuilder_v2.ui.panels.requirements import RequirementsPanel
 from crmbuilder_v2.ui.panels.resource_locks import ResourceLocksPanel
@@ -158,6 +162,11 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "instance": "Instances",
     # PI-224: the release-pipeline staged-delivery container.
     "release": "Releases",
+    # PI-330 (REL-026): Agent Profile Registry entities.
+    "agent_profile": "Agent Profiles",
+    "skill": "Skills",
+    "governance_rule": "Governance Rules",
+    "learning": "Learnings",
 }
 
 
@@ -240,6 +249,15 @@ def build_panel(
         return WorkstreamsPanel(client)
     if label == "Work Tasks":
         return WorkTasksPanel(client)
+    # PI-330 (REL-026 / REQ-367): Agent Profile Registry configuration panels.
+    if label == "Agent Profiles":
+        return AgentProfilesPanel(client)
+    if label == "Skills":
+        return SkillsPanel(client)
+    if label == "Governance Rules":
+        return GovernanceRulesPanel(client)
+    if label == "Learnings":
+        return LearningsPanel(client)
     # PI-186 (PRJ-027): CRM-connection instances.
     if label == "Instances":
         return InstancesPanel(client)

@@ -2618,6 +2618,270 @@ class StorageClient:
             "as_target": list(result.get("as_target") or []),
         }
 
+    # ------------------------------------------------------------------
+    # Agent Profile Registry (PI-122 substrate; PI-330 / REQ-367 config UI)
+    #
+    # The registry's four entities — agent_profile, skill, governance_rule,
+    # learning — are system/shared with a nullable engagement scope. Every
+    # record carries a convenience ``scope`` field ("system" or an engagement
+    # identifier); create/update bodies accept ``scope`` symmetrically.
+    # Bindings (agent_profile -> skill / governance_rule) are plain reference
+    # edges, managed here via create/delete reference helpers.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _query(params: dict[str, Any]) -> str:
+        pairs = [f"{k}={v}" for k, v in params.items() if v is not None]
+        return ("?" + "&".join(pairs)) if pairs else ""
+
+    # ``_expect_dict(result, *, op=...)`` / ``_expect_list`` are defined once
+    # for the whole client below; the registry methods reuse them.
+
+    # --- agent_profiles -------------------------------------------------
+
+    def list_agent_profiles(
+        self,
+        *,
+        area: str | None = None,
+        tier: str | None = None,
+        status: str | None = None,
+        scope: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /agent-profiles (optionally filtered)."""
+        path = "/agent-profiles" + self._query(
+            {"area": area, "tier": tier, "status": status, "scope": scope}
+        )
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_agent_profile(self, identifier: str) -> dict[str, Any]:
+        """GET /agent-profiles/{identifier}."""
+        return self._expect_dict(
+            self._request("GET", f"/agent-profiles/{identifier}"), op="get_agent_profile"
+        )
+
+    def create_agent_profile(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /agent-profiles. ``identifier`` server-assigned when omitted."""
+        return self._expect_dict(
+            self._request("POST", "/agent-profiles", json_body=body),
+            op="create_agent_profile",
+        )
+
+    def patch_agent_profile(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """PATCH /agent-profiles/{identifier} — partial update."""
+        return self._expect_dict(
+            self._request("PATCH", f"/agent-profiles/{identifier}", json_body=body),
+            op="patch_agent_profile",
+        )
+
+    def delete_agent_profile(self, identifier: str) -> Any:
+        """DELETE /agent-profiles/{identifier}."""
+        return self._request("DELETE", f"/agent-profiles/{identifier}")
+
+    def get_agent_profile_contract(
+        self, identifier: str, *, engagement: str | None = None
+    ) -> dict[str, Any]:
+        """GET /agent-profiles/{id}/contract — the resolved effective contract.
+
+        ``engagement`` selects which engagement's overlay (override/disable)
+        is merged over the system defaults; when omitted the request's active
+        engagement is used.
+        """
+        path = f"/agent-profiles/{identifier}/contract" + self._query(
+            {"engagement": engagement}
+        )
+        return self._expect_dict(
+            self._request("GET", path), op="get_agent_profile_contract"
+        )
+
+    def get_agent_profile_bindings(self, identifier: str) -> dict[str, Any]:
+        """GET /agent-profiles/{id}/bindings — bound skills + governance rules."""
+        return self._expect_dict(
+            self._request("GET", f"/agent-profiles/{identifier}/bindings"),
+            op="get_agent_profile_bindings",
+        )
+
+    # --- skills ---------------------------------------------------------
+
+    def list_skills(
+        self, *, kind: str | None = None, status: str | None = None, scope: str | None = None
+    ) -> list[dict[str, Any]]:
+        """GET /skills (optionally filtered)."""
+        path = "/skills" + self._query({"kind": kind, "status": status, "scope": scope})
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_skill(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/skills/{identifier}"), op="get_skill"
+        )
+
+    def create_skill(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/skills", json_body=body), op="create_skill"
+        )
+
+    def patch_skill(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/skills/{identifier}", json_body=body), op="patch_skill"
+        )
+
+    def delete_skill(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/skills/{identifier}")
+
+    # --- governance_rules ----------------------------------------------
+
+    def list_governance_rules(
+        self,
+        *,
+        enforcement: str | None = None,
+        status: str | None = None,
+        scope: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /governance-rules (optionally filtered)."""
+        path = "/governance-rules" + self._query(
+            {"enforcement": enforcement, "status": status, "scope": scope}
+        )
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_governance_rule(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/governance-rules/{identifier}"), op="get_governance_rule"
+        )
+
+    def create_governance_rule(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/governance-rules", json_body=body),
+            op="create_governance_rule",
+        )
+
+    def patch_governance_rule(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/governance-rules/{identifier}", json_body=body),
+            op="patch_governance_rule",
+        )
+
+    def delete_governance_rule(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/governance-rules/{identifier}")
+
+    # --- learnings ------------------------------------------------------
+
+    def list_learnings(
+        self,
+        *,
+        area: str | None = None,
+        tier: str | None = None,
+        category: str | None = None,
+        status: str | None = None,
+        scope: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /learnings (optionally filtered)."""
+        path = "/learnings" + self._query(
+            {"area": area, "tier": tier, "category": category, "status": status, "scope": scope}
+        )
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_learning(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/learnings/{identifier}"), op="get_learning"
+        )
+
+    def create_learning(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/learnings", json_body=body), op="create_learning"
+        )
+
+    def patch_learning(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/learnings/{identifier}", json_body=body), op="patch_learning"
+        )
+
+    def delete_learning(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/learnings/{identifier}")
+
+    def promote_learning_to_skill(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /learnings/{id}/promote-to-skill."""
+        return self._expect_dict(
+            self._request("POST", f"/learnings/{identifier}/promote-to-skill", json_body=body),
+            op="promote_learning_to_skill",
+        )
+
+    def promote_learning_to_rule(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /learnings/{id}/promote-to-rule (enforced rules require human approval)."""
+        return self._expect_dict(
+            self._request("POST", f"/learnings/{identifier}/promote-to-rule", json_body=body),
+            op="promote_learning_to_rule",
+        )
+
+    # --- bindings (agent_profile -> skill / governance_rule edges) ------
+
+    _SKILL_EDGE = "agent_profile_has_skill"
+    _RULE_EDGE = "agent_profile_governed_by_rule"
+
+    def add_agent_profile_skill(self, profile_id: str, skill_id: str) -> None:
+        """Bind a skill to an agent profile (agent_profile_has_skill edge)."""
+        self.create_reference(
+            {
+                "source_type": "agent_profile",
+                "source_id": profile_id,
+                "target_type": "skill",
+                "target_id": skill_id,
+                "relationship": self._SKILL_EDGE,
+            }
+        )
+
+    def add_agent_profile_rule(self, profile_id: str, rule_id: str) -> None:
+        """Bind a governance rule to an agent profile."""
+        self.create_reference(
+            {
+                "source_type": "agent_profile",
+                "source_id": profile_id,
+                "target_type": "governance_rule",
+                "target_id": rule_id,
+                "relationship": self._RULE_EDGE,
+            }
+        )
+
+    def remove_agent_profile_binding(
+        self, profile_id: str, target_id: str, relationship: str
+    ) -> None:
+        """Remove a profile binding edge by locating its numeric reference id."""
+        ref_id = self._find_reference_id(
+            source_type="agent_profile",
+            source_id=profile_id,
+            target_id=target_id,
+            relationship=relationship,
+        )
+        if ref_id is not None:
+            self.delete_reference(ref_id)
+
+    def _find_reference_id(
+        self,
+        *,
+        source_type: str,
+        source_id: str,
+        target_id: str,
+        relationship: str,
+    ) -> int | None:
+        """Return the numeric id of a matching reference edge, or None."""
+        path = "/references" + self._query(
+            {
+                "source_type": source_type,
+                "source_id": source_id,
+                "target_id": target_id,
+                "relationship": relationship,
+            }
+        )
+        result = self._request("GET", path)
+        rows = result if isinstance(result, list) else []
+        for row in rows:
+            rid = row.get("id")
+            if isinstance(rid, int):
+                return rid
+        return None
+
     def _request(
         self,
         method: str,
