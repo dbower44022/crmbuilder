@@ -67,6 +67,16 @@ _ACTIVE_PI_STATUSES = frozenset(
     {"Draft", "Decomposed", "Ready", "In Progress", "In Review"}
 )
 
+# PI-327 / REQ-260 — the retire-not-delete gate. A terminal cancelled/superseded
+# reached from a *lane* state (the release actually ran) is reachable only via
+# ``abandon()``; a plain ``transition`` to one of these from a lane state is
+# refused so a cleanup can never silently destroy a real run's evidence.
+_LANE_TERMINAL_GUARD = frozenset({"cancelled", "superseded"})
+_TERMINAL_STATUSES = frozenset({"shipped", "cancelled", "superseded"})
+# The abandon ``outcome`` → the terminal RELEASE status it maps to. ``shipped`` is
+# the ship path, never abandon, so it is deliberately absent.
+_ABANDON_OUTCOME_TO_STATUS = {"abandoned": "cancelled", "superseded": "superseded"}
+
 # status value -> per-status lifecycle timestamp column. Only the gated /
 # terminal transitions materialise a stamp; the un-gated forward moves do not.
 _STATUS_TIMESTAMP = {
@@ -744,7 +754,8 @@ def create_release(
 
 
 def transition(
-    session: Session, identifier: str, to_status: str, *, actor: str | None = None
+    session: Session, identifier: str, to_status: str, *, actor: str | None = None,
+    _via_abandon: bool = False,
 ) -> dict:
     """The single guarded mutator for ``release_status`` (PI-205).
 
@@ -752,6 +763,17 @@ def transition(
     matching gate predicate (freeze / planned-completely / single-occupancy),
     stamps the lifecycle timestamp, and writes. ``actor`` is accepted for the
     deliberate-act record (role enforcement is RBAC's job — off by default).
+
+    **The retire-not-delete gate (PI-327 / REQ-260).** A release that has *entered
+    a lane* (its current status is in :data:`RELEASE_LANE_STATUSES` — it actually
+    ran) may reach a terminal ``cancelled`` / ``superseded`` only through
+    :func:`abandon`, which preserves the run's scope edges and phase workstreams as
+    evidence. A *direct* transition to one of those terminals from a lane state is
+    refused here; :func:`abandon` performs the same move through the internal
+    ``_via_abandon`` bypass (which additionally skips the cancel-time
+    decomposition clear, so the phase records survive). A *pre-lane* release (never
+    ran) is unaffected — it has nothing to preserve and may plainly cancel/supersede.
+    ``_via_abandon`` is private to :func:`abandon`; callers never pass it.
     """
     to_status = _require_status(to_status)
     row = _get_row(session, identifier)
@@ -760,6 +782,21 @@ def transition(
     if to_status == from_status:
         return before
     gov.check_transition(from_status, to_status, RELEASE_STATUS_TRANSITIONS)
+
+    # PI-327 / REQ-260: a lane-entered release can only reach a terminal through
+    # the evidence-preserving abandon path.
+    if (
+        to_status in _LANE_TERMINAL_GUARD
+        and from_status in RELEASE_LANE_STATUSES
+        and not _via_abandon
+    ):
+        raise ConflictError(
+            f"release {identifier!r} is {from_status!r} — it has entered a lane and "
+            f"actually ran, so it can reach {to_status!r} only through abandon "
+            f"(POST /releases/{identifier}/abandon), which preserves the run's scope "
+            f"and phase records (REQ-260). A direct transition would risk destroying "
+            f"that evidence."
+        )
 
     gate = _GATE_PREDICATES.get((from_status, to_status))
     if gate is not None:
@@ -784,8 +821,10 @@ def transition(
         _complete_delivered_projects(session, identifier)
     # REQ-275: cancelling a release clears its planning items' phase plans, so a
     # later run never inherits a stale decomposition. Runs inside the cancel
-    # transaction.
-    if to_status == "cancelled":
+    # transaction. PI-327 / REQ-264: an abandon NEVER clears — preserving the phase
+    # workstreams is the whole point of retire-not-delete, so the abandon bypass
+    # skips the clear and leaves the failed decomposition attached as evidence.
+    if to_status == "cancelled" and not _via_abandon:
         _clear_decompositions(session, identifier)
     session.flush()
 
@@ -882,6 +921,147 @@ def _clear_decompositions(
                 workstreams.delete_workstream(session, ws)
                 cleared.append(ws)
     return cleared
+
+
+def _release_workstreams(session: Session, release_identifier: str) -> list:
+    """Every phase-workstream row attached to the release's in-scope planning items.
+
+    Down-traverses release → projects → planning items → workstreams (mirroring
+    :func:`coordination._work_tasks_of_release` one level up), resolving each
+    ``WSK-`` identifier to its row so :func:`abandon` can snapshot the per-phase
+    terminal status at close.
+    """
+    from crmbuilder_v2.access.models import Workstream
+
+    rows: list = []
+    for prj in _in_scope_projects(session, release_identifier):
+        for pi in _in_scope_planning_items(session, prj):
+            for ws in _pi_workstreams(session, pi):
+                row = get_by_identifier(
+                    session, Workstream, Workstream.workstream_identifier, ws
+                )
+                if row is not None:
+                    rows.append(row)
+    return rows
+
+
+def abandon(
+    session: Session,
+    identifier: str,
+    *,
+    reason: str,
+    halt_point: str | None = None,
+    cause_code: str | None = None,
+    outcome: str = "abandoned",
+) -> dict:
+    """Retire a run that actually ran, preserving its evidence (PI-327 / REQ-260).
+
+    The *only* sanctioned cleanup path for a release that has entered a lane. In one
+    atomic transaction it:
+
+    1. writes a born-terminal ``release_run`` outcome record (the PI-326 primitive)
+       capturing a snapshot of the run at close — its ``scope`` (the in-scope
+       projects + planning items, from :func:`composition`), its ``phases_run``
+       (each phase workstream and its current/terminal status), the ``halt_point``,
+       the ``cause`` (= ``reason``), the ``cause_code``, and the identifiers of any
+       ``finding`` rows linked to the run's phase workstreams;
+    2. transitions the release to its terminal status (``abandoned`` → ``cancelled``,
+       ``superseded`` → ``superseded``) through the internal ``_via_abandon`` bypass;
+    3. **explicitly preserves the evidence** — it does *not* delete the
+       ``project_belongs_to_release`` scope edges or the phase workstreams (the
+       bypass skips :func:`_clear_decompositions`). They remain attached as the run's
+       record (REQ-264). A re-attempt is a *new* run that builds a fresh
+       decomposition, leaving the failed set as evidence.
+
+    :param identifier: the release to abandon (must exist).
+    :param reason: free-text cause for the abandon (stored as the run's ``cause``).
+    :param halt_point: the stage/phase the run stopped at (e.g. ``development``).
+    :param cause_code: an optional structured cause code (e.g.
+        ``malformed_decomposition``).
+    :param outcome: ``abandoned`` (default → ``cancelled``) or ``superseded``;
+        ``shipped`` is the ship path, not abandon, and is rejected.
+    :returns: ``{"release": <release dict>, "run": <release_run dict>}``.
+    :raises NotFoundError: the release does not exist.
+    :raises UnprocessableError: ``outcome`` is not ``abandoned`` / ``superseded``,
+        or ``reason`` is empty.
+    :raises ConflictError: the release never entered a lane (a pre-lane release
+        never ran — cancel/supersede it with a plain transition instead) or is
+        already terminal (a closed run cannot be abandoned again).
+    """
+    from crmbuilder_v2.access.repositories import release_runs
+
+    row = _get_row(session, identifier)  # 404 if unknown
+    reason = gov.require_nonempty(reason, field="reason")
+    if outcome not in _ABANDON_OUTCOME_TO_STATUS:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "outcome",
+                    "invalid_value",
+                    f"abandon outcome must be one of "
+                    f"{sorted(_ABANDON_OUTCOME_TO_STATUS)}; 'shipped' is the ship "
+                    f"path, not abandon",
+                )
+            ]
+        )
+    from_status = row.release_status
+    if from_status in _TERMINAL_STATUSES:
+        raise ConflictError(
+            f"release {identifier!r} is already terminal ({from_status!r}); a closed "
+            f"run cannot be abandoned again."
+        )
+    if from_status not in RELEASE_LANE_STATUSES:
+        raise ConflictError(
+            f"release {identifier!r} is {from_status!r} and never entered a lane — it "
+            f"did not run, so there is no run evidence to preserve. Cancel or "
+            f"supersede it with a plain transition instead (abandon is gated on "
+            f"'did it run', REQ-260)."
+        )
+
+    # Snapshot the run at close (design §3.2/§3.3). The records are preserved, never
+    # deleted, so this snapshot is a robustness backstop captured BEFORE the move.
+    snapshot_scope = {"projects": composition(session, identifier)["projects"]}
+    workstream_rows = _release_workstreams(session, identifier)
+    phases_run = [
+        {
+            "workstream": w.workstream_identifier,
+            "phase_type": w.workstream_phase_type,
+            "status": w.workstream_status,
+        }
+        for w in workstream_rows
+    ]
+    # Best-effort: the findings linked to the run's phase workstreams
+    # (finding -finding_relates_to-> workstream), de-duplicated, order-preserved.
+    finding_ids: list[str] = []
+    for w in workstream_rows:
+        for e in gov.inbound_edges(
+            session,
+            target_type="workstream",
+            target_id=w.workstream_identifier,
+            relationship="finding_relates_to",
+            source_type="finding",
+        ):
+            finding_ids.append(e.source_id)
+    finding_ids = list(dict.fromkeys(finding_ids))
+
+    # 1. write the born-terminal run-outcome record.
+    run = release_runs.record(
+        session,
+        release_identifier=identifier,
+        outcome=outcome,
+        scope=snapshot_scope,
+        phases_run=phases_run,
+        halt_point=halt_point,
+        cause=reason,
+        cause_code=cause_code,
+        finding_identifiers=finding_ids,
+    )
+    # 2. transition to the terminal status through the evidence-preserving bypass —
+    #    same transaction → record + transition land atomically (or neither does).
+    release = transition(
+        session, identifier, _ABANDON_OUTCOME_TO_STATUS[outcome], _via_abandon=True
+    )
+    return {"release": release, "run": run}
 
 
 def _record_pass(
