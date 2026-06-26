@@ -53,6 +53,7 @@ from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
 from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
 from crmbuilder_v2.ui.panels.instances import InstancesPanel
+from crmbuilder_v2.ui.panels.reconcile import ReconcilePanel
 from crmbuilder_v2.ui.panels.publish_history import PublishHistoryPanel
 from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
@@ -245,6 +246,9 @@ def build_panel(
     # PI-266 (PRJ-042 / REQ-293): read-only publish history.
     if label == "Publish History":
         return PublishHistoryPanel(client)
+    # PI-319 (REL-024): three-way design/instance reconciliation surface.
+    if label == "Reconcile":
+        return ReconcilePanel(client)
     # requirements-provenance Phase 6b: topic-first review surface.
     if label == "Requirements Review":
         return ReviewPanel(client)

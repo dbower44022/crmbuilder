@@ -2279,6 +2279,82 @@ class StorageClient:
         return result if isinstance(result, dict) else {}
 
     # ------------------------------------------------------------------
+    # Three-way reconciliation (REL-024 / PI-316..319)
+    # ------------------------------------------------------------------
+
+    def reconcile_compare(
+        self, instance_a: str, instance_b: str, entity: str | None = None
+    ) -> dict[str, Any]:
+        """GET /reconcile/compare — three-way diff across design + two instances."""
+        params = [f"instance_a={instance_a}", f"instance_b={instance_b}"]
+        if entity:
+            params.append(f"entity={entity}")
+        result = self._request("GET", "/reconcile/compare?" + "&".join(params))
+        return result if isinstance(result, dict) else {}
+
+    def reconcile_capture(
+        self,
+        *,
+        instance: str,
+        field_identifier: str,
+        attribute: str,
+        actor: str,
+        batch_id: str | None = None,
+        note: str | None = None,
+    ) -> dict[str, Any]:
+        """POST /reconcile/capture — promote an instance value into the design."""
+        body = {
+            "instance": instance,
+            "field_identifier": field_identifier,
+            "attribute": attribute,
+            "actor": actor,
+            "batch_id": batch_id,
+            "note": note,
+        }
+        result = self._request("POST", "/reconcile/capture", json_body=body)
+        return result if isinstance(result, dict) else {}
+
+    def reconcile_transactions(
+        self,
+        *,
+        batch_id: str | None = None,
+        member_identifier: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /reconcile/transactions — the reconcile transaction log."""
+        params: list[str] = []
+        if batch_id:
+            params.append(f"batch_id={batch_id}")
+        if member_identifier:
+            params.append(f"member_identifier={member_identifier}")
+        if status:
+            params.append(f"status={status}")
+        if limit is not None:
+            params.append(f"limit={limit}")
+        path = "/reconcile/transactions" + ("?" + "&".join(params) if params else "")
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def reconcile_assess_revert(self, transaction_id: int) -> dict[str, Any]:
+        """GET /reconcile/transactions/{id}/assess-revert — data-loss analysis."""
+        result = self._request(
+            "GET", f"/reconcile/transactions/{transaction_id}/assess-revert"
+        )
+        return result if isinstance(result, dict) else {}
+
+    def reconcile_rollback(
+        self, transaction_id: int, *, actor: str
+    ) -> dict[str, Any]:
+        """POST /reconcile/transactions/{id}/rollback — reverse a design change."""
+        result = self._request(
+            "POST",
+            f"/reconcile/transactions/{transaction_id}/rollback",
+            json_body={"actor": actor},
+        )
+        return result if isinstance(result, dict) else {}
+
+    # ------------------------------------------------------------------
     # Terms (glossary; PI-061)
     # ------------------------------------------------------------------
 

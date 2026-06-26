@@ -71,6 +71,7 @@ from crmbuilder_v2.api.routers import (
     processes,
     projects,
     publish_runs,
+    reconcile,
     reconciliation_conflicts,
     reference_books,
     references,
@@ -192,6 +193,7 @@ def create_app() -> FastAPI:
     app.include_router(projects.router)
     app.include_router(releases.router)
     app.include_router(artifact_versions.router)
+    app.include_router(reconcile.router)
     app.include_router(reconciliation_conflicts.router)
     app.include_router(locks.router)
     app.include_router(workstreams.router)

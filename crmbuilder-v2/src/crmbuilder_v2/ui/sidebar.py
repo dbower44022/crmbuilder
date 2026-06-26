@@ -93,6 +93,10 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # PI-266 (PRJ-042 / REQ-293): read-only history of publishes to a
             # target instance (scope, outcome, backup). Sits next to Instances.
             "Publish History",
+            # PI-319 (REL-024): three-way design/instance reconciliation —
+            # compare two instances against the design and reconcile each
+            # difference. Sits next to Instances/Publish History.
+            "Reconcile",
             # requirements-provenance Phase 6b: the topic-first review
             # surface (requirement tree + read-back document + queues +
             # sign-off). A read-only review/monitoring panel, so it lives
