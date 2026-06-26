@@ -119,6 +119,26 @@ def history(identifier: str, limit: int = 1000):
         })
 
 
+@router.get("/{identifier}/run-rollup")
+def run_rollup(identifier: str):
+    """The release's run-level rollup over the task-transition log (PI-305).
+
+    DEC-692's single durable account (REQ-277): the release's status plus, per
+    in-scope work task, the complete ordered transition history and any terminal
+    report — all derived at read time from the canonical append-only
+    ``task_transition`` rows (not the best-effort ``pipeline_events`` log). For a
+    failed run the rollup is anchored on the halt point (REQ-263): the task that
+    stopped the run (``Failed`` / ``Blocked``) and its cause.
+    """
+    from crmbuilder_v2.access.repositories import task_transitions
+
+    with readonly_session() as s:
+        record = releases.get_release(s, identifier)
+        if record is None:
+            raise NotFoundError("release", identifier)
+        return ok(task_transitions.run_rollup(s, identifier))
+
+
 @router.get("/{identifier}/composition")
 def composition(identifier: str):
     """The release's release-scoped Projects and their Planning Items (derived)."""
