@@ -29,7 +29,7 @@ class _FakeClient:
 
     def __init__(self, scopes, fields=None, links=None, layouts=None,
                  roles=None, teams=None, report_filters=None, status=200,
-                 collections=None):
+                 collections=None, i18n=None):
         self._scopes = scopes
         self._fields = fields or {}
         self._links = links or {}
@@ -39,9 +39,13 @@ class _FakeClient:
         self._report_filters = report_filters or {}  # {scope: [filter rows]}
         self._status = status
         self._collections = collections or {}  # {scope: collection dict}
+        self._i18n = i18n or {}  # {"Global": {"scopeNames": {...}, ...}}
 
     def get_all_scopes(self):
         return (self._status, self._scopes)
+
+    def get_i18n(self, language="en_US"):
+        return (200, self._i18n)
 
     def get_entity_field_list(self, entity):
         return (200, self._fields.get(entity, {}))
@@ -676,3 +680,40 @@ def test_reconcile_associations_strips_native_link_prefix(v2_env):
                  for a in association_repo.list_associations(s)}
         assert "contributions" in names      # native link prefix stripped
         assert "cContributions" not in names
+
+
+def test_reconcile_captures_entity_label_from_i18n(v2_env):
+    """REL-025 / REQ-364: the audit captures the source display label (singular +
+    plural) from i18n and stores it on the canonical entity, keyed by the
+    concrete scope name while the canonical record uses the neutral name."""
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            scopes={"CMentorProfile": _custom()},
+            fields={"CMentorProfile": {}},
+            i18n={"Global": {
+                "scopeNames": {"CMentorProfile": "CBM Member"},
+                "scopeNamesPlural": {"CMentorProfile": "CBM Members"},
+            }},
+        )
+        reconcile_entities(s, instance_identifier=iid, client=client)
+        ent = next(
+            e for e in entity_repo.list_entities(s)
+            if e["entity_name"] == "MentorProfile"
+        )
+        assert ent["entity_label"] == "CBM Member"
+        assert ent["entity_label_plural"] == "CBM Members"
+
+
+def test_reconcile_without_i18n_leaves_label_empty(v2_env):
+    """No i18n labels -> structure still reconciles, label stays empty."""
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(scopes={"CMentorProfile": _custom()},
+                             fields={"CMentorProfile": {}})
+        reconcile_entities(s, instance_identifier=iid, client=client)
+        ent = next(
+            e for e in entity_repo.list_entities(s)
+            if e["entity_name"] == "MentorProfile"
+        )
+        assert ent["entity_label"] is None

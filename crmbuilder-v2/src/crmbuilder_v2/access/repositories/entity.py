@@ -91,6 +91,8 @@ _PATCHABLE_FIELDS = frozenset(
         "text_filter_fields",
         "full_text_search",
         "full_text_search_min_length",
+        "label",
+        "label_plural",
     }
 )
 
@@ -714,6 +716,14 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
         row.entity_full_text_search_min_length = _coerce_fts_min_length(
             fields["full_text_search_min_length"]
         )
+    # REL-025 / REQ-364: source display labels (singular + plural). A blank
+    # value clears the label; otherwise it is stored verbatim.
+    if "label" in fields:
+        v = fields["label"]
+        row.entity_label = v.strip() if isinstance(v, str) and v.strip() else None
+    if "label_plural" in fields:
+        v = fields["label_plural"]
+        row.entity_label_plural = v.strip() if isinstance(v, str) and v.strip() else None
 
     session.flush()
     after = to_dict(row)

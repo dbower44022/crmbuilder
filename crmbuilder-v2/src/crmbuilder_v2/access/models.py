@@ -834,6 +834,11 @@ class Entity(EngagementScopedPKMixin, Base):
     entity_kind: Mapped[str | None] = mapped_column(Text, nullable=True)
     entity_description: Mapped[str] = mapped_column(Text, nullable=False)
     entity_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # REL-025 / REQ-364: the source CRM's display labels (singular + plural),
+    # captured during audit alongside the internal/neutral name. Descriptive
+    # only — the internal name remains the audit's matching key.
+    entity_label: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entity_label_plural: Mapped[str | None] = mapped_column(Text, nullable=True)
     # PRJ-025 PI-182 — intrinsic engine-neutral design intent (§6).
     # ``entity_default_sort_field`` names the field the entity sorts by;
     # ``entity_default_sort_direction`` is asc/desc (validated against
