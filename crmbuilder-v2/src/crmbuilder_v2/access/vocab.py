@@ -1339,6 +1339,17 @@ CLOSE_OUT_PAYLOAD_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 # values are permanent facts, not transitioning workflow states.
 DEPOSIT_EVENT_OUTCOMES: frozenset[str] = frozenset({"success", "failure"})
 
+# `release_run_outcome` enum (PI-326, REQ-262 / DEC-742). The terminal outcome
+# of one run of a release through the lane — a permanent fact captured at close,
+# not a transitioning workflow state (the record is born-terminal append-only,
+# mirroring `deposit_event`). `shipped` = the run delivered; `abandoned` = the run
+# was retired at a halt point; `superseded` = the run was closed in favour of a
+# re-attempt under a correction release. See
+# preserve-failed-run-history-design.md §3.3.
+RELEASE_RUN_OUTCOMES: frozenset[str] = frozenset(
+    {"shipped", "abandoned", "superseded"}
+)
+
 # `deposit_event_kind` discriminator (WTK-089 design spec §4.1, D3). A
 # deposit event is either a close-out-payload apply (the v0.7 shape —
 # exactly-one parent edge, lazy payload, `{apply_script_version,
@@ -1601,6 +1612,12 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # concrete task entities (work_task, workstream). Mirrors the
         # ``deposit_event_wrote_record`` precedent.
         "task_transition_records_task",
+        # PI-326 (PRJ-065, preserve-failed-run-history-design.md §3.3). The
+        # run-outcome record's outbound edge to any ``finding`` (FND-) produced
+        # during the run — the "findings" half of the record. Mirrors the
+        # ``finding_relates_to`` / ``deposit_event_wrote_record`` outbound-edge
+        # precedents.
+        "release_run_relates_to_finding",
     }
 )
 
@@ -1748,6 +1765,13 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # ``task_transition_records_task`` parent edge) and change-log-tracked.
         # See governance-schema-specs/task-transition.md.
         "task_transition",
+        # PI-326 (PRJ-065, REQ-262 / DEC-742). The first-class run-outcome
+        # satellite (RUN-) — one born-terminal append-only record of one run of a
+        # release through the lane (abandon / ship), NOT 1:1 with the release. A
+        # release-scoped satellite with a composite FK to ``releases``; admitted
+        # here so a run can source the ``release_run_relates_to_finding`` edge and
+        # be change-log-tracked. See preserve-failed-run-history-design.md §3.3.
+        "release_run",
     }
 )
 
@@ -2119,6 +2143,10 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     # target: the two concrete task entities (work_task, workstream).
     if source_type == "task_transition" and target_type in ("work_task", "workstream"):
         kinds.add("task_transition_records_task")
+    # PI-326 (preserve-failed-run-history-design.md §3.3). The run-outcome
+    # record's outbound link to any ``finding`` the run produced.
+    if source_type == "release_run" and target_type == "finding":
+        kinds.add("release_run_relates_to_finding")
     return frozenset(kinds)
 
 

@@ -2667,6 +2667,27 @@ class DepositEventCreateIn(_Base):
     target_file_path: str | None = None
 
 
+class ReleaseRunCreateIn(_Base):
+    """POST /release-runs body — the run-outcome satellite (PI-326, §3.3).
+
+    Born-terminal append-only: this is the only write shape (no update/delete).
+    ``release_run_scope`` is the projects + planning-items snapshot at close;
+    ``release_run_phases_run`` is the per-phase terminal-status list;
+    ``halt_point`` / ``cause`` / ``cause_code`` are nullable (a shipped run has no
+    halt); ``finding_identifiers`` link any findings the run produced.
+    """
+
+    release_identifier: str
+    release_run_outcome: str
+    release_run_scope: dict[str, Any]
+    release_run_phases_run: list[Any]
+    release_run_halt_point: str | None = None
+    release_run_cause: str | None = None
+    release_run_cause_code: str | None = None
+    finding_identifiers: list[str] | None = None
+    release_run_identifier: str | None = None
+
+
 class UtilizationEvidenceCreateIn(_Base):
     """POST /utilization-evidence body (WTK-088 §4.5).
 

@@ -76,6 +76,7 @@ from crmbuilder_v2.api.routers import (
     reference_books,
     references,
     registry,
+    release_runs,
     releases,
     requirements,
     review,
@@ -192,6 +193,8 @@ def create_app() -> FastAPI:
     # Governance entities (UI v0.7), in project order.
     app.include_router(projects.router)
     app.include_router(releases.router)
+    app.include_router(release_runs.router)
+    app.include_router(release_runs.release_scoped_router)
     app.include_router(artifact_versions.router)
     app.include_router(reconcile.router)
     app.include_router(reconciliation_conflicts.router)
