@@ -65,6 +65,38 @@ on the live DB; restart the API.
    a real field-attribute drift instance→design, confirm the transaction logs,
    roll it back, and trigger the data-loss warning on a narrowing/destructive
    revert. Record findings.
+
+   **DONE — first run 06-26 (PASSED), via the REST endpoints the panel calls:**
+   - Audit both: INST-001 17 entities / 234 fields (27 drifted); INST-002 19
+     entities / 233 fields (24 drifted).
+   - Compare A vs B vs design: **20 groups, 287 difference rows** (entity
+     collection settings, field `read_only`, presence gaps, associations, labels).
+   - Per-entity drill (Account / ENT-017): scoped to 1 group, 22 rows. ✓
+   - Capture `Account.applicantSinceTimestamp.field_read_only` from INST-002
+     (False→True): design updated, transaction logged. ✓
+   - `assess-revert`: correctly **safe** for `read_only` (non-destructive);
+     verified the analysis flags max-length narrowing + type change as
+     `data_loss` / `requires_confirmation`. ✓
+   - Rollback: original `rolled_back`, compensating txn created, design
+     **restored to original** — net-zero, CBM design unchanged. ✓
+
+   **Findings:**
+   - **Systematic design-behind-reality drift.** The only *actionable* field-attribute
+     drift between the two CRMs is `field_read_only` on **27 fields** — both live
+     instances mark them read-only while the design says editable. Entity
+     collection settings (sort direction `asc`, full-text-search on) are likewise
+     set on both instances but `None`/`False` in the design. Good candidate for a
+     future **bulk capture-back** to bring the design up to live reality.
+   - **Data-loss warning not triggerable by live data** between these two
+     instances (no `field_type`/`field_max_length` drift) — exercised via the
+     analysis function instead. A live trigger needs an instance with a narrowed
+     length or changed type.
+   - **Test artifacts:** the capture + its compensating rollback (actor
+     `e2e-test`) remain in the CBM reconcile transaction log (append-only by
+     design, net-zero on the design — harmless).
+   - **Gap confirmed:** capture is field-attribute only; the 287 rows include many
+     non-actionable entity-option / presence / association / layout diffs that the
+     UI shows but can't yet reconcile (see enhancement backlog #2/#3).
 2. **Stabilize the Qt test suite** — `pytest tests/crmbuilder_v2/` intermittently
    SIGSEGVs in the offscreen UI teardown under load (a known flake; see
    `pi-159-qt-paint-segfault-design.md` / the conftest gc hook). Get a reliable
