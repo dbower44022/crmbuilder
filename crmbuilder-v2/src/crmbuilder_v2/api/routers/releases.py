@@ -44,6 +44,7 @@ from crmbuilder_v2.api.schemas import (
     PlanningClaimIn,
     PlanReleaseIn,
     ReconcileIn,
+    ReleaseAbandonIn,
     ReleaseCorrectionIn,
     ReleaseCreateIn,
     ReleaseLaneOrderIn,
@@ -220,6 +221,29 @@ def transition(identifier: str, body: ReleaseTransitionIn):
     with writable_session() as s:
         return ok(
             releases.transition(s, identifier, body.to_status, actor=body.actor)
+        )
+
+
+@router.post("/{identifier}/abandon")
+def abandon(identifier: str, body: ReleaseAbandonIn):
+    """Retire a run that actually ran, preserving its evidence (PI-327 / REQ-260).
+
+    Writes the born-terminal run-outcome record and transitions the release to its
+    terminal status (``abandoned`` → cancelled / ``superseded``) WITHOUT deleting the
+    scope edges or phase workstreams — the only sanctioned cleanup path for a release
+    that has entered a lane. Returns ``{release, run}``. 404 unknown release; 422 a
+    bad ``outcome``; 409 a pre-lane release (never ran) or an already-terminal one
+    (use a plain transition for the former; the latter is a closed run)."""
+    with writable_session() as s:
+        return ok(
+            releases.abandon(
+                s,
+                identifier,
+                reason=body.reason,
+                halt_point=body.halt_point,
+                cause_code=body.cause_code,
+                outcome=body.outcome,
+            )
         )
 
 

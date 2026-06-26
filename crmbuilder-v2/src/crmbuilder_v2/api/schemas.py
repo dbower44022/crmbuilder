@@ -1922,6 +1922,21 @@ class ReleaseTransitionIn(_Base):
     actor: str | None = None
 
 
+class ReleaseAbandonIn(_Base):
+    """POST /releases/{id}/abandon body (PI-327 / REQ-260).
+
+    Retire-not-delete: write the run-outcome record + transition the release to its
+    terminal status while preserving the scope edges and phase workstreams.
+    ``outcome`` is ``abandoned`` (→ cancelled) or ``superseded``; ``shipped`` is the
+    ship path, not abandon. ``halt_point`` / ``cause_code`` are optional.
+    """
+
+    reason: str
+    halt_point: str | None = None
+    cause_code: str | None = None
+    outcome: str = "abandoned"
+
+
 class ReleaseLaneOrderIn(_Base):
     order: int | None = None
 
