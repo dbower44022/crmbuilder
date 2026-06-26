@@ -164,6 +164,14 @@ def run_rollup(session: Session, release_identifier: str) -> dict:
     on that transition). When several tasks have halted, the anchor is the most
     recent halt (by transition time, then sequence) — the run's stopping point.
 
+    **Retain-safe (REQ-335 observability aspect of DEC-692).** A run *retired*
+    through the sanctioned cleanup path (soft-delete — a ``_deleted_at`` marker,
+    never a hard delete) still rolls up its full history: the transition log is
+    append-only (never deleted), and this read intentionally does not filter
+    ``_deleted_at`` on the release or its work tasks, so a closed/retired run is
+    never erased and never rolls up empty. (The hard-delete *prohibition* and the
+    first-class run-outcome record are PRJ-038's preserve-failed-run-history.)
+
     :param session: the active access-layer session.
     :param release_identifier: the release to roll up.
     :returns: ``{release_identifier, status, failed, halt_point, halt_points,

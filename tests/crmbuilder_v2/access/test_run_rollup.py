@@ -234,3 +234,48 @@ def test_rollup_tasks_without_transitions(v2_env):
     assert task["current_status"] == "Planned"
     assert task["transitions"] == []
     assert task["terminal_report"] is None
+
+
+# ---------------------------------------------------------------------------
+# Retain-not-delete — a *retired* run (records soft-deleted through the
+# sanctioned cleanup path) is never erased and never rolls up empty
+# (REQ-335 / DEC-692). The hard-delete *prohibition* itself is PRJ-038's
+# (preserve-failed-run-history) to enforce; here we lock the observability
+# guarantee: the append-only log plus soft-delete survive cleanup.
+# ---------------------------------------------------------------------------
+
+
+def test_rollup_survives_a_soft_deleted_retired_run(v2_env):
+    """A run retired through the soft-delete cleanup path — its release and work
+    tasks ``_deleted_at`` marked — still rolls up with every task's complete
+    transition history and its halt point. The append-only transition log is
+    never deleted, and the rollup reads soft-deleted records, so a closed run is
+    never erased and never displays empty."""
+    with session_scope() as s:
+        rel, (wt1, wt2) = _release_with_tasks(s, areas=["storage", "access"])
+    with session_scope() as s:
+        _drive(s, wt1, ["Ready", "Claimed", "In Progress", "Complete"],
+               agent_report=_terminal_report())
+        _drive(s, wt2, ["Ready", "Claimed", "Failed"],
+               agent_report=_terminal_report(outcome="failed", reasoning="died here"))
+    # Retire the whole run via the sanctioned cleanup path: soft-delete (a
+    # _deleted_at marker), never a hard delete.
+    with session_scope() as s:
+        work_tasks.delete_work_task(s, wt1)
+        work_tasks.delete_work_task(s, wt2)
+        releases.delete_release(s, rel)
+
+    with session_scope() as s:
+        roll = task_transitions.run_rollup(s, rel)
+
+    by_id = {t["task_identifier"]: t for t in roll["tasks"]}
+    assert set(by_id) == {wt1, wt2}, "a retired run must not roll up empty"
+    # the full, gap-free transition history survives the soft-delete
+    assert [
+        r["task_transition_sequence"] for r in by_id[wt1]["transitions"]
+    ] == [1, 2, 3, 4]
+    assert by_id[wt1]["terminal_report"]["outcome"] == "delivered"
+    # the failed task still surfaces the halt point + its cause
+    assert roll["failed"] is True
+    assert roll["halt_point"]["task_identifier"] == wt2
+    assert roll["halt_point"]["agent_report"]["outcome"] == "failed"
