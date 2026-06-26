@@ -47,6 +47,7 @@ User‑facing how‑tos for shipped capabilities.
 - [PRJ-027 — Multi-Instance CRM Connection, Audit & Inventory](prj-027-multi-instance-audit-inventory-architecture.md)
 - [Source Instance Mapping — Design Model](source-mapping-design.md)
 - [Three-Way Reconciliation — Release Plan](three-way-reconciliation-release-plan.md) (engine, capture-back, transaction log, rollback)
+- [Reconciliation — Continuation Kickoff](reconciliation-continuation-kickoff.md) (next-session prompt: testing + enhancement backlog)
 
 ## Requirements provenance & review
 
