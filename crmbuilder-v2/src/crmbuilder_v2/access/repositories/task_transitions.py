@@ -73,6 +73,11 @@ _ESCALATION_REQUIRED_STATUSES = frozenset({"Blocked"})
 # The succeeded-equivalent terminal: no escalation is meaningful (spec §3.2.4
 # "NULL on succeeded").
 _ESCALATION_FORBIDDEN_STATUSES = frozenset({"Complete"})
+# Halt points (run-ending-but-not-success). A run that reaches any of these has
+# failed/stalled: ``Complete`` is run-ending *and* success, so it is excluded.
+# This is the run-level "where did it stop, and why" anchor set for
+# :func:`run_rollup` (stamping design §4 / REQ-263).
+_HALT_STATUSES = _TERMINAL_STATUSES - _ESCALATION_FORBIDDEN_STATUSES
 
 
 # ---------------------------------------------------------------------------
@@ -120,14 +125,112 @@ def terminal_report(
     """
     for row in reversed(list_for_task(session, task_identifier, task_type)):
         if row["task_transition_to_status"] in _TERMINAL_STATUSES:
-            if row["task_transition_outcome"] is None:
-                return None
-            return {
-                "outcome": row["task_transition_outcome"],
-                "reasoning_summary": row["task_transition_reasoning_summary"],
-                "escalation": row["task_transition_escalation"],
-            }
+            return _report_of_row(row)
     return None
+
+
+def _report_of_row(row: dict) -> dict | None:
+    """The ``(outcome, reasoning_summary, escalation)`` report on one row, or None.
+
+    A terminal transition may have been stamped without a captured report (the
+    internal-stamp path); a missing ``outcome`` is the marker that no report was
+    recorded.
+    """
+    if row["task_transition_outcome"] is None:
+        return None
+    return {
+        "outcome": row["task_transition_outcome"],
+        "reasoning_summary": row["task_transition_reasoning_summary"],
+        "escalation": row["task_transition_escalation"],
+    }
+
+
+def run_rollup(session: Session, release_identifier: str) -> dict:
+    """The run-level rollup over the append-only transition log (REQ-277).
+
+    DEC-692's *single durable account* of a release run: walk
+    ``release → projects → planning_items → workstreams → work_tasks`` and, for
+    each work task, fold in its complete ordered transition history (via
+    :func:`list_for_task`) plus the report at any terminal transition. The shape
+    mirrors the best-effort ``pipeline_events.history`` read, but every datum is
+    sourced from the canonical ``task_transition`` rows — it is a **derived view
+    computed at read time**, never a stored, separately-mutated summary.
+
+    **Failed-run anchoring (REQ-263).** A task is *halted* when its latest
+    transition lands in a halt status (``Failed`` / ``Blocked`` — the run-ending
+    set minus the succeeded-equivalent ``Complete``). When any task is halted the
+    rollup is ``failed`` and surfaces a ``halt_point``: the halting task, the
+    halt status, and its cause (the ``reason`` plus the terminal ``agent_report``
+    on that transition). When several tasks have halted, the anchor is the most
+    recent halt (by transition time, then sequence) — the run's stopping point.
+
+    :param session: the active access-layer session.
+    :param release_identifier: the release to roll up.
+    :returns: ``{release_identifier, status, failed, halt_point, halt_points,
+        tasks}`` — ``status`` is the release's own status (``None`` if the release
+        is absent); each ``tasks`` entry carries the task's identity, current
+        status, ordered ``transitions``, and ``terminal_report``.
+    """
+    # Local import avoids a module-load cycle (coordination is an access-level
+    # sibling, not a repository) and mirrors history()'s lazy-import style.
+    from crmbuilder_v2.access import coordination
+    from crmbuilder_v2.access.models import Release
+
+    release_row = session.scalars(
+        select(Release).where(Release.release_identifier == release_identifier)
+    ).first()
+    release_status = release_row.release_status if release_row is not None else None
+
+    tasks: list[dict] = []
+    halt_points: list[dict] = []
+    for wt in coordination._work_tasks_of_release(session, release_identifier):
+        task_identifier = wt.work_task_identifier
+        transitions = list_for_task(session, task_identifier, "work_task")
+        terminal = terminal_report(session, task_identifier, "work_task")
+        tasks.append(
+            {
+                "task_identifier": task_identifier,
+                "task_type": "work_task",
+                "title": wt.work_task_title,
+                "area": wt.work_task_area,
+                "current_status": wt.work_task_status,
+                "transitions": transitions,
+                "terminal_report": terminal,
+            }
+        )
+
+        # A task is halted when its *latest* transition lands in a halt status —
+        # i.e. it is presently sitting at a run-ending-but-not-success state.
+        if transitions and transitions[-1]["task_transition_to_status"] in _HALT_STATUSES:
+            last = transitions[-1]
+            halt_points.append(
+                {
+                    "task_identifier": task_identifier,
+                    "task_type": "work_task",
+                    "to_status": last["task_transition_to_status"],
+                    "reason": last["task_transition_reason"],
+                    "agent_report": _report_of_row(last),
+                    "at": last["task_transition_at"],
+                    "sequence": last["task_transition_sequence"],
+                }
+            )
+
+    # Anchor on the most recent halt (latest transition time, then sequence) — the
+    # point the run stopped at.
+    halt_point = (
+        max(halt_points, key=lambda h: (h["at"], h["sequence"]))
+        if halt_points
+        else None
+    )
+
+    return {
+        "release_identifier": release_identifier,
+        "status": release_status,
+        "failed": halt_point is not None,
+        "halt_point": halt_point,
+        "halt_points": halt_points,
+        "tasks": tasks,
+    }
 
 
 # ---------------------------------------------------------------------------
