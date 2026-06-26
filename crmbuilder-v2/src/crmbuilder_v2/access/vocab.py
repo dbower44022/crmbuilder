@@ -2375,6 +2375,13 @@ CATALOG_RELATIONSHIP_CARDINALITIES: frozenset[str] = frozenset(
 
 CATALOG_RELATIONSHIP_ROLES: frozenset[str] = frozenset({"parent", "child", "peer"})
 
+# Reconcile transaction log (PI-318 / REL-024). A transaction records one
+# reconcile action: ``capture`` (instance value -> canonical design) or
+# ``publish`` (design value -> instance). ``status`` flips to ``rolled_back``
+# when the action is reversed (the row is never deleted).
+RECONCILE_TRANSACTION_DIRECTIONS: frozenset[str] = frozenset({"capture", "publish"})
+RECONCILE_TRANSACTION_STATUSES: frozenset[str] = frozenset({"applied", "rolled_back"})
+
 
 def _check_in(name: str, allowed: frozenset[str]) -> str:
     """Build a SQLite CHECK constraint expression for an enumerated column."""

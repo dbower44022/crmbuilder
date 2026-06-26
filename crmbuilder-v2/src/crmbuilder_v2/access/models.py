@@ -108,6 +108,8 @@ from crmbuilder_v2.access.vocab import (
     PROCESS_CLASSIFICATIONS,
     PROJECT_STATUSES,
     PUBLISH_RUN_STATUSES,
+    RECONCILE_TRANSACTION_DIRECTIONS,
+    RECONCILE_TRANSACTION_STATUSES,
     RECONCILIATION_CONFLICT_STATUSES,
     RECONCILIATION_CONFLICT_TYPES,
     REFERENCE_BOOK_KINDS,
@@ -2713,6 +2715,73 @@ class InstanceMembership(EngagementScopedMixin, Base):
         ),
         Index(
             "ix_instance_memberships_member",
+            "engagement_id",
+            "member_type",
+            "member_identifier",
+        ),
+    )
+
+
+class ReconcileTransaction(EngagementScopedMixin, Base):
+    """PI-318 (REL-024) — an append-only log of one reconcile action.
+
+    Every reconcile action in either direction — ``capture`` (an instance's value
+    into the canonical design) or ``publish`` (a design value out to an instance)
+    — records a transaction capturing the prior and new value, the source, the
+    target, the actor, and the time, so the design never changes without a clear,
+    reversible, attributable trail (DEC-722). A lightweight engagement-scoped
+    child table (integer PK, no ``change_log`` / ``refs`` participation), mirroring
+    ``InstanceMembership``. Rollback flips ``status`` to ``rolled_back`` and stamps
+    ``rolled_back_at`` rather than deleting the row (DEC-723). ``batch_id`` groups
+    the rows applied together by one whole-entity copy or multi-row apply.
+
+    ``source_ref`` / ``target_ref`` are the literal ``design`` or an instance
+    identifier; ``before_value`` / ``after_value`` hold the scalar (or structured)
+    attribute values as JSON. ``attribute`` is ``None`` for a whole-member
+    presence change (create/copy of a member).
+    """
+
+    __tablename__ = "reconcile_transactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    batch_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    direction: Mapped[str] = mapped_column(String(16), nullable=False)
+    source_ref: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_ref: Mapped[str] = mapped_column(String(32), nullable=False)
+    member_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    member_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    attribute: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    before_value: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    after_value: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    actor: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="applied"
+    )
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rolled_back_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    rolled_back_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("direction", RECONCILE_TRANSACTION_DIRECTIONS),
+            name="ck_reconcile_transaction_direction",
+        ),
+        CheckConstraint(
+            _check_in("status", RECONCILE_TRANSACTION_STATUSES),
+            name="ck_reconcile_transaction_status",
+        ),
+        Index("ix_reconcile_transactions_batch", "engagement_id", "batch_id"),
+        Index(
+            "ix_reconcile_transactions_member",
             "engagement_id",
             "member_type",
             "member_identifier",
