@@ -342,26 +342,63 @@ def reconcile_entities(
     return summary
 
 
-def _audited_field_attrs(field_meta: dict[str, Any]) -> dict[str, Any]:
-    """Derive the neutral field attributes the inventory compares on.
+# Boolean field attributes compare by truthiness (a ``None`` canonical value reads
+# as False). The value-carrying attributes use forward asymmetry — see
+# :func:`_field_override`.
+_FIELD_BOOL_ATTRS: frozenset[str] = frozenset({"field_required", "field_read_only"})
 
-    First field slice: neutral ``field_type`` (mapped from the concrete type)
-    and ``field_required``. More neutral attributes (max length, default, …)
-    join the comparison as the reconcile deepens.
+# Value-carrying field attributes the canonical ``Field`` record can hold and the
+# audit can read from EspoCRM field metadata. Each maps a neutral attribute name
+# to its concrete EspoCRM ``entityDefs`` field-metadata key.
+_FIELD_VALUE_ATTR_KEYS: dict[str, str] = {
+    "field_max_length": "maxLength",
+    "field_default_value": "default",
+    "field_min": "min",
+    "field_max": "max",
+}
+
+
+def _audited_field_attrs(field_meta: dict[str, Any]) -> dict[str, Any]:
+    """Derive the neutral field attributes the inventory compares on (PI-314).
+
+    Covers neutral ``field_type`` (mapped from the concrete type), the boolean
+    flags ``field_required`` and ``field_read_only``, and the value-carrying
+    settings the canonical ``Field`` record stores — ``field_max_length``,
+    ``field_default_value``, ``field_min``, ``field_max`` — read from the concrete
+    EspoCRM field metadata. This is the value-level substrate the three-way
+    reconciliation diff reads (REQ-357).
     """
-    return {
+    attrs: dict[str, Any] = {
         "field_type": _map_field_type(field_meta.get("type")),
         "field_required": bool(field_meta.get("required", False)),
+        "field_read_only": bool(field_meta.get("readOnly", False)),
     }
+    for neutral, espo_key in _FIELD_VALUE_ATTR_KEYS.items():
+        attrs[neutral] = field_meta.get(espo_key)
+    return attrs
 
 
 def _field_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict:
-    """Return the sparse per-attribute field deviation (DEC-432), or ``{}``."""
+    """Return the sparse per-attribute field deviation (DEC-432), or ``{}``.
+
+    ``field_type`` always compares (the canonical record always carries one) and
+    the boolean flags compare by truthiness. The value-carrying attributes use
+    **forward asymmetry**: a deviation is recorded only when the canonical design
+    declares a non-``None`` value that the instance contradicts. This mirrors the
+    field-comparator rule used elsewhere and keeps platform defaults the design
+    never set (e.g. a varchar's implicit ``maxLength``) from producing false
+    drift on every field.
+    """
     override: dict[str, Any] = {}
     if canonical.get("field_type") != audited["field_type"]:
         override["field_type"] = audited["field_type"]
-    if bool(canonical.get("field_required")) != audited["field_required"]:
-        override["field_required"] = audited["field_required"]
+    for key in _FIELD_BOOL_ATTRS:
+        if bool(canonical.get(key)) != bool(audited.get(key)):
+            override[key] = audited.get(key)
+    for key in _FIELD_VALUE_ATTR_KEYS:
+        canonical_value = canonical.get(key)
+        if canonical_value is not None and canonical_value != audited.get(key):
+            override[key] = audited.get(key)
     return override
 
 
