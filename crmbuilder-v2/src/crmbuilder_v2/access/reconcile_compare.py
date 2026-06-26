@@ -244,9 +244,12 @@ def three_way_compare(
     idx_a = _membership_index(session, instance_a)
     idx_b = _membership_index(session, instance_b)
     field_parent = _field_parent_map(session)
-    entity_name = {
-        e["entity_identifier"]: e.get("entity_name")
-        for e in entity_repo.list_entities(session)
+    _entities = entity_repo.list_entities(session)
+    entity_name = {e["entity_identifier"]: e.get("entity_name") for e in _entities}
+    # REL-025 / REQ-365: the source display label, surfaced on each group so the
+    # UI can show an entity by the friendly name users see in the CRM.
+    entity_label = {
+        e["entity_identifier"]: e.get("entity_label") for e in _entities
     }
 
     grouped: dict[str, list[dict[str, Any]]] = {}
@@ -284,6 +287,7 @@ def three_way_compare(
         groups.append({
             "entity": GLOBAL_GROUP if gid == GLOBAL_GROUP else entity_name.get(gid, gid),
             "entity_identifier": None if gid == GLOBAL_GROUP else gid,
+            "entity_label": None if gid == GLOBAL_GROUP else entity_label.get(gid),
             "rows": rows,
         })
         row_count += len(rows)

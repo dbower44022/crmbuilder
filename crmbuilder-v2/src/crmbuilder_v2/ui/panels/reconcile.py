@@ -183,7 +183,11 @@ class ReconcilePanel(QWidget):
         self._tree.clear()
         groups = result.get("groups", [])
         for grp in groups:
-            top = QTreeWidgetItem([grp.get("entity") or "(entity)", "", "", "", ""])
+            # Show the friendly source label next to the internal name (REQ-365).
+            ent_name = grp.get("entity") or "(entity)"
+            label = grp.get("entity_label")
+            header = f"{ent_name}  —  {label}" if label and label != ent_name else ent_name
+            top = QTreeWidgetItem([header, "", "", "", ""])
             top.setFlags(Qt.ItemFlag.ItemIsEnabled)
             self._tree.addTopLevelItem(top)
             for r in grp.get("rows", []):

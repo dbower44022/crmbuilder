@@ -76,6 +76,8 @@ class _FieldsClient(_ScopesClient, Protocol):
 
     def get_collection(self, entity: str) -> tuple[int, dict | None]: ...
 
+    def get_i18n(self, language: str = ...) -> tuple[int, dict]: ...
+
 
 class _LinksClient(_ScopesClient, Protocol):
     """Adds the per-entity link listing the association reconcile needs."""
@@ -260,6 +262,19 @@ def reconcile_entities(
             f"get_all_scopes returned status={status}; expected 200 + dict body"
         )
 
+    # REL-025 / REQ-364: entity display labels live in the source's i18n (not in
+    # entityDefs), keyed by the concrete scope name. Fetch once and capture the
+    # singular/plural label per entity. A non-200 / missing i18n leaves labels
+    # empty (the audit still reconciles structure).
+    _, i18n = client.get_i18n()
+    _glob = (i18n or {}).get("Global", {}) if isinstance(i18n, dict) else {}
+    scope_labels = _glob.get("scopeNames") if isinstance(_glob.get("scopeNames"), dict) else {}
+    scope_labels_plural = (
+        _glob.get("scopeNamesPlural")
+        if isinstance(_glob.get("scopeNamesPlural"), dict)
+        else {}
+    )
+
     canonical = {
         _ci(row["entity_name"]): row for row in entity_repo.list_entities(session)
     }
@@ -319,6 +334,21 @@ def reconcile_entities(
             diff = _entity_override(match, audited)
             state = "drifted" if diff else "present"
             override = diff or None
+
+        # REL-025 / REQ-364: sync the source display label onto the canonical
+        # record (descriptive, not a drift attribute). Patch only when the source
+        # has a label that differs from the stored value, so a label is never
+        # cleared and unchanged labels are no-ops.
+        current = canonical.get(_ci(neutral), {})
+        label = scope_labels.get(scope_name)
+        label_plural = scope_labels_plural.get(scope_name)
+        label_patch: dict[str, Any] = {}
+        if label and label != current.get("entity_label"):
+            label_patch["label"] = label
+        if label_plural and label_plural != current.get("entity_label_plural"):
+            label_patch["label_plural"] = label_plural
+        if label_patch:
+            entity_repo.patch_entity(session, member_id, **label_patch)
 
         membership_repo.upsert_membership(
             session,
@@ -433,6 +463,19 @@ def reconcile_fields(
         _ci(row["entity_name"]): row["entity_identifier"]
         for row in entity_repo.list_entities(session)
     }
+    # REL-025 / REQ-366: field display labels live in i18n under
+    # ``<Entity>.fields.<field>`` (per-entity), falling back to
+    # ``Global.fields.<field>``. Fetch once; look up by concrete scope + field.
+    _, _i18n = client.get_i18n()
+    _i18n = _i18n if isinstance(_i18n, dict) else {}
+    _global_field_labels = (_i18n.get("Global") or {}).get("fields") or {}
+
+    def _field_label(scope: str, field: str) -> str | None:
+        per_entity = (_i18n.get(scope) or {}).get("fields")
+        if isinstance(per_entity, dict) and per_entity.get(field):
+            return per_entity[field]
+        return _global_field_labels.get(field) if isinstance(_global_field_labels, dict) else None
+
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
     seen_ids: set[str] = set()
@@ -532,6 +575,14 @@ def reconcile_fields(
                 diff = _field_override(match, audited)
                 state = "drifted" if diff else "present"
                 override = diff or None
+
+            # REL-025 / REQ-366: sync the source display label onto the canonical
+            # field (descriptive, not a drift attribute); patch only when present
+            # and changed, so a label is never cleared and unchanged is a no-op.
+            cur = canon.get(_ci(neutral_field), {})
+            label = _field_label(scope_name, field_name)
+            if label and label != cur.get("field_label"):
+                field_repo.patch_field(session, member_id, label=label)
 
             membership_repo.upsert_membership(
                 session,

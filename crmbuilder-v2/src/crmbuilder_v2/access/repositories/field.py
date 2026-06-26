@@ -126,7 +126,7 @@ _DERIVED_COLUMN_BY_KWARG: dict[str, str] = {
 # is not allowed via PATCH (spec §3.5.4); use explicit edge management.
 # ``options`` (the field_options child set) is handled out-of-band.
 _PATCHABLE_FIELDS = frozenset(
-    {"name", "description", "type", "required", "notes", "status"}
+    {"name", "description", "type", "required", "notes", "status", "label"}
     | set(_INTRINSIC_COLUMN_BY_KWARG)
     | set(_DERIVED_COLUMN_BY_KWARG)
     | {"options"}
@@ -1040,6 +1040,10 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
         row.field_required = bool(fields["required"])
     if "notes" in fields:
         row.field_notes = fields["notes"]
+    if "label" in fields:
+        # REL-025 / REQ-366: source display label; blank clears, else stored.
+        v = fields["label"]
+        row.field_label = v.strip() if isinstance(v, str) and v.strip() else None
     if "status" in fields:
         status_v = _require_status(fields["status"])
         if status_v != row.field_status:
