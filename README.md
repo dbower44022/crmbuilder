@@ -39,4 +39,5 @@ You can also use the **Generate Docs** button in the application UI.
 
 ### CRMBuilder v2
 
+- [Documentation Index](PRDs/product/crmbuilder-v2/README.md) — curated map of V2 design, architecture, and feature docs
 - [Three-Way Reconciliation — User Guide](PRDs/product/crmbuilder-v2/three-way-reconciliation-user-guide.md) — compare the design against two live instances and reconcile the differences (Governance → Reconcile)
