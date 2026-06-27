@@ -56,6 +56,37 @@ def _fill(text: str, *, area: str, work_task_id: str, api_base: str) -> str:
     )
 
 
+def _tools_section(tools: list[dict]) -> str:
+    """Render the resolved contract's tool-skills into a prompt section (REQ-380).
+
+    Each tool the profile grants is surfaced with its name, what it does
+    (description), how to call it (the backing callable / endpoint), and its I/O
+    contract — so the registry's tool bindings actually shape what the agent
+    does. Returns "" when the profile grants no tools.
+    """
+    if not tools:
+        return ""
+    lines: list[str] = []
+    for t in tools:
+        name = t.get("name") or t.get("identifier") or "(tool)"
+        line = f"- {name}"
+        desc = (t.get("description") or "").strip()
+        if desc:
+            line += f": {desc}"
+        call = t.get("backing_callable")
+        if call:
+            line += f"\n    how to call: {call}"
+        io = t.get("io_contract")
+        if io:
+            line += f"\n    I/O contract: {json.dumps(io)}"
+        lines.append(line)
+    return (
+        "### Tools available to you (granted by your registry profile)\n"
+        "Use these to do your work — each is backed by a real endpoint/capability:\n"
+        + "\n".join(lines)
+    )
+
+
 def build_agent_prompt(
     api_base: str,
     engagement: str,
@@ -92,6 +123,9 @@ def build_agent_prompt(
         )
     if learnings:
         parts.append("### What past agents in your area learned\n" + learnings)
+    tools_section = _tools_section(contract.get("tools", []))
+    if tools_section:
+        parts.append(tools_section)
     parts.append(
         "### Your assigned Work Task\n"
         f"- identifier: {work_task_id}\n"
