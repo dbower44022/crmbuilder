@@ -1090,6 +1090,14 @@ RELEASE_SIGNOFF_STAGES: frozenset[str] = frozenset(
 # side-by-side; the Phase-5 cutover flips the default to per_area and drops the field.
 RELEASE_BACK_HALF_MODES: frozenset[str] = frozenset({"per_pi", "per_area"})
 
+# How a release is driven through the lanes (PI-294 / REQ-331/332/333): the agent
+# pipeline (`automated`, default) or a human driver delivering the work by hand
+# (`manual`). A manual release relaxes the post-freeze gates — no phase-workstream
+# decomposition, qa/test advance on the driver-recorded stamps — and auto-records
+# ship approval once every in-scope Planning Item resolves; the freeze scope gate
+# and the reconciliation/architecture human reviews still apply either way.
+RELEASE_EXECUTION_MODES: frozenset[str] = frozenset({"automated", "manual"})
+
 # `cost_event` source (PI-263 / PRJ-041, REQ-307, TOP-106) — which spend surface a
 # recorded AI cost came from: an in-process Anthropic SDK call (`sdk`) or a coding-fleet
 # `claude -p` agent invocation (`claude_cli`). The cost telemetry satellite records one

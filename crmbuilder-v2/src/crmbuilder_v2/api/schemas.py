@@ -1905,6 +1905,9 @@ class ReleaseCreateIn(_Base):
     release_notes: str | None = None
     release_status: str | None = None
     release_lane_order: int | None = None
+    # automated (default) | manual — how the release is driven through the lanes
+    # (PI-294 / REQ-331/332/333).
+    release_execution_mode: str | None = None
     release_identifier: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
@@ -1914,6 +1917,7 @@ class ReleasePatchIn(_Base):
     release_description: str | None = None
     release_notes: str | None = None
     release_lane_order: int | None = None
+    release_execution_mode: str | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 

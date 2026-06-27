@@ -117,6 +117,7 @@ from crmbuilder_v2.access.vocab import (
     REFERENCE_RELATIONSHIPS,
     REGISTRY_STATUSES,
     RELEASE_BACK_HALF_MODES,
+    RELEASE_EXECUTION_MODES,
     RELEASE_RUN_OUTCOMES,
     RELEASE_SIGNOFF_STAGES,
     RELEASE_STATUSES,
@@ -3744,6 +3745,16 @@ class Release(EngagementScopedPKMixin, Base):
     release_back_half: Mapped[str] = mapped_column(
         String(16), nullable=False, default="per_pi", server_default="per_pi"
     )
+    # How the release is driven through the lanes (PI-294 / REQ-331/332):
+    # "automated" (default) — the agent pipeline decomposes, builds, and stamps
+    # the qa/test gates; "manual" — a human driver delivers the in-scope work by
+    # hand, so the post-freeze gates relax (no decomposition required; qa/test
+    # advance on the driver-recorded pass stamps) and ship approval auto-records
+    # once every in-scope Planning Item resolves (REQ-333). The freeze scope gate
+    # and the reconciliation/architecture human reviews still apply either way.
+    release_execution_mode: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="automated", server_default="automated"
+    )
     # The freeze stamp (§9A/§16.7) — also the boundary marking post-freeze
     # versions as frozen drafts (read by PI-208).
     release_frozen_at: Mapped[datetime | None] = mapped_column(
@@ -3792,6 +3803,10 @@ class Release(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _check_in("release_back_half", RELEASE_BACK_HALF_MODES),
             name="ck_release_back_half",
+        ),
+        CheckConstraint(
+            _check_in("release_execution_mode", RELEASE_EXECUTION_MODES),
+            name="ck_release_execution_mode",
         ),
         Index("ix_releases_release_status", "release_status"),
         Index("ix_releases_release_deleted_at", "release_deleted_at"),

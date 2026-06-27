@@ -47,6 +47,7 @@ from crmbuilder_v2.access.models import (
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.vocab import (
     RELEASE_BACK_HALF_MODES,
+    RELEASE_EXECUTION_MODES,
     RELEASE_LANE_STATUSES,
     RELEASE_STATUS_TRANSITIONS,
     RELEASE_STATUSES,
@@ -57,7 +58,7 @@ _IDENTIFIER_PREFIX = "REL"
 _IDENTIFIER_RE = re.compile(r"^REL-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 _PATCHABLE_FIELDS = frozenset(
-    {"title", "description", "notes", "lane_order"}
+    {"title", "description", "notes", "lane_order", "execution_mode"}
 )
 # PI-227: planning-item statuses that mean a project still has pending work. A
 # project with any active PI is left ``in_flight`` on ship (its unfinished work
@@ -90,6 +91,12 @@ _STATUS_TIMESTAMP = {
 
 def _require_status(status: object) -> str:
     return gov.require_in(status, RELEASE_STATUSES, field="release_status")
+
+
+def _require_execution_mode(mode: object) -> str:
+    return gov.require_in(
+        mode, RELEASE_EXECUTION_MODES, field="release_execution_mode"
+    )
 
 
 def _get_row(session: Session, identifier: str) -> Release:
@@ -461,6 +468,12 @@ def _check_planned_completely(session: Session, identifier: str) -> None:
     a decomposition it cannot have. A manually-driven release (all in-scope items
     interactive) therefore reaches ``ready`` from its recorded review evidence,
     without automated decomposition; an ADO item still requires its phase plan.
+
+    REQ-331 / PI-294: a ``manual`` execution-mode release is driven entirely by a
+    human and is never decomposed into phase workstreams, so this gate requires
+    only the freeze scope (frozen + at least one in-scope Planning Item) and skips
+    the per-item decomposition and work-task sequencing checks. An ``automated``
+    release is unchanged.
     """
     from crmbuilder_v2.access.repositories import pm
 
@@ -477,6 +490,10 @@ def _check_planned_completely(session: Session, identifier: str) -> None:
             f"release {identifier!r} cannot be planned-completely: no in-scope "
             f"Planning Items."
         )
+    # A manually-driven release is hand-delivered and never decomposed — the
+    # freeze scope above is the whole gate (REQ-331).
+    if row.release_execution_mode == "manual":
+        return
     work_tasks: set[str] = set()
     for pi in pis:
         # Interactive items are hand-delivered — treat as already planned.
@@ -635,16 +652,54 @@ def _check_architecture_planning_review(session: Session, identifier: str) -> No
     _require_fresh_review_signoff(session, identifier, "architecture_planning")
 
 
+def _all_in_scope_pis_resolved(session: Session, identifier: str) -> bool:
+    """True when the release has at least one in-scope Planning Item and every one
+    of them is ``Resolved`` (REQ-333 — the manual-release auto-ship condition)."""
+    from crmbuilder_v2.access.models import PlanningItem
+
+    pis: list[str] = []
+    for prj in _in_scope_projects(session, identifier):
+        pis.extend(_in_scope_planning_items(session, prj))
+    if not pis:
+        return False
+    statuses = session.scalars(
+        select(PlanningItem.status).where(PlanningItem.identifier.in_(sorted(set(pis))))
+    ).all()
+    return all(s == "Resolved" for s in statuses)
+
+
 def _check_ship_approval(session: Session, identifier: str) -> None:
     """Ship gate (PI-260 / REQ-299) — the reopen-cascade revalidations complete (RW4)
     AND a fresh human **Ship Approval** sign-off, symmetric to freeze. Fresh = the
     sign-off's captured fingerprint matches the current shippable state (the QA + test
     pass stamps + the introduced artifact versions), so any change after approval
-    voids it and forces a re-approval."""
+    voids it and forces a re-approval.
+
+    REQ-333 / PI-295: for a ``manual`` execution-mode release, the ship approval
+    auto-records once every in-scope Planning Item is ``Resolved`` — the human
+    driver is not forced to hand-author the final approval. The earlier
+    reconciliation and architecture human reviews are unaffected and still
+    required. An ``automated`` release is unchanged: it always needs an explicit
+    human ship sign-off."""
     from crmbuilder_v2.access.repositories import release_signoffs
 
     _check_revalidations_complete(session, identifier)
     if release_signoffs.fresh_signoff(session, identifier, "ship") is None:
+        row = _get_row(session, identifier)
+        if row.release_execution_mode == "manual" and _all_in_scope_pis_resolved(
+            session, identifier
+        ):
+            release_signoffs.create_signoff(
+                session,
+                identifier,
+                stage="ship",
+                reviewer="manual-release",
+                attestation=(
+                    "Auto-recorded ship approval for a manual release: every "
+                    "in-scope Planning Item is resolved (REQ-333)."
+                ),
+            )
+            return
         raise ConflictError(
             f"release {identifier!r} cannot ship: no current human ship approval "
             f"(record a fresh ship sign-off against the shippable state; a stale "
@@ -668,7 +723,9 @@ _GATE_PREDICATES = {
 # ---------------------------------------------------------------------------
 
 
-def _new_row(identifier, title, description, notes, status, lane_order) -> Release:
+def _new_row(
+    identifier, title, description, notes, status, lane_order, execution_mode
+) -> Release:
     return Release(
         release_identifier=identifier,
         release_title=title,
@@ -676,15 +733,20 @@ def _new_row(identifier, title, description, notes, status, lane_order) -> Relea
         release_notes=notes,
         release_status=status,
         release_lane_order=lane_order,
+        release_execution_mode=execution_mode,
     )
 
 
-def _insert_with_autoassign(session, title, description, notes, status, lane_order):
+def _insert_with_autoassign(
+    session, title, description, notes, status, lane_order, execution_mode
+):
     candidate = next_release_identifier(session)
     last_error: IntegrityError | None = None
     for _ in range(_MAX_AUTOASSIGN_ATTEMPTS):
         savepoint = session.begin_nested()
-        row = _new_row(candidate, title, description, notes, status, lane_order)
+        row = _new_row(
+            candidate, title, description, notes, status, lane_order, execution_mode
+        )
         session.add(row)
         try:
             session.flush()
@@ -709,6 +771,7 @@ def create_release(
     notes: str | None = None,
     status: str = "preliminary_planning",
     lane_order: int | None = None,
+    execution_mode: str = "automated",
     identifier: str | None = None,
     references: list[dict] | None = None,
 ) -> dict:
@@ -718,10 +781,11 @@ def create_release(
     if status is None:
         status = "preliminary_planning"
     _require_status(status)
+    execution_mode = _require_execution_mode(execution_mode)
 
     if identifier is None:
         row = _insert_with_autoassign(
-            session, title, description, notes, status, lane_order
+            session, title, description, notes, status, lane_order, execution_mode
         )
     else:
         gov.require_identifier_format(
@@ -735,7 +799,9 @@ def create_release(
             is not None
         ):
             raise ConflictError(f"release {identifier!r} already exists")
-        row = _new_row(identifier, title, description, notes, status, lane_order)
+        row = _new_row(
+            identifier, title, description, notes, status, lane_order, execution_mode
+        )
         session.add(row)
         session.flush()
 
@@ -1204,6 +1270,22 @@ def patch_release(
         row.release_notes = fields["notes"]
     if "lane_order" in fields:
         row.release_lane_order = fields["lane_order"]
+    if "execution_mode" in fields:
+        # The automated/manual choice is locked once the release enters the
+        # exclusive lane (development..deployment) or reaches a terminal state —
+        # flipping it mid-flight would leave the lane gates inconsistent with the
+        # work already done. It is freely settable in the pre-lane planning stages.
+        if row.release_status in RELEASE_LANE_STATUSES or row.release_status in (
+            "shipped",
+            "cancelled",
+            "superseded",
+        ):
+            raise ConflictError(
+                f"release {identifier!r} execution_mode is locked at status "
+                f"{row.release_status!r}; set it before the release enters the "
+                f"development lane."
+            )
+        row.release_execution_mode = _require_execution_mode(fields["execution_mode"])
 
     session.flush()
     after = to_dict(row)
