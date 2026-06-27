@@ -86,6 +86,32 @@ isolation) shipped to the container, never an in-container `sed`.
 - **Tests:** unit tests for the JSON merges; an integration smoke against the
   test instance (gated/manual) replicating the proven probe.
 
+## Integration smoke (verified on the CBM test instance, 9.3.6)
+
+A full end-to-end smoke against the test droplet (`104.131.45.208`,
+`crm-test.clevelandbusinessmentors.org`) exercised the real code paths and
+passed 10/10 with clean metadata restoration each run:
+
+1. SSH container exec works; `createEntity(BasePlus)` auto-registers the probe.
+2. **Path 1** — `ActivityPanelManager.enable_panels_layout` → rebuild → the
+   `bottomPanelsDetail` layout reports activities/history/tasks enabled.
+3. The probe is SSH-unregistered (overrides written = merged minus probe) to
+   reproduce the prod state; verification confirms it drops out of the lists.
+4. **Path 2** — `register_activity_parents` re-adds it to Meeting/Call/Task and
+   verification confirms it is registered again.
+5. Cleanup restores the original `Meeting/Call/Task` overrides verbatim and
+   removes the probe; all three overrides verify byte-equal to their originals.
+
+Entity-side `meetings`/`calls`/`tasks` links are present on any `BasePlus`
+entity, so **no separate link patching is required** for the panels.
+
+**Finding — poll after rebuild.** An immediate metadata read right after
+`php command.php rebuild` occasionally returns a stale `parent.entityList`
+(one holder missed on the first full run; consistently correct with a short
+settle). The deploy path must therefore **poll** registration after rebuild, not
+read once — implemented as `ActivityPanelManager.wait_until_registered`
+(mirrors the engine's existing `wait_for_metadata_ready`).
+
 ## Acceptance (REQ-379)
 
 Deploying an activity-type entity through the Configure pipeline registers it in

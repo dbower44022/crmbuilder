@@ -208,3 +208,39 @@ class ActivityPanelManager:
             return True
         self.output_fn(f"[PANELS]  {entity} ... ERROR (HTTP {status})", "red")
         return False
+
+    def wait_until_registered(
+        self,
+        entity: str,
+        holders: tuple[str, ...] = PANEL_HOLDERS,
+        timeout: float = 20.0,
+        interval: float = 1.0,
+        sleep: Any = None,
+    ) -> bool:
+        """Poll until ``entity`` is registered in all ``holders``, or timeout.
+
+        EspoCRM's Metadata API can briefly serve a stale ``parent.entityList``
+        immediately after a cache rebuild (observed in the PI-338 integration
+        smoke: an immediate read after ``php command.php rebuild`` occasionally
+        missed a just-registered entity). Callers verifying registration after a
+        rebuild should poll rather than read once.
+
+        :param entity: EspoCRM entity name.
+        :param holders: Holders that must list the entity.
+        :param timeout: Maximum seconds to wait.
+        :param interval: Seconds between polls.
+        :param sleep: Sleep callable (injected for tests); defaults to
+            ``time.sleep``.
+        :returns: True once registered in all holders, False on timeout.
+        """
+        import time as _time
+
+        sleeper = sleep or _time.sleep
+        elapsed = 0.0
+        while True:
+            if self.is_registered(entity, holders):
+                return True
+            if elapsed >= timeout:
+                return False
+            sleeper(interval)
+            elapsed += interval

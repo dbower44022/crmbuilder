@@ -180,3 +180,49 @@ class TestActivityPanelManager:
     def test_enable_panels_layout_reports_failure(self):
         mgr = self._mgr(save_status=500)
         assert mgr.enable_panels_layout("CEngagement") is False
+
+    def test_wait_until_registered_returns_true_immediately(self):
+        md = {
+            f"entityDefs.{h}.fields.parent.entityList": ["CEngagement"]
+            for h in ("Meeting", "Call", "Task")
+        }
+        mgr = self._mgr(md)
+        slept = []
+        assert mgr.wait_until_registered(
+            "CEngagement", sleep=slept.append
+        ) is True
+        assert slept == []  # already registered, no polling
+
+    def test_wait_until_registered_polls_until_present(self):
+        # Client that reports "not registered" for the first two checks,
+        # then registered (simulates cache propagation lag after rebuild).
+        class LaggyClient:
+            def __init__(self):
+                self.calls = 0
+
+            def get_metadata(self, key):
+                # is_registered short-circuits on the first missing holder, so a
+                # failing attempt is one call. First two attempts miss (calls
+                # 1,2 return Account); the third attempt onward registers.
+                self.calls += 1
+                registered = self.calls >= 3
+                return 200, (["CEngagement"] if registered else ["Account"])
+
+        mgr = ActivityPanelManager(LaggyClient())
+        slept = []
+        assert mgr.wait_until_registered(
+            "CEngagement", timeout=10, interval=1, sleep=slept.append
+        ) is True
+        assert len(slept) == 2  # polled twice before success
+
+    def test_wait_until_registered_times_out(self):
+        md = {
+            "entityDefs.Meeting.fields.parent.entityList": ["Account"],
+            "entityDefs.Call.fields.parent.entityList": ["Account"],
+            "entityDefs.Task.fields.parent.entityList": ["Account"],
+        }
+        mgr = self._mgr(md)
+        slept = []
+        assert mgr.wait_until_registered(
+            "CEngagement", timeout=3, interval=1, sleep=slept.append
+        ) is False
