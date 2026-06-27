@@ -37,6 +37,7 @@ _EXPECTED_COLUMNS = {
     "release_notes",
     "release_lane_order",
     "release_back_half",
+    "release_execution_mode",
     "release_frozen_at",
     "release_planned_completely_at",
     "release_qa_passed_at",

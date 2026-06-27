@@ -208,6 +208,7 @@ def create(body: ReleaseCreateIn):
                 notes=body.release_notes,
                 status=body.release_status or "preliminary_planning",
                 lane_order=body.release_lane_order,
+                execution_mode=body.release_execution_mode or "automated",
                 identifier=body.release_identifier,
                 references=_edges(body),
             )
