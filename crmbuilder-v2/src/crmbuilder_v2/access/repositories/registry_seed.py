@@ -40,6 +40,9 @@ from crmbuilder_v2.access.repositories import (
     references,
     skills,
 )
+from crmbuilder_v2.access.repositories.registry_seed_content import (
+    area_profile_content,
+)
 
 # --- Development-area Architect (proven "Development Phase Specialist") --------
 
@@ -582,23 +585,45 @@ def _catalog_profiles() -> tuple:
     """The full system catalog: the explicit proven/release-level profiles, plus
     the per-(area, tier) grid (build areas x Architect/Developer/Tester +
     methodology areas x Architect/Tester — no Developer, DEC-764), with explicit
-    cells taking precedence (target-model §4.12)."""
+    cells taking precedence (target-model §4.12).
+
+    REQ-386 / PI-346: each cell's generic prompt is then overlaid with the **real,
+    area-specific content** from ``registry_seed_content.area_profile_content`` —
+    a real per-area system prompt (when one is defined), the area's own governance
+    rules (appended), and a searchable capability description — so a freshly
+    seeded DB ships real contracts, not generic templates. Cells with no override
+    keep the generic prompt and gain no extra rules / capability description.
+    """
     explicit_keys = {(a, t) for a, t, *_ in _EXPLICIT_PROFILES}
-    out = list(_EXPLICIT_PROFILES)
+    base = list(_EXPLICIT_PROFILES)
     for area in _BUILD_AREAS:
         for tier, desc, sk, ru in _GRID_TIERS:
             if (area, tier) in explicit_keys:
                 continue
-            out.append((area, tier, desc, sk, ru))
+            base.append((area, tier, desc, sk, ru))
     for area in _METHODOLOGY_AREAS:
         for tier, desc, sk, ru in _METHODOLOGY_TIERS:
             if (area, tier) in explicit_keys:
                 continue
-            out.append((area, tier, desc, sk, ru))
+            base.append((area, tier, desc, sk, ru))
+
+    content = area_profile_content()
+    out = []
+    for area, tier, desc, sk, ru in base:
+        # Normalize the existing generic rules to (enforcement, body, rule_type, severity).
+        rules = [(enf, body, None, None) for enf, body in ru]
+        capability = None
+        override = content.get((area, tier))
+        if override is not None:
+            if override["description"]:
+                desc = override["description"]
+            capability = override["capability_description"]
+            rules += [(enf, body, rt, sev) for (enf, rt, sev, body) in override["rules"]]
+        out.append((area, tier, desc, sk, rules, capability))
     return tuple(out)
 
 
-# (area, tier, description, skills, rules)
+# (area, tier, description, skills, rules, capability_description)
 _SEED_PROFILES = _catalog_profiles()
 
 
@@ -622,7 +647,7 @@ def seed_system_profiles(session: Session) -> list[dict]:
     Returns the created profile records.
     """
     created: list[dict] = []
-    for area, tier, description, skill_specs, rule_specs in _SEED_PROFILES:
+    for area, tier, description, skill_specs, rule_specs, capability in _SEED_PROFILES:
         exists = session.scalar(
             select(AgentProfileRow).where(
                 AgentProfileRow.area == area,
@@ -633,7 +658,8 @@ def seed_system_profiles(session: Session) -> list[dict]:
         if exists is not None:
             continue
         profile = agent_profiles.create(
-            session, area=area, tier=tier, description=description, scope="system"
+            session, area=area, tier=tier, description=description, scope="system",
+            capability_description=capability,
         )
         pid = profile["identifier"]
         for name, kind, desc, io_contract, backing in skill_specs:
@@ -642,9 +668,10 @@ def seed_system_profiles(session: Session) -> list[dict]:
                 io_contract=io_contract, backing_callable=backing, scope="system",
             )
             _bind(session, pid, "skill", skill["identifier"], "agent_profile_has_skill")
-        for enforcement, body in rule_specs:
+        for enforcement, body, rule_type, severity in rule_specs:
             rule = governance_rules.create(
-                session, body=body, enforcement=enforcement, scope="system"
+                session, body=body, enforcement=enforcement, scope="system",
+                rule_type=rule_type, severity=severity,
             )
             _bind(session, pid, "governance_rule", rule["identifier"], "agent_profile_governed_by_rule")
         created.append(profile)

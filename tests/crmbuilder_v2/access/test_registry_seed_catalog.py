@@ -90,3 +90,39 @@ def test_seed_is_idempotent(v2_env):
         assert len(first) == 38
     with session_scope() as s:
         assert registry_seed.seed_system_profiles(s) == []
+
+
+# --- real per-area content (REQ-386 / PI-346) -----------------------------
+
+
+def test_seed_ships_real_area_specific_prompts_and_rules(v2_env):
+    """A freshly seeded build-area profile carries a real area-specific prompt,
+    its area governance rules, and a capability description — not a generic
+    template (REQ-386)."""
+    with session_scope() as s:
+        registry_seed.seed_system_profiles(s)
+        api_dev = _profile(s, "api", "developer")
+        ui_dev = _profile(s, "ui", "developer")
+        # Real, area-specific prompts that name the actual area, not a generic body.
+        assert "API Developer" in api_dev.description
+        assert "envelope" in api_dev.description
+        assert "UI Developer" in ui_dev.description
+        assert api_dev.description != ui_dev.description  # not the same template
+        # Capability description populated (so agent search ranks them).
+        assert api_dev.capability_description
+        assert "fastapi routers" in api_dev.capability_description["specialties"]
+        # Area governance rules resolved into the contract.
+        contract = registry_resolver.resolve_contract(s, api_dev.identifier)
+        bodies = " ".join(r["body"] for r in contract["advisory_rules"])
+        assert "route" in bodies.lower()  # the api_route_ordering rule
+        assert "envelope" in bodies.lower()  # the api_envelope rule
+
+
+def test_bespoke_profiles_keep_prompt_but_gain_capability(v2_env):
+    """model/planning/release keep their bespoke seed prompts and gain a
+    capability description (description not overridden)."""
+    with session_scope() as s:
+        registry_seed.seed_system_profiles(s)
+        release = _profile(s, "release", "pi_lead")
+        assert release.capability_description
+        assert "release pipeline" in release.capability_description["specialties"]
