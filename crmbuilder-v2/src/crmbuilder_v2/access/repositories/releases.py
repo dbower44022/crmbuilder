@@ -753,6 +753,41 @@ def create_release(
     return after
 
 
+def _reject_missing_correction_edge(session: Session, identifier: str) -> None:
+    """Raise 422 when a release reaches ``superseded`` without a correcting successor.
+
+    A release expresses supersession through *correction*, not a generic
+    ``supersedes`` edge: :func:`open_correction_release` creates
+    ``new -release_corrects_release-> prior`` and never an outbound ``supersedes``
+    edge. So a superseded release must carry an inbound ``release_corrects_release``
+    edge — some correction release corrects it. This is the release-specific analogue
+    of :func:`gov.reject_missing_supersedes_edge` (which stays correct for the other
+    entity types and is deliberately not used here). The check is shared by the plain
+    ``→ superseded`` transition and the ``abandon(outcome="superseded")`` path — a
+    superseded run must always have a correction, so the ``_via_abandon`` bypass does
+    not skip it.
+    """
+    edges = gov.inbound_edges(
+        session,
+        target_type=_ENTITY_TYPE,
+        target_id=identifier,
+        relationship="release_corrects_release",
+        source_type=_ENTITY_TYPE,
+    )
+    if not edges:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "release_status",
+                    "supersession_requires_correction_edge",
+                    f"release {identifier!r} can only be superseded when a correction "
+                    f"release corrects it (release_corrects_release); open one via "
+                    f"open_correction_release first.",
+                )
+            ]
+        )
+
+
 def transition(
     session: Session, identifier: str, to_status: str, *, actor: str | None = None,
     _via_abandon: bool = False,
@@ -803,9 +838,7 @@ def transition(
         gate(session, identifier)
 
     if to_status == "superseded":
-        gov.reject_missing_supersedes_edge(
-            session, entity_type=_ENTITY_TYPE, identifier=identifier
-        )
+        _reject_missing_correction_edge(session, identifier)
 
     row.release_status = to_status
     gov.set_status_timestamp(row, to_status, _STATUS_TIMESTAMP)
