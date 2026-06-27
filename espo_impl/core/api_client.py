@@ -446,6 +446,20 @@ class EspoAdminClient:
         url = f"{self.profile.api_url}/Metadata?key=entityDefs.{entity}.links"
         return self._request("GET", url)
 
+    def get_metadata(self, key: str) -> tuple[int, Any]:
+        """Fetch an arbitrary metadata value by dotted key.
+
+        The Metadata API returns the value at ``key`` (e.g.
+        ``entityDefs.Meeting.fields.parent.entityList``). A key that does not
+        resolve yields an empty body; callers should treat that as "absent".
+
+        :param key: Dotted metadata key.
+        :returns: Tuple of (status_code, value) — ``value`` is the parsed JSON
+            (dict/list/scalar) or ``None`` for an empty body.
+        """
+        url = f"{self.profile.api_url}/Metadata?key={key}"
+        return self._request("GET", url)
+
     def get_language_translations(
         self, entity: str, language: str = "en_US"
     ) -> tuple[int, dict[str, Any] | None]:
