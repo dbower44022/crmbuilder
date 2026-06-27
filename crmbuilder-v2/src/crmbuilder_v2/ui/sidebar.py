@@ -97,6 +97,10 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # compare two instances against the design and reconcile each
             # difference. Sits next to Instances/Publish History.
             "Reconcile",
+            # PI-256 (PRJ-027 / REQ-341): the human review surface for the
+            # source-mapping candidates the reconciler surfaces — accept /
+            # reject / revise each into a mapping. Next to the PRJ-027 surfaces.
+            "Candidate Review",
             # requirements-provenance Phase 6b: the topic-first review
             # surface (requirement tree + read-back document + queues +
             # sign-off). A read-only review/monitoring panel, so it lives

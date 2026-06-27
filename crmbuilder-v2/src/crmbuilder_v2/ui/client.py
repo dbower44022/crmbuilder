@@ -1981,6 +1981,86 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Source mapping model — candidate review (PI-255/256 / PRJ-027)
+    # ------------------------------------------------------------------
+
+    def list_mapping_candidates(
+        self,
+        *,
+        instance_identifier: str | None = None,
+        candidate_type: str | None = None,
+        resolved: bool | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return reconciler-surfaced mapping candidates (GET /mapping-candidates).
+
+        Shape matches ``crmbuilder_v2/api/routers/mapping_candidates.py``. A
+        candidate is an unmatched source entity / field / association / value the
+        reconciler surfaced for human resolution; ``resolved`` filters the open
+        (False) vs decided (True) set.
+        """
+        params: list[str] = []
+        if instance_identifier is not None:
+            params.append(f"instance_identifier={instance_identifier}")
+        if candidate_type is not None:
+            params.append(f"candidate_type={candidate_type}")
+        if resolved is not None:
+            params.append(f"resolved={'true' if resolved else 'false'}")
+        path = "/mapping-candidates"
+        if params:
+            path = f"{path}?{'&'.join(params)}"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_mapping_candidate(self, candidate_id: int) -> dict[str, Any]:
+        """Return a single mapping candidate by integer id."""
+        result = self._request("GET", f"/mapping-candidates/{candidate_id}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_mapping_candidate",
+            )
+        return result
+
+    def list_source_mappings(
+        self,
+        *,
+        instance_identifier: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return entity-level source mappings (GET /source-mappings)."""
+        params: list[str] = []
+        if instance_identifier is not None:
+            params.append(f"instance_identifier={instance_identifier}")
+        if status is not None:
+            params.append(f"status={status}")
+        path = "/source-mappings"
+        if params:
+            path = f"{path}?{'&'.join(params)}"
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def list_association_mappings(
+        self,
+        *,
+        instance_identifier: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return relationship-level association mappings (GET /association-mappings)."""
+        params: list[str] = []
+        if instance_identifier is not None:
+            params.append(f"instance_identifier={instance_identifier}")
+        if status is not None:
+            params.append(f"status={status}")
+        path = "/association-mappings"
+        if params:
+            path = f"{path}?{'&'.join(params)}"
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    # ------------------------------------------------------------------
     # Instances (CRM connections; PI-186 / PRJ-027)
     # ------------------------------------------------------------------
 

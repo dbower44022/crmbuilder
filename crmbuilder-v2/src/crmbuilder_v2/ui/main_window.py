@@ -39,6 +39,7 @@ from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.detail_window_manager import DetailWindowManager
 from crmbuilder_v2.ui.exceptions import StorageConnectionError
 from crmbuilder_v2.ui.panels.agent_profiles import AgentProfilesPanel
+from crmbuilder_v2.ui.panels.candidate_review import CandidateReviewPanel
 from crmbuilder_v2.ui.panels.charter import CharterPanel
 from crmbuilder_v2.ui.panels.chat import ChatPanel
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
@@ -265,6 +266,8 @@ def build_panel(
     if label == "Publish History":
         return PublishHistoryPanel(client)
     # PI-319 (REL-024): three-way design/instance reconciliation surface.
+    if label == "Candidate Review":
+        return CandidateReviewPanel(client)
     if label == "Reconcile":
         return ReconcilePanel(client)
     # requirements-provenance Phase 6b: topic-first review surface.
