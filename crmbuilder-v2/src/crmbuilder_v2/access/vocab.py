@@ -1019,6 +1019,17 @@ RELEASE_STATUSES: frozenset[str] = frozenset(
 RELEASE_LANE_STATUSES: frozenset[str] = frozenset(
     {"development", "qa", "testing", "deployment"}
 )
+# The terminal release statuses — a run that has shipped, been cancelled, or been
+# superseded is closed and no longer holds the lane. A project scoped into a
+# terminal release keeps that run's composition but stays free to be re-scoped
+# into a new active run (PI-325 / PRJ-065, REQ-261 — preserve-failed-run-history
+# design §3.2 Option A). ``shipped`` counts as terminal/complete (§3.2 con-note:
+# a shipped release's project is delivered, so it must not block a new scoping
+# either). These are exactly the ``RELEASE_STATUS_TRANSITIONS`` states with no
+# outgoing transition.
+RELEASE_TERMINAL_STATUSES: frozenset[str] = frozenset(
+    {"cancelled", "superseded", "shipped"}
+)
 
 # `artifact_version` (PI-208 / PRJ-031, DEC-503) — the versioned, release-tied
 # change spine (§9/§16.4). The model definitions (entity, field, persona,

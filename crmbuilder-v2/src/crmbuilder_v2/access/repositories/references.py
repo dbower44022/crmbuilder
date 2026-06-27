@@ -27,8 +27,12 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.models import Reference
-from crmbuilder_v2.access.vocab import ENTITY_TYPES, REFERENCE_RELATIONSHIPS
+from crmbuilder_v2.access.models import Reference, Release
+from crmbuilder_v2.access.vocab import (
+    ENTITY_TYPES,
+    REFERENCE_RELATIONSHIPS,
+    RELEASE_TERMINAL_STATUSES,
+)
 
 _ENTITY_TYPE = "reference"
 
@@ -312,25 +316,46 @@ def create(
             )
 
     # PI-205 (PRJ-031, REQ-211): a Project is release-scoped — it belongs to
-    # exactly one Release. Reject a second outgoing project_belongs_to_release
-    # edge from the same project.
+    # exactly one *active* Release. PI-325 (PRJ-065, REQ-261) relaxes the
+    # original "at most one release ever" rule to "at most one *active*
+    # release": edges into a terminal release (cancelled / superseded /
+    # shipped) no longer block a new scoping, so a project scoped into a
+    # closed run keeps that run's composition while still being re-scopable
+    # into a new run. See preserve-failed-run-history design §3.2 Option A.
+    #
+    # The guard is now a status-aware lookup rather than a plain count: it
+    # joins each existing outgoing edge to its target Release and rejects
+    # only when one of those releases is in an active (non-terminal) status.
+    # Both ``Reference`` and ``Release`` are engagement-scoped, so the
+    # ``do_orm_execute`` loader-criteria filter confines the join to the
+    # active engagement automatically (matching the old count query).
     if relationship == "project_belongs_to_release":
-        existing_count = session.scalar(
-            select(func.count(Reference.id)).where(
+        active_release = session.scalar(
+            select(Release.release_identifier)
+            .join(
+                Reference,
+                and_(
+                    Reference.target_type == "release",
+                    Reference.target_id == Release.release_identifier,
+                ),
+            )
+            .where(
                 Reference.source_type == "project",
                 Reference.source_id == source_id,
                 Reference.relationship_kind == "project_belongs_to_release",
+                Release.release_status.not_in(RELEASE_TERMINAL_STATUSES),
             )
+            .limit(1)
         )
-        if existing_count and existing_count > 0:
+        if active_release is not None:
             raise UnprocessableError(
                 [
                     FieldError(
                         "relationship",
                         "cardinality_violation",
-                        f"project {source_id} already belongs to a release; "
-                        "delete the existing project_belongs_to_release edge "
-                        "first",
+                        f"project {source_id} is already scoped into an active "
+                        f"release {active_release}; abandon or supersede that "
+                        "run before scoping the project into a new release",
                     )
                 ]
             )
