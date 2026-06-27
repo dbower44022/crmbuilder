@@ -2,8 +2,8 @@
 
 seed_system_profiles seeds the full catalog (target-model §4.12): the 9 System
 build areas at Architect / Developer / Tester (27) + the 4 methodology areas at
-Architect (4), plus the 3 release-level agents — 34 system profiles. Every cell
-resolves a sensible contract; methodology areas are Architect-only; the seed is
+Architect + Tester (8, no Developer — DEC-764), plus the 3 release-level agents —
+38 system profiles. Every cell resolves a sensible contract; the seed is
 idempotent.
 """
 
@@ -36,10 +36,11 @@ def test_catalog_covers_every_build_and_methodology_cell(v2_env):
             for tier in ("architect", "developer", "tester"):
                 assert _profile(s, area, tier) is not None, f"missing ({area},{tier})"
         for area in _METHODOLOGY_AREAS:
-            assert _profile(s, area, "architect") is not None, f"missing ({area})"
-            # Methodology areas are Architect-only — no build tiers (DEC-368).
+            # Architect + Tester now that content has a real Develop/Test (DEC-764).
+            assert _profile(s, area, "architect") is not None, f"missing ({area},architect)"
+            assert _profile(s, area, "tester") is not None, f"missing ({area},tester)"
+            # No Developer tier — Design and Develop are one act for content.
             assert _profile(s, area, "developer") is None
-            assert _profile(s, area, "tester") is None
 
 
 def test_every_catalog_cell_resolves_a_sensible_contract(v2_env):
@@ -48,7 +49,8 @@ def test_every_catalog_cell_resolves_a_sensible_contract(v2_env):
         cells = (
             [(a, t) for a in _BUILD_AREAS
              for t in ("architect", "developer", "tester")]
-            + [(a, "architect") for a in _METHODOLOGY_AREAS]
+            + [(a, t) for a in _METHODOLOGY_AREAS
+               for t in ("architect", "tester")]
         )
         for area, tier in cells:
             prof = _profile(s, area, tier)
@@ -85,6 +87,6 @@ def test_tester_rules_are_blind_verification(v2_env):
 def test_seed_is_idempotent(v2_env):
     with session_scope() as s:
         first = registry_seed.seed_system_profiles(s)
-        assert len(first) == 34
+        assert len(first) == 38
     with session_scope() as s:
         assert registry_seed.seed_system_profiles(s) == []

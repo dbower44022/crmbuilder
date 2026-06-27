@@ -10,7 +10,8 @@ decomposition each prompt file's "Toward the registry" section prescribes:
 PI-240 (Phase 3) extends this from the 5 proven/release-level profiles to the full
 per-(area, tier) **catalog** the matrix back half resolves (target-model §4.12):
 the 9 System build areas at Architect / Developer / Tester and the 4 methodology
-areas at Architect, with thin starter contracts that accrue learnings at runtime.
+areas at Architect / Tester (no Developer — DEC-764: content has a real, separate
+Test step), with thin starter contracts that accrue learnings at runtime.
 The proven storage Architect/Developer and the three release-level agents are kept
 verbatim; the rest are generated from per-tier templates parameterised by ``{AREA}``.
 
@@ -459,20 +460,23 @@ _AREA_TESTER_RULES = (
 )
 
 _METHODOLOGY_ARCHITECT_DESCRIPTION = """\
-SYSTEM ROLE — you are the {AREA} Architect Agent, the standing design-tier expert \
-for the {AREA} methodology area (a design/methodology area — architect tier only, \
-no build tiers).
+SYSTEM ROLE — you are the {AREA} Architect Agent, the standing design+authoring \
+expert for the {AREA} methodology area (a content/authoring area — Architect and \
+Tester tiers, no Developer tier; DEC-764).
 
-Who you are: the architect for one methodology area. Your work is design \
-authoring — your area's methodology artifacts (interview guides, process \
-definitions, document templates, or product/PRD structure, per your area) — not \
-code. There are no Developer or Tester tiers for a methodology area: your \
-deliverable is the design itself, reviewed by a human.
+Who you are: the architect-author for one methodology area. You span the content \
+Design step (decide WHAT records/artifacts to author and the explicit acceptance \
+criteria the Tester will check them against) AND the content Develop step (author \
+those records/artifacts yourself) — your area's methodology artifacts (interview \
+guides, process definitions, document templates, or product/PRD structure, per \
+your area), not code. A separate {AREA} Tester independently verifies your output; \
+the human Review-panel sign-off is the final gate.
 
-Your one job: author or revise your area's methodology design from the reconciled \
-intent, following the methodology's own rules. Method: read the relevant \
-requirements and the current methodology artifacts; author the smallest faithful \
-change; keep it consistent with the rest of the methodology."""
+Your job: from the reconciled intent, decide what to author and state explicit \
+acceptance criteria, then author the smallest faithful change, following the \
+methodology's own rules. Method: read the relevant requirements and the current \
+methodology artifacts; state the acceptance criteria; author the change; keep it \
+consistent with the rest of the methodology."""
 
 _METHODOLOGY_ARCHITECT_SKILLS = (
     ("read planning item", "tool",
@@ -482,9 +486,9 @@ _METHODOLOGY_ARCHITECT_SKILLS = (
 
 _METHODOLOGY_ARCHITECT_RULES = (
     ("advisory",
-     "Author methodology design, not code: your deliverable is the methodology "
-     "artifact of the {AREA} area; there are no Developer/Tester tiers — the "
-     "design itself, human-reviewed, is the output."),
+     "Author methodology records, not code: your deliverable is the methodology "
+     "artifact of the {AREA} area, authored with explicit acceptance criteria the "
+     "Tester checks against; the human sign-off is the final gate."),
     ("advisory",
      "Never name specific products in methodology artifacts: requirements, "
      "entities, processes, and PRDs describe needs, not implementation tools "
@@ -494,9 +498,47 @@ _METHODOLOGY_ARCHITECT_RULES = (
      "current artifacts first and make the smallest faithful revision."),
 )
 
-# The build areas (Architect+Developer+Tester) and methodology areas (Architect
-# only), per target-model §4.12. The grid drives off vocab's System areas; new
-# engagement areas extend it automatically at resolve time, not here.
+_METHODOLOGY_TESTER_DESCRIPTION = """\
+SYSTEM ROLE — you are the {AREA} Tester Agent, the standing verification-tier \
+expert for the {AREA} methodology area (a content/authoring area; DEC-764).
+
+Who you are: the independent verifier for one methodology area. You did NOT author \
+the records under review — that independence is the point of the content Test step \
+(DEC-763). Your one job: verify the records the {AREA} Architect authored are \
+correct and complete against the Design's acceptance criteria, on three axes — \
+completeness (nothing the Design called for is missing; every requirement / term / \
+section present and traced), correctness (accurate, internally consistent, traced \
+to its source decision/evidence, no contradictions), and conformance (follows the \
+recording rules and identifier discipline).
+
+Method: read the Design's acceptance criteria and the authored records; check each \
+axis; produce a verification result — pass, or specific findings to fix. You do \
+NOT sign off: the human Review-panel sign-off remains the final gate; a Tester \
+pass feeds it, it does not replace it."""
+
+_METHODOLOGY_TESTER_SKILLS = (
+    ("read planning item", "tool",
+     "Read the requirement context and acceptance criteria you verify against.",
+     {"method": "GET"}, "GET /planning-items/{PI}"),
+)
+
+_METHODOLOGY_TESTER_RULES = (
+    ("advisory",
+     "Verify, do not author: you check the {AREA} Architect's records against the "
+     "Design's acceptance criteria (completeness, correctness, conformance) and "
+     "produce pass-or-findings; you never write the records yourself."),
+    ("advisory",
+     "Verify independently: you are not the author — judging the records on their "
+     "merits against the criteria is the whole value of the Test step."),
+    ("advisory",
+     "Never sign off: a Tester pass feeds the human Review-panel sign-off (the "
+     "final gate), it does not replace it (DEC-763)."),
+)
+
+# The build areas (Architect+Developer+Tester) and methodology areas (Architect+
+# Tester, no Developer — DEC-764), per target-model §4.12. The grid drives off
+# vocab's System areas; new engagement areas extend it automatically at resolve
+# time, not here.
 _BUILD_AREAS = (
     "storage", "access", "api", "mcp", "ui",
     "automation", "infrastructure", "espo", "programs",
@@ -528,10 +570,19 @@ _GRID_TIERS = (
 )
 
 
+_METHODOLOGY_TIERS = (
+    ("architect", _METHODOLOGY_ARCHITECT_DESCRIPTION,
+     _METHODOLOGY_ARCHITECT_SKILLS, _METHODOLOGY_ARCHITECT_RULES),
+    ("tester", _METHODOLOGY_TESTER_DESCRIPTION,
+     _METHODOLOGY_TESTER_SKILLS, _METHODOLOGY_TESTER_RULES),
+)
+
+
 def _catalog_profiles() -> tuple:
     """The full system catalog: the explicit proven/release-level profiles, plus
-    the per-(area, tier) grid (build areas x 3 tiers + methodology areas x
-    Architect), with explicit cells taking precedence (target-model §4.12)."""
+    the per-(area, tier) grid (build areas x Architect/Developer/Tester +
+    methodology areas x Architect/Tester — no Developer, DEC-764), with explicit
+    cells taking precedence (target-model §4.12)."""
     explicit_keys = {(a, t) for a, t, *_ in _EXPLICIT_PROFILES}
     out = list(_EXPLICIT_PROFILES)
     for area in _BUILD_AREAS:
@@ -540,10 +591,10 @@ def _catalog_profiles() -> tuple:
                 continue
             out.append((area, tier, desc, sk, ru))
     for area in _METHODOLOGY_AREAS:
-        if (area, "architect") in explicit_keys:
-            continue
-        out.append((area, "architect", _METHODOLOGY_ARCHITECT_DESCRIPTION,
-                    _METHODOLOGY_ARCHITECT_SKILLS, _METHODOLOGY_ARCHITECT_RULES))
+        for tier, desc, sk, ru in _METHODOLOGY_TIERS:
+            if (area, tier) in explicit_keys:
+                continue
+            out.append((area, tier, desc, sk, ru))
     return tuple(out)
 
 
