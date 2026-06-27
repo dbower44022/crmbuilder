@@ -36,6 +36,8 @@ _EXPECTED_COLUMNS = {
     "field_required": "BOOLEAN",
     "field_notes": "TEXT",
     "field_status": "VARCHAR",
+    # REL-025 / PI-322 / REQ-364 — display label captured during audit.
+    "field_label": "TEXT",
     # PRJ-025 PI-182 — intrinsic engine-neutral design intent (§7).
     "field_tooltip": "TEXT",
     "field_usage_summary": "TEXT",
