@@ -103,6 +103,19 @@ programs, not job titles for staff.
   is a real AI coding agent that gets its own private copy of the codebase (a
   git "worktree"), does its one task, and its work is checked and merged in.
 
+**Two kinds of work — code and content.** Most Planning Items build *software* (the
+flow above: write code, prove it with tests, merge it). But some build *content* —
+the methodology itself: requirements, rules, glossary terms, process definitions.
+Content work runs the **same** Design → Develop → Test phases, but with content
+meanings: *Develop* means **author the records** (not write code), and *Test* means
+an **independent reviewer agent reads them and checks they're correct and complete**
+against the acceptance criteria (not run a test suite). So content Planning Items
+skip the code machinery (no private codebase copy, no commits, no merging) and go
+down a **review lane** instead — and a human still gives the final sign-off. A
+Planning Item is "content" when all its areas are methodology areas; otherwise it's
+software. (DEC-444/763/764; built in PI-202 and proven on a live content PI — see
+the Technical Reference §11.1.)
+
 **A coherence check before building.** When the Design phase finishes, the
 system pauses to look for places where the separate design decisions don't fit
 together. Any problem it finds is written down as a **finding** (like a

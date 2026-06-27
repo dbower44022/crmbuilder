@@ -502,6 +502,45 @@ PI resolves to `interactive`; `ado_with_approval` requires `dispatch_approved`
 - **Interactions.** `dispatcher`, `reconciliation` (`develop_gate`); composes
   `parallel_scheduler.ParallelCoordinatingScheduler`. Consumed by `release_scheduler`.
 
+### 11.1 Content-work execution lane (PI-202 / REQ-185–187, DEC-444/763/764)
+
+Content/authoring (`methodology-*` area) Planning Items produce **governance
+records, not git commits**, so the driver runs their Develop/Test phases through a
+**review lane** instead of the verify-by-commit + pytest pool. Built across
+WTK-217..220 (all merged) and proven end-to-end on a live content PI — PI-342 ran
+all three phases through the content lane, the git pool was never called, no
+git-residue checks fired, and a record was authored, reaching `In Review`.
+
+- **Classification (`access/classification.py`, REQ-185).** Pure
+  `classify_planning_item(pi) -> "content" | "software"`: content iff *every* area
+  the PI carries is a `methodology-*` area (mixed / engagement / empty → software).
+  `AdoScheduler._is_content()` reads the PI record through it.
+- **Routing (`_execute_phase`, REQ-187).** For a content PI the driver calls the
+  injectable `content_pool_runner(cfg, ws, phase_type)` — **not**
+  `run_pool_for_workstream`; `_resume_phase` skips the `task_branch_unmerged`
+  residue check (content has no branches). Software PIs are unchanged.
+- **Content meanings (DEC-444).** Same Plan/Design/Develop/Test phases, content
+  sense: Plan = split; Design = decide what to author + the explicit acceptance
+  criteria; **Develop = author the records** (DB writes); **Test = an independent
+  review** of those records against the Design's acceptance criteria
+  (completeness / correctness / conformance) → pass-or-findings. Decomposition is
+  content-agnostic — same three phases, never collapsed to Design-only (REQ-186).
+- **Verification gate (DEC-763).** Content-Test is a **distinct** step, not the
+  existing requirements-provenance gates — it **feeds**, never replaces, the human
+  Review-panel sign-off (the final gate). The default
+  `run_content_pool_for_workstream` spawns the API-only content agent
+  (`build_content_work_prompt`: author for Develop, Tester review for Test) and
+  verifies by result (pauses if a Work Task is non-terminal).
+- **Tiers (DEC-764).** Methodology areas resolve **Architect (Design+Develop) +
+  Tester** profiles — no Developer (deciding-what-to-author and authoring records
+  are one act; the Tester is the *independent* verifier). Seeded live as
+  `AGP-035..038` (the 4 methodology Testers) alongside the existing methodology
+  Architects (`AGP-031..034`).
+- **Where it lives.** `scheduler/ado_scheduler.py` (`_is_content`,
+  `content_pool_runner`, `build_content_work_prompt`,
+  `run_content_pool_for_workstream`); `access/classification.py`;
+  `repositories/registry_seed.py` (the methodology Architect+Tester contracts).
+
 ---
 
 ## 12. Component: Release scheduler (`release_scheduler.py`)
