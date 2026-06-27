@@ -30,6 +30,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
+
 _log = logging.getLogger(__name__)
 
 #: Recorded as the transaction actor for desktop-driven reconcile actions.
@@ -167,15 +169,15 @@ class ReconcilePanel(QWidget):
         a = self._combo_a.currentData()
         b = self._combo_b.currentData()
         if not a or not b:
-            QMessageBox.information(self, "Reconcile", "Select two instances first.")
+            CopyableMessageBox.information(self, "Reconcile", "Select two instances first.")
             return
         if a == b:
-            QMessageBox.information(self, "Reconcile", "Pick two different instances.")
+            CopyableMessageBox.information(self, "Reconcile", "Pick two different instances.")
             return
         try:
             result = self._client.reconcile_compare(a, b)
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.warning(self, "Reconcile", f"Compare failed: {exc}")
+            CopyableMessageBox.warning(self, "Reconcile", f"Compare failed: {exc}")
             return
         self._populate_tree(result)
 
@@ -218,10 +220,10 @@ class ReconcilePanel(QWidget):
     def _on_capture(self, source: str) -> None:
         row = self._selected_row()
         if not row:
-            QMessageBox.information(self, "Reconcile", "Select a difference row first.")
+            CopyableMessageBox.information(self, "Reconcile", "Select a difference row first.")
             return
         if not row.get("actionable"):
-            QMessageBox.information(
+            CopyableMessageBox.information(
                 self, "Reconcile",
                 "This difference is shown for visibility but cannot be reconciled "
                 "from here yet (field-attribute differences are actionable).",
@@ -236,9 +238,9 @@ class ReconcilePanel(QWidget):
                 actor=_ACTOR,
             )
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.warning(self, "Reconcile", f"Capture failed: {exc}")
+            CopyableMessageBox.warning(self, "Reconcile", f"Capture failed: {exc}")
             return
-        QMessageBox.information(
+        CopyableMessageBox.information(
             self, "Reconcile",
             f"Captured {row['attribute']} from {instance} into the design.",
         )
@@ -268,12 +270,12 @@ class ReconcilePanel(QWidget):
     def _on_rollback(self) -> None:
         items = self._log_tree.selectedItems()
         if not items:
-            QMessageBox.information(self, "Reconcile", "Select a transaction first.")
+            CopyableMessageBox.information(self, "Reconcile", "Select a transaction first.")
             return
         txn = items[0].data(0, Qt.ItemDataRole.UserRole)
         tid = txn.get("id")
         if txn.get("status") == "rolled_back":
-            QMessageBox.information(self, "Reconcile", "Already rolled back.")
+            CopyableMessageBox.information(self, "Reconcile", "Already rolled back.")
             return
         # Data-loss analysis before proceeding (REQ-361).
         try:
@@ -283,7 +285,7 @@ class ReconcilePanel(QWidget):
             _log.warning("assess-revert failed: %s", exc)
         if verdict.get("requires_confirmation"):
             reasons = "\n• ".join(verdict.get("reasons", []))
-            proceed = QMessageBox.warning(
+            proceed = CopyableMessageBox.warning(
                 self, "Possible data loss",
                 f"This rollback could cause data loss:\n\n• {reasons}\n\nProceed anyway?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
@@ -294,6 +296,6 @@ class ReconcilePanel(QWidget):
         try:
             self._client.reconcile_rollback(tid, actor=_ACTOR)
         except Exception as exc:  # noqa: BLE001
-            QMessageBox.warning(self, "Reconcile", f"Rollback failed: {exc}")
+            CopyableMessageBox.warning(self, "Reconcile", f"Rollback failed: {exc}")
             return
         self._load_transactions()

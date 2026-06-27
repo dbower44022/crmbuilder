@@ -55,6 +55,8 @@ EXPECTED_ENTRIES = (
     "Instances",
     # PI-266 (PRJ-042 / REQ-293): read-only publish history, after Instances.
     "Publish History",
+    # PI-319 (REL-024): three-way reconciliation panel, after Publish History.
+    "Reconcile",
     # requirements-provenance Phase 6b: topic-first review surface,
     # appended to the Governance group after Work Tasks.
     "Requirements Review",
@@ -64,6 +66,12 @@ EXPECTED_ENTRIES = (
     "Releases",
     "Resource Locks",
     "Cost",
+    # PI-330 (REL-026): the Agent Registry group (its own group between the
+    # Release Pipeline and Methodology) over the PI-122 substrate.
+    "Agent Profiles",
+    "Skills",
+    "Governance Rules",
+    "Learnings",
     # Methodology group — Domains landed in UI v0.4 slice B,
     # Entities in slice C, Processes in slice D, CRM Candidates in slice E,
     # Personas in v0.5+ (PI-003), Fields in v0.5+ (PI-004 first slice),
