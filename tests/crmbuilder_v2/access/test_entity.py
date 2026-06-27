@@ -63,7 +63,7 @@ _EXPECTED_COLUMNS = {
 # ---------------------------------------------------------------------------
 
 
-def test_entities_table_has_nine_columns_with_correct_types(v2_env):
+def test_entities_table_has_expected_columns_with_correct_types(v2_env):
     inspector = inspect(get_engine())
     assert "entities" in inspector.get_table_names()
     columns = {c["name"]: c for c in inspector.get_columns("entities")}
