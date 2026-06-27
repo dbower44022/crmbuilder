@@ -376,3 +376,77 @@ def test_add_evidence_dialog_requires_target_id(qtbot):
         dialog._on_ok()
     assert dialog.body()["target_id"] == "WTK-012"
     assert dialog.body()["target_type"] in ("work_task", "decision", "test_spec")
+
+
+# --- cross-engagement promotion + curation (PI-337 / DEC-765) -------------
+
+
+def test_promote_learning_to_system(qtbot, registry_client):
+    learning = registry_client.create_learning(
+        {"area": "ui", "tier": "developer", "category": "pattern",
+         "content": "engagement insight", "scope": "ENG-001"}
+    )
+    lid = learning["identifier"]
+    assert registry_client.get_learning(lid)["scope"] == "ENG-001"
+    promoted = registry_client.promote_learning_to_system(lid)
+    assert promoted["scope"] == "system"
+    assert registry_client.get_learning(lid)["engagement_id"] is None
+
+
+def test_promote_to_system_rejects_already_system(qtbot, registry_client):
+    from crmbuilder_v2.ui.exceptions import StorageClientError  # noqa: PLC0415
+
+    learning = registry_client.create_learning(
+        {"area": "ui", "tier": "developer", "category": "pattern",
+         "content": "already system", "scope": "system"}
+    )
+    with pytest.raises(StorageClientError):
+        registry_client.promote_learning_to_system(learning["identifier"])
+
+
+def test_curate_retires_contradicted_zero_confidence(qtbot, registry_client):
+    learning = registry_client.create_learning(
+        {"area": "ui", "tier": "developer", "category": "gotcha",
+         "content": "stale candidate", "scope": "system"}
+    )
+    lid = learning["identifier"]
+    # Contradicting evidence (work_task) — confidence stays floored at 0, adds the edge.
+    registry_client.add_learning_evidence(
+        lid, target_type="work_task", target_id="WTK-001", contradicts=True
+    )
+    result = registry_client.curate_learnings(area="ui", scope=None)
+    assert lid in result["retired"]
+    assert registry_client.get_learning(lid)["status"] == "stale"
+
+
+def test_cross_engagement_candidates_returns_list(qtbot, registry_client):
+    # With a single engagement there are no cross-engagement candidates, but the
+    # endpoint + client return a well-formed list.
+    assert registry_client.list_cross_engagement_candidates() == []
+
+
+def test_curate_area_dialog_requires_area(qtbot):
+    from crmbuilder_v2.ui.dialogs.registry_crud import CurateAreaDialog  # noqa: PLC0415
+
+    dialog = CurateAreaDialog()
+    qtbot.addWidget(dialog)
+    dialog._area.setCurrentText("")
+    dialog._on_ok()
+    assert dialog.result() != dialog.DialogCode.Accepted
+    assert dialog.body() is None
+    dialog._area.setCurrentText("storage")
+    dialog._scope.setText("ENG-001")
+    with qtbot.waitSignal(dialog.accepted, timeout=3000):
+        dialog._on_ok()
+    assert dialog.body() == {"area": "storage", "scope": "ENG-001"}
+
+
+def test_cross_engagement_dialog_handles_empty(qtbot, registry_client):
+    from crmbuilder_v2.ui.dialogs.registry_crud import (  # noqa: PLC0415
+        CrossEngagementCandidatesDialog,
+    )
+
+    dialog = CrossEngagementCandidatesDialog(registry_client)
+    qtbot.addWidget(dialog)
+    assert dialog._list.count() == 1  # the "(no candidates)" placeholder
+    assert not dialog._promote_btn.isEnabled()
