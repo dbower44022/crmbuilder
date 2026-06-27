@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.access.vocab import (
+    AGENT_PROFILE_TIERS,
     RULE_ENFORCEMENT_MODES,
     SKILL_KINDS,
     SYSTEM_AREAS,
@@ -768,3 +769,114 @@ class CurateAreaDialog(QDialog):
 
     def body(self) -> dict[str, Any] | None:
         return self._body
+
+
+# ---------------------------------------------------------------------------
+# Agent search (PI-343 / REQ-383)
+# ---------------------------------------------------------------------------
+
+
+class FindAgentsDialog(QDialog):
+    """Search the registry for agents fitting a build need (the area-anchored
+    pre-filter). Area is required (the hard backstop); technology/tier narrow;
+    needs (comma-separated capability hints) rank the results. The chosen
+    profile's identifier is read via ``selected_identifier()`` after OK.
+    """
+
+    def __init__(self, client: StorageClient, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._client = client
+        self._selected: str | None = None
+        self.setWindowTitle("Find agents")
+        self.setMinimumWidth(560)
+        self.setMinimumHeight(420)
+
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        self._area = QComboBox()
+        self._area.setEditable(True)
+        for area in sorted(SYSTEM_AREAS):
+            self._area.addItem(area)
+        self._area.setCurrentText("")
+        form.addRow("Area (required)", self._area)
+        self._technology = QLineEdit()
+        self._technology.setPlaceholderText("Optional, e.g. qt-desktop / web")
+        form.addRow("Technology", self._technology)
+        self._tier = QComboBox()
+        self._tier.addItem("(any)", None)
+        for t in sorted(AGENT_PROFILE_TIERS):
+            self._tier.addItem(t, t)
+        form.addRow("Tier", self._tier)
+        self._needs = QLineEdit()
+        self._needs.setPlaceholderText("Capability hints, comma-separated (ranks results)")
+        form.addRow("Needs", self._needs)
+        layout.addLayout(form)
+
+        search_btn = QPushButton("Search")
+        search_btn.clicked.connect(self._on_search)
+        layout.addWidget(search_btn)
+
+        self._results = QListWidget()
+        self._results.itemDoubleClicked.connect(lambda _i: self._on_ok())
+        layout.addWidget(self._results)
+
+        self._error = QLabel("")
+        self._error.setStyleSheet("color: #C62828;")
+        self._error.setWordWrap(True)
+        self._error.setVisible(False)
+        layout.addWidget(self._error)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Open | QDialogButtonBox.StandardButton.Close
+        )
+        buttons.button(QDialogButtonBox.StandardButton.Open).setText("Open profile")
+        buttons.accepted.connect(self._on_ok)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _on_search(self) -> None:
+        self._error.setVisible(False)
+        self._results.clear()
+        area = self._area.currentText().strip()
+        if not area:
+            self._show_error("Area is required.")
+            return
+        needs = [n.strip() for n in self._needs.text().split(",") if n.strip()] or None
+        try:
+            matches = self._client.search_agents(
+                area=area,
+                technology=self._technology.text().strip() or None,
+                tier=self._tier.currentData(),
+                needs=needs,
+            )
+        except (StorageClientError, StorageConnectionError) as exc:
+            self._show_error(str(exc))
+            return
+        if not matches:
+            item = QListWidgetItem("(no matching agents)")
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            self._results.addItem(item)
+            return
+        for m in matches:
+            tech = m.get("technology") or "any-tech"
+            label = (
+                f"{m.get('identifier')} — {m.get('area')}/{m.get('tier')} "
+                f"[{tech}] · {m.get('status')}"
+            )
+            item = QListWidgetItem(label)
+            item.setData(Qt.ItemDataRole.UserRole, m.get("identifier"))
+            self._results.addItem(item)
+        self._results.setCurrentRow(0)
+
+    def _on_ok(self) -> None:
+        item = self._results.currentItem()
+        if item is not None:
+            self._selected = item.data(Qt.ItemDataRole.UserRole)
+        self.accept()
+
+    def _show_error(self, message: str) -> None:
+        self._error.setText(message)
+        self._error.setVisible(True)
+
+    def selected_identifier(self) -> str | None:
+        return self._selected

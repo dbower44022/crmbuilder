@@ -42,6 +42,7 @@ from crmbuilder_v2.ui.dialogs.registry_crud import (
     AgentProfileDeleteDialog,
     AgentProfileEditDialog,
     BindingPickerDialog,
+    FindAgentsDialog,
     JsonFieldDialog,
 )
 from crmbuilder_v2.ui.exceptions import (
@@ -57,7 +58,7 @@ from crmbuilder_v2.ui.panels._registry_panel_base import (
     read_only_text,
     separator,
 )
-from crmbuilder_v2.ui.widgets.form_helpers import destructive_button
+from crmbuilder_v2.ui.widgets.form_helpers import destructive_button, primary_button
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.agent_profiles")
 
@@ -85,6 +86,18 @@ class AgentProfilesPanel(RegistryCrudPanel):
         self._contract_profile_id: str | None = None
         self._contract_combo: QComboBox | None = None
         self._contract_view: QWidget | None = None
+        # REQ-383: search the registry for agents fitting a build need.
+        find_btn = primary_button("Find agents…")
+        find_btn.setObjectName("find_agents_button")
+        find_btn.clicked.connect(self._on_find_agents)
+        self._action_layout.addWidget(find_btn)
+
+    def _on_find_agents(self) -> None:
+        dialog = FindAgentsDialog(self._client, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            identifier = dialog.selected_identifier()
+            if identifier:
+                self.select_record_by_identifier(identifier)
 
     # --- display hooks --------------------------------------------------
 

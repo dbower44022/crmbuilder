@@ -450,3 +450,41 @@ def test_cross_engagement_dialog_handles_empty(qtbot, registry_client):
     qtbot.addWidget(dialog)
     assert dialog._list.count() == 1  # the "(no candidates)" placeholder
     assert not dialog._promote_btn.isEnabled()
+
+
+# --- agent search UI (PI-343 / REQ-383) -----------------------------------
+
+
+def test_find_agents_dialog_searches_and_selects(qtbot, registry_client):
+    from crmbuilder_v2.ui.dialogs.registry_crud import FindAgentsDialog  # noqa: PLC0415
+
+    registry_client.create_agent_profile(
+        {"area": "storage", "tier": "architect", "description": "s arch", "scope": "system"}
+    )
+    dialog = FindAgentsDialog(registry_client)
+    qtbot.addWidget(dialog)
+    dialog._area.setCurrentText("storage")
+    dialog._on_search()
+    assert dialog._results.count() >= 1
+    dialog._results.setCurrentRow(0)
+    dialog._on_ok()
+    assert (dialog.selected_identifier() or "").startswith("AGP-")
+
+
+def test_find_agents_dialog_requires_area(qtbot, registry_client):
+    from crmbuilder_v2.ui.dialogs.registry_crud import FindAgentsDialog  # noqa: PLC0415
+
+    dialog = FindAgentsDialog(registry_client)
+    qtbot.addWidget(dialog)
+    dialog._area.setCurrentText("")
+    dialog._on_search()
+    assert "required" in dialog._error.text().lower()
+
+
+def test_client_search_agents_returns_list(qtbot, registry_client):
+    registry_client.create_agent_profile(
+        {"area": "ui", "tier": "developer", "description": "u dev", "scope": "system"}
+    )
+    res = registry_client.search_agents(area="ui")
+    assert isinstance(res, list)
+    assert any(r["area"] == "ui" for r in res)

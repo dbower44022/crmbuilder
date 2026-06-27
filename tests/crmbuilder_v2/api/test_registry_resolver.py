@@ -192,3 +192,55 @@ def test_engagement_disable_suppresses_named_system_rule(client):
     assert by_id in other_ids
     assert by_type in other_ids
     assert kept in other_ids
+
+
+# --- agent search endpoint (PI-343 / REQ-383) -----------------------------
+
+
+def test_search_agents_area_anchored_and_tier_filter(client):
+    a = client.post(
+        "/agent-profiles",
+        json={"area": "storage", "tier": "architect", "description": "s arch"},
+    ).json()["data"]["identifier"]
+    d = client.post(
+        "/agent-profiles",
+        json={"area": "storage", "tier": "developer", "description": "s dev"},
+    ).json()["data"]["identifier"]
+    u = client.post(
+        "/agent-profiles",
+        json={"area": "ui", "tier": "developer", "description": "u dev"},
+    ).json()["data"]["identifier"]
+
+    # Area is the hard backstop: only storage profiles come back.
+    res = client.get("/agent-profiles/search", params={"area": "storage"}).json()["data"]
+    ids = {r["identifier"] for r in res}
+    assert ids == {a, d}
+    assert u not in ids
+
+    # Tier narrows within the area.
+    res2 = client.get(
+        "/agent-profiles/search", params={"area": "storage", "tier": "architect"}
+    ).json()["data"]
+    assert [r["identifier"] for r in res2] == [a]
+
+
+def test_search_agents_needs_ranking(client):
+    plain = client.post(
+        "/agent-profiles",
+        json={"area": "api", "tier": "developer", "description": "plain"},
+    ).json()["data"]["identifier"]
+    matchy = client.post(
+        "/agent-profiles",
+        json={"area": "api", "tier": "developer", "description": "matchy",
+              "capability_description": {"specialties": ["rest", "auth"]}},
+    ).json()["data"]["identifier"]
+    res = client.get(
+        "/agent-profiles/search", params={"area": "api", "needs": "auth"}
+    ).json()["data"]
+    # The capability match ranks first; the plain profile still appears.
+    assert res[0]["identifier"] == matchy
+    assert plain in {r["identifier"] for r in res}
+
+
+def test_search_agents_requires_area(client):
+    assert client.get("/agent-profiles/search").status_code == 422

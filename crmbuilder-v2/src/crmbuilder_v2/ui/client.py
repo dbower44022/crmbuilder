@@ -2701,6 +2701,34 @@ class StorageClient:
             op="get_agent_profile_bindings",
         )
 
+    def search_agents(
+        self,
+        *,
+        area: str,
+        technology: str | None = None,
+        tier: str | None = None,
+        needs: list[str] | None = None,
+        status: str = "active",
+    ) -> list[dict[str, Any]]:
+        """GET /agent-profiles/search — the deterministic area-anchored pre-filter.
+
+        ``area`` is required (the hard backstop). ``needs`` (capability hints)
+        ranks results by overlap. Returns profiles in deterministic order.
+        """
+        from urllib.parse import quote
+
+        params = {
+            "area": area,
+            "technology": technology,
+            "tier": tier,
+            "status": status,
+        }
+        if needs:
+            params["needs"] = quote(",".join(needs))
+        path = "/agent-profiles/search" + self._query(params)
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
     # --- skills ---------------------------------------------------------
 
     def list_skills(

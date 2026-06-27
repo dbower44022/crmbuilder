@@ -61,6 +61,39 @@ def agent_profile_next_identifier():
         return ok({"next": agent_profiles.compute_next_identifier(s)})
 
 
+@agent_profiles_router.get("/search")
+def search_agent_profiles(
+    area: str,
+    technology: str | None = None,
+    tier: str | None = None,
+    needs: str | None = None,
+    status: str = "active",
+    engagement: str | None = None,
+):
+    """Deterministic, area-anchored agent pre-filter (PI-301/DEC-677; REST in PI-343).
+
+    ``area`` is the required hard backstop (never crossed); ``technology`` keeps
+    matching-or-agnostic profiles; ``tier`` narrows; ``needs`` (comma-separated
+    capability hints) ranks results by overlap with each profile's capability
+    facets. The scope merge keeps system rows ∪ the active engagement's overlay
+    (the ``engagement`` query param, else the request's active engagement).
+    """
+    needs_list = [n.strip() for n in needs.split(",") if n.strip()] if needs else None
+    active = engagement if engagement is not None else get_active_engagement()
+    with readonly_session() as s:
+        return ok(
+            agent_profiles.search_agents(
+                s,
+                area=area,
+                technology=technology,
+                tier=tier,
+                needs=needs_list,
+                status=status,
+                engagement_id=active,
+            )
+        )
+
+
 @agent_profiles_router.get("/{identifier}/contract")
 def resolve_agent_profile_contract(identifier: str, engagement: str | None = None):
     """Resolve the profile into an effective contract (D-δ4).
