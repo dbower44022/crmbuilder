@@ -394,19 +394,19 @@ def create_commit(
             f"(existing identifier: {existing.commit_identifier})"
         )
 
-    row_kwargs = dict(
-        sha=sha,
-        message_first_line=message_first_line,
-        message_full=message_full,
-        author_name=author_name,
-        author_email=author_email,
-        committed_at=committed_at,
-        repository=repository,
-        branch=branch,
-        parent_shas=parent_shas,
-        files_changed_count=files_changed_count,
-        session_id=session_id,
-    )
+    row_kwargs = {
+        "sha": sha,
+        "message_first_line": message_first_line,
+        "message_full": message_full,
+        "author_name": author_name,
+        "author_email": author_email,
+        "committed_at": committed_at,
+        "repository": repository,
+        "branch": branch,
+        "parent_shas": parent_shas,
+        "files_changed_count": files_changed_count,
+        "session_id": session_id,
+    }
 
     if identifier is None:
         row = _insert_with_autoassign(session, **row_kwargs)
