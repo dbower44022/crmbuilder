@@ -49,7 +49,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from crmbuilder_v2.config import verify_log_dir
-from crmbuilder_v2.scheduler import dispatcher, reconciliation
+from crmbuilder_v2.scheduler import agent_identity, dispatcher, reconciliation
 from crmbuilder_v2.scheduler.agent_prompt import build_agent_prompt
 from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 
@@ -359,6 +359,8 @@ def operating_protocol(
     branch: str,
     workstream_id: str | None = None,
     time_budget_seconds: int | None = None,
+    agent_token: str | None = None,
+    agent_principal_id: str | None = None,
 ) -> str:
     """The scheduler's per-spawn operating instructions, appended to the contract.
 
@@ -371,6 +373,12 @@ def operating_protocol(
     it to ``Complete`` — the lifecycle the scheduler verifies afterward.
     """
     hdr = "-H 'X-Engagement: " + engagement + "' -H 'Content-Type: application/json'"
+    # REQ-381: when this agent was minted its own service-agent identity, it must
+    # present its bearer token on every request (so it acts as that principal) and
+    # claim the Work Task as that principal (enforce_claim_identity then passes).
+    if agent_token:
+        hdr += " -H 'Authorization: Bearer " + agent_token + "'"
+    claimant = agent_principal_id or "AGP-runtime"
     wt_url = f"{api_base}/work-tasks/{work_task_id}"
     # JSON bodies as plain values (single braces) so no f-string escaping is needed.
     noop_body = (
@@ -378,7 +386,7 @@ def operating_protocol(
         + ' <evidence: the file/symbol/test that already satisfies this>",'
         ' "work_task_status": "Complete"}'
     )
-    claim_body = '{"claimed_by": "AGP-runtime"}'
+    claim_body = '{"claimed_by": "' + claimant + '"}'
     inprog_body = '{"work_task_status": "In Progress"}'
     complete_body = '{"work_task_status": "Complete"}'
     budget_min = (
@@ -696,6 +704,12 @@ class CoordinatingScheduler:
         # (needs_attention) signal; resolve it now so the protocol can name it.
         owning_ws = self._owning_workstream(work_task_id)
         workstream_id = (owning_ws or {}).get("workstream_identifier")
+        # REQ-381: when principal auth is enabled, mint this agent its own
+        # service-agent principal + token so it calls the API and claims its Work
+        # Task as a distinct identity. ``None`` (no-op) when auth is off.
+        identity = agent_identity.mint_for_spawn(
+            cfg.engagement, area=area, tier=cfg.tier, work_task_id=work_task_id
+        )
         protocol = operating_protocol(
             work_task_id=work_task_id,
             area=area,
@@ -706,6 +720,8 @@ class CoordinatingScheduler:
             # REQ-271: tell the agent its time budget (the scheduler's spawn deadline)
             # so it commits-and-reports near the limit instead of being killed mid-work.
             time_budget_seconds=getattr(cfg, "agent_timeout", None),
+            agent_token=identity.token if identity else None,
+            agent_principal_id=identity.principal_id if identity else None,
         )
         return _ResolvedAssignment(
             work_task=wt,
@@ -715,6 +731,9 @@ class CoordinatingScheduler:
             branch=branch,
             prompt=f"{base_prompt}\n\n{protocol}",
             version_stamp=version_stamp,
+            agent_principal_id=identity.principal_id if identity else None,
+            agent_token=identity.token if identity else None,
+            agent_token_id=identity.token_id if identity else None,
         )
 
     def _workstream_members(self, workstream_id: str) -> set[str]:
@@ -949,6 +968,9 @@ class CoordinatingScheduler:
                 branch=assignment.branch,
             )
         finally:
+            # REQ-381: the agent's run is over — revoke its one-time token so it
+            # cannot be reused (no-op when auth is off / no token was minted).
+            agent_identity.revoke(cfg.engagement, assignment.agent_token_id)
             worktree.remove()
 
     def run(self) -> list[IterationReport]:
@@ -1157,6 +1179,12 @@ class _ResolvedAssignment:
     # on the dispatch pipeline event so a run traces to the exact contract that
     # drove it. ``None`` for the built-in fallback (no registry profile).
     version_stamp: str | None = None
+    # The agent's minted service-agent identity (REQ-381), populated only when
+    # principal authentication is enabled: the principal it claims as, the bearer
+    # token injected into its API calls, and that token's id (revoked post-run).
+    agent_principal_id: str | None = None
+    agent_token: str | None = None
+    agent_token_id: str | None = None
 
 
 # --------------------------------------------------------------------------
