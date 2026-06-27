@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QFormLayout,
     QHBoxLayout,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -24,6 +25,8 @@ from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.dialogs.registry_crud import (
     AddEvidenceDialog,
+    CrossEngagementCandidatesDialog,
+    CurateAreaDialog,
     LearningCreateDialog,
     LearningDeleteDialog,
     LearningEditDialog,
@@ -40,12 +43,25 @@ from crmbuilder_v2.ui.panels._registry_panel_base import (
     read_only_text,
     separator,
 )
-from crmbuilder_v2.ui.widgets.form_helpers import destructive_button
+from crmbuilder_v2.ui.widgets.form_helpers import destructive_button, primary_button
 
 
 class LearningsPanel(RegistryCrudPanel):
     new_button_label = "New Learning"
     entity_noun = "learning"
+
+    def __init__(self, client, parent=None):
+        super().__init__(client, parent)
+        # Cross-engagement promotion + curation are area/lifecycle actions, so
+        # they live on the toolbar next to "New Learning" rather than the detail.
+        candidates_btn = primary_button("Cross-engagement candidates…")
+        candidates_btn.setObjectName("cross_engagement_candidates_button")
+        candidates_btn.clicked.connect(self._open_candidates)
+        self._action_layout.addWidget(candidates_btn)
+        curate_btn = primary_button("Curate area…")
+        curate_btn.setObjectName("curate_area_button")
+        curate_btn.clicked.connect(self._curate_area)
+        self._action_layout.addWidget(curate_btn)
 
     def entity_title(self) -> str:
         return "Learnings"
@@ -101,6 +117,16 @@ class LearningsPanel(RegistryCrudPanel):
         rule_btn = QPushButton("Promote to rule…")
         rule_btn.clicked.connect(lambda _c=False, r=record: self._promote_to_rule(r))
         strip_layout.addWidget(rule_btn)
+        # Cross-engagement promotion only applies to an engagement-scoped row.
+        if (record.get("scope") or "system") != "system":
+            system_btn = QPushButton("Promote to system")
+            system_btn.setToolTip(
+                "Promote this engagement learning to a system default (all engagements inherit it)."
+            )
+            system_btn.clicked.connect(
+                lambda _c=False, r=record: self._promote_to_system(r)
+            )
+            strip_layout.addWidget(system_btn)
         delete_btn = destructive_button("Delete")
         delete_btn.clicked.connect(lambda _c=False, r=record: self._on_delete_clicked(r))
         strip_layout.addWidget(delete_btn)
@@ -163,6 +189,42 @@ class LearningsPanel(RegistryCrudPanel):
         new_value = dialog.value()
         if self._call(lambda: self._client.patch_learning(identifier, {"confidence": new_value})):
             self.refresh()
+
+    # --- cross-engagement promotion + curation -------------------------
+
+    def _promote_to_system(self, record: dict[str, Any]) -> None:
+        identifier = record.get("identifier")
+        if not identifier:
+            return
+        if self._call(lambda: self._client.promote_learning_to_system(identifier)):
+            self.refresh()
+
+    def _open_candidates(self) -> None:
+        dialog = CrossEngagementCandidatesDialog(self._client, self)
+        dialog.exec()
+        # Promotions inside the dialog may have changed scopes; refresh the list.
+        self.refresh()
+
+    def _curate_area(self) -> None:
+        dialog = CurateAreaDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        body = dialog.body()
+        if body is None:
+            return
+        result = self._call(lambda: self._client.curate_learnings(**body))
+        if result is None:
+            return
+        retired = result.get("retired") or []
+        QMessageBox.information(
+            self,
+            "Curate complete",
+            (
+                f"Area '{result.get('area')}' (scope {result.get('scope')}): "
+                f"{len(retired)} learning(s) retired.\n\n" + "\n".join(retired)
+            ).strip(),
+        )
+        self.refresh()
 
     # --- promotion ------------------------------------------------------
 

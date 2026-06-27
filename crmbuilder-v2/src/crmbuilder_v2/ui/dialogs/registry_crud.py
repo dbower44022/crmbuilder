@@ -15,6 +15,7 @@ import json
 from collections.abc import Callable
 from typing import Any
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -26,12 +27,17 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPlainTextEdit,
+    QPushButton,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
-from crmbuilder_v2.access.vocab import RULE_ENFORCEMENT_MODES, SKILL_KINDS
+from crmbuilder_v2.access.vocab import (
+    RULE_ENFORCEMENT_MODES,
+    SKILL_KINDS,
+    SYSTEM_AREAS,
+)
 from crmbuilder_v2.ui.base.crud_dialog import (
     EntityCrudDeleteDialog,
     EntityCrudDialog,
@@ -605,3 +611,160 @@ class SetConfidenceDialog(QDialog):
 
     def value(self) -> int:
         return self._spin.value()
+
+
+# ---------------------------------------------------------------------------
+# Cross-engagement promotion + curation (PI-337 / DEC-765)
+# ---------------------------------------------------------------------------
+
+
+class CrossEngagementCandidatesDialog(QDialog):
+    """List learnings recurring across engagements and promote one to system.
+
+    A candidate group is the same (area, tier, content) seen in >= 2 engagements
+    — the cross-engagement signal that a learning is universal (DEC-373).
+    Promoting flips one of the group's learnings to system scope so every
+    engagement inherits it. The dialog fetches and promotes via ``client``
+    directly, refreshing the list in place.
+    """
+
+    def __init__(self, client: StorageClient, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._client = client
+        self.setWindowTitle("Cross-engagement learning candidates")
+        self.setMinimumWidth(620)
+        self.setMinimumHeight(360)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(
+            QLabel(
+                "Learnings seen in 2+ engagements — promote one to a system default "
+                "so every engagement inherits it."
+            )
+        )
+        self._list = QListWidget()
+        layout.addWidget(self._list)
+
+        self._error = QLabel("")
+        self._error.setStyleSheet("color: #C62828;")
+        self._error.setWordWrap(True)
+        self._error.setVisible(False)
+        layout.addWidget(self._error)
+
+        self._promote_btn = QPushButton("Promote selected to system")
+        self._promote_btn.clicked.connect(self._on_promote)
+        layout.addWidget(self._promote_btn)
+        close = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        close.rejected.connect(self.reject)
+        layout.addWidget(close)
+
+        self._reload()
+
+    def _reload(self) -> None:
+        self._list.clear()
+        self._error.setVisible(False)
+        try:
+            candidates = self._client.list_cross_engagement_candidates()
+        except (StorageClientError, StorageConnectionError) as exc:
+            self._show_error(str(exc))
+            return
+        if not candidates:
+            item = QListWidgetItem("(no cross-engagement candidates)")
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
+            self._list.addItem(item)
+            self._promote_btn.setEnabled(False)
+            return
+        self._promote_btn.setEnabled(True)
+        for group in candidates:
+            engs = ", ".join(group.get("engagements") or [])
+            content = (group.get("content") or "").replace("\n", " ")
+            if len(content) > 80:
+                content = content[:77] + "…"
+            label = (
+                f"{group.get('area')}/{group.get('tier')} — {content}  "
+                f"[{len(group.get('engagements') or [])} engagements: {engs}]"
+            )
+            item = QListWidgetItem(label)
+            item.setData(Qt.ItemDataRole.UserRole, group)
+            self._list.addItem(item)
+        self._list.setCurrentRow(0)
+
+    def _on_promote(self) -> None:
+        item = self._list.currentItem()
+        if item is None:
+            return
+        group = item.data(Qt.ItemDataRole.UserRole)
+        if not group:
+            return
+        learning_ids = group.get("learning_ids") or []
+        if not learning_ids:
+            return
+        try:
+            # Promote the first engagement-scoped learning of the group to system.
+            self._client.promote_learning_to_system(learning_ids[0])
+        except (StorageClientError, StorageConnectionError) as exc:
+            self._show_error(str(exc))
+            return
+        self._reload()
+
+    def _show_error(self, message: str) -> None:
+        self._error.setText(message)
+        self._error.setVisible(True)
+
+
+class CurateAreaDialog(QDialog):
+    """Run a curate sweep over an area: retire contradicted, zero-confidence learnings.
+
+    Collects the target area (and optional engagement scope) and returns the
+    request via ``body()``; the panel runs the curate call and reports what was
+    retired.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Curate learnings by area")
+        self.setMinimumWidth(420)
+        self._body: dict[str, Any] | None = None
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(
+            QLabel(
+                "Retire active learnings in this area that are contradicted and have "
+                "fallen to confidence 0."
+            )
+        )
+        form = QFormLayout()
+        self._area = QComboBox()
+        self._area.setEditable(True)
+        for area in sorted(SYSTEM_AREAS):
+            self._area.addItem(area)
+        self._area.setCurrentText("")
+        form.addRow("Area", self._area)
+        self._scope = QLineEdit()
+        self._scope.setPlaceholderText("Optional engagement (e.g. ENG-001); blank = system")
+        form.addRow("Scope", self._scope)
+        layout.addLayout(form)
+
+        self._error = QLabel("")
+        self._error.setStyleSheet("color: #C62828;")
+        self._error.setVisible(False)
+        layout.addWidget(self._error)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self._on_ok)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _on_ok(self) -> None:
+        area = self._area.currentText().strip()
+        if not area:
+            self._error.setText("An area is required.")
+            self._error.setVisible(True)
+            return
+        self._body = {"area": area, "scope": self._scope.text().strip() or None}
+        self.accept()
+
+    def body(self) -> dict[str, Any] | None:
+        return self._body

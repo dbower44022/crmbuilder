@@ -2838,6 +2838,37 @@ class StorageClient:
             op="add_learning_evidence",
         )
 
+    def promote_learning_to_system(self, identifier: str) -> dict[str, Any]:
+        """POST /learnings/{id}/promote-to-system — engagement scope → system (DEC-373)."""
+        return self._expect_dict(
+            self._request("POST", f"/learnings/{identifier}/promote-to-system"),
+            op="promote_learning_to_system",
+        )
+
+    def list_cross_engagement_candidates(
+        self, *, area: str | None = None, tier: str | None = None, min_engagements: int = 2
+    ) -> list[dict[str, Any]]:
+        """GET /learnings/cross-engagement-candidates.
+
+        Learnings (same area/tier/content) recurring across ``min_engagements`` or
+        more engagements — candidates for promotion to a system default. Each item
+        is ``{area, tier, content, engagements: [...], learning_ids: [...]}``.
+        """
+        path = "/learnings/cross-engagement-candidates" + self._query(
+            {"area": area, "tier": tier, "min_engagements": min_engagements}
+        )
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def curate_learnings(self, *, area: str, scope: str | None = None) -> dict[str, Any]:
+        """POST /learnings/curate — retire contradicted, zero-confidence learnings in an area."""
+        return self._expect_dict(
+            self._request(
+                "POST", "/learnings/curate", json_body={"area": area, "scope": scope}
+            ),
+            op="curate_learnings",
+        )
+
     # --- bindings (agent_profile -> skill / governance_rule edges) ------
 
     _SKILL_EDGE = "agent_profile_has_skill"
