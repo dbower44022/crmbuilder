@@ -189,6 +189,15 @@ class Settings(BaseSettings):
     # fine for the localhost flow where auth is off.
     mcp_token: str = ""
 
+    # REQ-382 / PI-341: bearer token the ADO scheduler (orchestrator) forwards as
+    # ``Authorization: Bearer`` on its own REST calls when principal auth is on, so
+    # the orchestrator authenticates as its own principal instead of being 401'd.
+    # Empty (default) sends no header — fine for the localhost flow where auth is
+    # off. Bootstrap (ops): mint an orchestrator principal + token once with
+    # sufficient permissions and set ``CRMBUILDER_V2_ORCHESTRATOR_TOKEN``. Agents
+    # use their own minted tokens (REQ-381), distinct from this one.
+    orchestrator_token: str = ""
+
     # PI-285 / REQ-316: retention bound for the durable pipeline-event log. The
     # progress history lives in the ``pipeline_events`` table in the v2 database
     # (``db_path`` / ``database_url``) — DATABASE storage, distinct from the

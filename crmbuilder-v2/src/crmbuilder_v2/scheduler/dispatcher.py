@@ -26,6 +26,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
+from crmbuilder_v2.scheduler import runtime_auth
 from crmbuilder_v2.scheduler.agent_prompt import AgentInvocation, build_agent_prompt
 
 log = logging.getLogger(__name__)
@@ -155,7 +156,7 @@ def resolve_profile_for_task(
 # --------------------------------------------------------------------------
 def _get(api_base: str, path: str, engagement: str) -> object:
     url = f"{api_base.rstrip('/')}{path}"
-    req = urllib.request.Request(url, headers={"X-Engagement": engagement})
+    req = urllib.request.Request(url, headers=runtime_auth.auth_headers(engagement))
     with urllib.request.urlopen(req, timeout=15) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
     if payload.get("errors"):
@@ -168,7 +169,7 @@ def _post(api_base: str, path: str, engagement: str, body: dict) -> object:
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         url, data=data, method="POST",
-        headers={"X-Engagement": engagement, "Content-Type": "application/json"},
+        headers=runtime_auth.auth_headers(engagement, content_type=True),
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
@@ -182,7 +183,7 @@ def _patch(api_base: str, path: str, engagement: str, body: dict) -> object:
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         url, data=data, method="PATCH",
-        headers={"X-Engagement": engagement, "Content-Type": "application/json"},
+        headers=runtime_auth.auth_headers(engagement, content_type=True),
     )
     with urllib.request.urlopen(req, timeout=15) as resp:
         payload = json.loads(resp.read().decode("utf-8"))

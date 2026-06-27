@@ -25,8 +25,10 @@ from dataclasses import dataclass
 
 
 def _get(api_base: str, path: str, engagement: str) -> dict:
+    from crmbuilder_v2.scheduler import runtime_auth
+
     url = f"{api_base.rstrip('/')}{path}"
-    req = urllib.request.Request(url, headers={"X-Engagement": engagement})
+    req = urllib.request.Request(url, headers=runtime_auth.auth_headers(engagement))
     with urllib.request.urlopen(req, timeout=15) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
     if payload.get("errors"):

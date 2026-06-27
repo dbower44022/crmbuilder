@@ -928,14 +928,13 @@ class AdoScheduler:
         import json
         import urllib.request
 
+        from crmbuilder_v2.scheduler import runtime_auth
+
         url = f"{self.config.api_base.rstrip('/')}/planning-items/{self.config.planning_item}"
         data = json.dumps({"status": status}).encode("utf-8")
         req = urllib.request.Request(
             url, data=data, method="PATCH",
-            headers={
-                "X-Engagement": self.config.engagement,
-                "Content-Type": "application/json",
-            },
+            headers=runtime_auth.auth_headers(self.config.engagement, content_type=True),
         )
         with urllib.request.urlopen(req, timeout=15) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
@@ -1081,12 +1080,13 @@ class ProjectScheduler:
         import json
         import urllib.request
 
+        from crmbuilder_v2.scheduler import runtime_auth
+
         url = f"{self.config.api_base.rstrip('/')}/planning-items/{pi}"
         data = json.dumps({"status": "Resolved"}).encode("utf-8")
         req = urllib.request.Request(
             url, data=data, method="PATCH",
-            headers={"X-Engagement": self.config.engagement,
-                     "Content-Type": "application/json"},
+            headers=runtime_auth.auth_headers(self.config.engagement, content_type=True),
         )
         with urllib.request.urlopen(req, timeout=15) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
