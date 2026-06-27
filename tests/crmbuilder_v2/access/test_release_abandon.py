@@ -146,17 +146,51 @@ def test_abandon_links_workstream_findings(v2_env):
 def test_abandon_superseded_outcome_maps_to_superseded(v2_env):
     with session_scope() as s:
         rel, prj, pi, wss, _ = _lane_release(s)
-        # superseded requires an outbound supersedes edge to a successor release.
-        successor = releases.create_release(s, title="R2", description="d")[
-            "release_identifier"
-        ]
-        _link(s, "release", rel, "release", successor, "supersedes")
+        # superseded requires an inbound release_corrects_release edge — a correction
+        # release that corrects this one (releases express supersession through
+        # correction, not a generic supersedes edge).
+        correction = releases.open_correction_release(
+            s, rel, title="R2", description="d"
+        )["release_identifier"]
+        assert correction != rel
         out = releases.abandon(s, rel, reason="re-attempted", outcome="superseded")
         assert out["release"]["release_status"] == "superseded"
         assert out["run"]["release_run_outcome"] == "superseded"
         # evidence still preserved
         assert releases._in_scope_projects(s, rel) == [prj]
         assert releases._pi_workstreams(s, pi)
+
+
+def test_abandon_superseded_without_correction_edge_rejected(v2_env):
+    """superseded must have a correcting successor — abandon(outcome="superseded")
+    on a lane release with no correction edge is rejected."""
+    with session_scope() as s:
+        rel, *_ = _lane_release(s)
+        with pytest.raises(
+            UnprocessableError, match="correction release corrects it"
+        ):
+            releases.abandon(s, rel, reason="x", outcome="superseded")
+
+
+def test_direct_supersede_without_correction_edge_rejected(v2_env):
+    """The correction-edge guard is not abandon-specific: a plain transition to
+    superseded from a pre-lane state (no lane-terminal guard in the way) is still
+    rejected when no correction release corrects it."""
+    with session_scope() as s:
+        rel, *_ = _lane_release(s, status="ready")  # pre-lane: lane guard passes
+        with pytest.raises(
+            UnprocessableError, match="correction release corrects it"
+        ):
+            releases.transition(s, rel, "superseded")
+
+
+def test_direct_supersede_with_correction_edge_allowed(v2_env):
+    """A pre-lane release that a correction release corrects may plainly supersede."""
+    with session_scope() as s:
+        rel, *_ = _lane_release(s, status="ready")  # pre-lane
+        releases.open_correction_release(s, rel, title="R2", description="d")
+        out = releases.transition(s, rel, "superseded")
+        assert out["release_status"] == "superseded"
 
 
 # ---------------------------------------------------------------------------
