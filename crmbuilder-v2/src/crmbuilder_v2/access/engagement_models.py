@@ -12,11 +12,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class EngagementStatus(str, Enum):
+class EngagementStatus(StrEnum):
     """Operational lifecycle status for an engagement record.
 
     Free transitions between all three values per engagement.md §3.4.

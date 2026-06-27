@@ -8,9 +8,8 @@ the PRD documents in section 6; UUIDs are excluded from outputs (the
 
 from __future__ import annotations
 
-from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.exceptions import (

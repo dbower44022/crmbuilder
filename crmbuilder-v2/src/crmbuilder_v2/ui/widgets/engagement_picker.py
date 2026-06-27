@@ -17,10 +17,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from PySide6.QtCore import QPoint, Qt, Signal
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QFrame,
-    QLabel,
     QPushButton,
     QVBoxLayout,
     QWidget,

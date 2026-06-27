@@ -31,7 +31,6 @@ import logging
 from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
-    QLabel,
     QLineEdit,
     QPushButton,
     QVBoxLayout,

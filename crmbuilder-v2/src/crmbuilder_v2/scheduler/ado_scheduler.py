@@ -39,7 +39,7 @@ import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from . import dispatcher, reconciliation
 from .parallel_scheduler import (
@@ -75,7 +75,7 @@ _DONE_STATUS = "In Review"
 # --------------------------------------------------------------------------
 
 
-class StepKind(str, Enum):
+class StepKind(StrEnum):
     SCOPE = "scope"        # a Planned phase needs scoping (an Architect agent)
     START = "start"        # start + execute this Ready phase Workstream
     RESUME = "resume"      # re-enter an In Progress phase from recorded task states

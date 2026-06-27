@@ -32,10 +32,10 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class MigrationPhase(str, Enum):
+class MigrationPhase(StrEnum):
     """Where the migration lock is in its three-phase window."""
 
     OPEN = "open"  # normal operation — dispatch flows freely
