@@ -44,7 +44,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
-from crmbuilder_v2.scheduler import dispatcher
+from crmbuilder_v2.scheduler import agent_identity, dispatcher
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
     CoordinatingScheduler,
     SchedulerConfig,
@@ -530,6 +530,11 @@ class ParallelCoordinatingScheduler:
                 finished_at=now,
                 error=str(exc),
             )
+        finally:
+            # REQ-381: the agent's run (its spawn) is done — revoke its one-time
+            # token so it cannot be reused (the scheduler does the later merge,
+            # not the agent). No-op when auth is off / no token was minted.
+            agent_identity.revoke(self.config.engagement, assignment.agent_token_id)
         self._completed.put(result)
 
     # --- integrate one completed agent (main thread, serialized) --------
