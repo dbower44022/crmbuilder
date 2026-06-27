@@ -209,6 +209,26 @@ class ActivityPanelManager:
         self.output_fn(f"[PANELS]  {entity} ... ERROR (HTTP {status})", "red")
         return False
 
+    def panels_enabled(
+        self, entity: str, panels: tuple[str, ...] = ACTIVITY_PANELS
+    ) -> bool:
+        """Return whether the entity's ``bottomPanelsDetail`` enables the panels.
+
+        Reads the saved layout (``Layout/action/getOriginal``) and checks that
+        each named panel is present and not ``disabled``.
+
+        :param entity: EspoCRM entity name.
+        :param panels: Panel names that must be enabled.
+        :returns: True only if every panel is present with ``disabled`` false.
+        """
+        status, layout = self.client.get_layout(entity, "bottomPanelsDetail")
+        if status != 200 or not isinstance(layout, dict):
+            return False
+        return all(
+            isinstance(layout.get(p), dict) and layout[p].get("disabled") is False
+            for p in panels
+        )
+
     def wait_until_registered(
         self,
         entity: str,
