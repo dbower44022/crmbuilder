@@ -132,6 +132,62 @@ _PROJECTS = [
 ]
 
 
+# PI-328: run-outcome records (newest first) + the findings each produced.
+_RUNS = [
+    {
+        "release_run_identifier": "RUN-002",
+        "release_identifier": "REL-001",
+        "release_run_scope": {"projects": ["PRJ-031"]},
+        "release_run_phases_run": [
+            {"workstream": "WSK-1", "phase_type": "Development", "status": "Complete"},
+            {"workstream": "WSK-2", "phase_type": "Testing", "status": "Blocked"},
+        ],
+        "release_run_halt_point": "testing",
+        "release_run_cause": "test gate failed",
+        "release_run_cause_code": "QA_FAIL",
+        "release_run_outcome": "abandoned",
+        "release_run_created_at": "2026-06-24T12:00:00",
+    },
+    {
+        "release_run_identifier": "RUN-001",
+        "release_identifier": "REL-001",
+        "release_run_scope": {"projects": ["PRJ-031"]},
+        "release_run_phases_run": [],
+        "release_run_halt_point": None,
+        "release_run_cause": None,
+        "release_run_cause_code": None,
+        "release_run_outcome": "superseded",
+        "release_run_created_at": "2026-06-20T09:00:00",
+    },
+]
+# Findings: RUN-002 produced FND-7; RUN-001 produced none.
+_RUN_FINDINGS = {
+    "RUN-002": [
+        {
+            "source_type": "release_run",
+            "source_id": "RUN-002",
+            "target_type": "finding",
+            "target_id": "FND-7",
+            "relationship": "release_run_relates_to_finding",
+        }
+    ],
+    "RUN-001": [],
+}
+
+
+def _runs_with_findings() -> list[dict[str, Any]]:
+    """Mirror what ``_load_runs`` produces: each run with its ``_findings``."""
+    runs: list[dict[str, Any]] = []
+    for run in _RUNS:
+        copied = dict(run)
+        copied["_findings"] = [
+            e["target_id"]
+            for e in _RUN_FINDINGS.get(run["release_run_identifier"], [])
+        ]
+        runs.append(copied)
+    return runs
+
+
 _HISTORY = {
     "release_identifier": "REL-001",
     "status": "development",
@@ -157,6 +213,7 @@ def _full_extras(**overrides: Any) -> dict[str, Any]:
         "readiness": _READINESS,
         "composition": _COMPOSITION,
         "versions": _VERSIONS,
+        "runs": _runs_with_findings(),
         "conflicts": _CONFLICTS,
         "reopens": _REOPENS,
         "area_ownership": _AREA_OWNERSHIP,
@@ -188,6 +245,13 @@ def _handler(releases=_RELEASES, *, captured: list | None = None):
             return httpx.Response(200, json=envelope_ok(_LANE_HOLDER))
         if method == "GET" and path.startswith("/references/touching/release/"):
             return httpx.Response(200, json=envelope_ok(_EDGES))
+        if method == "GET" and path.startswith("/references/from/release_run/"):
+            run_id = path.rsplit("/", 1)[-1]
+            return httpx.Response(
+                200, json=envelope_ok(_RUN_FINDINGS.get(run_id, []))
+            )
+        if method == "GET" and path.endswith("/runs"):
+            return httpx.Response(200, json=envelope_ok(_RUNS))
         if method == "GET" and path == "/projects":
             return httpx.Response(200, json=envelope_ok(_PROJECTS))
         if method == "GET" and path.endswith("/freeze"):
@@ -264,14 +328,14 @@ def test_detail_badges_and_action_row(qtbot):
     } <= buttons
 
 
-def test_detail_has_five_tabs(qtbot):
+def test_detail_has_six_tabs(qtbot):
     panel = ReleasesPanel(build_client(_handler()))
     qtbot.addWidget(panel)
     detail = panel.render_detail(_RELEASES[0], _full_extras())
     tabs = detail.findChild(QTabWidget)
     assert tabs is not None
     assert [tabs.tabText(i) for i in range(tabs.count())] == [
-        "Overview", "Composition", "Conflicts", "Reopens", "History",
+        "Overview", "Composition", "Outcome", "Conflicts", "Reopens", "History",
     ]
 
 
@@ -340,6 +404,58 @@ def test_composition_tab_projects_and_versions(qtbot):
     assert "entity:ENT-1 v2" in plain
 
 
+# --- PI-328: failed-run surfacing (Outcome tab) ----------------------------
+
+
+def test_outcome_tab_renders_run_outcome(qtbot):
+    # REQ-263: the Outcome tab surfaces each closed run's badge, halt, cause,
+    # per-phase terminal states, and findings.
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    detail = panel.render_detail(_RELEASES[0], _full_extras())
+    text = " ".join(lbl.text() for lbl in detail.findChildren(QLabel) if lbl.text())
+    assert "abandoned" in text          # the outcome badge of the newest run
+    assert "superseded" in text         # the older run's badge
+    assert "Halt point: testing" in text
+    assert "test gate failed [QA_FAIL]" in text   # cause + cause_code
+    assert "WSK-2: Testing → Blocked" in text     # a per-phase terminal state
+    assert "Findings: FND-7" in text              # the linked finding
+
+
+def test_outcome_tab_empty_state(qtbot):
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    extras = _full_extras(runs=[])
+    detail = panel.render_detail(_RELEASES[0], extras)
+    text = " ".join(lbl.text() for lbl in detail.findChildren(QLabel) if lbl.text())
+    assert "No closed runs" in text
+
+
+def test_outcome_tab_degrades_when_unavailable(qtbot):
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    extras = _full_extras(runs=None, errors={"runs": "boom"})
+    detail = panel.render_detail(_RELEASES[0], extras)
+    text = " ".join(lbl.text() for lbl in detail.findChildren(QLabel) if lbl.text())
+    assert "Outcome unavailable: boom" in text
+
+
+def test_composition_tab_shows_cancelled_run_preserved_scope(qtbot):
+    # PI-325 makes composition return the preserved scope for a closed run; the
+    # Composition tab must render those projects (not blank) even when frozen.
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    cancelled = _full_extras(freeze={"freeze_band": "locked"})
+    detail = panel.render_detail(
+        _release("REL-001", status="cancelled"), cancelled
+    )
+    labels = [w.text() for w in detail.findChildren(QLabel)]
+    # The preserved project link is shown despite the run being closed/frozen.
+    assert any('href="project:PRJ-031"' in t for t in labels)
+    # ...and no scope-edit affordance is offered for the closed run.
+    assert detail.findChild(QPushButton, "add_project_button") is None
+
+
 # --- detail extras degradation --------------------------------------------
 
 
@@ -351,6 +467,35 @@ def test_fetch_detail_extras_aggregates(qtbot):
     assert extras["readiness"]["ready"] is False
     assert extras["reopens"]["paused_areas"] == ["api", "mcp", "ui"]
     assert extras["errors"] == {}
+
+
+def test_fetch_detail_extras_includes_runs_with_findings(qtbot):
+    # PI-328: the Outcome read lands under "runs", newest first, with each run's
+    # findings attached under the private "_findings" key.
+    panel = ReleasesPanel(build_client(_handler()))
+    qtbot.addWidget(panel)
+    extras = panel.fetch_detail_extras(_RELEASES[0])
+    runs = extras["runs"]
+    assert [r["release_run_identifier"] for r in runs] == ["RUN-002", "RUN-001"]
+    assert runs[0]["_findings"] == ["FND-7"]
+    assert runs[1]["_findings"] == []
+    assert "runs" not in extras["errors"]
+
+
+def test_fetch_detail_extras_degrades_when_runs_fail(qtbot):
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path.endswith("/runs"):
+            return httpx.Response(
+                500, json={"data": None, "meta": {}, "errors": [{"message": "boom"}]}
+            )
+        return _handler()(req)
+
+    panel = ReleasesPanel(build_client(handler))
+    qtbot.addWidget(panel)
+    extras = panel.fetch_detail_extras(_RELEASES[0])
+    # The failing runs read is captured; the rest still resolve (degrade-independently).
+    assert "runs" in extras["errors"]
+    assert extras["freeze"]["freeze_band"] == "open"
 
 
 def test_fetch_detail_extras_degrades_per_section(qtbot):
@@ -514,3 +659,18 @@ def test_remove_project_deletes_scope_edge(qtbot, monkeypatch):
         lambda: any(c[1] == "/references/501" for c in captured), timeout=3000
     )
     assert captured[-1][0] == "DELETE"
+
+
+# --- PI-328: client read shapes --------------------------------------------
+
+
+def test_list_release_runs_client_shape(qtbot):
+    client = build_client(_handler())
+    runs = client.list_release_runs("REL-001")
+    assert [r["release_run_identifier"] for r in runs] == ["RUN-002", "RUN-001"]
+
+
+def test_list_release_run_findings_filters_by_relationship(qtbot):
+    client = build_client(_handler())
+    assert client.list_release_run_findings("RUN-002") == ["FND-7"]
+    assert client.list_release_run_findings("RUN-001") == []

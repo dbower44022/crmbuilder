@@ -3457,6 +3457,33 @@ class StorageClient:
             self._request("GET", f"/releases/{identifier}/versions")
         )
 
+    def list_release_runs(self, identifier: str) -> list[dict[str, Any]]:
+        """GET /releases/{id}/runs — the release's run-outcome records (PI-326),
+        newest first. A release may have run the lane more than once, so this is
+        a list. Each record captures the preserved scope, the per-phase terminal
+        states, the halt point + cause, and the outcome (``abandoned`` /
+        ``superseded`` / ``shipped``). Findings the run produced are linked via
+        ``release_run_relates_to_finding`` edges — see
+        :meth:`list_release_run_findings`."""
+        return self._expect_list(
+            self._request("GET", f"/releases/{identifier}/runs")
+        )
+
+    def list_release_run_findings(self, run_identifier: str) -> list[str]:
+        """The ``FND-`` identifiers a release run produced, read from its
+        ``release_run_relates_to_finding`` reference edges (run → finding).
+        Returns the target identifiers (empty when the run logged no findings)."""
+        result = self._request(
+            "GET", f"/references/from/release_run/{run_identifier}"
+        )
+        rows = result if isinstance(result, list) else []
+        return [
+            tid
+            for r in rows
+            if r.get("relationship") == "release_run_relates_to_finding"
+            and (tid := r.get("target_id"))
+        ]
+
     def release_freeze(self, identifier: str) -> dict[str, Any]:
         return self._expect_dict(
             self._request("GET", f"/releases/{identifier}/freeze"),
