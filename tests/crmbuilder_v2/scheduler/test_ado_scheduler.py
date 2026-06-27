@@ -962,3 +962,127 @@ def test_run_proceeds_for_approved_ado_with_approval_pi(monkeypatch):
     report = driver.run()
     # approved → not gated; dry-run proceeds past the gate to planning.
     assert report.dry_run is True and report.status is TaskStatus.NOT_STARTED
+
+
+# --------------------------------------------------------------------------
+# Content-work execution lane (PI-202 / REQ-187, WTK-219)
+# --------------------------------------------------------------------------
+
+
+def _content_pi():
+    # A content PI: every area is methodology-* (REQ-185).
+    return lambda: {"status": "In Progress", "area": ["methodology-process"]}
+
+
+def test_is_content_reads_pi_area():
+    world = _World(3)
+    driver = _FakeDriver(
+        world, config=_cfg(), pool_runner=_clean_pool,
+        scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    # default fake PI has no area -> software
+    assert driver._is_content() is False
+    driver._pi = _content_pi()
+    assert driver._is_content() is True
+
+
+def test_content_pi_routes_to_review_lane_not_git_pool():
+    """A content PI runs every phase through the content (review) lane; the git
+    verify-by-commit pool is never used (REQ-187)."""
+    world = _World(3)  # Design, Develop, Test
+    git_calls: list[str] = []
+    content_calls: list[tuple[str, str]] = []
+
+    def _git_pool(cfg, ws):
+        git_calls.append(ws)
+        return PoolRunReport(paused=False)
+
+    def _content_pool(cfg, ws, phase_type):
+        content_calls.append((ws, phase_type))
+        return PoolRunReport(paused=False)
+
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_git_pool, content_pool_runner=_content_pool,
+        scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    driver._pi = _content_pi()
+    report = driver.run()
+
+    assert report.status is TaskStatus.SUCCEEDED
+    assert git_calls == []  # the git pool never ran for content
+    assert [ws for ws, _ in content_calls] == ["WSK-1", "WSK-2", "WSK-3"]
+    # the content lane receives the phase_type so it can author (Develop) vs review (Test)
+    phase_types = dict(content_calls)
+    assert phase_types["WSK-2"] == "Develop"
+    assert phase_types["WSK-3"] == "Test"
+
+
+def test_software_pi_still_uses_the_git_pool():
+    world = _World(3)
+    git_calls: list[str] = []
+    content_calls: list[str] = []
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=lambda c, w: (git_calls.append(w), PoolRunReport(paused=False))[1],
+        content_pool_runner=lambda c, w, p: (content_calls.append(w), PoolRunReport(paused=False))[1],
+        scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    # default fake PI -> software
+    report = driver.run()
+    assert report.status is TaskStatus.SUCCEEDED
+    assert git_calls == ["WSK-1", "WSK-2", "WSK-3"]
+    assert content_calls == []
+
+
+def test_content_resume_skips_unmerged_residue_check():
+    """Content tasks have no git branch, so the unmerged-residue check (a
+    software-lane concern) is skipped on resume (REQ-187)."""
+    world = _World(3)
+    world.decomposed = True
+    world.phase_status["WSK-1"] = "Complete"
+    world.phase_status["WSK-2"] = "In Progress"  # Develop resumes
+    world.add_task("WSK-2", "WTK-1", "Complete")
+    checked: list[str] = []
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool,
+        content_pool_runner=lambda c, w, p: PoolRunReport(paused=False),
+        scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+        unmerged_check=lambda c, t: checked.append(t) or False,
+    )
+    driver._pi = _content_pi()
+    driver.run()
+    assert checked == []  # never probed git for a content task
+
+
+def test_content_work_prompt_develop_authors_test_reviews():
+    cfg = _cfg()
+    dev = ado.build_content_work_prompt(cfg, "WSK-2", "Develop")
+    assert "AUTHOR" in dev
+    assert "records" in dev
+    assert "no git" in dev.lower()
+    test = ado.build_content_work_prompt(cfg, "WSK-3", "Test")
+    assert "Tester" in test
+    assert "REVIEW" in test
+    assert "acceptance criteria" in test
+
+
+def test_content_pool_verifies_by_result(monkeypatch):
+    monkeypatch.setattr(ado, "spawn_scoping_agent", lambda *a, **k: None)
+
+    def _get_status(status):
+        def _get(api, path, eng):
+            if path.startswith("/references?"):
+                return [{"source_id": "WTK-1", "source_type": "work_task"}]
+            return {"work_task_status": status}
+        return _get
+
+    # a non-terminal task pauses the phase for a person
+    monkeypatch.setattr(ado.dispatcher, "_get", _get_status("In Progress"))
+    paused = ado.run_content_pool_for_workstream(_cfg(), "WSK-2", "Develop")
+    assert paused.paused is True
+
+    # all terminal -> the phase advances
+    monkeypatch.setattr(ado.dispatcher, "_get", _get_status("Complete"))
+    assert ado.run_content_pool_for_workstream(_cfg(), "WSK-2", "Develop").paused is False

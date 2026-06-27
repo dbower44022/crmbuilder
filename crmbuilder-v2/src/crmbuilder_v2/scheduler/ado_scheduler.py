@@ -41,6 +41,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
 
+from crmbuilder_v2.access.classification import is_content_planning_item
+from crmbuilder_v2.scheduler.task_contract import TaskStatus
+
 from . import dispatcher, reconciliation
 from .parallel_scheduler import (
     ParallelCoordinatingScheduler,
@@ -48,7 +51,6 @@ from .parallel_scheduler import (
     PoolRunReport,
 )
 from .reconciliation import GateDecision
-from crmbuilder_v2.scheduler.task_contract import TaskStatus
 
 _DEVELOP_PHASE = "Develop"
 _TERMINAL_PHASE = frozenset({"Complete", "Not Applicable"})
@@ -421,6 +423,120 @@ def task_branch_unmerged(cfg: AdoSchedulerConfig, work_task_id: str) -> bool:
 
 
 # --------------------------------------------------------------------------
+# Content-work execution lane (PI-202 / REQ-187, DEC-763/764)
+# --------------------------------------------------------------------------
+#
+# Content/authoring (methodology-*) Planning Items produce governance RECORDS,
+# not git commits, so their Develop/Test phases do NOT run through the
+# verify-by-commit + pytest pool (``run_pool_for_workstream``). Develop's agents
+# AUTHOR the records the Design called for (DB writes via the API); Test is an
+# independent Tester review of those records against the Design's acceptance
+# criteria (DEC-763) — pass advances the phase, a finding blocks it. Both reuse
+# the API-only agent spawner (``spawn_scoping_agent``); neither touches git, and
+# the content branch is kept off the git-residue/branch checks. The human sign-off
+# in the Review panel remains the final gate (DEC-763).
+
+
+_CONTENT_PHASE_ROLE = {
+    "Design": "decide WHAT records to author and the explicit acceptance criteria "
+    "the Test step will check them against.",
+    "Develop": "AUTHOR the governance records the Design called for (requirements, "
+    "topics, decisions, rules, glossary entries, or document sections) via the API "
+    "— DB writes, not code or commits.",
+    "Test": "VERIFY the authored records are correct and complete against the "
+    "Design's acceptance criteria — a review, not a test suite.",
+}
+
+
+def build_content_work_prompt(
+    cfg: AdoSchedulerConfig, workstream_id: str, phase_type: str
+) -> str:
+    """The content agent's operating protocol for one phase Workstream (REQ-187).
+
+    Develop = author the records; Test = the independent Tester review against the
+    Design's acceptance criteria (DEC-763/764). API-only — no worktree, no commits.
+    """
+    api = cfg.api_base
+    eng = cfg.engagement
+    h = f"-H 'X-Engagement: {eng}'"
+    role = _CONTENT_PHASE_ROLE.get(
+        phase_type, f"do the {phase_type}-phase content work."
+    )
+    tester = phase_type == "Test"
+    step2 = (
+        "2. For each Work Task, REVIEW the records the Develop phase authored "
+        "against the Design's acceptance criteria — completeness (nothing the "
+        "Design called for is missing), correctness (accurate, consistent, traced "
+        "to source, no contradictions), conformance (recording rules + identifier "
+        "discipline). If a Work Task's records pass, claim it and mark it Complete; "
+        "if not, raise a finding and mark the task Blocked, leaving the phase for a "
+        "person. Do NOT sign off — the human Review-panel sign-off is the final "
+        "gate.\n"
+        if tester else
+        "2. For each Work Task, AUTHOR the records the Design called for via the "
+        "API (POST /requirements, /topics, /decisions, /references, etc. — include "
+        "provenance), then claim the Work Task and mark it Complete. Author "
+        "records, never code or commits.\n"
+    )
+    return (
+        f"You are the {phase_type}-phase {'Tester' if tester else 'agent'} for "
+        f"content Planning Item {cfg.planning_item}. Content work produces "
+        f"governance RECORDS, not code — make API calls only, no git, no worktree. "
+        f"Your job: {role} The live V2 API is at {api}; EVERY request must send "
+        f"X-Engagement: {eng}.\n\n"
+        f"Do exactly this:\n"
+        f"1. Read the phase's Work Tasks and prior phases' outputs — "
+        f"`curl -s {h} {api}/workstreams/{workstream_id}/prior-phase-outputs` — and "
+        f"the Planning Item — `curl -s {h} {api}/planning-items/{cfg.planning_item}`.\n"
+        f"{step2}"
+        f"3. Confirm every Work Task in {workstream_id} is Complete (or Blocked with "
+        f"a finding) and exit."
+    )
+
+
+def run_content_pool_for_workstream(
+    cfg: AdoSchedulerConfig, workstream_id: str, phase_type: str
+) -> PoolRunReport:
+    """Default content execution lane for one phase Workstream (REQ-187).
+
+    Spawns a single API-only content agent (author for Develop, Tester for Test)
+    that drives the phase's Work Tasks to a terminal state (Complete, or Blocked on
+    a finding) by authoring/reviewing records — no git pool, no commits. Verified
+    by result: returns a paused report if any Work Task is still non-terminal after
+    the agent, so the driver pauses for a person; otherwise the driver's
+    ``complete-phase`` call closes the phase.
+    """
+    prompt = build_content_work_prompt(cfg, workstream_id, phase_type)
+    spawn_scoping_agent(prompt, timeout=cfg.agent_timeout)
+    edges = dispatcher._get(
+        cfg.api_base,
+        f"/references?target_id={workstream_id}"
+        "&relationship=work_task_belongs_to_workstream",
+        cfg.engagement,
+    )
+    wt_ids = [
+        e["source_id"]
+        for e in (edges or [])
+        if isinstance(e, dict) and e.get("source_type") == "work_task"
+    ]
+    pending: list[str] = []
+    for wtid in wt_ids:
+        row = dispatcher._get(cfg.api_base, f"/work-tasks/{wtid}", cfg.engagement)
+        status = row.get("work_task_status") if isinstance(row, dict) else None
+        if status not in ("Complete", "Blocked"):
+            pending.append(wtid)
+    if pending:
+        return PoolRunReport(
+            paused=True,
+            pause_reason=(
+                f"content phase {workstream_id}: {len(pending)} Work Task(s) not "
+                f"terminal after the content agent ({', '.join(pending)})"
+            ),
+        )
+    return PoolRunReport(paused=False)
+
+
+# --------------------------------------------------------------------------
 # The driver
 # --------------------------------------------------------------------------
 
@@ -436,6 +552,11 @@ class AdoScheduler:
     gate_checker: Callable[[AdoSchedulerConfig, str], GateDecision] = develop_gate_open
     reconcile_runner: Callable[[AdoSchedulerConfig, str], None] = reconcile_phase_agent
     unmerged_check: Callable[[AdoSchedulerConfig, str], bool] = task_branch_unmerged
+    # PI-202 / REQ-187: content (methodology-*) PIs run Develop/Test through the
+    # review lane, not the git pool. Injected for tests like the others.
+    content_pool_runner: Callable[
+        [AdoSchedulerConfig, str, str], PoolRunReport
+    ] = run_content_pool_for_workstream
 
     def log(self, msg: str) -> None:
         self.config.log(msg)
@@ -463,6 +584,12 @@ class AdoScheduler:
 
     def _pi(self) -> dict:
         return self._get(f"/planning-items/{self.config.planning_item}")  # type: ignore[return-value]
+
+    def _is_content(self) -> bool:
+        """Whether this PI is content/authoring work (REQ-185) — routes its
+        Develop/Test phases off the git pool onto the review lane (REQ-187)."""
+        pi = self._pi()
+        return isinstance(pi, dict) and is_content_planning_item(pi)
 
     def _project_mode(self) -> str:
         """The parent Project's execution_mode, via the belongs-to-project edge.
@@ -687,7 +814,12 @@ class AdoScheduler:
         else:
             self.log(f"▶ {pi}: resuming phase {ws} → running pool")
 
-        pool_report = self.pool_runner(cfg, ws)
+        # PI-202 / REQ-187: content PIs author/verify records through the review
+        # lane; software PIs run the verify-by-commit + pytest pool.
+        if self._is_content():
+            pool_report = self.content_pool_runner(cfg, ws, phase_type or "")
+        else:
+            pool_report = self.pool_runner(cfg, ws)
         if pool_report.paused:
             self.log(f"⏸ {pi}: execution paused in phase {ws}")
             report.status = TaskStatus.NEEDS_HUMAN
@@ -734,7 +866,9 @@ class AdoScheduler:
             status = task.get("work_task_status")
             claimant = task.get("work_task_claimed_by")
             if status == "Complete":
-                if self.unmerged_check(cfg, wtid):
+                # PI-202 / REQ-187: content tasks have no git branch — the
+                # unmerged-residue check is a software-lane concern only.
+                if not self._is_content() and self.unmerged_check(cfg, wtid):
                     residue.append(wtid)
                 continue
             if status == "Blocked":
