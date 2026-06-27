@@ -138,6 +138,110 @@ def union_parent_list(current: list[str], entities: list[str]) -> list[str]:
     return result
 
 
+#: The entity-side activity relationship links a ``BasePlus`` entity needs for
+#: the Activities / History / Tasks panels to render — the canonical shape taken
+#: from the stock ``Account`` / ``Contact`` entities. They are "children to
+#: parent" links: each is the inverse of the activity entity's ``parent`` field
+#: (so ``meetings`` = the Meetings whose ``parent`` is this record). A freshly
+#: created ``BasePlus`` entity gets these automatically; an entity deployed by
+#: writing metadata directly (the audit-YAML path) does not, which is why the
+#: panels stay empty even after parent-list registration.
+ACTIVITY_LINKS: dict[str, dict[str, Any]] = {
+    "meetings": {"type": "hasChildren", "entity": "Meeting", "foreign": "parent", "audited": True},
+    "calls": {"type": "hasChildren", "entity": "Call", "foreign": "parent", "audited": True},
+    "tasks": {"type": "hasChildren", "entity": "Task", "foreign": "parent"},
+    "emails": {
+        "type": "hasChildren",
+        "entity": "Email",
+        "foreign": "parent",
+        "layoutRelationshipsDisabled": True,
+    },
+}
+
+#: The activity links whose presence the panels strictly require — the History
+#: panel's email rows come through ``emails`` but the three visible panels show
+#: with meetings/calls/tasks. All four are written; verification requires these.
+REQUIRED_ACTIVITY_LINKS: tuple[str, ...] = ("meetings", "calls", "tasks", "emails")
+
+#: The ``clientDefs.bottomPanels.detail`` entries that put the Activities and
+#: History panels in an entity's panel set (the Tasks panel is added by the
+#: framework once the ``tasks`` link exists). Each references a framework-defined
+#: panel by name; the ``bottomPanelsDetail`` layout then un-disables them.
+ACTIVITY_BOTTOM_PANELS: tuple[dict[str, Any], ...] = (
+    {"name": "activities", "reference": "activities"},
+    {"name": "history", "reference": "history"},
+)
+
+
+def merge_entity_activity_links(
+    entity_def: dict[str, Any], drop_links: tuple[str, ...] = ()
+) -> dict[str, Any]:
+    """Merge the canonical activity links into an entity's ``entityDefs`` override.
+
+    Operates on the JSON read from
+    ``custom/Espo/Custom/Resources/metadata/entityDefs/{Entity}.json``. Any link
+    named in ``drop_links`` is removed first (used to clear a mis-wired custom
+    link, e.g. CInformationRequest's ``cParent``-based ``meetings``/``calls``),
+    then every :data:`ACTIVITY_LINKS` entry is set — overwriting an existing
+    same-named link so a wrong ``foreign`` is corrected. The input is not
+    mutated; a new dict is returned.
+
+    :param entity_def: The entity's ``entityDefs`` override (may be ``{}``).
+    :param drop_links: Link names to remove before adding the canonical set.
+    :returns: A new override dict with the activity links present.
+    """
+    result = deepcopy(entity_def) if entity_def else {}
+    links = result.setdefault("links", {})
+    for name in drop_links:
+        links.pop(name, None)
+    for name, spec in ACTIVITY_LINKS.items():
+        links[name] = deepcopy(spec)
+    return result
+
+
+def merge_client_bottom_panels(
+    client_def: dict[str, Any],
+    panels: tuple[dict[str, Any], ...] = ACTIVITY_BOTTOM_PANELS,
+) -> dict[str, Any]:
+    """Merge the activity panel definitions into an entity's ``clientDefs`` override.
+
+    Operates on the JSON read from
+    ``custom/Espo/Custom/Resources/metadata/clientDefs/{Entity}.json``. Adds each
+    panel to ``bottomPanels.detail`` idempotently (by ``name``), preserving any
+    existing custom panels (e.g. a report panel). The input is not mutated.
+
+    :param client_def: The entity's ``clientDefs`` override (may be ``{}``).
+    :param panels: Panel definitions to ensure are present.
+    :returns: A new override dict with the activity panels present.
+    """
+    result = deepcopy(client_def) if client_def else {}
+    bottom = result.setdefault("bottomPanels", {})
+    detail = bottom.setdefault("detail", [])
+    existing = {p.get("name") for p in detail if isinstance(p, dict)}
+    for panel in panels:
+        if panel["name"] not in existing:
+            detail.append(deepcopy(panel))
+    return result
+
+
+def entity_links_complete(
+    links: dict[str, Any], required: tuple[str, ...] = REQUIRED_ACTIVITY_LINKS
+) -> bool:
+    """Return whether an entity's ``links`` carry the activity links, parent-wired.
+
+    :param links: The entity's ``entityDefs.{Entity}.links`` map.
+    :param required: Link names that must be present with ``foreign == "parent"``.
+    :returns: True only if every required link exists and points at ``parent``
+        (so a stale ``cParent``-wired link does not count as complete).
+    """
+    if not isinstance(links, dict):
+        return False
+    return all(
+        isinstance(links.get(name), dict) and links[name].get("foreign") == "parent"
+        for name in required
+    )
+
+
 class ActivityPanelManager:
     """Orchestrate REST-side activity-panel operations against one instance.
 
@@ -228,6 +332,24 @@ class ActivityPanelManager:
             isinstance(layout.get(p), dict) and layout[p].get("disabled") is False
             for p in panels
         )
+
+    def has_activity_links(
+        self, entity: str, required: tuple[str, ...] = REQUIRED_ACTIVITY_LINKS
+    ) -> bool:
+        """Return whether ``entity`` carries the parent-wired activity links.
+
+        Reads ``entityDefs.{entity}.links`` and checks each required link exists
+        with ``foreign == "parent"`` — the entity-side scaffolding the panels
+        need to populate (and the check that catches a stale ``cParent`` link).
+
+        :param entity: EspoCRM entity name.
+        :param required: Link names that must be present and parent-wired.
+        :returns: True only if every required link is present and parent-wired.
+        """
+        status, links = self.client.get_metadata(f"entityDefs.{entity}.links")
+        if status != 200 or not isinstance(links, dict):
+            return False
+        return entity_links_complete(links, required)
 
     def wait_until_registered(
         self,
