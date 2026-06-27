@@ -30,7 +30,11 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
-from crmbuilder_v2.ui.dialogs.candidate_resolve import ResolveEntityCandidateDialog
+from crmbuilder_v2.ui.dialogs.candidate_resolve import (
+    ResolveAssociationCandidateDialog,
+    ResolveEntityCandidateDialog,
+    ResolveFieldCandidateDialog,
+)
 from crmbuilder_v2.ui.exceptions import StorageConnectionError
 from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from crmbuilder_v2.ui.widgets.form_helpers import primary_button
@@ -143,10 +147,12 @@ class CandidateReviewPanel(ListDetailPanel):
         outer.setContentsMargins(12, 12, 12, 12)
         outer.setSpacing(10)
 
-        # Resolve action — an open ENTITY candidate can be mapped/rejected here
-        # (slice 2). Field/association resolve arrives in the next slice.
+        # Resolve action — an open entity / field / association candidate can be
+        # mapped or rejected here (slice 2 + 2b). Value candidates are a later slice.
         is_open = not record.get("resolved")
-        if is_open and record.get("candidate_type") == "entity":
+        if is_open and record.get("candidate_type") in (
+            "entity", "field", "association"
+        ):
             strip = QWidget()
             strip_layout = QHBoxLayout(strip)
             strip_layout.setContentsMargins(0, 0, 0, 0)
@@ -207,9 +213,18 @@ class CandidateReviewPanel(ListDetailPanel):
         self._show_resolved = checked
         self.refresh()
 
+    _RESOLVE_DIALOGS = {
+        "entity": ResolveEntityCandidateDialog,
+        "field": ResolveFieldCandidateDialog,
+        "association": ResolveAssociationCandidateDialog,
+    }
+
     def _on_resolve_clicked(self, record: dict[str, Any]) -> None:
+        dialog_cls = self._RESOLVE_DIALOGS.get(record.get("candidate_type"))
+        if dialog_cls is None:
+            return
         try:
-            dialog = ResolveEntityCandidateDialog(self._client, record, self)
+            dialog = dialog_cls(self._client, record, self)
         except StorageConnectionError as exc:
             _log.warning("Connection lost opening resolve dialog: %s", exc)
             self.connection_lost.emit(str(exc))

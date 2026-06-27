@@ -2119,6 +2119,76 @@ class StorageClient:
         )
         return result if isinstance(result, dict) else {}
 
+    def list_source_mapping_targets(
+        self, source_mapping_identifier: str
+    ) -> list[dict[str, Any]]:
+        """GET /source-mapping-targets — the design entities a mapping points at."""
+        result = self._request(
+            "GET",
+            f"/source-mapping-targets?source_mapping_identifier={source_mapping_identifier}",
+        )
+        return result if isinstance(result, list) else []
+
+    def create_field_mapping(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /field-mappings. Body uses ``field_mapping_*`` field names."""
+        result = self._request("POST", "/field-mappings", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for create_field_mapping",
+            )
+        return result
+
+    def update_field_mapping(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /field-mappings/{identifier} — full replace (used to resolve)."""
+        result = self._request(
+            "PUT", f"/field-mappings/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for update_field_mapping",
+            )
+        return result
+
+    def create_association_mapping(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /association-mappings. Body uses ``association_mapping_*`` names."""
+        result = self._request(
+            "POST", "/association-mappings", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for create_association_mapping",
+            )
+        return result
+
+    def update_association_mapping(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /association-mappings/{identifier} — full replace (used to resolve)."""
+        result = self._request(
+            "PUT", f"/association-mappings/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for update_association_mapping",
+            )
+        return result
+
+    def list_associations(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """GET /associations — the canonical design relationships."""
+        path = "/associations"
+        if include_deleted:
+            path = "/associations?include_deleted=true"
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
     # ------------------------------------------------------------------
     # Instances (CRM connections; PI-186 / PRJ-027)
     # ------------------------------------------------------------------
