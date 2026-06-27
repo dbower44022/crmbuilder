@@ -8,22 +8,20 @@ against one EspoCRM instance, then verifies the result.
 Sequence (per ``entity-activity-panel-enablement-design.md``):
 
 1. **Scaffold** (SSH) every target entity's own activity metadata — the
-   ``meetings``/``calls``/``tasks``/``emails`` links and the ``activities``/
-   ``history`` ``clientDefs`` panels a fresh ``BasePlus`` entity has but an
-   audit-deployed one lacks. Without this the panels stay empty even when
-   registered, because the entity has no relationships for them to read.
+   ``meetings``/``calls``/``tasks``/``emails`` links and the Activities/History/
+   Tasks ``clientDefs.sidePanels`` a fresh ``BasePlus`` entity has but an
+   audit-deployed one lacks. The side panels are what render the panels; without
+   them registration alone surfaces nothing.
 2. **Register** (SSH, Path 2) every target entity not already an activity parent
    of Meeting/Call/Task — one batched metadata write per holder.
 3. **Stream** (REST) — enable ``stream`` on the entities that ask for it.
-4. **Panels** (REST, Path 1) — deploy each entity's ``bottomPanelsDetail`` layout
-   so the panels render.
-5. **Rebuild** once (SSH) to apply the metadata + layout changes.
-6. **Verify** — poll each entity's registration (the cache can briefly lag after
-   rebuild), read back its panel layout, and confirm its activity links.
+4. **Rebuild** once (SSH) to apply the metadata changes.
+5. **Verify** — poll each entity's registration (the cache can briefly lag after
+   rebuild) and confirm its activity links and side panels.
 
 The op is safe to re-run: scaffolding overwrites to the canonical shape,
-registration skips entities already present, layout deploys are idempotent, and
-enabling ``stream`` twice is a no-op.
+registration skips entities already present, and enabling ``stream`` twice is a
+no-op.
 """
 
 from __future__ import annotations
@@ -136,25 +134,21 @@ def deploy_activity_panels(
             status, _body = client.update_entity({"name": entity, "stream": True})
             result.entities[entity].stream_set = status == 200
 
-        # 4. Panels (REST) — deploy each layout.
-        for entity in entities:
-            result.entities[entity].panels_enabled = mgr.enable_panels_layout(entity)
-
-        # 5. Rebuild once to apply metadata + layouts.
+        # 4. Rebuild once to apply the metadata changes.
         ams.rebuild_in_container(ssh, log)
 
-        # 6. Verify — poll registration (cache can lag), confirm panels + links.
+        # 5. Verify — poll registration (cache can lag), confirm links + panels.
         for entity in entities:
             res = result.entities[entity]
             res.registered = mgr.wait_until_registered(
                 entity, holders, timeout=verify_timeout
             )
-            res.panels_enabled = mgr.panels_enabled(entity)
             res.links_ok = mgr.has_activity_links(entity)
+            res.panels_enabled = mgr.has_activity_panels(entity)
             colour = "green" if res.ok else "red"
             emit(
                 f"[DEPLOY]  {entity}: registered={res.registered} "
-                f"panels={res.panels_enabled} links={res.links_ok} "
+                f"links={res.links_ok} panels={res.panels_enabled} "
                 f"stream={res.stream_set}",
                 colour,
             )

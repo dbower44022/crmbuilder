@@ -160,8 +160,8 @@ class TestScaffoldEntityActivityMetadata:
             if subdir == "entityDefs":
                 assert set(data["links"]) == {"meetings", "calls", "tasks", "emails"}
             else:
-                names = [p["name"] for p in data["bottomPanels"]["detail"]]
-                assert names == ["activities", "history"]
+                side = [p["name"] for p in data["sidePanels"]["detail"]]
+                assert side == ["activities", "history", "tasks"]
         assert subdirs_per_entity["CEngagement"] == {"entityDefs", "clientDefs"}
 
     def test_drop_links_threaded_through(self):

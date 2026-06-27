@@ -7,10 +7,16 @@ result aggregation are exercised against a stateful fake EspoAdminClient.
 from unittest.mock import patch
 
 from automation.core.deployment import activity_panel_deploy as apd
-from espo_impl.core.activity_panel_manager import build_bottom_panels_detail_layout
 
 _PARENT_LINKS = {
     ln: {"foreign": "parent"} for ln in ("meetings", "calls", "tasks", "emails")
+}
+_SIDE_PANELS = {
+    "sidePanels": {
+        "detail": [
+            {"name": "activities"}, {"name": "history"}, {"name": "tasks"},
+        ]
+    }
 }
 
 
@@ -32,6 +38,9 @@ class StatefulClient:
         if key.endswith(".links"):
             entity = key.split(".")[1]
             return 200, (_PARENT_LINKS if entity in self.scaffolded else {})
+        if key.startswith("clientDefs."):
+            entity = key.split(".")[1]
+            return 200, (_SIDE_PANELS if entity in self.scaffolded else {})
         return 200, None
 
     def get_layout(self, entity, layout_type):
@@ -97,7 +106,6 @@ class TestDeployActivityPanels:
         for e in ("CEngagement", "CMentorProfile"):
             r = result.entities[e]
             assert r.registered and r.panels_enabled and r.links_ok
-            assert client.layouts[e] == build_bottom_panels_detail_layout()
 
     def test_scaffolds_every_entity(self):
         client = StatefulClient(registered=["CEngagement"])
@@ -106,9 +114,9 @@ class TestDeployActivityPanels:
         assert client.scaffolded == {"CEngagement", "CMentorProfile"}
         assert all(r.links_ok for r in result.entities.values())
 
-    def test_not_ok_when_links_missing(self):
-        # scaffold does not take -> links never present -> not ok even if
-        # registered + panels enabled.
+    def test_not_ok_when_scaffold_does_not_take(self):
+        # scaffold no-op -> neither links nor side panels present -> not ok,
+        # even for an already-registered entity.
         client = StatefulClient(registered=["CEngagement"])
 
         def noop_scaffold(ssh, entities, ts, drop_links=None, log=None):
@@ -121,8 +129,9 @@ class TestDeployActivityPanels:
                 client, object(), ["CEngagement"], timestamp="ts"
             )
         r = result.entities["CEngagement"]
-        assert r.registered and r.panels_enabled
-        assert r.links_ok is False and not result.all_ok
+        assert r.registered  # was already registered
+        assert r.links_ok is False and r.panels_enabled is False
+        assert not result.all_ok
 
     def test_drop_links_forwarded_to_scaffold(self):
         client = StatefulClient()

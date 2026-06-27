@@ -39,7 +39,7 @@ import paramiko
 from automation.core.deployment.ssh_deploy import run_remote
 from espo_impl.core.activity_panel_manager import (
     PANEL_HOLDERS,
-    merge_client_bottom_panels,
+    merge_client_activity_panels,
     merge_entity_activity_links,
     union_parent_list,
 )
@@ -243,9 +243,10 @@ def scaffold_entity_activity_metadata(
     Parent-list registration alone does not render the Activities/History/Tasks
     panels: the entity must also carry its own ``meetings``/``calls``/``tasks``/
     ``emails`` links (inverse of the activity entities' ``parent`` field) and the
-    ``activities``/``history`` entries in its ``clientDefs.bottomPanels``. A fresh
-    ``BasePlus`` entity gets these automatically; an audit-deployed one does not.
-    This patches both files per entity over SSH (the caller batches one rebuild).
+    Activities/History/Tasks entries in its ``clientDefs.sidePanels`` (where the
+    panels actually render — not ``bottomPanels``). A fresh ``BasePlus`` entity
+    gets these automatically; an audit-deployed one does not. This patches both
+    files per entity over SSH (the caller batches one rebuild).
 
     :param ssh: Connected SSH client.
     :param entities: EspoCRM entity names (C-prefixed) to scaffold.
@@ -264,7 +265,7 @@ def scaffold_entity_activity_metadata(
         ok_links = write_custom_def(ssh, "entityDefs", entity, ent_def, timestamp, log)
 
         client_def = read_custom_def(ssh, "clientDefs", entity)
-        client_def = merge_client_bottom_panels(client_def)
+        client_def = merge_client_activity_panels(client_def)
         ok_panels = write_custom_def(
             ssh, "clientDefs", entity, client_def, timestamp, log
         )

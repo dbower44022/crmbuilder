@@ -138,17 +138,17 @@ def union_parent_list(current: list[str], entities: list[str]) -> list[str]:
     return result
 
 
-#: The entity-side activity relationship links a ``BasePlus`` entity needs for
-#: the Activities / History / Tasks panels to render — the canonical shape taken
-#: from the stock ``Account`` / ``Contact`` entities. They are "children to
-#: parent" links: each is the inverse of the activity entity's ``parent`` field
-#: (so ``meetings`` = the Meetings whose ``parent`` is this record). A freshly
-#: created ``BasePlus`` entity gets these automatically; an entity deployed by
-#: writing metadata directly (the audit-YAML path) does not, which is why the
-#: panels stay empty even after parent-list registration.
+#: The entity-side activity relationship links a ``BasePlus`` entity needs — the
+#: exact shape a fresh ``createEntity(BasePlus)`` generates (verified by probing
+#: a throwaway entity). Each is the inverse of the activity entity's ``parent``
+#: field (so ``meetings`` = the Meetings whose ``parent`` is this record):
+#: ``meetings``/``calls`` are ``hasMany``, ``tasks``/``emails`` are
+#: ``hasChildren``. A freshly created ``BasePlus`` entity gets these
+#: automatically; an entity deployed by writing metadata directly (the
+#: audit-YAML path) does not, which is why the panels stay empty.
 ACTIVITY_LINKS: dict[str, dict[str, Any]] = {
-    "meetings": {"type": "hasChildren", "entity": "Meeting", "foreign": "parent", "audited": True},
-    "calls": {"type": "hasChildren", "entity": "Call", "foreign": "parent", "audited": True},
+    "meetings": {"type": "hasMany", "entity": "Meeting", "foreign": "parent"},
+    "calls": {"type": "hasMany", "entity": "Call", "foreign": "parent"},
     "tasks": {"type": "hasChildren", "entity": "Task", "foreign": "parent"},
     "emails": {
         "type": "hasChildren",
@@ -158,19 +158,30 @@ ACTIVITY_LINKS: dict[str, dict[str, Any]] = {
     },
 }
 
-#: The activity links whose presence the panels strictly require — the History
-#: panel's email rows come through ``emails`` but the three visible panels show
-#: with meetings/calls/tasks. All four are written; verification requires these.
+#: The activity links whose presence the panels require. All four are written;
+#: verification requires these (parent-wired).
 REQUIRED_ACTIVITY_LINKS: tuple[str, ...] = ("meetings", "calls", "tasks", "emails")
 
-#: The ``clientDefs.bottomPanels.detail`` entries that put the Activities and
-#: History panels in an entity's panel set (the Tasks panel is added by the
-#: framework once the ``tasks`` link exists). Each references a framework-defined
-#: panel by name; the ``bottomPanelsDetail`` layout then un-disables them.
-ACTIVITY_BOTTOM_PANELS: tuple[dict[str, Any], ...] = (
+#: The Activities / History / Tasks panels render from ``clientDefs.sidePanels``
+#: — NOT ``bottomPanels`` (a fresh BasePlus entity carries them as *side* panels;
+#: the ``bottomPanels`` entries ship ``disabled``). These are the entries that
+#: surface the panels on the detail view.
+ACTIVITY_SIDE_PANELS: tuple[dict[str, Any], ...] = (
     {"name": "activities", "reference": "activities"},
     {"name": "history", "reference": "history"},
+    {"name": "tasks", "reference": "tasks"},
 )
+
+#: The ``bottomPanels`` counterparts a fresh BasePlus entity also carries, shipped
+#: ``disabled`` (the side panels are what render). Written to match the probe's
+#: exact clientDefs so the entity is indistinguishable from a native BasePlus one.
+ACTIVITY_BOTTOM_PANELS: tuple[dict[str, Any], ...] = (
+    {"name": "activities", "reference": "activities", "disabled": True},
+    {"name": "history", "reference": "history", "disabled": True},
+)
+
+#: The side-panel names that must be present for the panels to render.
+REQUIRED_ACTIVITY_PANELS: tuple[str, ...] = ("activities", "history", "tasks")
 
 
 def merge_entity_activity_links(
@@ -199,28 +210,40 @@ def merge_entity_activity_links(
     return result
 
 
-def merge_client_bottom_panels(
-    client_def: dict[str, Any],
-    panels: tuple[dict[str, Any], ...] = ACTIVITY_BOTTOM_PANELS,
-) -> dict[str, Any]:
-    """Merge the activity panel definitions into an entity's ``clientDefs`` override.
-
-    Operates on the JSON read from
-    ``custom/Espo/Custom/Resources/metadata/clientDefs/{Entity}.json``. Adds each
-    panel to ``bottomPanels.detail`` idempotently (by ``name``), preserving any
-    existing custom panels (e.g. a report panel). The input is not mutated.
-
-    :param client_def: The entity's ``clientDefs`` override (may be ``{}``).
-    :param panels: Panel definitions to ensure are present.
-    :returns: A new override dict with the activity panels present.
-    """
-    result = deepcopy(client_def) if client_def else {}
-    bottom = result.setdefault("bottomPanels", {})
-    detail = bottom.setdefault("detail", [])
+def _merge_panel_detail(
+    section: dict[str, Any], panels: tuple[dict[str, Any], ...]
+) -> None:
+    """Append each panel to ``section['detail']`` idempotently (by ``name``)."""
+    detail = section.setdefault("detail", [])
     existing = {p.get("name") for p in detail if isinstance(p, dict)}
     for panel in panels:
         if panel["name"] not in existing:
             detail.append(deepcopy(panel))
+
+
+def merge_client_activity_panels(
+    client_def: dict[str, Any],
+    side_panels: tuple[dict[str, Any], ...] = ACTIVITY_SIDE_PANELS,
+    bottom_panels: tuple[dict[str, Any], ...] = ACTIVITY_BOTTOM_PANELS,
+) -> dict[str, Any]:
+    """Merge the activity panels into an entity's ``clientDefs`` override.
+
+    Operates on the JSON read from
+    ``custom/Espo/Custom/Resources/metadata/clientDefs/{Entity}.json``. Adds the
+    Activities/History/Tasks **side** panels (what renders) to
+    ``sidePanels.detail`` and the matching ``bottomPanels.detail`` entries
+    (``disabled``, to mirror a native BasePlus entity), both idempotently by
+    ``name`` and preserving any existing custom panels (e.g. a report panel). The
+    input is not mutated.
+
+    :param client_def: The entity's ``clientDefs`` override (may be ``{}``).
+    :param side_panels: Side-panel definitions to ensure are present.
+    :param bottom_panels: Bottom-panel definitions to ensure are present.
+    :returns: A new override dict with the activity panels present.
+    """
+    result = deepcopy(client_def) if client_def else {}
+    _merge_panel_detail(result.setdefault("sidePanels", {}), side_panels)
+    _merge_panel_detail(result.setdefault("bottomPanels", {}), bottom_panels)
     return result
 
 
@@ -240,6 +263,20 @@ def entity_links_complete(
         isinstance(links.get(name), dict) and links[name].get("foreign") == "parent"
         for name in required
     )
+
+
+def entity_panels_present(
+    client_def: dict[str, Any], required: tuple[str, ...] = REQUIRED_ACTIVITY_PANELS
+) -> bool:
+    """Return whether an entity's ``clientDefs`` carries the activity side panels.
+
+    :param client_def: The entity's ``clientDefs`` (``entityDefs`` sibling).
+    :param required: Side-panel names that must be present in ``sidePanels.detail``.
+    :returns: True only if every required panel is present in the side panels.
+    """
+    detail = ((client_def or {}).get("sidePanels") or {}).get("detail") or []
+    names = {p.get("name") for p in detail if isinstance(p, dict)}
+    return all(name in names for name in required)
 
 
 class ActivityPanelManager:
@@ -350,6 +387,23 @@ class ActivityPanelManager:
         if status != 200 or not isinstance(links, dict):
             return False
         return entity_links_complete(links, required)
+
+    def has_activity_panels(
+        self, entity: str, required: tuple[str, ...] = REQUIRED_ACTIVITY_PANELS
+    ) -> bool:
+        """Return whether ``entity`` carries the activity side panels.
+
+        Reads ``clientDefs.{entity}`` and checks ``sidePanels.detail`` lists the
+        Activities/History/Tasks panels — the entries that actually render them.
+
+        :param entity: EspoCRM entity name.
+        :param required: Side-panel names that must be present.
+        :returns: True only if every required side panel is present.
+        """
+        status, client_def = self.client.get_metadata(f"clientDefs.{entity}")
+        if status != 200 or not isinstance(client_def, dict):
+            return False
+        return entity_panels_present(client_def, required)
 
     def wait_until_registered(
         self,
