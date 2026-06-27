@@ -23,11 +23,13 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.dialogs.registry_crud import (
+    AddEvidenceDialog,
     LearningCreateDialog,
     LearningDeleteDialog,
     LearningEditDialog,
     PromoteToRuleDialog,
     PromoteToSkillDialog,
+    SetConfidenceDialog,
 )
 from crmbuilder_v2.ui.exceptions import StorageClientError, StorageConnectionError
 from crmbuilder_v2.ui.panels._governance_helpers import created_updated_section
@@ -87,6 +89,12 @@ class LearningsPanel(RegistryCrudPanel):
         edit_btn = QPushButton("Edit")
         edit_btn.clicked.connect(lambda _c=False, r=record: self._on_edit_clicked(r))
         strip_layout.addWidget(edit_btn)
+        evidence_btn = QPushButton("Add evidence…")
+        evidence_btn.clicked.connect(lambda _c=False, r=record: self._add_evidence(r))
+        strip_layout.addWidget(evidence_btn)
+        conf_btn = QPushButton("Set confidence…")
+        conf_btn.clicked.connect(lambda _c=False, r=record: self._set_confidence(r))
+        strip_layout.addWidget(conf_btn)
         skill_btn = QPushButton("Promote to skill…")
         skill_btn.clicked.connect(lambda _c=False, r=record: self._promote_to_skill(r))
         strip_layout.addWidget(skill_btn)
@@ -108,8 +116,17 @@ class LearningsPanel(RegistryCrudPanel):
         form.addRow("Category", field_label(record.get("category") or ""))
         form.addRow("Scope", field_label(record.get("scope") or "system"))
         form.addRow("Status", field_label(record.get("status") or ""))
-        form.addRow("Confidence", field_label(str(record.get("confidence") or 0)))
+        confidence = int(record.get("confidence") or 0)
+        form.addRow("Confidence", field_label(str(confidence)))
         outer.addLayout(form)
+        if confidence < 1:
+            outer.addWidget(
+                field_label(
+                    "Confidence is 0 — this learning will not reach any agent's effective "
+                    "contract until it is ≥ 1 (add evidence or set confidence).",
+                    dim=True,
+                )
+            )
 
         outer.addWidget(separator())
         outer.addWidget(field_label("Content"))
@@ -120,6 +137,32 @@ class LearningsPanel(RegistryCrudPanel):
         outer.addStretch(1)
         scroll.setWidget(container)
         return scroll
+
+    # --- evidence + confidence -----------------------------------------
+
+    def _add_evidence(self, record: dict[str, Any]) -> None:
+        identifier = record.get("identifier")
+        if not identifier:
+            return
+        dialog = AddEvidenceDialog(record, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        body = dialog.body()
+        if body is None:
+            return
+        if self._call(lambda: self._client.add_learning_evidence(identifier, **body)):
+            self.refresh()
+
+    def _set_confidence(self, record: dict[str, Any]) -> None:
+        identifier = record.get("identifier")
+        if not identifier:
+            return
+        dialog = SetConfidenceDialog(int(record.get("confidence") or 0), self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        new_value = dialog.value()
+        if self._call(lambda: self._client.patch_learning(identifier, {"confidence": new_value})):
+            self.refresh()
 
     # --- promotion ------------------------------------------------------
 

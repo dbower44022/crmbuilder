@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPlainTextEdit,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -488,3 +489,119 @@ class PromoteToRuleDialog(QDialog):
 
     def body(self) -> dict[str, Any] | None:
         return self._body
+
+
+# ---------------------------------------------------------------------------
+# Learning evidence + confidence (PI-336 / DEC-762)
+# ---------------------------------------------------------------------------
+
+# Evidence targets accepted by POST /learnings/{id}/evidence
+# (access/repositories/learnings.py _DERIVED_TARGETS). Contradicting evidence
+# must be a work_task.
+_EVIDENCE_TARGETS = ("work_task", "decision", "test_spec")
+
+
+class AddEvidenceDialog(QDialog):
+    """Link supporting or contradicting evidence to a learning.
+
+    Supporting evidence (a work_task / decision / test_spec) raises the
+    learning's confidence; contradicting evidence must be a work_task and lowers
+    it. The dialog returns the evidence payload via ``body()``.
+    """
+
+    def __init__(self, learning: dict[str, Any], parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(f"Add evidence — {learning.get('identifier', '')}")
+        self.setMinimumWidth(460)
+        self._body: dict[str, Any] | None = None
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(
+            QLabel(
+                "Supporting evidence raises confidence; contradicting evidence "
+                "(work_task only) lowers it."
+            )
+        )
+        form = QFormLayout()
+        self._target_type = QComboBox()
+        for t in _EVIDENCE_TARGETS:
+            self._target_type.addItem(t)
+        form.addRow("Evidence type", self._target_type)
+        self._target_id = QLineEdit()
+        self._target_id.setPlaceholderText("Identifier, e.g. WTK-012 / DEC-415 / TST-003")
+        form.addRow("Evidence identifier", self._target_id)
+        layout.addLayout(form)
+
+        self._contradicts = QCheckBox("This evidence contradicts the learning (work_task only)")
+        self._contradicts.toggled.connect(self._on_contradicts_toggled)
+        layout.addWidget(self._contradicts)
+
+        self._error = QLabel("")
+        self._error.setStyleSheet("color: #C62828;")
+        self._error.setWordWrap(True)
+        self._error.setVisible(False)
+        layout.addWidget(self._error)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self._on_ok)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def _on_contradicts_toggled(self, checked: bool) -> None:
+        # Contradicting evidence must be a work_task; pin + lock the combo.
+        if checked:
+            idx = self._target_type.findText("work_task")
+            if idx >= 0:
+                self._target_type.setCurrentIndex(idx)
+            self._target_type.setEnabled(False)
+        else:
+            self._target_type.setEnabled(True)
+
+    def _on_ok(self) -> None:
+        target_id = self._target_id.text().strip()
+        if not target_id:
+            self._error.setText("An evidence identifier is required.")
+            self._error.setVisible(True)
+            return
+        self._body = {
+            "target_type": self._target_type.currentText(),
+            "target_id": target_id,
+            "contradicts": self._contradicts.isChecked(),
+        }
+        self.accept()
+
+    def body(self) -> dict[str, Any] | None:
+        return self._body
+
+
+class SetConfidenceDialog(QDialog):
+    """Set a learning's confidence directly.
+
+    Confidence is normally evidence-derived, but a direct override is useful for
+    a manually-authored learning that needs to reach an agent's effective
+    contract (the resolver gates active_learnings on confidence >= 1).
+    """
+
+    def __init__(self, current: int, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Set confidence")
+        self.setMinimumWidth(360)
+        layout = QVBoxLayout(self)
+        layout.addWidget(
+            QLabel("Confidence (0 = unevidenced hunch; >= 1 reaches matching agents):")
+        )
+        self._spin = QSpinBox()
+        self._spin.setRange(0, 1000)
+        self._spin.setValue(max(0, int(current or 0)))
+        layout.addWidget(self._spin)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def value(self) -> int:
+        return self._spin.value()

@@ -2815,6 +2815,29 @@ class StorageClient:
             op="promote_learning_to_rule",
         )
 
+    def add_learning_evidence(
+        self, identifier: str, *, target_type: str, target_id: str, contradicts: bool = False
+    ) -> dict[str, Any]:
+        """POST /learnings/{id}/evidence — link supporting/contradicting evidence.
+
+        ``target_type`` is one of work_task / decision / test_spec. Supporting
+        evidence raises the learning's confidence by 1; ``contradicts=True``
+        lowers it by 1 (floored at 0) and requires a ``work_task`` target.
+        Returns the updated learning record (with its new confidence).
+        """
+        return self._expect_dict(
+            self._request(
+                "POST",
+                f"/learnings/{identifier}/evidence",
+                json_body={
+                    "target_type": target_type,
+                    "target_id": target_id,
+                    "contradicts": contradicts,
+                },
+            ),
+            op="add_learning_evidence",
+        )
+
     # --- bindings (agent_profile -> skill / governance_rule edges) ------
 
     _SKILL_EDGE = "agent_profile_has_skill"

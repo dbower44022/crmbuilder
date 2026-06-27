@@ -12,12 +12,14 @@ import pytest
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.dialogs.registry_crud import (
+    AddEvidenceDialog,
     AgentProfileCreateDialog,
     GovernanceRuleCreateDialog,
     JsonFieldDialog,
     LearningCreateDialog,
     PromoteToRuleDialog,
     PromoteToSkillDialog,
+    SetConfidenceDialog,
     SkillCreateDialog,
     SkillEditDialog,
 )
@@ -301,3 +303,76 @@ def test_edit_skill_scope_is_editable(qtbot, registry_client):
     updated = registry_client.get_skill(sid)
     assert updated["scope"] == "ENG-001"
     assert updated["engagement_id"] == "ENG-001"
+
+
+# --- learning evidence + confidence (PI-336 / DEC-762) --------------------
+
+
+def test_add_learning_evidence_raises_confidence(qtbot, registry_client):
+    learning = registry_client.create_learning(
+        {"area": "ui", "tier": "developer", "category": "pattern",
+         "content": "x", "scope": "system"}
+    )
+    lid = learning["identifier"]
+    assert registry_client.get_learning(lid)["confidence"] == 0
+    updated = registry_client.add_learning_evidence(
+        lid, target_type="decision", target_id="DEC-001", contradicts=False
+    )
+    assert updated["confidence"] == 1
+    assert registry_client.get_learning(lid)["confidence"] == 1
+
+
+def test_contradicting_evidence_must_be_work_task(qtbot, registry_client):
+    from crmbuilder_v2.ui.exceptions import StorageClientError  # noqa: PLC0415
+
+    learning = registry_client.create_learning(
+        {"area": "ui", "tier": "developer", "category": "gotcha",
+         "content": "y", "scope": "system"}
+    )
+    with pytest.raises(StorageClientError):
+        registry_client.add_learning_evidence(
+            learning["identifier"], target_type="decision", target_id="DEC-001",
+            contradicts=True,
+        )
+
+
+def test_set_confidence_persists(qtbot, registry_client):
+    learning = registry_client.create_learning(
+        {"area": "ui", "tier": "developer", "category": "preference",
+         "content": "z", "scope": "system"}
+    )
+    lid = learning["identifier"]
+    registry_client.patch_learning(lid, {"confidence": 4})
+    assert registry_client.get_learning(lid)["confidence"] == 4
+
+
+def test_set_confidence_dialog_value(qtbot):
+    dialog = SetConfidenceDialog(3)
+    qtbot.addWidget(dialog)
+    assert dialog.value() == 3
+    dialog._spin.setValue(7)
+    assert dialog.value() == 7
+
+
+def test_add_evidence_dialog_contradicts_pins_work_task(qtbot):
+    dialog = AddEvidenceDialog({"identifier": "LRN-001", "confidence": 0})
+    qtbot.addWidget(dialog)
+    dialog._contradicts.setChecked(True)
+    assert dialog._target_type.currentText() == "work_task"
+    assert not dialog._target_type.isEnabled()
+    dialog._contradicts.setChecked(False)
+    assert dialog._target_type.isEnabled()
+
+
+def test_add_evidence_dialog_requires_target_id(qtbot):
+    dialog = AddEvidenceDialog({"identifier": "LRN-001", "confidence": 0})
+    qtbot.addWidget(dialog)
+    dialog._target_id.setText("")
+    dialog._on_ok()
+    assert dialog.result() != dialog.DialogCode.Accepted
+    assert dialog.body() is None
+    dialog._target_id.setText("WTK-012")
+    with qtbot.waitSignal(dialog.accepted, timeout=3000):
+        dialog._on_ok()
+    assert dialog.body()["target_id"] == "WTK-012"
+    assert dialog.body()["target_type"] in ("work_task", "decision", "test_spec")
