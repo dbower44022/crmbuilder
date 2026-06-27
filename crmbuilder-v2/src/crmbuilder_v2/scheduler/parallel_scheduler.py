@@ -426,6 +426,21 @@ class ParallelCoordinatingScheduler:
                 f"profile={assignment.profile_id}) → worktree branch "
                 f"{assignment.branch}"
             )
+            # REQ-380: record the dispatch as a durable pipeline event (the
+            # parallel pool previously only logged it), tagged with the resolved
+            # contract's version_stamp so the run traces to its exact contract.
+            # Best-effort (``_emit`` never raises); no owning-workstream lookup
+            # here — that would add an API call to the hot dispatch loop, and the
+            # workstream is an optional correlation tag.
+            self._l1._emit(
+                "dispatch", tid, area=assignment.area,
+                summary=f"dispatch to {assignment.profile_id} on {assignment.branch}",
+                detail={
+                    "profile_id": assignment.profile_id,
+                    "branch": assignment.branch,
+                    "version_stamp": assignment.version_stamp,
+                },
+            )
             executor.submit(self._worker, assignment)
 
     # --- the worker thread: create worktree, spawn agent, prep result ---

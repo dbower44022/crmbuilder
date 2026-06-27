@@ -170,6 +170,7 @@ def resolve_contract(
         {
             "identifier": s["identifier"],
             "name": s["name"],
+            "description": s.get("description"),
             "io_contract": s.get("io_contract"),
             "backing_callable": s.get("backing_callable"),
         }

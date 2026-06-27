@@ -682,11 +682,13 @@ class CoordinatingScheduler:
             profiles, area, cfg.tier, technology=wt.get("work_task_technology")
         )
         branch = f"ado/{work_task_id.lower()}"
+        version_stamp: str | None = None
         if profile_id is not None:
             invocation = build_agent_prompt(
                 cfg.api_base, cfg.engagement, profile_id, work_task_id
             )
             base_prompt = invocation.system_prompt
+            version_stamp = invocation.contract.get("version_stamp")
         else:
             profile_id = "AGP-runtime"  # built-in fallback identity
             base_prompt = minimal_contract_prompt(wt, area=area)
@@ -712,6 +714,7 @@ class CoordinatingScheduler:
             profile_id=profile_id,
             branch=branch,
             prompt=f"{base_prompt}\n\n{protocol}",
+            version_stamp=version_stamp,
         )
 
     def _workstream_members(self, workstream_id: str) -> set[str]:
@@ -770,7 +773,11 @@ class CoordinatingScheduler:
         self._emit(
             "dispatch", assignment.work_task_id, workstream=ws_id, area=assignment.area,
             summary=f"dispatch to {assignment.profile_id} on {assignment.branch}",
-            detail={"profile_id": assignment.profile_id, "branch": assignment.branch},
+            detail={
+                "profile_id": assignment.profile_id,
+                "branch": assignment.branch,
+                "version_stamp": assignment.version_stamp,
+            },
         )
         if cfg.dry_run:
             self.log("  (dry-run) resolved contract; not spawning")
@@ -1146,6 +1153,10 @@ class _ResolvedAssignment:
     profile_id: str
     branch: str
     prompt: str
+    # The resolved contract's deterministic version_stamp (REQ-380) — recorded
+    # on the dispatch pipeline event so a run traces to the exact contract that
+    # drove it. ``None`` for the built-in fallback (no registry profile).
+    version_stamp: str | None = None
 
 
 # --------------------------------------------------------------------------

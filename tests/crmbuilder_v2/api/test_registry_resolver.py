@@ -54,6 +54,9 @@ def test_bindings_and_contract_resolution(client):
     assert "Prefer additive replanning." in contract["system_prompt"]
     assert [t["identifier"] for t in contract["tools"]] == [tool]
     assert contract["tools"][0]["backing_callable"] == "POST /workstreams/{id}/scope"
+    # REQ-380: tools carry their description so the runtime can tell the agent
+    # what each tool does.
+    assert contract["tools"][0]["description"] == "Record Work Tasks."
     assert [r["identifier"] for r in contract["enforced_ruleset"]] == [enforced]
     assert contract["active_learnings"] == []
     stamp1 = contract["version_stamp"]
