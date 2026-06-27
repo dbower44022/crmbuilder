@@ -17,7 +17,7 @@ from crmbuilder_v2.access.exceptions import (
     StatusTransitionError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.models import PlanningItem, Requirement
+from crmbuilder_v2.access.models import PlanningItem, Release, Requirement
 from crmbuilder_v2.access.repositories import (
     planning_items,
     projects,
@@ -298,7 +298,20 @@ def test_blocked_by_unshipped_release_cannot_enter_lane(v2_env):
 # ---------------------------------------------------------------------------
 
 
-def test_project_belongs_to_one_release(v2_env):
+def _terminate(s, rel, status):
+    """Drive a release straight to a terminal status (cancelled / superseded /
+    shipped) by setting the column directly — the abandon test's pattern. The
+    membership guard only reads ``release_status``, so the lane drive is
+    immaterial here."""
+    row = get_by_identifier(s, Release, Release.release_identifier, rel)
+    row.release_status = status
+    s.flush()
+
+
+def test_project_belongs_to_one_active_release(v2_env):
+    # PI-205/REQ-211 invariant, preserved by PI-325: a project may not be
+    # scoped into a SECOND active release while a first active membership
+    # exists. A fresh release is in ``preliminary_planning`` (active).
     with session_scope() as s:
         r1 = _make(s, title="One")["release_identifier"]
         r2 = _make(s, title="Two")["release_identifier"]
@@ -306,8 +319,62 @@ def test_project_belongs_to_one_release(v2_env):
             s, name="Shared", purpose="p", description="d"
         )["project_identifier"]
         _link(s, "project", prj, "release", r1, "project_belongs_to_release")
-        with pytest.raises(UnprocessableError, match="already belongs"):
+        with pytest.raises(
+            UnprocessableError, match="already scoped into an active release"
+        ):
             _link(s, "project", prj, "release", r2, "project_belongs_to_release")
+
+
+@pytest.mark.parametrize("terminal", ["cancelled", "superseded", "shipped"])
+def test_terminal_release_membership_does_not_block_rescope(v2_env, terminal):
+    # PI-325 / REQ-261 (preserve-failed-run-history §3.2 Option A): a project
+    # scoped into a release that is then cancelled / superseded / shipped CAN
+    # be scoped into a new run — the terminal edge no longer blocks — AND the
+    # terminal run keeps the project in its composition (the prior edge is
+    # preserved, not deleted).
+    with session_scope() as s:
+        r1 = _make(s, title=f"Closed-{terminal}")["release_identifier"]
+        r2 = _make(s, title=f"Rerun-{terminal}")["release_identifier"]
+        prj = projects.create_project(
+            s, name=f"Shared-{terminal}", purpose="p", description="d"
+        )["project_identifier"]
+        _link(s, "project", prj, "release", r1, "project_belongs_to_release")
+        _terminate(s, r1, terminal)
+
+        # Re-scope into a fresh active run — must NOT raise.
+        _link(s, "project", prj, "release", r2, "project_belongs_to_release")
+
+        # Both edges coexist: the closed run still retains the project.
+        targets = {
+            ref["target_id"]
+            for ref in references.list_from(
+                s, source_type="project", source_id=prj
+            )
+            if ref["relationship"] == "project_belongs_to_release"
+        }
+        assert targets == {r1, r2}
+
+
+def test_second_active_release_blocked_even_with_a_terminal_membership(v2_env):
+    # The invariant still holds across a mix: with one terminal and one active
+    # membership, a THIRD (active) scoping is rejected — at most one active.
+    with session_scope() as s:
+        closed = _make(s, title="Closed")["release_identifier"]
+        active = _make(s, title="Active")["release_identifier"]
+        third = _make(s, title="Third")["release_identifier"]
+        prj = projects.create_project(
+            s, name="Mixed", purpose="p", description="d"
+        )["project_identifier"]
+        _link(s, "project", prj, "release", closed, "project_belongs_to_release")
+        _terminate(s, closed, "cancelled")
+        _link(s, "project", prj, "release", active, "project_belongs_to_release")
+        with pytest.raises(
+            UnprocessableError, match="already scoped into an active release"
+        ):
+            _link(
+                s, "project", prj, "release", third,
+                "project_belongs_to_release",
+            )
 
 
 def test_patch_rejects_status(v2_env):
