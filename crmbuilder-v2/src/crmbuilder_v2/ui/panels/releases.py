@@ -106,6 +106,14 @@ _BAND_STYLE = {
 }
 _DIM_STYLE = "color: #888;"
 
+# Outcome badge styling (PI-328) — a shipped run reads green, a superseded run
+# amber, an abandoned run red; mirrors the freeze-band palette for consistency.
+_OUTCOME_STYLE = {
+    "shipped": _BAND_STYLE["open"],
+    "superseded": _BAND_STYLE["amend_window"],
+    "abandoned": _BAND_STYLE["locked"],
+}
+
 
 class ReleasesPanel(ListDetailPanel):
     """Master/detail + lifecycle-action panel for Releases (PI-224)."""
@@ -187,6 +195,10 @@ class ReleasesPanel(ListDetailPanel):
         )
         _safe("composition", lambda: self._client.release_composition(identifier))
         _safe("versions", lambda: self._client.release_versions(identifier))
+        # PI-328 (REQ-263): the run-outcome records — what each closed run of the
+        # lane attempted and where it stopped — with each run's findings attached
+        # so the Outcome tab is a single degrade-independently read (DEC-530).
+        _safe("runs", lambda: self._load_runs(identifier))
         _safe(
             "conflicts",
             lambda: self._client.release_reconciliation_conflicts(identifier),
@@ -206,6 +218,23 @@ class ReleasesPanel(ListDetailPanel):
             lambda: self._client.list_references_touching("release", identifier),
         )
         return extras
+
+    def _load_runs(self, identifier: str) -> list[dict[str, Any]]:
+        """Load the release's run-outcome records (newest first) and attach the
+        findings each one produced under a private ``_findings`` key. A failure to
+        read a single run's findings is supplementary and never blanks the run —
+        the whole read still degrades independently via the ``_safe`` wrapper."""
+        runs = self._client.list_release_runs(identifier)
+        for run in runs:
+            run_id = run.get("release_run_identifier")
+            findings: list[str] = []
+            if run_id:
+                try:
+                    findings = self._client.list_release_run_findings(run_id)
+                except Exception as exc:  # noqa: BLE001 — findings are extra
+                    _log.warning("run %s findings failed: %s", run_id, exc)
+            run["_findings"] = findings
+        return runs
 
     # ------------------------------------------------------------------
     # Detail render
@@ -247,6 +276,7 @@ class ReleasesPanel(ListDetailPanel):
         tabs = QTabWidget()
         tabs.addTab(self._overview_tab(record, extras), "Overview")
         tabs.addTab(self._composition_tab(identifier, extras), "Composition")
+        tabs.addTab(self._outcome_tab(record, extras), "Outcome")
         tabs.addTab(self._conflicts_tab(identifier, extras), "Conflicts")
         tabs.addTab(self._reopens_tab(identifier, extras), "Reopens")
         tabs.addTab(self._history_tab(record, extras), "History")
@@ -458,6 +488,106 @@ class ReleasesPanel(ListDetailPanel):
                 ]
                 v.addWidget(read_only_text("\n".join(lines)))
         v.addStretch(1)
+        return w
+
+    def _outcome_tab(self, record: dict[str, Any], extras: dict[str, Any]) -> QWidget:
+        """REQ-263 — surface what each closed run of the lane attempted: for every
+        ``release_run`` record (PI-326) its outcome badge (``abandoned`` /
+        ``superseded`` / ``shipped``), halt point + cause, the per-phase terminal
+        states, and the findings it produced. A release may have run the lane more
+        than once, so all runs are shown newest first. The ``runs`` read degrades
+        independently (DEC-530): a failed read shows an inline note rather than
+        blanking the pane, and a release with no closed runs shows an empty-state."""
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(8, 8, 8, 8)
+        v.setSpacing(6)
+
+        err = extras.get("errors", {}).get("runs")
+        if err:
+            v.addWidget(self._dim(f"Outcome unavailable: {err}"))
+            v.addStretch(1)
+            return w
+        runs = extras.get("runs") or []
+        if not runs:
+            v.addWidget(
+                self._dim(
+                    "No closed runs — this release has not been abandoned, "
+                    "superseded, or shipped."
+                )
+            )
+            v.addStretch(1)
+            return w
+
+        caption = QLabel(f"{len(runs)} run(s), newest first:")
+        caption.setStyleSheet(_DIM_STYLE)
+        v.addWidget(caption)
+        for run in runs:
+            v.addWidget(self._outcome_row(run))
+            v.addWidget(separator())
+        v.addStretch(1)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(w)
+        return scroll
+
+    def _outcome_row(self, run: dict[str, Any]) -> QWidget:
+        w = QWidget()
+        v = QVBoxLayout(w)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(4)
+
+        outcome = run.get("release_run_outcome") or "—"
+        run_id = run.get("release_run_identifier") or ""
+        ts = format_timestamp(run.get("release_run_created_at"))
+        head = QHBoxLayout()
+        head.setSpacing(8)
+        head.addWidget(self._badge(outcome, _OUTCOME_STYLE.get(outcome)))
+        ident = QLabel(f"{run_id} · {ts}" if ts else run_id)
+        ident.setStyleSheet(_DIM_STYLE)
+        ident.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        head.addWidget(ident)
+        head.addStretch(1)
+        v.addLayout(head)
+
+        cause = run.get("release_run_cause") or "—"
+        code = run.get("release_run_cause_code")
+        cause_text = f"{cause} [{code}]" if code else cause
+        info = QLabel(
+            f"Halt point: {run.get('release_run_halt_point') or '—'}\n"
+            f"Cause: {cause_text}"
+        )
+        info.setWordWrap(True)
+        info.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        v.addWidget(info)
+
+        v.addWidget(QLabel("<b>Phases run</b>"))
+        phases = run.get("release_run_phases_run") or []
+        if not phases:
+            v.addWidget(self._dim("    — no phases recorded"))
+        else:
+            lines = [
+                f"    {p.get('workstream') or '—'}: "
+                f"{p.get('phase_type') or '—'} → {p.get('status') or '—'}"
+                for p in phases
+            ]
+            body = QLabel("\n".join(lines))
+            body.setStyleSheet(_DIM_STYLE)
+            body.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            v.addWidget(body)
+
+        findings = run.get("_findings") or []
+        if findings:
+            flabel = QLabel("Findings: " + ", ".join(findings))
+            flabel.setStyleSheet(_DIM_STYLE)
+            flabel.setWordWrap(True)
+            flabel.setTextInteractionFlags(
+                Qt.TextInteractionFlag.TextSelectableByMouse
+            )
+            v.addWidget(flabel)
         return w
 
     def _conflicts_tab(self, identifier: str, extras: dict[str, Any]) -> QWidget:
