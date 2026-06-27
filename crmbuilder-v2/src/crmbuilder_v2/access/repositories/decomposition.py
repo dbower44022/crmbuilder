@@ -36,6 +36,13 @@ from crmbuilder_v2.access.repositories import (
 # sequence, each step scoping against the prior ones — so the ``blocked_by``
 # chain mirrors it. (Pre-PI-129 this created six phases; the retired three —
 # Documentation, Data Migration, Deployment — now fold into these per DEC-392.)
+#
+# Content/authoring (methodology-*) Planning Items use the SAME shape, not a
+# reduced one (REQ-186 / DEC-444): Design/Develop/Test all carry content
+# meaning — Develop = author the records, Test = verify them — and are never
+# collapsed to Design-only. Decomposition is therefore content-agnostic; the
+# content-vs-software distinction lives in how phases are *verified* (the
+# scheduler's review-gate branch, REQ-187), not in the decomposition shape.
 PHASE_SEQUENCE: tuple[str, ...] = (
     "Design",
     "Develop",
