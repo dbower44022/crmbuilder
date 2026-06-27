@@ -283,15 +283,21 @@ def test_promote_to_rule_requires_approval_for_enforced(qtbot, registry_client):
     assert dialog.body()["human_approved"] is True
 
 
-def test_edit_skill_scope_is_protected(qtbot, registry_client):
+def test_edit_skill_scope_is_editable(qtbot, registry_client):
+    """Scope is editable on edit (DEC-750): a record can be re-scoped."""
     created = registry_client.create_skill(
         {"name": "editable", "kind": "instruction", "description": "x", "scope": "system"}
     )
-    fresh = registry_client.get_skill(created["identifier"])
+    sid = created["identifier"]
+    fresh = registry_client.get_skill(sid)
     dialog = SkillEditDialog(registry_client, fresh)
     qtbot.addWidget(dialog)
     assert dialog._widgets["identifier"].isReadOnly()
-    # Scope is read-only on edit: even if the combo value is changed, the
-    # PATCH diff excludes it (re-scoping a row is an API-only operation).
+    # Change scope system -> ENG-001; the diff includes it and the change persists.
     dialog._widgets["scope"].setCurrentText("ENG-001")
-    assert "scope" not in dialog._build_edit_diff()
+    assert dialog._build_edit_diff().get("scope") == "ENG-001"
+    with qtbot.waitSignal(dialog.accepted, timeout=3000):
+        dialog._on_save_clicked()
+    updated = registry_client.get_skill(sid)
+    assert updated["scope"] == "ENG-001"
+    assert updated["engagement_id"] == "ENG-001"

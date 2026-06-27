@@ -12,9 +12,9 @@ launched from the panel detail, which parses and validates the JSON properly.
 Likewise the system-managed ``version`` / ``confidence`` counters are omitted.
 
 The ``scope`` combo is built per call from the live engagement list so an
-operator can author a system default or an engagement overlay. Scope is
-read-only on edit (re-scoping an existing row is a structural change handled via
-the API directly).
+operator can author a system default or an engagement overlay. Scope is also
+editable on edit (DEC-750): a record can be re-scoped between system and an
+engagement, and the access layer maps the new scope onto ``engagement_id``.
 """
 
 from __future__ import annotations
@@ -55,6 +55,11 @@ def _scope_field(client: StorageClient) -> FieldSchema:
 
     Built per call so engagement overlays target live engagements. A failure
     to reach the engagement list degrades gracefully to system-only scope.
+
+    Scope is editable on edit (DEC-750): a record can be re-scoped between a
+    system default and an engagement overlay, and the access layer maps the new
+    scope onto ``engagement_id`` on update. Re-scoping changes which engagements
+    resolve the record, so it is an intentional, operator-visible change.
     """
     values = {_SYSTEM_SCOPE}
     try:
@@ -71,7 +76,6 @@ def _scope_field(client: StorageClient) -> FieldSchema:
         required=True,
         vocab=frozenset(values),
         default=_SYSTEM_SCOPE,
-        read_only_on_edit=True,
     )
 
 
