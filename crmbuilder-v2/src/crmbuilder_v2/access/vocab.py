@@ -753,12 +753,12 @@ PUBLISH_RUN_STATUSES: frozenset[str] = frozenset(
 
 # present = exists and matches the canonical design; drifted = exists but at
 # least one attribute differs (captured in the override); absent = a canonical
-# object not found in this instance's last audit; candidate_pending = discovered
-# in a source audit, awaiting a human mapping decision before influencing the
-# canonical design; mapping_stale = an existing mapping became stale due to a
-# change on either the source or the design side (SES-230, DEC-454).
+# object not found in this instance's last audit. The membership join is
+# canonical-only (SES-247, DEC-650): candidacy lives in ``mapping_candidate`` and
+# staleness on the mapping record's ``status``, so the earlier candidate_pending /
+# mapping_stale states are removed (the reconciler design pass discharged them).
 INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
-    {"present", "drifted", "absent", "candidate_pending", "mapping_stale"}
+    {"present", "drifted", "absent"}
 )
 
 # The canonical design-object kinds a membership row can describe (DEC-433).

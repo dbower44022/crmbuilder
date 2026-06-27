@@ -1,9 +1,11 @@
 """PI-255 — migration 0081 creates the seven source mapping tables + CHECKs.
 
 Mirrors the 0060 pattern: create_all, drop the new tables, stamp 0080, upgrade
-0081, assert the tables are back and the change_log / refs / membership-state
-CHECKs admit the new entity types + states, then downgrade to 0080 and assert the
-tables are gone.
+0081, assert the tables are back and the change_log / refs CHECKs admit the new
+entity types and the membership-state CHECK admits the canonical states, then
+downgrade to 0080 and assert the tables are gone. (0081 originally also added the
+candidate_pending / mapping_stale membership states; the reconciler design pass
+removed them — SES-247, DEC-650, migration 0095.)
 """
 
 from __future__ import annotations
@@ -71,12 +73,15 @@ def test_0081_creates_and_drops_tables(tmp_path: Path) -> None:
             "VALUES ('REF-9401', 'source_mapping', 'SMG-001', 'field_mapping', "
             "'FMP-001', 'is_about', CURRENT_TIMESTAMP, 'ENG-001')"
         ))
-        # membership state CHECK admits the new states.
+        # membership state CHECK admits the canonical states. (The two
+        # candidate_pending / mapping_stale states 0081 originally added were
+        # removed by the reconciler design pass — SES-247, DEC-650, migration
+        # 0095 — so the membership join stays canonical-only.)
         c.execute(text(
             "INSERT INTO instance_memberships (engagement_id, instance_identifier, "
             "member_type, member_identifier, state, last_audited_at, created_at, "
             "updated_at) VALUES ('ENG-001', 'INST-001', 'entity', 'ENT-001', "
-            "'candidate_pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, "
+            "'present', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, "
             "CURRENT_TIMESTAMP)"
         ))
     eng.dispose()
