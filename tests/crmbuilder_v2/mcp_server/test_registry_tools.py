@@ -83,10 +83,11 @@ def test_seed_decomposes_proven_prompts_into_resolvable_contracts(v2_env):
 
     with session_scope() as s:
         created = seed_system_profiles(s)
-        # PI-240 (Phase 3): the full per-(area,tier) catalog — 9 build areas x
-        # {architect,developer,tester} (27) + 4 methodology architects + the 3
-        # release-level planning-org agents (model/planning/release) = 34.
-        assert len(created) == 34
+        # PI-240 (Phase 3) + PI-202/DEC-764: the full per-(area,tier) catalog — 9
+        # build areas x {architect,developer,tester} (27) + 4 methodology areas x
+        # {architect,tester} (8, no Developer) + the 3 release-level planning-org
+        # agents (model/planning/release) = 38.
+        assert len(created) == 38
         assert all(p["scope"] == "system" for p in created)
 
         archs = agent_profiles.list_all(s, area="storage", tier="architect")
