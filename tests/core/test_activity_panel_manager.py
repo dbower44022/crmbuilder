@@ -2,10 +2,30 @@
 
 from espo_impl.core.activity_panel_manager import (
     ACTIVITY_PANELS,
+    ActivityPanelManager,
     build_bottom_panels_detail_layout,
     merge_parent_entity_list,
     parent_list_contains,
+    union_parent_list,
 )
+
+
+class FakeClient:
+    """Minimal EspoAdminClient stand-in driven by canned metadata + capture."""
+
+    def __init__(self, metadata=None, save_status=200):
+        self._metadata = metadata or {}
+        self._save_status = save_status
+        self.saved_layouts = []
+
+    def get_metadata(self, key):
+        if key in self._metadata:
+            return 200, self._metadata[key]
+        return 200, None
+
+    def save_layout(self, entity, layout_type, payload):
+        self.saved_layouts.append((entity, layout_type, payload))
+        return self._save_status, {}
 
 
 class TestBuildBottomPanelsDetailLayout:
@@ -96,3 +116,67 @@ class TestParentListContains:
 
     def test_false_on_empty(self):
         assert parent_list_contains({}, "CEngagement") is False
+
+
+class TestUnionParentList:
+    def test_appends_new_deduped(self):
+        assert union_parent_list(["Account", "Contact"], ["CEngagement"]) == [
+            "Account",
+            "Contact",
+            "CEngagement",
+        ]
+
+    def test_skips_existing(self):
+        assert union_parent_list(["CEngagement"], ["CEngagement"]) == ["CEngagement"]
+
+    def test_handles_empty_current(self):
+        assert union_parent_list([], ["A", "B"]) == ["A", "B"]
+
+    def test_does_not_mutate_current(self):
+        current = ["Account"]
+        union_parent_list(current, ["CEngagement"])
+        assert current == ["Account"]
+
+
+class TestActivityPanelManager:
+    def _mgr(self, metadata=None, save_status=200):
+        return ActivityPanelManager(FakeClient(metadata, save_status))
+
+    def test_read_parent_list_returns_list(self):
+        mgr = self._mgr(
+            {"entityDefs.Meeting.fields.parent.entityList": ["Account", "CEngagement"]}
+        )
+        assert mgr.read_parent_list("Meeting") == ["Account", "CEngagement"]
+
+    def test_read_parent_list_absent_key_empty(self):
+        assert self._mgr().read_parent_list("Meeting") == []
+
+    def test_is_registered_true_when_in_all_holders(self):
+        md = {
+            f"entityDefs.{h}.fields.parent.entityList": ["CEngagement"]
+            for h in ("Meeting", "Call", "Task")
+        }
+        assert self._mgr(md).is_registered("CEngagement") is True
+
+    def test_is_registered_false_when_missing_one_holder(self):
+        md = {
+            "entityDefs.Meeting.fields.parent.entityList": ["CEngagement"],
+            "entityDefs.Call.fields.parent.entityList": ["CEngagement"],
+            # Task missing CEngagement
+            "entityDefs.Task.fields.parent.entityList": ["Account"],
+        }
+        assert self._mgr(md).is_registered("CEngagement") is False
+
+    def test_enable_panels_layout_saves_enabled_layout(self):
+        mgr = self._mgr()
+        assert mgr.enable_panels_layout("CEngagement") is True
+        assert len(mgr.client.saved_layouts) == 1
+        entity, ltype, payload = mgr.client.saved_layouts[0]
+        assert entity == "CEngagement"
+        assert ltype == "bottomPanelsDetail"
+        assert set(payload) == set(ACTIVITY_PANELS)
+        assert all(spec["disabled"] is False for spec in payload.values())
+
+    def test_enable_panels_layout_reports_failure(self):
+        mgr = self._mgr(save_status=500)
+        assert mgr.enable_panels_layout("CEngagement") is False
