@@ -933,6 +933,26 @@ confirms the **[PARTIAL]** note: the registry's *capacity* is built but the
 "living knowledge base" is barely populated, and a single generic agent prompt
 is string-substituted across areas.
 
+**Update (2026-06-27): the registry surface is now COMPLETE — [BUILT].** Live
+counts have grown to **38 agent profiles, 98 skills, 134 governance rules, 1
+learning** (PI-202 added methodology Architect+Tester profiles). More importantly,
+the surrounding surface that was deferred at v0.1 is now shipped and live:
+- **Configurable desktop UI** — a new **"Agent Registry"** sidebar group (Agent
+  Profiles, Skills, Governance Rules, Learnings) with full CRUD, binding
+  management, a live effective-contract preview, system↔engagement scope editing,
+  learning evidence/confidence + promotion (incl. cross-engagement
+  promote-to-system) and curation, and agent search (PI-330/336/337/343 — see §26).
+- **The contract now actually drives spawned agents incl. tools + provenance**
+  (PI-339 — see §23.1).
+- **Per-agent identity + orchestrator self-auth** make `principal_auth_enabled`
+  usable end-to-end (PI-340/341 — see §23.1/§23.2), default OFF.
+- **Agent search** (`GET /agent-profiles/search`) exposes the area-anchored
+  `search_agents` pre-filter (PI-343).
+The "living knowledge base" is still lightly populated and the single generic
+prompt is still string-substituted across areas — that part of the `[PARTIAL]`
+note stands — but the registry is now fully wired into the runtime and fully
+operable from the desktop.
+
 ---
 
 ## 23. Component: Agent prompt builder + dispatcher (the spawn path)
@@ -946,8 +966,20 @@ is string-substituted across areas.
   `GET /agent-profiles/{id}/contract` (system_prompt, tools, enforced_ruleset,
   active_learnings) + `GET /work-tasks/{id}` (area, title, description), with
   placeholder substitution. No writes.
-- **Where it lives.** `scheduler/agent_prompt.py`. Called by `dispatcher` and
-  `coordinating_scheduler`.
+- **Tools + provenance (PI-339).** The contract's `tools` (each tool-skill's
+  name · description · `backing_callable` · `io_contract`) are now rendered into a
+  **"Tools available to you"** section of the prompt (`registry_resolver` adds
+  `description` to each contract tool), and the contract's `version_stamp` is
+  threaded through `_ResolvedAssignment` and recorded on the **dispatch pipeline
+  event** (serial + parallel paths) so a run traces to its exact contract.
+- **Per-agent identity (PI-340, gated on `principal_auth_enabled`).**
+  `scheduler/agent_identity.mint_for_spawn` mints each spawned agent its own
+  `service_agent` principal + bearer token (direct `session_scope`); the token is
+  injected into the agent's API calls via `operating_protocol` and the agent
+  claims its Work Task as that principal; the token is revoked after the run.
+  No-op when auth is off.
+- **Where it lives.** `scheduler/agent_prompt.py` (+ `agent_identity.py`). Called
+  by `dispatcher` and `coordinating_scheduler`.
 
 ### 23.2 `scheduler/dispatcher.py`
 
@@ -955,6 +987,12 @@ is string-substituted across areas.
   resolve a ready-to-spawn assignment; also the shared HTTP I/O
   (`_get`/`_post`/`_patch`, envelope-unwrapping, `X-Engagement` header) for all
   schedulers.
+- **Orchestrator self-auth (PI-341, gated on `principal_auth_enabled`).** The
+  shared HTTP helpers build headers via `scheduler/runtime_auth.auth_headers`,
+  which adds `Authorization: Bearer <Settings.orchestrator_token>` (env
+  `CRMBUILDER_V2_ORCHESTRATOR_TOKEN`) when set — so the orchestrator authenticates
+  as its own principal. Empty token (the default) sends no header. With per-agent
+  identity (§23.1), enabling auth is usable end-to-end.
 - **Functions.** `is_work_task_eligible` (status `Ready` + unclaimed + all
   `blocked_by` `Complete`); `select_profile_id(profiles, area, tier)`;
   `eligible_work_tasks`; `next_assignment` (resolution only, no writes);
@@ -1014,6 +1052,16 @@ scripts.
 
 Built monitoring/operation panels (per project memory + CLAUDE.md), all under the
 desktop app's sidebar:
+- **Agent Registry** group (PI-330/336/337/343) — the *configurable* registry
+  surface (`ui/panels/agent_profiles.py`, `registry_skills.py`, `registry_rules.py`,
+  `registry_learnings.py`): full CRUD on agent profiles, skills, governance rules,
+  and learnings; per-agent skill/rule **binding** management; a live
+  **effective-contract preview** with a per-engagement selector; system↔engagement
+  **scope** editing (overlay / override / `disable:`); JSON-column editors;
+  **learning** evidence + confidence + promotion (to skill / rule / system) +
+  per-area **curate**; and **"Find agents…"** search over
+  `GET /agent-profiles/search`. Not read-only — this is the human config surface
+  for the registry that drives the agents.
 - **Workstreams** / **Work Tasks** monitoring panels (`ui/panels/workstreams.py`,
   `work_tasks.py`) — read-only ADO state (PI-114).
 - **Releases hub** (`ui/panels/releases.py`, PI-224/226) — Overview / Composition

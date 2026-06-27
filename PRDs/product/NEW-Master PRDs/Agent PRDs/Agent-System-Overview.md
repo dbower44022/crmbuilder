@@ -240,9 +240,17 @@ Design→Develop reconciliation gate with findings, the locks, the release entit
 with its 12-state pipeline, and the registry (resolver + lifecycle). What is
 **partial or thin** today (true as of the live DB on 2026-06-20):
 
-- The registry is built but **lightly populated** — 5 agent profiles, 23 tool
-  skills, 18 rules (only 1 enforced), and just 1 learning. The "living knowledge
-  base that gets smarter every release" is mostly *capacity*, not yet *content*.
+- The registry's **surface is now complete** (as of 2026-06-27): it has a full
+  configurable desktop UI (the Agent Registry sidebar group — CRUD, bindings,
+  effective-contract preview, scope editing, learning evidence/confidence +
+  promotion + curation, and agent search), its contract now actually drives
+  spawned agents including their **tools** and run provenance, and per-agent +
+  orchestrator **identity** make `principal_auth_enabled` usable end-to-end
+  (default off). See the Technical Reference §22.5/§23/§26. What's still **thin is
+  the *content***: ~38 agent profiles, ~98 skills, ~134 rules (only ~1 enforced),
+  and just 1 learning — the "living knowledge base that gets smarter every
+  release" is now fully *operable* but still lightly *populated*, and a single
+  generic agent prompt is still string-substituted across areas.
 - The **matrix org** (per-area Architect Agent / Developer Agent / Tester Agent experts, cross-PI
   coordination, standing learning experts) is the **design direction**
   (`agent-delivery-organization-evolution.md`); the *built* scheduler still drives
