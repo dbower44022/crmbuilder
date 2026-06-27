@@ -15,11 +15,14 @@ candidate dict directly.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from PySide6.QtWidgets import (
     QCheckBox,
+    QDialog,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QScrollArea,
     QVBoxLayout,
@@ -27,7 +30,12 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
+from crmbuilder_v2.ui.dialogs.candidate_resolve import ResolveEntityCandidateDialog
+from crmbuilder_v2.ui.exceptions import StorageConnectionError
 from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
+from crmbuilder_v2.ui.widgets.form_helpers import primary_button
+
+_log = logging.getLogger("crmbuilder_v2.ui.panels.candidate_review")
 
 # Confidence buckets, highest first (REQ-341 "grouped by confidence"). An
 # unranked candidate (no suggestion) sorts last. Resolved candidates sort below
@@ -135,6 +143,22 @@ class CandidateReviewPanel(ListDetailPanel):
         outer.setContentsMargins(12, 12, 12, 12)
         outer.setSpacing(10)
 
+        # Resolve action — an open ENTITY candidate can be mapped/rejected here
+        # (slice 2). Field/association resolve arrives in the next slice.
+        is_open = not record.get("resolved")
+        if is_open and record.get("candidate_type") == "entity":
+            strip = QWidget()
+            strip_layout = QHBoxLayout(strip)
+            strip_layout.setContentsMargins(0, 0, 0, 0)
+            resolve_btn = primary_button("Resolve…")
+            resolve_btn.setObjectName("resolve_candidate_button")
+            resolve_btn.clicked.connect(
+                lambda _checked=False, r=record: self._on_resolve_clicked(r)
+            )
+            strip_layout.addWidget(resolve_btn)
+            strip_layout.addStretch(1)
+            outer.addWidget(strip)
+
         outer.addWidget(_heading_label(_source_display(record) or "(candidate)"))
 
         form = QFormLayout()
@@ -182,3 +206,19 @@ class CandidateReviewPanel(ListDetailPanel):
     def _on_show_resolved_toggled(self, checked: bool) -> None:
         self._show_resolved = checked
         self.refresh()
+
+    def _on_resolve_clicked(self, record: dict[str, Any]) -> None:
+        try:
+            dialog = ResolveEntityCandidateDialog(self._client, record, self)
+        except StorageConnectionError as exc:
+            _log.warning("Connection lost opening resolve dialog: %s", exc)
+            self.connection_lost.emit(str(exc))
+            return
+        try:
+            accepted = dialog.exec() == QDialog.DialogCode.Accepted
+        except StorageConnectionError as exc:
+            _log.warning("Connection lost resolving candidate: %s", exc)
+            self.connection_lost.emit(str(exc))
+            return
+        if accepted:
+            self.refresh()

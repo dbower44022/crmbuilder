@@ -90,3 +90,75 @@ def test_list_columns_and_title(qapp, review_client):
         ]
     finally:
         panel.deleteLater()
+
+
+# --- slice 2: resolve workflow (entity candidate -> source_mapping) ---------
+
+
+def _seed_entity_candidate(source_name: str) -> int:
+    with session_scope() as s:
+        c = candidate_repo.create_candidate(
+            s, instance_identifier="INST-001", candidate_type="entity",
+            source_entity_name=source_name, suggestion_confidence="high",
+        )
+        return c["id"]
+
+
+def _seed_canonical_entity(name: str) -> str:
+    from crmbuilder_v2.access.repositories import entity as entity_repo
+    with session_scope() as s:
+        return entity_repo.create_entity(
+            s, name=name, description="x")["entity_identifier"]
+
+
+def test_resolve_dialog_maps_entity_candidate(qapp, review_client):
+    from crmbuilder_v2.ui.dialogs.candidate_resolve import (
+        ResolveEntityCandidateDialog,
+    )
+    cid = _seed_entity_candidate("CMentorProfile")
+    eid = _seed_canonical_entity("MentorProfile")
+    candidate = review_client.get_mapping_candidate(cid)
+
+    dialog = ResolveEntityCandidateDialog(review_client, candidate)
+    try:
+        # Decision 0 = direct map; point at the seeded design entity.
+        dialog._decision_combo.setCurrentIndex(0)
+        idx = dialog._target_combo.findData(eid)
+        assert idx >= 0, "seeded entity not offered as a target"
+        dialog._target_combo.setCurrentIndex(idx)
+        dialog._on_ok()
+    finally:
+        dialog.deleteLater()
+
+    # A resolved, direct source_mapping now exists, targeted at the entity.
+    mappings = review_client.list_source_mappings(instance_identifier="INST-001")
+    assert len(mappings) == 1
+    m = mappings[0]
+    assert m["status"] == "resolved" and m["decision_type"] == "direct"
+    # The candidate is resolved and points at the mapping.
+    resolved = review_client.get_mapping_candidate(cid)
+    assert resolved["resolved"] is True
+    assert resolved["resolved_to_source_mapping_identifier"] == (
+        m["source_mapping_identifier"]
+    )
+
+
+def test_resolve_dialog_rejects_entity_candidate(qapp, review_client):
+    from crmbuilder_v2.ui.dialogs.candidate_resolve import (
+        ResolveEntityCandidateDialog,
+    )
+    cid = _seed_entity_candidate("CLegacyThing")
+    candidate = review_client.get_mapping_candidate(cid)
+
+    dialog = ResolveEntityCandidateDialog(review_client, candidate)
+    try:
+        # Last decision = Reject; the target combo is disabled.
+        dialog._decision_combo.setCurrentIndex(dialog._decision_combo.count() - 1)
+        assert not dialog._target_combo.isEnabled()
+        dialog._on_ok()
+    finally:
+        dialog.deleteLater()
+
+    m = review_client.list_source_mappings(instance_identifier="INST-001")[0]
+    assert m["status"] == "resolved" and m["decision_type"] == "rejected"
+    assert review_client.get_mapping_candidate(cid)["resolved"] is True

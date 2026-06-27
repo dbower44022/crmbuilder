@@ -2060,6 +2060,65 @@ class StorageClient:
         result = self._request("GET", path)
         return result if isinstance(result, list) else []
 
+    def create_source_mapping(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /source-mappings. Body uses ``source_mapping_*`` field names."""
+        result = self._request("POST", "/source-mappings", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for create_source_mapping",
+            )
+        return result
+
+    def update_source_mapping(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /source-mappings/{identifier} — full replace (used to resolve)."""
+        result = self._request(
+            "PUT", f"/source-mappings/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for update_source_mapping",
+            )
+        return result
+
+    def add_source_mapping_target(
+        self, *, source_mapping_identifier: str, entity_identifier: str
+    ) -> dict[str, Any]:
+        """POST /source-mapping-targets — point a mapping at a design entity."""
+        result = self._request(
+            "POST", "/source-mapping-targets",
+            json_body={
+                "source_mapping_identifier": source_mapping_identifier,
+                "entity_identifier": entity_identifier,
+            },
+        )
+        return result if isinstance(result, dict) else {}
+
+    def resolve_mapping_candidate(
+        self,
+        candidate_id: int,
+        *,
+        resolved_to_source_mapping_identifier: str | None = None,
+        resolved_to_field_mapping_identifier: str | None = None,
+    ) -> dict[str, Any]:
+        """POST /mapping-candidates/{id}/resolve — flip a candidate resolved and
+        record the mapping it became."""
+        result = self._request(
+            "POST", f"/mapping-candidates/{candidate_id}/resolve",
+            json_body={
+                "resolved_to_source_mapping_identifier": (
+                    resolved_to_source_mapping_identifier
+                ),
+                "resolved_to_field_mapping_identifier": (
+                    resolved_to_field_mapping_identifier
+                ),
+            },
+        )
+        return result if isinstance(result, dict) else {}
+
     # ------------------------------------------------------------------
     # Instances (CRM connections; PI-186 / PRJ-027)
     # ------------------------------------------------------------------
