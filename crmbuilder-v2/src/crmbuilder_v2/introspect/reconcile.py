@@ -28,15 +28,27 @@ from typing import Any, Protocol
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.repositories import association as association_repo
+from crmbuilder_v2.access.repositories import (
+    association_mapping as association_mapping_repo,
+)
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.repositories import (
+    field_mapping as field_mapping_repo,
+)
 from crmbuilder_v2.access.repositories import (
     field_permission_rule as field_permission_rule_repo,
 )
 from crmbuilder_v2.access.repositories import filtered_tabs as filtered_tab_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
+from crmbuilder_v2.access.repositories import instances as instances_repo
 from crmbuilder_v2.access.repositories import layouts as layout_repo
+from crmbuilder_v2.access.repositories import mapping_candidate as candidate_repo
 from crmbuilder_v2.access.repositories import roles as role_repo
+from crmbuilder_v2.access.repositories import source_mapping as source_mapping_repo
+from crmbuilder_v2.access.repositories import (
+    source_mapping_targets as source_mapping_targets_repo,
+)
 from crmbuilder_v2.access.repositories import teams as team_repo
 from crmbuilder_v2.access.vocab import LAYOUT_TYPES
 from crmbuilder_v2.introspect.audit_utils import (
@@ -237,6 +249,44 @@ def _has_custom_field(
     )
 
 
+#: Instance roles whose audit is candidate-gated (DEC-648). ``both`` is treated
+#: as ``source``. A ``target`` audit keeps the unchanged drift reconcile.
+_SOURCE_ROLES: frozenset[str] = frozenset({"source", "both"})
+
+
+def _audit_is_source(session: Session, instance_identifier: str) -> bool:
+    """Whether this instance's audit is candidate-gated (source/both role).
+
+    DEC-648 — the instance role is the switch: a ``source``/``both`` audit runs
+    the candidate-gated mapping pass; a ``target`` audit keeps the existing
+    present/drifted/absent drift reconcile. A missing instance defaults to the
+    drift path (the caller resolves the 404 separately).
+    """
+    rec = instances_repo.get_instance(session, instance_identifier)
+    return bool(rec) and rec.get("instance_role") in _SOURCE_ROLES
+
+
+def _live_decision(mappings: list[dict]) -> tuple[str, dict | None]:
+    """Classify the live mapping decision for one source object's mappings.
+
+    Given every non-deleted ``source_mapping`` / ``field_mapping`` row for a
+    single source name, returns the active decision (DEC-649): ``resolved`` (a
+    confirmed non-rejected decision → reconcile membership), ``rejected`` (a
+    confirmed exclusion → skip), ``pending`` (an unresolved decision in flight →
+    neither reconcile nor re-candidate), or ``none`` (surface a candidate). A
+    ``superseded`` row is ignored; ``stale`` is treated as ``pending`` (it awaits
+    human re-resolution, so it is neither reconciled nor re-surfaced).
+    """
+    resolved = [m for m in mappings if m["status"] == "resolved"]
+    if resolved:
+        m = resolved[-1]
+        return ("rejected" if m["decision_type"] == "rejected" else "resolved", m)
+    in_flight = [m for m in mappings if m["status"] in ("unresolved", "stale")]
+    if in_flight:
+        return ("pending", in_flight[-1])
+    return ("none", None)
+
+
 def reconcile_entities(
     session: Session,
     *,
@@ -244,7 +294,38 @@ def reconcile_entities(
     client: _FieldsClient,
     progress: ProgressFn | None = None,
 ) -> dict:
-    """Reconcile an instance's entities into the canonical inventory.
+    """Reconcile an instance's entities, branching on the instance role (DEC-648).
+
+    A ``source``/``both`` audit runs the **candidate-gated** pass
+    (:func:`_reconcile_entities_candidate_gated`): no canonical object is created
+    or marked present by name; every undecided source entity becomes a
+    ``mapping_candidate`` and only a human-resolved ``source_mapping`` drives
+    membership. A ``target`` audit runs the unchanged drift reconcile
+    (:func:`_reconcile_entities_drift`).
+    """
+    if _audit_is_source(session, instance_identifier):
+        return _reconcile_entities_candidate_gated(
+            session,
+            instance_identifier=instance_identifier,
+            client=client,
+            progress=progress,
+        )
+    return _reconcile_entities_drift(
+        session,
+        instance_identifier=instance_identifier,
+        client=client,
+        progress=progress,
+    )
+
+
+def _reconcile_entities_drift(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _FieldsClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Drift reconcile (target-role audit) — the unchanged PI-185/192 path.
 
     Covers **custom** entities and **native** entities that carry custom design
     (≥1 custom field — PI-192). A bare native entity (no customization) gets no
@@ -372,6 +453,156 @@ def reconcile_entities(
     return summary
 
 
+def _reconcile_entities_candidate_gated(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _FieldsClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Candidate-gated entity reconcile (source/both audit) — REQ-300 / DEC-649.
+
+    No canonical entity is created or marked present by name. For each discovered
+    source entity: a **resolved** ``source_mapping`` drives present/drifted
+    membership against its target canonical entity(ies); a **rejected** mapping is
+    skipped (a confirmed exclusion); an **in-flight** (unresolved/stale) mapping is
+    left alone; an **undecided** entity becomes an idempotent
+    ``mapping_candidate(entity)`` carrying a name-match suggestion. A resolved
+    mapping whose source entity is gone this audit is flipped ``stale,
+    source_changed`` (DEC-652).
+
+    :returns: ``{seen, created, present, drifted, absent, candidates}`` — ``created``
+        is always 0 (canonical objects are never auto-created here).
+    :raises ReconcileError: If the scopes call fails or returns a non-dict body.
+    """
+    status, scopes = client.get_all_scopes()
+    if status != 200 or not isinstance(scopes, dict):
+        raise ReconcileError(
+            f"get_all_scopes returned status={status}; expected 200 + dict body"
+        )
+
+    entities = entity_repo.list_entities(session)
+    canonical_by_name = {_ci(r["entity_name"]): r for r in entities}
+    canonical_by_id = {r["entity_identifier"]: r for r in entities}
+
+    mappings_by_source: dict[str, list[dict]] = {}
+    for m in source_mapping_repo.list_source_mappings(
+        session, instance_identifier=instance_identifier
+    ):
+        mappings_by_source.setdefault(m["source_entity_name"], []).append(m)
+
+    pending_candidate_sources = {
+        c["source_entity_name"]
+        for c in candidate_repo.list_candidates(
+            session,
+            instance_identifier=instance_identifier,
+            candidate_type="entity",
+            resolved=False,
+        )
+    }
+
+    stamp = datetime.now(UTC)
+    summary = {
+        "seen": 0, "created": 0, "present": 0, "drifted": 0,
+        "absent": 0, "candidates": 0,
+    }
+    seen_member_ids: set[str] = set()
+    seen_source_names: set[str] = set()
+
+    for scope_name, scope_meta in scopes.items():
+        if not isinstance(scope_meta, dict):
+            continue
+        entity_class = classify_entity(scope_name, scope_meta)
+        if entity_class is EntityClass.CUSTOM:
+            pass
+        elif entity_class is EntityClass.NATIVE and _has_custom_field(
+            client, scope_name, get_base_type(scope_name)
+        ):
+            pass
+        else:
+            continue
+
+        summary["seen"] += 1
+        source_name = scope_name  # the source's own name — what the auditor found
+        seen_source_names.add(source_name)
+
+        kind, mapping = _live_decision(mappings_by_source.get(source_name, []))
+        if kind in ("rejected", "pending"):
+            # rejected = confirmed exclusion; pending = decision in flight. Neither
+            # writes membership nor re-surfaces a candidate.
+            continue
+        if kind == "resolved":
+            c_status, collection = client.get_collection(scope_name)
+            if c_status != 200 or not isinstance(collection, dict):
+                collection = {}
+            audited = _audited_entity_attrs(scope_meta, collection)
+            for tgt in source_mapping_targets_repo.list_targets(
+                session,
+                source_mapping_identifier=mapping["source_mapping_identifier"],
+            ):
+                member_id = tgt["entity_identifier"]
+                diff = _entity_override(canonical_by_id.get(member_id, {}), audited)
+                state = "drifted" if diff else "present"
+                membership_repo.upsert_membership(
+                    session,
+                    instance_identifier=instance_identifier,
+                    member_type="entity",
+                    member_identifier=member_id,
+                    state=state,
+                    override=diff or None,
+                    last_audited_at=stamp,
+                )
+                seen_member_ids.add(member_id)
+                summary[state] += 1
+            continue
+
+        # kind == "none" — undecided source entity → idempotent candidate.
+        if source_name in pending_candidate_sources:
+            continue
+        match = canonical_by_name.get(_ci(strip_entity_c_prefix(scope_name)))
+        confidence = "high" if match else None
+        basis = (
+            f"source entity {source_name!r} name-matches canonical entity "
+            f"{match['entity_name']!r} ({match['entity_identifier']})"
+            if match
+            else None
+        )
+        candidate_repo.create_candidate(
+            session,
+            instance_identifier=instance_identifier,
+            candidate_type="entity",
+            source_entity_name=source_name,
+            suggestion_confidence=confidence,
+            suggestion_basis=basis,
+        )
+        pending_candidate_sources.add(source_name)
+        summary["candidates"] += 1
+
+    # Source-side staleness (DEC-652): a resolved entity mapping whose source
+    # entity vanished this audit is flipped stale; the absent sweep then marks its
+    # canonical membership absent.
+    for source_name, mappings in mappings_by_source.items():
+        if source_name in seen_source_names:
+            continue
+        kind, mapping = _live_decision(mappings)
+        if kind == "resolved":
+            source_mapping_repo.mark_stale(
+                session,
+                mapping["source_mapping_identifier"],
+                reason="source_changed",
+                severity="high",
+            )
+
+    summary["absent"] = membership_repo.mark_absent_missing(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="entity",
+        present_member_identifiers=seen_member_ids,
+        last_audited_at=stamp,
+    )
+    return summary
+
+
 # Boolean field attributes compare by truthiness (a ``None`` canonical value reads
 # as False). The value-carrying attributes use forward asymmetry — see
 # :func:`_field_override`.
@@ -439,7 +670,35 @@ def reconcile_fields(
     client: _FieldsClient,
     progress: ProgressFn | None = None,
 ) -> dict:
-    """Reconcile an instance's custom fields into the canonical inventory.
+    """Reconcile an instance's custom fields, branching on the instance role.
+
+    A ``source``/``both`` audit runs the **candidate-gated** pass
+    (:func:`_reconcile_fields_candidate_gated`); a ``target`` audit runs the
+    unchanged drift reconcile (:func:`_reconcile_fields_drift`). See DEC-648.
+    """
+    if _audit_is_source(session, instance_identifier):
+        return _reconcile_fields_candidate_gated(
+            session,
+            instance_identifier=instance_identifier,
+            client=client,
+            progress=progress,
+        )
+    return _reconcile_fields_drift(
+        session,
+        instance_identifier=instance_identifier,
+        client=client,
+        progress=progress,
+    )
+
+
+def _reconcile_fields_drift(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _FieldsClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Drift reconcile (target-role audit) — the unchanged PI-185/192 field path.
 
     Covers custom fields on **custom** and **native** entities (PI-192) — native
     fields are classified against the parent's base type
@@ -606,6 +865,160 @@ def reconcile_fields(
     return summary
 
 
+def _reconcile_fields_candidate_gated(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _FieldsClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Candidate-gated field reconcile (source/both audit) — REQ-300 / DEC-651.
+
+    Fields surface only for a source entity that is **mapped** (a resolved
+    ``source_mapping``); fields of an undecided / rejected / in-flight entity are
+    **deferred** (fractal multi-pass — a field candidate waits until its parent
+    entity is mapped). For a mapped entity, a source custom field matched by
+    neutral name against the mapping's target canonical entity(ies) drives
+    present/drifted field membership; an unmatched source field becomes an
+    idempotent ``mapping_candidate(field)``. A resolved ``field_mapping`` whose
+    source field is gone this audit is flipped ``stale, source_changed`` (DEC-652).
+
+    :returns: ``{seen, created, present, drifted, absent, candidates}`` — ``created``
+        is always 0 (canonical objects are never auto-created here).
+    :raises ReconcileError: If the scopes call fails or returns a non-dict body.
+    """
+    status, scopes = client.get_all_scopes()
+    if status != 200 or not isinstance(scopes, dict):
+        raise ReconcileError(
+            f"get_all_scopes returned status={status}; expected 200 + dict body"
+        )
+
+    mappings_by_source: dict[str, list[dict]] = {}
+    for m in source_mapping_repo.list_source_mappings(
+        session, instance_identifier=instance_identifier
+    ):
+        mappings_by_source.setdefault(m["source_entity_name"], []).append(m)
+
+    pending_field_candidates = {
+        (c["source_entity_name"], c["source_field_name"])
+        for c in candidate_repo.list_candidates(
+            session,
+            instance_identifier=instance_identifier,
+            candidate_type="field",
+            resolved=False,
+        )
+    }
+
+    stamp = datetime.now(UTC)
+    summary = {
+        "seen": 0, "created": 0, "present": 0, "drifted": 0,
+        "absent": 0, "candidates": 0,
+    }
+    seen_member_ids: set[str] = set()
+
+    for scope_name, scope_meta in scopes.items():
+        if not isinstance(scope_meta, dict):
+            continue
+        entity_class = classify_entity(scope_name, scope_meta)
+        if entity_class is EntityClass.CUSTOM:
+            base_type, is_native = None, False
+        elif entity_class is EntityClass.NATIVE:
+            base_type, is_native = get_base_type(scope_name), True
+        else:
+            continue
+
+        kind, mapping = _live_decision(mappings_by_source.get(scope_name, []))
+        if kind != "resolved":
+            continue  # defer fields until the parent entity is mapped (DEC-651)
+
+        f_status, fields_meta = client.get_entity_field_list(scope_name)
+        if f_status != 200 or not isinstance(fields_meta, dict):
+            _note(
+                progress,
+                f"{scope_name}: could not read fields (HTTP {f_status}) — skipped",
+                "warning",
+            )
+            continue
+        custom_fields = [
+            (fn, fm)
+            for fn, fm in fields_meta.items()
+            if isinstance(fm, dict)
+            and classify_field(fn, fm, base_type) is FieldClass.CUSTOM
+        ]
+
+        # Canonical fields across the mapping's target entities, by neutral name.
+        canon_fields: dict[str, dict] = {}
+        for tgt in source_mapping_targets_repo.list_targets(
+            session, source_mapping_identifier=mapping["source_mapping_identifier"]
+        ):
+            for f in field_repo.list_fields(
+                session, entity_identifier=tgt["entity_identifier"]
+            ):
+                canon_fields.setdefault(_ci(f["field_name"]), f)
+
+        seen_source_fields: set[str] = set()
+        for field_name, field_meta in custom_fields:
+            summary["seen"] += 1
+            seen_source_fields.add(field_name)
+            neutral_field = strip_field_c_prefix(
+                field_name, entity_is_native=is_native
+            )
+            match = canon_fields.get(_ci(neutral_field))
+            if match is not None:
+                member_id = match["field_identifier"]
+                diff = _field_override(match, _audited_field_attrs(field_meta))
+                state = "drifted" if diff else "present"
+                membership_repo.upsert_membership(
+                    session,
+                    instance_identifier=instance_identifier,
+                    member_type="field",
+                    member_identifier=member_id,
+                    state=state,
+                    override=diff or None,
+                    last_audited_at=stamp,
+                )
+                seen_member_ids.add(member_id)
+                summary[state] += 1
+            else:
+                key = (scope_name, field_name)
+                if key in pending_field_candidates:
+                    continue
+                candidate_repo.create_candidate(
+                    session,
+                    instance_identifier=instance_identifier,
+                    candidate_type="field",
+                    source_entity_name=scope_name,
+                    source_field_name=field_name,
+                )
+                pending_field_candidates.add(key)
+                summary["candidates"] += 1
+
+        # Field source-side staleness (DEC-652): a resolved field_mapping under
+        # this entity mapping whose source field vanished this audit is flipped
+        # stale, surfacing it for human re-resolution.
+        for fm in field_mapping_repo.list_field_mappings(
+            session,
+            source_mapping_identifier=mapping["source_mapping_identifier"],
+            status="resolved",
+        ):
+            if fm["source_field_name"] not in seen_source_fields:
+                field_mapping_repo.mark_stale(
+                    session,
+                    fm["field_mapping_identifier"],
+                    reason="source_changed",
+                    severity="high",
+                )
+
+    summary["absent"] = membership_repo.mark_absent_missing(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="field",
+        present_member_identifiers=seen_member_ids,
+        last_audited_at=stamp,
+    )
+    return summary
+
+
 def reconcile_associations(
     session: Session,
     *,
@@ -613,7 +1026,202 @@ def reconcile_associations(
     client: _LinksClient,
     progress: ProgressFn | None = None,
 ) -> dict:
-    """Reconcile an instance's relationships into the inventory.
+    """Reconcile an instance's relationships, branching on the instance role.
+
+    A ``source``/``both`` audit runs the **candidate-gated** pass
+    (:func:`_reconcile_associations_candidate_gated`); a ``target`` audit runs the
+    unchanged drift reconcile (:func:`_reconcile_associations_drift`). See DEC-648.
+    """
+    if _audit_is_source(session, instance_identifier):
+        return _reconcile_associations_candidate_gated(
+            session,
+            instance_identifier=instance_identifier,
+            client=client,
+            progress=progress,
+        )
+    return _reconcile_associations_drift(
+        session,
+        instance_identifier=instance_identifier,
+        client=client,
+        progress=progress,
+    )
+
+
+def _reconcile_associations_candidate_gated(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _LinksClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Candidate-gated relationship reconcile (source/both) — REQ-319 / DEC-654.
+
+    A source relationship surfaces only once **both** endpoint entities are mapped
+    (a resolved ``source_mapping`` each — DEC-651). For such a relationship: a
+    resolved ``association_mapping`` drives present/drifted membership against its
+    target canonical association; a rejected mapping is skipped; an undecided
+    relationship becomes an idempotent ``mapping_candidate(association)`` (the
+    source link name in ``source_field_name``). A resolved association mapping whose
+    source relationship is gone this audit is flipped ``stale, source_changed``.
+
+    :returns: ``{seen, created, present, drifted, absent, candidates}`` — ``created``
+        is always 0 (canonical objects are never auto-created here).
+    :raises ReconcileError: If the scopes call fails or returns a non-dict body.
+    """
+    status, scopes = client.get_all_scopes()
+    if status != 200 or not isinstance(scopes, dict):
+        raise ReconcileError(
+            f"get_all_scopes returned status={status}; expected 200 + dict body"
+        )
+
+    # Source entities with a resolved (non-rejected) mapping are "mapped".
+    mapped_sources: set[str] = set()
+    for m in source_mapping_repo.list_source_mappings(
+        session, instance_identifier=instance_identifier
+    ):
+        if m["status"] == "resolved" and m["decision_type"] != "rejected":
+            mapped_sources.add(m["source_entity_name"])
+
+    assoc_mappings_by_name: dict[str, list[dict]] = {}
+    for am in association_mapping_repo.list_association_mappings(
+        session, instance_identifier=instance_identifier
+    ):
+        assoc_mappings_by_name.setdefault(
+            am["source_association_name"], []
+        ).append(am)
+
+    pending_assoc_candidates = {
+        c["source_field_name"]
+        for c in candidate_repo.list_candidates(
+            session,
+            instance_identifier=instance_identifier,
+            candidate_type="association",
+            resolved=False,
+        )
+    }
+    canon_assoc_by_id = {
+        a["association_identifier"]: a
+        for a in association_repo.list_associations(session)
+    }
+
+    stamp = datetime.now(UTC)
+    summary = {
+        "seen": 0, "created": 0, "present": 0, "drifted": 0,
+        "absent": 0, "candidates": 0,
+    }
+    seen_member_ids: set[str] = set()
+    seen_assoc_names: set[str] = set()
+    seen_relation_names: set[str] = set()
+
+    for scope_name, scope_meta in scopes.items():
+        if not isinstance(scope_meta, dict):
+            continue
+        if scope_name not in mapped_sources:
+            continue  # owning endpoint not mapped → defer
+
+        l_status, links = client.get_all_links(scope_name)
+        if l_status != 200 or not isinstance(links, dict):
+            _note(
+                progress,
+                f"{scope_name}: could not read relationships (HTTP {l_status})"
+                f" — skipped",
+                "warning",
+            )
+            continue
+
+        for link_name, link_meta in links.items():
+            if not isinstance(link_meta, dict):
+                continue
+            cardinality = _LINK_CARDINALITY.get(str(link_meta.get("type")))
+            if cardinality is None:
+                continue
+            foreign_scope = link_meta.get("entity")
+            if not foreign_scope or foreign_scope not in mapped_sources:
+                continue  # far endpoint not mapped → defer (both must be mapped)
+
+            if cardinality == "many_to_many":
+                relation_name = link_meta.get("relationName") or link_name
+                if relation_name in seen_relation_names:
+                    continue
+                seen_relation_names.add(relation_name)
+                assoc_name = relation_name
+            else:
+                assoc_name = link_name  # the source's own link name (its identity)
+
+            seen_assoc_names.add(assoc_name)
+            summary["seen"] += 1
+            kind, am = _live_decision(assoc_mappings_by_name.get(assoc_name, []))
+            if kind in ("rejected", "pending"):
+                continue
+            if kind == "resolved":
+                member_id = am["target_association_identifier"]
+                if member_id is None:
+                    continue
+                canon = canon_assoc_by_id.get(member_id, {})
+                diff = (
+                    {"association_cardinality": cardinality}
+                    if canon.get("association_cardinality") != cardinality
+                    else {}
+                )
+                state = "drifted" if diff else "present"
+                membership_repo.upsert_membership(
+                    session,
+                    instance_identifier=instance_identifier,
+                    member_type="association",
+                    member_identifier=member_id,
+                    state=state,
+                    override=diff or None,
+                    last_audited_at=stamp,
+                )
+                seen_member_ids.add(member_id)
+                summary[state] += 1
+                continue
+
+            # kind == "none" — undecided relationship → idempotent candidate.
+            if assoc_name in pending_assoc_candidates:
+                continue
+            candidate_repo.create_candidate(
+                session,
+                instance_identifier=instance_identifier,
+                candidate_type="association",
+                source_entity_name=scope_name,
+                source_field_name=assoc_name,
+            )
+            pending_assoc_candidates.add(assoc_name)
+            summary["candidates"] += 1
+
+    # Source-side staleness (DEC-652): a resolved association mapping whose source
+    # relationship is gone this audit is flipped stale.
+    for assoc_name, ams in assoc_mappings_by_name.items():
+        if assoc_name in seen_assoc_names:
+            continue
+        kind, am = _live_decision(ams)
+        if kind == "resolved":
+            association_mapping_repo.mark_stale(
+                session,
+                am["association_mapping_identifier"],
+                reason="source_changed",
+                severity="high",
+            )
+
+    summary["absent"] = membership_repo.mark_absent_missing(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="association",
+        present_member_identifiers=seen_member_ids,
+        last_audited_at=stamp,
+    )
+    return summary
+
+
+def _reconcile_associations_drift(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _LinksClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Drift reconcile (target-role audit) — the unchanged PI-185/192 path.
 
     Relationships where **both** endpoints are present in the canonical
     inventory reconcile to ``association`` records (DEC-433). "Present" means

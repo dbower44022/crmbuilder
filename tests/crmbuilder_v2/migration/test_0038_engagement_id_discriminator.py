@@ -131,6 +131,12 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "field_visibility_rules",
         # PI-304 (PRJ-041) the append-only task-transition log (migration 0088).
         "task_transitions",
+        # PRJ-027 the reconcile transaction-log (landed on main).
+        "reconcile_transactions",
+        # PI-326 (PRJ-030) the release-run record (migration 0093).
+        "release_runs",
+        # PI-255 (PRJ-027) the relationship-level mapping decision (migration 0096).
+        "association_mappings",
     }
 )
 

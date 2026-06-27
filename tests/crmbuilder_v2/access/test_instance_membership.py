@@ -12,10 +12,16 @@ import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import UnprocessableError
 from crmbuilder_v2.access.repositories import association as association_repo
+from crmbuilder_v2.access.repositories import (
+    association_mapping as association_mapping_repo,
+)
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as mb
 from crmbuilder_v2.access.repositories import instances as inst_repo
+from crmbuilder_v2.access.repositories import mapping_candidate as candidate_repo
+from crmbuilder_v2.access.repositories import source_mapping as source_mapping_repo
+from crmbuilder_v2.access.repositories import source_mapping_targets as smt_repo
 from crmbuilder_v2.introspect.reconcile import (
     ReconcileError,
     reconcile_associations,
@@ -83,7 +89,10 @@ def _custom(stream=False):
     }
 
 
-def _make_instance(s, role="source"):
+def _make_instance(s, role="target"):
+    # Default to a target-role instance so these tests exercise the unchanged
+    # drift reconcile (auto-promotion); the candidate-gated source path (DEC-648)
+    # is covered by the source-role tests at the end of this module.
     return inst_repo.create_instance(
         s, name="src", url="https://src.example.org", role=role
     )["instance_identifier"]
@@ -736,3 +745,277 @@ def test_reconcile_fields_captures_field_label(v2_env):
             s, entity_identifier=ent["entity_identifier"]
         ) if f["field_name"] == "amount"][0]
         assert fld["field_label"] == "Deal Amount"
+
+
+# --- candidate-gated source audit (PI-255 / REQ-300, DEC-648..652) ----------
+
+
+def _source_instance(s, role="source"):
+    return inst_repo.create_instance(
+        s, name="srcmap", url="https://srcmap.example.org", role=role
+    )["instance_identifier"]
+
+
+def _resolve_mapping(s, iid, source_entity_name, target_entity_id,
+                     decision_type="direct"):
+    """Create a source_mapping, target it at a canonical entity, resolve it."""
+    m = source_mapping_repo.create_source_mapping(
+        s, instance_identifier=iid, source_entity_name=source_entity_name,
+        decision_type=decision_type,
+    )
+    mid = m["source_mapping_identifier"]
+    smt_repo.add_target(
+        s, source_mapping_identifier=mid, entity_identifier=target_entity_id
+    )
+    source_mapping_repo.update_source_mapping(
+        s, mid, source_entity_name=source_entity_name,
+        decision_type=decision_type, status="resolved",
+    )
+    return mid
+
+
+def test_source_audit_creates_entity_candidates_not_canonical(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        client = _FakeClient({"CEngagement": _custom(), "CDues": _custom()})
+        summary = reconcile_entities(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 0
+        assert summary["candidates"] == 2
+        assert summary["present"] == 0
+        # No canonical entity is created, no membership written.
+        assert entity_repo.list_entities(s) == []
+        assert mb.list_memberships(
+            s, instance_identifier=iid, member_type="entity") == []
+        cands = candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="entity")
+        assert {c["source_entity_name"] for c in cands} == {"CEngagement", "CDues"}
+
+
+def test_source_audit_entity_candidates_idempotent(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s, role="both")  # both -> treated as source
+        client = _FakeClient({"CEngagement": _custom()})
+        reconcile_entities(s, instance_identifier=iid, client=client)
+        reconcile_entities(s, instance_identifier=iid, client=client)
+        cands = candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="entity")
+        assert len(cands) == 1  # not duplicated on re-audit
+
+
+def test_source_audit_name_match_suggestion(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        ent = entity_repo.create_entity(s, name="Engagement", description="x")
+        client = _FakeClient({"CEngagement": _custom()})
+        reconcile_entities(s, instance_identifier=iid, client=client)
+        c = candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="entity")[0]
+        assert c["suggestion_confidence"] == "high"
+        assert ent["entity_identifier"] in c["suggestion_basis"]
+
+
+def test_source_resolved_mapping_reconciles_membership(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        ent = entity_repo.create_entity(s, name="Engagement", description="x")
+        _resolve_mapping(s, iid, "CEngagement", ent["entity_identifier"])
+        client = _FakeClient({"CEngagement": _custom()})
+        summary = reconcile_entities(s, instance_identifier=iid, client=client)
+        assert summary["present"] == 1 and summary["candidates"] == 0
+        rows = mb.list_memberships(
+            s, instance_identifier=iid, member_type="entity")
+        assert len(rows) == 1 and rows[0]["state"] == "present"
+        assert rows[0]["member_identifier"] == ent["entity_identifier"]
+        assert candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="entity") == []
+
+
+def test_source_resolved_mapping_detects_drift(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        ent = entity_repo.create_entity(
+            s, name="Engagement", description="x", track_activity=False)
+        _resolve_mapping(s, iid, "CEngagement", ent["entity_identifier"])
+        client = _FakeClient({"CEngagement": _custom(stream=True)})
+        summary = reconcile_entities(s, instance_identifier=iid, client=client)
+        assert summary["drifted"] == 1
+        row = mb.list_memberships(s, instance_identifier=iid)[0]
+        assert row["override"] == {"entity_track_activity": True}
+
+
+def test_source_rejected_mapping_skips(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        m = source_mapping_repo.create_source_mapping(
+            s, instance_identifier=iid, source_entity_name="CLegacy",
+            decision_type="rejected",
+        )
+        source_mapping_repo.update_source_mapping(
+            s, m["source_mapping_identifier"], source_entity_name="CLegacy",
+            decision_type="rejected", status="resolved",
+        )
+        client = _FakeClient({"CLegacy": _custom()})
+        summary = reconcile_entities(s, instance_identifier=iid, client=client)
+        assert summary["candidates"] == 0 and summary["present"] == 0
+        assert candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="entity") == []
+        assert mb.list_memberships(
+            s, instance_identifier=iid, member_type="entity") == []
+
+
+def test_source_side_entity_staleness(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        ent = entity_repo.create_entity(s, name="Engagement", description="x")
+        mid = _resolve_mapping(s, iid, "CEngagement", ent["entity_identifier"])
+        reconcile_entities(
+            s, instance_identifier=iid, client=_FakeClient({"CEngagement": _custom()}))
+        # Re-audit without the mapped source entity -> mapping stale + absent.
+        summary = reconcile_entities(
+            s, instance_identifier=iid, client=_FakeClient({}))
+        assert summary["absent"] == 1
+        m = source_mapping_repo.get_source_mapping(s, mid)
+        assert m["status"] == "stale" and m["stale_reason"] == "source_changed"
+
+
+def test_source_fields_deferred_until_entity_mapped(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            fields={"CEngagement": {"status": _field("enum")}},
+        )
+        summary = reconcile_fields(s, instance_identifier=iid, client=client)
+        # Parent entity not mapped -> fields deferred, nothing surfaced.
+        assert summary["seen"] == 0 and summary["candidates"] == 0
+        assert candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="field") == []
+
+
+def test_source_fields_candidate_and_membership(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        ent = entity_repo.create_entity(s, name="Engagement", description="x")
+        field_repo.create_field(
+            s, field_belongs_to_entity_identifier=ent["entity_identifier"],
+            name="status", description="x", type="enum", required=False,
+        )
+        _resolve_mapping(s, iid, "CEngagement", ent["entity_identifier"])
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            fields={"CEngagement": {
+                "status": _field("enum"),   # matches canonical -> membership
+                "extra": _field("varchar"),  # unmatched -> candidate
+            }},
+        )
+        summary = reconcile_fields(s, instance_identifier=iid, client=client)
+        assert summary["present"] == 1
+        assert summary["candidates"] == 1
+        fc = candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="field")
+        assert len(fc) == 1 and fc[0]["source_field_name"] == "extra"
+        rows = mb.list_memberships(
+            s, instance_identifier=iid, member_type="field")
+        assert len(rows) == 1 and rows[0]["state"] == "present"
+
+
+def _resolve_entity(s, iid, source_name, canonical_name):
+    """Create a canonical entity and resolve a source mapping onto it."""
+    ent = entity_repo.create_entity(s, name=canonical_name, description="x")
+    _resolve_mapping(s, iid, source_name, ent["entity_identifier"])
+    return ent["entity_identifier"]
+
+
+def test_source_association_deferred_until_both_endpoints_mapped(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        # Only CEngagement mapped; CDues unmapped -> association deferred.
+        _resolve_entity(s, iid, "CEngagement", "Engagement")
+        client = _FakeClient(
+            {"CEngagement": _custom(), "CDues": _custom()},
+            links={"CEngagement": {
+                "dueses": {"type": "hasMany", "entity": "CDues"}}},
+        )
+        summary = reconcile_associations(s, instance_identifier=iid, client=client)
+        assert summary["seen"] == 0 and summary["candidates"] == 0
+        assert candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="association") == []
+
+
+def test_source_association_candidate_when_both_mapped(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        _resolve_entity(s, iid, "CEngagement", "Engagement")
+        _resolve_entity(s, iid, "CDues", "Dues")
+        client = _FakeClient(
+            {"CEngagement": _custom(), "CDues": _custom()},
+            links={"CEngagement": {
+                "dueses": {"type": "hasMany", "entity": "CDues"}}},
+        )
+        summary = reconcile_associations(s, instance_identifier=iid, client=client)
+        assert summary["seen"] == 1 and summary["candidates"] == 1
+        c = candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="association")
+        assert len(c) == 1 and c[0]["source_field_name"] == "dueses"
+        # No canonical association auto-created.
+        assert association_repo.list_associations(s) == []
+
+
+def test_source_association_resolved_mapping_membership(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        eid = _resolve_entity(s, iid, "CEngagement", "Engagement")
+        did = _resolve_entity(s, iid, "CDues", "Dues")
+        assoc = association_repo.create_association(
+            s, name="dueses", source_entity=eid, target_entity=did,
+            cardinality="one_to_many",
+        )
+        am = association_mapping_repo.create_association_mapping(
+            s, instance_identifier=iid, source_association_name="dueses",
+            decision_type="direct",
+        )
+        association_mapping_repo.update_association_mapping(
+            s, am["association_mapping_identifier"],
+            source_association_name="dueses", decision_type="direct",
+            status="resolved",
+            target_association_identifier=assoc["association_identifier"],
+        )
+        client = _FakeClient(
+            {"CEngagement": _custom(), "CDues": _custom()},
+            links={"CEngagement": {
+                "dueses": {"type": "hasMany", "entity": "CDues"}}},
+        )
+        summary = reconcile_associations(s, instance_identifier=iid, client=client)
+        assert summary["present"] == 1 and summary["candidates"] == 0
+        rows = mb.list_memberships(
+            s, instance_identifier=iid, member_type="association")
+        assert len(rows) == 1
+        assert rows[0]["member_identifier"] == assoc["association_identifier"]
+
+
+def test_source_side_association_staleness(v2_env):
+    with session_scope() as s:
+        iid = _source_instance(s)
+        eid = _resolve_entity(s, iid, "CEngagement", "Engagement")
+        did = _resolve_entity(s, iid, "CDues", "Dues")
+        assoc = association_repo.create_association(
+            s, name="dueses", source_entity=eid, target_entity=did,
+            cardinality="one_to_many",
+        )
+        am = association_mapping_repo.create_association_mapping(
+            s, instance_identifier=iid, source_association_name="dueses",
+            decision_type="direct",
+        )
+        amid = am["association_mapping_identifier"]
+        association_mapping_repo.update_association_mapping(
+            s, amid, source_association_name="dueses", decision_type="direct",
+            status="resolved",
+            target_association_identifier=assoc["association_identifier"],
+        )
+        # Re-audit with the relationship gone -> mapping goes stale.
+        reconcile_associations(
+            s, instance_identifier=iid,
+            client=_FakeClient({"CEngagement": _custom(), "CDues": _custom()}),
+        )
+        m = association_mapping_repo.get_association_mapping(s, amid)
+        assert m["status"] == "stale" and m["stale_reason"] == "source_changed"

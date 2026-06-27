@@ -40,6 +40,7 @@ from crmbuilder_v2.access.vocab import (
     AREA_REOPEN_STATUSES,
     AREA_SPEC_TRIGGER_KINDS,
     ASSOCIATION_CARDINALITIES,
+    ASSOCIATION_MAPPING_DECISION_TYPES,
     ASSOCIATION_STATUSES,
     AUTOMATION_STATUSES,
     AUTOMATION_TRIGGERS,
@@ -3084,6 +3085,79 @@ class FieldMapping(EngagementScopedPKMixin, Base):
         ),
         Index("ix_field_mappings_status", "status"),
         Index("ix_field_mappings_deleted_at", "deleted_at"),
+    )
+
+
+class AssociationMapping(EngagementScopedPKMixin, Base):
+    """PI-255 (PRJ-027 / DEC-654) — one relationship-level source mapping (``AMP-``).
+
+    Parallel to :class:`FieldMapping` but top-level (keyed to the source instance,
+    not a parent source_mapping): a discovered source relationship maps to a
+    canonical association via one of three ``decision_type`` outcomes (direct /
+    referential / rejected — no decomposition, an association is already an edge).
+    An association candidate is only resolvable once **both** endpoint entities are
+    mapped (§12.4). Shares the source-mapping lifecycle (unresolved / resolved /
+    stale / superseded) and staleness vocabulary. See source-mapping-design §8.8.
+    """
+
+    __tablename__ = "association_mappings"
+
+    association_mapping_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    instance_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_association_name: Mapped[str] = mapped_column(Text, nullable=False)
+    decision_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="unresolved"
+    )
+    stale_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    stale_severity: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    target_association_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    superseded_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("association_mapping_identifier", ["AMP"]),
+            name="ck_association_mapping_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("decision_type", ASSOCIATION_MAPPING_DECISION_TYPES),
+            name="ck_association_mapping_decision_type",
+        ),
+        CheckConstraint(
+            _check_in("status", SOURCE_MAPPING_STATUSES),
+            name="ck_association_mapping_status",
+        ),
+        CheckConstraint(
+            _check_in("stale_reason", SOURCE_MAPPING_STALE_REASONS),
+            name="ck_association_mapping_stale_reason",
+        ),
+        CheckConstraint(
+            _check_in("stale_severity", SOURCE_MAPPING_STALE_SEVERITIES),
+            name="ck_association_mapping_stale_severity",
+        ),
+        Index(
+            "ix_association_mappings_instance",
+            "instance_identifier",
+        ),
+        Index("ix_association_mappings_status", "status"),
+        Index("ix_association_mappings_deleted_at", "deleted_at"),
     )
 
 

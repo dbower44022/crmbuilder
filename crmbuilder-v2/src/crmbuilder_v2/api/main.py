@@ -31,6 +31,7 @@ from crmbuilder_v2.api.principal_middleware import PrincipalMiddleware
 from crmbuilder_v2.api.routers import (
     admin,
     artifact_versions,
+    association_mappings,
     associations,
     automations,
     catalog,
@@ -228,6 +229,7 @@ def create_app() -> FastAPI:
     # Source-mapping model (PI-255).
     app.include_router(source_mappings.router)
     app.include_router(field_mappings.router)
+    app.include_router(association_mappings.router)
     app.include_router(source_mapping_targets.router)
     app.include_router(value_mappings.router)
     app.include_router(mapping_candidates.router)

@@ -1,14 +1,24 @@
-"""Instance audit + membership API tests — PI-185 (PRJ-027).
+"""Instance audit + membership API tests — PI-185 / PI-255 (PRJ-027).
 
-Exercises POST /instances/{id}/audit (entity reconcile via a monkeypatched
+Exercises POST /instances/{id}/audit (reconcile via a monkeypatched
 introspection client) and GET /instances/{id}/memberships, plus the role and
-credential gates.
+credential gates. Under PI-255 (REQ-300/319, DEC-648..654) a source/both audit is
+**candidate-gated**: it never auto-creates canonical objects — undecided source
+objects become ``mapping_candidate`` rows, and only a human-resolved
+``source_mapping`` drives membership. A source audit reconciles entities / fields
+/ associations only (DEC-653).
 """
 
 from __future__ import annotations
 
 import pytest
 from crmbuilder_v2 import secrets
+from crmbuilder_v2.access.db import session_scope
+from crmbuilder_v2.access.repositories import entity as entity_repo
+from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.repositories import mapping_candidate as candidate_repo
+from crmbuilder_v2.access.repositories import source_mapping as smg_repo
+from crmbuilder_v2.access.repositories import source_mapping_targets as smt_repo
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.api.routers import instances as instances_router
 from fastapi.testclient import TestClient
@@ -43,10 +53,10 @@ class _FakeClient:
             "Account": {"entity": True, "customizable": True, "isCustom": False},
         })
 
+    def get_i18n(self, language="en_US"):
+        return (200, {})
+
     def get_entity_field_list(self, entity):
-        # Custom entities expose a native base field (skipped) + a custom field
-        # (reconciled). The native Account exposes only base fields, so it is
-        # not a "customized native" entity and is left out of the inventory.
         if entity in ("CEngagement", "CDues"):
             return (200, {
                 "name": {"type": "varchar"},
@@ -55,18 +65,14 @@ class _FakeClient:
         return (200, {"name": {"type": "varchar"}})
 
     def get_all_links(self, entity):
-        # CEngagement has a custom-to-custom hasMany to CDues; CDues' reciprocal
-        # belongsTo is skipped.
         if entity == "CEngagement":
             return (200, {"dueses": {"type": "hasMany", "entity": "CDues"}})
         return (200, {"engagement": {"type": "belongsTo", "entity": "CEngagement"}})
 
     def get_collection(self, entity):
-        # No collection-search settings under test here (REQ-340 / PI-300).
         return (200, {})
 
     def get_layout(self, entity, layout_type):
-        # CEngagement detail layout only; other types/entities have none.
         if entity == "CEngagement" and layout_type == "detail":
             return (200, {"rows": [["name"]]})
         return (404, None)
@@ -97,40 +103,63 @@ def _create(client, **over):
     return client.post("/instances", json=body).json()["data"]
 
 
-def test_audit_reconciles_and_lists_memberships(client, monkeypatch):
+def _resolve_entity_mapping(iid, source_entity_name, target_entity_id):
+    """Directly create + resolve a source_mapping (test setup)."""
+    with session_scope() as s:
+        m = smg_repo.create_source_mapping(
+            s, instance_identifier=iid, source_entity_name=source_entity_name,
+            decision_type="direct",
+        )
+        mid = m["source_mapping_identifier"]
+        smt_repo.add_target(
+            s, source_mapping_identifier=mid, entity_identifier=target_entity_id
+        )
+        smg_repo.update_source_mapping(
+            s, mid, source_entity_name=source_entity_name,
+            decision_type="direct", status="resolved",
+        )
+
+
+def test_source_audit_candidate_gates_no_auto_promotion(client, monkeypatch):
     monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
-    inst = _create(client)
-    iid = inst["instance_identifier"]
+    iid = _create(client)["instance_identifier"]
     r = client.post(f"/instances/{iid}/audit")
     assert r.status_code == 200, r.text
     summary = r.json()["data"]
-    assert summary["entities"]["created"] == 2
-    assert summary["entities"]["present"] == 2
-    # One custom field per custom entity reconciled.
-    assert summary["fields"]["created"] == 2
-    assert summary["fields"]["present"] == 2
-    # One custom-to-custom relationship reconciled.
-    assert summary["associations"]["created"] == 1
-    assert summary["associations"]["present"] == 1
-    # One detail layout, one role, one team, one filtered tab.
-    assert summary["layouts"]["created"] == 1
-    assert summary["roles"]["created"] == 1
-    assert summary["teams"]["created"] == 1
-    assert summary["filtered_tabs"]["created"] == 1
-    # 2 entities + 2 fields + 1 association + 1 layout + 1 role + 1 team + 1 tab.
+    # DEC-653: a source audit reconciles entities / fields / associations only.
+    assert set(summary) == {"entities", "fields", "associations"}
+    # No canonical object auto-created; undecided entities surface as candidates.
+    assert summary["entities"]["created"] == 0
+    assert summary["entities"]["candidates"] == 2
+    # Fields + associations are deferred until the parent entities are mapped.
+    assert summary["fields"]["seen"] == 0
+    assert summary["associations"]["seen"] == 0
+    # No membership rows (candidates are not membership), and the candidates exist.
     rows = client.get(f"/instances/{iid}/memberships").json()["data"]
-    assert len(rows) == 9
-    types = sorted(row["member_type"] for row in rows)
-    assert types == [
-        "association", "entity", "entity", "field", "field",
-        "filtered_tab", "layout", "role", "team",
-    ]
-    assert all(row["state"] == "present" for row in rows)
-    # Filter by member_type.
-    only_fields = client.get(
-        f"/instances/{iid}/memberships", params={"member_type": "field"}
+    assert rows == []
+    with session_scope() as s:
+        cands = candidate_repo.list_candidates(
+            s, instance_identifier=iid, candidate_type="entity")
+        assert {c["source_entity_name"] for c in cands} == {"CEngagement", "CDues"}
+
+
+def test_source_audit_resolved_mapping_drives_membership(client, monkeypatch):
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client)["instance_identifier"]
+    with session_scope() as s:
+        ent = entity_repo.create_entity(s, name="Engagement", description="x")
+        eid = ent["entity_identifier"]
+    _resolve_entity_mapping(iid, "CEngagement", eid)
+    r = client.post(f"/instances/{iid}/audit")
+    assert r.status_code == 200, r.text
+    summary = r.json()["data"]
+    # The mapped entity reconciles to present; the unmapped one stays a candidate.
+    assert summary["entities"]["present"] == 1
+    assert summary["entities"]["candidates"] == 1
+    rows = client.get(
+        f"/instances/{iid}/memberships", params={"member_type": "entity"}
     ).json()["data"]
-    assert len(only_fields) == 2
+    assert len(rows) == 1 and rows[0]["member_identifier"] == eid
 
 
 def test_audit_target_role_rejected(client, monkeypatch):
@@ -164,19 +193,31 @@ def test_audit_areas_list(client):
     assert areas[2]["label"] == "Relationships"
 
 
-def test_audit_single_area_reconciles(client, monkeypatch):
+def test_audit_single_area_candidate_gates(client, monkeypatch):
     monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
     iid = _create(client)["instance_identifier"]
     r = client.post(f"/instances/{iid}/audit/entities")
     assert r.status_code == 200, r.text
     data = r.json()["data"]
     assert data["area"] == "entities"
-    assert data["label"] == "Entities"
-    assert data["summary"]["created"] == 2
-    assert data["log"] == []  # the fake reads cleanly — no warnings
-    # Only the entities area ran: no field memberships yet.
+    assert data["summary"]["created"] == 0
+    assert data["summary"]["candidates"] == 2
+    # No membership rows yet — candidates await human resolution.
     rows = client.get(f"/instances/{iid}/memberships").json()["data"]
-    assert {row["member_type"] for row in rows} == {"entity"}
+    assert rows == []
+
+
+def test_audit_source_skips_non_candidate_area(client, monkeypatch):
+    # DEC-653: layouts/roles/teams/filtered-tabs are not reconciled on a source
+    # audit — the per-area endpoint returns a skipped summary, not a reconcile.
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client)["instance_identifier"]
+    r = client.post(f"/instances/{iid}/audit/roles")
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["summary"]["skipped"] is True
+    # Nothing was reconciled.
+    rows = client.get(f"/instances/{iid}/memberships").json()["data"]
+    assert rows == []
 
 
 def test_audit_unknown_area_404(client, monkeypatch):
@@ -187,8 +228,8 @@ def test_audit_unknown_area_404(client, monkeypatch):
 
 
 class _FieldReadFailsClient(_FakeClient):
-    """A custom entity whose field list cannot be read — the swallowed-read
-    warning REQ-310 surfaces."""
+    """A mapped custom entity whose field list cannot be read — the
+    swallowed-read warning REQ-310 surfaces."""
 
     def get_all_scopes(self):
         return (200, {
@@ -207,12 +248,14 @@ def test_audit_area_surfaces_field_read_warning(client, monkeypatch):
         instances_router, "EspoIntrospectionClient", _FieldReadFailsClient
     )
     iid = _create(client)["instance_identifier"]
-    # Entities reconcile first (custom entity is created from scopes alone).
-    client.post(f"/instances/{iid}/audit/entities")
+    # The entity must be mapped for its fields to be read at all (candidate-gating).
+    with session_scope() as s:
+        ent = entity_repo.create_entity(s, name="Engagement", description="x")
+        eid = ent["entity_identifier"]
+    _resolve_entity_mapping(iid, "CEngagement", eid)
     r = client.post(f"/instances/{iid}/audit/fields")
     assert r.status_code == 200, r.text
     data = r.json()["data"]
-    # The unreadable field list is surfaced as a warning, not swallowed.
     assert any(
         level == "warning" and "could not read fields" in msg
         for msg, level in data["log"]
@@ -230,29 +273,35 @@ def test_audit_area_role_gate(client, monkeypatch):
 def test_membership_summary(client, monkeypatch):
     monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
     iid = _create(client)["instance_identifier"]
+    with session_scope() as s:
+        eid = entity_repo.create_entity(
+            s, name="Engagement", description="x")["entity_identifier"]
+        # The source field is 'cStatus' on a custom entity, where the c-prefix is
+        # part of the natural name (no strip) — the canonical field must match it.
+        field_repo.create_field(
+            s, field_belongs_to_entity_identifier=eid, name="cStatus",
+            description="x", type="enum", required=True,
+        )
+    _resolve_entity_mapping(iid, "CEngagement", eid)
     client.post(f"/instances/{iid}/audit")
     summary = client.get(f"/instances/{iid}/membership-summary").json()["data"]
-    assert summary["entity"]["present"] == 2
-    assert summary["field"]["present"] == 2
-    assert summary["association"]["present"] == 1
+    assert summary["entity"]["present"] == 1
+    # The mapped entity's matching field reconciles to present membership.
+    assert summary["field"]["present"] == 1
 
 
-def test_publish_plan_target_needs_everything(client, monkeypatch):
+def test_publish_plan_target_needs_canonical_design(client, monkeypatch):
     monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
-    # Audit a source -> canonical inventory populated, all present in source.
-    src = _create(client)["instance_identifier"]
-    client.post(f"/instances/{src}/audit")
-    src_plan = client.get(f"/instances/{src}/publish-plan").json()["data"]
-    assert src_plan["item_count"] == 0  # source already matches the canonical design
-
-    # A fresh target (never audited) needs the whole canonical design pushed.
+    # Canonical design exists (authored, or resolved from an audit). A fresh
+    # target (never audited) needs every canonical object pushed.
+    with session_scope() as s:
+        entity_repo.create_entity(s, name="Engagement", description="x")
     tgt = _create(client, instance_name="tgt", instance_role="target")[
         "instance_identifier"
     ]
     tgt_plan = client.get(f"/instances/{tgt}/publish-plan").json()["data"]
     assert tgt_plan["target_instance"] == tgt
-    # 2 entities + 2 fields + 1 assoc + 1 layout + 1 role + 1 team + 1 tab.
-    assert tgt_plan["item_count"] == 9
+    assert tgt_plan["item_count"] == 1
     assert all(it["reason"] == "never_audited" for it in tgt_plan["items"])
 
 

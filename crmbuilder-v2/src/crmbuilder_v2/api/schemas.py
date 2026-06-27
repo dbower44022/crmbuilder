@@ -2360,6 +2360,37 @@ class FieldMappingPatchIn(_Base):
     field_mapping_notes: str | None = None
 
 
+# --- Association mapping (relationship-level decision, PI-255 / DEC-654) ----
+
+
+class AssociationMappingCreateIn(_Base):
+    association_mapping_instance_identifier: str
+    association_mapping_source_association_name: str
+    association_mapping_decision_type: str
+    association_mapping_target_association_identifier: str | None = None
+    association_mapping_notes: str | None = None
+    association_mapping_identifier: str | None = None
+
+
+class AssociationMappingReplaceIn(_Base):
+    association_mapping_source_association_name: str
+    association_mapping_decision_type: str
+    association_mapping_status: str
+    association_mapping_target_association_identifier: str | None = None
+    association_mapping_notes: str | None = None
+    association_mapping_stale_reason: str | None = None
+    association_mapping_stale_severity: str | None = None
+    association_mapping_superseded_by: str | None = None
+    association_mapping_resolved_at: str | None = None
+
+
+class AssociationMappingPatchIn(_Base):
+    association_mapping_source_association_name: str | None = None
+    association_mapping_decision_type: str | None = None
+    association_mapping_target_association_identifier: str | None = None
+    association_mapping_notes: str | None = None
+
+
 # --- Mark stale (shared by source + field mappings, PI-255 / PRJ-027) ------
 class MarkStaleIn(_Base):
     reason: str

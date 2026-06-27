@@ -806,6 +806,14 @@ FIELD_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
     {"direct", "referential_exact", "referential_interpreted", "rejected"}
 )
 
+# Relationship-level mapping decision types (DEC-654). An association is already
+# the edge between two entities, so there is no decomposition outcome: a source
+# relationship maps directly, maps referentially (same intent, different surface),
+# or is explicitly rejected. Status / staleness reuse the source-mapping sets.
+ASSOCIATION_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
+    {"direct", "referential", "rejected"}
+)
+
 # Value-level mapping decision types (DEC-452). Applied to individual enum
 # values when field_mapping.decision_type is referential_interpreted.
 VALUE_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
@@ -818,10 +826,14 @@ FIELD_MAPPING_TRANSLATION_TYPES: frozenset[str] = frozenset(
     {"value_map", "expression"}
 )
 
-# Candidate types surfaced by the reconciler (DEC-451). Entity-level candidates
-# are unmatched source entities; field-level are unmatched source fields; value-
-# level are unmatched enum values on an already-mapped field.
-MAPPING_CANDIDATE_TYPES: frozenset[str] = frozenset({"entity", "field", "value"})
+# Candidate types surfaced by the reconciler (DEC-451, DEC-654). Entity-level
+# candidates are unmatched source entities; field-level are unmatched source
+# fields; association-level are unmatched source relationships (the source link
+# name is carried in ``source_field_name``); value-level are unmatched enum values
+# on an already-mapped field.
+MAPPING_CANDIDATE_TYPES: frozenset[str] = frozenset(
+    {"entity", "field", "association", "value"}
+)
 
 # Confidence levels for reconciler-generated mapping suggestions (DEC-456).
 MAPPING_SUGGESTION_CONFIDENCES: frozenset[str] = frozenset(
@@ -1773,9 +1785,11 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # candidate-gated human-decision layer between audit discovery and the
         # canonical design. source_mapping = entity-level decision (SMG-);
         # field_mapping = field-level decision (FMP-);
+        # association_mapping = relationship-level decision (AMP-, DEC-654);
         # mapping_candidate = pre-decision reconciler output (no prefix — auto-id).
         "source_mapping",
         "field_mapping",
+        "association_mapping",
         "mapping_candidate",
         # Phase 6a (PI-304, DEC-692). The append-only task-transition log
         # (TXN-). One row per status change of a parent task; born-terminal

@@ -36,9 +36,11 @@ from sqlalchemy import inspect
 # --- vocab ------------------------------------------------------------------
 
 
-def test_membership_states_extended():
-    assert "candidate_pending" in INSTANCE_MEMBERSHIP_STATES
-    assert "mapping_stale" in INSTANCE_MEMBERSHIP_STATES
+def test_membership_states_canonical_only():
+    # SES-247 / DEC-650: the membership join stays canonical-only — candidacy
+    # lives in mapping_candidate and staleness on the mapping record's status, so
+    # the once-proposed candidate_pending / mapping_stale states are removed.
+    assert INSTANCE_MEMBERSHIP_STATES == {"present", "drifted", "absent"}
 
 
 @pytest.mark.parametrize(

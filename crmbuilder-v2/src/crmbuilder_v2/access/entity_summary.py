@@ -104,10 +104,12 @@ _SPECS: dict[str, _Spec] = {
     # Security design records (PI-051 / DEC-698). (role x target_field) -> level / visible?.
     "field_permission_rule": _Spec(models.FieldPermissionRule, "field_permission_rule_identifier", "field_permission_rule_name", "field_permission_rule_status", "field_permission_rule_created_at", "field_permission_rule_updated_at"),
     "field_visibility_rule": _Spec(models.FieldVisibilityRule, "field_visibility_rule_identifier", "field_visibility_rule_name", "field_visibility_rule_status", "field_visibility_rule_created_at", "field_visibility_rule_updated_at"),
-    # Source instance mapping model (PI-255). source_mapping / field_mapping
-    # carry prefixed identifiers; mapping_candidate is integer-PK (in _NO_SUMMARY).
+    # Source instance mapping model (PI-255). source_mapping / field_mapping /
+    # association_mapping carry prefixed identifiers; mapping_candidate is
+    # integer-PK (in _NO_SUMMARY).
     "source_mapping": _Spec(models.SourceMapping, "source_mapping_identifier", "source_entity_name", "status", "created_at", "updated_at"),
     "field_mapping": _Spec(models.FieldMapping, "field_mapping_identifier", "source_field_name", "status", "created_at", "updated_at"),
+    "association_mapping": _Spec(models.AssociationMapping, "association_mapping_identifier", "source_association_name", "status", "created_at", "updated_at"),
     # Governance entities (prefixed columns).
     "project": _Spec(models.Project, "project_identifier", "project_name", "project_status", "project_created_at", "project_updated_at"),
     "release": _Spec(models.Release, "release_identifier", "release_title", "release_status", "release_created_at", "release_updated_at"),

@@ -294,6 +294,19 @@ _AUDIT_AREAS: dict[str, tuple[str, object]] = {
 #: The area slugs in run order — the order the desktop issues per-area calls.
 AUDIT_AREA_ORDER: list[str] = list(_AUDIT_AREAS)
 
+#: Areas reconciled on a source/both audit (DEC-653). A source audit is the
+#: candidate-gated design-input pass over entities / fields / associations only;
+#: layouts / roles / field-permissions / teams / filtered-tabs are a target-audit
+#: (deploy-fidelity) concern and are not reconciled on a source audit.
+_SOURCE_AUDIT_AREAS: frozenset[str] = frozenset(
+    {"entities", "fields", "associations"}
+)
+
+
+def _is_source_audit(s, identifier: str) -> bool:
+    rec = instances.get_instance(s, identifier)
+    return bool(rec) and rec.get("instance_role") in ("source", "both")
+
 
 @router.get("/audit/areas")
 def audit_areas():
@@ -307,19 +320,26 @@ def audit_areas():
 def audit(identifier: str):
     """Audit (pull) this instance, reconciling its structure into the inventory.
 
-    Runs every reconcile area in one request and returns the per-object-type
-    summary. This all-in-one form is retained for non-interactive callers; the
-    desktop drives the per-area endpoint below for live progress (PI-274).
+    Runs every applicable reconcile area in one request and returns the
+    per-object-type summary. A source/both audit runs only the candidate-gated
+    areas (entities / fields / associations — DEC-653); a target audit runs the
+    full drift set. This all-in-one form is retained for non-interactive callers;
+    the desktop drives the per-area endpoint below for live progress (PI-274).
     """
     with writable_session() as s:
         client = _audit_introspection_client(s, identifier)
+        keys = (
+            [a for a in AUDIT_AREA_ORDER if a in _SOURCE_AUDIT_AREAS]
+            if _is_source_audit(s, identifier)
+            else list(AUDIT_AREA_ORDER)
+        )
         try:
             return ok(
                 {
-                    key.replace("-", "_"): fn(
+                    key.replace("-", "_"): _AUDIT_AREAS[key][1](
                         s, instance_identifier=identifier, client=client
                     )
-                    for key, (_label, fn) in _AUDIT_AREAS.items()
+                    for key in keys
                 }
             )
         except ReconcileError as exc:
@@ -335,7 +355,9 @@ def audit_area(identifier: str, area: str):
     Runs exactly one reconcile step so the desktop can drive the areas in
     sequence and show live progress. Returns the area's ``summary`` plus a
     ``log`` of ``[message, level]`` lines the step surfaced (e.g. an entity
-    whose fields could not be read), for the operator's running audit log.
+    whose fields could not be read), for the operator's running audit log. On a
+    source/both audit a non-candidate-gated area (layouts/roles/teams/etc.) is
+    not reconciled (DEC-653) and returns a ``skipped`` summary.
     """
     spec = _AUDIT_AREAS.get(area)
     if spec is None:
@@ -344,6 +366,19 @@ def audit_area(identifier: str, area: str):
     log: list[list[str]] = []
     with writable_session() as s:
         client = _audit_introspection_client(s, identifier)
+        if _is_source_audit(s, identifier) and area not in _SOURCE_AUDIT_AREAS:
+            return ok({
+                "area": area,
+                "label": label,
+                "summary": {
+                    "skipped": True,
+                    "reason": (
+                        "not reconciled on a source audit — candidate-gating "
+                        "covers entities / fields / associations only (DEC-653)"
+                    ),
+                },
+                "log": [],
+            })
         try:
             summary = fn(
                 s,
