@@ -270,6 +270,17 @@ class SkillUpdateIn(_Base):
     scope: str | None = None
 
 
+class SkillScanIn(_Base):
+    """Body for ``POST /skills/scan`` (REQ-421 / PI-362).
+
+    Both fields optional: ``roots`` defaults to the standard local skill roots,
+    ``scope`` defaults to ``None`` (import as system skills).
+    """
+
+    scope: str | None = None
+    roots: list[str] | None = None
+
+
 # ---------- Terms (glossary, PI-061) ----------
 
 

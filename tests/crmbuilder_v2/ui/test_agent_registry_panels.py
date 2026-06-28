@@ -488,3 +488,36 @@ def test_client_search_agents_returns_list(qtbot, registry_client):
     res = registry_client.search_agents(area="ui")
     assert isinstance(res, list)
     assert any(r["area"] == "ui" for r in res)
+
+
+def test_scan_local_skills_button_imports(qtbot, registry_client, tmp_path, monkeypatch):
+    # REQ-421 / PI-362: the Skills panel's "Scan local skills…" button discovers
+    # local SKILL.md definitions and imports them as registry skills, reporting a
+    # summary. Point the scan at a temp root and capture the summary dialog.
+    from crmbuilder_v2.access import skill_scan
+    from crmbuilder_v2.ui.panels import registry_skills
+
+    folder = tmp_path / "demo-skill"
+    folder.mkdir()
+    (folder / "SKILL.md").write_text(
+        "---\nname: demo-skill\ndescription: A demo.\n---\n\nDo the demo.\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(skill_scan, "default_roots", lambda: [tmp_path])
+
+    captured: dict[str, str] = {}
+    monkeypatch.setattr(
+        registry_skills.CopyableMessageBox,
+        "information",
+        classmethod(lambda cls, parent, title, text, *a, **k: captured.update(text=text)),
+    )
+
+    panel = SkillsPanel(registry_client)
+    qtbot.addWidget(panel)
+    panel._scan_button.click()
+
+    qtbot.waitUntil(lambda: "text" in captured, timeout=3000)
+    assert "Imported 1" in captured["text"]
+    assert "demo-skill" in captured["text"]
+    names = {s["name"] for s in registry_client.list_skills()}
+    assert "demo-skill" in names

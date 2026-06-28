@@ -3098,6 +3098,23 @@ class StorageClient:
     def delete_skill(self, identifier: str) -> Any:
         return self._request("DELETE", f"/skills/{identifier}")
 
+    def scan_skills(
+        self, *, scope: str | None = None, roots: list[str] | None = None
+    ) -> dict[str, Any]:
+        """POST /skills/scan — import local SKILL.md definitions into the registry.
+
+        Returns the scan summary ``{roots, found, imported, skipped, errors,
+        counts}`` (REQ-421 / PI-362).
+        """
+        body: dict[str, Any] = {}
+        if scope is not None:
+            body["scope"] = scope
+        if roots is not None:
+            body["roots"] = roots
+        return self._expect_dict(
+            self._request("POST", "/skills/scan", json_body=body), op="scan_skills"
+        )
+
     # --- governance_rules ----------------------------------------------
 
     def list_governance_rules(

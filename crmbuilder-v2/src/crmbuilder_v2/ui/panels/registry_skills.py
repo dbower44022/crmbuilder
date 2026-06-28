@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
     QFormLayout,
@@ -35,11 +36,28 @@ from crmbuilder_v2.ui.panels._registry_panel_base import (
     separator,
 )
 from crmbuilder_v2.ui.widgets.form_helpers import destructive_button
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
+
+# Secondary (warm-orange) button chrome — gray reads as disabled.
+_SECONDARY_STYLE = (
+    "QPushButton { background-color: #FFA726; color: white; border-radius: 4px; "
+    "padding: 6px 14px; } QPushButton:hover { background-color: #FB8C00; }"
+)
 
 
 class SkillsPanel(RegistryCrudPanel):
     new_button_label = "New Skill"
     entity_noun = "skill"
+
+    def __init__(self, client: Any, parent: QWidget | None = None) -> None:
+        super().__init__(client, parent)
+        # Scan the local skill roots and import any SKILL.md definitions as
+        # registry skills (REQ-421 / PI-362). Sits beside "New Skill".
+        self._scan_button = QPushButton("Scan local skills…")
+        self._scan_button.setObjectName("scan_local_skills_button")
+        self._scan_button.setStyleSheet(_SECONDARY_STYLE)
+        self._scan_button.clicked.connect(self._on_scan_clicked)
+        self._action_layout.addWidget(self._scan_button)
 
     def entity_title(self) -> str:
         return "Skills"
@@ -137,3 +155,50 @@ class SkillsPanel(RegistryCrudPanel):
         )
         if dialog.exec() == QDialog.DialogCode.Accepted:
             self.refresh()
+
+    def _on_scan_clicked(self) -> None:
+        """Run the local-skill scan and report a found/imported/skipped summary."""
+        self.setCursor(Qt.CursorShape.BusyCursor)
+        try:
+            result = self._client.scan_skills()
+        except Exception as exc:  # noqa: BLE001 — surface any failure to the operator
+            self.unsetCursor()
+            CopyableMessageBox.warning(
+                self, "Scan local skills", f"The scan could not run: {exc}"
+            )
+            return
+        self.unsetCursor()
+        self._report_scan(result)
+        self.refresh()
+
+    def _report_scan(self, result: dict[str, Any]) -> None:
+        counts = result.get("counts", {})
+        imported = result.get("imported", [])
+        errors = result.get("errors", [])
+        lines = [
+            f"Found {counts.get('found', 0)} local skill file(s).",
+            f"Imported {counts.get('imported', 0)} new skill(s).",
+        ]
+        if imported:
+            lines.append(
+                "  • "
+                + "\n  • ".join(
+                    f"{i.get('name')} ({i.get('identifier')})" for i in imported
+                )
+            )
+        lines.append(
+            f"Skipped {counts.get('skipped', 0)} already in the registry."
+        )
+        if errors:
+            lines.append(
+                f"{counts.get('errors', 0)} could not be imported:\n  • "
+                + "\n  • ".join(
+                    f"{e.get('path')}: {e.get('error')}" for e in errors
+                )
+            )
+        roots = result.get("roots", [])
+        if roots:
+            lines.append("\nSearched: " + ", ".join(roots))
+        CopyableMessageBox.information(
+            self, "Scan local skills", "\n".join(lines)
+        )
