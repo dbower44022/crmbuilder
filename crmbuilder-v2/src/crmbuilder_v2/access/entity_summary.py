@@ -150,6 +150,10 @@ _NO_SUMMARY: frozenset[str] = frozenset(
         "catalog_attribute",
         # PI-255 reconciler output — integer PK, no string identifier to match.
         "mapping_candidate",
+        # PI-046 (REQ-387) — a refs-table edge. Integer-PK, no natural
+        # title/status row to summarize; it exists as an entity type so a
+        # deposit_event_wrote_record edge can target a created reference.
+        "reference",
     }
 )
 

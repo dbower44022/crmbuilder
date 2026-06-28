@@ -1805,6 +1805,16 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # here so a run can source the ``release_run_relates_to_finding`` edge and
         # be change-log-tracked. See preserve-failed-run-history-design.md §3.3.
         "release_run",
+        # PI-046 (REQ-387). A ``refs``-table edge is itself a reference target: an
+        # apply's ``deposit_event_wrote_record`` edge points at each record the run
+        # created, and a created record can be a reference. The
+        # ``_kinds_for_pair`` clause below already admits ``target_type="reference"``
+        # for that kind, but ``reference`` was absent here, so ``RELATIONSHIP_RULES``
+        # (the ENTITY_TYPES × ENTITY_TYPES product) never generated the
+        # ``("deposit_event", "reference")`` key and such POSTs 422'd. Adding it
+        # closes that schema-vs-spec contradiction. ``reference`` was already in
+        # ``CHANGE_LOG_ENTITY_TYPES`` (explicit union), so only the refs CHECK moves.
+        "reference",
     }
 )
 
