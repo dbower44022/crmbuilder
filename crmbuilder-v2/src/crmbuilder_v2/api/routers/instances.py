@@ -44,6 +44,7 @@ from crmbuilder_v2.api.schemas import (
     RecordExportIn,
 )
 from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.introspect.entity_audit import reconcile_entity_slice
 from crmbuilder_v2.introspect.espo_client import EspoIntrospectionClient
 from crmbuilder_v2.introspect.reconcile import (
     ReconcileError,
@@ -397,6 +398,33 @@ def audit_area(identifier: str, area: str):
         return ok(
             {"area": area, "label": label, "summary": summary, "log": log}
         )
+
+
+@router.post("/{identifier}/audit-entity/{entity_identifier}")
+def audit_entity(identifier: str, entity_identifier: str):
+    """Fast entity-only re-audit (REQ-392 / PI-351).
+
+    Re-reads just one entity's slice (presence + settings + fields + relationships
+    + layouts) from the live instance and refreshes only that entity's stored
+    membership — a quick targeted refresh before reconciling, without a
+    full-instance audit. Returns the per-section ``summary`` plus a ``log``.
+    """
+    log: list[list[str]] = []
+    with writable_session() as s:
+        client = _audit_introspection_client(s, identifier)
+        try:
+            summary = reconcile_entity_slice(
+                s,
+                instance_identifier=identifier,
+                entity_identifier=entity_identifier,
+                client=client,
+                progress=lambda m, lvl: log.append([m, lvl]),
+            )
+        except ReconcileError as exc:
+            raise UnprocessableError(
+                [FieldError("audit", "introspection_failed", str(exc))]
+            ) from exc
+        return ok({"summary": summary, "log": log})
 
 
 # ── Deploy config (PI-201 — REQ-172) ──────────────────────────────────────
