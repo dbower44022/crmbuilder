@@ -117,10 +117,26 @@ def test_plan_non_actionable_is_skipped():
 def test_fmt_value_operator_language():
     assert fmt_value("present") == "In"
     assert fmt_value("absent") == "Missing"
-    assert fmt_value("unknown") == "n/a"
+    assert fmt_value("unknown") == "Not audited"  # REQ-390: not "n/a"
     assert fmt_value(None) == "—"
     assert fmt_value(True) == "Yes"
     assert fmt_value(["a", "b"]) == "a, b"
+
+
+def test_unknown_presence_labelled_not_audited(qapp):
+    """REQ-390: an entity not recorded in a location's last audit reads
+    'Not audited', never the ambiguous 'n/a'."""
+    from crmbuilder_v2.ui.panels.reconcile_models import STATE_LABELS
+    assert STATE_LABELS["unknown"] == "Not audited"
+    m = ExistenceGridModel(_EXISTENCE)
+    # ENT-002 Contact is present on B; build a row that is unknown on B
+    rows = [{"entity_identifier": "ENT-9", "entity": "Widget", "entity_label": None,
+             "design": "present", "instance_a": "present", "instance_b": "unknown"}]
+    m.set_rows(rows)
+    assert m.data(m.index(0, 3), Qt.ItemDataRole.DisplayRole) == "Not audited"
+    assert "n/a" not in {
+        m.data(m.index(0, c), Qt.ItemDataRole.DisplayRole) for c in range(4)
+    }
 
 
 def test_existence_grid_model_shape(qapp):
@@ -162,6 +178,22 @@ def test_panel_loads_instances(qtbot):
     panel = ReconcileGridPanel(build_client(_handler))
     qtbot.addWidget(panel)
     assert panel._combo_a.count() == 2
+
+
+def test_grid_columns_fill_width(qtbot):
+    """REQ-391: both grids fill the available width — the critical text column
+    (Entity / Difference) stretches, value columns size to content, last section
+    does not auto-stretch."""
+    from PySide6.QtWidgets import QHeaderView
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    gh = panel._grid.horizontalHeader()
+    assert gh.sectionResizeMode(0) == QHeaderView.ResizeMode.Stretch
+    assert gh.sectionResizeMode(3) == QHeaderView.ResizeMode.ResizeToContents
+    assert gh.stretchLastSection() is False
+    th = panel._detail.header()
+    assert th.sectionResizeMode(0) == QHeaderView.ResizeMode.Stretch
+    assert th.sectionResizeMode(3) == QHeaderView.ResizeMode.ResizeToContents
 
 
 def test_compare_populates_existence_grid(qtbot):
@@ -234,6 +266,11 @@ class _RecordingClient:
     def reconcile_publish(self, **kw):
         self.publishes.append(kw)
         return {"transaction": {"id": 2}}
+
+    def audit_entity(self, identifier, entity_identifier):
+        self.audits = getattr(self, "audits", [])
+        self.audits.append((identifier, entity_identifier))
+        return {"summary": {"entity": entity_identifier, "present": True}, "log": []}
 
 
 def _apply_panel(qtbot):
@@ -324,6 +361,38 @@ def test_view_only_item_explains_and_is_not_applied(qtbot, monkeypatch):
     panel._on_apply()
     assert client.captures == [] and client.publishes == []
     assert "Configure by hand" in seen.get("title", "")
+
+
+def test_entity_audit_worker_audits_each_instance(qapp):
+    """REQ-392: the worker re-audits the entity on each given instance."""
+    from crmbuilder_v2.ui.panels.reconcile_grid import _EntityAuditWorker
+    client = _RecordingClient(build_client(_handler))
+    got = []
+    w = _EntityAuditWorker(client, "ENT-001", ["INST-001", "INST-002"])
+    w.done.connect(got.append)
+    w.run()  # call synchronously (no thread) for a deterministic test
+    assert client.audits == [("INST-001", "ENT-001"), ("INST-002", "ENT-001")]
+    assert len(got) == 1 and len(got[0]) == 2
+
+
+def test_reaudit_button_present(qtbot):
+    from PySide6.QtWidgets import QPushButton
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    names = {b.objectName() for b in panel.findChildren(QPushButton)}
+    assert "reconcile_reaudit_button" in names
+
+
+def test_audit_done_and_failed_update_status(qtbot, monkeypatch):
+    import crmbuilder_v2.ui.panels.reconcile_grid as mod
+    monkeypatch.setattr(mod.CopyableMessageBox, "warning",
+                        classmethod(lambda *a, **k: None))
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    panel._on_audit_done([{"instance": "INST-001", "result": {}}])
+    assert "Re-audited" in panel._audit_status.text()
+    panel._on_audit_failed("boom")
+    assert "failed" in panel._audit_status.text().lower()
 
 
 def test_history_tab_loads_transactions(qtbot):

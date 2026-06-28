@@ -178,6 +178,34 @@ def test_audit_missing_credentials_rejected(client, monkeypatch):
     assert r.json()["errors"][0]["code"] == "missing_credentials"
 
 
+def test_audit_entity_endpoint_refreshes_one_entity(client, monkeypatch):
+    """REQ-392: the entity-only endpoint re-audits a single entity's slice."""
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client, instance_role="both")["instance_identifier"]
+    with session_scope() as s:
+        eid = entity_repo.create_entity(
+            s, name="Engagement", description="x"  # matches the fake's CEngagement
+        )["entity_identifier"]
+    r = client.post(f"/instances/{iid}/audit-entity/{eid}")
+    assert r.status_code == 200, r.text
+    summary = r.json()["data"]["summary"]
+    assert summary["entity"] == "Engagement"
+    assert summary["present"] is True
+    assert "fields" in summary and "relationships" in summary and "layouts" in summary
+
+
+def test_audit_entity_endpoint_rejects_target_only(client, monkeypatch):
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client, instance_role="target")["instance_identifier"]
+    with session_scope() as s:
+        eid = entity_repo.create_entity(s, name="Engagement", description="x")[
+            "entity_identifier"
+        ]
+    r = client.post(f"/instances/{iid}/audit-entity/{eid}")
+    assert r.status_code == 422
+    assert r.json()["errors"][0]["code"] == "not_auditable"
+
+
 # -- per-area audit (PI-274 — REQ-308/309/310) -------------------------------
 
 

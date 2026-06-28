@@ -32,9 +32,11 @@ ABSENT = "absent"
 UNKNOWN = "unknown"
 
 #: Operator-language label for each presence token (REQ-374) — "In" / "Missing" /
-#: "n/a" rather than present/absent/unknown. The text always accompanies the
-#: colour so a cell is never colour-only (REQ-368).
-STATE_LABELS = {PRESENT: "In", ABSENT: "Missing", UNKNOWN: "n/a"}
+#: "Not audited" rather than present/absent/unknown. The text always accompanies
+#: the colour so a cell is never colour-only (REQ-368). "Not audited" (REQ-390)
+#: replaces the ambiguous "n/a", which operators read as "not applicable": the
+#: state means the entity simply was not recorded in that location's last audit.
+STATE_LABELS = {PRESENT: "In", ABSENT: "Missing", UNKNOWN: "Not audited"}
 
 #: Background colour per state (soft, label always present alongside it).
 _STATE_BG = {

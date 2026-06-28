@@ -2413,6 +2413,18 @@ class StorageClient:
             )
         return result
 
+    def audit_entity(
+        self, identifier: str, entity_identifier: str
+    ) -> dict[str, Any]:
+        """POST /instances/{id}/audit-entity/{entity_id} — fast entity-only
+        re-audit (REQ-392). Refreshes one entity's slice on the instance; returns
+        ``{summary, log}``. Uses the long audit timeout (a live read)."""
+        result = self._request(
+            "POST", f"/instances/{identifier}/audit-entity/{entity_identifier}",
+            timeout=_AUDIT_TIMEOUT,
+        )
+        return result if isinstance(result, dict) else {}
+
     def publish_validate_instance(
         self, identifier: str, scope: list[str] | None = None
     ) -> dict[str, Any]:

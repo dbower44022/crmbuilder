@@ -15,12 +15,14 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt
+from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
+    QMenu,
     QMessageBox,
     QPushButton,
     QStackedWidget,
@@ -46,6 +48,19 @@ _log = logging.getLogger(__name__)
 
 #: Recorded as the transaction actor for desktop-driven reconcile actions.
 _ACTOR = "desktop"
+
+def _fill_width(header, *, stretch_col: int, content_cols) -> None:
+    """Size a view's columns to fill the full width with no manual resize (REQ-391).
+
+    ``stretch_col`` takes all the slack (the critical text column — Entity or
+    Difference); ``content_cols`` size to their content. The last section does
+    not auto-stretch, so the stretch column owns the leftover space.
+    """
+    header.setStretchLastSection(False)
+    header.setSectionResizeMode(stretch_col, QHeaderView.ResizeMode.Stretch)
+    for col in content_cols:
+        header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+
 
 _PRIMARY = (
     "QPushButton { background-color: #1565C0; color: white; border-radius: 4px; "
@@ -93,6 +108,35 @@ class _ExistenceFilterProxy(QSortFilterProxyModel):
         )
 
 
+class _EntityAuditWorker(QThread):
+    """Runs the fast entity-only re-audit off the UI thread (REQ-392).
+
+    Audits one entity on each of ``instance_ids`` in turn (so a row-level action
+    can refresh both instances) and emits the combined result. A live network
+    read must not block the UI thread or the app freezes.
+    """
+
+    done = Signal(list)   # list of {instance, summary} dicts
+    failed = Signal(str)
+
+    def __init__(self, client: Any, entity_identifier: str, instance_ids: list[str]) -> None:
+        super().__init__()
+        self._client = client
+        self._entity = entity_identifier
+        self._instances = instance_ids
+
+    def run(self) -> None:  # noqa: D102
+        try:
+            results = [
+                {"instance": iid, "result": self._client.audit_entity(iid, self._entity)}
+                for iid in self._instances
+            ]
+        except Exception as exc:  # noqa: BLE001
+            self.failed.emit(str(exc))
+            return
+        self.done.emit(results)
+
+
 class ReconcileGridPanel(QWidget):
     """Existence-grid landing view with a drill into a per-entity detail tree."""
 
@@ -102,6 +146,7 @@ class ReconcileGridPanel(QWidget):
         self._instances: list[dict[str, Any]] = []
         self._payload: dict[str, Any] = {}
         self._groups_by_entity: dict[str, dict[str, Any]] = {}
+        self._audit_worker: _EntityAuditWorker | None = None
         self._build_ui()
         self._load_instances()
 
@@ -163,7 +208,13 @@ class ReconcileGridPanel(QWidget):
         self._grid.setShowGrid(True)
         self._grid.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self._grid.verticalHeader().setVisible(False)
-        self._grid.horizontalHeader().setStretchLastSection(True)
+        # Per-cell re-audit (REQ-392): right-click an entity / location cell.
+        self._grid.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._grid.customContextMenuRequested.connect(self._on_grid_context_menu)
+        # Fill the full width with no manual resize (REQ-391): the entity column
+        # takes the slack so its names stay readable; the location columns size to
+        # their short state labels.
+        _fill_width(self._grid.horizontalHeader(), stretch_col=0, content_cols=(1, 2, 3))
         self._grid.doubleClicked.connect(self._on_grid_activated)
         lay.addWidget(self._grid)
         hint = QLabel("Double-click an entity to see its differences.")
@@ -184,7 +235,19 @@ class ReconcileGridPanel(QWidget):
         copy_btn.clicked.connect(self._on_promote_entity)
         promote.addWidget(copy_btn)
         promote.addStretch()
+        # Row-level re-audit (REQ-392): refresh the selected entity on both
+        # instances. Per-cell refresh is the right-click menu above.
+        reaudit_btn = QPushButton("Re-audit this entity")
+        reaudit_btn.setStyleSheet(_SECONDARY)
+        reaudit_btn.setObjectName("reconcile_reaudit_button")
+        reaudit_btn.clicked.connect(self._on_reaudit_selected)
+        promote.addWidget(reaudit_btn)
         lay.addLayout(promote)
+
+        self._audit_status = QLabel("")
+        self._audit_status.setStyleSheet("color: #757575;")
+        self._audit_status.setWordWrap(True)
+        lay.addWidget(self._audit_status)
         return page
 
     def _build_detail_view(self) -> QWidget:
@@ -210,6 +273,9 @@ class ReconcileGridPanel(QWidget):
         self._detail.setRootIsDecorated(True)
         self._detail.setUniformRowHeights(True)
         self._detail.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
+        # The difference column is the critical one (REQ-391): give it the slack so
+        # long labels stay readable; the value columns size to their short content.
+        _fill_width(self._detail.header(), stretch_col=0, content_cols=(1, 2, 3))
         lay.addWidget(self._detail)
 
         # Unified apply (REQ-371/372): pick where the correct value lives and where
@@ -340,7 +406,6 @@ class ReconcileGridPanel(QWidget):
             instance_b_label=b_label,
         )
         self._grid_proxy.set_differing(set(self._groups_by_entity))
-        self._grid.resizeColumnsToContents()
         self._stack.setCurrentIndex(0)
         entity_count = len(self._payload.get("existence", []))
         diff_count = self._payload.get("row_count", 0)
@@ -535,6 +600,89 @@ class ReconcileGridPanel(QWidget):
         self._summary.setText(msg)
         if applied:
             self._on_compare()
+
+    # ----------------------------------------------------------- re-audit
+    def _existence_at(self, proxy_index: QModelIndex) -> dict[str, Any]:
+        src = self._grid_proxy.mapToSource(proxy_index)
+        return self._grid_model.data(
+            self._grid_model.index(src.row(), 0), RECORD_ROLE
+        ) or {}
+
+    def _on_reaudit_selected(self) -> None:
+        """Row-level re-audit (REQ-392): refresh the selected entity on both
+        instances."""
+        sel = self._grid.selectionModel().selectedRows() if self._grid.selectionModel() else []
+        if not sel:
+            CopyableMessageBox.information(self, "Reconcile", "Select an entity row first.")
+            return
+        rec = self._existence_at(sel[0])
+        both = [i for i in (self._combo_a.currentData(), self._combo_b.currentData()) if i]
+        self._start_entity_audit(rec, both)
+
+    def _on_grid_context_menu(self, pos) -> None:
+        index = self._grid.indexAt(pos)
+        if not index.isValid():
+            return
+        rec = self._existence_at(index)
+        name = rec.get("entity") or rec.get("entity_identifier") or "entity"
+        menu = QMenu(self._grid)
+        both = [i for i in (self._combo_a.currentData(), self._combo_b.currentData()) if i]
+        act_both = menu.addAction(f"Re-audit {name} on both instances")
+        # Per-cell: a location column (2 = Instance A, 3 = Instance B) re-audits
+        # just that instance; the design column (1) has nothing to audit.
+        col = index.column()
+        per_cell = None
+        if col in (2, 3):
+            loc_id = self._combo_a.currentData() if col == 2 else self._combo_b.currentData()
+            if loc_id:
+                per_cell = (menu.addAction(f"Re-audit {name} on {self._instance_label(loc_id)}"), [loc_id])
+        chosen = menu.exec(self._grid.viewport().mapToGlobal(pos))
+        if chosen is None:
+            return
+        if chosen is act_both:
+            self._start_entity_audit(rec, both)
+        elif per_cell and chosen is per_cell[0]:
+            self._start_entity_audit(rec, per_cell[1])
+
+    def _start_entity_audit(self, rec: dict[str, Any], instance_ids: list[str]) -> None:
+        eid = rec.get("entity_identifier")
+        name = rec.get("entity") or eid or "entity"
+        if not eid:
+            CopyableMessageBox.information(self, "Reconcile", "Select an entity row first.")
+            return
+        if not instance_ids:
+            CopyableMessageBox.information(self, "Reconcile", "No instance to audit.")
+            return
+        if self._audit_worker is not None and self._audit_worker.isRunning():
+            CopyableMessageBox.information(self, "Reconcile", "An audit is already running.")
+            return
+        where = ", ".join(self._instance_label(i) for i in instance_ids)
+        self._audit_status.setText(f"Re-auditing {name} on {where}…")
+        self.setCursor(Qt.CursorShape.BusyCursor)
+        worker = _EntityAuditWorker(self._client, eid, instance_ids)
+        worker.done.connect(self._on_audit_done)
+        worker.failed.connect(self._on_audit_failed)
+        worker.finished.connect(worker.deleteLater)
+        self._audit_worker = worker
+        worker.start()
+
+    def _on_audit_done(self, results: list) -> None:
+        self.unsetCursor()
+        self._audit_worker = None
+        n = len(results)
+        self._audit_status.setText(
+            f"Re-audited on {n} instance(s); refreshing comparison…"
+        )
+        # Refresh the grid so the new state shows, if a comparison is loaded.
+        if self._combo_a.currentData() and self._combo_b.currentData():
+            self._on_compare()
+        self._audit_status.setText(f"Re-audited on {n} instance(s).")
+
+    def _on_audit_failed(self, message: str) -> None:
+        self.unsetCursor()
+        self._audit_worker = None
+        self._audit_status.setText(f"Re-audit failed: {message}")
+        CopyableMessageBox.warning(self, "Reconcile", f"Re-audit failed: {message}")
 
     # --------------------------------------------------------------- history
     def _load_transactions(self) -> None:
