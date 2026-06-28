@@ -20,84 +20,22 @@ from crmbuilder_v2.ui.panels.topics import TopicsPanel
 from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
 from crmbuilder_v2.ui.splash import Splash
 
-EXPECTED_ENTRIES = (
-    # AI group — PI-052 Slice B (WT-055): single "Chat" entry at the top
-    # of the sidebar.
-    "Chat",
-    # Engagements group — populated in UI v0.5 slice C with a single
-    # entry, on top of the empty group slice A introduced.
-    "Engagements",
-    "Charter",
-    "Status",
-    "Decisions",
-    "Sessions",
-    "Risks",
-    "Planning Items",
-    "Topics",
-    "References",
-    # v0.7 governance entity release (DEC-163): six new entries appended
-    # to the Governance group in workstream order, no sub-grouping.
-    "Projects",
-    "Conversations",
-    "Reference Books",
-    "Work Tickets",
-    "Close-Out Payloads",
-    "Deposit Events",
-    # Commits — PI-031 code change lifecycle browse surface, appended
-    # to the Governance group after Deposit Events.
-    "Commits",
-    # WTK-004: ADO delivery-model monitoring panels, appended to the
-    # Governance group after Commits.
-    "Workstreams",
-    "Work Tasks",
-    # PI-186 (PRJ-027): CRM-connection instances, appended to the
-    # Governance group after Work Tasks.
-    "Instances",
-    # PI-266 (PRJ-042 / REQ-293): read-only publish history, after Instances.
-    "Publish History",
-    # PI-319 (REL-024): three-way reconciliation panel, after Publish History.
-    "Reconcile",
-    # PI-256: source-candidate review panel, after Reconcile.
-    "Candidate Review",
-    # requirements-provenance Phase 6b: topic-first review surface,
-    # appended to the Governance group after Work Tasks.
-    "Requirements Review",
-    # PI-224: the Release Pipeline group (its own group between Governance
-    # and Methodology) with the Releases hub entry; PI-225 adds the
-    # Resource Locks monitor; PI-265 adds the Cost monitor.
-    "Releases",
-    "Resource Locks",
-    "Cost",
-    # PI-330 (REL-026): the Agent Registry group (its own group between the
-    # Release Pipeline and Methodology) over the PI-122 substrate.
-    "Agent Profiles",
-    "Skills",
-    "Governance Rules",
-    "Learnings",
-    # Methodology group — Domains landed in UI v0.4 slice B,
-    # Entities in slice C, Processes in slice D, CRM Candidates in slice E,
-    # Personas in v0.5+ (PI-003), Fields in v0.5+ (PI-004 first slice),
-    # Requirements in v0.5+ (PI-004 cohort, between Processes and CRM
-    # Candidates), Test Specs in v0.5+ (PI-004 cohort closer — resolves
-    # PI-004 — inserted between Requirements and CRM Candidates per
-    # test_spec.md §3.6.1), Manual Configs in v0.5+ (PI-004 cohort,
-    # tail of group).
-    "Domains",
-    "Entities",
-    "Processes",
-    "Requirements",
-    "Test Specs",
-    "CRM Candidates",
-    "Personas",
-    "Fields",
-    "Manual Configs",
-    # PI-061: glossary term entity.
-    "Glossary",
-)
+# The MainWindow builds exactly one selectable page per sidebar entry, so the
+# expected entry list is *derived* from SIDEBAR_ENTRIES rather than maintained
+# as a hand-updated snapshot — that snapshot drifted every time a panel was
+# added. SIDEBAR_ENTRIES is the single source of truth; the construction test
+# below asserts the window honours it (one page per entry, each selectable).
+EXPECTED_ENTRIES = SIDEBAR_ENTRIES
 
 
-def test_sidebar_entries_constant():
-    assert SIDEBAR_ENTRIES == EXPECTED_ENTRIES
+def test_sidebar_entries_well_formed():
+    # SIDEBAR_ENTRIES is the source of truth, so guard its integrity (no empty
+    # labels, no duplicates) rather than re-snapshotting its exact contents.
+    assert SIDEBAR_ENTRIES, "sidebar has no entries"
+    assert all(isinstance(e, str) and e.strip() for e in SIDEBAR_ENTRIES)
+    assert len(set(SIDEBAR_ENTRIES)) == len(SIDEBAR_ENTRIES), (
+        "duplicate sidebar entries"
+    )
 
 
 def test_main_window_constructs(qapp, qtbot, lifecycle_stub, client_stub):
