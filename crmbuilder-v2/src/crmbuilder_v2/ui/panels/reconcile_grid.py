@@ -15,16 +15,20 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from PySide6.QtCore import QModelIndex, QSortFilterProxyModel
+from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QStackedWidget,
     QTableView,
+    QTabWidget,
     QTreeView,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -104,6 +108,15 @@ class ReconcileGridPanel(QWidget):
     # ------------------------------------------------------------------ build
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
+        self._tabs = QTabWidget()
+        self._tabs.addTab(self._build_reconcile_tab(), "Reconcile")
+        self._tabs.addTab(self._build_history_tab(), "History")
+        self._tabs.currentChanged.connect(self._on_tab_changed)
+        outer.addWidget(self._tabs)
+
+    def _build_reconcile_tab(self) -> QWidget:
+        tab = QWidget()
+        outer = QVBoxLayout(tab)
 
         picker = QHBoxLayout()
         picker.addWidget(QLabel("Instance A:"))
@@ -134,6 +147,7 @@ class ReconcileGridPanel(QWidget):
         self._summary = QLabel("Pick two instances and click Compare.")
         self._summary.setStyleSheet("color: #757575;")
         outer.addWidget(self._summary)
+        return tab
 
     def _build_grid_view(self) -> QWidget:
         page = QWidget()
@@ -226,6 +240,39 @@ class ReconcileGridPanel(QWidget):
         self._apply_status.setWordWrap(True)
         lay.addWidget(self._apply_status)
         return page
+
+    def _build_history_tab(self) -> QWidget:
+        """The reconcile transaction log + guarded rollback (carried from REL-024).
+
+        Every capture/publish is logged and reversible; this tab lists the trail
+        and offers rollback, gated by the data-loss analysis (REQ-360/361).
+        """
+        tab = QWidget()
+        lay = QVBoxLayout(tab)
+        self._log_tree = QTreeWidget()
+        self._log_tree.setColumnCount(7)
+        self._log_tree.setHeaderLabels(
+            ["ID", "Action", "Object", "Setting", "Before → After", "Status", "By"]
+        )
+        self._log_tree.setObjectName("reconcile_log_tree")
+        self._log_tree.setAlternatingRowColors(True)
+        lay.addWidget(self._log_tree)
+        row = QHBoxLayout()
+        refresh = QPushButton("Refresh")
+        refresh.clicked.connect(self._load_transactions)
+        rollback = QPushButton("Undo selected")
+        rollback.setStyleSheet(_SECONDARY)
+        rollback.setObjectName("reconcile_rollback")
+        rollback.clicked.connect(self._on_rollback)
+        row.addWidget(refresh)
+        row.addWidget(rollback)
+        row.addStretch()
+        lay.addLayout(row)
+        return tab
+
+    def _on_tab_changed(self, index: int) -> None:
+        if self._tabs.tabText(index) == "History":
+            self._load_transactions()
 
     # ------------------------------------------------------------------ data
     def _load_instances(self) -> None:
@@ -375,8 +422,14 @@ class ReconcileGridPanel(QWidget):
         applied = 0
         skipped: list[str] = []
         errors: list[str] = []
+        view_only: list[str] = []
         for row in rows:
             label = row.get("member_name") or row.get("member_identifier") or "?"
+            # View-only config (REQ-377): shown and selectable, but the platform
+            # has no write path, so acting on it explains rather than no-ops.
+            if not row.get("actionable"):
+                view_only.append(label)
+                continue
             plan = plan_apply(row, source_loc, targets)
             for reason in plan["skipped"]:
                 skipped.append(f"{label}: {reason}")
@@ -387,9 +440,17 @@ class ReconcileGridPanel(QWidget):
                 except Exception as exc:  # noqa: BLE001
                     errors.append(f"{label}: {op['kind']} failed — {exc}")
 
+        if view_only:
+            CopyableMessageBox.information(
+                self, "Configure by hand",
+                "These items can be compared but cannot be pushed automatically — "
+                "the platform has no way to write them, so they must be set by hand "
+                "in the admin console:\n\n• " + "\n• ".join(view_only),
+            )
         self._report_apply(applied, skipped, errors)
-        # Refresh the comparison so the surface reflects the new state.
-        self._on_compare()
+        if applied:
+            # Refresh the comparison so the surface reflects the new state.
+            self._on_compare()
 
     def _execute_op(self, row: dict[str, Any], op: dict[str, str]) -> None:
         """Run one capture/publish operation against the API."""
@@ -472,4 +533,67 @@ class ReconcileGridPanel(QWidget):
             msg += " Failed: " + "; ".join(errors)
             CopyableMessageBox.warning(self, "Reconcile", msg)
         self._summary.setText(msg)
-        self._on_compare()
+        if applied:
+            self._on_compare()
+
+    # --------------------------------------------------------------- history
+    def _load_transactions(self) -> None:
+        self._log_tree.clear()
+        try:
+            rows = self._client.reconcile_transactions(limit=200)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("could not load transactions: %s", exc)
+            rows = []
+        for t in rows:
+            direction = "Pulled to design" if t.get("direction") == "capture" else "Pushed to instance"
+            item = QTreeWidgetItem([
+                str(t.get("id")),
+                direction,
+                t.get("member_identifier", ""),
+                _fmt(t.get("attribute")),
+                f"{_fmt(t.get('before_value'))} → {_fmt(t.get('after_value'))}",
+                t.get("status", ""),
+                t.get("actor", ""),
+            ])
+            item.setData(0, Qt.ItemDataRole.UserRole, t)
+            self._log_tree.addTopLevelItem(item)
+
+    def _on_rollback(self) -> None:
+        items = self._log_tree.selectedItems()
+        if not items:
+            CopyableMessageBox.information(self, "Reconcile", "Select a change to undo first.")
+            return
+        txn = items[0].data(0, Qt.ItemDataRole.UserRole)
+        tid = txn.get("id")
+        if txn.get("status") == "rolled_back":
+            CopyableMessageBox.information(self, "Reconcile", "Already undone.")
+            return
+        # Data-loss analysis before proceeding (REQ-361).
+        try:
+            verdict = self._client.reconcile_assess_revert(tid)
+        except Exception as exc:  # noqa: BLE001
+            verdict = {}
+            _log.warning("assess-revert failed: %s", exc)
+        if verdict.get("requires_confirmation"):
+            reasons = "\n• ".join(verdict.get("reasons", []))
+            proceed = CopyableMessageBox.warning(
+                self, "Possible data loss",
+                f"Undoing this change could cause data loss:\n\n• {reasons}\n\nProceed anyway?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Cancel,
+            )
+            if proceed != QMessageBox.StandardButton.Yes:
+                return
+        try:
+            self._client.reconcile_rollback(tid, actor=_ACTOR)
+        except Exception as exc:  # noqa: BLE001
+            CopyableMessageBox.warning(self, "Reconcile", f"Undo failed: {exc}")
+            return
+        self._load_transactions()
+
+
+def _fmt(value: Any) -> str:
+    """Render a transaction-log cell value compactly."""
+    if value is None:
+        return "—"
+    return str(value)

@@ -61,7 +61,7 @@ from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
 from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.panels.publish_history import PublishHistoryPanel
-from crmbuilder_v2.ui.panels.reconcile import ReconcilePanel
+from crmbuilder_v2.ui.panels.reconcile_grid import ReconcileGridPanel
 from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.panels.registry_learnings import LearningsPanel
@@ -269,7 +269,7 @@ def build_panel(
     if label == "Candidate Review":
         return CandidateReviewPanel(client)
     if label == "Reconcile":
-        return ReconcilePanel(client)
+        return ReconcileGridPanel(client)
     # requirements-provenance Phase 6b: topic-first review surface.
     if label == "Requirements Review":
         return ReviewPanel(client)

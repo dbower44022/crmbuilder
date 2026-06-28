@@ -3,7 +3,12 @@
 **Release:** REL-027 — *Reconcile Surface Redesign* (preliminary_planning)
 **Project:** PRJ-067 — *Native Qt Reconcile Grid Rebuild* (belongs to REL-027)
 **Supersedes (as the operator surface):** the PI-319 native panel `ui/panels/reconcile.py` shipped under REL-024.
-**Status:** Design authored 2026-06-27 (engagement CRMBUILDER). Requirements REQ-368…378 created `candidate` and queued in the Requirements Review panel — **pending human approval before any build.** Planning items PI-331…335 created `Draft` in PRJ-067 with `implements` edges.
+**Status:** **Built 2026-06-28** (branch `rel-027-reconcile-redesign`, Model A). Requirements REQ-368…378 are `confirmed` (human-approved via the Requirements Review panel). All five planning items PI-331…335 are implemented:
+- **PI-331** — compare payload extended with the entity existence rollup + per-group object-type buckets (`access/reconcile_compare.py`).
+- **PI-332** — apply engine extended: entity-settings capture, per-entity publish from reconcile, whole-entity promote (`access/reconcile_apply.py`, `api/routers/reconcile.py`).
+- **PI-333** — native Qt existence grid + entity-detail tree models/views (`ui/panels/reconcile_models.py`, `reconcile_grid.py`).
+- **PI-334** — unified any-direction apply + multi-select batch + whole-entity promote + operator-language relabel.
+- **PI-335** — view-only explain-on-apply, History tab (transaction log + guarded rollback carried from REL-024), old flat panel retired. Governance close-out + PI resolution land on `main` after merge.
 **Provenance:** topic TOP-111 ← session SES-272 ← conversation CNV-214 (this design conversation).
 
 ---

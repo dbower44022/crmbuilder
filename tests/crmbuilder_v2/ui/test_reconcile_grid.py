@@ -51,12 +51,21 @@ _COMPARE = {
 }
 
 
+_TXNS = [
+    {"id": 7, "direction": "capture", "member_identifier": "FLD-001",
+     "attribute": "field_max_length", "before_value": 255, "after_value": 100,
+     "status": "applied", "actor": "desktop"},
+]
+
+
 def _handler(req: httpx.Request) -> httpx.Response:
     p = req.url.path
     if req.method == "GET" and p == "/instances":
         return httpx.Response(200, json=envelope_ok(_INSTANCES))
     if req.method == "GET" and p == "/reconcile/compare":
         return httpx.Response(200, json=envelope_ok(_COMPARE))
+    if req.method == "GET" and p == "/reconcile/transactions":
+        return httpx.Response(200, json=envelope_ok(_TXNS))
     return httpx.Response(404, json={"data": None, "meta": {}, "errors": [{"code": "x"}]})
 
 
@@ -269,6 +278,61 @@ def test_apply_publish_design_to_instance_b(qtbot):
     assert len(client.publishes) == 1
     assert client.publishes[0]["instance"] == "INST-002"
     assert client.publishes[0]["member_type"] == "field"
+
+
+_VIEW_ONLY_GROUPS = [
+    {
+        "entity": "Account", "entity_identifier": "ENT-001", "entity_label": None,
+        "rows": [],
+        "object_groups": [
+            {"object_type": "other", "differing_count": 1, "rows": [
+                {"member_type": "role", "member_identifier": "ROLE-1",
+                 "member_name": "Sales Role", "kind": "attribute", "attribute": "role_scope",
+                 "design": "x", "instance_a": "y", "instance_b": "x",
+                 "differs": True, "actionable": False},
+            ]},
+        ],
+    }
+]
+
+
+def test_view_only_item_explains_and_is_not_applied(qtbot, monkeypatch):
+    """A non-actionable (view-only) difference: Apply stays available, but acting
+    on it explains rather than writing anything (REQ-377)."""
+    import crmbuilder_v2.ui.panels.reconcile_grid as mod
+    seen: dict[str, str] = {}
+    monkeypatch.setattr(
+        mod.CopyableMessageBox, "information",
+        classmethod(lambda cls, parent, title, text, *a, **k: seen.update(title=title, text=text)),
+    )
+    client = _RecordingClient(build_client(_handler))
+    panel = ReconcileGridPanel(client)
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    # drill with a view-only group
+    panel._groups_by_entity["ENT-001"] = _VIEW_ONLY_GROUPS[0]
+    panel._drill(_EXISTENCE[0])
+    grp = panel._detail_model.index(0, 0)
+    child = panel._detail_model.index(0, 0, grp)
+    panel._detail.selectionModel().select(
+        child, panel._detail.selectionModel().SelectionFlag.Select
+    )
+    panel._source_combo.setCurrentIndex(1)
+    panel._target_design.setChecked(True)
+    panel._on_apply()
+    assert client.captures == [] and client.publishes == []
+    assert "Configure by hand" in seen.get("title", "")
+
+
+def test_history_tab_loads_transactions(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    # selecting the History tab loads the log
+    panel._tabs.setCurrentIndex(1)
+    assert panel._log_tree.topLevelItemCount() == 1
+    assert panel._log_tree.topLevelItem(0).text(1) == "Pulled to design"
 
 
 def test_promote_entity_publishes_to_checked_instances(qtbot):
