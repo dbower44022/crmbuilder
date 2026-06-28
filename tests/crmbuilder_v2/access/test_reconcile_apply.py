@@ -101,3 +101,127 @@ def test_rollback_rejects_non_design_target(v2_env):
         )
         with pytest.raises(ConflictError):
             reconcile_apply.rollback(s, t["id"], actor="Doug")
+
+
+# --- PI-332: entity-settings capture --------------------------------------
+
+
+def test_capture_entity_setting_writes_design_logs_clears(v2_env):
+    """Capturing an entity-collection setting mirrors field capture: it writes
+    the design, logs a capture, and clears the instance drift (REQ-375)."""
+    with session_scope() as s:
+        iid, _fid = _setup(s)
+        eid = entity_repo.create_entity(s, name="Widget", description="x")[
+            "entity_identifier"
+        ]
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="entity", member_identifier=eid,
+            state="drifted", override={"entity_default_sort_field": "name"},
+        )
+        out = reconcile_apply.capture_entity_setting(
+            s, instance=iid, entity_identifier=eid,
+            attribute="entity_default_sort_field", actor="Doug",
+        )
+        assert out["entity"]["entity_default_sort_field"] == "name"
+        t = out["transaction"]
+        assert t["direction"] == "capture"
+        assert t["member_type"] == "entity"
+        assert t["target_ref"] == "design"
+        m = mb.list_memberships(s, instance_identifier=iid, member_type="entity",
+                                member_identifier=eid)[0]
+        assert m["state"] == "present"
+        assert m["override"] is None
+
+
+def test_capture_entity_setting_without_deviation_is_conflict(v2_env):
+    with session_scope() as s:
+        iid, _fid = _setup(s)
+        eid = entity_repo.create_entity(s, name="Gadget", description="x")[
+            "entity_identifier"
+        ]
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="entity", member_identifier=eid,
+            state="present",
+        )
+        with pytest.raises(ConflictError):
+            reconcile_apply.capture_entity_setting(
+                s, instance=iid, entity_identifier=eid,
+                attribute="entity_default_sort_field", actor="Doug",
+            )
+
+
+# --- PI-332: publish scope + record ---------------------------------------
+
+
+def test_entity_for_member_resolves_parents(v2_env):
+    with session_scope() as s:
+        eid = entity_repo.create_entity(s, name="Account", description="x")[
+            "entity_identifier"
+        ]
+        fid = field_repo.create_field(
+            s, field_belongs_to_entity_identifier=eid, name="code",
+            description="x", type="text", required=False,
+        )["field_identifier"]
+        # field -> parent entity
+        assert reconcile_apply.entity_for_member(s, "field", fid)[
+            "entity_identifier"
+        ] == eid
+        # entity -> itself
+        assert reconcile_apply.entity_for_member(s, "entity", eid)[
+            "entity_identifier"
+        ] == eid
+
+
+def test_publish_scope_filename(v2_env):
+    with session_scope() as s:
+        eid = entity_repo.create_entity(s, name="Mentor Profile", description="x")[
+            "entity_identifier"
+        ]
+        scope = reconcile_apply.publish_scope_for_member(s, "entity", eid)
+        assert scope["entity_identifier"] == eid
+        assert scope["filename"] == "Mentor-Profile.yaml"
+
+
+def test_record_publish_logs_and_reconciles_membership(v2_env):
+    """A successful publish logs a publish transaction and clears the published
+    attribute's drift on the target instance (REQ-376)."""
+    with session_scope() as s:
+        iid, fid = _setup(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field", member_identifier=fid,
+            state="drifted",
+            override={"field_max_length": 50, "field_type": "varchar"},
+        )
+        rc = reconcile_apply.record_publish(
+            s, instance=iid, member_type="field", member_identifier=fid,
+            attribute="field_max_length", actor="Doug",
+            before_value=50, after_value=255,
+        )
+        t = rc["transaction"]
+        assert t["direction"] == "publish"
+        assert t["source_ref"] == "design"
+        assert t["target_ref"] == iid
+        m = mb.list_memberships(s, instance_identifier=iid, member_type="field",
+                                member_identifier=fid)[0]
+        # only the published attribute is reconciled; the other drift remains
+        assert m["override"] == {"field_type": "varchar"}
+        assert m["state"] == "drifted"
+
+
+def test_record_publish_whole_member_clears_all_drift(v2_env):
+    """A whole-member promote (no attribute) marks the member present and clears
+    its override entirely (REQ-369)."""
+    with session_scope() as s:
+        iid, fid = _setup(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field", member_identifier=fid,
+            state="drifted", override={"field_max_length": 50},
+        )
+        reconcile_apply.record_publish(
+            s, instance=iid, member_type="field", member_identifier=fid,
+            actor="Doug",
+        )
+        m = mb.list_memberships(s, instance_identifier=iid, member_type="field",
+                                member_identifier=fid)[0]
+        assert m["state"] == "present"
+        assert m["override"] is None

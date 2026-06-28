@@ -2541,6 +2541,64 @@ class StorageClient:
         result = self._request("POST", "/reconcile/capture", json_body=body)
         return result if isinstance(result, dict) else {}
 
+    def reconcile_capture_setting(
+        self,
+        *,
+        instance: str,
+        entity_identifier: str,
+        attribute: str,
+        actor: str,
+        batch_id: str | None = None,
+        note: str | None = None,
+    ) -> dict[str, Any]:
+        """POST /reconcile/capture-setting — promote an instance entity-setting
+        value into the design (REQ-375)."""
+        body = {
+            "instance": instance,
+            "entity_identifier": entity_identifier,
+            "attribute": attribute,
+            "actor": actor,
+            "batch_id": batch_id,
+            "note": note,
+        }
+        result = self._request(
+            "POST", "/reconcile/capture-setting", json_body=body
+        )
+        return result if isinstance(result, dict) else {}
+
+    def reconcile_publish(
+        self,
+        *,
+        instance: str,
+        member_type: str,
+        member_identifier: str,
+        actor: str,
+        attribute: str | None = None,
+        allow_no_backup: bool = False,
+        batch_id: str | None = None,
+        note: str | None = None,
+    ) -> dict[str, Any]:
+        """POST /reconcile/publish — push an object's parent entity from the
+        design to a live instance, transaction-logged (REQ-376/369).
+
+        A live deploy (backup + deploy + verify) can run for minutes, so it uses
+        the long audit/publish timeout, not the 30s default.
+        """
+        body = {
+            "instance": instance,
+            "member_type": member_type,
+            "member_identifier": member_identifier,
+            "actor": actor,
+            "attribute": attribute,
+            "allow_no_backup": allow_no_backup,
+            "batch_id": batch_id,
+            "note": note,
+        }
+        result = self._request(
+            "POST", "/reconcile/publish", json_body=body, timeout=_AUDIT_TIMEOUT
+        )
+        return result if isinstance(result, dict) else {}
+
     def reconcile_transactions(
         self,
         *,

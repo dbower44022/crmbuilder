@@ -41,6 +41,32 @@ UNKNOWN = "unknown"
 #: Membership states that mean the member is carried on the instance.
 _PRESENT_STATES = frozenset({"present", "drifted"})
 
+#: Entity-level collection settings that can be reconciled in either direction
+#: (REQ-375). An entity attribute row is actionable when its attribute is one of
+#: these — the apply engine captures them into the design and publishes them out.
+RECONCILABLE_ENTITY_SETTINGS = frozenset({
+    "entity_default_sort_field",
+    "entity_default_sort_direction",
+    "entity_full_text_search",
+    "entity_full_text_search_min_length",
+    "entity_text_filter_fields",
+})
+
+
+def _attribute_actionable(member_type: str, attribute: str | None) -> bool:
+    """Whether the apply engine can reconcile this attribute row.
+
+    Field attributes are reconcilable (capture into the design, publish out);
+    entity-level rows are reconcilable only for the collection settings the apply
+    engine supports (REQ-375). Everything else is shown for visibility but not
+    offered an action (REQ-358 / view-only handling).
+    """
+    if member_type == "field":
+        return True
+    if member_type == "entity":
+        return attribute in RECONCILABLE_ENTITY_SETTINGS
+    return False
+
 
 def _presence(membership: dict[str, Any] | None) -> str:
     """Map a membership row (or its absence) to a presence token."""
@@ -87,10 +113,6 @@ def compute_member_rows(
     pres_a = _presence(membership_a)
     pres_b = _presence(membership_b)
     rows: list[dict[str, Any]] = []
-    # A row is actionable when the apply engine can reconcile it. This slice
-    # supports field-attribute capture; other rows are shown but non-actionable
-    # so the UI never offers an action it cannot perform (REQ-358).
-    attr_actionable = member_type == "field"
 
     # Presence: the design always carries the member; flag any instance that does
     # not (absent or never audited).
@@ -137,7 +159,7 @@ def compute_member_rows(
             "instance_a": a_value if a_carries else pres_a,
             "instance_b": b_value if b_carries else pres_b,
             "differs": True,
-            "actionable": attr_actionable,
+            "actionable": _attribute_actionable(member_type, attr),
         })
 
     return rows

@@ -245,6 +245,30 @@ def test_compare_emits_object_groups(v2_env):
         assert order == sorted(order)
 
 
+def test_entity_settings_rows_are_actionable():
+    """Entity-collection-setting attribute rows are actionable; a non-setting
+    entity attribute is shown but not actionable (REQ-375 / REQ-358)."""
+    a = _mem(state="drifted", override={"entity_default_sort_field": "name"})
+    rows = compute_member_rows(
+        member_type="entity", member_identifier="ENT-1", member_name="Account",
+        design_obj={"entity_default_sort_field": "createdAt"},
+        attributes=_override_attrs(a, _mem()),
+        membership_a=a, membership_b=_mem(),
+    )
+    settings_row = next(r for r in rows if r["attribute"] == "entity_default_sort_field")
+    assert settings_row["actionable"] is True
+
+    other = _mem(state="drifted", override={"entity_label": "Acct"})
+    rows2 = compute_member_rows(
+        member_type="entity", member_identifier="ENT-1", member_name="Account",
+        design_obj={"entity_label": "Account"},
+        attributes=_override_attrs(other, _mem()),
+        membership_a=other, membership_b=_mem(),
+    )
+    label_row = next(r for r in rows2 if r["attribute"] == "entity_label")
+    assert label_row["actionable"] is False
+
+
 def test_compare_existence_rollup(v2_env):
     """The payload carries one existence row per entity for the landing grid
     (REQ-368): design always present, instances reflect their membership."""
