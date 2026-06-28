@@ -1030,6 +1030,17 @@ class ProjectSchedulerConfig:
     # their pools share one repo lock so cross-PI git merges serialize. 1 = serial.
     max_parallel_pis: int = 1
     max_pis: int = 50  # backstop against a non-advancing PM loop
+    # REQ-423 / PI-364 — exclusive per-project build claim (heartbeat lease). When
+    # on, the runtime claims the project before driving it and refuses to start if
+    # another runtime holds a fresh lease, so concurrent runtimes cannot corrupt
+    # each other's in-flight work-task states. The runtime heartbeats the lease
+    # every ``heartbeat_seconds``; a claim older than ``claim_stale_seconds`` (a
+    # crashed runtime) is reclaimable. ``runtime_id`` identifies this runtime as
+    # the claimant (auto-generated when empty).
+    enforce_run_lock: bool = True
+    claim_stale_seconds: float = 300.0
+    heartbeat_seconds: float = 60.0
+    runtime_id: str = ""
     log: Callable[[str], None] = print
 
 
@@ -1040,6 +1051,9 @@ class ProjectRunReport:
     eligible_remaining: list[str] = field(default_factory=list)
     blocked_remaining: list[str] = field(default_factory=list)
     all_resolved: bool = False
+    # REQ-423: True when the run did not start because another runtime already
+    # holds a fresh build-run claim on this project.
+    refused: bool = False
 
 
 def select_next_pi(backlog: dict, attempted: dict) -> str | None:
@@ -1089,6 +1103,60 @@ class ProjectScheduler:
             self.config.engagement,
         )  # type: ignore[return-value]
 
+    # --- REQ-423: exclusive build-run claim (heartbeat lease) ---------------
+
+    @property
+    def _runtime_id(self) -> str:
+        if self.config.runtime_id:
+            return self.config.runtime_id
+        rid = getattr(self, "_rid", "")
+        if not rid:
+            import uuid
+
+            rid = f"projsched-{self.config.project}-{uuid.uuid4().hex[:12]}"
+            self._rid = rid
+        return rid
+
+    def _acquire_run_lock(self) -> bool:
+        """Claim this project's build run. True on success, False when a different
+        runtime holds a fresh lease (the refuse path)."""
+        cfg = self.config
+        try:
+            dispatcher._post(
+                cfg.api_base, f"/projects/{cfg.project}/claim", cfg.engagement,
+                {"claimed_by": self._runtime_id,
+                 "stale_seconds": cfg.claim_stale_seconds},
+            )
+            return True
+        except urllib.error.HTTPError as exc:
+            if exc.code == 409:
+                return False
+            raise
+
+    def _heartbeat_once(self) -> None:
+        cfg = self.config
+        dispatcher._post(
+            cfg.api_base, f"/projects/{cfg.project}/heartbeat", cfg.engagement,
+            {"claimed_by": self._runtime_id},
+        )
+
+    def _release_run_lock(self) -> None:
+        cfg = self.config
+        try:
+            dispatcher._post(
+                cfg.api_base, f"/projects/{cfg.project}/release", cfg.engagement,
+                {"claimed_by": self._runtime_id},
+            )
+        except Exception:  # best-effort — a lost/expired lease needs no release
+            pass
+
+    def _heartbeat_loop(self, stop: threading.Event) -> None:
+        while not stop.wait(self.config.heartbeat_seconds):
+            try:
+                self._heartbeat_once()
+            except Exception:  # transient error / lost lease — the run's own
+                pass           # writes will surface a genuine loss
+
     def _ado_cfg(self, pi: str, repo_lock: threading.Lock | None = None) -> AdoSchedulerConfig:
         c = self.config
         return AdoSchedulerConfig(
@@ -1136,45 +1204,71 @@ class ProjectScheduler:
     def run(self) -> ProjectRunReport:
         cfg = self.config
         report = ProjectRunReport(project=cfg.project)
-        attempted: dict[str, TaskStatus] = {}
-        # One repo lock shared by every PI's pool this run, so when PIs run in
-        # parallel their worktree/merge git ops still serialize across the repo.
-        shared_lock = threading.Lock()
 
-        for _ in range(cfg.max_pis):
-            backlog = self._backlog()
-            batch = eligible_batch(backlog, attempted, cfg.max_parallel_pis)
-            if not batch:
-                break
-            self.log(f"▶ PM: dispatching {batch}")
+        # REQ-423: claim the project's build run before driving it. If another
+        # runtime holds a fresh lease, refuse — do not corrupt its in-flight work.
+        if cfg.enforce_run_lock and not self._acquire_run_lock():
+            report.refused = True
+            self.log(
+                f"⏸ project {cfg.project} is already being driven by another "
+                f"runtime (fresh build-run claim) — refusing to start a second"
+            )
+            return report
 
-            if len(batch) == 1:
-                results = {batch[0]: self.pi_driver(self._ado_cfg(batch[0]))}
-            else:
-                results = {}
-                with ThreadPoolExecutor(max_workers=len(batch)) as ex:
-                    futs = {
-                        ex.submit(self.pi_driver, self._ado_cfg(pid, repo_lock=shared_lock)): pid
-                        for pid in batch
-                    }
-                    for fut in as_completed(futs):
-                        results[futs[fut]] = fut.result()
+        stop_heartbeat = threading.Event()
+        hb_thread: threading.Thread | None = None
+        if cfg.enforce_run_lock:
+            hb_thread = threading.Thread(
+                target=self._heartbeat_loop, args=(stop_heartbeat,), daemon=True
+            )
+            hb_thread.start()
 
-            # process in stable (batch) order for deterministic close-out.
-            for pid in batch:
-                pi_report = results[pid]
-                attempted[pid] = pi_report.status
-                report.driven.append({
-                    "planning_item": pid, "status": pi_report.status,
-                    "reason": pi_report.reason,
-                })
-                self._close_out(pid, pi_report)
+        try:
+            attempted: dict[str, TaskStatus] = {}
+            # One repo lock shared by every PI's pool this run, so when PIs run in
+            # parallel their worktree/merge git ops still serialize across the repo.
+            shared_lock = threading.Lock()
 
-        final = self._backlog()
-        report.eligible_remaining = final.get("eligible", [])
-        report.blocked_remaining = final.get("blocked", [])
-        report.all_resolved = final.get("all_resolved", False)
-        return report
+            for _ in range(cfg.max_pis):
+                backlog = self._backlog()
+                batch = eligible_batch(backlog, attempted, cfg.max_parallel_pis)
+                if not batch:
+                    break
+                self.log(f"▶ PM: dispatching {batch}")
+
+                if len(batch) == 1:
+                    results = {batch[0]: self.pi_driver(self._ado_cfg(batch[0]))}
+                else:
+                    results = {}
+                    with ThreadPoolExecutor(max_workers=len(batch)) as ex:
+                        futs = {
+                            ex.submit(self.pi_driver, self._ado_cfg(pid, repo_lock=shared_lock)): pid
+                            for pid in batch
+                        }
+                        for fut in as_completed(futs):
+                            results[futs[fut]] = fut.result()
+
+                # process in stable (batch) order for deterministic close-out.
+                for pid in batch:
+                    pi_report = results[pid]
+                    attempted[pid] = pi_report.status
+                    report.driven.append({
+                        "planning_item": pid, "status": pi_report.status,
+                        "reason": pi_report.reason,
+                    })
+                    self._close_out(pid, pi_report)
+
+            final = self._backlog()
+            report.eligible_remaining = final.get("eligible", [])
+            report.blocked_remaining = final.get("blocked", [])
+            report.all_resolved = final.get("all_resolved", False)
+            return report
+        finally:
+            stop_heartbeat.set()
+            if hb_thread is not None:
+                hb_thread.join(timeout=2)
+            if cfg.enforce_run_lock:
+                self._release_run_lock()
 
 
 # --------------------------------------------------------------------------

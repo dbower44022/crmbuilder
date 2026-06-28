@@ -35,6 +35,8 @@ _EXPECTED_COLUMNS = {
     "project_cancelled_at",
     "project_superseded_at",
     "project_execution_mode",
+    "project_claimed_by",
+    "project_claimed_at",
     "engagement_id",
 }
 
@@ -192,3 +194,59 @@ def test_list_status_filter(v2_env):
         ws.patch_project(s, "PRJ-001", status="in_flight")
         assert len(ws.list_projects(s, status="in_flight")) == 1
         assert len(ws.list_projects(s, status="planned")) == 1
+
+
+# ---------------------------------------------------------------------------
+# Build-run claim — the heartbeat lease (REQ-423 / PI-364)
+# ---------------------------------------------------------------------------
+
+
+def test_claim_is_exclusive_while_the_lease_is_fresh(v2_env):
+    with session_scope() as s:
+        pid = _make(s)["project_identifier"]
+        ws.claim_project(s, pid, claimed_by="runtime-A")
+        # a different runtime cannot take a fresh claim
+        with pytest.raises(ConflictError, match="being driven by"):
+            ws.claim_project(s, pid, claimed_by="runtime-B")
+        # the holder may re-claim (idempotent refresh)
+        out = ws.claim_project(s, pid, claimed_by="runtime-A")
+        assert out["project_claimed_by"] == "runtime-A"
+        assert out["project_claimed_at"] is not None
+
+
+def test_a_stale_claim_is_reclaimable(v2_env):
+    with session_scope() as s:
+        pid = _make(s)["project_identifier"]
+        ws.claim_project(s, pid, claimed_by="dead-runtime")
+        # with a 0s staleness window the existing lease is immediately stale, so a
+        # second runtime reclaims it (the crashed-runtime recovery path).
+        out = ws.claim_project(s, pid, claimed_by="runtime-B", stale_seconds=0)
+        assert out["project_claimed_by"] == "runtime-B"
+
+
+def test_heartbeat_refreshes_only_for_the_holder(v2_env):
+    with session_scope() as s:
+        pid = _make(s)["project_identifier"]
+        first = ws.claim_project(s, pid, claimed_by="runtime-A")["project_claimed_at"]
+        beat = ws.heartbeat_project(s, pid, claimed_by="runtime-A")
+        assert beat["project_claimed_at"] >= first
+        # a non-holder's heartbeat fails — it learns the claim was lost
+        with pytest.raises(ConflictError, match="no longer claimed"):
+            ws.heartbeat_project(s, pid, claimed_by="runtime-B")
+
+
+def test_release_clears_the_claim_and_force_overrides(v2_env):
+    with session_scope() as s:
+        pid = _make(s)["project_identifier"]
+        ws.claim_project(s, pid, claimed_by="runtime-A")
+        # a non-holder cannot release without force
+        with pytest.raises(ConflictError, match="not 'runtime-B'"):
+            ws.release_project(s, pid, claimed_by="runtime-B")
+        # the holder releases cleanly; a re-claim by anyone now succeeds
+        out = ws.release_project(s, pid, claimed_by="runtime-A")
+        assert out["project_claimed_by"] is None
+        assert out["project_claimed_at"] is None
+        ws.claim_project(s, pid, claimed_by="runtime-B")
+        # force lets an operator clear a foreign claim (confirmed-dead run)
+        forced = ws.release_project(s, pid, claimed_by="operator", force=True)
+        assert forced["project_claimed_by"] is None

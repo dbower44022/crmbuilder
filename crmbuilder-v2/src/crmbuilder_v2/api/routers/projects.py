@@ -16,8 +16,10 @@ from crmbuilder_v2.access.repositories import pm, projects
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
+    ProjectClaimIn,
     ProjectCreateIn,
     ProjectPatchIn,
+    ProjectReleaseIn,
     ProjectReplaceIn,
 )
 
@@ -135,3 +137,31 @@ def delete(identifier: str):
 def restore(identifier: str):
     with writable_session() as s:
         return ok(projects.restore_project(s, identifier))
+
+
+@router.post("/{identifier}/claim")
+def claim(identifier: str, body: ProjectClaimIn):
+    """Acquire the exclusive build-run claim (heartbeat lease) — REQ-423."""
+    kwargs = {"claimed_by": body.claimed_by}
+    if body.stale_seconds is not None:
+        kwargs["stale_seconds"] = body.stale_seconds
+    with writable_session() as s:
+        return ok(projects.claim_project(s, identifier, **kwargs))
+
+
+@router.post("/{identifier}/heartbeat")
+def heartbeat(identifier: str, body: ProjectClaimIn):
+    """Refresh the build-run lease while still held — REQ-423."""
+    with writable_session() as s:
+        return ok(projects.heartbeat_project(s, identifier, claimed_by=body.claimed_by))
+
+
+@router.post("/{identifier}/release")
+def release(identifier: str, body: ProjectReleaseIn):
+    """Release the build-run claim — REQ-423."""
+    with writable_session() as s:
+        return ok(
+            projects.release_project(
+                s, identifier, claimed_by=body.claimed_by, force=body.force
+            )
+        )

@@ -841,6 +841,7 @@ def _pi_driver(backlog, outcomes=None):
 
 def _pm_cfg(**kw):
     kw.setdefault("log", lambda _m: None)
+    kw.setdefault("enforce_run_lock", False)  # PM tests don't exercise the lock
     return ProjectSchedulerConfig(project="PRJ-9", **kw)
 
 
@@ -849,6 +850,50 @@ def test_pm_dispatches_all_independent_eligible_pis():
     pm = _FakePm(bl, config=_pm_cfg(), pi_driver=_pi_driver(bl))
     report = pm.run()
     assert [d["planning_item"] for d in report.driven] == ["PI-1", "PI-2"]
+
+
+def test_run_refuses_when_another_runtime_holds_the_claim():
+    # REQ-423: a runtime that cannot acquire the project's build-run claim refuses
+    # to start — it would otherwise corrupt the holder's in-flight work tasks.
+    bl = _Backlog({"PI-1": "Ready"})
+
+    class _Refused(_FakePm):
+        def _acquire_run_lock(self):
+            return False
+
+    pm = _Refused(bl, config=_pm_cfg(enforce_run_lock=True), pi_driver=_pi_driver(bl))
+    report = pm.run()
+    assert report.refused is True
+    assert report.driven == []           # nothing was driven
+    assert bl.pis["PI-1"] == "Ready"      # the backlog was untouched
+
+
+def test_run_acquires_then_releases_the_claim():
+    # REQ-423: with the lock on, the runtime claims before driving and releases in
+    # the finally (even though the work itself completes normally).
+    bl = _Backlog({"PI-1": "Ready"})
+    calls: list[str] = []
+
+    class _Locked(_FakePm):
+        def _acquire_run_lock(self):
+            calls.append("acquire")
+            return True
+
+        def _heartbeat_once(self):
+            calls.append("hb")
+
+        def _release_run_lock(self):
+            calls.append("release")
+
+    pm = _Locked(
+        bl, config=_pm_cfg(enforce_run_lock=True, heartbeat_seconds=0.01),
+        pi_driver=_pi_driver(bl),
+    )
+    report = pm.run()
+    assert report.refused is False
+    assert calls[0] == "acquire"
+    assert calls[-1] == "release"  # released in the finally, after the run
+    assert [d["planning_item"] for d in report.driven] == ["PI-1"]
     assert all(d["status"] is TaskStatus.SUCCEEDED for d in report.driven)
     assert report.eligible_remaining == []  # both at In Review, none re-eligible
 
