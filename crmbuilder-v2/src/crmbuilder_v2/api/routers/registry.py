@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from crmbuilder_v2.access import skill_scan
 from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.repositories import (
     agent_profiles,
@@ -35,6 +36,7 @@ from crmbuilder_v2.api.schemas import (
     LearningPromoteSkillIn,
     LearningUpdateIn,
     SkillCreateIn,
+    SkillScanIn,
     SkillUpdateIn,
 )
 
@@ -200,6 +202,14 @@ def get_skill(identifier: str):
 def create_skill(body: SkillCreateIn):
     with writable_session() as s:
         return ok(skills.create(s, **body.model_dump()))
+
+
+@skills_router.post("/scan", status_code=201)
+def scan_skills(body: SkillScanIn | None = None):
+    """Scan local SKILL.md definitions and import each as a registry skill (REQ-421)."""
+    body = body or SkillScanIn()
+    with writable_session() as s:
+        return ok(skill_scan.scan_and_import(s, roots=body.roots, scope=body.scope))
 
 
 @skills_router.patch("/{identifier}")
