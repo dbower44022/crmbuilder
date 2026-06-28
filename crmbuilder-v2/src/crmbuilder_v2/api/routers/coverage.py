@@ -56,3 +56,17 @@ def capability_coverage(
     cutoff = _resolve_since(since)
     with readonly_session() as s:
         return ok(coverage.capability_coverage(s, since=cutoff))
+
+
+@router.get("/provenance")
+def provenance_gaps():
+    """Audit-deposit provenance gaps for the active engagement (REQ-339).
+
+    Returns the live design records (entities, fields, personas) with no
+    inbound ``deposit_event_wrote_record`` edge — candidates that entered the
+    design without a traceable link to the audit deposit that produced them,
+    which the migration-mapping model rejects as a source. Surfaces the gap
+    rather than letting it pass silently.
+    """
+    with readonly_session() as s:
+        return ok(coverage.provenance_gaps(s))

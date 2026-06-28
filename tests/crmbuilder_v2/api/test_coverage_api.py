@@ -143,3 +143,30 @@ def test_past_cutoff_keeps_gaps_live(client):
 def test_malformed_cutoff_is_rejected(client):
     r = client.get("/coverage/capabilities", params={"since": "not-a-date"})
     assert r.status_code == 422, r.text
+
+
+# -- provenance gaps (REQ-339 / PI-299) ----------------------------------
+
+
+def test_provenance_report_flags_then_clears_unprovenanced_entity(client):
+    r = client.post(
+        "/entities",
+        json={"entity_name": "Orphaned", "entity_description": "no provenance"},
+    )
+    assert r.status_code == 201, r.text
+    ent = r.json()["data"]["entity_identifier"]
+
+    rep = client.get("/coverage/provenance")
+    assert rep.status_code == 200, rep.text
+    data = rep.json()["data"]
+    assert ent in data["unprovenanced"]["entities"]
+    assert data["clean"] is False
+
+    # Once it carries a deposit_event_wrote_record edge it leaves the report.
+    edge = _ref(
+        client, "deposit_event", "DEP-001", "entity", ent,
+        "deposit_event_wrote_record",
+    )
+    assert edge.status_code == 201, edge.text
+    cleared = client.get("/coverage/provenance").json()["data"]
+    assert ent not in cleared["unprovenanced"]["entities"]

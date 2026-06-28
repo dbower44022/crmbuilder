@@ -40,6 +40,9 @@ from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.models import (
     Conversation,
+    Entity,
+    Field,
+    Persona,
     PlanningItem,
     Reference,
     Requirement,
@@ -47,6 +50,7 @@ from crmbuilder_v2.access.models import (
 
 _IMPLEMENTS = "planning_item_implements_requirement"
 _DEFINED_IN = "requirement_defined_in_conversation"
+_WROTE_RECORD = "deposit_event_wrote_record"
 
 
 def _as_naive(value: object) -> datetime | None:
@@ -181,4 +185,46 @@ def capability_coverage(session: Session, *, since: datetime | None = None) -> d
             "unbuilt_requirements": len(req_base),
             "conversations_without_requirement": len(conv_base),
         },
+    }
+
+
+def provenance_gaps(session: Session) -> dict:
+    """Audit-discovered design records lacking deposit provenance (REQ-339).
+
+    Every record the audit deposits should carry an inbound
+    ``deposit_event_wrote_record`` edge to the deposit that produced it, so it
+    is traceable to its source observation and usable as a migration source.
+    This reports the live design records (entities, fields, personas) in the
+    active engagement that have no such edge — candidates that entered the
+    design without provenance — so the gap is surfaced and reported rather than
+    silently accepted. Engagement-scoped via the ORM execute hook.
+
+    :returns: ``{provenanced_records, unprovenanced: {entities, fields,
+        personas}, unprovenanced_count, clean}``.
+    """
+    provenanced: set[str] = set(
+        session.scalars(
+            select(Reference.target_id).where(
+                Reference.relationship_kind == _WROTE_RECORD
+            )
+        ).all()
+    )
+    gaps: dict[str, list[str]] = {"entities": [], "fields": [], "personas": []}
+    specs = (
+        (Entity.entity_identifier, Entity.entity_deleted_at, "entities"),
+        (Field.field_identifier, Field.field_deleted_at, "fields"),
+        (Persona.persona_identifier, Persona.persona_deleted_at, "personas"),
+    )
+    for ident_col, deleted_col, key in specs:
+        for ident in session.scalars(
+            select(ident_col).where(deleted_col.is_(None)).order_by(ident_col)
+        ).all():
+            if ident not in provenanced:
+                gaps[key].append(ident)
+    total = sum(len(v) for v in gaps.values())
+    return {
+        "provenanced_records": len(provenanced),
+        "unprovenanced": gaps,
+        "unprovenanced_count": total,
+        "clean": total == 0,
     }
