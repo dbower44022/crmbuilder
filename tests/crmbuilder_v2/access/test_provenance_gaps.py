@@ -72,3 +72,46 @@ def test_soft_deleted_records_are_not_flagged(v2_env):
         report = coverage.provenance_gaps(s)
 
     assert "ENT-020" not in report["unprovenanced"]["entities"]
+
+
+def test_baseline_cutoff_excuses_legacy_records(v2_env):
+    """A ``since`` cutoff counts pre-cutoff un-provenanced records as legacy
+    baseline debt, while post-cutoff ones stay live gaps (REQ-339 / Option B)."""
+    from datetime import datetime
+
+    with session_scope() as s:
+        s.add(Entity(
+            entity_identifier="ENT-100", entity_name="Legacy",
+            entity_description="d", entity_created_at=datetime(2026, 1, 1),
+        ))
+        s.add(Entity(
+            entity_identifier="ENT-101", entity_name="New",
+            entity_description="d", entity_created_at=datetime(2026, 12, 1),
+        ))
+        s.flush()
+
+    with session_scope() as s:
+        rep = coverage.provenance_gaps(s, since=datetime(2026, 6, 1))
+
+    assert "ENT-100" not in rep["unprovenanced"]["entities"]  # legacy, excused
+    assert "ENT-101" in rep["unprovenanced"]["entities"]       # live gap
+    assert rep["baseline_summary"]["entities"] >= 1
+    assert rep["baseline_since"] is not None
+
+
+def test_no_cutoff_counts_all_as_live(v2_env):
+    """Without a cutoff every un-provenanced record is a live gap."""
+    from datetime import datetime
+
+    with session_scope() as s:
+        s.add(Entity(
+            entity_identifier="ENT-110", entity_name="Old",
+            entity_description="d", entity_created_at=datetime(2026, 1, 1),
+        ))
+        s.flush()
+
+    with session_scope() as s:
+        rep = coverage.provenance_gaps(s)  # since=None
+
+    assert "ENT-110" in rep["unprovenanced"]["entities"]
+    assert rep["baseline_summary"] == {"entities": 0, "fields": 0, "personas": 0}

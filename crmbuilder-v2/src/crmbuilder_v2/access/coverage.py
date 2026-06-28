@@ -188,7 +188,7 @@ def capability_coverage(session: Session, *, since: datetime | None = None) -> d
     }
 
 
-def provenance_gaps(session: Session) -> dict:
+def provenance_gaps(session: Session, *, since: datetime | None = None) -> dict:
     """Audit-discovered design records lacking deposit provenance (REQ-339).
 
     Every record the audit deposits should carry an inbound
@@ -199,8 +199,13 @@ def provenance_gaps(session: Session) -> dict:
     design without provenance — so the gap is surfaced and reported rather than
     silently accepted. Engagement-scoped via the ORM execute hook.
 
+    With a ``since`` cutoff, records created before it that lack provenance are
+    counted as pre-capability legacy debt (``baseline_summary``) rather than
+    live gaps — the same baseline-cutoff stance as :func:`capability_coverage`.
+
     :returns: ``{provenanced_records, unprovenanced: {entities, fields,
-        personas}, unprovenanced_count, clean}``.
+        personas}, unprovenanced_count, clean, baseline_since,
+        baseline_summary}``.
     """
     provenanced: set[str] = set(
         session.scalars(
@@ -210,16 +215,28 @@ def provenance_gaps(session: Session) -> dict:
         ).all()
     )
     gaps: dict[str, list[str]] = {"entities": [], "fields": [], "personas": []}
+    baseline: dict[str, int] = {"entities": 0, "fields": 0, "personas": 0}
     specs = (
-        (Entity.entity_identifier, Entity.entity_deleted_at, "entities"),
-        (Field.field_identifier, Field.field_deleted_at, "fields"),
-        (Persona.persona_identifier, Persona.persona_deleted_at, "personas"),
+        (Entity.entity_identifier, Entity.entity_deleted_at,
+         Entity.entity_created_at, "entities"),
+        (Field.field_identifier, Field.field_deleted_at,
+         Field.field_created_at, "fields"),
+        (Persona.persona_identifier, Persona.persona_deleted_at,
+         Persona.persona_created_at, "personas"),
     )
-    for ident_col, deleted_col, key in specs:
-        for ident in session.scalars(
-            select(ident_col).where(deleted_col.is_(None)).order_by(ident_col)
-        ).all():
-            if ident not in provenanced:
+    for ident_col, deleted_col, created_col, key in specs:
+        rows = session.execute(
+            select(ident_col, created_col)
+            .where(deleted_col.is_(None))
+            .order_by(ident_col)
+        ).all()
+        for ident, created in rows:
+            if ident in provenanced:
+                continue
+            if since is not None and _as_naive(created) is not None \
+                    and _as_naive(created) < since:
+                baseline[key] += 1
+            else:
                 gaps[key].append(ident)
     total = sum(len(v) for v in gaps.values())
     return {
@@ -227,4 +244,6 @@ def provenance_gaps(session: Session) -> dict:
         "unprovenanced": gaps,
         "unprovenanced_count": total,
         "clean": total == 0,
+        "baseline_since": since.isoformat() if since else None,
+        "baseline_summary": baseline,
     }

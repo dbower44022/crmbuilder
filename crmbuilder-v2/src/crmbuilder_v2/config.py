@@ -175,6 +175,33 @@ class Settings(BaseSettings):
             ) from exc
         return value.strip()
 
+    # Deposit-provenance cutoff (REQ-339): design records created before this
+    # date that lack an audit-deposit (deposit_event_wrote_record) link are
+    # counted as pre-capability legacy debt rather than live gaps. Empty = no
+    # cutoff. A ``?since=`` query param overrides it. Binds from
+    # ``CRMBUILDER_V2_PROVENANCE_DEPOSIT_BASELINE``.
+    provenance_deposit_baseline: str = ""
+
+    @field_validator("provenance_deposit_baseline", mode="before")
+    @classmethod
+    def _validate_provenance_deposit_baseline(cls, value: object) -> object:
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            return ""
+        if not isinstance(value, str):
+            raise ValueError(
+                "CRMBUILDER_V2_PROVENANCE_DEPOSIT_BASELINE must be a string"
+            )
+        from datetime import datetime
+
+        try:
+            datetime.fromisoformat(value.strip())
+        except ValueError as exc:
+            raise ValueError(
+                "CRMBUILDER_V2_PROVENANCE_DEPOSIT_BASELINE must be ISO-8601 "
+                "(e.g. 2026-06-28 or 2026-06-28T00:00:00)"
+            ) from exc
+        return value.strip()
+
     # PI-β follow-on A1: the MCP server names the active engagement on its
     # REST calls via the ``X-Engagement`` header, mirroring the desktop. When
     # set (to an ``ENG-NNN`` identifier or an engagement code such as
