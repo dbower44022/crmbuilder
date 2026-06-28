@@ -265,6 +265,43 @@ def phase_post_install(
     if exit_code != 0:
         return False, "Docker containers not running", None
 
+    compose = "/var/www/espocrm/docker-compose.yml"
+
+    # REQ-328: ensure the custom metadata tree is owned by the web server
+    # user. Docker COPY bakes the image as root, and later root-run ops can
+    # leave custom/Espo/Custom/Resources root-owned — which silently blocks
+    # all custom-entity creation (www-data can't write the metadata files,
+    # createEntity 500s). Mirror the in-place upgrade flow's chown so a fresh
+    # instance starts with a writable custom tree.
+    log("Ensuring custom metadata tree is owned by www-data...", "info")
+    chown_cmd = (
+        f"docker compose -f {compose} exec -T -u root espocrm sh -c "
+        "'mkdir -p /var/www/html/custom/Espo/Custom/Resources && "
+        "chown -R www-data:www-data /var/www/html/custom'"
+    )
+    run_remote(ssh, chown_cmd, log)
+
+    # REQ-329: deploy pre-flight — verify www-data can actually write the
+    # custom metadata directory before the instance is used to apply
+    # configuration. Fail fast with an actionable diagnostic rather than
+    # letting the first custom-entity create fail with an opaque HTTP 500
+    # and leave an orphaned half-created entity.
+    log("Verifying custom metadata directory is writable by www-data...", "info")
+    writable_cmd = (
+        f"docker compose -f {compose} exec -T -u www-data espocrm sh -c "
+        "'d=/var/www/html/custom/Espo/Custom/Resources; "
+        "touch \"$d/.crmbuilder_write_test\" && rm -f \"$d/.crmbuilder_write_test\"'"
+    )
+    w_exit, _ = run_remote(ssh, writable_cmd, log)
+    if w_exit != 0:
+        return False, (
+            "Custom metadata directory is not writable by the web server "
+            "user (www-data) at /var/www/html/custom/Espo/Custom/Resources — "
+            "custom-entity creation would fail. Remedy: docker compose -f "
+            f"{compose} exec -u root espocrm chown -R www-data:www-data "
+            "/var/www/html/custom"
+        ), None
+
     log("Checking cron configuration...", "info")
     run_remote(ssh, "crontab -l 2>/dev/null | grep espocrm", log)
 

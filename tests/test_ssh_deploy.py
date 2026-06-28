@@ -304,6 +304,10 @@ def test_phase_post_install_reads_cert_from_disk():
         captured.append(command)
         if "docker compose" in command and "ps" in command:
             return 0, "espocrm-nginx Up"
+        if "chown -R www-data" in command:
+            return 0, ""
+        if "crmbuilder_write_test" in command:
+            return 0, ""
         if "crontab" in command:
             return 0, "* * * * * espocrm-cron"
         if "openssl x509 -in" in command:
@@ -341,6 +345,10 @@ def test_phase_post_install_logs_path_on_cert_read_failure():
     def fake_run_remote(_ssh, command, *args, **kwargs):
         if "docker compose" in command and "ps" in command:
             return 0, "espocrm-nginx Up"
+        if "chown -R www-data" in command:
+            return 0, ""
+        if "crmbuilder_write_test" in command:
+            return 0, ""
         if "crontab" in command:
             return 0, "* * * * * espocrm-cron"
         if "openssl x509 -in" in command:
@@ -360,6 +368,67 @@ def test_phase_post_install_logs_path_on_cert_read_failure():
     ), msgs
 
 
+# ── phase_post_install: custom-tree ownership + writability (REQ-328/329) ──
+
+
+def test_phase_post_install_chowns_custom_tree_to_www_data():
+    """REQ-328: post-install chowns the custom metadata tree to www-data so a
+    fresh instance cannot silently block custom-entity creation."""
+    ssh = MagicMock()
+    log, _ = _capture_log()
+    config = _make_self_hosted_config()
+    captured: list[str] = []
+
+    def fake_run_remote(_ssh, command, *args, **kwargs):
+        captured.append(command)
+        if "docker compose" in command and "ps" in command:
+            return 0, "espocrm-nginx Up"
+        if "chown -R www-data" in command:
+            return 0, ""
+        if "crmbuilder_write_test" in command:
+            return 0, ""
+        if "crontab" in command:
+            return 0, "* * * * * espocrm-cron"
+        if "openssl x509 -in" in command:
+            return 0, "notAfter=Aug  2 12:00:00 2026 GMT"
+        raise AssertionError(f"unexpected command: {command}")
+
+    with patch.object(ssh_deploy, "run_remote", side_effect=fake_run_remote):
+        success, error, _ = ssh_deploy.phase_post_install(ssh, config, log)
+
+    assert success is True and error == ""
+    assert any(
+        "chown -R www-data:www-data /var/www/html/custom" in c
+        for c in captured
+    ), captured
+
+
+def test_phase_post_install_aborts_when_custom_dir_unwritable():
+    """REQ-329: if the custom metadata directory is not writable by www-data,
+    the deploy fails fast with a diagnostic naming the path and the remedy."""
+    ssh = MagicMock()
+    log, _ = _capture_log()
+    config = _make_self_hosted_config()
+
+    def fake_run_remote(_ssh, command, *args, **kwargs):
+        if "docker compose" in command and "ps" in command:
+            return 0, "espocrm-nginx Up"
+        if "chown -R www-data" in command:
+            return 0, ""
+        if "crmbuilder_write_test" in command:
+            return 1, "Permission denied"  # still not writable
+        raise AssertionError(f"unexpected command: {command}")
+
+    with patch.object(ssh_deploy, "run_remote", side_effect=fake_run_remote):
+        success, error, cert = ssh_deploy.phase_post_install(ssh, config, log)
+
+    assert success is False
+    assert cert is None
+    assert "/var/www/html/custom/Espo/Custom/Resources" in error
+    assert "www-data" in error
+    assert "chown" in error  # the remedy
+
+
 def test_phase_post_install_returns_none_expiry_on_read_failure():
     """A failed cert read still completes the phase successfully (it's
     a warning, not a fatal error) but returns None as the cert_expiry."""
@@ -370,6 +439,10 @@ def test_phase_post_install_returns_none_expiry_on_read_failure():
     def fake_run_remote(_ssh, command, *args, **kwargs):
         if "docker compose" in command and "ps" in command:
             return 0, "espocrm-nginx Up"
+        if "chown -R www-data" in command:
+            return 0, ""
+        if "crmbuilder_write_test" in command:
+            return 0, ""
         if "crontab" in command:
             return 0, "* * * * * espocrm-cron"
         if "openssl x509 -in" in command:
