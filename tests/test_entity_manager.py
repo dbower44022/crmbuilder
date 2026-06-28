@@ -69,6 +69,8 @@ def test_create_entity_api_error():
     client = MagicMock()
     client.check_entity_exists.return_value = (200, False)
     client.create_entity.return_value = (500, {"message": "Internal error"})
+    # A 500 triggers orphan recovery (REQ-330); nothing to remove here.
+    client.remove_entity.return_value = (404, None)
 
     manager, output_log = make_manager(client)
     entity = make_entity("Engagement", EntityAction.CREATE)
@@ -77,6 +79,58 @@ def test_create_entity_api_error():
     assert result is False
     messages = [msg for msg, _ in output_log]
     assert any("ERROR" in msg for msg in messages)
+
+
+def test_create_entity_server_error_recovers_orphan():
+    """REQ-330: a 500 mid-create attempts to remove the orphaned half-created
+    entity so the name can be reused, and rebuilds when removal succeeds."""
+    client = MagicMock()
+    client.check_entity_exists.return_value = (200, False)
+    client.create_entity.return_value = (500, {"message": "Internal error"})
+    client.remove_entity.return_value = (200, {})
+
+    manager, output_log = make_manager(client)
+    result = manager.process_entity(make_entity("Engagement", EntityAction.CREATE))
+
+    assert result is False
+    client.remove_entity.assert_called_once_with("CEngagement")
+    client.rebuild.assert_called_once()
+    messages = [msg for msg, _ in output_log]
+    assert any("RECOVER" in m and "free to retry" in m for m in messages), messages
+
+
+def test_create_entity_unremovable_orphan_reports_remediation():
+    """REQ-330: when the orphan can't be auto-removed (e.g. HTTP 403, no scope
+    metadata), report the container-level remediation rather than leave the
+    operator stuck."""
+    client = MagicMock()
+    client.check_entity_exists.return_value = (200, False)
+    client.create_entity.return_value = (500, {"message": "Internal error"})
+    client.remove_entity.return_value = (403, None)
+
+    manager, output_log = make_manager(client)
+    manager.process_entity(make_entity("Engagement", EntityAction.CREATE))
+
+    client.rebuild.assert_not_called()
+    messages = [msg for msg, _ in output_log]
+    assert any(
+        "RECOVER" in m and "www-data" in m and "Controllers/CEngagement.php" in m
+        for m in messages
+    ), messages
+
+
+def test_create_entity_client_error_skips_orphan_recovery():
+    """REQ-330: a 4xx (validation) create error creates nothing, so no orphan
+    recovery is attempted."""
+    client = MagicMock()
+    client.check_entity_exists.return_value = (200, False)
+    client.create_entity.return_value = (422, {"message": "bad request"})
+
+    manager, _ = make_manager(client)
+    result = manager.process_entity(make_entity("Engagement", EntityAction.CREATE))
+
+    assert result is False
+    client.remove_entity.assert_not_called()
 
 
 def test_delete_entity_success():
@@ -150,6 +204,7 @@ def test_create_entity_non_json_response_surfaces_raw_text():
             "_status_code": 500,
         },
     )
+    client.remove_entity.return_value = (404, None)  # 500 → orphan recovery
 
     manager, output_log = make_manager(client)
     entity = make_entity("Engagement", EntityAction.CREATE)

@@ -291,4 +291,41 @@ class EntityManager:
             f"[CREATE]  {espo_name} ... ERROR (HTTP {status_code})", "red"
         )
         self.output_fn(f"          {_format_error_detail(body)}", "red")
+        # REQ-330: a server-side failure mid-create can leave an orphaned
+        # half-created entity (name reserved, no usable metadata). Validation
+        # errors (4xx) create nothing, so only recover on a server error.
+        if status_code >= 500:
+            self._recover_orphaned_entity(espo_name)
         return False
+
+    def _recover_orphaned_entity(self, espo_name: str) -> None:
+        """Detect and recover an orphaned half-created entity (REQ-330).
+
+        A server error mid-create can leave the entity name reserved with no
+        usable metadata, so a re-run fails with HTTP 409 and the name is
+        stranded. Attempt to remove it so the name can be reused; if the
+        platform refuses (no scope metadata to act on), report the
+        container-level remediation rather than leaving the operator stuck.
+
+        :param espo_name: EspoCRM internal (C-prefixed) entity name.
+        """
+        self.output_fn(
+            f"[RECOVER] {espo_name} ... checking for an orphaned half-created "
+            f"entity after the failed create ...", "yellow"
+        )
+        status_code, _ = self.client.remove_entity(espo_name)
+        if status_code == 200:
+            self.client.rebuild()
+            self.output_fn(
+                f"[RECOVER] {espo_name} ... removed the orphaned entity; the "
+                f"name is free to retry.", "yellow"
+            )
+        else:
+            self.output_fn(
+                f"[RECOVER] {espo_name} ... could not auto-remove (HTTP "
+                f"{status_code}); the name may be reserved with no usable "
+                f"metadata. Clean up on the container: ensure "
+                f"custom/Espo/Custom/Resources is owned by www-data, remove "
+                f"custom/Espo/Custom/Controllers/{espo_name}.php, then rebuild.",
+                "yellow",
+            )
