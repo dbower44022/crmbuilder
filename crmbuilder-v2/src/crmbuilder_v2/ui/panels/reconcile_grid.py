@@ -30,13 +30,18 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.panels.reconcile_models import (
+    LOCATION_LABELS,
     RECORD_ROLE,
     EntityDetailModel,
     ExistenceGridModel,
+    plan_apply,
 )
 from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _log = logging.getLogger(__name__)
+
+#: Recorded as the transaction actor for desktop-driven reconcile actions.
+_ACTOR = "desktop"
 
 _PRIMARY = (
     "QPushButton { background-color: #1565C0; color: white; border-radius: 4px; "
@@ -63,11 +68,11 @@ class _ExistenceFilterProxy(QSortFilterProxyModel):
 
     def set_attention_only(self, on: bool) -> None:
         self._attention_only = on
-        self.invalidateRowsFilter()
+        self.invalidate()
 
     def set_differing(self, ids: set[str]) -> None:
         self._differing = set(ids)
-        self.invalidateRowsFilter()
+        self.invalidate()
 
     def filterAcceptsRow(  # noqa: N802
         self, source_row: int, source_parent: QModelIndex
@@ -150,6 +155,22 @@ class ReconcileGridPanel(QWidget):
         hint = QLabel("Double-click an entity to see its differences.")
         hint.setStyleSheet("color: #9E9E9E;")
         lay.addWidget(hint)
+
+        # Whole-entity promote (REQ-369): copy the selected entity + its supported
+        # configuration to instances where it is missing or differs.
+        promote = QHBoxLayout()
+        promote.addWidget(QLabel("Copy selected entity to:"))
+        self._promote_a = QCheckBox("Instance A")
+        self._promote_b = QCheckBox("Instance B")
+        promote.addWidget(self._promote_a)
+        promote.addWidget(self._promote_b)
+        copy_btn = QPushButton("Copy entity")
+        copy_btn.setStyleSheet(_SECONDARY)
+        copy_btn.setObjectName("reconcile_promote_button")
+        copy_btn.clicked.connect(self._on_promote_entity)
+        promote.addWidget(copy_btn)
+        promote.addStretch()
+        lay.addLayout(promote)
         return page
 
     def _build_detail_view(self) -> QWidget:
@@ -176,6 +197,34 @@ class ReconcileGridPanel(QWidget):
         self._detail.setUniformRowHeights(True)
         self._detail.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
         lay.addWidget(self._detail)
+
+        # Unified apply (REQ-371/372): pick where the correct value lives and where
+        # to bring it; applies to every selected, supported difference.
+        apply_bar = QHBoxLayout()
+        apply_bar.addWidget(QLabel("Correct value is in:"))
+        self._source_combo = QComboBox()
+        self._source_combo.setObjectName("reconcile_source_combo")
+        apply_bar.addWidget(self._source_combo)
+        apply_bar.addWidget(QLabel("Bring into line:"))
+        self._target_design = QCheckBox("Master design")
+        self._target_a = QCheckBox("Instance A")
+        self._target_b = QCheckBox("Instance B")
+        for chk in (self._target_design, self._target_a, self._target_b):
+            apply_bar.addWidget(chk)
+        apply_btn = QPushButton("Apply")
+        apply_btn.setStyleSheet(_PRIMARY)
+        apply_btn.setObjectName("reconcile_apply_button")
+        apply_btn.clicked.connect(self._on_apply)
+        apply_bar.addWidget(apply_btn)
+        apply_bar.addStretch()
+        lay.addLayout(apply_bar)
+
+        self._apply_status = QLabel(
+            "Select one or more differences, choose the source and targets, then Apply."
+        )
+        self._apply_status.setStyleSheet("color: #757575;")
+        self._apply_status.setWordWrap(True)
+        lay.addWidget(self._apply_status)
         return page
 
     # ------------------------------------------------------------------ data
@@ -224,6 +273,15 @@ class ReconcileGridPanel(QWidget):
 
     def _populate(self, a: str, b: str) -> None:
         a_label, b_label = self._instance_label(a), self._instance_label(b)
+        # Relabel the apply/promote controls with the chosen instances (REQ-374).
+        self._source_combo.clear()
+        self._source_combo.addItem(LOCATION_LABELS["design"], "design")
+        self._source_combo.addItem(a_label, "instance_a")
+        self._source_combo.addItem(b_label, "instance_b")
+        self._target_a.setText(a_label)
+        self._target_b.setText(b_label)
+        self._promote_a.setText(a_label)
+        self._promote_b.setText(b_label)
         self._groups_by_entity = {
             g["entity_identifier"]: g
             for g in self._payload.get("groups", [])
@@ -270,3 +328,148 @@ class ReconcileGridPanel(QWidget):
             self._detail_title.setText(f"{name} — no differences found")
         self._detail.expandAll()
         self._stack.setCurrentIndex(1)
+
+    # ------------------------------------------------------------------ apply
+    def _loc_instance(self, loc: str) -> str | None:
+        """Resolve a location key to a concrete instance identifier (None=design)."""
+        if loc == "instance_a":
+            return self._combo_a.currentData()
+        if loc == "instance_b":
+            return self._combo_b.currentData()
+        return None
+
+    def _selected_diff_rows(self) -> list[dict[str, Any]]:
+        """The difference rows currently selected in the detail tree (leaves only)."""
+        rows: list[dict[str, Any]] = []
+        seen: set[int] = set()
+        for idx in self._detail.selectionModel().selectedIndexes():
+            if idx.column() != 0:
+                continue
+            rec = self._detail_model.data(idx, RECORD_ROLE)
+            if isinstance(rec, dict) and rec.get("member_type") and id(rec) not in seen:
+                seen.add(id(rec))
+                rows.append(rec)
+        return rows
+
+    def _on_apply(self) -> None:
+        rows = self._selected_diff_rows()
+        if not rows:
+            CopyableMessageBox.information(
+                self, "Reconcile", "Select one or more differences first."
+            )
+            return
+        source_loc = self._source_combo.currentData()
+        targets = [
+            loc for loc, chk in (
+                ("design", self._target_design),
+                ("instance_a", self._target_a),
+                ("instance_b", self._target_b),
+            ) if chk.isChecked()
+        ]
+        if not targets:
+            CopyableMessageBox.information(
+                self, "Reconcile", "Choose at least one location to bring into line."
+            )
+            return
+
+        applied = 0
+        skipped: list[str] = []
+        errors: list[str] = []
+        for row in rows:
+            label = row.get("member_name") or row.get("member_identifier") or "?"
+            plan = plan_apply(row, source_loc, targets)
+            for reason in plan["skipped"]:
+                skipped.append(f"{label}: {reason}")
+            for op in plan["ops"]:
+                try:
+                    self._execute_op(row, op)
+                    applied += 1
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(f"{label}: {op['kind']} failed — {exc}")
+
+        self._report_apply(applied, skipped, errors)
+        # Refresh the comparison so the surface reflects the new state.
+        self._on_compare()
+
+    def _execute_op(self, row: dict[str, Any], op: dict[str, str]) -> None:
+        """Run one capture/publish operation against the API."""
+        member_type = row["member_type"]
+        mid = row["member_identifier"]
+        attribute = row.get("attribute")
+        if op["kind"] == "capture":
+            instance = self._loc_instance(op["location"])
+            if member_type == "entity":
+                self._client.reconcile_capture_setting(
+                    instance=instance, entity_identifier=mid,
+                    attribute=attribute, actor=_ACTOR,
+                )
+            else:
+                self._client.reconcile_capture(
+                    instance=instance, field_identifier=mid,
+                    attribute=attribute, actor=_ACTOR,
+                )
+        else:  # publish
+            instance = self._loc_instance(op["location"])
+            self._client.reconcile_publish(
+                instance=instance, member_type=member_type,
+                member_identifier=mid, attribute=attribute, actor=_ACTOR,
+            )
+
+    def _report_apply(
+        self, applied: int, skipped: list[str], errors: list[str]
+    ) -> None:
+        parts = [f"Applied {applied} change(s)."]
+        if skipped:
+            parts.append(f"Skipped {len(skipped)}: " + "; ".join(skipped))
+        if errors:
+            parts.append(f"{len(errors)} failed: " + "; ".join(errors))
+        msg = " ".join(parts)
+        self._apply_status.setText(msg)
+        if errors:
+            CopyableMessageBox.warning(self, "Reconcile", msg)
+
+    # --------------------------------------------------------------- promote
+    def _on_promote_entity(self) -> None:
+        """Copy the selected entity to the chosen instances (whole-entity promote)."""
+        idxs = self._grid.selectionModel().selectedRows() if self._grid.selectionModel() else []
+        if not idxs:
+            CopyableMessageBox.information(
+                self, "Reconcile", "Select an entity row first."
+            )
+            return
+        targets = [
+            loc for loc, chk in (
+                ("instance_a", self._promote_a), ("instance_b", self._promote_b)
+            ) if chk.isChecked()
+        ]
+        if not targets:
+            CopyableMessageBox.information(
+                self, "Reconcile", "Choose at least one instance to copy the entity to."
+            )
+            return
+
+        applied = 0
+        errors: list[str] = []
+        for proxy_idx in idxs:
+            src = self._grid_proxy.mapToSource(proxy_idx)
+            rec = self._grid_model.data(
+                self._grid_model.index(src.row(), 0), RECORD_ROLE
+            ) or {}
+            eid = rec.get("entity_identifier")
+            name = rec.get("entity") or eid or "?"
+            for loc in targets:
+                try:
+                    self._client.reconcile_publish(
+                        instance=self._loc_instance(loc), member_type="entity",
+                        member_identifier=eid, actor=_ACTOR,
+                    )
+                    applied += 1
+                except Exception as exc:  # noqa: BLE001
+                    errors.append(f"{name} → {LOCATION_LABELS.get(loc, loc)}: {exc}")
+
+        msg = f"Copied {applied} entit(y/ies)."
+        if errors:
+            msg += " Failed: " + "; ".join(errors)
+            CopyableMessageBox.warning(self, "Reconcile", msg)
+        self._summary.setText(msg)
+        self._on_compare()

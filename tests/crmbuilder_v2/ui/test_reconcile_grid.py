@@ -10,6 +10,7 @@ from crmbuilder_v2.ui.panels.reconcile_models import (
     EntityDetailModel,
     ExistenceGridModel,
     fmt_value,
+    plan_apply,
 )
 from PySide6.QtCore import QModelIndex, Qt
 
@@ -57,6 +58,48 @@ def _handler(req: httpx.Request) -> httpx.Response:
     if req.method == "GET" and p == "/reconcile/compare":
         return httpx.Response(200, json=envelope_ok(_COMPARE))
     return httpx.Response(404, json={"data": None, "meta": {}, "errors": [{"code": "x"}]})
+
+
+# --- apply routing (pure) ---------------------------------------------------
+
+def _row(design=255, a=100, b=255, actionable=True):
+    return {"member_type": "field", "member_identifier": "FLD-1",
+            "attribute": "field_max_length", "design": design,
+            "instance_a": a, "instance_b": b, "actionable": actionable}
+
+
+def test_plan_capture_instance_to_design():
+    """Correct value on A, bring the design into line → one capture."""
+    plan = plan_apply(_row(), "instance_a", ["design"])
+    assert plan["ops"] == [{"kind": "capture", "location": "instance_a"}]
+
+
+def test_plan_publish_design_to_instance():
+    """Correct value in the design, push to A → one publish, no capture."""
+    plan = plan_apply(_row(a=100), "design", ["instance_a"])
+    assert plan["ops"] == [{"kind": "publish", "location": "instance_a"}]
+
+
+def test_plan_instance_to_instance_routes_through_design():
+    """A→B is mechanically capture A→design then publish design→B (hub)."""
+    plan = plan_apply(_row(design=255, a=100, b=300), "instance_a", ["instance_b"])
+    assert plan["ops"] == [
+        {"kind": "capture", "location": "instance_a"},
+        {"kind": "publish", "location": "instance_b"},
+    ]
+
+
+def test_plan_skips_already_matching_target():
+    """B already holds the design value → publish to B is skipped, not attempted."""
+    plan = plan_apply(_row(design=255, a=100, b=255), "design", ["instance_a", "instance_b"])
+    assert plan["ops"] == [{"kind": "publish", "location": "instance_a"}]
+    assert any("Instance B" in s for s in plan["skipped"])
+
+
+def test_plan_non_actionable_is_skipped():
+    plan = plan_apply(_row(actionable=False), "instance_a", ["design"])
+    assert plan["ops"] == []
+    assert plan["skipped"]
 
 
 # --- models -----------------------------------------------------------------
@@ -155,3 +198,97 @@ def test_drill_into_in_sync_entity_shows_no_differences(qtbot):
     panel._drill(_EXISTENCE[1])  # Contact: no group
     assert panel._detail_model.rowCount() == 0
     assert "no differences" in panel._detail_title.text()
+
+
+# --- apply interaction ------------------------------------------------------
+
+
+class _RecordingClient:
+    """Wraps the mock client, recording reconcile capture/publish calls."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.captures: list[dict] = []
+        self.publishes: list[dict] = []
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def reconcile_capture(self, **kw):
+        self.captures.append(kw)
+        return {"transaction": {"id": 1}}
+
+    def reconcile_capture_setting(self, **kw):
+        self.captures.append(kw)
+        return {"transaction": {"id": 1}}
+
+    def reconcile_publish(self, **kw):
+        self.publishes.append(kw)
+        return {"transaction": {"id": 2}}
+
+
+def _apply_panel(qtbot):
+    client = _RecordingClient(build_client(_handler))
+    panel = ReconcileGridPanel(client)
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    panel._drill(_EXISTENCE[0])
+    return panel, client
+
+
+def test_apply_capture_from_instance_a_into_design(qtbot):
+    panel, client = _apply_panel(qtbot)
+    # select the single field difference row
+    grp = panel._detail_model.index(0, 0)
+    child = panel._detail_model.index(0, 0, grp)
+    panel._detail.selectionModel().select(
+        child, panel._detail.selectionModel().SelectionFlag.Select
+    )
+    # source = Instance A (index 1), target = Master design
+    panel._source_combo.setCurrentIndex(1)
+    panel._target_design.setChecked(True)
+    panel._on_apply()
+    assert len(client.captures) == 1
+    assert client.captures[0]["field_identifier"] == "FLD-001"
+    assert client.captures[0]["instance"] == "INST-001"
+
+
+def test_apply_publish_design_to_instance_b(qtbot):
+    panel, client = _apply_panel(qtbot)
+    grp = panel._detail_model.index(0, 0)
+    child = panel._detail_model.index(0, 0, grp)
+    panel._detail.selectionModel().select(
+        child, panel._detail.selectionModel().SelectionFlag.Select
+    )
+    # source = Master design (index 0); target = Instance B
+    panel._source_combo.setCurrentIndex(0)
+    panel._target_b.setChecked(True)
+    panel._on_apply()
+    assert len(client.publishes) == 1
+    assert client.publishes[0]["instance"] == "INST-002"
+    assert client.publishes[0]["member_type"] == "field"
+
+
+def test_promote_entity_publishes_to_checked_instances(qtbot):
+    client = _RecordingClient(build_client(_handler))
+    panel = ReconcileGridPanel(client)
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    # select a row and promote to Instance B; the handler must publish the
+    # *selected* entity (independent of the grid's sort order)
+    panel._grid.selectRow(0)
+    proxy_idx = panel._grid.selectionModel().selectedRows()[0]
+    src = panel._grid_proxy.mapToSource(proxy_idx)
+    selected_eid = panel._grid_model.data(
+        panel._grid_model.index(src.row(), 0), RECORD_ROLE
+    )["entity_identifier"]
+    panel._promote_b.setChecked(True)
+    panel._on_promote_entity()
+    assert len(client.publishes) == 1
+    assert client.publishes[0]["member_type"] == "entity"
+    assert client.publishes[0]["member_identifier"] == selected_eid
+    assert client.publishes[0]["instance"] == "INST-002"

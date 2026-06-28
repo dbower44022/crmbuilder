@@ -304,6 +304,65 @@ class EntityDetailModel(QAbstractItemModel):
         return None
 
 
+#: The three reconciliation locations, in display order.
+LOCATIONS = ("design", "instance_a", "instance_b")
+#: Operator-language label for each location key.
+LOCATION_LABELS = {
+    "design": "Master design",
+    "instance_a": "Instance A",
+    "instance_b": "Instance B",
+}
+
+
+def plan_apply(
+    row: dict[str, Any], source_loc: str, target_locs: list[str]
+) -> dict[str, Any]:
+    """Route one difference into capture/publish operations (REQ-371).
+
+    Given the difference ``row`` (a compare attribute/presence row), the location
+    holding the **correct** value, and the locations to bring into line, returns
+    the ordered operations and any targets skipped (already matching, or the row
+    is not reconcilable). The **design is the hub**: writing into the design is a
+    capture; writing into an instance is a publish; an instance→instance move is a
+    capture into the design followed by a publish out — never a direct
+    instance-to-instance write.
+
+    Operations reference *locations* (``design`` / ``instance_a`` / ``instance_b``);
+    the panel resolves each to a concrete instance and member before calling the
+    API. Pure logic, so the routing is unit-tested without a window or a network.
+
+    :returns: ``{"ops": [{"kind": "capture"|"publish", "location": <loc>}],
+        "skipped": [<reason str>]}``.
+    """
+    if not row.get("actionable"):
+        return {"ops": [], "skipped": ["not reconcilable here — configure by hand"]}
+
+    design_value = row.get("design")
+    source_value = row.get(source_loc)
+    targets = [t for t in target_locs if t != source_loc]
+    ops: list[dict[str, str]] = []
+    skipped: list[str] = []
+
+    # A capture is needed only when the source is an instance whose value the
+    # design does not already hold. After it, the design carries the chosen value.
+    capture_needed = source_loc != "design" and source_value != design_value
+    effective = source_value if capture_needed else design_value
+    if capture_needed:
+        ops.append({"kind": "capture", "location": source_loc})
+    elif source_loc != "design" and "design" in targets:
+        skipped.append(f"{LOCATION_LABELS['design']} already matches the chosen value")
+
+    for t in targets:
+        if t == "design":
+            continue  # served by the capture above (or already matching)
+        if row.get(t) == effective:
+            skipped.append(f"{LOCATION_LABELS.get(t, t)} already matches the chosen value")
+            continue
+        ops.append({"kind": "publish", "location": t})
+
+    return {"ops": ops, "skipped": skipped}
+
+
 def _humanize_attr(attribute: str) -> str:
     """Turn a neutral attribute name into a readable label (REQ-374).
 
