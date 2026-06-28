@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QDialog,
     QFormLayout,
     QHBoxLayout,
-    QMessageBox,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -44,6 +43,7 @@ from crmbuilder_v2.ui.panels._registry_panel_base import (
     separator,
 )
 from crmbuilder_v2.ui.widgets.form_helpers import destructive_button, primary_button
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 
 class LearningsPanel(RegistryCrudPanel):
@@ -216,7 +216,7 @@ class LearningsPanel(RegistryCrudPanel):
         if result is None:
             return
         retired = result.get("retired") or []
-        QMessageBox.information(
+        CopyableMessageBox.information(
             self,
             "Curate complete",
             (
