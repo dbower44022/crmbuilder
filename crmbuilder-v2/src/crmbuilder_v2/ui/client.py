@@ -2341,6 +2341,28 @@ class StorageClient:
             )
         return result
 
+    def export_instance_records(
+        self,
+        identifier: str,
+        entities: list[str],
+        *,
+        max_size: int | None = None,
+    ) -> dict[str, Any]:
+        """POST /instances/{id}/export-records (PI-234) — export selected seed/
+        reference records into an import-ready artifact. Returns ``{artifact, log}``."""
+        body: dict[str, Any] = {"entities": entities}
+        if max_size is not None:
+            body["max_size"] = max_size
+        result = self._request(
+            "POST", f"/instances/{identifier}/export-records", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for export_instance_records",
+            )
+        return result
+
     # --- audit / inventory (PI-185 / PI-188) ---------------------------------
 
     def audit_instance(self, identifier: str) -> dict[str, Any]:

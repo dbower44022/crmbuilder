@@ -2221,6 +2221,14 @@ class InstanceDeployConfigIn(_Base):
     droplet_id: str | None = None
 
 
+# --- Record-data export (PI-234 / REQ-130) ---------------------------------
+# POST body for /instances/{id}/export-records: the operator-selected seed /
+# reference entities to export, with an optional per-entity fetch cap.
+class RecordExportIn(_Base):
+    entities: list[str]
+    max_size: int | None = None
+
+
 # --- Layout (engine-neutral entity layout, PI-193 / PRJ-027) ---------------
 class LayoutCreateIn(_Base):
     layout_entity_identifier: str

@@ -41,6 +41,7 @@ from crmbuilder_v2.api.schemas import (
     InstanceDeployConfigIn,
     InstancePatchIn,
     InstanceReplaceIn,
+    RecordExportIn,
 )
 from crmbuilder_v2.config import get_settings
 from crmbuilder_v2.introspect.espo_client import EspoIntrospectionClient
@@ -55,6 +56,7 @@ from crmbuilder_v2.introspect.reconcile import (
     reconcile_roles,
     reconcile_teams,
 )
+from crmbuilder_v2.introspect.record_export import export_records
 from crmbuilder_v2.publish import service as publish_service
 
 router = APIRouter(prefix="/instances", tags=["instances"])
@@ -450,6 +452,30 @@ def put_deploy_config(identifier: str, body: InstanceDeployConfigIn):
         return ok(
             instance_deploy_config.upsert_deploy_config(s, identifier, **fields)
         )
+
+
+# ── Record-data export (PI-234 — REQ-130) ─────────────────────────────────
+
+
+@router.post("/{identifier}/export-records")
+def export_records_endpoint(identifier: str, body: RecordExportIn):
+    """Export selected seed/reference records from a source instance (PI-234).
+
+    Reads the operator-selected entities' records via the introspection client
+    (the same source/both role + credential gate as the audit — a target-only
+    instance cannot be read) and returns an import-ready artifact plus a ``log``
+    of any per-entity read warnings. Seed/reference data only (DEC-693).
+    """
+    log: list[list[str]] = []
+    with writable_session() as s:
+        client = _audit_introspection_client(s, identifier)
+        artifact = export_records(
+            client,
+            entity_names=body.entities,
+            max_size=body.max_size or 200,
+            progress=lambda m, lvl: log.append([m, lvl]),
+        )
+    return ok({"artifact": artifact, "log": log})
 
 
 # ── Publish (PRJ-042 — REQ-287 + REQ-288) ─────────────────────────────────

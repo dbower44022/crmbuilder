@@ -496,3 +496,20 @@ class EspoIntrospectionClient:
         """
         url = f"{self.api_url}/Role?maxSize=200"
         return self._request("GET", url)
+
+    # --- Record data (read) — PI-234 / REQ-130 ---
+
+    def get_records(
+        self, entity: str, *, max_size: int = 200, offset: int = 0
+    ) -> tuple[int, dict[str, Any] | None]:
+        """List records of an entity for seed/reference export (PI-234).
+
+        Bulk-fetches up to ``max_size`` records in one GET, ordered by EspoCRM's
+        default. ``offset`` supports simple paging; deeper pagination is the same
+        documented scaling concern as :meth:`get_teams`.
+
+        :returns: ``(status_code, response_json or None)`` — the standard EspoCRM
+            list shape ``{"total": N, "list": [...]}`` on success.
+        """
+        url = f"{self.api_url}/{entity}?maxSize={max_size}&offset={offset}"
+        return self._request("GET", url)
