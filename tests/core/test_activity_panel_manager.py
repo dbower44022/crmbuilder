@@ -4,6 +4,10 @@ from espo_impl.core.activity_panel_manager import (
     ACTIVITY_PANELS,
     ActivityPanelManager,
     build_bottom_panels_detail_layout,
+    entity_links_complete,
+    entity_panels_present,
+    merge_client_activity_panels,
+    merge_entity_activity_links,
     merge_parent_entity_list,
     parent_list_contains,
     union_parent_list,
@@ -226,3 +230,148 @@ class TestActivityPanelManager:
         assert mgr.wait_until_registered(
             "CEngagement", timeout=3, interval=1, sleep=slept.append
         ) is False
+
+
+_PARENT_LINKS = {
+    ln: {"foreign": "parent"} for ln in ("meetings", "calls", "tasks", "emails")
+}
+
+
+class TestMergeEntityActivityLinks:
+    def test_adds_all_four_links_to_empty_def(self):
+        result = merge_entity_activity_links({})
+        links = result["links"]
+        assert set(links) == {"meetings", "calls", "tasks", "emails"}
+        for ln in ("meetings", "calls", "tasks", "emails"):
+            assert links[ln]["foreign"] == "parent"
+        # probe-verified shape: meetings/calls hasMany, tasks/emails hasChildren
+        assert links["meetings"]["type"] == "hasMany"
+        assert links["tasks"]["type"] == "hasChildren"
+        assert links["emails"]["layoutRelationshipsDisabled"] is True
+
+    def test_overwrites_miswired_link(self):
+        # CInformationRequest's broken cParent link is corrected to parent.
+        broken = {"links": {"meetings": {"type": "hasMany", "foreign": "cParent"}}}
+        result = merge_entity_activity_links(broken)
+        assert result["links"]["meetings"]["foreign"] == "parent"
+
+    def test_drop_links_removes_before_adding(self):
+        broken = {"links": {"meetings": {"foreign": "cParent"}, "keepMe": {"x": 1}}}
+        result = merge_entity_activity_links(broken, drop_links=("meetings",))
+        assert result["links"]["meetings"]["foreign"] == "parent"  # re-added clean
+        assert result["links"]["keepMe"] == {"x": 1}  # unrelated link preserved
+
+    def test_does_not_mutate_input(self):
+        src = {"links": {}}
+        merge_entity_activity_links(src)
+        assert src == {"links": {}}
+
+
+class TestMergeClientActivityPanels:
+    def test_adds_side_and_bottom_panels(self):
+        result = merge_client_activity_panels({})
+        side = [p["name"] for p in result["sidePanels"]["detail"]]
+        bottom = [p["name"] for p in result["bottomPanels"]["detail"]]
+        # side panels are what render — all three
+        assert side == ["activities", "history", "tasks"]
+        # bottom counterparts shipped disabled (mirror a native BasePlus entity)
+        assert bottom == ["activities", "history"]
+        assert all(p["disabled"] is True for p in result["bottomPanels"]["detail"])
+
+    def test_preserves_existing_custom_panel(self):
+        existing = {"bottomPanels": {"detail": [{"name": "reportPanelX"}]}}
+        result = merge_client_activity_panels(existing)
+        bottom = [p["name"] for p in result["bottomPanels"]["detail"]]
+        assert bottom == ["reportPanelX", "activities", "history"]
+        assert [p["name"] for p in result["sidePanels"]["detail"]] == [
+            "activities", "history", "tasks",
+        ]
+
+    def test_idempotent_no_duplicate(self):
+        once = merge_client_activity_panels({})
+        twice = merge_client_activity_panels(once)
+        assert [p["name"] for p in twice["sidePanels"]["detail"]] == [
+            "activities", "history", "tasks",
+        ]
+
+
+class TestEntityPanelsPresent:
+    def test_true_when_side_panels_present(self):
+        cd = {"sidePanels": {"detail": [
+            {"name": "activities"}, {"name": "history"}, {"name": "tasks"},
+        ]}}
+        assert entity_panels_present(cd) is True
+
+    def test_false_when_panel_missing(self):
+        cd = {"sidePanels": {"detail": [{"name": "activities"}, {"name": "history"}]}}
+        assert entity_panels_present(cd) is False
+
+    def test_false_when_only_bottom_panels(self):
+        # panels in bottomPanels (not sidePanels) do not render -> not present
+        cd = {"bottomPanels": {"detail": [
+            {"name": "activities"}, {"name": "history"}, {"name": "tasks"},
+        ]}}
+        assert entity_panels_present(cd) is False
+
+    def test_false_for_empty(self):
+        assert entity_panels_present({}) is False
+
+
+class TestEntityLinksComplete:
+    def test_true_when_all_parent_wired(self):
+        assert entity_links_complete(_PARENT_LINKS) is True
+
+    def test_false_when_link_missing(self):
+        partial = dict(_PARENT_LINKS)
+        del partial["tasks"]
+        assert entity_links_complete(partial) is False
+
+    def test_false_when_link_cparent_wired(self):
+        bad = dict(_PARENT_LINKS)
+        bad["meetings"] = {"foreign": "cParent"}
+        assert entity_links_complete(bad) is False
+
+    def test_false_for_non_dict(self):
+        assert entity_links_complete(None) is False
+
+
+class TestHasActivityLinks:
+    def _mgr(self, md):
+        return ActivityPanelManager(FakeClient(md))
+
+    def test_true_when_links_parent_wired(self):
+        mgr = self._mgr({"entityDefs.CEngagement.links": _PARENT_LINKS})
+        assert mgr.has_activity_links("CEngagement") is True
+
+    def test_false_when_links_absent(self):
+        mgr = self._mgr({})  # get_metadata returns (200, None)
+        assert mgr.has_activity_links("CEngagement") is False
+
+    def test_false_when_cparent_wired(self):
+        bad = dict(_PARENT_LINKS)
+        bad["calls"] = {"foreign": "cParent"}
+        mgr = self._mgr({"entityDefs.CInformationRequest.links": bad})
+        assert mgr.has_activity_links("CInformationRequest") is False
+
+
+class TestHasActivityPanels:
+    def _mgr(self, md):
+        return ActivityPanelManager(FakeClient(md))
+
+    def test_true_when_side_panels_present(self):
+        cd = {"sidePanels": {"detail": [
+            {"name": "activities"}, {"name": "history"}, {"name": "tasks"},
+        ]}}
+        mgr = self._mgr({"clientDefs.CEngagement": cd})
+        assert mgr.has_activity_panels("CEngagement") is True
+
+    def test_false_when_clientdefs_absent(self):
+        mgr = self._mgr({})  # get_metadata returns (200, None)
+        assert mgr.has_activity_panels("CEngagement") is False
+
+    def test_false_when_only_bottom_panels(self):
+        cd = {"bottomPanels": {"detail": [
+            {"name": "activities"}, {"name": "history"}, {"name": "tasks"},
+        ]}}
+        mgr = self._mgr({"clientDefs.CEngagement": cd})
+        assert mgr.has_activity_panels("CEngagement") is False

@@ -39,15 +39,16 @@ import paramiko
 from automation.core.deployment.ssh_deploy import run_remote
 from espo_impl.core.activity_panel_manager import (
     PANEL_HOLDERS,
+    merge_client_activity_panels,
+    merge_entity_activity_links,
     union_parent_list,
 )
 
 COMPOSE_FILE = "/var/www/espocrm/docker-compose.yml"
 SERVICE = "espocrm"
 ESPO_ROOT = "/var/www/html"
-CUSTOM_ENTITYDEFS_DIR = (
-    f"{ESPO_ROOT}/custom/Espo/Custom/Resources/metadata/entityDefs"
-)
+CUSTOM_METADATA_DIR = f"{ESPO_ROOT}/custom/Espo/Custom/Resources/metadata"
+CUSTOM_ENTITYDEFS_DIR = f"{CUSTOM_METADATA_DIR}/entityDefs"
 BACKUP_ROOT = "/var/backups/espocrm/metadata"
 
 LogFn = Callable[[str, str], None]
@@ -155,6 +156,127 @@ def rebuild_in_container(
             log(f"[SSH] rebuild failed (exit {exit_code}): {output}", "error")
         return False
     return True
+
+
+def read_custom_def(
+    ssh: paramiko.SSHClient, subdir: str, name: str
+) -> dict[str, Any]:
+    """Read any custom metadata override file from the container.
+
+    Generalises :func:`read_custom_holder_def` over the metadata ``subdir``
+    (``entityDefs`` / ``clientDefs`` / …).
+
+    :param ssh: Connected SSH client.
+    :param subdir: Metadata subdirectory under ``custom/.../metadata``.
+    :param name: File stem (the entity name).
+    :returns: The parsed override dict, or ``{}`` if absent/empty/unparseable.
+    """
+    path = f"{CUSTOM_METADATA_DIR}/{subdir}/{name}.json"
+    exit_code, output = _exec_in_container(
+        ssh, f"cat {path} 2>/dev/null | base64 | tr -d '\\n'"
+    )
+    blob = output.strip()
+    if exit_code != 0 or not blob:
+        return {}
+    try:
+        raw = base64.b64decode(blob).decode("utf-8").strip()
+        return json.loads(raw) if raw else {}
+    except (ValueError, json.JSONDecodeError):
+        return {}
+
+
+def write_custom_def(
+    ssh: paramiko.SSHClient,
+    subdir: str,
+    name: str,
+    data: dict[str, Any],
+    timestamp: str,
+    log: LogFn | None = None,
+) -> bool:
+    """Back up and write any custom metadata override file in the container.
+
+    Generalises :func:`write_custom_holder_def` over the metadata ``subdir``;
+    backups land under ``{BACKUP_ROOT}/{timestamp}/{subdir}/`` so an entityDefs
+    and a clientDefs file of the same entity name do not collide.
+
+    :param ssh: Connected SSH client.
+    :param subdir: Metadata subdirectory (``entityDefs`` / ``clientDefs``).
+    :param name: File stem (the entity name).
+    :param data: The complete override dict to persist.
+    :param timestamp: Backup-folder discriminator.
+    :param log: Optional ``(message, color)`` logger.
+    :returns: True on success.
+    """
+    directory = f"{CUSTOM_METADATA_DIR}/{subdir}"
+    path = f"{directory}/{name}.json"
+    backup_dir = f"{BACKUP_ROOT}/{timestamp}/{subdir}"
+    payload = json.dumps(data, indent=4, sort_keys=True)
+    blob = base64.b64encode(payload.encode("utf-8")).decode("ascii")
+    inner = (
+        f"mkdir -p {backup_dir} {directory} && "
+        f"if [ -f {path} ]; then cp {path} {backup_dir}/{name}.json; fi && "
+        f"echo {blob} | base64 -d > {path} && "
+        f"chown www-data:www-data {path}"
+    )
+    exit_code, output = _exec_in_container(ssh, inner, as_root=True)
+    if exit_code != 0:
+        if log:
+            log(
+                f"[SSH] write {subdir}/{name}.json failed (exit {exit_code}): {output}",
+                "error",
+            )
+        return False
+    if log:
+        log(f"[SSH] wrote {subdir}/{name}.json (backup in {backup_dir})", "info")
+    return True
+
+
+def scaffold_entity_activity_metadata(
+    ssh: paramiko.SSHClient,
+    entities: list[str],
+    timestamp: str,
+    drop_links: dict[str, tuple[str, ...]] | None = None,
+    log: LogFn | None = None,
+) -> dict[str, bool]:
+    """Give each entity the entity-side activity scaffolding the panels need.
+
+    Parent-list registration alone does not render the Activities/History/Tasks
+    panels: the entity must also carry its own ``meetings``/``calls``/``tasks``/
+    ``emails`` links (inverse of the activity entities' ``parent`` field) and the
+    Activities/History/Tasks entries in its ``clientDefs.sidePanels`` (where the
+    panels actually render — not ``bottomPanels``). A fresh ``BasePlus`` entity
+    gets these automatically; an audit-deployed one does not. This patches both
+    files per entity over SSH (the caller batches one rebuild).
+
+    :param ssh: Connected SSH client.
+    :param entities: EspoCRM entity names (C-prefixed) to scaffold.
+    :param timestamp: Backup-folder discriminator.
+    :param drop_links: Optional ``{entity: (link, …)}`` of links to remove before
+        adding the canonical set (e.g. a mis-wired ``cParent`` link). The
+        canonical links overwrite same-named entries regardless.
+    :param log: Optional logger.
+    :returns: ``{entity: ok}`` — whether both files were written for each entity.
+    """
+    drop_links = drop_links or {}
+    results: dict[str, bool] = {}
+    for entity in entities:
+        ent_def = read_custom_def(ssh, "entityDefs", entity)
+        ent_def = merge_entity_activity_links(ent_def, drop_links.get(entity, ()))
+        ok_links = write_custom_def(ssh, "entityDefs", entity, ent_def, timestamp, log)
+
+        client_def = read_custom_def(ssh, "clientDefs", entity)
+        client_def = merge_client_activity_panels(client_def)
+        ok_panels = write_custom_def(
+            ssh, "clientDefs", entity, client_def, timestamp, log
+        )
+
+        results[entity] = ok_links and ok_panels
+        if log:
+            log(
+                f"[SSH] scaffolded {entity} (activity links + clientDefs panels)",
+                "info" if results[entity] else "error",
+            )
+    return results
 
 
 def register_activity_parents(

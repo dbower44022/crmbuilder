@@ -110,3 +110,90 @@ class TestRegisterActivityParents:
         # Meeting must not have triggered a write
         written_holders = {call.args[1] for call in write_mock.call_args_list}
         assert "Meeting" not in written_holders
+
+
+class TestGenericCustomDef:
+    def test_read_decodes_clientdefs(self):
+        data = {"bottomPanels": {"detail": [{"name": "activities"}]}}
+        with patch.object(mod, "run_remote", return_value=(0, _b64(data))):
+            assert mod.read_custom_def(None, "clientDefs", "CEngagement") == data
+
+    def test_write_backup_path_includes_subdir(self):
+        captured = {}
+
+        def fake_run_remote(ssh, command):
+            captured["command"] = command
+            return 0, ""
+
+        with patch.object(mod, "run_remote", side_effect=fake_run_remote):
+            ok = mod.write_custom_def(
+                None, "clientDefs", "CEngagement", {"x": 1}, "ts"
+            )
+        assert ok is True
+        cmd = captured["command"]
+        # subdir-scoped backup + write path, root + chown like the holder writer
+        assert "/var/backups/espocrm/metadata/ts/clientDefs" in cmd
+        assert "/metadata/clientDefs/CEngagement.json" in cmd
+        assert "-u root" in cmd and "chown www-data:www-data" in cmd
+
+
+class TestScaffoldEntityActivityMetadata:
+    def test_writes_entitydefs_and_clientdefs_per_entity(self):
+        writes = []
+
+        def fake_write(ssh, subdir, name, data, ts, log=None):
+            writes.append((subdir, name, data))
+            return True
+
+        with patch.object(mod, "read_custom_def", return_value={}), patch.object(
+            mod, "write_custom_def", side_effect=fake_write
+        ):
+            results = mod.scaffold_entity_activity_metadata(
+                None, ["CEngagement", "CMentorProfile"], "ts"
+            )
+
+        assert results == {"CEngagement": True, "CMentorProfile": True}
+        # each entity gets both an entityDefs (links) and clientDefs (panels) write
+        subdirs_per_entity = {}
+        for subdir, name, data in writes:
+            subdirs_per_entity.setdefault(name, set()).add(subdir)
+            if subdir == "entityDefs":
+                assert set(data["links"]) == {"meetings", "calls", "tasks", "emails"}
+            else:
+                side = [p["name"] for p in data["sidePanels"]["detail"]]
+                assert side == ["activities", "history", "tasks"]
+        assert subdirs_per_entity["CEngagement"] == {"entityDefs", "clientDefs"}
+
+    def test_drop_links_threaded_through(self):
+        seen = {}
+
+        def fake_read(ssh, subdir, name):
+            if subdir == "entityDefs":
+                return {"links": {"meetings": {"foreign": "cParent"}}}
+            return {}
+
+        def fake_write(ssh, subdir, name, data, ts, log=None):
+            if subdir == "entityDefs":
+                seen[name] = data["links"]["meetings"]["foreign"]
+            return True
+
+        with patch.object(mod, "read_custom_def", side_effect=fake_read), patch.object(
+            mod, "write_custom_def", side_effect=fake_write
+        ):
+            mod.scaffold_entity_activity_metadata(
+                None,
+                ["CInformationRequest"],
+                "ts",
+                drop_links={"CInformationRequest": ("meetings", "calls")},
+            )
+        assert seen["CInformationRequest"] == "parent"  # cParent corrected
+
+    def test_failure_propagates_to_result(self):
+        def fake_write(ssh, subdir, name, data, ts, log=None):
+            return subdir == "entityDefs"  # clientDefs write fails
+
+        with patch.object(mod, "read_custom_def", return_value={}), patch.object(
+            mod, "write_custom_def", side_effect=fake_write
+        ):
+            results = mod.scaffold_entity_activity_metadata(None, ["CEngagement"], "ts")
+        assert results["CEngagement"] is False

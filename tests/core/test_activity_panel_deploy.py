@@ -7,15 +7,27 @@ result aggregation are exercised against a stateful fake EspoAdminClient.
 from unittest.mock import patch
 
 from automation.core.deployment import activity_panel_deploy as apd
-from espo_impl.core.activity_panel_manager import build_bottom_panels_detail_layout
+
+_PARENT_LINKS = {
+    ln: {"foreign": "parent"} for ln in ("meetings", "calls", "tasks", "emails")
+}
+_SIDE_PANELS = {
+    "sidePanels": {
+        "detail": [
+            {"name": "activities"}, {"name": "history"}, {"name": "tasks"},
+        ]
+    }
+}
 
 
 class StatefulClient:
-    """Fake EspoAdminClient: tracks which entities are registered / streamed /
-    have panel layouts, so the coordinator's reads reflect its writes."""
+    """Fake EspoAdminClient: tracks which entities are registered / scaffolded /
+    streamed / have panel layouts, so the coordinator's reads reflect its
+    writes."""
 
     def __init__(self, registered=()):
         self.registered = set(registered)
+        self.scaffolded = set()
         self.streamed = set()
         self.layouts = {}
 
@@ -23,6 +35,12 @@ class StatefulClient:
     def get_metadata(self, key):
         if key.endswith("parent.entityList"):
             return 200, sorted(self.registered)
+        if key.endswith(".links"):
+            entity = key.split(".")[1]
+            return 200, (_PARENT_LINKS if entity in self.scaffolded else {})
+        if key.startswith("clientDefs."):
+            entity = key.split(".")[1]
+            return 200, (_SIDE_PANELS if entity in self.scaffolded else {})
         return 200, None
 
     def get_layout(self, entity, layout_type):
@@ -50,22 +68,30 @@ class FakeSSH:
 
 
 def _patches(client):
-    """Patch connect_ssh + the SSH I/O so register marks the client registered."""
+    """Patch connect_ssh + the SSH I/O so scaffold/register mark client state."""
 
     def fake_register(ssh, c, entities, ts, holders=apd.PANEL_HOLDERS, log=None):
         c.registered.update(entities)
         return dict.fromkeys(holders, True)
 
+    def fake_scaffold(ssh, entities, ts, drop_links=None, log=None):
+        c = client
+        c.scaffolded.update(entities)
+        return dict.fromkeys(entities, True)
+
     return (
         patch.object(apd, "connect_ssh", return_value=FakeSSH()),
+        patch.object(
+            apd.ams, "scaffold_entity_activity_metadata", side_effect=fake_scaffold
+        ),
         patch.object(apd.ams, "register_activity_parents", side_effect=fake_register),
         patch.object(apd.ams, "rebuild_in_container", return_value=True),
     )
 
 
 def _run(client, entities, **kw):
-    p_ssh, p_reg, p_rebuild = _patches(client)
-    with p_ssh, p_reg, p_rebuild:
+    p_ssh, p_scaffold, p_reg, p_rebuild = _patches(client)
+    with p_ssh, p_scaffold, p_reg, p_rebuild:
         return apd.deploy_activity_panels(
             client, object(), entities, timestamp="ts", **kw
         )
@@ -79,8 +105,56 @@ class TestDeployActivityPanels:
         assert result.all_ok
         for e in ("CEngagement", "CMentorProfile"):
             r = result.entities[e]
-            assert r.registered and r.panels_enabled
-            assert client.layouts[e] == build_bottom_panels_detail_layout()
+            assert r.registered and r.panels_enabled and r.links_ok
+
+    def test_scaffolds_every_entity(self):
+        client = StatefulClient(registered=["CEngagement"])
+        result = _run(client, ["CEngagement", "CMentorProfile"])
+        # both entities scaffolded (links present) even the already-registered one
+        assert client.scaffolded == {"CEngagement", "CMentorProfile"}
+        assert all(r.links_ok for r in result.entities.values())
+
+    def test_not_ok_when_scaffold_does_not_take(self):
+        # scaffold no-op -> neither links nor side panels present -> not ok,
+        # even for an already-registered entity.
+        client = StatefulClient(registered=["CEngagement"])
+
+        def noop_scaffold(ssh, entities, ts, drop_links=None, log=None):
+            return {}
+
+        with patch.object(apd, "connect_ssh", return_value=FakeSSH()), patch.object(
+            apd.ams, "scaffold_entity_activity_metadata", side_effect=noop_scaffold
+        ), patch.object(apd.ams, "rebuild_in_container", return_value=True):
+            result = apd.deploy_activity_panels(
+                client, object(), ["CEngagement"], timestamp="ts"
+            )
+        r = result.entities["CEngagement"]
+        assert r.registered  # was already registered
+        assert r.links_ok is False and r.panels_enabled is False
+        assert not result.all_ok
+
+    def test_drop_links_forwarded_to_scaffold(self):
+        client = StatefulClient()
+        captured = {}
+
+        def fake_scaffold(ssh, entities, ts, drop_links=None, log=None):
+            captured["drop_links"] = drop_links
+            client.scaffolded.update(entities)
+            return dict.fromkeys(entities, True)
+
+        with patch.object(apd, "connect_ssh", return_value=FakeSSH()), patch.object(
+            apd.ams, "scaffold_entity_activity_metadata", side_effect=fake_scaffold
+        ), patch.object(
+            apd.ams, "register_activity_parents",
+            side_effect=lambda ssh, c, e, ts, h=apd.PANEL_HOLDERS, log=None: (
+                c.registered.update(e) or dict.fromkeys(h, True)
+            ),
+        ), patch.object(apd.ams, "rebuild_in_container", return_value=True):
+            apd.deploy_activity_panels(
+                client, object(), ["CInformationRequest"], timestamp="ts",
+                drop_links={"CInformationRequest": ("meetings", "calls")},
+            )
+        assert captured["drop_links"] == {"CInformationRequest": ("meetings", "calls")}
 
     def test_skips_registration_when_already_registered(self):
         client = StatefulClient(registered=["CEngagement"])
@@ -104,7 +178,14 @@ class TestDeployActivityPanels:
         # register is a no-op (patched away) so the entity never becomes
         # registered -> verification fails -> not ok.
         client = StatefulClient()
+
+        def fake_scaffold(ssh, entities, ts, drop_links=None, log=None):
+            client.scaffolded.update(entities)
+            return dict.fromkeys(entities, True)
+
         with patch.object(apd, "connect_ssh", return_value=FakeSSH()), patch.object(
+            apd.ams, "scaffold_entity_activity_metadata", side_effect=fake_scaffold
+        ), patch.object(
             apd.ams, "register_activity_parents", return_value={}
         ), patch.object(apd.ams, "rebuild_in_container", return_value=True):
             result = apd.deploy_activity_panels(
