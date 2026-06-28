@@ -2191,6 +2191,36 @@ class InstancePatchIn(_Base):
     references: list[GovernanceEdgeIn] | None = None
 
 
+# --- Instance deploy config (PI-201 / REQ-172) -----------------------------
+# PUT body for /instances/{id}/deploy-config. Write-only plaintext secrets
+# (``ssh_credential`` for password auth, ``db_root_password``) cross the REQ-157
+# keyring boundary at the router and are never echoed back; for key auth
+# ``ssh_credential`` is the key file path (stored inline, paths not sensitive).
+# ``model_fields_set`` distinguishes an omitted key (leave unchanged) from an
+# explicit null (clear), so partial updates work.
+class InstanceDeployConfigIn(_Base):
+    scenario: str | None = None
+    ssh_host: str | None = None
+    ssh_port: int | None = None
+    ssh_username: str | None = None
+    ssh_auth_type: str | None = None
+    ssh_credential: str | None = None
+    domain: str | None = None
+    letsencrypt_email: str | None = None
+    db_root_password: str | None = None
+    admin_email: str | None = None
+    current_espocrm_version: str | None = None
+    latest_espocrm_version: str | None = None
+    last_upgrade_at: str | None = None
+    cert_expiry_date: str | None = None
+    last_backup_paths: str | None = None
+    backups_enabled: bool | None = None
+    last_record_version: str | None = None
+    domain_registrar: str | None = None
+    dns_provider: str | None = None
+    droplet_id: str | None = None
+
+
 # --- Layout (engine-neutral entity layout, PI-193 / PRJ-027) ---------------
 class LayoutCreateIn(_Base):
     layout_entity_identifier: str

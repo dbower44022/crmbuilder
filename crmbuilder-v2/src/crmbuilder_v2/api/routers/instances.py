@@ -27,6 +27,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.repositories import (
+    instance_deploy_config,
     instance_membership,
     instances,
     inventory,
@@ -37,6 +38,7 @@ from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
     InstanceCreateIn,
+    InstanceDeployConfigIn,
     InstancePatchIn,
     InstanceReplaceIn,
 )
@@ -392,6 +394,61 @@ def audit_area(identifier: str, area: str):
             ) from exc
         return ok(
             {"area": area, "label": label, "summary": summary, "log": log}
+        )
+
+
+# ── Deploy config (PI-201 — REQ-172) ──────────────────────────────────────
+
+
+@router.get("/{identifier}/deploy-config")
+def get_deploy_config(identifier: str):
+    """The instance's deploy/provisioning config, or ``null`` if it has none."""
+    with readonly_session() as s:
+        if instances.get_instance(s, identifier) is None:
+            raise NotFoundError("instance", identifier)
+        return ok(instance_deploy_config.get_deploy_config(s, identifier))
+
+
+@router.put("/{identifier}/deploy-config")
+def put_deploy_config(identifier: str, body: InstanceDeployConfigIn):
+    """Create or update the instance's deploy config (PI-201 / REQ-172).
+
+    Write-only plaintext secrets cross the keyring boundary here: ``ssh_credential``
+    becomes ``ssh_credential_ref`` — the key file path inline for key auth, a
+    keyring reference for password auth — and ``db_root_password`` becomes a
+    keyring reference. Omitted keys are left unchanged; an explicit null clears.
+    """
+    provided = body.model_dump(exclude_unset=True)
+    with writable_session() as s:
+        if instances.get_instance(s, identifier) is None:
+            raise NotFoundError("instance", identifier)
+        current = instance_deploy_config.get_deploy_config(s, identifier) or {}
+        fields = {
+            k: v for k, v in provided.items()
+            if k not in ("ssh_credential", "db_root_password")
+        }
+        # SSH credential: a key path is stored inline; a password is keyring-backed.
+        if "ssh_credential" in provided:
+            cred = provided["ssh_credential"]
+            auth = fields.get("ssh_auth_type", current.get("ssh_auth_type"))
+            if cred and auth == "password":
+                fields["ssh_credential_ref"] = secrets.put_secret(cred)
+                old = current.get("ssh_credential_ref")
+                if old and (old or "").startswith(secrets.REF_PREFIX):
+                    secrets.delete_secret(old)
+            else:
+                fields["ssh_credential_ref"] = cred  # key path inline, or cleared
+        # DB root password is always keyring-backed.
+        if "db_root_password" in provided:
+            pw = provided["db_root_password"]
+            fields["db_root_password_ref"] = (
+                secrets.put_secret(pw) if pw else None
+            )
+            old = current.get("db_root_password_ref")
+            if pw and old:
+                secrets.delete_secret(old)
+        return ok(
+            instance_deploy_config.upsert_deploy_config(s, identifier, **fields)
         )
 
 

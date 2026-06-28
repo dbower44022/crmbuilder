@@ -728,6 +728,12 @@ INSTANCE_ROLES: frozenset[str] = frozenset({"source", "target", "both"})
 
 INSTANCE_AUTH_METHODS: frozenset[str] = frozenset({"api_key", "basic", "hmac"})
 
+# PI-201 (REQ-172) — instance deploy/provisioning config. v1 supports only
+# self-hosted (cloud-hosted / bring-your-own cannot be SSHed into); SSH auth is
+# a key (path stored inline) or a password (keyring ref).
+DEPLOY_CONFIG_SCENARIOS: frozenset[str] = frozenset({"self_hosted"})
+DEPLOY_CONFIG_SSH_AUTH_TYPES: frozenset[str] = frozenset({"key", "password"})
+
 INSTANCE_STATUSES: frozenset[str] = frozenset({"active", "disabled"})
 
 # ---------------------------------------------------------------------------

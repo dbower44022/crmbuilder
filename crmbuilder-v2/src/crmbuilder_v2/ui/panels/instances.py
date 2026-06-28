@@ -169,6 +169,12 @@ class InstancesPanel(ListDetailPanel):
             _log.warning("inventory read failed for %s: %s", identifier, exc)
             extras["membership_summary"] = {}
             extras["publish_plan"] = {"item_count": 0}
+        # PI-201 (REQ-172): the deploy/provisioning config, if the instance has one.
+        try:
+            extras["deploy_config"] = self._client.get_deploy_config(identifier)
+        except StorageClientError as exc:
+            _log.warning("deploy-config read failed for %s: %s", identifier, exc)
+            extras["deploy_config"] = None
         return extras
 
     def render_detail(
@@ -285,6 +291,10 @@ class InstancesPanel(ListDetailPanel):
         outer.addWidget(_separator())
         outer.addWidget(self._membership_section(extras))
 
+        # PI-201 (REQ-172): deploy/provisioning config, if present.
+        outer.addWidget(_separator())
+        outer.addWidget(self._deploy_config_section(extras))
+
         outer.addWidget(_separator())
         outer.addWidget(
             created_updated_section(
@@ -306,6 +316,44 @@ class InstancesPanel(ListDetailPanel):
         outer.addStretch(1)
         scroll.setWidget(container)
         return scroll
+
+    def _deploy_config_section(self, extras: dict[str, Any]) -> QWidget:
+        """Read-only deploy/provisioning config block (PI-201 / REQ-172)."""
+        cfg = extras.get("deploy_config")
+        box = QWidget()
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(6)
+        lay.addWidget(_heading_label("Deploy config"))
+        if not cfg:
+            lay.addWidget(QLabel(
+                "No deploy/provisioning config recorded for this instance."
+            ))
+            return box
+        form = QFormLayout()
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+
+        def _row(label: str, value: Any) -> None:
+            v = QLabel(str(value) if value not in (None, "") else "—")
+            v.setWordWrap(True)
+            form.addRow(QLabel(label), v)
+
+        _row("Scenario", cfg.get("scenario"))
+        _row("SSH", "{}@{}:{}".format(
+            cfg.get("ssh_username") or "?", cfg.get("ssh_host") or "?",
+            cfg.get("ssh_port") or 22))
+        _row("SSH auth", cfg.get("ssh_auth_type"))
+        _row("Domain", cfg.get("domain"))
+        _row("Let's Encrypt email", cfg.get("letsencrypt_email"))
+        # Secrets are never shown — only whether one is set.
+        _row("DB root password", "set" if cfg.get("db_root_password_ref") else "—")
+        _row("Current version", cfg.get("current_espocrm_version"))
+        _row("Latest version", cfg.get("latest_espocrm_version"))
+        _row("Cert expiry", cfg.get("cert_expiry_date"))
+        _row("Backups enabled", cfg.get("backups_enabled"))
+        _row("Droplet id", cfg.get("droplet_id"))
+        lay.addLayout(form)
+        return box
 
     # ------------------------------------------------------------------
     # Identifier addressing

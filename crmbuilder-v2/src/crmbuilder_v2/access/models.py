@@ -63,6 +63,8 @@ from crmbuilder_v2.access.vocab import (
     DECISION_STATUSES,
     DEDUP_ON_MATCH,
     DEDUP_RULE_STATUSES,
+    DEPLOY_CONFIG_SCENARIOS,
+    DEPLOY_CONFIG_SSH_AUTH_TYPES,
     DEPOSIT_EVENT_KINDS,
     DEPOSIT_EVENT_OUTCOMES,
     DOMAIN_STATUSES,
@@ -2729,6 +2731,84 @@ class InstanceMembership(EngagementScopedMixin, Base):
             "engagement_id",
             "member_type",
             "member_identifier",
+        ),
+    )
+
+
+class InstanceDeployConfig(EngagementScopedMixin, Base):
+    """PI-201 (REQ-172, PRJ-027) — an instance's deploy/provisioning config.
+
+    A lightweight engagement-scoped child of ``instance`` (1:1, ``UNIQUE`` on the
+    instance), **not** a prefixed-identifier governance entity (no change_log /
+    refs participation) — mirroring ``InstanceMembership``. Carries the SSH
+    connection, hosting/DNS metadata, version tracking, and backup state for a
+    self-hosted instance (REQ-172), ported from the V1 ``InstanceDeployConfig``.
+    Secrets live in the OS keyring: ``ssh_credential_ref`` holds a keyring
+    reference for a password auth (or the key file path inline for key auth,
+    paths not being sensitive the same way), ``db_root_password_ref`` a keyring
+    reference — the same REQ-157 pattern as the instance API credential.
+    """
+
+    __tablename__ = "instance_deploy_configs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    instance_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    scenario: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="self_hosted"
+    )
+    ssh_host: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ssh_port: Mapped[int | None] = mapped_column(Integer, nullable=True, default=22)
+    ssh_username: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ssh_auth_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    ssh_credential_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    domain: Mapped[str | None] = mapped_column(Text, nullable=True)
+    letsencrypt_email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    db_root_password_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    admin_email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    current_espocrm_version: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    latest_espocrm_version: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    last_upgrade_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    cert_expiry_date: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    last_backup_paths: Mapped[str | None] = mapped_column(Text, nullable=True)
+    backups_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    last_record_version: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    domain_registrar: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dns_provider: Mapped[str | None] = mapped_column(Text, nullable=True)
+    droplet_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "instance_identifier"],
+            ["instances.engagement_id", "instances.instance_identifier"],
+            ondelete="CASCADE",
+            name="fk_instance_deploy_configs_instance",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "instance_identifier",
+            name="uq_instance_deploy_config",
+        ),
+        CheckConstraint(
+            _check_in("scenario", DEPLOY_CONFIG_SCENARIOS),
+            name="ck_instance_deploy_config_scenario",
+        ),
+        CheckConstraint(
+            _check_in("ssh_auth_type", DEPLOY_CONFIG_SSH_AUTH_TYPES),
+            name="ck_instance_deploy_config_ssh_auth_type",
         ),
     )
 

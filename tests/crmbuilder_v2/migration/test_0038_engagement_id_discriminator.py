@@ -137,6 +137,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "release_runs",
         # PI-255 (PRJ-027) the relationship-level mapping decision (migration 0096).
         "association_mappings",
+        # PI-201 (PRJ-027) the per-instance deploy config (migration 0098).
+        "instance_deploy_configs",
     }
 )
 

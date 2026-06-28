@@ -2319,6 +2319,28 @@ class StorageClient:
             message="Expected {'next': str} body for next_instance_identifier",
         )
 
+    # --- deploy config (PI-201 / REQ-172) ------------------------------------
+
+    def get_deploy_config(self, identifier: str) -> dict[str, Any] | None:
+        """GET /instances/{id}/deploy-config — the config, or ``None`` if unset."""
+        result = self._request("GET", f"/instances/{identifier}/deploy-config")
+        return result if isinstance(result, dict) else None
+
+    def put_deploy_config(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /instances/{id}/deploy-config. Write-only plaintext secrets
+        (``ssh_credential``, ``db_root_password``) cross the keyring boundary."""
+        result = self._request(
+            "PUT", f"/instances/{identifier}/deploy-config", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for put_deploy_config",
+            )
+        return result
+
     # --- audit / inventory (PI-185 / PI-188) ---------------------------------
 
     def audit_instance(self, identifier: str) -> dict[str, Any]:
