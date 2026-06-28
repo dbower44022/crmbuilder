@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import threading
+import urllib.error
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -826,7 +827,29 @@ class AdoScheduler:
             report.reason = f"execution paused in {ws}"
             return False
 
-        self._post(f"/workstreams/{ws}/complete-phase")
+        # REQ-422: complete-phase requires *every* Work Task Complete, else it
+        # 409s. The pool drained without pausing, so a non-Complete task now is
+        # an anomaly (e.g. a task reverted out-of-band by a concurrent runtime).
+        # An uncaught 409 here propagates out of run() and crashes the whole
+        # multi-PI build — so catch it and halt THIS planning item gracefully
+        # (the 409 body names the unfinished tasks), leaving the run and the
+        # other PIs intact.
+        try:
+            self._post(f"/workstreams/{ws}/complete-phase")
+        except urllib.error.HTTPError as exc:
+            if exc.code != 409:
+                raise
+            try:
+                detail = exc.read().decode("utf-8")[:300]
+            except Exception:
+                detail = ""
+            report.status = TaskStatus.NEEDS_HUMAN
+            report.reason = (
+                f"phase {ws} cannot complete — not all Work Tasks are Complete; "
+                f"halting this planning item, not the run. {detail}".strip()
+            )
+            self.log(f"⏸ {pi}: {report.reason}")
+            return False
         self.log(f"✔ {pi}: phase {ws} complete "
                  f"({len(pool_report.merged)} task(s) merged)")
         report.completed_phases.append(ws)

@@ -13,6 +13,9 @@ Mirrors the module's pure/I-O split:
 
 from __future__ import annotations
 
+import io
+import urllib.error
+
 from crmbuilder_v2.scheduler import ado_scheduler as ado
 from crmbuilder_v2.scheduler.ado_scheduler import (
     AdoRunReport,
@@ -298,6 +301,39 @@ def test_drives_all_phases_scope_then_execute():
     # every phase was scoped before it was started.
     for ws in world.phase_ids:
         assert world.calls.index(f"scope:{ws}") < world.calls.index(f"/workstreams/{ws}/start-execution")
+
+
+def test_incomplete_phase_halts_this_pi_not_the_whole_run():
+    # REQ-422: the pool drained without pausing, but the phase cannot complete
+    # (a Work Task left not Complete — e.g. reverted out-of-band by a concurrent
+    # runtime), so complete-phase 409s. An uncaught 409 used to crash the whole
+    # multi-PI run; now the driver catches it and halts THIS planning item
+    # gracefully (NEEDS_HUMAN), surfacing the 409 detail.
+    world = _World(1)
+    world.pi_status = "In Progress"
+    world.decomposed = True
+    world.phase_status["WSK-1"] = "Ready"
+
+    class _Driver(_FakeDriver):
+        def _post(self, path, body=None):
+            if path.endswith("/complete-phase"):
+                raise urllib.error.HTTPError(
+                    path, 409,
+                    "workstream 'WSK-1' has non-Complete Work Task(s) ['WTK-2']",
+                    {}, io.BytesIO(b"non-Complete Work Task(s) ['WTK-2']"),
+                )
+            return super()._post(path, body)
+
+    driver = _Driver(
+        world, config=_cfg(),
+        pool_runner=_clean_pool, scope_runner=_scopes_to_ready(world),
+        gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status is TaskStatus.NEEDS_HUMAN
+    assert "cannot complete" in report.reason
+    # the run did not crash, and the phase was not marked complete.
+    assert world.phase_status["WSK-1"] != "Complete"
 
 
 def test_reconcile_runs_after_design_only():
