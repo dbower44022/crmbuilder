@@ -19,16 +19,26 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _has_fields() -> bool:
+    return "fields" in sa.inspect(op.get_bind()).get_table_names()
+
+
 def _existing() -> set[str]:
     return {c["name"] for c in sa.inspect(op.get_bind()).get_columns("fields")}
 
 
 def upgrade() -> None:
+    # Guard on table existence: a mid-stream chain entry leaves `fields` absent
+    # and get_columns() would raise NoSuchTableError. Mirrors 0083/0085/0087/0091.
+    if not _has_fields():
+        return
     if "field_label" not in _existing():
         op.add_column("fields", sa.Column("field_label", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
+    if not _has_fields():
+        return
     if "field_label" in _existing():
         with op.batch_alter_table("fields") as batch:
             batch.drop_column("field_label")

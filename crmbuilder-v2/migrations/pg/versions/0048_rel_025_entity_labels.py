@@ -20,11 +20,19 @@ depends_on: str | Sequence[str] | None = None
 _COLUMNS = ("entity_label", "entity_label_plural")
 
 
+def _has_entities() -> bool:
+    return "entities" in sa.inspect(op.get_bind()).get_table_names()
+
+
 def _existing() -> set[str]:
     return {c["name"] for c in sa.inspect(op.get_bind()).get_columns("entities")}
 
 
 def upgrade() -> None:
+    # Guard on table existence (a mid-stream chain entry leaves `entities`
+    # absent; get_columns would raise NoSuchTableError). Mirrors the SQLite 0091.
+    if not _has_entities():
+        return
     have = _existing()
     for col in _COLUMNS:
         if col not in have:
@@ -32,6 +40,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if not _has_entities():
+        return
     have = _existing()
     for col in _COLUMNS:
         if col in have:
