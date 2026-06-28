@@ -527,6 +527,15 @@ def create_entity(
     return after
 
 
+def _flag_design_staleness(
+    session: Session, identifier: str, before: dict, after: dict
+) -> None:
+    """PI-345 hook: an entity rename flips resolved source mappings targeting it
+    stale (design_changed). Lazy import avoids a repo import cycle."""
+    from crmbuilder_v2.access.repositories import design_staleness
+    design_staleness.on_entity_updated(session, identifier, before, after)
+
+
 def update_entity(
     session: Session,
     identifier: str,
@@ -627,6 +636,7 @@ def update_entity(
         before=before,
         after=after,
     )
+    _flag_design_staleness(session, identifier, before, after)
     return after
 
 
@@ -735,6 +745,7 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
         before=before,
         after=after,
     )
+    _flag_design_staleness(session, identifier, before, after)
     return after
 
 

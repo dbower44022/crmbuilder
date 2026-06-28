@@ -871,6 +871,15 @@ def create_field(
     return after
 
 
+def _flag_design_staleness(
+    session: Session, identifier: str, before: dict, after: dict
+) -> None:
+    """PI-345 hook: a field type/name change flips resolved field mappings
+    targeting it stale (design_changed). Lazy import avoids a repo cycle."""
+    from crmbuilder_v2.access.repositories import design_staleness
+    design_staleness.on_field_updated(session, identifier, before, after)
+
+
 def update_field(
     session: Session,
     identifier: str,
@@ -978,6 +987,7 @@ def update_field(
         before=before,
         after=after,
     )
+    _flag_design_staleness(session, identifier, before, after)
     return after
 
 
@@ -1091,6 +1101,7 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
         before=before,
         after=after,
     )
+    _flag_design_staleness(session, identifier, before, after)
     return after
 
 
