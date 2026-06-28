@@ -6366,6 +6366,50 @@ class CostEvent(EngagementScopedMixin, Base):
     )
 
 
+_BUDGET_DECISIONS: frozenset[str] = frozenset({"approved", "declined"})
+
+
+class BudgetApproval(EngagementScopedMixin, Base):
+    """One recorded pre-launch budget decision for a run (REQ-318 / PI-283).
+
+    Before an autonomous run starts, an operator reviews its projected cost
+    (``cost_estimate``) against a budget and explicitly **approves** or
+    **declines**; that decision — with the budget and the projection it was made
+    against — is recorded here, tied to the run (a release). The launch gate reads
+    the latest decision for the run: a run is launch-approved only when its latest
+    decision is ``approved`` and the projection it approved was within budget.
+
+    A telemetry/control satellite like :class:`CostEvent`: engagement-scoped,
+    surrogate PK, append-only (each decision is a new row — the history is the
+    audit trail), no prefixed identifier / reference edges / change_log.
+    """
+
+    __tablename__ = "budget_approvals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    budget_release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    budget_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    budget_projected_usd: Mapped[float] = mapped_column(Float, nullable=False)
+    budget_decision: Mapped[str] = mapped_column(String(16), nullable=False)
+    budget_operator: Mapped[str] = mapped_column(String(64), nullable=False)
+    budget_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("budget_decision", _BUDGET_DECISIONS),
+            name="ck_budget_approval_decision",
+        ),
+        Index(
+            "ix_budget_approvals_run",
+            "engagement_id",
+            "budget_release_identifier",
+            "budget_created_at",
+        ),
+    )
+
+
 # The kinds of pipeline-progress event the scheduler records (REQ-313), plus the
 # outcome classes an agent invocation can resolve to (REQ-312).
 PIPELINE_EVENT_KINDS: frozenset[str] = frozenset(

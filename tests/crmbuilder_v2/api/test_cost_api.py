@@ -67,3 +67,26 @@ def test_events_listing_limit_and_filter(client):
 def test_events_limit_bounds_enforced(client):
     assert client.get("/cost/events", params={"limit": 0}).status_code == 422
     assert client.get("/cost/events", params={"limit": 9999}).status_code == 422
+
+
+def test_estimate_endpoint(client):
+    _seed()  # REL-1 = $18, REL-2 = $3 -> two release runs
+    r = client.get("/cost/estimate")
+    assert r.status_code == 200, r.text
+    d = r.json()["data"]
+    assert d["basis_runs"] == 2
+    assert d["projected_cost_usd"] == 10.5      # mean of 18 and 3
+    assert d["high_water_cost_usd"] == 18.0
+
+
+def test_budget_gate_roundtrip(client):
+    r = client.post("/cost/budget-approval", json={
+        "release_identifier": "REL-9", "budget_usd": 20.0, "projected_usd": 10.5,
+        "decision": "approved", "operator": "doug"})
+    assert r.status_code == 201, r.text
+    assert client.get("/cost/budget-gate/REL-9").json()["data"]["launch_approved"] is True
+    # a later decline overrides the approval
+    client.post("/cost/budget-approval", json={
+        "release_identifier": "REL-9", "budget_usd": 20.0, "projected_usd": 10.5,
+        "decision": "declined", "operator": "doug"})
+    assert client.get("/cost/budget-gate/REL-9").json()["data"]["launch_approved"] is False

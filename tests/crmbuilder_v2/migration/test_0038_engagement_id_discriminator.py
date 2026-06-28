@@ -66,6 +66,8 @@ def _load_migration_module():
 #     (created scoped-from-birth by migration 0053).
 _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
     {
+        # PI-283 (PRJ-043, REQ-318) pre-launch budget-decision control satellite.
+        "budget_approvals",
         "findings",
         "utilization_evidence",
         "migration_mappings",
