@@ -249,3 +249,62 @@ def test_resolve_association_candidate(qapp, review_client):
     assert ams[0]["status"] == "resolved"
     assert ams[0]["target_association_identifier"] == aid
     assert review_client.get_mapping_candidate(cid)["resolved"] is True
+
+
+# --- slice 3: staleness review ----------------------------------------------
+
+
+def test_stale_mode_lists_and_reresolves(qtbot, review_client):
+    from crmbuilder_v2.access.repositories import source_mapping as smg
+    with session_scope() as s:
+        m = smg.create_source_mapping(
+            s, instance_identifier="INST-001",
+            source_entity_name="CMentorProfile", decision_type="direct")
+        mid = m["source_mapping_identifier"]
+        smg.update_source_mapping(
+            s, mid, source_entity_name="CMentorProfile",
+            decision_type="direct", status="resolved")
+        smg.mark_stale(s, mid, reason="source_changed", severity="high")
+
+    panel = CandidateReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    # Switch to "Stale mappings" — drives the real async refresh; wait for it.
+    panel._mode_combo.setCurrentIndex(1)
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 1, timeout=5000)
+    r = panel._model.record_at(0)
+    assert r["kind_display"] == "Entity"
+    assert r["mapping_identifier"] == mid
+    assert r["stale_reason_display"] == "source_changed"
+    assert r["stale_severity_display"] == "High"
+    # Stale-mode columns differ from candidate columns.
+    assert [c.field for c in panel.list_columns()][0] == "kind_display"
+    # Mark reviewed -> the mapping flips back to resolved and leaves the list.
+    panel._on_reresolve_clicked(r)
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 0, timeout=5000)
+    after = review_client.list_source_mappings(instance_identifier="INST-001")[0]
+    assert after["status"] == "resolved"
+
+
+def test_stale_mode_merges_field_and_association(qtbot, review_client):
+    from crmbuilder_v2.access.repositories import association_mapping as amap
+    from crmbuilder_v2.access.repositories import field_mapping as fmap
+    from crmbuilder_v2.access.repositories import source_mapping as smg
+    with session_scope() as s:
+        parent = smg.create_source_mapping(
+            s, instance_identifier="INST-001", source_entity_name="CEng",
+            decision_type="direct")["source_mapping_identifier"]
+        fm = fmap.create_field_mapping(
+            s, source_mapping_identifier=parent, source_field_name="cStatus",
+            decision_type="direct")["field_mapping_identifier"]
+        fmap.mark_stale(s, fm, reason="design_changed", severity="low")
+        am = amap.create_association_mapping(
+            s, instance_identifier="INST-001", source_association_name="dueses",
+            decision_type="direct")["association_mapping_identifier"]
+        amap.mark_stale(s, am, reason="source_changed", severity="high")
+
+    panel = CandidateReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    panel._mode_combo.setCurrentIndex(1)
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 2, timeout=5000)
+    kinds = {panel._model.record_at(i)["kind_display"] for i in range(2)}
+    assert kinds == {"Field", "Association"}

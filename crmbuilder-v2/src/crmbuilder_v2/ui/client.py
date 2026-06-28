@@ -2179,6 +2179,24 @@ class StorageClient:
             )
         return result
 
+    def list_field_mappings(
+        self,
+        *,
+        source_mapping_identifier: str | None = None,
+        status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return field-level mappings (GET /field-mappings)."""
+        params: list[str] = []
+        if source_mapping_identifier is not None:
+            params.append(f"source_mapping_identifier={source_mapping_identifier}")
+        if status is not None:
+            params.append(f"status={status}")
+        path = "/field-mappings"
+        if params:
+            path = f"{path}?{'&'.join(params)}"
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
     def list_associations(
         self, *, include_deleted: bool = False
     ) -> list[dict[str, Any]]:
