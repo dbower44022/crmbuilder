@@ -15,10 +15,10 @@ on its journey* and are unchanged. ``TaskStatus`` tracks *how a task-run went*.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     """How a single task-run went — the one vocabulary the scheduler gates on."""
 
     NOT_STARTED = "not_started"

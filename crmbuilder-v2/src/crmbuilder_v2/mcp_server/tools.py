@@ -163,19 +163,19 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             k: v
-            for k, v in dict(
-                title=title,
-                decision_date=decision_date,
-                status=status,
-                context=context,
-                decision=decision,
-                rationale=rationale,
-                alternatives_considered=alternatives_considered,
-                consequences=consequences,
-                executive_summary=executive_summary,
-                supersedes=supersedes,
-                superseded_by=superseded_by,
-            ).items()
+            for k, v in {
+                "title": title,
+                "decision_date": decision_date,
+                "status": status,
+                "context": context,
+                "decision": decision,
+                "rationale": rationale,
+                "alternatives_considered": alternatives_considered,
+                "consequences": consequences,
+                "executive_summary": executive_summary,
+                "supersedes": supersedes,
+                "superseded_by": superseded_by,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.patch(f"/decisions/{identifier}", json=body))
@@ -208,11 +208,11 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         params = {
             k: v
-            for k, v in dict(
-                status=status,
-                medium=medium,
-                project_identifier=project_identifier,
-            ).items()
+            for k, v in {
+                "status": status,
+                "medium": medium,
+                "project_identifier": project_identifier,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.get("/sessions", params=params or None))
@@ -256,20 +256,20 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             k: v
-            for k, v in dict(
-                session_identifier=identifier,
-                session_title=title,
-                session_description=description,
-                session_medium=medium,
-                session_executive_summary=executive_summary,
-                session_notes=notes,
-                session_status=status,
-                session_scheduled_for=scheduled_for,
-                session_started_at=started_at,
-                session_ended_at=ended_at,
-                session_participants=participants,
-                session_medium_metadata=medium_metadata,
-            ).items()
+            for k, v in {
+                "session_identifier": identifier,
+                "session_title": title,
+                "session_description": description,
+                "session_medium": medium,
+                "session_executive_summary": executive_summary,
+                "session_notes": notes,
+                "session_status": status,
+                "session_scheduled_for": scheduled_for,
+                "session_started_at": started_at,
+                "session_ended_at": ended_at,
+                "session_participants": participants,
+                "session_medium_metadata": medium_metadata,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.post("/sessions", json=body))
@@ -298,19 +298,19 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             f"session_{k}": v
-            for k, v in dict(
-                title=title,
-                description=description,
-                medium=medium,
-                notes=notes,
-                status=status,
-                scheduled_for=scheduled_for,
-                started_at=started_at,
-                ended_at=ended_at,
-                participants=participants,
-                medium_metadata=medium_metadata,
-                executive_summary=executive_summary,
-            ).items()
+            for k, v in {
+                "title": title,
+                "description": description,
+                "medium": medium,
+                "notes": notes,
+                "status": status,
+                "scheduled_for": scheduled_for,
+                "started_at": started_at,
+                "ended_at": ended_at,
+                "participants": participants,
+                "medium_metadata": medium_metadata,
+                "executive_summary": executive_summary,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.patch(f"/sessions/{identifier}", json=body))
@@ -353,10 +353,10 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         (resolves the conversation_belongs_to_session edge)."""
         params = {
             k: v
-            for k, v in dict(
-                status=status,
-                session_identifier=session_identifier,
-            ).items()
+            for k, v in {
+                "status": status,
+                "session_identifier": session_identifier,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -388,16 +388,16 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             k: v
-            for k, v in dict(
-                conversation_identifier=identifier,
-                conversation_title=title,
-                conversation_purpose=purpose,
-                conversation_description=description,
-                conversation_summary=summary,
-                conversation_notes=notes,
-                conversation_status=status,
-                conversation_executive_summary=executive_summary,
-            ).items()
+            for k, v in {
+                "conversation_identifier": identifier,
+                "conversation_title": title,
+                "conversation_purpose": purpose,
+                "conversation_description": description,
+                "conversation_summary": summary,
+                "conversation_notes": notes,
+                "conversation_status": status,
+                "conversation_executive_summary": executive_summary,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.post("/conversations", json=body))
@@ -419,15 +419,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             f"conversation_{k}": v
-            for k, v in dict(
-                title=title,
-                purpose=purpose,
-                description=description,
-                summary=summary,
-                notes=notes,
-                status=status,
-                executive_summary=executive_summary,
-            ).items()
+            for k, v in {
+                "title": title,
+                "purpose": purpose,
+                "description": description,
+                "summary": summary,
+                "notes": notes,
+                "status": status,
+                "executive_summary": executive_summary,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -486,14 +486,14 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """Update a risk record."""
         body = {
             k: v
-            for k, v in dict(
-                title=title,
-                description=description,
-                probability=probability,
-                impact=impact,
-                response_plan=response_plan,
-                status=status,
-            ).items()
+            for k, v in {
+                "title": title,
+                "description": description,
+                "probability": probability,
+                "impact": impact,
+                "response_plan": response_plan,
+                "status": status,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.patch(f"/risks/{identifier}", json=body))
@@ -555,14 +555,14 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             k: v
-            for k, v in dict(
-                title=title,
-                item_type=item_type,
-                description=description,
-                status=status,
-                resolution_reference=resolution_reference,
-                executive_summary=executive_summary,
-            ).items()
+            for k, v in {
+                "title": title,
+                "item_type": item_type,
+                "description": description,
+                "status": status,
+                "resolution_reference": resolution_reference,
+                "executive_summary": executive_summary,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -925,21 +925,21 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             k: v
-            for k, v in dict(
-                entity_name=name,
-                entity_description=description,
-                entity_notes=notes,
-                entity_status=status,
-                entity_kind=kind,
-                entity_identifier=identifier,
-                entity_default_sort_field=default_sort_field,
-                entity_default_sort_direction=default_sort_direction,
-                entity_track_activity=track_activity,
-                entity_tracks_activities=tracks_activities,
-                entity_text_filter_fields=text_filter_fields,
-                entity_full_text_search=full_text_search,
-                entity_full_text_search_min_length=full_text_search_min_length,
-            ).items()
+            for k, v in {
+                "entity_name": name,
+                "entity_description": description,
+                "entity_notes": notes,
+                "entity_status": status,
+                "entity_kind": kind,
+                "entity_identifier": identifier,
+                "entity_default_sort_field": default_sort_field,
+                "entity_default_sort_direction": default_sort_direction,
+                "entity_track_activity": track_activity,
+                "entity_tracks_activities": tracks_activities,
+                "entity_text_filter_fields": text_filter_fields,
+                "entity_full_text_search": full_text_search,
+                "entity_full_text_search_min_length": full_text_search_min_length,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.post("/entities", json=body))
@@ -970,20 +970,20 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         ``full_text_search`` / ``full_text_search_min_length`` too."""
         body = {
             f"entity_{k}": v
-            for k, v in dict(
-                name=name,
-                description=description,
-                notes=notes,
-                status=status,
-                kind=kind,
-                default_sort_field=default_sort_field,
-                default_sort_direction=default_sort_direction,
-                track_activity=track_activity,
-                tracks_activities=tracks_activities,
-                text_filter_fields=text_filter_fields,
-                full_text_search=full_text_search,
-                full_text_search_min_length=full_text_search_min_length,
-            ).items()
+            for k, v in {
+                "name": name,
+                "description": description,
+                "notes": notes,
+                "status": status,
+                "kind": kind,
+                "default_sort_field": default_sort_field,
+                "default_sort_direction": default_sort_direction,
+                "track_activity": track_activity,
+                "tracks_activities": tracks_activities,
+                "text_filter_fields": text_filter_fields,
+                "full_text_search": full_text_search,
+                "full_text_search_min_length": full_text_search_min_length,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.patch(f"/entities/{identifier}", json=body))
@@ -1026,10 +1026,10 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         params = {
             k: v
-            for k, v in dict(
-                entity_identifier=entity_identifier,
-                include_deleted="true" if include_deleted else None,
-            ).items()
+            for k, v in {
+                "entity_identifier": entity_identifier,
+                "include_deleted": "true" if include_deleted else None,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.get("/fields", params=params or None))
@@ -1091,30 +1091,30 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             k: v
-            for k, v in dict(
-                field_belongs_to_entity_identifier=entity_identifier,
-                field_name=name,
-                field_description=description,
-                field_type=type,
-                field_required=required,
-                field_notes=notes,
-                field_status=status,
-                field_identifier=identifier,
-                field_tooltip=tooltip,
-                field_usage_summary=usage_summary,
-                field_default_value=default_value,
-                field_format=format,
-                field_numeric_scale=numeric_scale,
-                field_max_length=max_length,
-                field_min=min,
-                field_max=max,
-                field_read_only=read_only,
-                field_unique=unique,
-                field_externally_populated=externally_populated,
-                field_derived_result_type=derived_result_type,
-                field_formula=formula,
-                field_options=options,
-            ).items()
+            for k, v in {
+                "field_belongs_to_entity_identifier": entity_identifier,
+                "field_name": name,
+                "field_description": description,
+                "field_type": type,
+                "field_required": required,
+                "field_notes": notes,
+                "field_status": status,
+                "field_identifier": identifier,
+                "field_tooltip": tooltip,
+                "field_usage_summary": usage_summary,
+                "field_default_value": default_value,
+                "field_format": format,
+                "field_numeric_scale": numeric_scale,
+                "field_max_length": max_length,
+                "field_min": min,
+                "field_max": max,
+                "field_read_only": read_only,
+                "field_unique": unique,
+                "field_externally_populated": externally_populated,
+                "field_derived_result_type": derived_result_type,
+                "field_formula": formula,
+                "field_options": options,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.post("/fields", json=body))
@@ -1157,28 +1157,28 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         result-type / ``derived`` type invariant is re-checked on PATCH."""
         body = {
             f"field_{k}": v
-            for k, v in dict(
-                name=name,
-                description=description,
-                type=type,
-                required=required,
-                notes=notes,
-                status=status,
-                tooltip=tooltip,
-                usage_summary=usage_summary,
-                default_value=default_value,
-                format=format,
-                numeric_scale=numeric_scale,
-                max_length=max_length,
-                min=min,
-                max=max,
-                read_only=read_only,
-                unique=unique,
-                externally_populated=externally_populated,
-                derived_result_type=derived_result_type,
-                formula=formula,
-                options=options,
-            ).items()
+            for k, v in {
+                "name": name,
+                "description": description,
+                "type": type,
+                "required": required,
+                "notes": notes,
+                "status": status,
+                "tooltip": tooltip,
+                "usage_summary": usage_summary,
+                "default_value": default_value,
+                "format": format,
+                "numeric_scale": numeric_scale,
+                "max_length": max_length,
+                "min": min,
+                "max": max,
+                "read_only": read_only,
+                "unique": unique,
+                "externally_populated": externally_populated,
+                "derived_result_type": derived_result_type,
+                "formula": formula,
+                "options": options,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.patch(f"/fields/{identifier}", json=body))
@@ -1221,11 +1221,11 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         params = {
             k: v
-            for k, v in dict(
-                source_entity=source_entity,
-                target_entity=target_entity,
-                include_deleted="true" if include_deleted else None,
-            ).items()
+            for k, v in {
+                "source_entity": source_entity,
+                "target_entity": target_entity,
+                "include_deleted": "true" if include_deleted else None,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -1254,18 +1254,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             k: v
-            for k, v in dict(
-                association_name=name,
-                association_source_entity=source_entity,
-                association_target_entity=target_entity,
-                association_cardinality=cardinality,
-                association_source_role=source_role,
-                association_target_role=target_role,
-                association_description=description,
-                association_notes=notes,
-                association_status=status,
-                association_identifier=identifier,
-            ).items()
+            for k, v in {
+                "association_name": name,
+                "association_source_entity": source_entity,
+                "association_target_entity": target_entity,
+                "association_cardinality": cardinality,
+                "association_source_role": source_role,
+                "association_target_role": target_role,
+                "association_description": description,
+                "association_notes": notes,
+                "association_status": status,
+                "association_identifier": identifier,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.post("/associations", json=body))
@@ -1287,17 +1287,17 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         entities; a status change is transition-validated."""
         body = {
             f"association_{k}": v
-            for k, v in dict(
-                name=name,
-                source_entity=source_entity,
-                target_entity=target_entity,
-                cardinality=cardinality,
-                source_role=source_role,
-                target_role=target_role,
-                description=description,
-                notes=notes,
-                status=status,
-            ).items()
+            for k, v in {
+                "name": name,
+                "source_entity": source_entity,
+                "target_entity": target_entity,
+                "cardinality": cardinality,
+                "source_role": source_role,
+                "target_role": target_role,
+                "description": description,
+                "notes": notes,
+                "status": status,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -1343,12 +1343,12 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         params = {
             k: v
-            for k, v in dict(
-                target_engine=target_engine,
-                subject_type=subject_type,
-                subject_identifier=subject_identifier,
-                include_deleted="true" if include_deleted else None,
-            ).items()
+            for k, v in {
+                "target_engine": target_engine,
+                "subject_type": subject_type,
+                "subject_identifier": subject_identifier,
+                "include_deleted": "true" if include_deleted else None,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -1376,15 +1376,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             k: v
-            for k, v in dict(
-                override_target_engine=target_engine,
-                override_subject_type=subject_type,
-                override_subject_identifier=subject_identifier,
-                override_attribute=attribute,
-                override_value=value,
-                override_notes=notes,
-                override_identifier=identifier,
-            ).items()
+            for k, v in {
+                "override_target_engine": target_engine,
+                "override_subject_type": subject_type,
+                "override_subject_identifier": subject_identifier,
+                "override_attribute": attribute,
+                "override_value": value,
+                "override_notes": notes,
+                "override_identifier": identifier,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.post("/engine-overrides", json=body))
@@ -1403,14 +1403,14 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         members change."""
         body = {
             f"override_{k}": v
-            for k, v in dict(
-                target_engine=target_engine,
-                subject_type=subject_type,
-                subject_identifier=subject_identifier,
-                attribute=attribute,
-                value=value,
-                notes=notes,
-            ).items()
+            for k, v in {
+                "target_engine": target_engine,
+                "subject_type": subject_type,
+                "subject_identifier": subject_identifier,
+                "attribute": attribute,
+                "value": value,
+                "notes": notes,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -1455,12 +1455,12 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         params = {
             k: v
-            for k, v in dict(
-                subject_type=subject_type,
-                subject_identifier=subject_identifier,
-                effect=effect,
-                include_deleted="true" if include_deleted else None,
-            ).items()
+            for k, v in {
+                "subject_type": subject_type,
+                "subject_identifier": subject_identifier,
+                "effect": effect,
+                "include_deleted": "true" if include_deleted else None,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.get("/rules", params=params or None))
@@ -1490,18 +1490,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         body = {
             k: v
-            for k, v in dict(
-                rule_name=name,
-                rule_subject_type=subject_type,
-                rule_subject_identifier=subject_identifier,
-                rule_effect=effect,
-                rule_condition=condition,
-                rule_message=message,
-                rule_description=description,
-                rule_notes=notes,
-                rule_status=status,
-                rule_identifier=identifier,
-            ).items()
+            for k, v in {
+                "rule_name": name,
+                "rule_subject_type": subject_type,
+                "rule_subject_identifier": subject_identifier,
+                "rule_effect": effect,
+                "rule_condition": condition,
+                "rule_message": message,
+                "rule_description": description,
+                "rule_notes": notes,
+                "rule_status": status,
+                "rule_identifier": identifier,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.post("/rules", json=body))
@@ -1523,17 +1523,17 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         re-validated as a neutral AST; a status change is transition-validated."""
         body = {
             f"rule_{k}": v
-            for k, v in dict(
-                name=name,
-                subject_type=subject_type,
-                subject_identifier=subject_identifier,
-                effect=effect,
-                condition=condition,
-                message=message,
-                description=description,
-                notes=notes,
-                status=status,
-            ).items()
+            for k, v in {
+                "name": name,
+                "subject_type": subject_type,
+                "subject_identifier": subject_identifier,
+                "effect": effect,
+                "condition": condition,
+                "message": message,
+                "description": description,
+                "notes": notes,
+                "status": status,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.patch(f"/rules/{identifier}", json=body))
@@ -1568,10 +1568,10 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         params = {
             k: v
-            for k, v in dict(
-                entity=entity,
-                include_deleted="true" if include_deleted else None,
-            ).items()
+            for k, v in {
+                "entity": entity,
+                "include_deleted": "true" if include_deleted else None,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.get("/views", params=params or None))
@@ -1605,15 +1605,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         body.update(
             {
                 k: v
-                for k, v in dict(
-                    view_filter=filter,
-                    view_sort_field=sort_field,
-                    view_sort_direction=sort_direction,
-                    view_description=description,
-                    view_notes=notes,
-                    view_status=status,
-                    view_identifier=identifier,
-                ).items()
+                for k, v in {
+                    "view_filter": filter,
+                    "view_sort_field": sort_field,
+                    "view_sort_direction": sort_direction,
+                    "view_description": description,
+                    "view_notes": notes,
+                    "view_status": status,
+                    "view_identifier": identifier,
+                }.items()
                 if v is not None
             }
         )
@@ -1636,17 +1636,17 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         re-validated as a neutral AST; a status change is transition-validated."""
         body = {
             f"view_{k}": v
-            for k, v in dict(
-                name=name,
-                entity=entity,
-                columns=columns,
-                filter=filter,
-                sort_field=sort_field,
-                sort_direction=sort_direction,
-                description=description,
-                notes=notes,
-                status=status,
-            ).items()
+            for k, v in {
+                "name": name,
+                "entity": entity,
+                "columns": columns,
+                "filter": filter,
+                "sort_field": sort_field,
+                "sort_direction": sort_direction,
+                "description": description,
+                "notes": notes,
+                "status": status,
+            }.items()
             if v is not None
         }
         return await _unwrap(await http.patch(f"/views/{identifier}", json=body))
@@ -1687,11 +1687,11 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         params = {
             k: v
-            for k, v in dict(
-                entity=entity,
-                trigger=trigger,
-                include_deleted="true" if include_deleted else None,
-            ).items()
+            for k, v in {
+                "entity": entity,
+                "trigger": trigger,
+                "include_deleted": "true" if include_deleted else None,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -1728,13 +1728,13 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         body.update(
             {
                 k: v
-                for k, v in dict(
-                    automation_condition=condition,
-                    automation_description=description,
-                    automation_notes=notes,
-                    automation_status=status,
-                    automation_identifier=identifier,
-                ).items()
+                for k, v in {
+                    "automation_condition": condition,
+                    "automation_description": description,
+                    "automation_notes": notes,
+                    "automation_status": status,
+                    "automation_identifier": identifier,
+                }.items()
                 if v is not None
             }
         )
@@ -1757,16 +1757,16 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         action's type; a status change is transition-validated."""
         body = {
             f"automation_{k}": v
-            for k, v in dict(
-                name=name,
-                entity=entity,
-                trigger=trigger,
-                actions=actions,
-                condition=condition,
-                description=description,
-                notes=notes,
-                status=status,
-            ).items()
+            for k, v in {
+                "name": name,
+                "entity": entity,
+                "trigger": trigger,
+                "actions": actions,
+                "condition": condition,
+                "description": description,
+                "notes": notes,
+                "status": status,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -1807,10 +1807,10 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         params = {
             k: v
-            for k, v in dict(
-                entity=entity,
-                include_deleted="true" if include_deleted else None,
-            ).items()
+            for k, v in {
+                "entity": entity,
+                "include_deleted": "true" if include_deleted else None,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -1849,14 +1849,14 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         body.update(
             {
                 k: v
-                for k, v in dict(
-                    dedup_rule_normalize=normalize,
-                    dedup_rule_message=message,
-                    dedup_rule_description=description,
-                    dedup_rule_notes=notes,
-                    dedup_rule_status=status,
-                    dedup_rule_identifier=identifier,
-                ).items()
+                for k, v in {
+                    "dedup_rule_normalize": normalize,
+                    "dedup_rule_message": message,
+                    "dedup_rule_description": description,
+                    "dedup_rule_notes": notes,
+                    "dedup_rule_status": status,
+                    "dedup_rule_identifier": identifier,
+                }.items()
                 if v is not None
             }
         )
@@ -1879,17 +1879,17 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         transition-validated."""
         body = {
             f"dedup_rule_{k}": v
-            for k, v in dict(
-                name=name,
-                entity=entity,
-                match_fields=match_fields,
-                on_match=on_match,
-                normalize=normalize,
-                message=message,
-                description=description,
-                notes=notes,
-                status=status,
-            ).items()
+            for k, v in {
+                "name": name,
+                "entity": entity,
+                "match_fields": match_fields,
+                "on_match": on_match,
+                "normalize": normalize,
+                "message": message,
+                "description": description,
+                "notes": notes,
+                "status": status,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -1933,11 +1933,11 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """
         params = {
             k: v
-            for k, v in dict(
-                entity=entity,
-                channel=channel,
-                include_deleted="true" if include_deleted else None,
-            ).items()
+            for k, v in {
+                "entity": entity,
+                "channel": channel,
+                "include_deleted": "true" if include_deleted else None,
+            }.items()
             if v is not None
         }
         return await _unwrap(
@@ -1974,17 +1974,17 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         payload.update(
             {
                 k: v
-                for k, v in dict(
-                    message_template_entity=entity,
-                    message_template_channel=channel,
-                    message_template_subject=subject,
-                    message_template_merge_fields=merge_fields,
-                    message_template_audience=audience,
-                    message_template_description=description,
-                    message_template_notes=notes,
-                    message_template_status=status,
-                    message_template_identifier=identifier,
-                ).items()
+                for k, v in {
+                    "message_template_entity": entity,
+                    "message_template_channel": channel,
+                    "message_template_subject": subject,
+                    "message_template_merge_fields": merge_fields,
+                    "message_template_audience": audience,
+                    "message_template_description": description,
+                    "message_template_notes": notes,
+                    "message_template_status": status,
+                    "message_template_identifier": identifier,
+                }.items()
                 if v is not None
             }
         )
@@ -2010,18 +2010,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         transition-validated."""
         payload = {
             f"message_template_{k}": v
-            for k, v in dict(
-                name=name,
-                body=body,
-                entity=entity,
-                channel=channel,
-                subject=subject,
-                merge_fields=merge_fields,
-                audience=audience,
-                description=description,
-                notes=notes,
-                status=status,
-            ).items()
+            for k, v in {
+                "name": name,
+                "body": body,
+                "entity": entity,
+                "channel": channel,
+                "subject": subject,
+                "merge_fields": merge_fields,
+                "audience": audience,
+                "description": description,
+                "notes": notes,
+                "status": status,
+            }.items()
             if v is not None
         }
         return await _unwrap(

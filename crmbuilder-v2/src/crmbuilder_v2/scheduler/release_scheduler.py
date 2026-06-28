@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel
@@ -60,7 +60,7 @@ AreaProvider = Callable[[dict], dict]          # (ctx) -> outcome
 # ---------------------------------------------------------------------------
 
 
-class StepKind(str, Enum):
+class StepKind(StrEnum):
     AWAIT_FREEZE = "await_freeze"        # a deliberate human/PM freeze act is owed
     AUTHOR_DEMANDS = "author_demands"    # reconciliation: no demands yet
     RESOLVE_CONFLICTS = "resolve_conflicts"  # PAUSE — governed decisions owed
