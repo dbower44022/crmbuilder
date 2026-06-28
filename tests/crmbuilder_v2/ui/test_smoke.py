@@ -57,6 +57,8 @@ EXPECTED_ENTRIES = (
     "Publish History",
     # PI-319 (REL-024): three-way reconciliation panel, after Publish History.
     "Reconcile",
+    # PI-256: source-candidate review panel, after Reconcile.
+    "Candidate Review",
     # requirements-provenance Phase 6b: topic-first review surface,
     # appended to the Governance group after Work Tasks.
     "Requirements Review",
