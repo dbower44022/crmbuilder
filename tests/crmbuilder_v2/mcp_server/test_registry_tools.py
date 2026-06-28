@@ -93,8 +93,9 @@ def test_seed_decomposes_proven_prompts_into_resolvable_contracts(v2_env):
         archs = agent_profiles.list_all(s, area="storage", tier="architect")
         arch_contract = registry_resolver.resolve_contract(s, archs[0]["identifier"])
         # The real proven Architect prompt body — not a one-line pointer.
-        assert "your one job" in arch_contract["system_prompt"].lower()
-        assert "feed-forward" in arch_contract["system_prompt"].lower()
+        # (Phrasing per the PI-347/REQ-386 prompt polish.)
+        assert "standing design-tier expert" in arch_contract["system_prompt"].lower()
+        assert "do not write the code" in arch_contract["system_prompt"].lower()
         # Its tool-skills are the substrate endpoints it drives.
         callables = {t["backing_callable"] for t in arch_contract["tools"]}
         assert any("/scope" in c for c in callables)
