@@ -38,6 +38,9 @@ _EXPECTED_COLUMNS = {
     "entity_kind": "TEXT",
     "entity_description": "TEXT",
     "entity_notes": "TEXT",
+    # REL-025 / PI-322 / REQ-364 — display labels captured during audit.
+    "entity_label": "TEXT",
+    "entity_label_plural": "TEXT",
     # PRJ-025 PI-182 — intrinsic engine-neutral design intent (§6).
     "entity_default_sort_field": "TEXT",
     "entity_default_sort_direction": "TEXT",
@@ -60,7 +63,7 @@ _EXPECTED_COLUMNS = {
 # ---------------------------------------------------------------------------
 
 
-def test_entities_table_has_nine_columns_with_correct_types(v2_env):
+def test_entities_table_has_expected_columns_with_correct_types(v2_env):
     inspector = inspect(get_engine())
     assert "entities" in inspector.get_table_names()
     columns = {c["name"]: c for c in inspector.get_columns("entities")}
