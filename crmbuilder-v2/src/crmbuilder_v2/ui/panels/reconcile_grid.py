@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QMessageBox,
     QPushButton,
@@ -46,6 +47,19 @@ _log = logging.getLogger(__name__)
 
 #: Recorded as the transaction actor for desktop-driven reconcile actions.
 _ACTOR = "desktop"
+
+def _fill_width(header, *, stretch_col: int, content_cols) -> None:
+    """Size a view's columns to fill the full width with no manual resize (REQ-391).
+
+    ``stretch_col`` takes all the slack (the critical text column — Entity or
+    Difference); ``content_cols`` size to their content. The last section does
+    not auto-stretch, so the stretch column owns the leftover space.
+    """
+    header.setStretchLastSection(False)
+    header.setSectionResizeMode(stretch_col, QHeaderView.ResizeMode.Stretch)
+    for col in content_cols:
+        header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+
 
 _PRIMARY = (
     "QPushButton { background-color: #1565C0; color: white; border-radius: 4px; "
@@ -163,7 +177,10 @@ class ReconcileGridPanel(QWidget):
         self._grid.setShowGrid(True)
         self._grid.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self._grid.verticalHeader().setVisible(False)
-        self._grid.horizontalHeader().setStretchLastSection(True)
+        # Fill the full width with no manual resize (REQ-391): the entity column
+        # takes the slack so its names stay readable; the location columns size to
+        # their short state labels.
+        _fill_width(self._grid.horizontalHeader(), stretch_col=0, content_cols=(1, 2, 3))
         self._grid.doubleClicked.connect(self._on_grid_activated)
         lay.addWidget(self._grid)
         hint = QLabel("Double-click an entity to see its differences.")
@@ -210,6 +227,9 @@ class ReconcileGridPanel(QWidget):
         self._detail.setRootIsDecorated(True)
         self._detail.setUniformRowHeights(True)
         self._detail.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
+        # The difference column is the critical one (REQ-391): give it the slack so
+        # long labels stay readable; the value columns size to their short content.
+        _fill_width(self._detail.header(), stretch_col=0, content_cols=(1, 2, 3))
         lay.addWidget(self._detail)
 
         # Unified apply (REQ-371/372): pick where the correct value lives and where
@@ -340,7 +360,6 @@ class ReconcileGridPanel(QWidget):
             instance_b_label=b_label,
         )
         self._grid_proxy.set_differing(set(self._groups_by_entity))
-        self._grid.resizeColumnsToContents()
         self._stack.setCurrentIndex(0)
         entity_count = len(self._payload.get("existence", []))
         diff_count = self._payload.get("row_count", 0)
