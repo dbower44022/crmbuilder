@@ -188,6 +188,32 @@ def test_rework_bounceback_allowed(v2_env):
         assert out["release_status"] == "development"
 
 
+@pytest.mark.parametrize("frm", ["preliminary_planning", "development_planning"])
+def test_delivered_off_pipeline_from_pre_freeze_is_terminal(v2_env, frm):
+    # REQ-420 / PI-361: a pre-freeze release may go straight to the honest
+    # "delivered outside the pipeline" terminal — no freeze, no sign-off gates.
+    with session_scope() as s:
+        rel = _make(s)["release_identifier"]
+        if frm == "development_planning":
+            releases.transition(s, rel, "development_planning")
+        out = releases.transition(s, rel, "delivered_off_pipeline")
+        assert out["release_status"] == "delivered_off_pipeline"
+        # Terminal: no outgoing transition.
+        with pytest.raises(StatusTransitionError):
+            releases.transition(s, rel, "development_planning")
+
+
+def test_delivered_off_pipeline_unreachable_from_a_lane(v2_env):
+    # A lane-entered release actually ran the pipeline, so it can never be
+    # marked "delivered off pipeline" (REQ-420 / PI-361).
+    with session_scope() as s:
+        rel, _, _ = _scoped_release(s, title="LANE")
+        _drive_to_ready(s, rel)
+        releases.transition(s, rel, "development")
+        with pytest.raises(StatusTransitionError):
+            releases.transition(s, rel, "delivered_off_pipeline")
+
+
 # ---------------------------------------------------------------------------
 # Freeze gate
 # ---------------------------------------------------------------------------
@@ -326,7 +352,9 @@ def test_project_belongs_to_one_active_release(v2_env):
             _link(s, "project", prj, "release", r2, "project_belongs_to_release")
 
 
-@pytest.mark.parametrize("terminal", ["cancelled", "superseded", "shipped"])
+@pytest.mark.parametrize(
+    "terminal", ["cancelled", "superseded", "shipped", "delivered_off_pipeline"]
+)
 def test_terminal_release_membership_does_not_block_rescope(v2_env, terminal):
     # PI-325 / REQ-261 (preserve-failed-run-history §3.2 Option A): a project
     # scoped into a release that is then cancelled / superseded / shipped CAN

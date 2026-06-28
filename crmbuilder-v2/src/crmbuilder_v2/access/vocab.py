@@ -1030,6 +1030,15 @@ RELEASE_STATUSES: frozenset[str] = frozenset(
         "shipped",
         "cancelled",
         "superseded",
+        # An honest terminal for work delivered outside the release pipeline
+        # (REQ-420 / PI-361). A retroactive container wrapping work that was
+        # designed, reviewed, and merged via normal pull requests never ran the
+        # pipeline stages, so it has no reconciled change-set or authored design
+        # for the ship gate's sign-offs to attest to — ``shipped`` would claim
+        # reviews that did not happen, and ``cancelled`` would claim the
+        # delivered work was abandoned. Reachable only from the pre-freeze
+        # states; terminal.
+        "delivered_off_pipeline",
     }
 )
 # The lane states — the exclusive development lane (single-occupancy, REQ-189),
@@ -1043,10 +1052,11 @@ RELEASE_LANE_STATUSES: frozenset[str] = frozenset(
 # into a new active run (PI-325 / PRJ-065, REQ-261 — preserve-failed-run-history
 # design §3.2 Option A). ``shipped`` counts as terminal/complete (§3.2 con-note:
 # a shipped release's project is delivered, so it must not block a new scoping
-# either). These are exactly the ``RELEASE_STATUS_TRANSITIONS`` states with no
-# outgoing transition.
+# either). ``delivered_off_pipeline`` (REQ-420 / PI-361) is likewise terminal and
+# delivered — a project in such a release is free to re-scope. These are exactly
+# the ``RELEASE_STATUS_TRANSITIONS`` states with no outgoing transition.
 RELEASE_TERMINAL_STATUSES: frozenset[str] = frozenset(
-    {"cancelled", "superseded", "shipped"}
+    {"cancelled", "superseded", "shipped", "delivered_off_pipeline"}
 )
 
 # `artifact_version` (PI-208 / PRJ-031, DEC-503) — the versioned, release-tied
@@ -1058,12 +1068,15 @@ VERSIONED_ARTIFACT_TYPES: frozenset[str] = frozenset(
     {"entity", "field", "persona", "process", "association"}
 )
 RELEASE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    # → delivered_off_pipeline is reachable only from the two pre-freeze states
+    # (REQ-420 / PI-361): a release that never ran the pipeline. A lane-entered
+    # release actually ran, so it can never be "delivered off pipeline".
     "preliminary_planning": frozenset(
-        {"development_planning", "cancelled", "superseded"}
+        {"development_planning", "cancelled", "superseded", "delivered_off_pipeline"}
     ),
     # → reconciliation is the FREEZE gate (§9A / §16.7).
     "development_planning": frozenset(
-        {"reconciliation", "cancelled", "superseded"}
+        {"reconciliation", "cancelled", "superseded", "delivered_off_pipeline"}
     ),
     "reconciliation": frozenset(
         {"architecture_planning", "cancelled", "superseded"}
@@ -1081,6 +1094,7 @@ RELEASE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "shipped": frozenset(),
     "cancelled": frozenset(),
     "superseded": frozenset(),
+    "delivered_off_pipeline": frozenset(),
 }
 
 # `reconciliation_conflict` (PI-215 / PRJ-031, §5.4/§16.5) — a same-facet
