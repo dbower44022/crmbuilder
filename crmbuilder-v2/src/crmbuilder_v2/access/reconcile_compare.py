@@ -156,6 +156,42 @@ def _override_attrs(*memberships: dict[str, Any] | None) -> list[str]:
 #: filtered tabs).
 GLOBAL_GROUP = "(global)"
 
+#: The six object-type buckets a drill groups its rows into (REQ-370). The order
+#: is the display order in the entity-detail tree. "other" catches every member
+#: type without a dedicated bucket — today roles/teams/filtered tabs, and the
+#: view-only types (saved views, duplicate checks, workflows) when they are added.
+OBJECT_TYPE_ORDER: tuple[str, ...] = (
+    "fields",
+    "layouts",
+    "relations",
+    "formulas",
+    "settings",
+    "other",
+)
+
+#: Field attributes that are really a derived/formula definition, bucketed under
+#: "formulas" rather than "fields" (DEC-438 — ``field_formula`` is the neutral AST).
+_FORMULA_FIELD_ATTRS = frozenset({"field_formula", "field_derived_result_type"})
+
+
+def object_type_for(member_type: str, attribute: str | None) -> str:
+    """The object-type bucket a difference row belongs under (REQ-370).
+
+    A field's formula/derived attributes go under "formulas"; its other
+    attributes (and its presence) under "fields". Associations are "relations",
+    layouts "layouts", entity-level rows "settings". Everything else — roles,
+    teams, filtered tabs, and any later view-only type — falls under "other".
+    """
+    if member_type == "field":
+        return "formulas" if attribute in _FORMULA_FIELD_ATTRS else "fields"
+    if member_type == "association":
+        return "relations"
+    if member_type == "layout":
+        return "layouts"
+    if member_type == "entity":
+        return "settings"
+    return "other"
+
 # (member_type, canonical-list callable, identifier key, display-name key) —
 # every member type the inventory tracks (mirrors inventory._MEMBER_SOURCES).
 _MEMBER_SOURCES = (
@@ -221,6 +257,62 @@ def _group_ids(member_type: str, obj: dict[str, Any], field_parent: dict[str, st
     return [GLOBAL_GROUP]
 
 
+def _object_groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Partition a group's rows into the six object-type buckets (REQ-370).
+
+    Returns one entry per bucket that has at least one row, in
+    :data:`OBJECT_TYPE_ORDER`, each carrying its rows and how many of them differ
+    so the detail tree can render a collapsible section with a count.
+    """
+    by_type: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        bucket = object_type_for(r["member_type"], r.get("attribute"))
+        by_type.setdefault(bucket, []).append(r)
+    out: list[dict[str, Any]] = []
+    for bucket in OBJECT_TYPE_ORDER:
+        bucket_rows = by_type.get(bucket)
+        if not bucket_rows:
+            continue
+        out.append({
+            "object_type": bucket,
+            "differing_count": sum(1 for r in bucket_rows if r.get("differs")),
+            "rows": bucket_rows,
+        })
+    return out
+
+
+def _existence_rollup(
+    session: Session,
+    *,
+    idx_a: dict[tuple[str, str], dict[str, Any]],
+    idx_b: dict[tuple[str, str], dict[str, Any]],
+    entity_identifier: str | None,
+) -> list[dict[str, Any]]:
+    """One existence row per entity for the landing grid (REQ-368).
+
+    The canonical design defines every entity, so its location is always
+    :data:`PRESENT`; each instance's is derived from the stored entity-membership
+    snapshot — :data:`PRESENT` (carried), :data:`ABSENT` (audited, missing), or
+    :data:`UNKNOWN` (never audited). Scoped to one entity when ``entity_identifier``
+    is given (the drill), else every entity, ordered by name.
+    """
+    out: list[dict[str, Any]] = []
+    entities = entity_repo.list_entities(session)
+    for ent in sorted(entities, key=lambda e: str(e.get("entity_name") or "")):
+        eid = ent["entity_identifier"]
+        if entity_identifier is not None and eid != entity_identifier:
+            continue
+        out.append({
+            "entity_identifier": eid,
+            "entity": ent.get("entity_name"),
+            "entity_label": ent.get("entity_label"),
+            "design": PRESENT,
+            "instance_a": _presence(idx_a.get(("entity", eid))),
+            "instance_b": _presence(idx_b.get(("entity", eid))),
+        })
+    return out
+
+
 def three_way_compare(
     session: Session,
     *,
@@ -238,8 +330,14 @@ def three_way_compare(
     scoped to that one entity — the per-entity drill (REQ-353); otherwise it spans
     everything (the full scan). Only groups with at least one differing row appear.
 
-    :returns: ``{instance_a, instance_b, scope, groups: [{entity,
-        entity_identifier, rows: [...]}], row_count}``.
+    Two redesign-era additions (REL-027): ``existence`` is one row per entity with
+    its presence in the design and each instance — the landing-grid source (REQ-368)
+    — and each group additionally carries ``object_groups``, its rows partitioned
+    into the six object-type buckets for the collapsible detail tree (REQ-370).
+
+    :returns: ``{instance_a, instance_b, scope, existence: [...], groups: [{entity,
+        entity_identifier, entity_label, rows: [...], object_groups: [...]}],
+        row_count}``.
     """
     idx_a = _membership_index(session, instance_a)
     idx_b = _membership_index(session, instance_b)
@@ -289,6 +387,7 @@ def three_way_compare(
             "entity_identifier": None if gid == GLOBAL_GROUP else gid,
             "entity_label": None if gid == GLOBAL_GROUP else entity_label.get(gid),
             "rows": rows,
+            "object_groups": _object_groups(rows),
         })
         row_count += len(rows)
 
@@ -296,6 +395,9 @@ def three_way_compare(
         "instance_a": instance_a,
         "instance_b": instance_b,
         "scope": entity_identifier or "all",
+        "existence": _existence_rollup(
+            session, idx_a=idx_a, idx_b=idx_b, entity_identifier=entity_identifier
+        ),
         "groups": groups,
         "row_count": row_count,
     }
