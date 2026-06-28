@@ -196,6 +196,111 @@ def test_three_way_compare_groups_presence_and_attribute(v2_env):
         assert all(g["entity_identifier"] == eid for g in drill["groups"])
 
 
+def test_object_type_for_buckets():
+    """Each member type maps to its detail-tree bucket (REQ-370)."""
+    from crmbuilder_v2.access.reconcile_compare import object_type_for
+
+    assert object_type_for("field", "field_type") == "fields"
+    assert object_type_for("field", "field_formula") == "formulas"
+    assert object_type_for("field", "field_derived_result_type") == "formulas"
+    assert object_type_for("association", None) == "relations"
+    assert object_type_for("layout", None) == "layouts"
+    assert object_type_for("entity", "entity_default_sort_field") == "settings"
+    assert object_type_for("role", None) == "other"
+    assert object_type_for("team", None) == "other"
+    assert object_type_for("filtered_tab", None) == "other"
+
+
+def test_compare_emits_object_groups(v2_env):
+    """A group's rows are partitioned into ordered object-type buckets (REQ-370)."""
+    with session_scope() as s:
+        a = _inst(s, "og_a", "source")
+        b = _inst(s, "og_b", "target")
+        eid = entity_repo.create_entity(s, name="Widget", description="x")[
+            "entity_identifier"
+        ]
+        fid = field_repo.create_field(
+            s, field_belongs_to_entity_identifier=eid, name="size",
+            description="x", type="text", required=False,
+        )["field_identifier"]
+        mb.upsert_membership(
+            s, instance_identifier=a, member_type="field", member_identifier=fid,
+            state="drifted", override={"field_type": "varchar"},
+        )
+        for inst in (a, b):
+            mb.upsert_membership(
+                s, instance_identifier=inst, member_type="entity",
+                member_identifier=eid, state="present",
+            )
+        res = three_way_compare(s, instance_a=a, instance_b=b)
+        grp = next(g for g in res["groups"] if g["entity_identifier"] == eid)
+        assert "object_groups" in grp
+        buckets = {og["object_type"] for og in grp["object_groups"]}
+        assert "fields" in buckets
+        fields_og = next(og for og in grp["object_groups"] if og["object_type"] == "fields")
+        assert fields_og["differing_count"] == len(fields_og["rows"]) >= 1
+        # buckets appear in canonical order
+        from crmbuilder_v2.access.reconcile_compare import OBJECT_TYPE_ORDER
+        order = [OBJECT_TYPE_ORDER.index(og["object_type"]) for og in grp["object_groups"]]
+        assert order == sorted(order)
+
+
+def test_entity_settings_rows_are_actionable():
+    """Entity-collection-setting attribute rows are actionable; a non-setting
+    entity attribute is shown but not actionable (REQ-375 / REQ-358)."""
+    a = _mem(state="drifted", override={"entity_default_sort_field": "name"})
+    rows = compute_member_rows(
+        member_type="entity", member_identifier="ENT-1", member_name="Account",
+        design_obj={"entity_default_sort_field": "createdAt"},
+        attributes=_override_attrs(a, _mem()),
+        membership_a=a, membership_b=_mem(),
+    )
+    settings_row = next(r for r in rows if r["attribute"] == "entity_default_sort_field")
+    assert settings_row["actionable"] is True
+
+    other = _mem(state="drifted", override={"entity_label": "Acct"})
+    rows2 = compute_member_rows(
+        member_type="entity", member_identifier="ENT-1", member_name="Account",
+        design_obj={"entity_label": "Account"},
+        attributes=_override_attrs(other, _mem()),
+        membership_a=other, membership_b=_mem(),
+    )
+    label_row = next(r for r in rows2 if r["attribute"] == "entity_label")
+    assert label_row["actionable"] is False
+
+
+def test_compare_existence_rollup(v2_env):
+    """The payload carries one existence row per entity for the landing grid
+    (REQ-368): design always present, instances reflect their membership."""
+    with session_scope() as s:
+        a = _inst(s, "ex_a", "source")
+        b = _inst(s, "ex_b", "target")
+        present_eid = entity_repo.create_entity(s, name="Here", description="x")[
+            "entity_identifier"
+        ]
+        missing_eid = entity_repo.create_entity(s, name="Gone", description="x")[
+            "entity_identifier"
+        ]
+        # present on A, absent on B; never audited (unknown) elsewhere
+        mb.upsert_membership(s, instance_identifier=a, member_type="entity",
+                             member_identifier=present_eid, state="present")
+        mb.upsert_membership(s, instance_identifier=b, member_type="entity",
+                             member_identifier=missing_eid, state="absent")
+
+        res = three_way_compare(s, instance_a=a, instance_b=b)
+        ex = {row["entity_identifier"]: row for row in res["existence"]}
+        assert ex[present_eid]["design"] == PRESENT
+        assert ex[present_eid]["instance_a"] == PRESENT
+        assert ex[present_eid]["instance_b"] == UNKNOWN  # never audited on B
+        assert ex[missing_eid]["instance_a"] == UNKNOWN
+        assert ex[missing_eid]["instance_b"] == ABSENT
+
+        # scoped drill restricts existence to the one entity
+        drill = three_way_compare(s, instance_a=a, instance_b=b,
+                                  entity_identifier=present_eid)
+        assert [r["entity_identifier"] for r in drill["existence"]] == [present_eid]
+
+
 def test_compare_group_carries_entity_label(v2_env):
     """REL-025 / REQ-365: a group surfaces the entity's captured display label."""
     from crmbuilder_v2.access.repositories import entity as entity_repo

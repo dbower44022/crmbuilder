@@ -1,0 +1,358 @@
+"""Redesigned reconcile surface — models + grid panel tests — PI-333 (REL-027)."""
+
+from __future__ import annotations
+
+import httpx
+from crmbuilder_v2.ui.panels.reconcile_grid import ReconcileGridPanel
+from crmbuilder_v2.ui.panels.reconcile_models import (
+    RECORD_ROLE,
+    STATE_ROLE,
+    EntityDetailModel,
+    ExistenceGridModel,
+    fmt_value,
+    plan_apply,
+)
+from PySide6.QtCore import QModelIndex, Qt
+
+from .conftest import build_client, envelope_ok
+
+_INSTANCES = [
+    {"instance_identifier": "INST-001", "instance_name": "Alpha"},
+    {"instance_identifier": "INST-002", "instance_name": "Beta"},
+]
+_EXISTENCE = [
+    {"entity_identifier": "ENT-001", "entity": "Account", "entity_label": "Org",
+     "design": "present", "instance_a": "present", "instance_b": "absent"},
+    {"entity_identifier": "ENT-002", "entity": "Contact", "entity_label": None,
+     "design": "present", "instance_a": "present", "instance_b": "present"},
+]
+_GROUPS = [
+    {
+        "entity": "Account", "entity_identifier": "ENT-001", "entity_label": "Org",
+        "rows": [
+            {"member_type": "field", "member_identifier": "FLD-001",
+             "member_name": "phone", "kind": "attribute", "attribute": "field_max_length",
+             "design": 255, "instance_a": 100, "instance_b": "absent",
+             "differs": True, "actionable": True},
+        ],
+        "object_groups": [
+            {"object_type": "fields", "differing_count": 1, "rows": [
+                {"member_type": "field", "member_identifier": "FLD-001",
+                 "member_name": "phone", "kind": "attribute", "attribute": "field_max_length",
+                 "design": 255, "instance_a": 100, "instance_b": "absent",
+                 "differs": True, "actionable": True},
+            ]},
+        ],
+    }
+]
+_COMPARE = {
+    "instance_a": "INST-001", "instance_b": "INST-002", "scope": "all",
+    "existence": _EXISTENCE, "groups": _GROUPS, "row_count": 1,
+}
+
+
+_TXNS = [
+    {"id": 7, "direction": "capture", "member_identifier": "FLD-001",
+     "attribute": "field_max_length", "before_value": 255, "after_value": 100,
+     "status": "applied", "actor": "desktop"},
+]
+
+
+def _handler(req: httpx.Request) -> httpx.Response:
+    p = req.url.path
+    if req.method == "GET" and p == "/instances":
+        return httpx.Response(200, json=envelope_ok(_INSTANCES))
+    if req.method == "GET" and p == "/reconcile/compare":
+        return httpx.Response(200, json=envelope_ok(_COMPARE))
+    if req.method == "GET" and p == "/reconcile/transactions":
+        return httpx.Response(200, json=envelope_ok(_TXNS))
+    return httpx.Response(404, json={"data": None, "meta": {}, "errors": [{"code": "x"}]})
+
+
+# --- apply routing (pure) ---------------------------------------------------
+
+def _row(design=255, a=100, b=255, actionable=True):
+    return {"member_type": "field", "member_identifier": "FLD-1",
+            "attribute": "field_max_length", "design": design,
+            "instance_a": a, "instance_b": b, "actionable": actionable}
+
+
+def test_plan_capture_instance_to_design():
+    """Correct value on A, bring the design into line → one capture."""
+    plan = plan_apply(_row(), "instance_a", ["design"])
+    assert plan["ops"] == [{"kind": "capture", "location": "instance_a"}]
+
+
+def test_plan_publish_design_to_instance():
+    """Correct value in the design, push to A → one publish, no capture."""
+    plan = plan_apply(_row(a=100), "design", ["instance_a"])
+    assert plan["ops"] == [{"kind": "publish", "location": "instance_a"}]
+
+
+def test_plan_instance_to_instance_routes_through_design():
+    """A→B is mechanically capture A→design then publish design→B (hub)."""
+    plan = plan_apply(_row(design=255, a=100, b=300), "instance_a", ["instance_b"])
+    assert plan["ops"] == [
+        {"kind": "capture", "location": "instance_a"},
+        {"kind": "publish", "location": "instance_b"},
+    ]
+
+
+def test_plan_skips_already_matching_target():
+    """B already holds the design value → publish to B is skipped, not attempted."""
+    plan = plan_apply(_row(design=255, a=100, b=255), "design", ["instance_a", "instance_b"])
+    assert plan["ops"] == [{"kind": "publish", "location": "instance_a"}]
+    assert any("Instance B" in s for s in plan["skipped"])
+
+
+def test_plan_non_actionable_is_skipped():
+    plan = plan_apply(_row(actionable=False), "instance_a", ["design"])
+    assert plan["ops"] == []
+    assert plan["skipped"]
+
+
+# --- models -----------------------------------------------------------------
+
+
+def test_fmt_value_operator_language():
+    assert fmt_value("present") == "In"
+    assert fmt_value("absent") == "Missing"
+    assert fmt_value("unknown") == "n/a"
+    assert fmt_value(None) == "—"
+    assert fmt_value(True) == "Yes"
+    assert fmt_value(["a", "b"]) == "a, b"
+
+
+def test_existence_grid_model_shape(qapp):
+    m = ExistenceGridModel(_EXISTENCE, instance_a_label="Alpha", instance_b_label="Beta")
+    assert m.rowCount() == 2
+    assert m.columnCount() == 4
+    assert m.headerData(2, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole) == "Alpha"
+    # entity cell shows name + label
+    assert "Account" in m.data(m.index(0, 0), Qt.ItemDataRole.DisplayRole)
+    # location cell uses operator language + carries the raw state token
+    assert m.data(m.index(0, 3), Qt.ItemDataRole.DisplayRole) == "Missing"
+    assert m.data(m.index(0, 3), STATE_ROLE) == "absent"
+    # the record is reachable for drill
+    assert m.data(m.index(0, 0), RECORD_ROLE)["entity_identifier"] == "ENT-001"
+
+
+def test_entity_detail_model_tree(qapp):
+    m = EntityDetailModel(_GROUPS[0]["object_groups"])
+    # one group node
+    assert m.rowCount() == 1
+    grp_idx = m.index(0, 0, QModelIndex())
+    assert "Fields" in m.data(grp_idx, Qt.ItemDataRole.DisplayRole)
+    assert "1 differ" in m.data(grp_idx, Qt.ItemDataRole.DisplayRole)
+    # one child diff row under it
+    assert m.rowCount(grp_idx) == 1
+    child = m.index(0, 0, grp_idx)
+    assert m.parent(child) == grp_idx
+    assert "phone" in m.data(child, Qt.ItemDataRole.DisplayRole)
+    # value cells humanized; the record is reachable for apply
+    assert m.data(m.index(0, 1, grp_idx), Qt.ItemDataRole.DisplayRole) == "255"
+    assert m.data(m.index(0, 3, grp_idx), Qt.ItemDataRole.DisplayRole) == "Missing"
+    assert m.data(child, RECORD_ROLE)["member_identifier"] == "FLD-001"
+
+
+# --- panel ------------------------------------------------------------------
+
+
+def test_panel_loads_instances(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    assert panel._combo_a.count() == 2
+
+
+def test_compare_populates_existence_grid(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    assert panel._grid_model.rowCount() == 2
+    # differing-entity set drives the attention filter
+    assert "ENT-001" in panel._grid_proxy._differing
+
+
+def test_attention_filter_hides_in_sync_entities(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    panel._attention.setChecked(True)
+    # ENT-002 is fully in sync → filtered out; ENT-001 (missing on B) remains
+    assert panel._grid_proxy.rowCount() == 1
+
+
+def test_drill_into_entity_shows_detail_tree(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    panel._drill(_EXISTENCE[0])
+    assert panel._stack.currentIndex() == 1
+    assert panel._detail_model.rowCount() == 1  # one object group (Fields)
+    assert "Account" in panel._detail_title.text()
+
+
+def test_drill_into_in_sync_entity_shows_no_differences(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    panel._drill(_EXISTENCE[1])  # Contact: no group
+    assert panel._detail_model.rowCount() == 0
+    assert "no differences" in panel._detail_title.text()
+
+
+# --- apply interaction ------------------------------------------------------
+
+
+class _RecordingClient:
+    """Wraps the mock client, recording reconcile capture/publish calls."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.captures: list[dict] = []
+        self.publishes: list[dict] = []
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+    def reconcile_capture(self, **kw):
+        self.captures.append(kw)
+        return {"transaction": {"id": 1}}
+
+    def reconcile_capture_setting(self, **kw):
+        self.captures.append(kw)
+        return {"transaction": {"id": 1}}
+
+    def reconcile_publish(self, **kw):
+        self.publishes.append(kw)
+        return {"transaction": {"id": 2}}
+
+
+def _apply_panel(qtbot):
+    client = _RecordingClient(build_client(_handler))
+    panel = ReconcileGridPanel(client)
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    panel._drill(_EXISTENCE[0])
+    return panel, client
+
+
+def test_apply_capture_from_instance_a_into_design(qtbot):
+    panel, client = _apply_panel(qtbot)
+    # select the single field difference row
+    grp = panel._detail_model.index(0, 0)
+    child = panel._detail_model.index(0, 0, grp)
+    panel._detail.selectionModel().select(
+        child, panel._detail.selectionModel().SelectionFlag.Select
+    )
+    # source = Instance A (index 1), target = Master design
+    panel._source_combo.setCurrentIndex(1)
+    panel._target_design.setChecked(True)
+    panel._on_apply()
+    assert len(client.captures) == 1
+    assert client.captures[0]["field_identifier"] == "FLD-001"
+    assert client.captures[0]["instance"] == "INST-001"
+
+
+def test_apply_publish_design_to_instance_b(qtbot):
+    panel, client = _apply_panel(qtbot)
+    grp = panel._detail_model.index(0, 0)
+    child = panel._detail_model.index(0, 0, grp)
+    panel._detail.selectionModel().select(
+        child, panel._detail.selectionModel().SelectionFlag.Select
+    )
+    # source = Master design (index 0); target = Instance B
+    panel._source_combo.setCurrentIndex(0)
+    panel._target_b.setChecked(True)
+    panel._on_apply()
+    assert len(client.publishes) == 1
+    assert client.publishes[0]["instance"] == "INST-002"
+    assert client.publishes[0]["member_type"] == "field"
+
+
+_VIEW_ONLY_GROUPS = [
+    {
+        "entity": "Account", "entity_identifier": "ENT-001", "entity_label": None,
+        "rows": [],
+        "object_groups": [
+            {"object_type": "other", "differing_count": 1, "rows": [
+                {"member_type": "role", "member_identifier": "ROLE-1",
+                 "member_name": "Sales Role", "kind": "attribute", "attribute": "role_scope",
+                 "design": "x", "instance_a": "y", "instance_b": "x",
+                 "differs": True, "actionable": False},
+            ]},
+        ],
+    }
+]
+
+
+def test_view_only_item_explains_and_is_not_applied(qtbot, monkeypatch):
+    """A non-actionable (view-only) difference: Apply stays available, but acting
+    on it explains rather than writing anything (REQ-377)."""
+    import crmbuilder_v2.ui.panels.reconcile_grid as mod
+    seen: dict[str, str] = {}
+    monkeypatch.setattr(
+        mod.CopyableMessageBox, "information",
+        classmethod(lambda cls, parent, title, text, *a, **k: seen.update(title=title, text=text)),
+    )
+    client = _RecordingClient(build_client(_handler))
+    panel = ReconcileGridPanel(client)
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    # drill with a view-only group
+    panel._groups_by_entity["ENT-001"] = _VIEW_ONLY_GROUPS[0]
+    panel._drill(_EXISTENCE[0])
+    grp = panel._detail_model.index(0, 0)
+    child = panel._detail_model.index(0, 0, grp)
+    panel._detail.selectionModel().select(
+        child, panel._detail.selectionModel().SelectionFlag.Select
+    )
+    panel._source_combo.setCurrentIndex(1)
+    panel._target_design.setChecked(True)
+    panel._on_apply()
+    assert client.captures == [] and client.publishes == []
+    assert "Configure by hand" in seen.get("title", "")
+
+
+def test_history_tab_loads_transactions(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    # selecting the History tab loads the log
+    panel._tabs.setCurrentIndex(1)
+    assert panel._log_tree.topLevelItemCount() == 1
+    assert panel._log_tree.topLevelItem(0).text(1) == "Pulled to design"
+
+
+def test_promote_entity_publishes_to_checked_instances(qtbot):
+    client = _RecordingClient(build_client(_handler))
+    panel = ReconcileGridPanel(client)
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    # select a row and promote to Instance B; the handler must publish the
+    # *selected* entity (independent of the grid's sort order)
+    panel._grid.selectRow(0)
+    proxy_idx = panel._grid.selectionModel().selectedRows()[0]
+    src = panel._grid_proxy.mapToSource(proxy_idx)
+    selected_eid = panel._grid_model.data(
+        panel._grid_model.index(src.row(), 0), RECORD_ROLE
+    )["entity_identifier"]
+    panel._promote_b.setChecked(True)
+    panel._on_promote_entity()
+    assert len(client.publishes) == 1
+    assert client.publishes[0]["member_type"] == "entity"
+    assert client.publishes[0]["member_identifier"] == selected_eid
+    assert client.publishes[0]["instance"] == "INST-002"

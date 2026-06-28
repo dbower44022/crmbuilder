@@ -14,13 +14,18 @@ extends the same shape.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
+from crmbuilder_v2.access.repositories import _governance as gov
+from crmbuilder_v2.access.repositories import association as association_repo
+from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
+from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import reconcile_transactions as txn_repo
 
 #: Canonical design literal used as a transaction source/target ref.
@@ -31,6 +36,12 @@ def _field_patch_kwarg(attribute: str) -> str:
     """Map a neutral field attribute (``field_max_length``) to its ``patch_field``
     keyword (``max_length``)."""
     return attribute.removeprefix("field_")
+
+
+def _entity_patch_kwarg(attribute: str) -> str:
+    """Map a neutral entity-settings attribute (``entity_default_sort_field``) to
+    its ``patch_entity`` keyword (``default_sort_field``)."""
+    return attribute.removeprefix("entity_")
 
 
 def _membership_for(
@@ -110,6 +121,214 @@ def capture_field_attribute(
         override=remaining or None,
     )
     return {"transaction": transaction, "field": field_repo.get_field(session, field_identifier)}
+
+
+def capture_entity_setting(
+    session: Session,
+    *,
+    instance: str,
+    entity_identifier: str,
+    attribute: str,
+    actor: str,
+    batch_id: str | None = None,
+    note: str | None = None,
+) -> dict[str, Any]:
+    """Capture an instance's value for one entity-collection setting into the
+    design (REQ-375) — the entity-level twin of :func:`capture_field_attribute`.
+
+    Settings covered are sort field/direction, full-text search (+ its minimum
+    length), and the text-filter field list. Reads the instance's recorded
+    override for ``attribute``, writes it onto the canonical entity, logs the
+    transaction, and clears that attribute's drift on the source instance. Raises
+    ``ConflictError`` when the instance records no deviation for ``attribute``.
+
+    :returns: ``{transaction, entity}``.
+    """
+    membership = _membership_for(session, instance, "entity", entity_identifier)
+    override = (membership or {}).get("override") or {}
+    if attribute not in override:
+        raise ConflictError(
+            f"instance {instance} records no deviation for {entity_identifier}."
+            f"{attribute}; nothing to capture"
+        )
+    new_value = override[attribute]
+
+    current = entity_repo.get_entity(session, entity_identifier)
+    if current is None:
+        raise NotFoundError("entity", entity_identifier)
+    before_value = current.get(attribute)
+
+    entity_repo.patch_entity(
+        session, entity_identifier, **{_entity_patch_kwarg(attribute): new_value}
+    )
+
+    transaction = txn_repo.record(
+        session,
+        direction="capture",
+        source_ref=instance,
+        target_ref=DESIGN,
+        member_type="entity",
+        member_identifier=entity_identifier,
+        attribute=attribute,
+        before_value=before_value,
+        after_value=new_value,
+        actor=actor,
+        batch_id=batch_id,
+        note=note,
+    )
+
+    remaining = {k: v for k, v in override.items() if k != attribute}
+    membership_repo.upsert_membership(
+        session,
+        instance_identifier=instance,
+        member_type="entity",
+        member_identifier=entity_identifier,
+        state="drifted" if remaining else "present",
+        override=remaining or None,
+    )
+    return {
+        "transaction": transaction,
+        "entity": entity_repo.get_entity(session, entity_identifier),
+    }
+
+
+def entity_for_member(
+    session: Session, member_type: str, member_identifier: str
+) -> dict[str, Any]:
+    """Resolve the design entity a member is published with (REQ-369/376).
+
+    Publish granularity is a whole entity (one generated program = one entity),
+    so pushing any single object to an instance pushes its parent entity: a field
+    maps to its parent entity, a layout to its entity, an association to its
+    source entity, and an entity to itself. Returns the entity record. Raises
+    ``NotFoundError`` when the member or its entity cannot be resolved.
+    """
+    if member_type == "entity":
+        ent = entity_repo.get_entity(session, member_identifier)
+        if ent is None:
+            raise NotFoundError("entity", member_identifier)
+        return ent
+    if member_type == "field":
+        if field_repo.get_field(session, member_identifier) is None:
+            raise NotFoundError("field", member_identifier)
+        edges = gov.outbound_edges(
+            session,
+            source_type="field",
+            source_id=member_identifier,
+            relationship="field_belongs_to_entity",
+            target_type="entity",
+        )
+        eid = edges[0].target_id if edges else None
+    elif member_type == "layout":
+        lay = layout_repo.get_layout(session, member_identifier)
+        if lay is None:
+            raise NotFoundError("layout", member_identifier)
+        eid = lay.get("layout_entity_identifier")
+    elif member_type == "association":
+        assoc = association_repo.get_association(session, member_identifier)
+        if assoc is None:
+            raise NotFoundError("association", member_identifier)
+        eid = assoc.get("association_source_entity")
+    else:
+        raise ConflictError(
+            f"member type {member_type!r} cannot be published to an instance"
+        )
+    if not eid:
+        raise NotFoundError("entity", f"parent of {member_identifier}")
+    ent = entity_repo.get_entity(session, eid)
+    if ent is None:
+        raise NotFoundError("entity", eid)
+    return ent
+
+
+def _filename_slug(entity_name: str, entity_identifier: str) -> str:
+    """The generated program filename for an entity, matching the EspoCRM
+    adapter's ``_filename_for`` convention (a word-slug of the name + ``.yaml``).
+
+    The no-collision form is ``{slug}.yaml``; only two entities slugging
+    identically would diverge (the adapter then suffixes the identifier), which
+    the publish scope tolerates as a safe no-match. Kept here as a tiny mirror so
+    the access layer does not import the adapter.
+    """
+    words = [w for w in re.split(r"[^A-Za-z0-9]+", entity_name or "") if w]
+    slug = "-".join(words) or entity_identifier
+    return f"{slug}.yaml"
+
+
+def publish_scope_for_member(
+    session: Session, member_type: str, member_identifier: str
+) -> dict[str, Any]:
+    """The entity + generated-program filename to scope a publish to (REQ-376).
+
+    :returns: ``{entity_identifier, entity_name, filename}`` — pass ``filename``
+        as the publish ``scope`` to push just this object's parent entity.
+    """
+    ent = entity_for_member(session, member_type, member_identifier)
+    eid = ent["entity_identifier"]
+    name = ent.get("entity_name") or eid
+    return {
+        "entity_identifier": eid,
+        "entity_name": name,
+        "filename": _filename_slug(name, eid),
+    }
+
+
+def record_publish(
+    session: Session,
+    *,
+    instance: str,
+    member_type: str,
+    member_identifier: str,
+    actor: str,
+    attribute: str | None = None,
+    before_value: Any = None,
+    after_value: Any = None,
+    batch_id: str | None = None,
+    note: str | None = None,
+) -> dict[str, Any]:
+    """Log a design→instance publish and reconcile the instance snapshot (REQ-376).
+
+    Called after a successful live publish of the object's parent entity to the
+    target. Records a ``publish`` transaction (design → instance) and brings the
+    stored membership back in line with the design: a specific ``attribute`` is
+    dropped from the instance's override (it now matches the design); with no
+    ``attribute`` the whole member is marked present with its override cleared (a
+    whole-object/entity promote, REQ-369). The membership row is left untouched
+    when the instance never carried the member.
+
+    :returns: ``{transaction}``.
+    """
+    transaction = txn_repo.record(
+        session,
+        direction="publish",
+        source_ref=DESIGN,
+        target_ref=instance,
+        member_type=member_type,
+        member_identifier=member_identifier,
+        attribute=attribute,
+        before_value=before_value,
+        after_value=after_value,
+        actor=actor,
+        batch_id=batch_id,
+        note=note,
+    )
+
+    membership = _membership_for(session, instance, member_type, member_identifier)
+    if membership is not None:
+        override = membership.get("override") or {}
+        if attribute is not None:
+            remaining = {k: v for k, v in override.items() if k != attribute}
+        else:
+            remaining = {}
+        membership_repo.upsert_membership(
+            session,
+            instance_identifier=instance,
+            member_type=member_type,
+            member_identifier=member_identifier,
+            state="drifted" if remaining else "present",
+            override=remaining or None,
+        )
+    return {"transaction": transaction}
 
 
 def rollback(session: Session, transaction_id: int, *, actor: str) -> dict[str, Any]:
