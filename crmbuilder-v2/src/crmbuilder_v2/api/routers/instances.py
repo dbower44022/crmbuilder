@@ -299,18 +299,25 @@ _AUDIT_AREAS: dict[str, tuple[str, object]] = {
 #: The area slugs in run order — the order the desktop issues per-area calls.
 AUDIT_AREA_ORDER: list[str] = list(_AUDIT_AREAS)
 
-#: Areas reconciled on a source/both audit (DEC-653). A source audit is the
+#: Areas reconciled on a ``source`` audit (DEC-653). A source audit is the
 #: candidate-gated design-input pass over entities / fields / associations only;
-#: layouts / roles / field-permissions / teams / filtered-tabs are a target-audit
-#: (deploy-fidelity) concern and are not reconciled on a source audit.
+#: layouts / roles / field-permissions / teams / filtered-tabs are a deploy-fidelity
+#: concern and are not reconciled on a source audit. A ``both`` audit is *not*
+#: source (REQ-393 / WTK-256) and runs the full area set.
 _SOURCE_AUDIT_AREAS: frozenset[str] = frozenset(
     {"entities", "fields", "associations"}
 )
 
 
 def _is_source_audit(s, identifier: str) -> bool:
+    """Whether this audit is candidate-gated — ``source`` role only.
+
+    REQ-393 / WTK-256 narrowed this from ``("source", "both")``: a ``both`` audit
+    is a deployed-to instance and runs the full drift reconcile over every area,
+    so only a purely external ``source`` selects the candidate-gated path.
+    """
     rec = instances.get_instance(s, identifier)
-    return bool(rec) and rec.get("instance_role") in ("source", "both")
+    return bool(rec) and rec.get("instance_role") == "source"
 
 
 @router.get("/audit/areas")
@@ -326,9 +333,10 @@ def audit(identifier: str):
     """Audit (pull) this instance, reconciling its structure into the inventory.
 
     Runs every applicable reconcile area in one request and returns the
-    per-object-type summary. A source/both audit runs only the candidate-gated
-    areas (entities / fields / associations — DEC-653); a target audit runs the
-    full drift set. This all-in-one form is retained for non-interactive callers;
+    per-object-type summary. A ``source`` audit runs only the candidate-gated
+    areas (entities / fields / associations — DEC-653); a ``target`` or ``both``
+    audit runs the full drift set (REQ-393 / WTK-256). This all-in-one form is
+    retained for non-interactive callers;
     the desktop drives the per-area endpoint below for live progress (PI-274).
     """
     with writable_session() as s:
@@ -361,8 +369,9 @@ def audit_area(identifier: str, area: str):
     sequence and show live progress. Returns the area's ``summary`` plus a
     ``log`` of ``[message, level]`` lines the step surfaced (e.g. an entity
     whose fields could not be read), for the operator's running audit log. On a
-    source/both audit a non-candidate-gated area (layouts/roles/teams/etc.) is
-    not reconciled (DEC-653) and returns a ``skipped`` summary.
+    ``source`` audit a non-candidate-gated area (layouts/roles/teams/etc.) is
+    not reconciled (DEC-653) and returns a ``skipped`` summary; a ``both`` audit
+    runs every area (REQ-393 / WTK-256).
     """
     spec = _AUDIT_AREAS.get(area)
     if spec is None:

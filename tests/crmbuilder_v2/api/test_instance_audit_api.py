@@ -248,6 +248,45 @@ def test_audit_source_skips_non_candidate_area(client, monkeypatch):
     assert rows == []
 
 
+def test_both_audit_runs_full_drift_no_candidates(client, monkeypatch):
+    """REQ-393 / WTK-256: a ``both``-role audit runs the full drift reconcile
+    over every area, with no ``source_mapping`` rows and no candidates created."""
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client, instance_role="both")["instance_identifier"]
+    r = client.post(f"/instances/{iid}/audit")
+    assert r.status_code == 200, r.text
+    summary = r.json()["data"]
+    # Every area is reconciled — not the truncated entities/fields/associations set.
+    assert set(summary) == {
+        "entities", "fields", "associations", "layouts",
+        "roles", "field_permissions", "teams", "filtered_tabs",
+    }
+    # Drift path: live custom entities are discovered + marked present, never
+    # deferred as candidates (a drift summary has no ``candidates`` key).
+    assert summary["entities"]["present"] == 2
+    assert "candidates" not in summary["entities"]
+    # Membership was populated (the candidate-gated path would leave it empty).
+    rows = client.get(
+        f"/instances/{iid}/memberships", params={"member_type": "entity"}
+    ).json()["data"]
+    assert len(rows) == 2
+    # No candidates and no source_mapping rows were created or required.
+    with session_scope() as s:
+        assert candidate_repo.list_candidates(s, instance_identifier=iid) == []
+        assert smg_repo.list_source_mappings(s, instance_identifier=iid) == []
+
+
+def test_both_audit_per_area_reconciles_non_candidate_area(client, monkeypatch):
+    """REQ-393 / WTK-256: a deploy-fidelity area (roles) is reconciled on a
+    ``both`` audit, not skipped the way a ``source`` audit skips it (DEC-653)."""
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client, instance_role="both")["instance_identifier"]
+    r = client.post(f"/instances/{iid}/audit/roles")
+    assert r.status_code == 200, r.text
+    summary = r.json()["data"]["summary"]
+    assert summary.get("skipped") is not True
+
+
 def test_audit_unknown_area_404(client, monkeypatch):
     monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
     iid = _create(client)["instance_identifier"]
