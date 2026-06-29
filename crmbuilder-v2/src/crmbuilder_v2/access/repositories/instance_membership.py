@@ -138,6 +138,24 @@ def mark_absent_missing(
     already ``absent`` is set to ``absent`` with its override cleared. Returns
     the number of rows transitioned. Reconcile calls this after upserting the
     present/drifted rows so absence reflects the latest audit.
+
+    No-resolution preservation contract (REQ-394, REL-038). This sweep is the
+    mechanism behind the absent transition documented on
+    ``InstanceMembership`` and ``INSTANCE_MEMBERSHIP_STATES``; honoring the
+    rule is the **caller's** responsibility, not this function's. A pass that
+    resolves no objects for an area — a read that failed, was candidate-gated,
+    or was never attempted — must leave that area's existing ``present`` and
+    ``drifted`` membership unchanged: it is a no-op for membership, and the
+    caller MUST NOT invoke this sweep for it. An empty
+    ``present_member_identifiers`` is therefore meaningful only when it is the
+    result of a SUCCESSFUL read that confirmed the area genuinely holds no live
+    objects (every canonical row legitimately swept to ``absent``); it must
+    never stand in for "the pass resolved nothing". Because this function
+    cannot tell the two apart from the set it is handed, it sweeps
+    unconditionally against that set — the introspect/reconcile layer enforces
+    the rule by computing ``present_member_identifiers`` (and thus reaching
+    this call) only once the area's instance read returned successfully, and by
+    skipping the call entirely for an area its own pass did not resolve.
     """
     member_type = _require_member_type(member_type)
     stamp = last_audited_at or datetime.now(UTC)
