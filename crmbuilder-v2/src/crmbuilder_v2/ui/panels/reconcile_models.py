@@ -290,12 +290,16 @@ class EntityDetailModel(QAbstractItemModel):
         if role == RECORD_ROLE:
             return r
         if col == 0:
-            if role == Qt.ItemDataRole.DisplayRole:
+            if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole):
                 return self._row_label(r)
             return None
         key = {1: "design", 2: "instance_a", 3: "instance_b"}[col]
         value = r.get(key)
         if role == Qt.ItemDataRole.DisplayRole:
+            return fmt_value(value)
+        # The value columns share the viewport and elide (REQ-429); expose the full
+        # text on hover so an elided layout payload is never lost.
+        if role == Qt.ItemDataRole.ToolTipRole:
             return fmt_value(value)
         # State tokens are always strings; a list/dict cell value (e.g. a layout
         # or relationship payload) is unhashable, so never probe the state maps

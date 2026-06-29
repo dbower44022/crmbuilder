@@ -49,17 +49,31 @@ _log = logging.getLogger(__name__)
 #: Recorded as the transaction actor for desktop-driven reconcile actions.
 _ACTOR = "desktop"
 
-def _fill_width(header, *, stretch_col: int, content_cols) -> None:
+def _fill_width(
+    header,
+    *,
+    stretch_col: int,
+    content_cols,
+    content_mode: QHeaderView.ResizeMode = QHeaderView.ResizeMode.ResizeToContents,
+) -> None:
     """Size a view's columns to fill the full width with no manual resize (REQ-391).
 
     ``stretch_col`` takes all the slack (the critical text column — Entity or
-    Difference); ``content_cols`` size to their content. The last section does
+    Difference); ``content_cols`` use ``content_mode``. The last section does
     not auto-stretch, so the stretch column owns the leftover space.
+
+    ``content_mode`` defaults to ``ResizeToContents`` — right for the existence
+    grid, whose location cells hold short state labels. The detail grid passes
+    ``Stretch`` instead (REQ-429): its value cells can hold a layout data
+    structure hundreds of characters long, and sizing them to content blew the
+    grid far past the window and forced horizontal scrolling. Stretching the
+    value columns shares the viewport so every column stays visible; overlong
+    text elides (the view's default elide mode) and the full value is on hover.
     """
     header.setStretchLastSection(False)
     header.setSectionResizeMode(stretch_col, QHeaderView.ResizeMode.Stretch)
     for col in content_cols:
-        header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(col, content_mode)
 
 
 _PRIMARY = (
@@ -273,9 +287,18 @@ class ReconcileGridPanel(QWidget):
         self._detail.setRootIsDecorated(True)
         self._detail.setUniformRowHeights(True)
         self._detail.setSelectionMode(QTreeView.SelectionMode.ExtendedSelection)
-        # The difference column is the critical one (REQ-391): give it the slack so
-        # long labels stay readable; the value columns size to their short content.
-        _fill_width(self._detail.header(), stretch_col=0, content_cols=(1, 2, 3))
+        # Elide overlong values rather than widen the column (REQ-429); the full
+        # text is exposed on hover via the model's ToolTipRole.
+        self._detail.setTextElideMode(Qt.TextElideMode.ElideRight)
+        # The difference column takes the slack (REQ-391); the three value columns
+        # share the remaining width by stretching (REQ-429) so a long layout data
+        # structure cannot push the grid past the window and force scrolling.
+        _fill_width(
+            self._detail.header(),
+            stretch_col=0,
+            content_cols=(1, 2, 3),
+            content_mode=QHeaderView.ResizeMode.Stretch,
+        )
         lay.addWidget(self._detail)
 
         # Unified apply (REQ-371/372): pick where the correct value lives and where

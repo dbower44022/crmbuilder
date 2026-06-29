@@ -207,9 +207,10 @@ def test_panel_loads_instances(qtbot):
 
 
 def test_grid_columns_fill_width(qtbot):
-    """REQ-391: both grids fill the available width — the critical text column
-    (Entity / Difference) stretches, value columns size to content, last section
-    does not auto-stretch."""
+    """REQ-391/429: both grids fill the available width. The existence grid's
+    short location cells size to content; the detail grid's value cells STRETCH to
+    share the viewport (REQ-429) so a long layout value cannot force horizontal
+    scrolling. Neither auto-stretches its last section."""
     from PySide6.QtWidgets import QHeaderView
     panel = ReconcileGridPanel(build_client(_handler))
     qtbot.addWidget(panel)
@@ -218,8 +219,34 @@ def test_grid_columns_fill_width(qtbot):
     assert gh.sectionResizeMode(3) == QHeaderView.ResizeMode.ResizeToContents
     assert gh.stretchLastSection() is False
     th = panel._detail.header()
+    # Every detail column stretches — the difference label and all three value
+    # columns share the width, so the grid fits the window (REQ-429).
     assert th.sectionResizeMode(0) == QHeaderView.ResizeMode.Stretch
-    assert th.sectionResizeMode(3) == QHeaderView.ResizeMode.ResizeToContents
+    assert th.sectionResizeMode(1) == QHeaderView.ResizeMode.Stretch
+    assert th.sectionResizeMode(3) == QHeaderView.ResizeMode.Stretch
+    assert th.stretchLastSection() is False
+    # Overlong values elide rather than widen the column (REQ-429).
+    assert panel._detail.textElideMode() == Qt.TextElideMode.ElideRight
+
+
+def test_detail_model_tooltip_exposes_full_value(qapp):
+    """REQ-429: an elided long value (and the row label) is recoverable on hover
+    via the model's ToolTipRole, so nothing is lost when the column is narrow."""
+    groups = [
+        {"object_type": "layouts", "differing_count": 1, "rows": [
+            {"member_type": "layout", "member_identifier": "LAY-002",
+             "member_name": "detailLayout", "kind": "structure", "attribute": "rows",
+             "design": ["name", "phone", "emailAddress", "billingAddress"],
+             "instance_a": ["name"], "instance_b": "absent",
+             "differs": True, "actionable": False},
+        ]},
+    ]
+    m = EntityDetailModel(groups)
+    grp_idx = m.index(0, 0, QModelIndex())
+    val = m.index(0, 1, grp_idx)
+    assert m.data(val, Qt.ItemDataRole.ToolTipRole) == "name, phone, emailAddress, billingAddress"
+    label = m.index(0, 0, grp_idx)
+    assert "detailLayout" in m.data(label, Qt.ItemDataRole.ToolTipRole)
 
 
 def test_compare_populates_existence_grid(qtbot):
