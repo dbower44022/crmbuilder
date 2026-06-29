@@ -186,10 +186,20 @@ class _AreaMembershipWriter:
     same audit can never touch the same row, and a partial audit (some areas
     read, others not) leaves every unwritten area's slice intact.
 
-    This writer governs **what slice** a pass may touch; it does not decide
-    **when** the absent sweep fires — a pass with a failed or inconclusive read
-    simply does not call :meth:`sweep_absent` (the no-resolution preservation
-    rule, REQ-394 §3.2).
+    This writer governs **what slice** a pass may touch (§3.4) and, since
+    WTK-269, carries the pass's **read-success signal** into the absent sweep
+    (§3.2). A pass that did not successfully read its area — a read that failed,
+    was inconclusive, or was never attempted — constructs the writer with
+    ``read_succeeded=False`` (or flips it via :meth:`mark_read_failed`), and its
+    :meth:`sweep_absent` becomes a hard no-op: the area's existing ``present`` /
+    ``drifted`` rows are preserved unchanged rather than wiped from a
+    non-observation (the REL-038 defect). Absence is therefore only ever a
+    positive observation — the live area was read successfully and the object was
+    confirmed missing from it (REQ-394's "set absent only when the instance was
+    read successfully and the object is absent from it"). The signal threads
+    through to :func:`instance_membership.mark_absent_missing`, the storage-layer
+    gate WTK-267 added; a successful read that genuinely enumerated an empty area
+    still sweeps (``read_succeeded=True`` with an empty seen set).
     """
 
     def __init__(
@@ -199,6 +209,7 @@ class _AreaMembershipWriter:
         instance_identifier: str,
         member_type: str,
         last_audited_at: datetime,
+        read_succeeded: bool = True,
     ) -> None:
         if member_type not in INSTANCE_MEMBERSHIP_MEMBER_TYPES:
             # Fail the pass at construction rather than let a typo'd area write
@@ -210,7 +221,17 @@ class _AreaMembershipWriter:
         self._instance_identifier = instance_identifier
         self._member_type = member_type
         self._stamp = last_audited_at
+        self._read_succeeded = read_succeeded
         self._seen: set[str] = set()
+
+    def mark_read_failed(self) -> None:
+        """Record that this area's live read did not succeed.
+
+        Disarms the absent sweep (it becomes a no-op) so a failed or inconclusive
+        read preserves the area's existing membership rather than inferring
+        absence from it. For a pass that determines read success only mid-pass.
+        """
+        self._read_succeeded = False
 
     def upsert(
         self,
@@ -233,9 +254,20 @@ class _AreaMembershipWriter:
     def sweep_absent(self) -> int:
         """Flag this area's rows not seen in this pass as ``absent``; return the count.
 
-        Call only when the area's live read succeeded and authoritatively
-        enumerated the area (REQ-394 §3.2/§3.3) — the accumulated "seen" set is
-        the genuine present set from that read.
+        No-resolution preservation (REQ-394 §3.2, WTK-269). The sweep is gated on
+        this writer's read-success signal: when ``read_succeeded`` is ``False``
+        (the area's live read failed, was inconclusive, or was never attempted)
+        the sweep is a hard **no-op** — no row is touched and ``0`` is returned —
+        so a pass that resolved nothing because it could not read the area leaves
+        that area's existing ``present`` / ``drifted`` rows unchanged rather than
+        wiping them from a non-observation (the REL-038 defect). A successful read
+        that genuinely enumerated an empty area still sweeps (an empty "seen" set
+        with ``read_succeeded=True``), so legitimate absence is recorded.
+
+        The signal is threaded to :func:`instance_membership.mark_absent_missing`,
+        the storage-layer gate (WTK-267), so absence is only ever a positive
+        observation: the live area was read successfully and the row was confirmed
+        missing from the resolved present set.
         """
         return membership_repo.mark_absent_missing(
             self._session,
@@ -243,6 +275,7 @@ class _AreaMembershipWriter:
             member_type=self._member_type,
             present_member_identifiers=self._seen,
             last_audited_at=self._stamp,
+            read_succeeded=self._read_succeeded,
         )
 
 
