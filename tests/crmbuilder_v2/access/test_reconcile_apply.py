@@ -11,11 +11,12 @@ from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as mb
 from crmbuilder_v2.access.repositories import instances as inst_repo
 from crmbuilder_v2.access.repositories import reconcile_transactions as txn_repo
+from crmbuilder_v2.access.repositories import source_mapping as sm_repo
 
 
-def _setup(s):
+def _setup(s, *, role="source"):
     iid = inst_repo.create_instance(
-        s, name="src", url="https://src.example.org", role="source"
+        s, name="src", url="https://src.example.org", role=role
     )["instance_identifier"]
     eid = entity_repo.create_entity(s, name="Account", description="x")[
         "entity_identifier"
@@ -225,3 +226,92 @@ def test_record_publish_whole_member_clears_all_drift(v2_env):
                                 member_identifier=fid)[0]
         assert m["state"] == "present"
         assert m["override"] is None
+
+
+# --- WTK-257 (REL-038 / WTK-252 design): capture-back stays available for a
+#     both-role instance. Capture is role-agnostic — eligibility is decided by a
+#     recorded deviation, never by instance_role — and must succeed with zero
+#     source_mapping rows present (the external-migration mapping path is never
+#     on the both-role capture path). These tests lock that guarantee so the
+#     WTK-251 audit-routing fix cannot be over-applied into the capture path.
+
+
+def test_capture_field_available_for_both_role_instance(v2_env):
+    """A both-role instance captures a live field-attribute value into the design
+    on the same terms as any other instance (WTK-252 §3.1, acceptance 1)."""
+    with session_scope() as s:
+        iid, fid = _setup(s, role="both")
+        # precondition: no resolved (or any) source mappings exist (acceptance 3)
+        assert sm_repo.list_source_mappings(s, instance_identifier=iid) == []
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field", member_identifier=fid,
+            state="drifted", override={"field_max_length": 100},
+        )
+        out = reconcile_apply.capture_field_attribute(
+            s, instance=iid, field_identifier=fid,
+            attribute="field_max_length", actor="Doug",
+        )
+        # captured value lands on the canonical field
+        assert out["field"]["field_max_length"] == 100
+        # a capture transaction is logged from the both-role instance
+        t = out["transaction"]
+        assert t["direction"] == "capture"
+        assert t["source_ref"] == iid
+        assert t["target_ref"] == "design"
+        # the attribute's drift clears on the instance
+        m = mb.list_memberships(s, instance_identifier=iid, member_type="field",
+                                member_identifier=fid)[0]
+        assert m["state"] == "present"
+        assert m["override"] is None
+        # no source mappings were created or required by the capture
+        assert sm_repo.list_source_mappings(s, instance_identifier=iid) == []
+
+
+def test_capture_entity_setting_available_for_both_role_instance(v2_env):
+    """A both-role instance captures a live entity-collection setting into the
+    design on the same terms (WTK-252 §3.1, acceptance 2 + 3)."""
+    with session_scope() as s:
+        iid, _fid = _setup(s, role="both")
+        eid = entity_repo.create_entity(s, name="Mentor", description="x")[
+            "entity_identifier"
+        ]
+        assert sm_repo.list_source_mappings(s, instance_identifier=iid) == []
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="entity", member_identifier=eid,
+            state="drifted", override={"entity_default_sort_field": "name"},
+        )
+        out = reconcile_apply.capture_entity_setting(
+            s, instance=iid, entity_identifier=eid,
+            attribute="entity_default_sort_field", actor="Doug",
+        )
+        assert out["entity"]["entity_default_sort_field"] == "name"
+        t = out["transaction"]
+        assert t["direction"] == "capture"
+        assert t["member_type"] == "entity"
+        assert t["source_ref"] == iid
+        assert t["target_ref"] == "design"
+        m = mb.list_memberships(s, instance_identifier=iid, member_type="entity",
+                                member_identifier=eid)[0]
+        assert m["state"] == "present"
+        assert m["override"] is None
+        assert sm_repo.list_source_mappings(s, instance_identifier=iid) == []
+
+
+def test_capture_for_both_role_without_deviation_is_conflict_not_role_gate(v2_env):
+    """Capture eligibility for a both-role instance is decided solely by a
+    recorded deviation, never by the role: with no drift it raises the same
+    ``ConflictError`` as any other role — not a role-based rejection
+    (WTK-252 §3.2, acceptance 4)."""
+    with session_scope() as s:
+        iid, fid = _setup(s, role="both")
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field", member_identifier=fid,
+            state="present",
+        )
+        with pytest.raises(ConflictError) as exc:
+            reconcile_apply.capture_field_attribute(
+                s, instance=iid, field_identifier=fid,
+                attribute="field_max_length", actor="Doug",
+            )
+        # the rejection is the nothing-to-capture conflict, not a role gate
+        assert "nothing to capture" in str(exc.value)
