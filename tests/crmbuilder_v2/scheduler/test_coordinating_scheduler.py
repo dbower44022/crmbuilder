@@ -335,6 +335,31 @@ def test_run_pytest_timeout_does_not_propagate(monkeypatch):
     assert "timed out" in result.output
 
 
+def test_git_timeout_becomes_a_recoverable_failure(monkeypatch):
+    # REQ-426 / PI-366: a git op that blocks (e.g. on a contended .git/index.lock)
+    # must NOT hang under the pool's _repo_lock — a timeout is killed and surfaced
+    # as an ordinary git failure so callers' failure handling runs instead of the
+    # whole pool deadlocking (the REL-038 Develop-phase hang).
+    import subprocess as _sp
+
+    from crmbuilder_v2.scheduler import coordinating_scheduler as cr
+
+    def _boom(*a, **k):
+        raise _sp.TimeoutExpired(cmd=["git", "merge"], timeout=k.get("timeout"))
+
+    monkeypatch.setattr(cr.subprocess, "run", _boom)
+    # check=True → an ordinary git failure (exit 124) the caller can catch,
+    # NOT an unhandled TimeoutExpired.
+    with pytest.raises(_sp.CalledProcessError) as ei:
+        cr._git("/repo", "checkout", "main")
+    assert ei.value.returncode == 124
+    assert "timed out" in (ei.value.stderr or "")
+    # check=False → a failed CompletedProcess (exit 124), as best-effort callers
+    # (branch -D, worktree remove, the merge itself) expect.
+    cp = cr._git("/repo", "merge", "x", check=False)
+    assert cp.returncode == 124
+
+
 def test_run_pytest_splits_multi_package_target_into_separate_args(monkeypatch):
     # PI-200: select_test_target may return several space-separated packages for
     # a multi-subtree change — run_pytest must pass each as its own pytest path
