@@ -1167,3 +1167,53 @@ def test_content_pool_verifies_by_result(monkeypatch):
     # all terminal -> the phase advances
     monkeypatch.setattr(ado.dispatcher, "_get", _get_status("Complete"))
     assert ado.run_content_pool_for_workstream(_cfg(), "WSK-2", "Develop").paused is False
+
+
+def test_develop_gate_open_filters_non_work_task_edges(monkeypatch):
+    """REQ-427: a sibling ``blocked_by`` edge sharing the workstream target must
+    never be taken as a Work Task. ``develop_gate_open`` filters the references
+    to the work-task membership edges client-side, so the gate looks up the real
+    Work Task even when the references filter returns extra edges."""
+    looked_up: list[str] = []
+
+    def _get(api, path, eng):
+        if path.startswith("/references"):
+            # The blocked_by phase-chain sibling sorts first — it must be ignored.
+            return [
+                {"source_id": "WSK-2", "relationship": "blocked_by",
+                 "target_id": "WSK-1"},
+                {"source_id": "WTK-9",
+                 "relationship": "work_task_belongs_to_workstream",
+                 "target_id": "WSK-1"},
+            ]
+        looked_up.append(path)
+        return {"identifier": "WTK-9", "work_task_status": "In Progress"}
+
+    monkeypatch.setattr(ado.dispatcher, "_get", _get)
+    monkeypatch.setattr(
+        ado.reconciliation, "develop_gate", lambda *a, **k: GateDecision(True, "clean")
+    )
+    decision = ado.develop_gate_open(_cfg(), "WSK-1")
+    assert decision.allow is True
+    # only the real Work Task was fetched — never the workstream WSK-2.
+    assert looked_up == ["/work-tasks/WTK-9"]
+
+
+def test_develop_gate_open_recovers_from_work_task_lookup_failure(monkeypatch):
+    """REQ-427: a failed Work Task lookup is a recoverable gate-not-ready
+    outcome, never an unhandled crash that aborts the whole project run."""
+
+    def _get(api, path, eng):
+        if path.startswith("/references"):
+            return [
+                {"source_id": "WTK-9",
+                 "relationship": "work_task_belongs_to_workstream",
+                 "target_id": "WSK-1"},
+            ]
+        raise urllib.error.HTTPError(path, 404, "Not Found", {}, None)
+
+    monkeypatch.setattr(ado.dispatcher, "_get", _get)
+    decision = ado.develop_gate_open(_cfg(), "WSK-1")
+    assert decision.allow is False
+    assert "gate not ready" in decision.reason.lower()
+    assert "404" in decision.reason

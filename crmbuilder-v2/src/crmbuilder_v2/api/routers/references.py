@@ -23,12 +23,21 @@ def list_all(
     target_type: str | None = None,
     target_id: str | None = None,
     relationship_kind: str | None = None,
+    relationship: str | None = None,
 ):
     """List references, optionally filtered by any tuple component.
 
     The filter parameters were accepted but ignored before v0.7 (gap
     surfaced during the SES-054 apply, commit ``dcb7377``); they are now
     honored server-side. No filters returns the full list.
+
+    ``relationship`` is accepted as an alias for ``relationship_kind``
+    (REQ-427): several callers (the ADO scheduler, the baseline report) and
+    the documented ``?relationship=`` convention spell it that way. Without
+    the alias the filter was silently dropped and the endpoint returned every
+    edge to the tuple — which let an unrelated ``blocked_by`` edge leak into a
+    work-task lookup and crash a scheduler run. ``relationship_kind`` wins when
+    both are supplied.
     """
     with readonly_session() as s:
         return ok(
@@ -38,7 +47,7 @@ def list_all(
                 source_id=source_id,
                 target_type=target_type,
                 target_id=target_id,
-                relationship_kind=relationship_kind,
+                relationship_kind=relationship_kind or relationship,
             )
         )
 

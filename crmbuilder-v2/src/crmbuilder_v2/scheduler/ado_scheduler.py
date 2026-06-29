@@ -379,12 +379,37 @@ def develop_gate_open(cfg: AdoSchedulerConfig, workstream_id: str) -> GateDecisi
         "&relationship=work_task_belongs_to_workstream",
         cfg.engagement,
     )
-    wt_ids = [e["source_id"] for e in edges] if isinstance(edges, list) else []
+    # Filter to the work-task membership edges client-side too (REQ-427):
+    # belt-and-suspenders for the references-filter alias. A sibling
+    # ``blocked_by`` phase-chain edge also targets this workstream, and taking
+    # its source (another workstream) as a Work Task id used to 404 and crash
+    # the whole project run.
+    wt_ids = (
+        [
+            e["source_id"]
+            for e in edges
+            if isinstance(e, dict)
+            and e.get("relationship") == "work_task_belongs_to_workstream"
+        ]
+        if isinstance(edges, list)
+        else []
+    )
     if not wt_ids:
         return GateDecision(True, "no Work Tasks scoped yet")
-    work_task = dispatcher._get(
-        cfg.api_base, f"/work-tasks/{wt_ids[0]}", cfg.engagement
-    )
+    try:
+        work_task = dispatcher._get(
+            cfg.api_base, f"/work-tasks/{wt_ids[0]}", cfg.engagement
+        )
+    except (urllib.error.URLError, RuntimeError) as exc:
+        # A failed Work Task lookup is gate-not-ready, never a crash (REQ-427):
+        # pause this phase and surface it rather than aborting the project run.
+        code = getattr(exc, "code", None)
+        return GateDecision(
+            False,
+            f"Work Task {wt_ids[0]} lookup failed"
+            + (f" (HTTP {code})" if code is not None else "")
+            + "; gate not ready",
+        )
     return reconciliation.develop_gate(cfg.api_base, cfg.engagement, work_task)
 
 
