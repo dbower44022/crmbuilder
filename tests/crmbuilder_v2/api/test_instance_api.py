@@ -130,6 +130,68 @@ def test_list_filter_by_role(client):
     assert sources[0]["instance_role"] == "source"
 
 
+def test_create_explicit_both_role(client):
+    """The ``both`` role is settable explicitly (not just the create default)."""
+    r = _create(client, instance_role="both")
+    assert r.status_code == 201, r.text
+    data = r.json()["data"]
+    assert data["instance_role"] == "both"
+    # And it reads back identically through GET.
+    got = client.get("/instances/INST-001")
+    assert got.json()["data"]["instance_role"] == "both"
+
+
+def test_patch_role_to_both(client):
+    """A source instance can be re-roled to ``both`` via PATCH."""
+    _create(client, instance_role="source")
+    pr = client.patch("/instances/INST-001", json={"instance_role": "both"})
+    assert pr.status_code == 200, pr.text
+    assert pr.json()["data"]["instance_role"] == "both"
+
+
+def test_put_role_to_both(client):
+    """PUT accepts ``both`` as the replacement role."""
+    _create(client, instance_role="target")
+    pr = client.put(
+        "/instances/INST-001",
+        json={
+            "instance_name": "CBM sandbox",
+            "instance_url": "https://sandbox.example.org",
+            "instance_role": "both",
+        },
+    )
+    assert pr.status_code == 200, pr.text
+    assert pr.json()["data"]["instance_role"] == "both"
+
+
+def test_list_filter_by_both_role(client):
+    """The role filter resolves ``both`` distinctly from source/target."""
+    _create(client, instance_role="both")
+    _create(client, instance_name="b", instance_url="https://b", instance_role="source")
+    both = client.get("/instances", params={"role": "both"}).json()["data"]
+    assert len(both) == 1
+    assert both[0]["instance_role"] == "both"
+
+
+def test_bad_role_rejected(client):
+    """An unknown role value returns a 422 validation response on the field."""
+    r = _create(client, instance_role="mirror")
+    assert r.status_code == 422
+    errors = r.json()["errors"]
+    assert errors
+    assert any(e.get("field") == "instance_role" for e in errors)
+
+
+def test_patch_bad_role_rejected(client):
+    """PATCH rejects an unknown role with the same field-level validation."""
+    _create(client, instance_role="both")
+    r = client.patch("/instances/INST-001", json={"instance_role": "mirror"})
+    assert r.status_code == 422
+    assert any(
+        e.get("field") == "instance_role" for e in r.json()["errors"]
+    )
+
+
 def test_delete_and_restore(client):
     _create(client)
     assert client.delete("/instances/INST-001").status_code == 200
