@@ -176,3 +176,88 @@ def test_audit_button_visible_for_source_hidden_for_target(qtbot, instance_clien
     tgt_btns = [b.objectName() for b in tgt_detail.findChildren(QPushButton)]
     assert "audit_instance_button" in src_btns
     assert "audit_instance_button" not in tgt_btns
+
+
+# ---------------------------------------------------------------------------
+# both role surfaced in the UI (WTK-259) — the both value is settable through
+# the dialogs, viewable in the detail, and a both-role instance gets the full
+# surface (audit + publish) plus full-inventory audit results across every area.
+# ---------------------------------------------------------------------------
+
+
+def test_create_dialog_offers_both_role_by_default(qtbot, instance_client):
+    """The role combo offers ``both`` and pre-selects it on Create."""
+    dialog = InstanceCreateDialog(instance_client)
+    qtbot.addWidget(dialog)
+    combo = dialog._widgets["instance_role"]
+    items = {combo.itemText(i) for i in range(combo.count())}
+    assert {"source", "target", "both"} <= items
+    assert combo.currentText() == "both"
+
+
+def test_edit_dialog_sets_both_role(qtbot, instance_client):
+    """Editing an instance to the ``both`` role round-trips through the API."""
+    ident = _seed(instance_client, "Re-roled", instance_role="target")[
+        "instance_identifier"
+    ]
+    dialog = InstanceEditDialog(instance_client, instance_client.get_instance(ident))
+    qtbot.addWidget(dialog)
+    dialog._widgets["instance_role"].setCurrentText("both")
+    with qtbot.waitSignal(dialog.accepted, timeout=3000):
+        dialog._on_save_clicked()
+    assert instance_client.get_instance(ident)["instance_role"] == "both"
+
+
+def test_both_role_detail_displays_role_and_full_surface(qtbot, instance_client):
+    """A both-role detail shows the role and both audit + publish actions."""
+    from PySide6.QtWidgets import QLineEdit, QPushButton
+    both = instance_client.get_instance(
+        _seed(instance_client, "dual", instance_role="both")["instance_identifier"]
+    )
+    panel = InstancesPanel(instance_client)
+    qtbot.addWidget(panel)
+    extras = {"references": {"as_source": [], "as_target": []}}
+    detail = panel.render_detail(both, extras)
+    role_value = detail.findChild(QLineEdit, "instance_role_value")
+    assert role_value is not None
+    assert role_value.text() == "both"
+    btns = {b.objectName() for b in detail.findChildren(QPushButton)}
+    # The both role is simultaneously a source (audit) and a target (publish).
+    assert "audit_instance_button" in btns
+    assert "publish_instance_button" in btns
+
+
+def test_detail_reflects_full_inventory_audit_for_both(qtbot, instance_client):
+    """Every area of a both-role full-inventory audit renders its own row."""
+    from PySide6.QtWidgets import QLabel
+    both = instance_client.get_instance(
+        _seed(instance_client, "audited-both", instance_role="both")[
+            "instance_identifier"
+        ]
+    )
+    panel = InstancesPanel(instance_client)
+    qtbot.addWidget(panel)
+    # A both-role audit classifies every area as present/drifted/absent
+    # (WTK-256) — the detail must surface one row per area, none dropped.
+    areas = {
+        "entity": {"present": 12, "drifted": 2, "absent": 1},
+        "field": {"present": 205, "drifted": 4, "absent": 0},
+        "relationship": {"present": 44, "drifted": 0, "absent": 0},
+        "layout": {"present": 12, "drifted": 1, "absent": 0},
+        "role": {"present": 10, "drifted": 0, "absent": 0},
+        "team": {"present": 7, "drifted": 0, "absent": 0},
+    }
+    extras = {
+        "references": {"as_source": [], "as_target": []},
+        "membership_summary": areas,
+        "publish_plan": {"item_count": 5},
+    }
+    detail = panel.render_detail(both, extras)
+    labels = {w.objectName(): w.text() for w in detail.findChildren(QLabel)
+              if w.objectName()}
+    for area, counts in areas.items():
+        key = f"membership_summary_{area}"
+        assert key in labels, f"missing row for area {area}"
+        assert f"{counts['present']} present" in labels[key]
+        assert f"{counts['drifted']} drifted" in labels[key]
+        assert f"{counts['absent']} absent" in labels[key]
