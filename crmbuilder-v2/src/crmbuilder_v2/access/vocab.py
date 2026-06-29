@@ -779,6 +779,15 @@ PUBLISH_RUN_STATUSES: frozenset[str] = frozenset(
 # absent) once the area's instance read returned successfully. The defect this
 # closes: a candidate-gating read that returned nothing was treated as a complete
 # audit and swept a whole area's inventory to ``absent`` while reporting success.
+#
+# no-resolution preservation (REQ-394, REL-038). The complement of the above: a
+# pass that resolves no objects for an area leaves that area's existing
+# ``present`` and ``drifted`` rows unchanged — empty resolution is a no-op for
+# membership, never a sweep to ``absent``. Each pass writes only the membership
+# its own area resolved and touches no other area. An empty resolved set is
+# treated as "the area genuinely holds nothing" only when it came from a
+# successful read (the precondition above); a read that failed, was
+# candidate-gated, or never ran is a no-op and must not reach the absent sweep.
 INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
     {"present", "drifted", "absent"}
 )
