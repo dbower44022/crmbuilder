@@ -759,10 +759,26 @@ PUBLISH_RUN_STATUSES: frozenset[str] = frozenset(
 
 # present = exists and matches the canonical design; drifted = exists but at
 # least one attribute differs (captured in the override); absent = a canonical
-# object not found in this instance's last audit. The membership join is
-# canonical-only (SES-247, DEC-650): candidacy lives in ``mapping_candidate`` and
-# staleness on the mapping record's ``status``, so the earlier candidate_pending /
-# mapping_stale states are removed (the reconciler design pass discharged them).
+# object that a SUCCESSFUL read of this instance confirmed is not there. The
+# membership join is canonical-only (SES-247, DEC-650): candidacy lives in
+# ``mapping_candidate`` and staleness on the mapping record's ``status``, so the
+# earlier candidate_pending / mapping_stale states are removed (the reconciler
+# design pass discharged them).
+#
+# absent-transition contract (REQ-394, REL-038). A membership row is set to
+# ``absent`` ONLY when (a) the live instance was read successfully for the row's
+# area and (b) the row's object is confirmed missing from that read. Read success
+# is the precondition: a failed, empty, or never-attempted read MUST leave the
+# existing membership unchanged — it must never be interpreted as "everything is
+# absent". This is the invariant the absent sweep
+# (``instance_membership.mark_absent_missing`` and its reconcile callers) must
+# honor. It is a runtime precondition over the audit's read outcome, not a static
+# row property, so it is documented here as the storage contract rather than
+# expressed as a CHECK; the introspect/reconcile layer enforces it by only
+# computing a ``present_member_identifiers`` set (and thus only sweeping to
+# absent) once the area's instance read returned successfully. The defect this
+# closes: a candidate-gating read that returned nothing was treated as a complete
+# audit and swept a whole area's inventory to ``absent`` while reporting success.
 INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
     {"present", "drifted", "absent"}
 )

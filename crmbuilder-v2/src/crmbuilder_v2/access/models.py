@@ -2677,6 +2677,19 @@ class InstanceMembership(EngagementScopedMixin, Base):
     state was last observed. Reconcile upserts these rows idempotently
     (uniqueness on engagement + instance + member). See §5 of
     ``prj-027-multi-instance-audit-inventory-architecture.md``.
+
+    ``state`` absent-transition contract (REQ-394, REL-038). A row is set to
+    ``absent`` ONLY when the live instance was read successfully for the row's
+    area AND the row's object is confirmed missing from that read. A failed,
+    empty, or never-attempted read MUST leave existing membership unchanged and
+    must never be interpreted as "everything is absent"; each audit pass writes
+    only the membership for the area it itself resolved. This read-success
+    precondition is a runtime invariant over the audit outcome, not a static row
+    property, so it cannot be a CHECK — it is the storage contract that the
+    absent sweep
+    (``repositories.instance_membership.mark_absent_missing`` and its
+    introspect/reconcile callers) must honor. See ``INSTANCE_MEMBERSHIP_STATES``
+    in ``access/vocab.py`` for the full state model.
     """
 
     __tablename__ = "instance_memberships"
