@@ -183,3 +183,48 @@ def test_post_references_resolves_flips_status(client):
     r = client.get("/planning-items/PI-995")
     assert r.status_code == 200
     assert r.json()["data"]["status"] == "Resolved"
+
+
+def test_relationship_query_param_aliases_relationship_kind(client):
+    """REQ-427: GET /references must honor the relationship filter under the
+    documented ``?relationship=`` spelling, not only ``?relationship_kind=``.
+
+    Before the alias, ``?relationship=`` was an unrecognized parameter that was
+    silently dropped, so the endpoint returned every edge to the tuple — which
+    let a sibling ``blocked_by`` edge leak into a work-task lookup and crash a
+    scheduler run.
+    """
+    # Two different-kind edges from the same source.
+    client.post("/references", json={
+        "source_type": "session", "source_id": "SES-001",
+        "target_type": "decision", "target_id": "DEC-001",
+        "relationship": "decided_in",
+    })
+    client.post("/references", json={
+        "source_type": "session", "source_id": "SES-001",
+        "target_type": "decision", "target_id": "DEC-002",
+        "relationship": "supersedes",
+    })
+
+    # No filter → both.
+    both = client.get("/references?source_id=SES-001").json()["data"]
+    assert len(both) == 2
+
+    # ``relationship=`` (alias) narrows to one.
+    aliased = client.get(
+        "/references?source_id=SES-001&relationship=decided_in"
+    ).json()["data"]
+    assert [e["relationship"] for e in aliased] == ["decided_in"]
+
+    # ``relationship_kind=`` (canonical) still narrows identically.
+    canonical = client.get(
+        "/references?source_id=SES-001&relationship_kind=supersedes"
+    ).json()["data"]
+    assert [e["relationship"] for e in canonical] == ["supersedes"]
+
+    # ``relationship_kind`` wins when both are supplied.
+    both_given = client.get(
+        "/references?source_id=SES-001"
+        "&relationship_kind=decided_in&relationship=supersedes"
+    ).json()["data"]
+    assert [e["relationship"] for e in both_given] == ["decided_in"]
