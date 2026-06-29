@@ -13,6 +13,7 @@ from crmbuilder_v2.ui.panels.reconcile_models import (
     plan_apply,
 )
 from PySide6.QtCore import QModelIndex, Qt
+from PySide6.QtWidgets import QTableWidget
 
 from .conftest import build_client, envelope_ok
 
@@ -370,6 +371,56 @@ def test_show_all_values_toggle_re_compares_and_lists_all_members(qtbot):
     panel._drill(_EXISTENCE[1])
     assert panel._detail_model.rowCount() == 1  # the in-sync fields group
     assert "all values" in panel._detail_title.text()
+
+
+def test_double_click_field_opens_properties_dialog(qtbot, monkeypatch):
+    """REQ-433: double-clicking a field row fetches its full property set and opens
+    the side-by-side properties dialog."""
+    member_payload = {
+        "member_type": "field", "member_identifier": "FLD-001", "member_name": "phone",
+        "presence": {"design": "present", "instance_a": "present", "instance_b": "present"},
+        "rows": [
+            {"attribute": "field_type", "design": "varchar", "instance_a": "varchar",
+             "instance_b": "varchar", "differs": False},
+            {"attribute": "field_max_length", "design": 255, "instance_a": 100,
+             "instance_b": 255, "differs": True},
+        ],
+    }
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.method == "GET" and req.url.path == "/reconcile/member":
+            assert req.url.params.get("member_identifier") == "FLD-001"
+            return httpx.Response(200, json=envelope_ok(member_payload))
+        return _handler(req)
+
+    panel = ReconcileGridPanel(build_client(handler))
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    panel._drill(_EXISTENCE[0])  # Account → has the FLD-001 field row
+
+    captured = {}
+
+    def fake_exec(self):
+        captured["dialog"] = self
+        return 0
+
+    from crmbuilder_v2.ui.panels import reconcile_grid as rg
+    monkeypatch.setattr(rg.MemberPropertiesDialog, "exec", fake_exec)
+
+    grp_idx = panel._detail_model.index(0, 0, QModelIndex())
+    child = panel._detail_model.index(0, 0, grp_idx)  # the field's row
+    panel._on_detail_activated(child)
+
+    dlg = captured["dialog"]
+    table = dlg.findChild(QTableWidget, "member_properties_table")
+    assert table is not None
+    assert table.rowCount() == 2
+    assert table.item(0, 0).text() == "Type"        # humanized field_type
+    assert table.item(1, 0).text() == "Max length"  # humanized field_max_length
+    assert table.item(1, 2).text() == "100"          # instance A value
+    dlg.deleteLater()
 
 
 def test_reconcile_panel_is_recognized_as_refreshable(qtbot):

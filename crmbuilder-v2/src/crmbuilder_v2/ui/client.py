@@ -2586,6 +2586,28 @@ class StorageClient:
         result = self._request("GET", "/reconcile/compare?" + "&".join(params))
         return result if isinstance(result, dict) else {}
 
+    def reconcile_member_properties(
+        self,
+        instance_a: str,
+        instance_b: str,
+        member_type: str,
+        member_identifier: str,
+    ) -> dict[str, Any]:
+        """GET /reconcile/member — all properties of one member across instances.
+
+        Returns every property of ``(member_type, member_identifier)`` with the
+        design value and each instance's effective value, so a field's full
+        configuration can be inspected side by side (REQ-433).
+        """
+        params = [
+            f"instance_a={instance_a}",
+            f"instance_b={instance_b}",
+            f"member_type={member_type}",
+            f"member_identifier={member_identifier}",
+        ]
+        result = self._request("GET", "/reconcile/member?" + "&".join(params))
+        return result if isinstance(result, dict) else {}
+
     def reconcile_capture(
         self,
         *,

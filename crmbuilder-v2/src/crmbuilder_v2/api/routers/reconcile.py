@@ -106,6 +106,35 @@ def compare(
         )
 
 
+@router.get("/member")
+def member(
+    instance_a: str = Query(..., description="First instance identifier"),
+    instance_b: str = Query(..., description="Second instance identifier"),
+    member_type: str = Query(..., description="Member type, e.g. 'field'"),
+    member_identifier: str = Query(..., description="The member's identifier"),
+):
+    """All properties of one member compared across the design and two instances.
+
+    Returns one row per property (every property, not only the differing ones) so
+    an operator can click a field and inspect its full configuration side by side
+    (REQ-433). 404 when the member type is unknown or no such member exists.
+    """
+    with readonly_session() as s:
+        for inst in (instance_a, instance_b):
+            if instances.get_instance(s, inst, include_deleted=True) is None:
+                raise NotFoundError("instance", inst)
+        result = reconcile_compare.member_property_compare(
+            s,
+            instance_a=instance_a,
+            instance_b=instance_b,
+            member_type=member_type,
+            member_identifier=member_identifier,
+        )
+        if result is None:
+            raise NotFoundError(member_type, member_identifier)
+        return ok(result)
+
+
 @router.post("/capture", status_code=201)
 def capture(body: CaptureIn):
     """Capture an instance's field-attribute value into the design (REQ-356).

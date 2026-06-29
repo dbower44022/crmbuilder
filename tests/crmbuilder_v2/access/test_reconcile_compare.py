@@ -7,6 +7,7 @@ from crmbuilder_v2.access.reconcile_compare import (
     PRESENT,
     UNKNOWN,
     _override_attrs,
+    compute_member_properties,
     compute_member_rows,
 )
 
@@ -68,6 +69,58 @@ def test_include_unchanged_does_not_add_row_when_member_differs():
     )
     assert len(rows) == 1
     assert rows[0]["differs"] is True
+
+
+def test_member_properties_lists_every_property_with_differs_flags():
+    """REQ-433: the per-field property view emits one row per property — matching
+    and differing alike — with each location's value and a differs flag, dropping
+    only identity/bookkeeping keys."""
+    design = {
+        "field_identifier": "FLD-1",   # bookkeeping -> excluded
+        "field_name": "phone",
+        "field_type": "varchar",
+        "field_required": False,
+        "field_max_length": 255,
+        "created_at": "x",             # bookkeeping -> excluded
+    }
+    a = _mem(state="drifted", override={"field_max_length": 100})
+    res = compute_member_properties(
+        member_type="field",
+        member_identifier="FLD-1",
+        member_name="phone",
+        design_obj=design,
+        membership_a=a,
+        membership_b=_mem(),
+    )
+    by_attr = {r["attribute"]: r for r in res["rows"]}
+    # identity/bookkeeping keys are dropped; real properties are all present
+    assert "field_identifier" not in by_attr
+    assert "created_at" not in by_attr
+    assert set(by_attr) == {"field_name", "field_type", "field_required", "field_max_length"}
+    # in-sync property: same everywhere, not flagged
+    assert by_attr["field_type"]["design"] == "varchar"
+    assert by_attr["field_type"]["differs"] is False
+    # drifted property: A overrides 255 -> 100, flagged
+    ml = by_attr["field_max_length"]
+    assert ml["design"] == 255 and ml["instance_a"] == 100 and ml["instance_b"] == 255
+    assert ml["differs"] is True
+    assert res["presence"] == {"design": PRESENT, "instance_a": PRESENT, "instance_b": PRESENT}
+
+
+def test_member_properties_absent_instance_shows_presence_token():
+    """A property on an instance that does not carry the member shows its presence
+    token in place of a value (B absent here)."""
+    res = compute_member_properties(
+        member_type="field",
+        member_identifier="FLD-1",
+        member_name="notes",
+        design_obj={"field_type": "varchar"},
+        membership_a=_mem(),
+        membership_b=None,  # never audited on B
+    )
+    row = res["rows"][0]
+    assert row["instance_b"] == UNKNOWN
+    assert res["presence"]["instance_b"] == UNKNOWN
 
 
 def test_attribute_drift_on_one_instance():

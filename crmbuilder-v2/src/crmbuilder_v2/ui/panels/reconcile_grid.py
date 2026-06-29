@@ -16,9 +16,13 @@ import logging
 from typing import Any
 
 from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt, QThread, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QCheckBox,
     QComboBox,
+    QDialog,
+    QDialogButtonBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -27,6 +31,8 @@ from PySide6.QtWidgets import (
     QPushButton,
     QStackedWidget,
     QTableView,
+    QTableWidget,
+    QTableWidgetItem,
     QTabWidget,
     QTreeView,
     QTreeWidget,
@@ -40,6 +46,8 @@ from crmbuilder_v2.ui.panels.reconcile_models import (
     RECORD_ROLE,
     EntityDetailModel,
     ExistenceGridModel,
+    _humanize_attr,
+    fmt_value,
     plan_apply,
 )
 from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
@@ -149,6 +157,79 @@ class _EntityAuditWorker(QThread):
             self.failed.emit(str(exc))
             return
         self.done.emit(results)
+
+
+#: Soft tint marking a property whose value differs across the locations (REQ-433).
+_DIFF_TINT = QColor("#FFF3E0")
+
+
+class MemberPropertiesDialog(QDialog):
+    """Side-by-side table of every property of one member (REQ-433).
+
+    Opened by double-clicking a field in the detail tree: shows each property with
+    its value in the design and both instances, differing properties tinted, so an
+    operator can inspect a field's complete configuration rather than only the
+    properties that differ. Read-only.
+    """
+
+    def __init__(
+        self,
+        result: dict[str, Any],
+        *,
+        instance_a_label: str,
+        instance_b_label: str,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        name = result.get("member_name") or result.get("member_identifier") or "Member"
+        self.setObjectName("member_properties_dialog")
+        self.setWindowTitle(f"{name} — properties")
+        self.resize(720, 480)
+        lay = QVBoxLayout(self)
+
+        rows = result.get("rows", [])
+        diffs = sum(1 for r in rows if r.get("differs"))
+        heading = QLabel(
+            f"{name} — {len(rows)} propert{'y' if len(rows) == 1 else 'ies'}, "
+            f"{diffs} differ across the design and the two instances."
+        )
+        heading.setWordWrap(True)
+        lay.addWidget(heading)
+
+        table = QTableWidget(len(rows), 4, self)
+        table.setObjectName("member_properties_table")
+        table.setHorizontalHeaderLabels(
+            ["Property", "Master design", instance_a_label, instance_b_label]
+        )
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        table.setAlternatingRowColors(True)
+        table.setWordWrap(True)
+        for row, r in enumerate(rows):
+            cells = [
+                _humanize_attr(r.get("attribute") or ""),
+                fmt_value(r.get("design")),
+                fmt_value(r.get("instance_a")),
+                fmt_value(r.get("instance_b")),
+            ]
+            for col, text in enumerate(cells):
+                item = QTableWidgetItem(text)
+                item.setToolTip(text)
+                if r.get("differs"):
+                    item.setBackground(_DIFF_TINT)
+                table.setItem(row, col, item)
+        hdr = table.horizontalHeader()
+        hdr.setStretchLastSection(False)
+        hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        for col in (1, 2, 3):
+            hdr.setSectionResizeMode(col, QHeaderView.ResizeMode.Stretch)
+        lay.addWidget(table)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(self.reject)
+        buttons.accepted.connect(self.accept)
+        lay.addWidget(buttons)
 
 
 class ReconcileGridPanel(QWidget):
@@ -307,7 +388,12 @@ class ReconcileGridPanel(QWidget):
             content_cols=(1, 2, 3),
             content_mode=QHeaderView.ResizeMode.Stretch,
         )
+        # Double-click a field to inspect all its properties side by side (REQ-433).
+        self._detail.doubleClicked.connect(self._on_detail_activated)
         lay.addWidget(self._detail)
+        detail_hint = QLabel("Double-click a field to see all its properties.")
+        detail_hint.setStyleSheet("color: #9E9E9E;")
+        lay.addWidget(detail_hint)
 
         # Unified apply (REQ-371/372): pick where the correct value lives and where
         # to bring it; applies to every selected, supported difference.
@@ -524,6 +610,39 @@ class ReconcileGridPanel(QWidget):
             self._detail_title.setText(f"{name} — no differences found")
         self._detail.expandAll()
         self._stack.setCurrentIndex(1)
+
+    def _on_detail_activated(self, index: QModelIndex) -> None:
+        """Double-click a field row → show all its properties compared (REQ-433)."""
+        rec = self._detail_model.data(index, RECORD_ROLE)
+        if not isinstance(rec, dict) or not rec.get("member_type"):
+            return  # a group header, not a member row
+        a, b = self._combo_a.currentData(), self._combo_b.currentData()
+        if not a or not b:
+            return
+        try:
+            result = self._client.reconcile_member_properties(
+                a, b, rec["member_type"], rec["member_identifier"]
+            )
+        except Exception as exc:  # noqa: BLE001
+            CopyableMessageBox.warning(
+                self, "Field properties", f"Could not load properties: {exc}"
+            )
+            return
+        if not result or not result.get("rows"):
+            CopyableMessageBox.information(
+                self, "Field properties", "No properties to show for this item."
+            )
+            return
+        dialog = MemberPropertiesDialog(
+            result,
+            instance_a_label=self._instance_label(a),
+            instance_b_label=self._instance_label(b),
+            parent=self,
+        )
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
 
     # ------------------------------------------------------------------ apply
     def _loc_instance(self, loc: str) -> str | None:

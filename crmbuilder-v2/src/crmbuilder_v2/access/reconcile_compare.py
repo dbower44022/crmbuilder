@@ -199,6 +199,86 @@ def _override_attrs(*memberships: dict[str, Any] | None) -> list[str]:
     return sorted(keys)
 
 
+#: Keys on a design member dict that are identity / bookkeeping, not comparable
+#: configuration properties — excluded from the per-field property view (REQ-433).
+_NON_PROPERTY_KEYS = frozenset({"id", "engagement_id"})
+
+
+def _is_property_key(key: str) -> bool:
+    """Whether ``key`` is a comparable property rather than identity/bookkeeping."""
+    if key in _NON_PROPERTY_KEYS:
+        return False
+    return not key.endswith(("_identifier", "_at"))
+
+
+def compute_member_properties(
+    *,
+    member_type: str,
+    member_identifier: str,
+    member_name: str | None,
+    design_obj: dict[str, Any],
+    membership_a: dict[str, Any] | None,
+    membership_b: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Full property comparison for ONE member across design + two instances (REQ-433).
+
+    Unlike :func:`compute_member_rows` — which emits only the rows that differ —
+    this returns **one row per property**, so an operator can click a field and
+    inspect its complete configuration side by side. The property set is the union
+    of the design's keys and each instance's override keys, minus identity /
+    bookkeeping keys. Each row carries the design value and each instance's
+    effective value (the override when present, else the design value); an instance
+    that does not carry the member shows its presence token in place of a value.
+    ``differs`` flags a property whose value disagrees across the design and the
+    instances that carry the member.
+
+    :returns: ``{member_type, member_identifier, member_name, presence: {design,
+        instance_a, instance_b}, rows: [...]}``.
+    """
+    pres_a = _presence(membership_a)
+    pres_b = _presence(membership_b)
+    a_carries = pres_a == PRESENT
+    b_carries = pres_b == PRESENT
+    override_a = (membership_a or {}).get("override") or {}
+    override_b = (membership_b or {}).get("override") or {}
+
+    keys = {k for k in design_obj if _is_property_key(k)}
+    keys |= {k for k in override_a if _is_property_key(k)}
+    keys |= {k for k in override_b if _is_property_key(k)}
+
+    rows: list[dict[str, Any]] = []
+    for attr in sorted(keys):
+        design_value = design_obj.get(attr)
+        a_eff = _effective_value(membership_a, attr, design_value) if a_carries else None
+        b_eff = _effective_value(membership_b, attr, design_value) if b_carries else None
+        carrying_values = [design_value]
+        if a_carries:
+            carrying_values.append(a_eff)
+        if b_carries:
+            carrying_values.append(b_eff)
+        differs = not all(v == carrying_values[0] for v in carrying_values)
+        rows.append({
+            "member_type": member_type,
+            "member_identifier": member_identifier,
+            "member_name": member_name,
+            "kind": "attribute",
+            "attribute": attr,
+            "design": design_value,
+            "instance_a": a_eff if a_carries else pres_a,
+            "instance_b": b_eff if b_carries else pres_b,
+            "differs": differs,
+            "actionable": _attribute_actionable(member_type, attr),
+        })
+
+    return {
+        "member_type": member_type,
+        "member_identifier": member_identifier,
+        "member_name": member_name,
+        "presence": {"design": PRESENT, "instance_a": pres_a, "instance_b": pres_b},
+        "rows": rows,
+    }
+
+
 #: Synthetic group for members not scoped to a single entity (roles, teams,
 #: filtered tabs).
 GLOBAL_GROUP = "(global)"
@@ -450,3 +530,40 @@ def three_way_compare(
         "groups": groups,
         "row_count": row_count,
     }
+
+
+def member_property_compare(
+    session: Session,
+    *,
+    instance_a: str,
+    instance_b: str,
+    member_type: str,
+    member_identifier: str,
+) -> dict[str, Any] | None:
+    """Full property comparison for one member across design + two instances (REQ-433).
+
+    Resolves the canonical design object for ``(member_type, member_identifier)``
+    and each instance's membership snapshot, then delegates to
+    :func:`compute_member_properties`. Returns ``None`` when the member type is
+    unknown or no canonical member with that identifier exists, so the endpoint can
+    answer 404.
+    """
+    source = next((s for s in _MEMBER_SOURCES if s[0] == member_type), None)
+    if source is None:
+        return None
+    _, list_fn, id_key, name_key = source
+    design_obj = next(
+        (o for o in list_fn(session) if o.get(id_key) == member_identifier), None
+    )
+    if design_obj is None:
+        return None
+    idx_a = _membership_index(session, instance_a)
+    idx_b = _membership_index(session, instance_b)
+    return compute_member_properties(
+        member_type=member_type,
+        member_identifier=member_identifier,
+        member_name=design_obj.get(name_key),
+        design_obj=design_obj,
+        membership_a=idx_a.get((member_type, member_identifier)),
+        membership_b=idx_b.get((member_type, member_identifier)),
+    )
