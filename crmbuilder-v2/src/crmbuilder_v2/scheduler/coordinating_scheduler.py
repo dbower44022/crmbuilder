@@ -494,13 +494,41 @@ def minimal_contract_prompt(work_task: dict, *, area: str) -> str:
 # --------------------------------------------------------------------------
 
 
-def _git(repo_root: str, *args: str, check: bool = True) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["git", "-C", repo_root, *args],
-        capture_output=True,
-        text=True,
-        check=check,
-    )
+# REQ-426 / PI-366 — every pool git op (worktree add, checkout, merge) runs under
+# the shared _repo_lock; a git op that blocks (e.g. on a contended .git/index.lock
+# from concurrent git on the shared repo) would hold the lock forever and deadlock
+# the whole pool (the REL-038 Develop-phase hang). A real git op completes in
+# seconds, so bound it: a timeout kills the git child (releasing the repo + the
+# lock) and surfaces as a git failure so callers' existing failure handling turns
+# a blocked op into a recoverable task failure, not a hang. The agent spawn and
+# pytest gate are already bounded; git was the one unbounded path.
+_GIT_TIMEOUT_SECONDS = 120
+
+
+def _git(
+    repo_root: str, *args: str, check: bool = True,
+    timeout: float = _GIT_TIMEOUT_SECONDS,
+) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(
+            ["git", "-C", repo_root, *args],
+            capture_output=True,
+            text=True,
+            check=check,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        # subprocess.run has already killed the child, so the repo lock it held is
+        # released. Present the overrun as an ordinary git failure (exit 124) so
+        # the caller's failure path runs instead of the worker blocking forever.
+        msg = f"git {' '.join(args)} timed out after {timeout}s"
+        if check:
+            raise subprocess.CalledProcessError(
+                124, exc.cmd, output=exc.output, stderr=msg
+            ) from exc
+        return subprocess.CompletedProcess(
+            exc.cmd, 124, stdout=exc.output or "", stderr=msg
+        )
 
 
 @dataclass
@@ -1151,7 +1179,16 @@ class CoordinatingScheduler:
 
     def _merge(self, branch: str) -> TaskResult:
         cfg = self.config
-        _git(cfg.repo_root, "checkout", cfg.base_branch)
+        # REQ-426: a checkout that fails or times out (e.g. a contended repo lock)
+        # is a recoverable merge failure, surfaced to a human — never a raise that
+        # would propagate out of the pool loop.
+        try:
+            _git(cfg.repo_root, "checkout", cfg.base_branch)
+        except subprocess.CalledProcessError as exc:
+            return interpret_merge(
+                exc.returncode or 1,
+                f"checkout {cfg.base_branch} failed: {exc.stderr or exc.output or ''}",
+            )
         proc = _git(
             cfg.repo_root,
             "merge",
