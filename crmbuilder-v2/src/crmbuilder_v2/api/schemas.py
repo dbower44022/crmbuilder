@@ -2544,6 +2544,20 @@ class WorkTaskClaimIn(_Base):
     claimed_by: str
 
 
+class ProjectClaimIn(_Base):
+    """POST /projects/{id}/claim and /heartbeat body (REQ-423 / PI-364)."""
+
+    claimed_by: str
+    stale_seconds: float | None = None
+
+
+class ProjectReleaseIn(_Base):
+    """POST /projects/{id}/release body (REQ-423 / PI-364)."""
+
+    claimed_by: str
+    force: bool = False
+
+
 class ConversationCreateIn(_Base):
     """POST /conversations body — PI-073 / DEC-314 redesign.
 

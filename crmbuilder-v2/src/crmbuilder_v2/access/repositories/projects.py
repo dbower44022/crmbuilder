@@ -421,3 +421,136 @@ def restore_project(session: Session, identifier: str) -> dict:
         after=after,
     )
     return after
+
+
+# ---------------------------------------------------------------------------
+# Build-run claim — the heartbeat lease (REQ-423 / PI-364)
+# ---------------------------------------------------------------------------
+
+# The default lease staleness: a claim whose `project_claimed_at` is older than
+# this is treated as abandoned (a crashed runtime) and may be reclaimed. Chosen
+# comfortably larger than the runtime's heartbeat interval so a live, long-running
+# build (its heartbeat keeps the claim fresh) is never wrongly reclaimed.
+DEFAULT_CLAIM_STALE_SECONDS = 300
+
+
+def _as_aware(value: datetime | None) -> datetime | None:
+    """SQLite hands back naive datetimes; treat a naive value as UTC."""
+    if value is None:
+        return None
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+
+
+def claim_project(
+    session: Session,
+    identifier: str,
+    *,
+    claimed_by: str,
+    stale_seconds: float = DEFAULT_CLAIM_STALE_SECONDS,
+) -> dict:
+    """Acquire the exclusive build-run claim (heartbeat lease) for a project.
+
+    Grants when the project is unclaimed, already held by this claimant
+    (idempotent — also refreshes the lease), or the current holder's lease is
+    stale (``project_claimed_at`` older than ``stale_seconds`` — a crashed
+    runtime). Raises :class:`ConflictError` only when the project is held by a
+    *different* runtime whose lease is still fresh. Sets both ``project_claimed_by``
+    and ``project_claimed_at`` (now) together.
+    """
+    if not isinstance(claimed_by, str) or not claimed_by:
+        raise UnprocessableError(
+            [FieldError("claimed_by", "required", "claimed_by is required")]
+        )
+    row = _get_row(session, identifier)
+    now = datetime.now(UTC)
+    holder = row.project_claimed_by
+    if holder is not None and holder != claimed_by:
+        at = _as_aware(row.project_claimed_at)
+        fresh = at is not None and (now - at).total_seconds() < stale_seconds
+        if fresh:
+            raise ConflictError(
+                f"project {identifier!r} is being driven by {holder!r} since "
+                f"{at.isoformat()}; its build-run lease is still fresh."
+            )
+    before = to_dict(row)
+    row.project_claimed_by = claimed_by
+    row.project_claimed_at = now
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+def heartbeat_project(
+    session: Session, identifier: str, *, claimed_by: str
+) -> dict:
+    """Refresh the lease (``project_claimed_at`` = now), only while still held.
+
+    Raises :class:`ConflictError` if the claim was lost (the project is now
+    unclaimed or claimed by a different runtime) so the heartbeating runtime
+    learns it must stop driving.
+    """
+    if not isinstance(claimed_by, str) or not claimed_by:
+        raise UnprocessableError(
+            [FieldError("claimed_by", "required", "claimed_by is required")]
+        )
+    row = _get_row(session, identifier)
+    if row.project_claimed_by != claimed_by:
+        raise ConflictError(
+            f"project {identifier!r} is no longer claimed by {claimed_by!r} "
+            f"(now {row.project_claimed_by!r}); the build-run claim was lost."
+        )
+    before = to_dict(row)
+    row.project_claimed_at = datetime.now(UTC)
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+def release_project(
+    session: Session, identifier: str, *, claimed_by: str, force: bool = False
+) -> dict:
+    """Release the build-run claim — clears both claim columns.
+
+    Idempotent when already unclaimed. Raises :class:`ConflictError` if held by a
+    different claimant unless ``force`` is set (the deliberate override for an
+    operator clearing a confirmed-dead run).
+    """
+    row = _get_row(session, identifier)
+    holder = row.project_claimed_by
+    if holder is None:
+        return to_dict(row)
+    if holder != claimed_by and not force:
+        raise ConflictError(
+            f"project {identifier!r} is claimed by {holder!r}, not "
+            f"{claimed_by!r}; pass force to override."
+        )
+    before = to_dict(row)
+    row.project_claimed_by = None
+    row.project_claimed_at = None
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after

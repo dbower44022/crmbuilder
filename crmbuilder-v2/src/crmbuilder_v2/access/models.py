@@ -3700,6 +3700,17 @@ class Project(EngagementScopedPKMixin, Base):
     project_superseded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # REQ-423 / PI-364 — exclusive build-run claim (heartbeat lease). One runtime
+    # claims a project before driving its build and releases it at run end; a
+    # second runtime is refused while the claim is fresh. ``project_claimed_at`` is
+    # refreshed periodically (the heartbeat) so a crashed runtime's lease goes
+    # stale and the next runtime can reclaim it. The both-or-neither pairing is
+    # enforced in the access layer (claim/release always set/clear both) rather
+    # than a DB CHECK, to keep this a plain ADD COLUMN migration.
+    project_claimed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    project_claimed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         CheckConstraint(
