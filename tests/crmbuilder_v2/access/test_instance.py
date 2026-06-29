@@ -189,3 +189,79 @@ def test_basic_auth_method_accepted(v2_env):
     with session_scope() as s:
         row = _make(s, auth_method="basic")
         assert row["instance_auth_method"] == "basic"
+
+
+# --- both role (PI-352 / REQ-393) -------------------------------------------
+# The ``both`` role (a single instance read from *and* written to) was a valid
+# INSTANCE_ROLES member and the create default from the start, but the storage
+# layer had no test that exercised the value explicitly — only the default.
+# These prove it can be stored, validated, read back durably, and that an
+# already-stored instance migrates to ``both`` cleanly. The API counterpart is
+# tests/crmbuilder_v2/api/test_instance_api.py (WTK-255).
+
+
+def test_create_explicit_both_role(v2_env):
+    """``both`` is settable explicitly (not just the create default)."""
+    with session_scope() as s:
+        row = _make(s, role="both")
+        assert row["instance_role"] == "both"
+    # And it reads back identically from a fresh session (committed to the DB,
+    # so the ck_instance_role CHECK admitted it — not merely repo validation).
+    with session_scope() as s:
+        assert instances.get_instance(s, "INST-001")["instance_role"] == "both"
+
+
+def test_patch_existing_instance_to_both(v2_env):
+    """An existing source instance re-roles to ``both`` via patch and persists."""
+    with session_scope() as s:
+        ident = _make(s, role="source")["instance_identifier"]
+    with session_scope() as s:
+        out = instances.patch_instance(s, ident, role="both")
+        assert out["instance_role"] == "both"
+    with session_scope() as s:
+        assert instances.get_instance(s, ident)["instance_role"] == "both"
+
+
+def test_update_existing_instance_to_both(v2_env):
+    """Full-replace update of a target instance to ``both`` persists."""
+    with session_scope() as s:
+        ident = _make(s, role="target")["instance_identifier"]
+    with session_scope() as s:
+        out = instances.update_instance(
+            s,
+            ident,
+            name="CBM sandbox",
+            url="https://sandbox.example.org",
+            role="both",
+        )
+        assert out["instance_role"] == "both"
+    with session_scope() as s:
+        assert instances.get_instance(s, ident)["instance_role"] == "both"
+
+
+def test_list_filter_by_both_role(v2_env):
+    """The role filter resolves ``both`` distinctly from source/target."""
+    with session_scope() as s:
+        _make(s, role="both")
+        _make(s, name="b", url="https://b", role="source")
+        both = instances.list_instances(s, role="both")
+        assert len(both) == 1
+        assert both[0]["instance_role"] == "both"
+
+
+def test_role_check_constraint_admits_both(v2_env):
+    """The migrated schema carries a role CHECK whose predicate admits ``both``.
+
+    Guards against a future migration narrowing INSTANCE_ROLES and silently
+    orphaning stored both-role instances.
+    """
+    checks = inspect(get_engine()).get_check_constraints("instances")
+    role_check = next(c for c in checks if c["name"] == "ck_instance_role")
+    assert "both" in role_check["sqltext"]
+
+
+def test_bad_role_still_rejected_alongside_both(v2_env):
+    """``both`` being valid does not loosen rejection of unknown roles."""
+    with session_scope() as s:
+        with pytest.raises(UnprocessableError):
+            _make(s, role="mirror")
