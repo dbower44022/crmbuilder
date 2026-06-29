@@ -793,7 +793,10 @@ def test_source_audit_creates_entity_candidates_not_canonical(v2_env):
 
 def test_source_audit_entity_candidates_idempotent(v2_env):
     with session_scope() as s:
-        iid = _source_instance(s, role="both")  # both -> treated as source
+        # Candidate-gating is source-only (REQ-393 / WTK-256 narrowed
+        # _SOURCE_ROLES to {"source"}); a ``both`` instance now takes the full
+        # drift path — covered by test_both_audit_runs_full_drift_no_candidates.
+        iid = _source_instance(s, role="source")
         client = _FakeClient({"CEngagement": _custom()})
         reconcile_entities(s, instance_identifier=iid, client=client)
         reconcile_entities(s, instance_identifier=iid, client=client)
