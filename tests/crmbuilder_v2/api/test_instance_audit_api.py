@@ -16,6 +16,7 @@ from crmbuilder_v2 import secrets
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.repositories import instance_membership as membership_repo
 from crmbuilder_v2.access.repositories import mapping_candidate as candidate_repo
 from crmbuilder_v2.access.repositories import source_mapping as smg_repo
 from crmbuilder_v2.access.repositories import source_mapping_targets as smt_repo
@@ -285,6 +286,68 @@ def test_both_audit_per_area_reconciles_non_candidate_area(client, monkeypatch):
     assert r.status_code == 200, r.text
     summary = r.json()["data"]["summary"]
     assert summary.get("skipped") is not True
+
+
+def test_both_audit_reports_present_drifted_and_absent(client, monkeypatch):
+    """REQ-393 / WTK-261: a ``both``-role audit reports the full inventory —
+    every object classified present / drifted / absent — with no pre-resolved
+    ``source_mapping`` rows required.
+
+    Three canonical entities force one of each state against the fake instance
+    (which exposes custom ``CEngagement`` with ``stream`` off and ``CDues`` with
+    ``stream`` on):
+
+    * ``Engagement`` — audited attrs match live ``CEngagement`` -> **present**;
+    * ``Dues`` — name matches live ``CDues`` but ``track_activity`` diverges from
+      the live ``stream`` flag -> **drifted**;
+    * ``Ghost`` — a prior present membership with no live counterpart -> **absent**
+      (the absent sweep flips the stale membership row).
+    """
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client, instance_role="both")["instance_identifier"]
+    with session_scope() as s:
+        # Present: track_activity matches the live CEngagement (stream off).
+        eng = entity_repo.create_entity(
+            s, name="Engagement", description="x", track_activity=False
+        )["entity_identifier"]
+        # Drifted: name matches CDues but track_activity diverges (live stream on).
+        dues = entity_repo.create_entity(
+            s, name="Dues", description="x", track_activity=False
+        )["entity_identifier"]
+        # Absent: a canonical with a prior present membership and no live object.
+        ghost = entity_repo.create_entity(s, name="Ghost", description="x")[
+            "entity_identifier"
+        ]
+        membership_repo.upsert_membership(
+            s,
+            instance_identifier=iid,
+            member_type="entity",
+            member_identifier=ghost,
+            state="present",
+        )
+
+    r = client.post(f"/instances/{iid}/audit")
+    assert r.status_code == 200, r.text
+    ent = r.json()["data"]["entities"]
+    # Full inventory: one object in each state, none auto-created, none deferred
+    # as a candidate (the drift path classifies, it does not gate).
+    assert ent["present"] == 1
+    assert ent["drifted"] == 1
+    assert ent["absent"] == 1
+    assert ent["created"] == 0
+    assert "candidates" not in ent
+    # Membership reflects every state, keyed to the canonical objects.
+    rows = client.get(
+        f"/instances/{iid}/memberships", params={"member_type": "entity"}
+    ).json()["data"]
+    states = {row["member_identifier"]: row["state"] for row in rows}
+    assert states[eng] == "present"
+    assert states[dues] == "drifted"
+    assert states[ghost] == "absent"
+    # No pre-resolved mapping and no candidate gating was required for any of it.
+    with session_scope() as s:
+        assert smg_repo.list_source_mappings(s, instance_identifier=iid) == []
+        assert candidate_repo.list_candidates(s, instance_identifier=iid) == []
 
 
 def test_audit_unknown_area_404(client, monkeypatch):
