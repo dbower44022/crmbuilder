@@ -50,7 +50,10 @@ from crmbuilder_v2.access.repositories import (
     source_mapping_targets as source_mapping_targets_repo,
 )
 from crmbuilder_v2.access.repositories import teams as team_repo
-from crmbuilder_v2.access.vocab import LAYOUT_TYPES
+from crmbuilder_v2.access.vocab import (
+    INSTANCE_MEMBERSHIP_MEMBER_TYPES,
+    LAYOUT_TYPES,
+)
 from crmbuilder_v2.introspect.audit_utils import (
     NATIVE_ENTITIES,
     EntityClass,
@@ -161,6 +164,86 @@ def _ci(name: str | None) -> str:
 
 class ReconcileError(RuntimeError):
     """Raised when introspection returns an unusable response."""
+
+
+class _AreaMembershipWriter:
+    """Per-area membership write boundary (REQ-394 §3.1 / §3.4, WTK-268).
+
+    Binds one audit pass to exactly one ``member_type`` — its audit area — so the
+    pass can only ever create, update, or sweep ``instance_membership`` rows of
+    its own area, never a row another pass of the same audit owns. The
+    ``member_type`` scoping that ``upsert_membership`` (keyed on
+    ``(instance, member_type, member_identifier)``) and ``mark_absent_missing``
+    (``WHERE member_type = ?``) already apply is the mechanism; routing every
+    per-pass write through one writer that fixes the area at construction makes
+    that scoping a **binding contract** rather than a literal each of the ~10
+    call sites repeats and could get wrong.
+
+    The writer also accumulates the present/drifted identifiers it upserts, so a
+    pass cannot forget to register a row before the absent sweep — the sweep's
+    "seen" set is exactly what this writer wrote. The inventory after an audit is
+    therefore the union of disjoint per-area slices (§3.4): two passes of the
+    same audit can never touch the same row, and a partial audit (some areas
+    read, others not) leaves every unwritten area's slice intact.
+
+    This writer governs **what slice** a pass may touch; it does not decide
+    **when** the absent sweep fires — a pass with a failed or inconclusive read
+    simply does not call :meth:`sweep_absent` (the no-resolution preservation
+    rule, REQ-394 §3.2).
+    """
+
+    def __init__(
+        self,
+        session: Session,
+        *,
+        instance_identifier: str,
+        member_type: str,
+        last_audited_at: datetime,
+    ) -> None:
+        if member_type not in INSTANCE_MEMBERSHIP_MEMBER_TYPES:
+            # Fail the pass at construction rather than let a typo'd area write
+            # against (or sweep) the wrong slice.
+            raise ReconcileError(
+                f"unknown audit area member_type {member_type!r}"
+            )
+        self._session = session
+        self._instance_identifier = instance_identifier
+        self._member_type = member_type
+        self._stamp = last_audited_at
+        self._seen: set[str] = set()
+
+    def upsert(
+        self,
+        member_identifier: str,
+        state: str,
+        override: dict | None = None,
+    ) -> None:
+        """Upsert one present/drifted row in this writer's area and mark it seen."""
+        membership_repo.upsert_membership(
+            self._session,
+            instance_identifier=self._instance_identifier,
+            member_type=self._member_type,
+            member_identifier=member_identifier,
+            state=state,
+            override=override,
+            last_audited_at=self._stamp,
+        )
+        self._seen.add(member_identifier)
+
+    def sweep_absent(self) -> int:
+        """Flag this area's rows not seen in this pass as ``absent``; return the count.
+
+        Call only when the area's live read succeeded and authoritatively
+        enumerated the area (REQ-394 §3.2/§3.3) — the accumulated "seen" set is
+        the genuine present set from that read.
+        """
+        return membership_repo.mark_absent_missing(
+            self._session,
+            instance_identifier=self._instance_identifier,
+            member_type=self._member_type,
+            present_member_identifiers=self._seen,
+            last_audited_at=self._stamp,
+        )
 
 
 # Audited entity attributes compared as booleans (the rest compare by value —
@@ -367,7 +450,12 @@ def _reconcile_entities_drift(
     }
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
-    seen_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="entity",
+        last_audited_at=stamp,
+    )
 
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
@@ -437,25 +525,10 @@ def _reconcile_entities_drift(
         if label_patch:
             entity_repo.patch_entity(session, member_id, **label_patch)
 
-        membership_repo.upsert_membership(
-            session,
-            instance_identifier=instance_identifier,
-            member_type="entity",
-            member_identifier=member_id,
-            state=state,
-            override=override,
-            last_audited_at=stamp,
-        )
-        seen_ids.add(member_id)
+        writer.upsert(member_id, state, override)
         summary[state] += 1
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session,
-        instance_identifier=instance_identifier,
-        member_type="entity",
-        present_member_identifiers=seen_ids,
-        last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
 
 
@@ -512,7 +585,12 @@ def _reconcile_entities_candidate_gated(
         "seen": 0, "created": 0, "present": 0, "drifted": 0,
         "absent": 0, "candidates": 0,
     }
-    seen_member_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="entity",
+        last_audited_at=stamp,
+    )
     seen_source_names: set[str] = set()
 
     for scope_name, scope_meta in scopes.items():
@@ -549,16 +627,7 @@ def _reconcile_entities_candidate_gated(
                 member_id = tgt["entity_identifier"]
                 diff = _entity_override(canonical_by_id.get(member_id, {}), audited)
                 state = "drifted" if diff else "present"
-                membership_repo.upsert_membership(
-                    session,
-                    instance_identifier=instance_identifier,
-                    member_type="entity",
-                    member_identifier=member_id,
-                    state=state,
-                    override=diff or None,
-                    last_audited_at=stamp,
-                )
-                seen_member_ids.add(member_id)
+                writer.upsert(member_id, state, diff or None)
                 summary[state] += 1
             continue
 
@@ -599,13 +668,7 @@ def _reconcile_entities_candidate_gated(
                 severity="high",
             )
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session,
-        instance_identifier=instance_identifier,
-        member_type="entity",
-        present_member_identifiers=seen_member_ids,
-        last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
 
 
@@ -743,7 +806,12 @@ def _reconcile_fields_drift(
 
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
-    seen_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="field",
+        last_audited_at=stamp,
+    )
 
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
@@ -849,25 +917,10 @@ def _reconcile_fields_drift(
             if label and label != cur.get("field_label"):
                 field_repo.patch_field(session, member_id, label=label)
 
-            membership_repo.upsert_membership(
-                session,
-                instance_identifier=instance_identifier,
-                member_type="field",
-                member_identifier=member_id,
-                state=state,
-                override=override,
-                last_audited_at=stamp,
-            )
-            seen_ids.add(member_id)
+            writer.upsert(member_id, state, override)
             summary[state] += 1
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session,
-        instance_identifier=instance_identifier,
-        member_type="field",
-        present_member_identifiers=seen_ids,
-        last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
 
 
@@ -920,7 +973,12 @@ def _reconcile_fields_candidate_gated(
         "seen": 0, "created": 0, "present": 0, "drifted": 0,
         "absent": 0, "candidates": 0,
     }
-    seen_member_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="field",
+        last_audited_at=stamp,
+    )
 
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
@@ -974,16 +1032,7 @@ def _reconcile_fields_candidate_gated(
                 member_id = match["field_identifier"]
                 diff = _field_override(match, _audited_field_attrs(field_meta))
                 state = "drifted" if diff else "present"
-                membership_repo.upsert_membership(
-                    session,
-                    instance_identifier=instance_identifier,
-                    member_type="field",
-                    member_identifier=member_id,
-                    state=state,
-                    override=diff or None,
-                    last_audited_at=stamp,
-                )
-                seen_member_ids.add(member_id)
+                writer.upsert(member_id, state, diff or None)
                 summary[state] += 1
             else:
                 key = (scope_name, field_name)
@@ -1015,13 +1064,7 @@ def _reconcile_fields_candidate_gated(
                     severity="high",
                 )
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session,
-        instance_identifier=instance_identifier,
-        member_type="field",
-        present_member_identifiers=seen_member_ids,
-        last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
 
 
@@ -1115,7 +1158,12 @@ def _reconcile_associations_candidate_gated(
         "seen": 0, "created": 0, "present": 0, "drifted": 0,
         "absent": 0, "candidates": 0,
     }
-    seen_member_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="association",
+        last_audited_at=stamp,
+    )
     seen_assoc_names: set[str] = set()
     seen_relation_names: set[str] = set()
 
@@ -1170,16 +1218,7 @@ def _reconcile_associations_candidate_gated(
                     else {}
                 )
                 state = "drifted" if diff else "present"
-                membership_repo.upsert_membership(
-                    session,
-                    instance_identifier=instance_identifier,
-                    member_type="association",
-                    member_identifier=member_id,
-                    state=state,
-                    override=diff or None,
-                    last_audited_at=stamp,
-                )
-                seen_member_ids.add(member_id)
+                writer.upsert(member_id, state, diff or None)
                 summary[state] += 1
                 continue
 
@@ -1210,13 +1249,7 @@ def _reconcile_associations_candidate_gated(
                 severity="high",
             )
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session,
-        instance_identifier=instance_identifier,
-        member_type="association",
-        present_member_identifiers=seen_member_ids,
-        last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
 
 
@@ -1258,7 +1291,12 @@ def _reconcile_associations_drift(
     }
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
-    seen_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="association",
+        last_audited_at=stamp,
+    )
     seen_relation_names: set[str] = set()
 
     for scope_name, scope_meta in scopes.items():
@@ -1335,25 +1373,10 @@ def _reconcile_associations_drift(
                 state = "drifted" if override else "present"
                 override = override or None
 
-            membership_repo.upsert_membership(
-                session,
-                instance_identifier=instance_identifier,
-                member_type="association",
-                member_identifier=member_id,
-                state=state,
-                override=override,
-                last_audited_at=stamp,
-            )
-            seen_ids.add(member_id)
+            writer.upsert(member_id, state, override)
             summary[state] += 1
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session,
-        instance_identifier=instance_identifier,
-        member_type="association",
-        present_member_identifiers=seen_ids,
-        last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
 
 
@@ -1421,7 +1444,12 @@ def reconcile_layouts(
     }
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
-    seen_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="layout",
+        last_audited_at=stamp,
+    )
 
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
@@ -1456,18 +1484,10 @@ def reconcile_layouts(
                     state, override = "drifted", {"layout_content": content}
                 else:
                     state, override = "present", None
-            membership_repo.upsert_membership(
-                session, instance_identifier=instance_identifier,
-                member_type="layout", member_identifier=member_id,
-                state=state, override=override, last_audited_at=stamp,
-            )
-            seen_ids.add(member_id)
+            writer.upsert(member_id, state, override)
             summary[state] += 1
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session, instance_identifier=instance_identifier, member_type="layout",
-        present_member_identifiers=seen_ids, last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
 
 
@@ -1497,7 +1517,12 @@ def reconcile_roles(
     canon = {_ci(r["role_name"]): r for r in role_repo.list_roles(session)}
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
-    seen_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="role",
+        last_audited_at=stamp,
+    )
 
     for row in _rows_of(body):
         name = row.get("name")
@@ -1527,18 +1552,10 @@ def reconcile_roles(
                 override["role_system_permissions"] = system_permissions
             state = "drifted" if override else "present"
             override = override or None
-        membership_repo.upsert_membership(
-            session, instance_identifier=instance_identifier, member_type="role",
-            member_identifier=member_id, state=state, override=override,
-            last_audited_at=stamp,
-        )
-        seen_ids.add(member_id)
+        writer.upsert(member_id, state, override)
         summary[state] += 1
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session, instance_identifier=instance_identifier, member_type="role",
-        present_member_identifiers=seen_ids, last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
 
 
@@ -1794,7 +1811,12 @@ def reconcile_teams(
     canon = {_ci(t["team_name"]): t for t in team_repo.list_teams(session)}
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
-    seen_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="team",
+        last_audited_at=stamp,
+    )
 
     for row in _rows_of(body):
         name = row.get("name")
@@ -1817,18 +1839,10 @@ def reconcile_teams(
                 state, override = "drifted", {"team_description": description}
             else:
                 state, override = "present", None
-        membership_repo.upsert_membership(
-            session, instance_identifier=instance_identifier, member_type="team",
-            member_identifier=member_id, state=state, override=override,
-            last_audited_at=stamp,
-        )
-        seen_ids.add(member_id)
+        writer.upsert(member_id, state, override)
         summary[state] += 1
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session, instance_identifier=instance_identifier, member_type="team",
-        present_member_identifiers=seen_ids, last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
 
 
@@ -1868,7 +1882,12 @@ def reconcile_filtered_tabs(
     }
     stamp = datetime.now(UTC)
     summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
-    seen_ids: set[str] = set()
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="filtered_tab",
+        last_audited_at=stamp,
+    )
 
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
@@ -1909,17 +1928,8 @@ def reconcile_filtered_tabs(
                     }
                 else:
                     state, override = "present", None
-            membership_repo.upsert_membership(
-                session, instance_identifier=instance_identifier,
-                member_type="filtered_tab", member_identifier=member_id,
-                state=state, override=override, last_audited_at=stamp,
-            )
-            seen_ids.add(member_id)
+            writer.upsert(member_id, state, override)
             summary[state] += 1
 
-    summary["absent"] = membership_repo.mark_absent_missing(
-        session, instance_identifier=instance_identifier,
-        member_type="filtered_tab", present_member_identifiers=seen_ids,
-        last_audited_at=stamp,
-    )
+    summary["absent"] = writer.sweep_absent()
     return summary
