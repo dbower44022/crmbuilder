@@ -166,6 +166,12 @@ def _seed_default_engagement() -> None:
 def v2_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     db = tmp_path / "v2.db"
     monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(db))
+    # A deployment may set a durable CRMBUILDER_V2_DATABASE_URL (Postgres) in
+    # data/crmbuilder.env; it takes precedence over db_path in Settings. Force it
+    # empty (a real env var overrides the file) so tests are hermetic on the
+    # per-test SQLite db_path — never the live store — unless a throwaway test
+    # Postgres is explicitly configured below.
+    monkeypatch.setenv("CRMBUILDER_V2_DATABASE_URL", "")
     monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "true")
     # Hermetic coverage baseline: a deployment may set a durable
     # CRMBUILDER_V2_PROVENANCE_BASELINE in data/crmbuilder.env; force it empty

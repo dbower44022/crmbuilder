@@ -633,7 +633,7 @@ class PlanningItem(EngagementScopedMixin, Base):
     item_type: Mapped[str] = mapped_column(String(32), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(16), nullable=False)
-    resolution_reference: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    resolution_reference: Mapped[str | None] = mapped_column(Text, nullable=True)
     # NOT NULL since PI-075 (migration 0023); see Decision.executive_summary.
     executive_summary: Mapped[str] = mapped_column(Text, nullable=False)
     # PI-076: multi-valued work-area labels (JSON array) driving the
@@ -4011,7 +4011,7 @@ class ArtifactVersion(EngagementScopedMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     artifact_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    artifact_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    artifact_identifier: Mapped[str] = mapped_column(Text, nullable=False)
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
     release_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
     snapshot: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
@@ -5279,9 +5279,9 @@ class Reference(EngagementScopedMixin, Base):
         String(16), nullable=True
     )
     source_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    source_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_id: Mapped[str] = mapped_column(Text, nullable=False)
     target_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    target_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_id: Mapped[str] = mapped_column(Text, nullable=False)
     # PI-alpha: String(64) — the longest vocab kind is 42 chars
     # (close_out_payload_produced_by_conversation); String(32) under-sized it.
     relationship_kind: Mapped[str] = mapped_column(String(64), nullable=False)
