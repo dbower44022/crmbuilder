@@ -297,11 +297,16 @@ class EntityDetailModel(QAbstractItemModel):
         value = r.get(key)
         if role == Qt.ItemDataRole.DisplayRole:
             return fmt_value(value)
+        # State tokens are always strings; a list/dict cell value (e.g. a layout
+        # or relationship payload) is unhashable, so never probe the state maps
+        # with it — doing so raises ``TypeError: unhashable type`` inside the
+        # Qt override and cascades as index/parent errors.
+        is_state = isinstance(value, str)
         if role == STATE_ROLE:
-            return value if value in STATE_LABELS else None
-        if role == Qt.ItemDataRole.BackgroundRole and value in _STATE_BG:
+            return value if (is_state and value in STATE_LABELS) else None
+        if role == Qt.ItemDataRole.BackgroundRole and is_state and value in _STATE_BG:
             return _STATE_BG[value]
-        if role == Qt.ItemDataRole.ForegroundRole and value in _STATE_FG:
+        if role == Qt.ItemDataRole.ForegroundRole and is_state and value in _STATE_FG:
             return _STATE_FG[value]
         return None
 

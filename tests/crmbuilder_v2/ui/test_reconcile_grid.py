@@ -171,6 +171,32 @@ def test_entity_detail_model_tree(qapp):
     assert m.data(child, RECORD_ROLE)["member_identifier"] == "FLD-001"
 
 
+def test_entity_detail_model_handles_list_valued_cells(qapp):
+    """A list/dict difference value (e.g. a layout/relationship payload) must not
+    be probed against the string state maps — doing so raised ``TypeError:
+    unhashable type: 'list'`` inside the Qt data() override and cascaded as
+    index/parent errors. Every role must return cleanly here."""
+    groups = [
+        {"object_type": "layouts", "differing_count": 1, "rows": [
+            {"member_type": "layout", "member_identifier": "LAY-001",
+             "member_name": "detail", "kind": "structure", "attribute": "rows",
+             "design": ["name", "phone"], "instance_a": ["name"],
+             "instance_b": "absent", "differs": True, "actionable": False},
+        ]},
+    ]
+    m = EntityDetailModel(groups)
+    grp_idx = m.index(0, 0, QModelIndex())
+    child = m.index(0, 1, grp_idx)  # the design column, holding a list
+    # DisplayRole comma-joins; the state/colour roles return None without raising.
+    assert m.data(child, Qt.ItemDataRole.DisplayRole) == "name, phone"
+    assert m.data(child, STATE_ROLE) is None
+    assert m.data(child, Qt.ItemDataRole.BackgroundRole) is None
+    assert m.data(child, Qt.ItemDataRole.ForegroundRole) is None
+    # the string "absent" cell still resolves to a state.
+    absent = m.index(0, 3, grp_idx)
+    assert m.data(absent, STATE_ROLE) == "absent"
+
+
 # --- panel ------------------------------------------------------------------
 
 
