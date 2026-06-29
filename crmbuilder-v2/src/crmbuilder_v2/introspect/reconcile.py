@@ -249,18 +249,24 @@ def _has_custom_field(
     )
 
 
-#: Instance roles whose audit is candidate-gated (DEC-648). ``both`` is treated
-#: as ``source``. A ``target`` audit keeps the unchanged drift reconcile.
-_SOURCE_ROLES: frozenset[str] = frozenset({"source", "both"})
+#: Instance roles whose audit is candidate-gated. Only a purely external
+#: ``source`` migrating in from a separate system is candidate-gated (DEC-648,
+#: narrowed by REQ-393 / WTK-256): no design object yet corresponds to its live
+#: objects. ``both`` is a deployed-to instance whose live structure maps to the
+#: design by neutral name, so it takes the drift path with ``target`` — never
+#: candidate-gating, which would clobber its inventory (the 06-26 CBM defect).
+_SOURCE_ROLES: frozenset[str] = frozenset({"source"})
 
 
 def _audit_is_source(session: Session, instance_identifier: str) -> bool:
-    """Whether this instance's audit is candidate-gated (source/both role).
+    """Whether this instance's audit is candidate-gated (``source`` role only).
 
-    DEC-648 — the instance role is the switch: a ``source``/``both`` audit runs
-    the candidate-gated mapping pass; a ``target`` audit keeps the existing
-    present/drifted/absent drift reconcile. A missing instance defaults to the
-    drift path (the caller resolves the 404 separately).
+    DEC-648, narrowed by REQ-393 / WTK-256 — the instance role is the switch: a
+    ``source`` audit (a purely external system migrating in) runs the
+    candidate-gated mapping pass; a ``target`` **or** ``both`` audit keeps the
+    present/drifted/absent drift reconcile, matching live objects to design by
+    neutral name with no ``source_mapping`` required. A missing instance defaults
+    to the drift path (the caller resolves the 404 separately).
     """
     rec = instances_repo.get_instance(session, instance_identifier)
     return bool(rec) and rec.get("instance_role") in _SOURCE_ROLES
@@ -296,11 +302,11 @@ def reconcile_entities(
 ) -> dict:
     """Reconcile an instance's entities, branching on the instance role (DEC-648).
 
-    A ``source``/``both`` audit runs the **candidate-gated** pass
+    A ``source`` audit runs the **candidate-gated** pass
     (:func:`_reconcile_entities_candidate_gated`): no canonical object is created
     or marked present by name; every undecided source entity becomes a
     ``mapping_candidate`` and only a human-resolved ``source_mapping`` drives
-    membership. A ``target`` audit runs the unchanged drift reconcile
+    membership. A ``target`` or ``both`` audit runs the unchanged drift reconcile
     (:func:`_reconcile_entities_drift`).
     """
     if _audit_is_source(session, instance_identifier):
@@ -460,7 +466,7 @@ def _reconcile_entities_candidate_gated(
     client: _FieldsClient,
     progress: ProgressFn | None = None,
 ) -> dict:
-    """Candidate-gated entity reconcile (source/both audit) — REQ-300 / DEC-649.
+    """Candidate-gated entity reconcile (source audit) — REQ-300 / DEC-649.
 
     No canonical entity is created or marked present by name. For each discovered
     source entity: a **resolved** ``source_mapping`` drives present/drifted
@@ -672,8 +678,8 @@ def reconcile_fields(
 ) -> dict:
     """Reconcile an instance's custom fields, branching on the instance role.
 
-    A ``source``/``both`` audit runs the **candidate-gated** pass
-    (:func:`_reconcile_fields_candidate_gated`); a ``target`` audit runs the
+    A ``source`` audit runs the **candidate-gated** pass
+    (:func:`_reconcile_fields_candidate_gated`); a ``target`` or ``both`` audit runs the
     unchanged drift reconcile (:func:`_reconcile_fields_drift`). See DEC-648.
     """
     if _audit_is_source(session, instance_identifier):
@@ -872,7 +878,7 @@ def _reconcile_fields_candidate_gated(
     client: _FieldsClient,
     progress: ProgressFn | None = None,
 ) -> dict:
-    """Candidate-gated field reconcile (source/both audit) — REQ-300 / DEC-651.
+    """Candidate-gated field reconcile (source audit) — REQ-300 / DEC-651.
 
     Fields surface only for a source entity that is **mapped** (a resolved
     ``source_mapping``); fields of an undecided / rejected / in-flight entity are
@@ -1028,8 +1034,8 @@ def reconcile_associations(
 ) -> dict:
     """Reconcile an instance's relationships, branching on the instance role.
 
-    A ``source``/``both`` audit runs the **candidate-gated** pass
-    (:func:`_reconcile_associations_candidate_gated`); a ``target`` audit runs the
+    A ``source`` audit runs the **candidate-gated** pass
+    (:func:`_reconcile_associations_candidate_gated`); a ``target`` or ``both`` audit runs the
     unchanged drift reconcile (:func:`_reconcile_associations_drift`). See DEC-648.
     """
     if _audit_is_source(session, instance_identifier):
@@ -1054,7 +1060,7 @@ def _reconcile_associations_candidate_gated(
     client: _LinksClient,
     progress: ProgressFn | None = None,
 ) -> dict:
-    """Candidate-gated relationship reconcile (source/both) — REQ-319 / DEC-654.
+    """Candidate-gated relationship reconcile (source) — REQ-319 / DEC-654.
 
     A source relationship surfaces only once **both** endpoint entities are mapped
     (a resolved ``source_mapping`` each — DEC-651). For such a relationship: a
