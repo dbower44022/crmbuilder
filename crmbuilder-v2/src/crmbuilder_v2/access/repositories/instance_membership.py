@@ -130,6 +130,7 @@ def mark_absent_missing(
     member_type: str,
     present_member_identifiers: set[str],
     last_audited_at: datetime | None = None,
+    read_succeeded: bool = True,
 ) -> int:
     """Flag canonical objects of ``member_type`` not seen in this audit.
 
@@ -139,25 +140,37 @@ def mark_absent_missing(
     the number of rows transitioned. Reconcile calls this after upserting the
     present/drifted rows so absence reflects the latest audit.
 
-    No-resolution preservation contract (REQ-394, REL-038). This sweep is the
-    mechanism behind the absent transition documented on
-    ``InstanceMembership`` and ``INSTANCE_MEMBERSHIP_STATES``; honoring the
-    rule is the **caller's** responsibility, not this function's. A pass that
-    resolves no objects for an area — a read that failed, was candidate-gated,
-    or was never attempted — must leave that area's existing ``present`` and
-    ``drifted`` membership unchanged: it is a no-op for membership, and the
-    caller MUST NOT invoke this sweep for it. An empty
-    ``present_member_identifiers`` is therefore meaningful only when it is the
-    result of a SUCCESSFUL read that confirmed the area genuinely holds no live
-    objects (every canonical row legitimately swept to ``absent``); it must
-    never stand in for "the pass resolved nothing". Because this function
-    cannot tell the two apart from the set it is handed, it sweeps
-    unconditionally against that set — the introspect/reconcile layer enforces
-    the rule by computing ``present_member_identifiers`` (and thus reaching
-    this call) only once the area's instance read returned successfully, and by
-    skipping the call entirely for an area its own pass did not resolve.
+    Absent-condition gate (REQ-394, REL-038, WTK-267). The absent transition is
+    gated on ``read_succeeded`` — the read-success signal the audit pass carries
+    from its live read of this area. When ``read_succeeded`` is ``False`` (the
+    live read failed, was inconclusive, or was never attempted), the sweep is a
+    hard **no-op**: no row is touched and ``0`` is returned, so a failed read can
+    never erase another pass's recorded inventory. The transition fires only when
+    the read **succeeded** and the object is confirmed missing from the resolved
+    set — making absence a positive observation ("I read the instance and the
+    object is gone"), never an inference from an empty or failed read. This is the
+    storage-layer enforcement of the contract documented on ``InstanceMembership``
+    and ``INSTANCE_MEMBERSHIP_STATES``.
+
+    Two distinct "resolves nothing" cases must not be conflated, and the
+    ``read_succeeded`` gate is exactly what tells them apart (the empty
+    ``present_member_identifiers`` set cannot): a *read failed / inconclusive*
+    pass passes ``read_succeeded=False`` and leaves the area's ``present`` and
+    ``drifted`` rows unchanged; a *read succeeded, instance genuinely empty* pass
+    passes ``read_succeeded=True`` with an empty set and correctly sweeps every
+    prior row to ``absent``. The introspect/reconcile layer still owns computing
+    ``present_member_identifiers`` from a successful read and supplying the
+    matching ``read_succeeded`` value; this gate makes the precondition a binding
+    storage-API contract rather than caller discipline alone. The default
+    ``read_succeeded=True`` preserves the historical behavior for callers that
+    only reach this sweep on a successful read.
     """
     member_type = _require_member_type(member_type)
+    if not read_succeeded:
+        # The live read of this area did not succeed: absence cannot be
+        # observed, so the area's membership is left exactly as the last
+        # successful audit recorded it.
+        return 0
     stamp = last_audited_at or datetime.now(UTC)
     stmt = select(InstanceMembership).where(
         InstanceMembership.instance_identifier == instance_identifier,

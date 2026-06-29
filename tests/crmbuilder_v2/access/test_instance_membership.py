@@ -158,6 +158,36 @@ def test_mark_absent_missing(v2_env):
         assert states == {"ENT-001": "present", "ENT-002": "absent"}
 
 
+def test_mark_absent_missing_gated_on_read_success(v2_env):
+    # WTK-267 / REQ-394: a failed/inconclusive read (read_succeeded=False) is a
+    # hard no-op — it must not erase prior inventory, even with an empty
+    # present set. A successful empty read (read_succeeded=True) sweeps to absent.
+    with session_scope() as s:
+        iid = _make_instance(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="entity",
+            member_identifier="ENT-001", state="present",
+        )
+        # Read failed: nothing resolved -> preserve, sweep is a no-op.
+        n = mb.mark_absent_missing(
+            s, instance_identifier=iid, member_type="entity",
+            present_member_identifiers=set(), read_succeeded=False,
+        )
+        assert n == 0
+        states = {r["member_identifier"]: r["state"]
+                  for r in mb.list_memberships(s, instance_identifier=iid)}
+        assert states == {"ENT-001": "present"}
+        # Successful but empty read: the object is observed gone -> absent.
+        n2 = mb.mark_absent_missing(
+            s, instance_identifier=iid, member_type="entity",
+            present_member_identifiers=set(), read_succeeded=True,
+        )
+        assert n2 == 1
+        states2 = {r["member_identifier"]: r["state"]
+                   for r in mb.list_memberships(s, instance_identifier=iid)}
+        assert states2 == {"ENT-001": "absent"}
+
+
 # --- reconcile --------------------------------------------------------------
 
 
