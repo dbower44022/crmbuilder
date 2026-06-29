@@ -364,6 +364,31 @@ class ReconcileGridPanel(QWidget):
             self._load_transactions()
 
     # ------------------------------------------------------------------ data
+    def refresh(self) -> None:
+        """Reload the instance selectors for the active engagement (REQ-431).
+
+        The panel builds its combos once at construction — which happens at eager
+        window startup, *before* the app preselects an engagement — and it is not
+        a :class:`ListDetailPanel`, so it sits outside the main window's on-select
+        and on-switch refresh wiring. The window now calls this on engagement
+        activation and on navigation, so the selectors list the active
+        engagement's instances instead of staying empty. Current selections are
+        preserved when those instances are still present after the reload.
+        """
+        prev_a = self._combo_a.currentData()
+        prev_b = self._combo_b.currentData()
+        self._load_instances()
+        self._restore_selection(self._combo_a, prev_a)
+        self._restore_selection(self._combo_b, prev_b)
+
+    @staticmethod
+    def _restore_selection(combo: QComboBox, identifier) -> None:
+        if identifier is None:
+            return
+        idx = combo.findData(identifier)
+        if idx >= 0:
+            combo.setCurrentIndex(idx)
+
     def _load_instances(self) -> None:
         try:
             self._instances = self._client.list_instances()

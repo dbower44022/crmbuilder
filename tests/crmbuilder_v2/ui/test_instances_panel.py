@@ -157,7 +157,10 @@ def test_detail_renders_inventory_section(qtbot, instance_client):
     assert "4 object" in labels["publish_plan_count"]
 
 
-def test_audit_button_visible_for_source_hidden_for_target(qtbot, instance_client):
+def test_audit_button_shown_for_every_role(qtbot, instance_client):
+    """REQ-430: the audit entry point is never hidden by role. It shows on a
+    source AND a target instance; a target's server-side refusal (set role to
+    source or both) is surfaced on click, not by removing the button."""
     from PySide6.QtWidgets import QPushButton
     src = instance_client.get_instance(
         _seed(instance_client, "src", instance_role="source")["instance_identifier"]
@@ -175,7 +178,7 @@ def test_audit_button_visible_for_source_hidden_for_target(qtbot, instance_clien
     src_btns = [b.objectName() for b in src_detail.findChildren(QPushButton)]
     tgt_btns = [b.objectName() for b in tgt_detail.findChildren(QPushButton)]
     assert "audit_instance_button" in src_btns
-    assert "audit_instance_button" not in tgt_btns
+    assert "audit_instance_button" in tgt_btns
 
 
 # ---------------------------------------------------------------------------

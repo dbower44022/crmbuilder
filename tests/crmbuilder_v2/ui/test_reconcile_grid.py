@@ -294,6 +294,49 @@ def test_drill_into_in_sync_entity_shows_no_differences(qtbot):
     assert "no differences" in panel._detail_title.text()
 
 
+def test_refresh_reloads_instances_after_engagement_active(qtbot):
+    """REQ-431: the panel builds its combos at construction — before an engagement
+    is active — so it can start empty. refresh() must reload the now-visible
+    instances (and preserve any current selection), which is how the main window
+    repopulates the selectors on engagement activation / navigation."""
+    available: list[dict] = []  # no engagement active yet → no instances
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.method == "GET" and req.url.path == "/instances":
+            return httpx.Response(200, json=envelope_ok(available))
+        return _handler(req)
+
+    panel = ReconcileGridPanel(build_client(handler))
+    qtbot.addWidget(panel)
+    assert panel._combo_a.count() == 0  # empty at construction
+
+    # Engagement becomes active → instances now visible; refresh() repopulates.
+    available.extend(_INSTANCES)
+    panel.refresh()
+    assert panel._combo_a.count() == 2
+    assert panel._combo_b.count() == 2
+
+    # A selection survives a subsequent refresh when its instance persists.
+    panel._combo_a.setCurrentIndex(1)
+    keep = panel._combo_a.currentData()
+    panel.refresh()
+    assert panel._combo_a.currentData() == keep
+
+
+def test_reconcile_panel_is_recognized_as_refreshable(qtbot):
+    """REQ-431: the main window drives refresh() on engagement switch/navigation
+    only for pages it deems refreshable. The reconcile panel — a bare QWidget,
+    not a ListDetailPanel — must qualify, while a plain widget must not."""
+    from PySide6.QtWidgets import QWidget
+
+    from crmbuilder_v2.ui.main_window import _is_refreshable
+
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    assert _is_refreshable(panel) is True
+    assert _is_refreshable(QWidget()) is False
+
+
 # --- apply interaction ------------------------------------------------------
 
 

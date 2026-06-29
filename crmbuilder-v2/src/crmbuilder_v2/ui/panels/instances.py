@@ -208,8 +208,11 @@ class InstancesPanel(ListDetailPanel):
             lambda _checked=False, r=record: self._on_edit_clicked(r)
         )
         strip_layout.addWidget(edit_btn)
-        # Audit (pull) — available for source/both instances that aren't deleted.
-        if not is_deleted and record.get("instance_role") != "target":
+        # Audit (pull) — offered on any non-deleted instance (REQ-430). The entry
+        # point is never hidden by role: a target-only instance gets a clear,
+        # actionable refusal from the server on click ("set its role to source or
+        # both") rather than no button at all (the no-hidden-buttons rule).
+        if not is_deleted:
             audit_btn = QPushButton("Audit now")
             audit_btn.setObjectName("audit_instance_button")
             audit_btn.clicked.connect(

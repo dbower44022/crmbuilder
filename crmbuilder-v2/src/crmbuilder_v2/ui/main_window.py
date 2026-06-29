@@ -171,6 +171,19 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
 }
 
 
+def _is_refreshable(page: object) -> bool:
+    """Whether a stacked page exposes a ``refresh()`` the window should drive.
+
+    Every ``ListDetailPanel`` has one. A few panels are bare ``QWidget``s outside
+    that base (e.g. the reconcile grid); those that nonetheless expose a
+    ``refresh()`` are refreshed on navigation and engagement switch too (REQ-431),
+    so a panel that loads engagement-scoped data at construction is not stranded
+    with whatever it saw before an engagement was active. Plain ``QWidget`` has no
+    ``refresh`` attribute, so non-data pages are unaffected.
+    """
+    return callable(getattr(page, "refresh", None))
+
+
 def build_panel(
     label: str,
     client: StorageClient,
@@ -586,7 +599,7 @@ class MainWindow(QMainWindow):
         if index is None:
             return
         page = self._stack.widget(index)
-        if not isinstance(page, ListDetailPanel):
+        if not _is_refreshable(page):
             return
         # Refresh the panel on every selection so it shows current data.
         # Stale-path refreshes always fire, matching prior behavior;
@@ -742,7 +755,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_current_panel(self) -> None:
         widget = self._stack.currentWidget()
-        if isinstance(widget, ListDetailPanel):
+        if _is_refreshable(widget):
             widget.refresh()
 
     def _set_content_enabled(self, enabled: bool) -> None:
@@ -895,7 +908,7 @@ class MainWindow(QMainWindow):
         current = self._sidebar.current_text()
         for entry, index in self._pages_by_entry.items():
             page = self._stack.widget(index)
-            if not isinstance(page, ListDetailPanel):
+            if not _is_refreshable(page):
                 continue
             if entry == current:
                 page.refresh()
