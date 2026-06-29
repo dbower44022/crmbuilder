@@ -323,6 +323,55 @@ def test_refresh_reloads_instances_after_engagement_active(qtbot):
     assert panel._combo_a.currentData() == keep
 
 
+def test_show_all_values_toggle_re_compares_and_lists_all_members(qtbot):
+    """REQ-432: toggling 'Show all values' re-runs the comparison with
+    include_unchanged and the detail drill then lists in-sync members too."""
+    seen_flags: list[bool] = []
+    # Differences-only payload: Account has one differing field; Contact in sync
+    # (no group). All-values payload: Contact gains an in-sync presence row.
+    diff_payload = _COMPARE
+    all_payload = {
+        **_COMPARE,
+        "groups": _COMPARE["groups"] + [
+            {"entity": "Contact", "entity_identifier": "ENT-002", "entity_label": None,
+             "rows": [{"member_type": "field", "member_identifier": "FLD-9",
+                       "member_name": "email", "kind": "presence", "attribute": None,
+                       "design": "present", "instance_a": "present",
+                       "instance_b": "present", "differs": False, "actionable": False}],
+             "object_groups": [{"object_type": "fields", "differing_count": 0, "rows": [
+                 {"member_type": "field", "member_identifier": "FLD-9",
+                  "member_name": "email", "kind": "presence", "attribute": None,
+                  "design": "present", "instance_a": "present",
+                  "instance_b": "present", "differs": False, "actionable": False}]}]},
+        ],
+    }
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.method == "GET" and req.url.path == "/reconcile/compare":
+            flag = req.url.params.get("include_unchanged") == "true"
+            seen_flags.append(flag)
+            return httpx.Response(200, json=envelope_ok(all_payload if flag else diff_payload))
+        return _handler(req)
+
+    panel = ReconcileGridPanel(build_client(handler))
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    assert seen_flags[-1] is False  # default differences-only
+
+    # Drilling into the in-sync Contact in differences-only mode shows nothing.
+    panel._drill(_EXISTENCE[1])
+    assert panel._detail_model.rowCount() == 0
+
+    # Toggle on → re-compares with include_unchanged → Contact now has a member.
+    panel._show_all_check.setChecked(True)
+    assert seen_flags[-1] is True
+    panel._drill(_EXISTENCE[1])
+    assert panel._detail_model.rowCount() == 1  # the in-sync fields group
+    assert "all values" in panel._detail_title.text()
+
+
 def test_reconcile_panel_is_recognized_as_refreshable(qtbot):
     """REQ-431: the main window drives refresh() on engagement switch/navigation
     only for pages it deems refreshable. The reconcile panel — a bare QWidget,

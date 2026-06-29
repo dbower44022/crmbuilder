@@ -161,6 +161,8 @@ class ReconcileGridPanel(QWidget):
         self._payload: dict[str, Any] = {}
         self._groups_by_entity: dict[str, dict[str, Any]] = {}
         self._audit_worker: _EntityAuditWorker | None = None
+        # Show-all-values vs differences-only (REQ-432). Differences-only default.
+        self._show_all = False
         self._build_ui()
         self._load_instances()
 
@@ -195,6 +197,12 @@ class ReconcileGridPanel(QWidget):
         self._attention.setObjectName("reconcile_attention_filter")
         self._attention.toggled.connect(self._on_attention_toggled)
         picker.addWidget(self._attention)
+        # Show all members so every field can be verified, not just the differing
+        # ones (REQ-432). Toggling re-runs the comparison in the chosen mode.
+        self._show_all_check = QCheckBox("Show all values (not just differences)")
+        self._show_all_check.setObjectName("reconcile_show_all_values")
+        self._show_all_check.toggled.connect(self._on_show_all_toggled)
+        picker.addWidget(self._show_all_check)
         picker.addStretch()
         outer.addLayout(picker)
 
@@ -426,11 +434,20 @@ class ReconcileGridPanel(QWidget):
             CopyableMessageBox.information(self, "Reconcile", "Pick two different instances.")
             return
         try:
-            self._payload = self._client.reconcile_compare(a, b)
+            self._payload = self._client.reconcile_compare(
+                a, b, include_unchanged=self._show_all
+            )
         except Exception as exc:  # noqa: BLE001
             CopyableMessageBox.warning(self, "Reconcile", f"Compare failed: {exc}")
             return
         self._populate(a, b)
+
+    def _on_show_all_toggled(self, on: bool) -> None:
+        """Switch between all-values and differences-only, re-comparing (REQ-432)."""
+        self._show_all = on
+        # Re-run the comparison in the new mode when two instances are chosen.
+        if self._combo_a.currentData() and self._combo_b.currentData():
+            self._on_compare()
 
     def _populate(self, a: str, b: str) -> None:
         a_label, b_label = self._instance_label(a), self._instance_label(b)
@@ -453,13 +470,26 @@ class ReconcileGridPanel(QWidget):
             instance_a_label=a_label,
             instance_b_label=b_label,
         )
-        self._grid_proxy.set_differing(set(self._groups_by_entity))
+        # An entity "needs attention" only if it has a row that actually differs —
+        # not merely any row, since all-values mode lists in-sync members too.
+        differing = {
+            eid
+            for eid, g in self._groups_by_entity.items()
+            if any(r.get("differs") for r in g.get("rows", []))
+        }
+        self._grid_proxy.set_differing(differing)
         self._stack.setCurrentIndex(0)
         entity_count = len(self._payload.get("existence", []))
-        diff_count = self._payload.get("row_count", 0)
+        diff_count = sum(
+            1
+            for g in self._payload.get("groups", [])
+            for r in g.get("rows", [])
+            if r.get("differs")
+        )
+        mode = " · showing all values" if self._show_all else ""
         self._summary.setText(
             f"{entity_count} entities · {diff_count} difference(s) across "
-            f"{len(self._groups_by_entity)} entit(y/ies). Double-click an entity to drill in."
+            f"{len(differing)} entit(y/ies){mode}. Double-click an entity to drill in."
         )
 
     def _on_attention_toggled(self, on: bool) -> None:
@@ -483,7 +513,13 @@ class ReconcileGridPanel(QWidget):
             object_groups, instance_a_label=a_label, instance_b_label=b_label
         )
         if object_groups:
-            self._detail_title.setText(f"{name} — differences")
+            # In all-values mode the tree lists every field (in-sync ones too), so
+            # name it for what it shows rather than implying everything differs.
+            self._detail_title.setText(
+                f"{name} — all values" if self._show_all else f"{name} — differences"
+            )
+        elif self._show_all:
+            self._detail_title.setText(f"{name} — no fields found")
         else:
             self._detail_title.setText(f"{name} — no differences found")
         self._detail.expandAll()

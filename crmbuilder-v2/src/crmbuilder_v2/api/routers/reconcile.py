@@ -77,11 +77,19 @@ def compare(
     entity: str | None = Query(
         None, description="Scope to one entity (the per-entity drill); omit for the full scan"
     ),
+    include_unchanged: bool = Query(
+        False,
+        description="Show all members (one present-everywhere row per in-sync member) "
+        "instead of only the differing ones, so all fields can be verified (REQ-432)",
+    ),
 ):
     """Three-way diff across the canonical design and two instances (REQ-352/353).
 
     Returns differing rows grouped by entity. Supply ``entity`` to scope to one
-    entity (the drill); omit it for the full scan across every member type.
+    entity (the drill); omit it for the full scan across every member type. Set
+    ``include_unchanged`` to also surface in-sync members as present-everywhere
+    rows so an operator can verify every field exists (REQ-432); the default
+    stays differences-only.
     """
     with readonly_session() as s:
         for inst in (instance_a, instance_b):
@@ -93,6 +101,7 @@ def compare(
                 instance_a=instance_a,
                 instance_b=instance_b,
                 entity_identifier=entity,
+                include_unchanged=include_unchanged,
             )
         )
 

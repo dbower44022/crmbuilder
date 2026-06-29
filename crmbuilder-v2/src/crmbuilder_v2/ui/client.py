@@ -2566,12 +2566,23 @@ class StorageClient:
     # ------------------------------------------------------------------
 
     def reconcile_compare(
-        self, instance_a: str, instance_b: str, entity: str | None = None
+        self,
+        instance_a: str,
+        instance_b: str,
+        entity: str | None = None,
+        include_unchanged: bool = False,
     ) -> dict[str, Any]:
-        """GET /reconcile/compare — three-way diff across design + two instances."""
+        """GET /reconcile/compare — three-way diff across design + two instances.
+
+        ``include_unchanged`` shows all members (one present-everywhere row per
+        in-sync member) so every field can be verified, not only the differing
+        ones (REQ-432); the default is differences-only.
+        """
         params = [f"instance_a={instance_a}", f"instance_b={instance_b}"]
         if entity:
             params.append(f"entity={entity}")
+        if include_unchanged:
+            params.append("include_unchanged=true")
         result = self._request("GET", "/reconcile/compare?" + "&".join(params))
         return result if isinstance(result, dict) else {}
 

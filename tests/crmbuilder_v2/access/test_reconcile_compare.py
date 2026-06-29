@@ -29,6 +29,47 @@ def test_no_difference_emits_nothing():
     assert rows == []
 
 
+def test_include_unchanged_emits_present_everywhere_row():
+    """REQ-432: with include_unchanged, an in-sync member yields one
+    present-everywhere confirmation row (differs=False) so it can be verified."""
+    rows = compute_member_rows(
+        member_type="field",
+        member_identifier="FLD-1",
+        member_name="phone",
+        design_obj={"field_type": "varchar"},
+        attributes=[],
+        membership_a=_mem(),
+        membership_b=_mem(),
+        include_unchanged=True,
+    )
+    assert len(rows) == 1
+    r = rows[0]
+    assert r["kind"] == "presence"
+    assert r["differs"] is False
+    assert r["actionable"] is False
+    assert r["design"] == PRESENT
+    assert r["instance_a"] == PRESENT
+    assert r["instance_b"] == PRESENT
+
+
+def test_include_unchanged_does_not_add_row_when_member_differs():
+    """A member that already differs keeps only its diff rows — no extra in-sync
+    row is appended even when include_unchanged is set."""
+    a = _mem(state="drifted", override={"field_type": "text"})
+    rows = compute_member_rows(
+        member_type="field",
+        member_identifier="FLD-1",
+        member_name="notes",
+        design_obj={"field_type": "varchar"},
+        attributes=_override_attrs(a, _mem()),
+        membership_a=a,
+        membership_b=_mem(),
+        include_unchanged=True,
+    )
+    assert len(rows) == 1
+    assert rows[0]["differs"] is True
+
+
 def test_attribute_drift_on_one_instance():
     """A drifts field_type; B matches design -> one attribute row, design vs A."""
     a = _mem(state="drifted", override={"field_type": "text"})

@@ -98,6 +98,7 @@ def compute_member_rows(
     attributes: list[str],
     membership_a: dict[str, Any] | None,
     membership_b: dict[str, Any] | None,
+    include_unchanged: bool = False,
 ) -> list[dict[str, Any]]:
     """Pure three-way comparison for one design member.
 
@@ -105,6 +106,12 @@ def compute_member_rows(
     member the design defines) followed by one **attribute** row per attribute
     whose effective value differs across the design and the *present* instances.
     Returns ``[]`` when the member is present everywhere with no attribute drift.
+
+    With ``include_unchanged`` (REQ-432), a member that is in sync everywhere
+    instead yields a single **present-everywhere confirmation row**
+    (``differs: False``) so the operator can verify the field exists in each
+    instance, not just inspect the ones that differ. A member that *does* differ
+    is unaffected — its existing presence/attribute rows already show it.
 
     :param attributes: candidate attribute names to compare — typically the union
         of the two memberships' override keys. The design value of each is read
@@ -160,6 +167,24 @@ def compute_member_rows(
             "instance_b": b_value if b_carries else pres_b,
             "differs": True,
             "actionable": _attribute_actionable(member_type, attr),
+        })
+
+    # Show-all-values verification (REQ-432): a member present everywhere with no
+    # attribute drift produced no rows above. When asked, surface it as a single
+    # in-sync presence row so the operator can confirm the field exists in each
+    # instance. A member that already produced diff rows is left as-is.
+    if include_unchanged and not rows:
+        rows.append({
+            "member_type": member_type,
+            "member_identifier": member_identifier,
+            "member_name": member_name,
+            "kind": "presence",
+            "attribute": None,
+            "design": PRESENT,
+            "instance_a": pres_a,
+            "instance_b": pres_b,
+            "differs": False,
+            "actionable": False,
         })
 
     return rows
@@ -341,6 +366,7 @@ def three_way_compare(
     instance_a: str,
     instance_b: str,
     entity_identifier: str | None = None,
+    include_unchanged: bool = False,
 ) -> dict[str, Any]:
     """Compute the three-way diff across the design and two instances (PI-316).
 
@@ -390,6 +416,7 @@ def three_way_compare(
                 attributes=_override_attrs(ma, mb),
                 membership_a=ma,
                 membership_b=mb,
+                include_unchanged=include_unchanged,
             )
             if not rows:
                 continue
