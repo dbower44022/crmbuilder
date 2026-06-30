@@ -785,3 +785,50 @@ def test_plan_apply_option_aware_equality():
     assert ("publish", "instance_a") in kinds          # genuinely differs
     assert ("publish", "instance_b") not in kinds      # order-only == design
     assert any("instance_b" in s.lower() or "Instance B" in s for s in plan["skipped"])
+
+
+# --- REQ-443: relationship push routing -------------------------------------
+
+def _assoc_presence_row(a="present", b="absent"):
+    return {"member_type": "association", "member_identifier": "ASN-1",
+            "member_name": "clientContact", "kind": "presence", "attribute": None,
+            "design": "present", "instance_a": a, "instance_b": b,
+            "differs": True, "actionable": True}
+
+
+def _assoc_card_row():
+    return {"member_type": "association", "member_identifier": "ASN-1",
+            "member_name": "clientContact", "kind": "attribute",
+            "attribute": "association_cardinality",
+            "design": "one_to_many", "instance_a": "many_to_many", "instance_b": "one_to_many",
+            "differs": True, "actionable": True}
+
+
+def test_plan_association_missing_link_publishes_to_lacking_instance():
+    plan = plan_apply(_assoc_presence_row(b="absent"), "design", ["instance_b"])
+    assert plan["ops"] == [{"kind": "publish", "location": "instance_b"}]
+
+
+def test_plan_association_skips_instance_that_already_has_link():
+    plan = plan_apply(_assoc_presence_row(b="present"), "design", ["instance_b"])
+    assert plan["ops"] == []
+    assert any("already has this relationship" in s for s in plan["skipped"])
+
+
+def test_plan_association_cardinality_captures_to_design():
+    plan = plan_apply(_assoc_card_row(), "instance_a", ["design"])
+    assert plan["ops"] == [{"kind": "capture", "location": "instance_a"}]
+
+
+def test_plan_association_cardinality_publish_is_view_only():
+    plan = plan_apply(_assoc_card_row(), "instance_a", ["instance_b"])
+    assert plan["ops"] == []
+    assert any("by hand" in s for s in plan["skipped"])
+
+
+def test_plan_association_cardinality_from_design_source_cannot_publish():
+    """Cardinality can't be pushed to an instance even from the design source —
+    it's view-only, never a silent no-op publish."""
+    plan = plan_apply(_assoc_card_row(), "design", ["instance_b"])
+    assert plan["ops"] == []
+    assert any("by hand" in s for s in plan["skipped"])

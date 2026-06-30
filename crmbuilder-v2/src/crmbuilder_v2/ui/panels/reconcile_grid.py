@@ -781,6 +781,11 @@ class ReconcileGridPanel(QWidget):
                     instance=instance, entity_identifier=mid,
                     attribute=attribute, actor=_ACTOR,
                 )
+            elif member_type == "association":
+                self._client.reconcile_capture_association(
+                    instance=instance, association_identifier=mid,
+                    attribute=attribute, actor=_ACTOR,
+                )
             else:
                 self._client.reconcile_capture(
                     instance=instance, field_identifier=mid,

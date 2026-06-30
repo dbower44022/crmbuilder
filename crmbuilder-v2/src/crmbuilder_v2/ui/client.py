@@ -2655,6 +2655,31 @@ class StorageClient:
         )
         return result if isinstance(result, dict) else {}
 
+    def reconcile_capture_association(
+        self,
+        *,
+        instance: str,
+        association_identifier: str,
+        attribute: str,
+        actor: str,
+        batch_id: str | None = None,
+        note: str | None = None,
+    ) -> dict[str, Any]:
+        """POST /reconcile/capture-association — capture an instance association
+        attribute (cardinality) into the design (REQ-443)."""
+        body = {
+            "instance": instance,
+            "association_identifier": association_identifier,
+            "attribute": attribute,
+            "actor": actor,
+            "batch_id": batch_id,
+            "note": note,
+        }
+        result = self._request(
+            "POST", "/reconcile/capture-association", json_body=body
+        )
+        return result if isinstance(result, dict) else {}
+
     def reconcile_publish(
         self,
         *,

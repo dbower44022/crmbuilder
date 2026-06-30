@@ -47,6 +47,17 @@ class CaptureSettingIn(BaseModel):
     note: str | None = None
 
 
+class CaptureAssociationIn(BaseModel):
+    """Capture an instance's association-attribute value into the design (REQ-443)."""
+
+    instance: str
+    association_identifier: str
+    attribute: str
+    actor: str
+    batch_id: str | None = None
+    note: str | None = None
+
+
 class PublishObjectIn(BaseModel):
     """Publish an object's parent entity from the design to a live instance.
 
@@ -170,6 +181,29 @@ def capture_setting(body: CaptureSettingIn):
                 s,
                 instance=body.instance,
                 entity_identifier=body.entity_identifier,
+                attribute=body.attribute,
+                actor=body.actor,
+                batch_id=body.batch_id,
+                note=body.note,
+            )
+        )
+
+
+@router.post("/capture-association", status_code=201)
+def capture_association(body: CaptureAssociationIn):
+    """Capture an instance's association-attribute value into the design (REQ-443).
+
+    The relationship twin of ``/capture``: writes the instance's value (today
+    cardinality) onto the canonical association, logs the transaction, and clears
+    that attribute's drift on the source. Capture-only — the deploy engine cannot
+    alter an existing link's cardinality, so the publish direction is view-only.
+    """
+    with writable_session() as s:
+        return ok(
+            reconcile_apply.capture_association_attribute(
+                s,
+                instance=body.instance,
+                association_identifier=body.association_identifier,
                 attribute=body.attribute,
                 actor=body.actor,
                 batch_id=body.batch_id,

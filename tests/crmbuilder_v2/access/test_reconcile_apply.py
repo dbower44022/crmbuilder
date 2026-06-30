@@ -357,3 +357,77 @@ def test_capture_field_options_round_trips_into_design(v2_env):
                                 member_identifier=fid)[0]
         assert m["state"] == "present"
         assert m["override"] is None
+
+
+# --- REQ-443: capture & rollback an association attribute (cardinality) -------
+
+from crmbuilder_v2.access.repositories import association as assoc_repo  # noqa: E402
+
+
+def _assoc(s):
+    """Two entities + a one_to_many association between them."""
+    src = entity_repo.create_entity(s, name="Client", description="x")["entity_identifier"]
+    tgt = entity_repo.create_entity(s, name="Contact", description="x")["entity_identifier"]
+    a = assoc_repo.create_association(
+        s, name="clientContact", source_entity=src, target_entity=tgt,
+        cardinality="one_to_many",
+    )
+    return a["association_identifier"]
+
+
+def test_capture_association_cardinality_into_design(v2_env):
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="t", url="https://t.example.org", role="both"
+        )["instance_identifier"]
+        aid = _assoc(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="association", member_identifier=aid,
+            state="drifted", override={"association_cardinality": "many_to_many"},
+        )
+        out = reconcile_apply.capture_association_attribute(
+            s, instance=iid, association_identifier=aid,
+            attribute="association_cardinality", actor="Doug",
+        )
+        assert out["association"]["association_cardinality"] == "many_to_many"
+        t = out["transaction"]
+        assert t["direction"] == "capture" and t["before_value"] == "one_to_many"
+        m = mb.list_memberships(s, instance_identifier=iid, member_type="association",
+                                member_identifier=aid)[0]
+        assert m["state"] == "present" and m["override"] is None
+
+
+def test_capture_association_without_deviation_is_conflict(v2_env):
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="t", url="https://t.example.org", role="both"
+        )["instance_identifier"]
+        aid = _assoc(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="association", member_identifier=aid,
+            state="present", override=None,
+        )
+        with pytest.raises(ConflictError):
+            reconcile_apply.capture_association_attribute(
+                s, instance=iid, association_identifier=aid,
+                attribute="association_cardinality", actor="Doug",
+            )
+
+
+def test_rollback_association_capture_restores_cardinality(v2_env):
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="t", url="https://t.example.org", role="both"
+        )["instance_identifier"]
+        aid = _assoc(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="association", member_identifier=aid,
+            state="drifted", override={"association_cardinality": "many_to_many"},
+        )
+        cap = reconcile_apply.capture_association_attribute(
+            s, instance=iid, association_identifier=aid,
+            attribute="association_cardinality", actor="Doug",
+        )
+        txn_id = cap["transaction"]["id"]
+        reconcile_apply.rollback(s, txn_id, actor="Doug")
+        assert assoc_repo.get_association(s, aid)["association_cardinality"] == "one_to_many"
