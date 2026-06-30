@@ -57,7 +57,6 @@ from crmbuilder_v2.migration.unify_engagement_dbs import (
     IDENTIFIER_PK_TABLES,
     SCOPED_TABLES,
     SELF_FK_COLUMNS,
-    SURROGATE_ID_PK_TABLES,
 )
 
 _log = logging.getLogger("crmbuilder_v2.migration.sqlite_to_postgres")
@@ -128,13 +127,24 @@ def _fix_self_fks(src_conn, dst_conn, table_name: str, fk_cols: tuple[str, ...])
         dst_conn.execute(update(table).where(pk == row[0]).values(**values))
 
 
+def _id_pk_tables() -> list[str]:
+    """Every model table with a surrogate ``id`` column, derived from metadata.
+
+    Sequences are reset for these after the copy (REQ-438 / PI-377). Deriving the
+    set from ``Base.metadata`` rather than a hand-maintained list is the durable
+    fix: a hardcoded list silently drifts as tables are added, which is exactly
+    how the live store ended up with 34 of 44 id-tables' sequences left behind.
+    """
+    return sorted(
+        t.name for t in Base.metadata.tables.values() if "id" in t.columns
+    )
+
+
 def _reset_sequences(pg_engine: Engine) -> int:
-    """setval each surrogate-id table's sequence to MAX(id) (or 1 if empty)."""
+    """setval each id-table's owning sequence to MAX(id) (or 1 if empty)."""
     n = 0
     with pg_engine.begin() as c:
-        for table_name in SURROGATE_ID_PK_TABLES:
-            if table_name not in Base.metadata.tables:
-                continue
+        for table_name in _id_pk_tables():
             seq = c.execute(
                 text("SELECT pg_get_serial_sequence(:t, 'id')"), {"t": table_name}
             ).scalar()
