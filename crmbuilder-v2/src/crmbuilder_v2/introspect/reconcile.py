@@ -51,6 +51,7 @@ from crmbuilder_v2.access.repositories import (
 )
 from crmbuilder_v2.access.repositories import teams as team_repo
 from crmbuilder_v2.access.vocab import (
+    DERIVED_RESULT_TYPES,
     INSTANCE_MEMBERSHIP_MEMBER_TYPES,
     LAYOUT_TYPES,
 )
@@ -92,6 +93,10 @@ class _FieldsClient(_ScopesClient, Protocol):
     def get_collection(self, entity: str) -> tuple[int, dict | None]: ...
 
     def get_i18n(self, language: str = ...) -> tuple[int, dict]: ...
+
+    # PI-378 — resolving a foreign field's mirrored result type needs the parent
+    # entity's links (link -> target entity).
+    def get_all_links(self, entity: str) -> tuple[int, dict | None]: ...
 
 
 class _LinksClient(_ScopesClient, Protocol):
@@ -165,6 +170,41 @@ def _map_field_type(espo_type: object) -> str:
     but :func:`is_unmapped_field_type` lets the reconcile layer flag it for review
     rather than letting the fallback pass silently (REQ-437)."""
     return _FIELD_TYPE_MAP.get(str(espo_type), "text")
+
+
+def _resolve_foreign_result_types(
+    session: Session,
+    client: "_FieldsClient",
+    pending: list[tuple[str, str, str, str]],
+) -> None:
+    """Derive each foreign field's mirrored result type from the linked field (REQ-436).
+
+    ``pending`` is ``[(field_identifier, parent_entity, link, target_field)]``. For
+    each, resolve the entity the ``link`` points to (from the parent's live links),
+    look up the ``target_field`` on that entity, map its EspoCRM type to a neutral
+    result type, and record it on the foreign field. Resolution is skipped — leaving
+    the result type unset — whenever the link or the target field does not resolve,
+    or the mirrored type is not a scalar result type (never guessed by name-match).
+    Links and per-entity field lists are cached so each entity is read at most once.
+    """
+    links_by_entity: dict[str, dict] = {}
+    fields_by_entity: dict[str, dict] = {}
+    for member_id, parent_entity, link, target_field in pending:
+        if parent_entity not in links_by_entity:
+            st, lk = client.get_all_links(parent_entity)
+            links_by_entity[parent_entity] = lk if st == 200 and isinstance(lk, dict) else {}
+        target_entity = (links_by_entity[parent_entity].get(link) or {}).get("entity")
+        if not target_entity:
+            continue
+        if target_entity not in fields_by_entity:
+            st, fm = client.get_entity_field_list(target_entity)
+            fields_by_entity[target_entity] = fm if st == 200 and isinstance(fm, dict) else {}
+        target_meta = fields_by_entity[target_entity].get(target_field)
+        if not isinstance(target_meta, dict):
+            continue
+        result_type = _map_field_type(target_meta.get("type"))
+        if result_type in DERIVED_RESULT_TYPES:
+            field_repo.patch_field(session, member_id, derived_result_type=result_type)
 
 
 def _ci(name: str | None) -> str:
@@ -862,6 +902,9 @@ def _reconcile_fields_drift(
         member_type="field",
         last_audited_at=stamp,
     )
+    # PI-378 (REQ-436): foreign fields whose mirrored result type is resolved in a
+    # post-pass — (field_identifier, parent EspoCRM entity, link, target field).
+    foreign_pending: list[tuple[str, str, str, str]] = []
 
     for scope_name, scope_meta in scopes.items():
         if not isinstance(scope_meta, dict):
@@ -986,9 +1029,21 @@ def _reconcile_fields_drift(
             if label and label != cur.get("field_label"):
                 field_repo.patch_field(session, member_id, label=label)
 
+            # PI-378 (REQ-436): a foreign field's mirrored result type is resolved
+            # after the scan (it may reference a field on an entity not yet seen).
+            if (
+                audited["field_type"] == "foreign"
+                and field_meta.get("link")
+                and field_meta.get("field")
+            ):
+                foreign_pending.append(
+                    (member_id, scope_name, field_meta["link"], field_meta["field"])
+                )
+
             writer.upsert(member_id, state, override)
             summary[state] += 1
 
+    _resolve_foreign_result_types(session, client, foreign_pending)
     summary["absent"] = writer.sweep_absent()
     return summary
 
