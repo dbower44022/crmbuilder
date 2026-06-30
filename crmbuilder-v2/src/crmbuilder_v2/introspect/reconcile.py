@@ -945,6 +945,14 @@ def _reconcile_fields_drift(
                 # mirrored value-type stays unset until known, never assumed.
                 if audited["field_type"] == "derived":
                     extra["derived_result_type"] = "text"
+                # A ``foreign`` field records WHAT it mirrors — the link and the
+                # field on the linked entity — so it round-trips and its result
+                # type can be resolved (REQ-435/436 / PI-374).
+                if audited["field_type"] == "foreign":
+                    if field_meta.get("link"):
+                        extra["foreign_link"] = field_meta.get("link")
+                    if field_meta.get("field"):
+                        extra["foreign_target"] = field_meta.get("field")
                 description = f"Discovered by auditing instance {instance_identifier}."
                 if is_unmapped_field_type(field_meta.get("type")):
                     description += (

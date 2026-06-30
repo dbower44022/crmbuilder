@@ -1010,6 +1010,13 @@ class Field(EngagementScopedPKMixin, Base):
     field_formula: Mapped[dict | None] = mapped_column(
         JSONColumn, nullable=True
     )
+    # PI-374 (REQ-435/436) — a ``foreign`` field mirrors a scalar from a linked
+    # record: ``field_foreign_link`` is the link it mirrors through and
+    # ``field_foreign_target`` the field on the linked entity it surfaces. Both
+    # nullable; required-when-foreign is enforced at the access layer. The
+    # mirrored value-type is carried in ``field_derived_result_type``.
+    field_foreign_link: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_foreign_target: Mapped[str | None] = mapped_column(Text, nullable=True)
     field_previous_parent_entity_identifier: Mapped[str | None] = (
         mapped_column(String(32), nullable=True)
     )

@@ -105,6 +105,9 @@ _INTRINSIC_COLUMN_BY_KWARG: dict[str, str] = {
     "read_only": "field_read_only",
     "unique": "field_unique",
     "externally_populated": "field_externally_populated",
+    # PI-374 — a ``foreign`` field's mirror coordinates (link + target field).
+    "foreign_link": "field_foreign_link",
+    "foreign_target": "field_foreign_target",
 }
 _INTRINSIC_BOOL_KWARGS = frozenset(
     {"read_only", "unique", "externally_populated"}
@@ -340,7 +343,11 @@ def _apply_derived(
     if "formula" in provided:
         row.field_formula = _validate_formula_or_none(provided["formula"])
 
-    # Cross-field invariant on the resolved (type, result_type) pair.
+    # Cross-field invariant on the resolved (type, result_type) pair. A
+    # ``derived`` field REQUIRES a result type; a ``foreign`` field MAY carry one
+    # (the type of the scalar it mirrors, PI-374/REQ-436 — optional because the
+    # mirrored type is not always resolvable at audit time); every other type
+    # forbids it.
     if effective_type == "derived":
         if not row.field_derived_result_type:
             raise UnprocessableError(
@@ -353,14 +360,14 @@ def _apply_derived(
                     )
                 ]
             )
-    elif row.field_derived_result_type is not None:
+    elif effective_type != "foreign" and row.field_derived_result_type is not None:
         raise UnprocessableError(
             [
                 FieldError(
                     "field_derived_result_type",
                     "forbidden_for_non_derived",
                     "field_derived_result_type is only valid on a field of "
-                    "type 'derived'",
+                    "type 'derived' or 'foreign'",
                 )
             ]
         )

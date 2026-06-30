@@ -53,6 +53,9 @@ _EXPECTED_COLUMNS = {
     # PRJ-025 PI-197 — derived/formula intent (DEC-438).
     "field_derived_result_type": "TEXT",
     "field_formula": "JSON",
+    # PI-374 — foreign-field mirror coordinates (link + target field).
+    "field_foreign_link": "TEXT",
+    "field_foreign_target": "TEXT",
     "field_previous_parent_entity_identifier": "VARCHAR",
     "field_created_at": "DATETIME",
     "field_updated_at": "DATETIME",
@@ -178,6 +181,44 @@ def test_create_field_accepts_foreign_type(v2_env):
             type="foreign",
         )
     assert row["field_type"] == "foreign"
+
+
+def test_foreign_field_carries_link_target_and_result_type(v2_env):
+    """PI-374 (REQ-435/436): a foreign field records the link + target it mirrors
+    and MAY carry a mirrored result type (a derived-result-type value is no longer
+    forbidden on a foreign field)."""
+    with session_scope() as s:
+        ent_id = _seed_entity(s)
+        row = field.create_field(
+            s,
+            field_belongs_to_entity_identifier=ent_id,
+            name="postalCode",
+            description="mirrored postal code",
+            type="foreign",
+            foreign_link="contact",
+            foreign_target="addressPostalCode",
+            derived_result_type="text",
+        )
+    assert row["field_foreign_link"] == "contact"
+    assert row["field_foreign_target"] == "addressPostalCode"
+    assert row["field_derived_result_type"] == "text"
+
+
+def test_non_foreign_non_derived_still_forbids_result_type(v2_env):
+    """The result-type exemption is only for derived and foreign — a plain field
+    still rejects a derived_result_type."""
+    with session_scope() as s:
+        ent_id = _seed_entity(s)
+    with session_scope() as s, pytest.raises(UnprocessableError) as exc:
+        field.create_field(
+            s,
+            field_belongs_to_entity_identifier=ent_id,
+            name="x",
+            description="d",
+            type="text",
+            derived_result_type="text",
+        )
+    assert any(e.field == "field_derived_result_type" for e in exc.value.errors)
 
 
 # ---------------------------------------------------------------------------

@@ -405,6 +405,41 @@ def test_reference_and_derived_fields_deferred():
     assert ("derived_field", "FLD-002") in kinds
 
 
+def test_foreign_field_emits_link_target_readonly():
+    """PI-374 (REQ-435): a foreign field round-trips to an EspoCRM read-only
+    mirror with its link + mirrored field."""
+    model = build_program_model(
+        [_entity()],
+        [_field(identifier="FLD-001", name="postalCode", type="foreign",
+                field_foreign_link="contact",
+                field_foreign_target="addressPostalCode")],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    block = _only_entity_block(model)
+    assert len(block["fields"]) == 1
+    f = block["fields"][0]
+    assert f["type"] == "foreign"
+    assert f["link"] == "contact"
+    assert f["field"] == "addressPostalCode"
+    assert f["readOnly"] is True
+
+
+def test_foreign_field_without_link_target_is_deferred():
+    """A foreign field whose mirror coordinates were never captured cannot be
+    deployed — it routes to MANUAL-CONFIG instead of emitting a broken field."""
+    model = build_program_model(
+        [_entity()],
+        [_field(identifier="FLD-001", name="postalCode", type="foreign")],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    block = _only_entity_block(model)
+    assert block.get("fields", []) == []
+    kinds = {(d.kind, d.identifier) for d in model.deferrals}
+    assert ("foreign_field", "FLD-001") in kinds
+
+
 # ---------------------------------------------------------------------------
 # Derived / formula fields (PI-197)
 # ---------------------------------------------------------------------------

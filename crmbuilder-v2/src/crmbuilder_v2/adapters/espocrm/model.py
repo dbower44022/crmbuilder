@@ -451,6 +451,56 @@ def _build_derived_field(
     return FieldBlock(field_identifier=fid, payload=payload)
 
 
+def _build_foreign_field(
+    field_row: dict,
+    index: dict[tuple[str, str, str], object],
+    deferrals: list[Deferral],
+    parent_name: str,
+) -> FieldBlock | None:
+    """Emit a ``foreign`` field's EspoCRM block — a read-only mirror of a scalar
+    on a linked record (PI-374 / REQ-435 round-trip).
+
+    EspoCRM needs the ``link`` it mirrors through and the ``field`` on the linked
+    entity it surfaces; both are carried on the canonical record. Without them the
+    field cannot be deployed, so it routes to MANUAL-CONFIG.
+    """
+    fid = field_row["field_identifier"]
+    fname = field_row.get("field_name", "")
+    link = field_row.get("field_foreign_link")
+    target = field_row.get("field_foreign_target")
+    if not link or not target:
+        deferrals.append(
+            Deferral(
+                kind="foreign_field",
+                identifier=fid,
+                name=fname,
+                parent=parent_name,
+                detail=(
+                    "foreign field — the link/target it mirrors is not recorded; "
+                    "re-audit the source instance or configure the field via the "
+                    "EspoCRM admin UI"
+                ),
+            )
+        )
+        return None
+    internal_name = str(
+        _override(index, "field", fid, "internal_name", derive_internal_name(fname))
+    )
+    label = str(_override(index, "field", fid, "label", derive_label(fname)))
+    payload: dict = {
+        "name": internal_name,
+        "type": "foreign",
+        "label": label,
+        "link": str(link),
+        "field": str(target),
+        "readOnly": True,
+    }
+    description = field_row.get("field_description")
+    if description:
+        payload["description"] = str(description)
+    return FieldBlock(field_identifier=fid, payload=payload)
+
+
 def _build_field(
     field_row: dict,
     index: dict[tuple[str, str, str], object],
@@ -481,6 +531,8 @@ def _build_field(
         return None
     if semantic == "derived":
         return _build_derived_field(field_row, index, deferrals, parent_name)
+    if semantic == "foreign":
+        return _build_foreign_field(field_row, index, deferrals, parent_name)
 
     espo_type = _map_field_type(field_row)
     if espo_type is None:
