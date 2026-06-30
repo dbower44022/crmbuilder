@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import httpx
-from crmbuilder_v2.ui.panels.reconcile_grid import ReconcileGridPanel
+from crmbuilder_v2.ui.panels.reconcile_grid import (
+    ReconcileGridPanel,
+    _property_value_cells,
+)
 from crmbuilder_v2.ui.panels.reconcile_models import (
     RECORD_ROLE,
     STATE_ROLE,
     EntityDetailModel,
     ExistenceGridModel,
+    fmt_option_delta,
+    fmt_option_list,
     fmt_value,
     plan_apply,
 )
@@ -432,9 +437,8 @@ def test_reconcile_panel_is_recognized_as_refreshable(qtbot):
     """REQ-431: the main window drives refresh() on engagement switch/navigation
     only for pages it deems refreshable. The reconcile panel — a bare QWidget,
     not a ListDetailPanel — must qualify, while a plain widget must not."""
-    from PySide6.QtWidgets import QWidget
-
     from crmbuilder_v2.ui.main_window import _is_refreshable
+    from PySide6.QtWidgets import QWidget
 
     panel = ReconcileGridPanel(build_client(_handler))
     qtbot.addWidget(panel)
@@ -645,3 +649,77 @@ def test_promote_entity_publishes_to_checked_instances(qtbot):
     assert client.publishes[0]["member_type"] == "entity"
     assert client.publishes[0]["member_identifier"] == selected_eid
     assert client.publishes[0]["instance"] == "INST-002"
+
+
+# --- REQ-442: enum option-set rendering & routing ----------------------------
+
+
+def _ofield(*vals):
+    return [{"option_value": v, "option_label": None} for v in vals]
+
+
+def test_fmt_option_list_and_delta():
+    assert fmt_option_list(_ofield("a", "b")) == "a, b"
+    assert fmt_option_list([{"option_value": "a", "option_label": "Apple"}]) == "a (Apple)"
+    assert fmt_option_list([]) == "—"
+    # delta: instance added x, removed nothing
+    assert fmt_option_delta(_ofield("a"), _ofield("a", "x")) == "+x"
+    # relabel shows old -> new
+    d = fmt_option_delta(
+        [{"option_value": "a", "option_label": "Apple"}],
+        [{"option_value": "a", "option_label": "Apricot"}],
+    )
+    assert d == "~a (Apple → Apricot)"
+    assert fmt_option_delta(_ofield("a"), _ofield("a")) == "Same options"
+
+
+def test_entity_detail_model_renders_option_row(qapp):
+    """A field_options row shows the design's option list and each instance's
+    delta, not raw option dicts."""
+    groups = [
+        {"object_type": "fields", "differing_count": 1, "rows": [
+            {"member_type": "field", "member_identifier": "FLD-9",
+             "member_name": "status", "kind": "attribute",
+             "attribute": "field_options",
+             "design": _ofield("open", "closed"),
+             "instance_a": _ofield("open", "closed", "pending"),
+             "instance_b": "absent",
+             "differs": True, "actionable": True},
+        ]},
+    ]
+    m = EntityDetailModel(groups)
+    grp_idx = m.index(0, 0, QModelIndex())
+    child = m.index(0, 0, grp_idx)
+    assert "Options" in m.data(child, Qt.ItemDataRole.DisplayRole)
+    # design column: readable list
+    assert m.data(m.index(0, 1, grp_idx), Qt.ItemDataRole.DisplayRole) == "closed, open"
+    # instance A: delta, +pending
+    assert m.data(m.index(0, 2, grp_idx), Qt.ItemDataRole.DisplayRole) == "+pending"
+    # instance B absent -> presence rendering, no crash
+    assert m.data(m.index(0, 3, grp_idx), Qt.ItemDataRole.DisplayRole) == "Not Found"
+
+
+def test_property_value_cells_option_aware():
+    r = {"attribute": "field_options",
+         "design": _ofield("a", "b"),
+         "instance_a": _ofield("a"),
+         "instance_b": "unknown"}
+    cells = _property_value_cells(r)
+    assert cells[0] == "a, b"
+    assert cells[1] == "−b"
+    assert cells[2] == "Not Captured"
+
+
+def test_plan_apply_option_aware_equality():
+    """An order-only difference between design and the other instance must not
+    force a redundant publish to that already-matching target."""
+    row = {"member_type": "field", "member_identifier": "FLD-1",
+           "attribute": "field_options", "actionable": True,
+           "design": _ofield("a", "b"),
+           "instance_a": _ofield("a", "b", "c"),
+           "instance_b": _ofield("b", "a")}  # same set as design, reordered
+    plan = plan_apply(row, "design", ["instance_a", "instance_b"])
+    kinds = [(o["kind"], o["location"]) for o in plan["ops"]]
+    assert ("publish", "instance_a") in kinds          # genuinely differs
+    assert ("publish", "instance_b") not in kinds      # order-only == design
+    assert any("instance_b" in s.lower() or "Instance B" in s for s in plan["skipped"])

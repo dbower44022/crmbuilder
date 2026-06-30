@@ -26,6 +26,13 @@ from typing import Any
 from PySide6.QtCore import QAbstractItemModel, QAbstractTableModel, QModelIndex, Qt
 from PySide6.QtGui import QColor, QFont
 
+from crmbuilder_v2.access.reconcile_compare import (
+    FIELD_OPTIONS_ATTR,
+    normalize_option_set,
+    option_sets_equal,
+    summarize_option_diff,
+)
+
 #: Presence tokens carried by the compare payload (engine vocabulary).
 PRESENT = "present"
 ABSENT = "absent"
@@ -86,6 +93,32 @@ def fmt_value(value: Any) -> str:
     if isinstance(value, str) and value in STATE_LABELS:
         return STATE_LABELS[value]
     return str(value)
+
+
+def fmt_option_list(value: Any) -> str:
+    """Render an enum option set as a readable value list (REQ-442).
+
+    Each option shows its value, with the display label in parentheses when it
+    differs from the value: ``"active, closed (Closed out)"``. Empty -> em dash.
+    """
+    pairs = sorted(normalize_option_set(value))
+    if not pairs:
+        return "—"
+    return ", ".join(v if v == lbl else f"{v} ({lbl})" for v, lbl in pairs)
+
+
+def fmt_option_delta(design: Any, instance: Any) -> str:
+    """Render how an instance's option set differs from the design (REQ-442).
+
+    ``+value`` added, ``−value`` removed, ``~value (old → new)`` relabeled — far
+    clearer than two raw lists side by side. Returns "Same options" when the sets
+    match (the in-sync confirmation case).
+    """
+    diff = summarize_option_diff(design, instance)
+    parts = [f"+{v}" for v in diff["added"]]
+    parts += [f"−{v}" for v in diff["removed"]]
+    parts += [f"~{v} ({old} → {new})" for v, old, new in diff["relabeled"]]
+    return ", ".join(parts) if parts else "Same options"
 
 
 class ExistenceGridModel(QAbstractTableModel):
@@ -300,6 +333,21 @@ class EntityDetailModel(QAbstractItemModel):
             return None
         key = {1: "design", 2: "instance_a", 3: "instance_b"}[col]
         value = r.get(key)
+        # REQ-442: an enum option-set row renders readably rather than as raw option
+        # dicts — the design column lists its options, each instance column shows the
+        # added/removed/relabeled delta against the design (the full list on hover).
+        # A cell holding a presence token (the field is absent there) is not a list,
+        # so it falls through to the normal presence rendering below.
+        if r.get("attribute") == FIELD_OPTIONS_ATTR and isinstance(value, (list, tuple)):
+            if role == Qt.ItemDataRole.DisplayRole:
+                return (
+                    fmt_option_list(value)
+                    if key == "design"
+                    else fmt_option_delta(r.get("design"), value)
+                )
+            if role == Qt.ItemDataRole.ToolTipRole:
+                return fmt_option_list(value)
+            return None
         if role == Qt.ItemDataRole.DisplayRole:
             return fmt_value(value)
         # The value columns share the viewport and elide (REQ-429); expose the full
@@ -359,9 +407,17 @@ def plan_apply(
     ops: list[dict[str, str]] = []
     skipped: list[str] = []
 
+    # Value equality is option-aware for an enum option-set row (REQ-442) so an
+    # order- or label-default-only difference in the raw lists doesn't force a
+    # redundant capture/publish; every other attribute compares by ``==``.
+    def _eq(a: Any, b: Any) -> bool:
+        if row.get("attribute") == FIELD_OPTIONS_ATTR:
+            return option_sets_equal(a, b)
+        return a == b
+
     # A capture is needed only when the source is an instance whose value the
     # design does not already hold. After it, the design carries the chosen value.
-    capture_needed = source_loc != "design" and source_value != design_value
+    capture_needed = source_loc != "design" and not _eq(source_value, design_value)
     effective = source_value if capture_needed else design_value
     if capture_needed:
         ops.append({"kind": "capture", "location": source_loc})
@@ -371,7 +427,7 @@ def plan_apply(
     for t in targets:
         if t == "design":
             continue  # served by the capture above (or already matching)
-        if row.get(t) == effective:
+        if _eq(row.get(t), effective):
             skipped.append(f"{LOCATION_LABELS.get(t, t)} already matches the chosen value")
             continue
         ops.append({"kind": "publish", "location": t})

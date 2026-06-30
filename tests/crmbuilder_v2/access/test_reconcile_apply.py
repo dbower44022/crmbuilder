@@ -315,3 +315,45 @@ def test_capture_for_both_role_without_deviation_is_conflict_not_role_gate(v2_en
             )
         # the rejection is the nothing-to-capture conflict, not a role gate
         assert "nothing to capture" in str(exc.value)
+
+
+# --- REQ-442: enum option set captures back through the generic path ----------
+
+def test_capture_field_options_round_trips_into_design(v2_env):
+    """An instance's enum option set captures back into the canonical field via
+    the existing generic capture path (override attribute -> patch_field options=),
+    proving the child-collection attribute rides the same rails as scalar attrs."""
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="src", url="https://src.example.org", role="source"
+        )["instance_identifier"]
+        eid = entity_repo.create_entity(s, name="Account", description="x")[
+            "entity_identifier"
+        ]
+        fid = field_repo.create_field(
+            s, field_belongs_to_entity_identifier=eid, name="status",
+            description="x", type="enum", required=False,
+            options=[{"option_value": "open", "option_label": "Open"}],
+        )["field_identifier"]
+        audited = [
+            {"option_value": "open", "option_label": "Open"},
+            {"option_value": "closed", "option_label": "Closed out"},
+        ]
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field", member_identifier=fid,
+            state="drifted", override={"field_options": audited},
+        )
+        out = reconcile_apply.capture_field_attribute(
+            s, instance=iid, field_identifier=fid,
+            attribute="field_options", actor="Doug",
+        )
+        captured = {o["option_value"] for o in out["field"]["field_options"]}
+        assert captured == {"open", "closed"}
+        # the labels round-trip too
+        labels = {o["option_value"]: o["option_label"] for o in out["field"]["field_options"]}
+        assert labels["closed"] == "Closed out"
+        # drift cleared on the instance
+        m = mb.list_memberships(s, instance_identifier=iid, member_type="field",
+                                member_identifier=fid)[0]
+        assert m["state"] == "present"
+        assert m["override"] is None

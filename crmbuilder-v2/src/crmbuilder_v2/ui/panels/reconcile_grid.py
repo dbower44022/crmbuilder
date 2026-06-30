@@ -42,11 +42,14 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.panels.reconcile_models import (
+    FIELD_OPTIONS_ATTR,
     LOCATION_LABELS,
     RECORD_ROLE,
     EntityDetailModel,
     ExistenceGridModel,
     _humanize_attr,
+    fmt_option_delta,
+    fmt_option_list,
     fmt_value,
     plan_apply,
 )
@@ -163,6 +166,29 @@ class _EntityAuditWorker(QThread):
 _DIFF_TINT = QColor("#FFF3E0")
 
 
+def _property_value_cells(r: dict[str, Any]) -> list[str]:
+    """The design / instance-A / instance-B value strings for one property row.
+
+    An enum option-set property (REQ-442) renders readably — the design lists its
+    options, each instance shows its added/removed/relabeled delta — matching the
+    detail tree; a presence token (the field is absent there) is a string, not a
+    list, so it falls back to the plain value rendering. Every other property uses
+    :func:`fmt_value`.
+    """
+    if r.get("attribute") == FIELD_OPTIONS_ATTR:
+        design = r.get("design")
+        return [
+            fmt_option_list(design) if isinstance(design, (list, tuple)) else fmt_value(design),
+            fmt_option_delta(design, r["instance_a"]) if isinstance(r.get("instance_a"), (list, tuple)) else fmt_value(r.get("instance_a")),
+            fmt_option_delta(design, r["instance_b"]) if isinstance(r.get("instance_b"), (list, tuple)) else fmt_value(r.get("instance_b")),
+        ]
+    return [
+        fmt_value(r.get("design")),
+        fmt_value(r.get("instance_a")),
+        fmt_value(r.get("instance_b")),
+    ]
+
+
 class MemberPropertiesDialog(QDialog):
     """Side-by-side table of every property of one member (REQ-433).
 
@@ -209,9 +235,7 @@ class MemberPropertiesDialog(QDialog):
         for row, r in enumerate(rows):
             cells = [
                 _humanize_attr(r.get("attribute") or ""),
-                fmt_value(r.get("design")),
-                fmt_value(r.get("instance_a")),
-                fmt_value(r.get("instance_b")),
+                *_property_value_cells(r),
             ]
             for col, text in enumerate(cells):
                 item = QTableWidgetItem(text)

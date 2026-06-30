@@ -75,6 +75,71 @@ def _presence(membership: dict[str, Any] | None) -> str:
     return PRESENT if membership["state"] in _PRESENT_STATES else ABSENT
 
 
+#: The field attribute whose value is an enum/multi_enum option set (REQ-442). Its
+#: value is the canonical ``field_options`` shape — a list of
+#: ``{"option_value": str, "option_label": str|None, "option_order": int?}`` — and
+#: it is compared order-insensitively by ``(value, effective-label)`` rather than
+#: by list identity (Decision 2): option identity is the value, and a label that
+#: merely echoes its value is not drift.
+FIELD_OPTIONS_ATTR = "field_options"
+
+
+def normalize_option_set(options: Any) -> frozenset[tuple[str, str]]:
+    """Reduce an option list to the order-insensitive set used for comparison.
+
+    Each option contributes a ``(value, effective_label)`` pair where the effective
+    label defaults to the value when no explicit label is set, so a label that
+    merely echoes its value is never reported as relabel drift (Decision 2). A
+    non-list (``None``, a presence token, …) yields the empty set.
+    """
+    if not isinstance(options, (list, tuple)):
+        return frozenset()
+    out: set[tuple[str, str]] = set()
+    for opt in options:
+        if not isinstance(opt, dict):
+            continue
+        value = opt.get("option_value")
+        if value is None:
+            continue
+        value = str(value)
+        label = opt.get("option_label")
+        effective = str(label) if label not in (None, "") else value
+        out.add((value, effective))
+    return frozenset(out)
+
+
+def option_sets_equal(a: Any, b: Any) -> bool:
+    """Whether two option lists carry the same ``(value, effective-label)`` set."""
+    return normalize_option_set(a) == normalize_option_set(b)
+
+
+def summarize_option_diff(design: Any, instance: Any) -> dict[str, list]:
+    """Added / removed / relabeled options of ``instance`` measured against ``design``.
+
+    Identity is the option value (Decision 2). ``added`` and ``removed`` are value
+    lists (in the instance but not the design, and vice versa); ``relabeled`` is
+    ``[(value, design_label, instance_label)]`` for values on both sides whose
+    effective label differs.
+    """
+    d = dict(normalize_option_set(design))
+    i = dict(normalize_option_set(instance))
+    added = sorted(v for v in i if v not in d)
+    removed = sorted(v for v in d if v not in i)
+    relabeled = sorted((v, d[v], i[v]) for v in d.keys() & i.keys() if d[v] != i[v])
+    return {"added": added, "removed": removed, "relabeled": relabeled}
+
+
+def _attr_equal(attribute: str | None, a: Any, b: Any) -> bool:
+    """Value equality for one attribute — option-aware for ``field_options``.
+
+    Every attribute compares by ``==`` except the enum option set, which compares
+    by its order-insensitive ``(value, effective-label)`` set (REQ-442).
+    """
+    if attribute == FIELD_OPTIONS_ATTR:
+        return option_sets_equal(a, b)
+    return a == b
+
+
 def _effective_value(
     membership: dict[str, Any] | None, attr: str, design_value: Any
 ) -> Any:
@@ -153,7 +218,7 @@ def compute_member_rows(
             present_values.append(a_value)
         if b_carries:
             present_values.append(b_value)
-        if all(v == present_values[0] for v in present_values):
+        if all(_attr_equal(attr, v, present_values[0]) for v in present_values):
             continue  # design and every carrying instance agree: no drift
 
         rows.append({
@@ -256,7 +321,9 @@ def compute_member_properties(
             carrying_values.append(a_eff)
         if b_carries:
             carrying_values.append(b_eff)
-        differs = not all(v == carrying_values[0] for v in carrying_values)
+        differs = not all(
+            _attr_equal(attr, v, carrying_values[0]) for v in carrying_values
+        )
         rows.append({
             "member_type": member_type,
             "member_identifier": member_identifier,

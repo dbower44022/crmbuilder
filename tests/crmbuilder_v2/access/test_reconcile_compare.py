@@ -9,6 +9,8 @@ from crmbuilder_v2.access.reconcile_compare import (
     _override_attrs,
     compute_member_properties,
     compute_member_rows,
+    option_sets_equal,
+    summarize_option_diff,
 )
 
 
@@ -416,3 +418,99 @@ def test_compare_group_carries_entity_label(v2_env):
         grp = next(g for g in res["groups"] if g["entity_identifier"] == eid)
         assert grp["entity"] == "MentorProfile"
         assert grp["entity_label"] == "CBM Member"
+
+
+# --- REQ-442: enum / multi_enum field option-value reconciliation -------------
+
+
+def _opts(*items):
+    """Build a field_options list. Each item is a value str or (value, label)."""
+    out = []
+    for it in items:
+        if isinstance(it, tuple):
+            out.append({"option_value": it[0], "option_label": it[1]})
+        else:
+            out.append({"option_value": it, "option_label": None})
+    return out
+
+
+def test_option_set_equality_order_insensitive_and_label_default():
+    """Sets match regardless of order; a None label defaults to its value, so a
+    None-vs-value-as-label pair is not drift (Decision 2)."""
+    assert option_sets_equal(_opts("a", "b"), _opts("b", "a"))
+    # design has no label; instance labels it with the value itself -> still equal
+    assert option_sets_equal(_opts("a"), [{"option_value": "a", "option_label": "a"}])
+    # a genuine relabel is NOT equal
+    assert not option_sets_equal(_opts(("a", "Apple")), _opts(("a", "Apricot")))
+
+
+def test_summarize_option_diff_added_removed_relabeled():
+    diff = summarize_option_diff(
+        _opts(("a", "Apple"), "gone"),
+        _opts(("a", "Apricot"), "new"),
+    )
+    assert diff["added"] == ["new"]
+    assert diff["removed"] == ["gone"]
+    assert diff["relabeled"] == [("a", "Apple", "Apricot")]
+
+
+def test_compute_rows_flags_instance_only_option():
+    """An instance whose override adds an option surfaces a differing field_options
+    attribute row; the design value is the canonical option list."""
+    design = {"field_type": "enum", "field_options": _opts("a", "b")}
+    a = _mem(state="drifted", override={"field_options": _opts("a", "b", "c")})
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="status",
+        design_obj=design, attributes=["field_options"],
+        membership_a=a, membership_b=_mem(),
+    )
+    attr_rows = [r for r in rows if r["kind"] == "attribute"]
+    assert len(attr_rows) == 1
+    r = attr_rows[0]
+    assert r["attribute"] == "field_options"
+    assert r["differs"] is True
+    assert r["actionable"] is True  # field attribute — capture/publish (REQ-442)
+
+
+def test_compute_rows_label_only_drift_surfaces():
+    design = {"field_type": "enum", "field_options": _opts(("a", "Apple"))}
+    a = _mem(state="drifted", override={"field_options": _opts(("a", "Apricot"))})
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="fruit",
+        design_obj=design, attributes=["field_options"],
+        membership_a=a, membership_b=_mem(),
+    )
+    assert any(r["attribute"] == "field_options" and r["differs"] for r in rows)
+
+
+def test_compute_rows_order_only_difference_is_not_drift():
+    """An override that merely reorders the same options is not a difference."""
+    design = {"field_type": "multi_enum", "field_options": _opts("a", "b", "c")}
+    a = _mem(state="present", override={"field_options": _opts("c", "a", "b")})
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="tags",
+        design_obj=design, attributes=["field_options"],
+        membership_a=a, membership_b=_mem(),
+    )
+    assert [r for r in rows if r["kind"] == "attribute"] == []
+
+
+def test_compute_properties_includes_option_set_and_flags_difference():
+    """The per-field properties view (REQ-433) shows field_options and marks it
+    differing only on a real set difference."""
+    design = {"field_type": "enum", "field_options": _opts("a", "b")}
+    a = _mem(state="drifted", override={"field_options": _opts("a")})  # removed b
+    out = compute_member_properties(
+        member_type="field", member_identifier="FLD-1", member_name="status",
+        design_obj=design, membership_a=a, membership_b=_mem(),
+    )
+    opt_row = next(r for r in out["rows"] if r["attribute"] == "field_options")
+    assert opt_row["differs"] is True
+    # a field with matching options elsewhere reads as not differing
+    design2 = {"field_type": "enum", "field_options": _opts("a", "b")}
+    out2 = compute_member_properties(
+        member_type="field", member_identifier="FLD-2", member_name="kind",
+        design_obj=design2, membership_a=_mem(), membership_b=_mem(),
+    )
+    opt_row2 = next(r for r in out2["rows"] if r["attribute"] == "field_options")
+    assert opt_row2["differs"] is False

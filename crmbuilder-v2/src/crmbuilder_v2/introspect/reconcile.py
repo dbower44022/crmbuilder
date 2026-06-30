@@ -27,6 +27,7 @@ from typing import Any, Protocol
 
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access.reconcile_compare import option_sets_equal
 from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import (
     association_mapping as association_mapping_repo,
@@ -795,7 +796,38 @@ def _audited_field_attrs(field_meta: dict[str, Any]) -> dict[str, Any]:
     }
     for neutral, espo_key in _FIELD_VALUE_ATTR_KEYS.items():
         attrs[neutral] = field_meta.get(espo_key)
+    # REQ-442: enum / multi_enum fields additionally carry their option set, read
+    # from EspoCRM's ``options`` (values) and ``translatedOptions`` (value->label)
+    # into the canonical ``field_options`` shape so it round-trips and captures back.
+    if attrs["field_type"] in ("enum", "multi_enum"):
+        attrs["field_options"] = _audited_option_set(field_meta)
     return attrs
+
+
+def _audited_option_set(field_meta: dict[str, Any]) -> list[dict[str, Any]]:
+    """Read an enum/multi_enum field's option set in canonical ``field_options`` shape.
+
+    Values come from EspoCRM ``options`` (an ordered value list); labels from
+    ``translatedOptions`` (a value->label map), left ``None`` when EspoCRM carries
+    no translation so the effective-label rule (Decision 2) supplies the value.
+    """
+    values = field_meta.get("options")
+    if not isinstance(values, (list, tuple)):
+        values = []
+    translated = field_meta.get("translatedOptions")
+    translated = translated if isinstance(translated, dict) else {}
+    out: list[dict[str, Any]] = []
+    for idx, value in enumerate(values):
+        if value is None:
+            continue
+        sv = str(value)
+        label = translated.get(value, translated.get(sv))
+        out.append({
+            "option_value": sv,
+            "option_label": str(label) if label not in (None, "") else None,
+            "option_order": idx,
+        })
+    return out
 
 
 def _field_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict:
@@ -819,6 +851,14 @@ def _field_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict:
         canonical_value = canonical.get(key)
         if canonical_value is not None and canonical_value != audited.get(key):
             override[key] = audited.get(key)
+    # REQ-442: an enum/multi_enum field's option set deviates when the audited and
+    # canonical sets differ by value or effective-label, order-insensitively. The
+    # override stores the audited set in canonical shape so it both renders the
+    # difference and captures back through the generic ``patch_field(options=)`` path.
+    if "field_options" in audited and not option_sets_equal(
+        canonical.get("field_options"), audited["field_options"]
+    ):
+        override["field_options"] = audited["field_options"]
     return override
 
 
