@@ -174,7 +174,7 @@ def _map_field_type(espo_type: object) -> str:
 
 def _resolve_foreign_result_types(
     session: Session,
-    client: "_FieldsClient",
+    client: _FieldsClient,
     pending: list[tuple[str, str, str, str]],
 ) -> None:
     """Derive each foreign field's mirrored result type from the linked field (REQ-436).
@@ -2054,3 +2054,83 @@ def reconcile_filtered_tabs(
 
     summary["absent"] = writer.sweep_absent()
     return summary
+
+
+# --------------------------------------------------------------------------
+# Truthful audit completion (REQ-395 / PI-354 / DEC-862)
+# --------------------------------------------------------------------------
+
+#: Per-area summary count keys that represent *populated inventory* — a run that
+#: produced any of these reconciled real structure into the inventory.
+_INVENTORY_KEYS = ("seen", "created", "present", "drifted", "absent")
+
+
+def classify_audit_completion(area_summaries: dict[str, object]) -> dict[str, object]:
+    """Classify an audit run's outcome truthfully (REQ-395).
+
+    An audit that reads the instance successfully but populates **no** inventory
+    must report that plainly, rather than looking like a successful, complete
+    audit — the failure mode behind the 06-26 CBM incident, where an audit that
+    resolved nothing still read as success.
+
+    ``area_summaries`` is the ``{area_key: summary}`` map the all-in-one audit
+    endpoint returns; each ``summary`` is a per-area count dict
+    (``{seen, created, present, drifted, absent[, candidates]}``) or a
+    ``{"skipped": True, ...}`` marker. A read *failure* is not seen here at all —
+    it raises ``ReconcileError`` upstream (a 422), so it is already
+    distinguishable from any outcome classified below.
+
+    Returns ``{"status", "message", "totals", "areas_ran"}`` where ``status`` is:
+
+    * ``complete`` — the audit populated real inventory.
+    * ``candidates_only`` — the audit produced only unresolved candidates needing
+      human review and populated no confirmed inventory.
+    * ``empty`` — the audit completed but found nothing: no inventory, no
+      candidates. This is **not** a populated audit.
+    * ``no_areas`` — no area actually ran (every area skipped).
+    """
+    totals = dict.fromkeys((*_INVENTORY_KEYS, "candidates"), 0)
+    areas_ran = 0
+    for summary in area_summaries.values():
+        if not isinstance(summary, dict) or summary.get("skipped"):
+            continue
+        areas_ran += 1
+        for key in totals:
+            value = summary.get(key, 0)
+            if isinstance(value, int):
+                totals[key] += value
+
+    inventory = sum(totals[k] for k in _INVENTORY_KEYS)
+    candidates = totals["candidates"]
+
+    if areas_ran == 0:
+        status = "no_areas"
+        message = "No audit areas ran for this instance — nothing was reconciled."
+    elif inventory > 0:
+        status = "complete"
+        message = (
+            f"Audit populated inventory across {areas_ran} area(s): "
+            f"{totals['present']} present, {totals['drifted']} drifted, "
+            f"{totals['created']} created, {totals['absent']} absent."
+        )
+    elif candidates > 0:
+        status = "candidates_only"
+        message = (
+            f"Audit produced {candidates} unresolved candidate(s) needing human "
+            "review and populated no confirmed inventory — this is not a "
+            "completed inventory."
+        )
+    else:
+        status = "empty"
+        message = (
+            "Audit completed but found no objects in this instance: no inventory "
+            "was populated and no candidates were produced. This is an empty "
+            "result, not a successful populated audit."
+        )
+
+    return {
+        "status": status,
+        "message": message,
+        "totals": totals,
+        "areas_ran": areas_ran,
+    }

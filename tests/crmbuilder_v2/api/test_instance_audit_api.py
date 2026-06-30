@@ -128,7 +128,8 @@ def test_source_audit_candidate_gates_no_auto_promotion(client, monkeypatch):
     assert r.status_code == 200, r.text
     summary = r.json()["data"]
     # DEC-653: a source audit reconciles entities / fields / associations only.
-    assert set(summary) == {"entities", "fields", "associations"}
+    # (REQ-395 adds a top-level "completion" classification alongside the areas.)
+    assert set(summary) == {"entities", "fields", "associations", "completion"}
     # No canonical object auto-created; undecided entities surface as candidates.
     assert summary["entities"]["created"] == 0
     assert summary["entities"]["candidates"] == 2
@@ -258,9 +259,11 @@ def test_both_audit_runs_full_drift_no_candidates(client, monkeypatch):
     assert r.status_code == 200, r.text
     summary = r.json()["data"]
     # Every area is reconciled — not the truncated entities/fields/associations set.
+    # (REQ-395 adds a top-level "completion" classification alongside the areas.)
     assert set(summary) == {
         "entities", "fields", "associations", "layouts",
         "roles", "field_permissions", "teams", "filtered_tabs",
+        "completion",
     }
     # Drift path: live custom entities are discovered + marked present, never
     # deferred as candidates (a drift summary has no ``candidates`` key).
@@ -443,3 +446,43 @@ def test_publish_plan_and_summary_404(client):
 def test_audit_missing_instance_404(client):
     assert client.post("/instances/INST-999/audit").status_code == 404
     assert client.get("/instances/INST-999/memberships").status_code == 404
+
+
+class _EmptyClient(_FakeClient):
+    """A live instance the read succeeds against but which has no custom objects."""
+
+    def get_all_scopes(self):
+        # Only native scopes — nothing custom to reconcile into inventory.
+        return (200, {
+            "Account": {"entity": True, "customizable": True, "isCustom": False},
+        })
+
+    def get_roles(self):
+        return (200, {"list": []})
+
+    def get_teams(self):
+        return (200, {"list": []})
+
+
+def test_both_audit_reports_truthful_complete_completion(client, monkeypatch):
+    # REQ-395 / PI-354: a populated both-role audit reports completion=complete.
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    iid = _create(client, instance_role="both")["instance_identifier"]
+    r = client.post(f"/instances/{iid}/audit")
+    assert r.status_code == 200, r.text
+    summary = r.json()["data"]
+    assert "completion" in summary
+    assert summary["completion"]["status"] == "complete"
+    assert summary["completion"]["totals"]["present"] >= 2
+
+
+def test_both_audit_empty_instance_reports_empty_not_success(client, monkeypatch):
+    # REQ-395 / PI-354: a successful but empty audit must say so plainly, not
+    # read as a successful complete audit (the 06-26 CBM failure mode).
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _EmptyClient)
+    iid = _create(client, instance_role="both")["instance_identifier"]
+    r = client.post(f"/instances/{iid}/audit")
+    assert r.status_code == 200, r.text
+    completion = r.json()["data"]["completion"]
+    assert completion["status"] == "empty"
+    assert "no inventory" in completion["message"].lower()
