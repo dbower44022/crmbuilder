@@ -939,3 +939,26 @@ def test_on_apply_field_row_selected_captures_whole_set(qtbot):
     panel._on_apply()
     assert [c[0] for c in rec.calls] == ["whole"]
     assert rec.calls[0][1]["field_identifier"] == "FLD-9"
+
+
+# --- REQ-447: a matching enum field expands to confirm its values -------------
+
+def test_matching_enum_view_row_expands_to_all_values(qapp):
+    """A non-differing field_options view row (REQ-447) still expands into one
+    child per value, each shown present in every location so the operator can
+    confirm the full set exists."""
+    opts = _olabeled(("a", "Active"), ("b", "Closed"))
+    row = {"member_type": "field", "member_identifier": "FLD-9", "member_name": "status",
+           "kind": "attribute", "attribute": "field_options",
+           "design": opts, "instance_a": opts, "instance_b": opts,
+           "differs": False, "actionable": False}
+    m = EntityDetailModel([{"object_type": "fields", "differing_count": 0, "rows": [row]}])
+    gi = m.index(0, 0, QModelIndex())
+    parent = m.index(0, 0, gi)
+    assert m.rowCount(parent) == 2  # both values expandable
+    # every value present (its label) in all three locations
+    a_idx = next(i for i in range(2)
+                 if m.data(m.index(i, 0, parent), Qt.ItemDataRole.DisplayRole) == "a")
+    assert m.data(m.index(a_idx, 1, parent), Qt.ItemDataRole.DisplayRole) == "Active"
+    assert m.data(m.index(a_idx, 2, parent), Qt.ItemDataRole.DisplayRole) == "Active"
+    assert m.data(m.index(a_idx, 3, parent), Qt.ItemDataRole.DisplayRole) == "Active"

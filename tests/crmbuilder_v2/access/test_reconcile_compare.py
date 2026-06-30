@@ -554,3 +554,70 @@ def test_association_cardinality_attribute_is_actionable():
     assert len(attr) == 1
     assert attr[0]["attribute"] == "association_cardinality"
     assert attr[0]["actionable"] is True
+
+
+# --- REQ-447: view a matching enum field's option values ----------------------
+
+def test_matching_enum_shows_expandable_options_with_show_all():
+    """An in-sync enum field, in show-all mode, yields an expandable (non-differing,
+    not-actionable) field_options row instead of a bare presence row (REQ-447)."""
+    design = {"field_type": "enum", "field_options": _opts("a", "b")}
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="status",
+        design_obj=design, attributes=[],
+        membership_a=_mem(), membership_b=_mem(), include_unchanged=True,
+    )
+    opt = [r for r in rows if r["attribute"] == "field_options"]
+    assert len(opt) == 1
+    assert opt[0]["differs"] is False
+    assert opt[0]["actionable"] is False
+    assert all(r["kind"] != "presence" for r in rows)  # replaced the bare presence row
+
+
+def test_matching_enum_hidden_without_show_all():
+    """Differences-only view stays clean: a fully in-sync enum field yields no rows."""
+    design = {"field_type": "enum", "field_options": _opts("a", "b")}
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="status",
+        design_obj=design, attributes=[], membership_a=_mem(), membership_b=_mem(),
+    )
+    assert rows == []
+
+
+def test_enum_field_with_other_diff_also_exposes_options():
+    """An enum field shown for a non-option difference also gets an expandable
+    options view row so its values can be confirmed."""
+    design = {"field_type": "enum", "field_options": _opts("a", "b"), "field_required": False}
+    a = _mem(state="drifted", override={"field_required": True})
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="status",
+        design_obj=design, attributes=["field_required"], membership_a=a, membership_b=_mem(),
+    )
+    attrs = {r["attribute"] for r in rows}
+    assert "field_required" in attrs
+    opt = next(r for r in rows if r["attribute"] == "field_options")
+    assert opt["differs"] is False and opt["actionable"] is False
+
+
+def test_enum_with_option_diff_not_double_rowed():
+    """A real option difference still produces exactly one field_options row (the
+    diff row), not an extra view row."""
+    design = {"field_type": "enum", "field_options": _opts("a", "b")}
+    a = _mem(state="drifted", override={"field_options": _opts("a", "b", "c")})
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="status",
+        design_obj=design, attributes=["field_options"],
+        membership_a=a, membership_b=_mem(), include_unchanged=True,
+    )
+    opt = [r for r in rows if r["attribute"] == "field_options"]
+    assert len(opt) == 1 and opt[0]["differs"] is True
+
+
+def test_non_enum_field_still_gets_bare_presence_row_in_show_all():
+    """A non-enum in-sync field keeps the plain present-everywhere confirmation row."""
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="phone",
+        design_obj={"field_type": "varchar"}, attributes=[],
+        membership_a=_mem(), membership_b=_mem(), include_unchanged=True,
+    )
+    assert len(rows) == 1 and rows[0]["kind"] == "presence"
