@@ -18,6 +18,7 @@ from crmbuilder_v2.access._helpers import (
     next_prefixed_identifier,
     require_in,
     require_string,
+    serialize_identifier_assignment,
     to_dict,
     validate_required_length,
 )
@@ -168,6 +169,9 @@ def _insert_with_autoassign(
     raises ``IntegrityError`` on flush; the savepoint rolls that INSERT
     back, the candidate is incremented, and the attempt repeats.
     """
+    # REQ-446 / PI-384: serialize per-prefix assignment so concurrent Postgres
+    # writers don't race the read-then-probe loop (a no-op on SQLite).
+    serialize_identifier_assignment(session, _IDENTIFIER_PREFIX)
     candidate = compute_next_identifier(session)
     last_error: IntegrityError | None = None
     for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):

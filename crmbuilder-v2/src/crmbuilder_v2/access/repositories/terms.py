@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access._helpers import (
     next_prefixed_identifier,
     require_string,
+    serialize_identifier_assignment,
     to_dict,
 )
 from crmbuilder_v2.access.change_log import emit
@@ -131,6 +132,9 @@ def _new_row(
 
 
 def _insert_with_autoassign(session: Session, **fields) -> TermRow:
+    # REQ-446 / PI-384: serialize per-prefix assignment (PG advisory lock;
+    # SQLite no-op) so concurrent writers don't race the read-then-probe loop.
+    serialize_identifier_assignment(session, _IDENTIFIER_PREFIX)
     candidate = compute_next_identifier(session)
     last_error: IntegrityError | None = None
     for _ in range(_MAX_AUTOASSIGN_ATTEMPTS):

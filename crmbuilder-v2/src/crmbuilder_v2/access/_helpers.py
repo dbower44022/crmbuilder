@@ -2,16 +2,48 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Iterable
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.exceptions import FieldError, ValidationError
 
 _PREFIXED_IDENTIFIER_RE = re.compile(r"^(?P<prefix>[A-Z]+)-(?P<num>\d+)$")
+
+
+def _advisory_key(prefix: str) -> int:
+    """A stable signed 64-bit key for ``prefix`` (pg_advisory_xact_lock takes a
+    bigint). Derived from a hash so distinct prefixes get distinct lock keys."""
+    val = int.from_bytes(hashlib.sha1(prefix.encode()).digest()[:8], "big")
+    return val - (1 << 64) if val >= (1 << 63) else val
+
+
+def serialize_identifier_assignment(session: Session, prefix: str) -> None:
+    """Serialize server-assigned identifier allocation for ``prefix`` (REQ-446).
+
+    The auto-assign helpers read the current max identifier then insert-and-retry
+    on collision. On SQLite ``BEGIN IMMEDIATE`` already serializes every writer
+    globally, so the read-then-insert never races. On **Postgres** writers run
+    truly concurrently, so without serialization N writers race for the same next
+    identifier, collide on the unique index, and the bounded retry loop exhausts
+    under load (the PI-100 finding). This takes a Postgres **transaction-level
+    advisory lock** keyed on ``prefix`` so writers assigning the *same* prefix
+    queue cleanly (distinct prefixes never contend) and each gets a unique id on
+    the first attempt. Held until the transaction ends. A **no-op on SQLite**.
+
+    Call it inside the write transaction, before computing the next identifier.
+    """
+    bind = session.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        return
+    session.execute(
+        text("SELECT pg_advisory_xact_lock(:k)"), {"k": _advisory_key(prefix)}
+    )
 
 
 def get_by_identifier(session, model, id_column, identifier):
