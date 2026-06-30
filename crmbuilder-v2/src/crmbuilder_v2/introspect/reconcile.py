@@ -821,6 +821,12 @@ def _audited_option_set(field_meta: dict[str, Any]) -> list[dict[str, Any]]:
         if value is None:
             continue
         sv = str(value)
+        # Skip the platform's implicit empty/blank option (a non-required enum's
+        # "no selection" choice). It is not a real domain value and the canonical
+        # model forbids an empty option_value, so capturing it would both produce
+        # false drift and fail the capture-back write (REQ-442).
+        if not sv.strip():
+            continue
         label = translated.get(value, translated.get(sv))
         out.append({
             "option_value": sv,

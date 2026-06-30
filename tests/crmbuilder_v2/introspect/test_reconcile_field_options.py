@@ -83,3 +83,30 @@ def test_field_override_records_label_only_drift():
         {"type": "enum", "options": ["a"], "translatedOptions": {"a": "Apricot"}}
     )
     assert "field_options" in _field_override(canonical, audited)
+
+
+def test_audited_option_set_skips_empty_blank_option():
+    """EspoCRM's implicit empty/blank option (a non-required enum's 'no selection'
+    choice) is skipped — the canonical model forbids an empty option_value, so
+    capturing it would fail the write and report false drift (REQ-442)."""
+    meta = {
+        "type": "enum",
+        "options": ["", "active", "  ", "closed"],
+        "translatedOptions": {"": "", "active": "Active", "closed": "Closed"},
+    }
+    out = _audited_option_set(meta)
+    assert [o["option_value"] for o in out] == ["active", "closed"]
+
+
+def test_field_override_ignores_blank_option_difference():
+    """A design without the blank option and an instance whose EspoCRM list carries
+    one match — the blank is not a real difference."""
+    canonical = {
+        "field_type": "enum",
+        "field_options": [{"option_value": "active", "option_label": "Active"}],
+    }
+    audited = _audited_field_attrs(
+        {"type": "enum", "options": ["", "active"],
+         "translatedOptions": {"active": "Active"}}
+    )
+    assert "field_options" not in _field_override(canonical, audited)
