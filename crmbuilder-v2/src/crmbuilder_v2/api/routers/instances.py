@@ -48,6 +48,7 @@ from crmbuilder_v2.introspect.entity_audit import reconcile_entity_slice
 from crmbuilder_v2.introspect.espo_client import EspoIntrospectionClient
 from crmbuilder_v2.introspect.reconcile import (
     ReconcileError,
+    classify_audit_completion,
     reconcile_associations,
     reconcile_entities,
     reconcile_field_permissions,
@@ -347,18 +348,21 @@ def audit(identifier: str):
             else list(AUDIT_AREA_ORDER)
         )
         try:
-            return ok(
-                {
-                    key.replace("-", "_"): _AUDIT_AREAS[key][1](
-                        s, instance_identifier=identifier, client=client
-                    )
-                    for key in keys
-                }
-            )
+            result: dict[str, object] = {
+                key.replace("-", "_"): _AUDIT_AREAS[key][1](
+                    s, instance_identifier=identifier, client=client
+                )
+                for key in keys
+            }
         except ReconcileError as exc:
             raise UnprocessableError(
                 [FieldError("audit", "introspection_failed", str(exc))]
             ) from exc
+        # REQ-395 / PI-354: a successful audit that populated no inventory must
+        # say so plainly, not read as a successful complete audit. (A read
+        # failure never reaches here — it raised ReconcileError above.)
+        result["completion"] = classify_audit_completion(result)
+        return ok(result)
 
 
 @router.post("/{identifier}/audit/{area}")
