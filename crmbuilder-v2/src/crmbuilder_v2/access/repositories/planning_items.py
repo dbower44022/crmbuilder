@@ -13,6 +13,7 @@ from crmbuilder_v2.access._helpers import (
     next_prefixed_identifier,
     require_in,
     require_string,
+    serialize_identifier_assignment,
     to_dict,
     validate_optional_value_list,
     validate_required_length,
@@ -135,6 +136,9 @@ def _insert_with_autoassign(
     execution_mode: str,
 ) -> PlanningItem:
     """Insert a planning_item with a server-assigned identifier (PI-002)."""
+    # REQ-446 / PI-384: serialize per-prefix assignment (PG advisory lock;
+    # SQLite no-op) so concurrent writers don't race the read-then-probe loop.
+    serialize_identifier_assignment(session, _IDENTIFIER_PREFIX)
     candidate = compute_next_identifier(session)
     last_error: IntegrityError | None = None
     for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):
