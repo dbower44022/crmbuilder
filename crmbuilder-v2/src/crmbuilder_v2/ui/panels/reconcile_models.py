@@ -205,19 +205,78 @@ class ExistenceGridModel(QAbstractTableModel):
         return None
 
 
-# internalId convention (mirrors GroupingTreeModel): a top-level group node
-# carries id 0; a child diff row carries (group_index + 1) so parent() recovers
-# its group.
-_GROUP_ID = 0
+_COL_KEYS = {1: "design", 2: "instance_a", 3: "instance_b"}
+
+#: Display text for an enum option that the field carries here but that does not
+#: include this value, vs. carries it: rendered in the value columns of an option
+#: child row (REQ-442). A field not carried at all shows its presence token instead.
+_OPTION_PRESENT = PRESENT  # value is in this location's option set
+_OPTION_MISSING = ABSENT   # field is here but this value is not in its set
+
+
+def option_child_rows(row: dict[str, Any]) -> list[dict[str, Any]]:
+    """Expand an enum option-set difference row into one child per option value (REQ-442).
+
+    Each child is scannable like a field under an entity: column 0 is the option
+    value, and each location column shows the value's effective label where it is
+    present, "Not present" where the field is carried but lacks the value, or the
+    field's presence token where the field is not carried there at all. The union
+    of values across the design and both instances is listed, sorted by value.
+
+    ``RECORD_ROLE`` for a child resolves to the *parent* field row (via
+    ``_parent_row``) so selecting or double-clicking a value acts on the field's
+    whole option set — capturing/publishing a single option is not a separate
+    operation.
+    """
+    locs = ("design", "instance_a", "instance_b")
+    raw = {k: row.get(k) for k in locs}
+    sets: dict[str, dict[str, str] | None] = {
+        k: dict(normalize_option_set(v)) if isinstance(v, (list, tuple)) else None
+        for k, v in raw.items()
+    }
+    values = sorted({val for m in sets.values() if m is not None for val in m})
+    children: list[dict[str, Any]] = []
+    for val in values:
+        cells: dict[str, dict[str, str]] = {}
+        for k in locs:
+            m = sets[k]
+            if m is None:  # the field is not carried here at all
+                token = raw[k] if isinstance(raw[k], str) else UNKNOWN
+                cells[k] = {"state": token, "text": STATE_LABELS.get(token, fmt_value(token))}
+            elif val in m:
+                cells[k] = {"state": _OPTION_PRESENT, "text": m[val]}
+            else:
+                cells[k] = {"state": _OPTION_MISSING, "text": "Not present"}
+        children.append({
+            "option_value": val,
+            "attribute": FIELD_OPTIONS_ATTR,
+            "_cells": cells,
+            "_parent_row": row,
+        })
+    return children
+
+
+def _is_option_parent(row: dict[str, Any]) -> bool:
+    """Whether a difference row should expand into per-option child rows (REQ-442)."""
+    if row.get("attribute") != FIELD_OPTIONS_ATTR:
+        return False
+    return any(isinstance(row.get(k), (list, tuple)) for k in _COL_KEYS.values())
 
 
 class EntityDetailModel(QAbstractItemModel):
-    """Two-level tree over one entity's grouped differences (REQ-370).
+    """Tree over one entity's grouped differences (REQ-370, REQ-442).
 
     Top level: one node per object-type group present, labelled
-    ``"Fields (2 differ)"`` etc. Children: the difference rows, each showing a
-    plain label and the value in the design and each instance, with presence
-    cells coloured (text label always present).
+    ``"Fields (2 differ)"`` etc. Second level: the difference rows, each showing a
+    plain label and the value in the design and each instance, presence cells
+    coloured (text label always present). Third level (REQ-442): an enum field's
+    option-set difference row expands into one child per option value, so the
+    operator scans the values exactly as they scan the fields — rather than reading
+    a long comma-joined list jammed into a single cell.
+
+    Backed by a flat node registry: ``createIndex`` carries each node's integer
+    index in :attr:`_nodes`, so an arbitrary-depth tree resolves parents and rows
+    without pointer-lifetime hazards.
     """
 
     HEADERS = ["Difference", "Master design", "Instance A", "Instance B"]
@@ -231,10 +290,34 @@ class EntityDetailModel(QAbstractItemModel):
         parent: Any = None,
     ) -> None:
         super().__init__(parent)
-        self._groups: list[dict[str, Any]] = list(object_groups or [])
         self._headers = list(self.HEADERS)
         self._headers[2] = instance_a_label
         self._headers[3] = instance_b_label
+        self._build(object_groups or [])
+
+    def _build(self, object_groups: list[dict[str, Any]]) -> None:
+        """(Re)build the node registry from the grouped difference payload."""
+        # each node: {"kind", "payload", "parent" (node id|None), "row" (row in
+        # parent), "children" (node ids)}
+        self._nodes: list[dict[str, Any]] = []
+        self._roots: list[int] = []
+
+        def add(kind: str, payload: Any, parent: int | None) -> int:
+            nid = len(self._nodes)
+            siblings = self._roots if parent is None else self._nodes[parent]["children"]
+            node = {"kind": kind, "payload": payload, "parent": parent,
+                    "row": len(siblings), "children": []}
+            self._nodes.append(node)
+            siblings.append(nid)
+            return nid
+
+        for grp in object_groups:
+            gid = add("group", grp, None)
+            for r in grp.get("rows", []):
+                rid = add("row", r, gid)
+                if _is_option_parent(r):
+                    for child in option_child_rows(r):
+                        add("option", child, rid)
 
     def set_groups(
         self,
@@ -244,11 +327,11 @@ class EntityDetailModel(QAbstractItemModel):
         instance_b_label: str | None = None,
     ) -> None:
         self.beginResetModel()
-        self._groups = list(object_groups)
         if instance_a_label is not None:
             self._headers[2] = instance_a_label
         if instance_b_label is not None:
             self._headers[3] = instance_b_label
+        self._build(object_groups)
         self.endResetModel()
 
     # -- tree structure ------------------------------------------------------
@@ -258,25 +341,24 @@ class EntityDetailModel(QAbstractItemModel):
         parent = parent if parent is not None else QModelIndex()
         if not self.hasIndex(row, column, parent):
             return QModelIndex()
-        if not parent.isValid():
-            return self.createIndex(row, column, _GROUP_ID)
-        return self.createIndex(row, column, parent.row() + 1)
+        siblings = self._roots if not parent.isValid() else self._nodes[parent.internalId()]["children"]
+        if row >= len(siblings):
+            return QModelIndex()
+        return self.createIndex(row, column, siblings[row])
 
     def parent(self, index: QModelIndex) -> QModelIndex:  # noqa: N802
         if not index.isValid():
             return QModelIndex()
-        gid = index.internalId()
-        if gid == _GROUP_ID:
+        pid = self._nodes[index.internalId()]["parent"]
+        if pid is None:
             return QModelIndex()
-        return self.createIndex(gid - 1, 0, _GROUP_ID)
+        return self.createIndex(self._nodes[pid]["row"], 0, pid)
 
     def rowCount(self, parent: QModelIndex | None = None) -> int:  # noqa: N802
         parent = parent if parent is not None else QModelIndex()
         if not parent.isValid():
-            return len(self._groups)
-        if parent.internalId() == _GROUP_ID:
-            return len(self._groups[parent.row()].get("rows", []))
-        return 0
+            return len(self._roots)
+        return len(self._nodes[parent.internalId()]["children"])
 
     def columnCount(self, parent: QModelIndex | None = None) -> int:  # noqa: N802
         return len(self._headers)
@@ -301,52 +383,56 @@ class EntityDetailModel(QAbstractItemModel):
             label = f"{label} · {_humanize_attr(attr)}"
         return label
 
-    def _group_for(self, index: QModelIndex) -> dict[str, Any]:
-        gid = index.internalId()
-        gi = index.row() if gid == _GROUP_ID else gid - 1
-        return self._groups[gi]
-
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
-        col = index.column()
-        if index.internalId() == _GROUP_ID:  # a group header
-            grp = self._groups[index.row()]
-            if role == Qt.ItemDataRole.DisplayRole and col == 0:
-                label = OBJECT_GROUP_LABELS.get(grp["object_type"], grp["object_type"].title())
-                return f"{label}  ({grp.get('differing_count', 0)} differ)"
-            if role == Qt.ItemDataRole.FontRole and col == 0:
-                f = QFont()
-                f.setBold(True)
-                return f
-            if role == RECORD_ROLE and col == 0:
-                return grp
-            return None
-        # a difference row
-        grp = self._group_for(index)
-        r = grp.get("rows", [])[index.row()]
+        node = self._nodes[index.internalId()]
+        kind = node["kind"]
+        if kind == "group":
+            return self._group_data(node["payload"], index.column(), role)
+        if kind == "option":
+            return self._option_data(node["payload"], index.column(), role)
+        return self._row_data(node["payload"], index.column(), role)
+
+    @staticmethod
+    def _group_data(grp: dict[str, Any], col: int, role: int):
+        if role == Qt.ItemDataRole.DisplayRole and col == 0:
+            label = OBJECT_GROUP_LABELS.get(grp["object_type"], grp["object_type"].title())
+            return f"{label}  ({grp.get('differing_count', 0)} differ)"
+        if role == Qt.ItemDataRole.FontRole and col == 0:
+            f = QFont()
+            f.setBold(True)
+            return f
+        if role == RECORD_ROLE and col == 0:
+            return grp
+        return None
+
+    def _row_data(self, r: dict[str, Any], col: int, role: int):
         if role == RECORD_ROLE:
             return r
         if col == 0:
             if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole):
                 return self._row_label(r)
             return None
-        key = {1: "design", 2: "instance_a", 3: "instance_b"}[col]
+        key = _COL_KEYS[col]
         value = r.get(key)
-        # REQ-442: an enum option-set row renders readably rather than as raw option
-        # dicts — the design column lists its options, each instance column shows the
-        # added/removed/relabeled delta against the design (the full list on hover).
-        # A cell holding a presence token (the field is absent there) is not a list,
-        # so it falls through to the normal presence rendering below.
-        if r.get("attribute") == FIELD_OPTIONS_ATTR and isinstance(value, (list, tuple)):
-            if role == Qt.ItemDataRole.DisplayRole:
-                return (
-                    fmt_option_list(value)
-                    if key == "design"
-                    else fmt_option_delta(r.get("design"), value)
-                )
-            if role == Qt.ItemDataRole.ToolTipRole:
-                return fmt_option_list(value)
+        # REQ-442: an enum option-set parent row carries its values as child nodes,
+        # so its own value columns show only a compact count (or the presence token
+        # when the field is absent there) — never the long list that made the cell
+        # unreadable.
+        if _is_option_parent(r):
+            if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole):
+                if isinstance(value, (list, tuple)):
+                    n = len(normalize_option_set(value))
+                    return f"{n} option" if n == 1 else f"{n} options"
+                return fmt_value(value)
+            is_state = isinstance(value, str)
+            if role == STATE_ROLE:
+                return value if (is_state and value in STATE_LABELS) else None
+            if role == Qt.ItemDataRole.BackgroundRole and is_state and value in _STATE_BG:
+                return _STATE_BG[value]
+            if role == Qt.ItemDataRole.ForegroundRole and is_state and value in _STATE_FG:
+                return _STATE_FG[value]
             return None
         if role == Qt.ItemDataRole.DisplayRole:
             return fmt_value(value)
@@ -365,6 +451,29 @@ class EntityDetailModel(QAbstractItemModel):
             return _STATE_BG[value]
         if role == Qt.ItemDataRole.ForegroundRole and is_state and value in _STATE_FG:
             return _STATE_FG[value]
+        return None
+
+    @staticmethod
+    def _option_data(child: dict[str, Any], col: int, role: int):
+        # An option value scans like a field: col 0 is the value, each location
+        # column shows the value's label where present, "Not present" where the
+        # field lacks it, or the field's presence token where it is not carried.
+        if role == RECORD_ROLE:
+            return child["_parent_row"]
+        if col == 0:
+            if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole):
+                return child["option_value"]
+            return None
+        cell = child["_cells"][_COL_KEYS[col]]
+        if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole):
+            return cell["text"]
+        state = cell["state"]
+        if role == STATE_ROLE:
+            return state if state in STATE_LABELS else None
+        if role == Qt.ItemDataRole.BackgroundRole:
+            return _STATE_BG.get(state)
+        if role == Qt.ItemDataRole.ForegroundRole:
+            return _STATE_FG.get(state)
         return None
 
 

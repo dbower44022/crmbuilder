@@ -673,30 +673,92 @@ def test_fmt_option_list_and_delta():
     assert fmt_option_delta(_ofield("a"), _ofield("a")) == "Same options"
 
 
-def test_entity_detail_model_renders_option_row(qapp):
-    """A field_options row shows the design's option list and each instance's
-    delta, not raw option dicts."""
+def _olabeled(*items):
+    """Build an option list. Each item is a value str or (value, label)."""
+    out = []
+    for it in items:
+        if isinstance(it, tuple):
+            out.append({"option_value": it[0], "option_label": it[1]})
+        else:
+            out.append({"option_value": it, "option_label": None})
+    return out
+
+
+def test_entity_detail_model_expands_options_into_child_nodes(qapp):
+    """REQ-442: an enum field's option-set difference is a parent node whose value
+    columns show a compact count, with each option value as a scannable child node
+    showing its presence/label in the design and each instance."""
     groups = [
         {"object_type": "fields", "differing_count": 1, "rows": [
             {"member_type": "field", "member_identifier": "FLD-9",
              "member_name": "status", "kind": "attribute",
              "attribute": "field_options",
-             "design": _ofield("open", "closed"),
-             "instance_a": _ofield("open", "closed", "pending"),
+             "design": _olabeled(("open", "Open"), ("closed", "Closed")),
+             "instance_a": _olabeled(("open", "Open"), ("closed", "Closed"),
+                                     ("pending", "Pending")),
              "instance_b": "absent",
              "differs": True, "actionable": True},
         ]},
     ]
     m = EntityDetailModel(groups)
     grp_idx = m.index(0, 0, QModelIndex())
-    child = m.index(0, 0, grp_idx)
-    assert "Options" in m.data(child, Qt.ItemDataRole.DisplayRole)
-    # design column: readable list
-    assert m.data(m.index(0, 1, grp_idx), Qt.ItemDataRole.DisplayRole) == "closed, open"
-    # instance A: delta, +pending
-    assert m.data(m.index(0, 2, grp_idx), Qt.ItemDataRole.DisplayRole) == "+pending"
-    # instance B absent -> presence rendering, no crash
+    parent = m.index(0, 0, grp_idx)
+    # parent node: field name · Options, value columns show a compact count
+    assert "status" in m.data(parent, Qt.ItemDataRole.DisplayRole)
+    assert "Options" in m.data(parent, Qt.ItemDataRole.DisplayRole)
+    assert m.data(m.index(0, 1, grp_idx), Qt.ItemDataRole.DisplayRole) == "2 options"
+    assert m.data(m.index(0, 2, grp_idx), Qt.ItemDataRole.DisplayRole) == "3 options"
     assert m.data(m.index(0, 3, grp_idx), Qt.ItemDataRole.DisplayRole) == "Not Found"
+    # three option children (union: closed, open, pending — sorted)
+    assert m.rowCount(parent) == 3
+    rows = {m.data(m.index(i, 0, parent), Qt.ItemDataRole.DisplayRole): i for i in range(3)}
+    assert set(rows) == {"closed", "open", "pending"}
+    # the 'pending' child: present (Pending) on A, Not present in the design,
+    # field Not Found on B
+    pi = rows["pending"]
+    assert m.data(m.index(pi, 1, parent), Qt.ItemDataRole.DisplayRole) == "Not present"
+    assert m.data(m.index(pi, 2, parent), Qt.ItemDataRole.DisplayRole) == "Pending"
+    assert m.data(m.index(pi, 3, parent), Qt.ItemDataRole.DisplayRole) == "Not Found"
+    # a child's RECORD_ROLE resolves to the actionable parent field row (same
+    # object), so selecting a value acts on the whole option set and dedups
+    child_rec = m.data(m.index(pi, 0, parent), RECORD_ROLE)
+    parent_rec = m.data(parent, RECORD_ROLE)
+    assert child_rec is parent_rec
+    assert parent_rec["member_identifier"] == "FLD-9"
+    # parent() round-trips from a child back to the parent field row
+    assert m.parent(m.index(pi, 0, parent)) == parent
+
+
+def test_entity_detail_model_relabel_shows_both_labels(qapp):
+    """A relabeled option surfaces the differing label per location (REQ-442)."""
+    groups = [
+        {"object_type": "fields", "differing_count": 1, "rows": [
+            {"member_type": "field", "member_identifier": "FLD-1",
+             "member_name": "fruit", "kind": "attribute", "attribute": "field_options",
+             "design": _olabeled(("a", "Apple")),
+             "instance_a": _olabeled(("a", "Apricot")),
+             "instance_b": _olabeled(("a", "Apple")),
+             "differs": True, "actionable": True},
+        ]},
+    ]
+    m = EntityDetailModel(groups)
+    grp_idx = m.index(0, 0, QModelIndex())
+    parent = m.index(0, 0, grp_idx)
+    assert m.rowCount(parent) == 1
+    child = m.index(0, 0, parent)
+    assert m.data(child, Qt.ItemDataRole.DisplayRole) == "a"
+    assert m.data(m.index(0, 1, parent), Qt.ItemDataRole.DisplayRole) == "Apple"
+    assert m.data(m.index(0, 2, parent), Qt.ItemDataRole.DisplayRole) == "Apricot"
+    assert m.data(m.index(0, 3, parent), Qt.ItemDataRole.DisplayRole) == "Apple"
+
+
+def test_entity_detail_model_non_option_rows_stay_leaves(qapp):
+    """A non-option difference row has no children (regression guard for the
+    three-level rewrite)."""
+    m = EntityDetailModel(_GROUPS[0]["object_groups"])
+    grp_idx = m.index(0, 0, QModelIndex())
+    leaf = m.index(0, 0, grp_idx)
+    assert m.rowCount(leaf) == 0
 
 
 def test_property_value_cells_option_aware():
