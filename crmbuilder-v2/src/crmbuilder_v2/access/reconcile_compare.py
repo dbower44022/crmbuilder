@@ -256,6 +256,44 @@ def compute_member_rows(
             "actionable": _attribute_actionable(member_type, attr),
         })
 
+    # REQ-447: an enum/multi-select field shown in the tree should always be
+    # expandable to its full option set so the operator can confirm every value
+    # exists — even when the options all match. When no option-difference row was
+    # emitted above, add a non-differing options "view" row (the model expands it
+    # into per-value children, matching values included) whenever the field is
+    # already shown for another reason or every member is being verified
+    # (include_unchanged). A fully matching set is verification only — not actionable.
+    is_option_field = member_type == "field" and design_obj.get("field_type") in (
+        "enum", "multi_enum"
+    )
+    opt_design = design_obj.get(FIELD_OPTIONS_ATTR)
+    if (
+        is_option_field
+        and isinstance(opt_design, (list, tuple)) and opt_design
+        and not any(r.get("attribute") == FIELD_OPTIONS_ATTR for r in rows)
+        and (rows or include_unchanged)
+    ):
+        opt_a = (
+            _effective_value(membership_a, FIELD_OPTIONS_ATTR, opt_design)
+            if pres_a == PRESENT else pres_a
+        )
+        opt_b = (
+            _effective_value(membership_b, FIELD_OPTIONS_ATTR, opt_design)
+            if pres_b == PRESENT else pres_b
+        )
+        rows.append({
+            "member_type": member_type,
+            "member_identifier": member_identifier,
+            "member_name": member_name,
+            "kind": "attribute",
+            "attribute": FIELD_OPTIONS_ATTR,
+            "design": opt_design,
+            "instance_a": opt_a,
+            "instance_b": opt_b,
+            "differs": False,
+            "actionable": False,
+        })
+
     # Show-all-values verification (REQ-432): a member present everywhere with no
     # attribute drift produced no rows above. When asked, surface it as a single
     # in-sync presence row so the operator can confirm the field exists in each
