@@ -238,6 +238,12 @@ FIELD_TYPES: frozenset[str] = frozenset(
         "number",
         "reference",
         "derived",
+        # A field that mirrors a scalar from a linked record (EspoCRM "foreign").
+        # Distinct from ``derived`` (a computed/formula value) and ``reference``
+        # (a link field) so the audit no longer collapses it to derived/text
+        # (REQ-435 / PI-374). Its mirrored value-type, when known, is carried in
+        # ``field_derived_result_type``.
+        "foreign",
     }
 )
 
