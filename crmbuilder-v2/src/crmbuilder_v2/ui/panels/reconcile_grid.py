@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.ui.panels.reconcile_models import (
     FIELD_OPTIONS_ATTR,
     LOCATION_LABELS,
+    OPTION_VALUE_ROLE,
     RECORD_ROLE,
     EntityDetailModel,
     ExistenceGridModel,
@@ -694,6 +695,33 @@ class ReconcileGridPanel(QWidget):
                 rows.append(rec)
         return rows
 
+    def _selected_option_values(self) -> dict[int, dict[str, Any]]:
+        """Per enum field_options row, what the operator selected (REQ-445).
+
+        Returns ``{id(field_row): {"row", "field_selected": bool, "values": set}}``.
+        ``field_selected`` is True when the field row itself is selected (sync the
+        whole set, as before); otherwise ``values`` holds the specific option-value
+        child rows selected, for a per-value capture. A field row reached only via
+        its selected children has ``field_selected`` False.
+        """
+        out: dict[int, dict[str, Any]] = {}
+        sel = self._detail.selectionModel()
+        for idx in (sel.selectedIndexes() if sel else []):
+            if idx.column() != 0:
+                continue
+            rec = self._detail_model.data(idx, RECORD_ROLE)
+            if not (isinstance(rec, dict) and rec.get("attribute") == FIELD_OPTIONS_ATTR):
+                continue
+            entry = out.setdefault(
+                id(rec), {"row": rec, "field_selected": False, "values": set()}
+            )
+            value = self._detail_model.data(idx, OPTION_VALUE_ROLE)
+            if value is None:  # the field row itself → whole-set capture
+                entry["field_selected"] = True
+            else:
+                entry["values"].add(str(value))
+        return out
+
     def _on_apply(self) -> None:
         rows = self._selected_diff_rows()
         if not rows:
@@ -715,6 +743,7 @@ class ReconcileGridPanel(QWidget):
             )
             return
 
+        option_sel = self._selected_option_values()
         applied = 0
         skipped: list[str] = []
         errors: list[str] = []
@@ -726,12 +755,29 @@ class ReconcileGridPanel(QWidget):
             if not row.get("actionable"):
                 view_only.append(label)
                 continue
+            # REQ-445: when specific option values (not the field row) were selected
+            # on an enum field, a capture merges just those values into the design;
+            # otherwise capture/publish behave as before (whole option set).
+            sel = option_sel.get(id(row))
+            per_value = (
+                sorted(sel["values"])
+                if (row.get("attribute") == FIELD_OPTIONS_ATTR and sel
+                    and not sel["field_selected"] and sel["values"])
+                else None
+            )
             plan = plan_apply(row, source_loc, targets)
             for reason in plan["skipped"]:
                 skipped.append(f"{label}: {reason}")
             for op in plan["ops"]:
                 try:
-                    self._execute_op(row, op)
+                    if op["kind"] == "capture" and per_value is not None:
+                        self._client.reconcile_capture_field_options(
+                            instance=self._loc_instance(op["location"]),
+                            field_identifier=row["member_identifier"],
+                            option_values=per_value, actor=_ACTOR,
+                        )
+                    else:
+                        self._execute_op(row, op)
                     applied += 1
                 except Exception as exc:  # noqa: BLE001
                     errors.append(f"{label}: {op['kind']} failed — {exc}")

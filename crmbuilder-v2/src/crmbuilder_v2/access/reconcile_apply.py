@@ -20,6 +20,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
+from crmbuilder_v2.access.reconcile_compare import option_sets_equal
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
@@ -118,6 +119,121 @@ def capture_field_attribute(
     # The captured attribute now matches the design; drop it from this instance's
     # override and recompute its membership state.
     remaining = {k: v for k, v in override.items() if k != attribute}
+    membership_repo.upsert_membership(
+        session,
+        instance_identifier=instance,
+        member_type="field",
+        member_identifier=field_identifier,
+        state="drifted" if remaining else "present",
+        override=remaining or None,
+    )
+    return {"transaction": transaction, "field": field_repo.get_field(session, field_identifier)}
+
+
+def merge_option_values(
+    design_options: list[dict[str, Any]] | None,
+    source_options: list[dict[str, Any]] | None,
+    selected_values: list,
+) -> list[dict[str, Any]]:
+    """Bring only the ``selected_values`` of the design option set into line with
+    the source (REQ-445). For each selected value: **add** it (with the source's
+    label) when the source carries it and the design does not; **relabel** it to
+    the source's label when both carry it; **remove** it from the design when the
+    source lacks it. Unselected values keep their design entry untouched. The
+    result is re-ordered sequentially.
+    """
+    src_by_val = {
+        str(o["option_value"]): o
+        for o in (source_options or [])
+        if isinstance(o, dict) and o.get("option_value") is not None
+    }
+    selected = {str(v) for v in (selected_values or [])}
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for o in design_options or []:
+        if not isinstance(o, dict) or o.get("option_value") is None:
+            continue
+        v = str(o["option_value"])
+        if v in selected:
+            if v in src_by_val:  # relabel to the source's label
+                out.append({"option_value": v, "option_label": src_by_val[v].get("option_label")})
+                seen.add(v)
+            # else: the source lacks it -> remove (skip)
+        else:  # unselected -> keep the design's entry as-is
+            out.append({"option_value": v, "option_label": o.get("option_label")})
+            seen.add(v)
+    for v in selected:  # selected values the source has but the design lacks -> add
+        if v in src_by_val and v not in seen:
+            out.append({"option_value": v, "option_label": src_by_val[v].get("option_label")})
+            seen.add(v)
+    for i, o in enumerate(out):
+        o["option_order"] = i
+    return out
+
+
+def capture_field_option_values(
+    session: Session,
+    *,
+    instance: str,
+    field_identifier: str,
+    option_values: list,
+    actor: str,
+    batch_id: str | None = None,
+    note: str | None = None,
+) -> dict[str, Any]:
+    """Capture only the named option values of an enum field into the design (REQ-445).
+
+    Unlike :func:`capture_field_attribute` — which replaces the whole option set
+    with the instance's — this merges just ``option_values`` (the rows the operator
+    selected) into the design via :func:`merge_option_values`, leaving the field's
+    other design options untouched, so wrong source values are left behind. Records
+    a reversible transaction (the whole ``field_options`` before/after, so the
+    existing field-attribute rollback restores it) and recomputes the instance's
+    drift: the override's option set is dropped only when the design now matches it.
+
+    Raises ``ConflictError`` when the instance records no option deviation, or
+    ``NotFoundError`` when the field is gone.
+
+    :returns: ``{transaction, field}``.
+    """
+    membership = _membership_for(session, instance, "field", field_identifier)
+    override = (membership or {}).get("override") or {}
+    if "field_options" not in override:
+        raise ConflictError(
+            f"instance {instance} records no option deviation for {field_identifier}; "
+            f"nothing to capture"
+        )
+    source_options = override["field_options"]
+
+    current = field_repo.get_field(session, field_identifier)
+    if current is None:
+        raise NotFoundError("field", field_identifier)
+    before_value = current.get("field_options") or []
+    merged = merge_option_values(before_value, source_options, option_values)
+
+    field_repo.patch_field(session, field_identifier, options=merged)
+
+    transaction = txn_repo.record(
+        session,
+        direction="capture",
+        source_ref=instance,
+        target_ref=DESIGN,
+        member_type="field",
+        member_identifier=field_identifier,
+        attribute="field_options",
+        before_value=before_value,
+        after_value=merged,
+        actor=actor,
+        batch_id=batch_id,
+        note=note or f"captured option values: {sorted({str(v) for v in option_values})}",
+    )
+
+    # The instance snapshot (override) is unchanged; drop its option deviation only
+    # once the design's new set matches it (the field is otherwise still drifted).
+    if option_sets_equal(merged, source_options):
+        remaining = {k: v for k, v in override.items() if k != "field_options"}
+    else:
+        remaining = dict(override)
     membership_repo.upsert_membership(
         session,
         instance_identifier=instance,

@@ -431,3 +431,113 @@ def test_rollback_association_capture_restores_cardinality(v2_env):
         txn_id = cap["transaction"]["id"]
         reconcile_apply.rollback(s, txn_id, actor="Doug")
         assert assoc_repo.get_association(s, aid)["association_cardinality"] == "one_to_many"
+
+
+# --- REQ-445: per-value (merge) capture of enum option values ----------------
+
+def test_merge_option_values_add_relabel_remove_and_leave_others():
+    design = [{"option_value": "A", "option_label": "A"},
+              {"option_value": "X", "option_label": "Keep"}]
+    source = [{"option_value": "A", "option_label": "A"},
+              {"option_value": "B", "option_label": "Bee"},
+              {"option_value": "C", "option_label": "Wrong"}]
+    # select B (add), X (remove — not in source), A relabel n/a (same). Leave C alone.
+    out = reconcile_apply.merge_option_values(design, source, ["B", "X"])
+    vals = {o["option_value"]: o["option_label"] for o in out}
+    assert "B" in vals and vals["B"] == "Bee"   # added with source label
+    assert "X" not in vals                       # removed (source lacks it)
+    assert "A" in vals                           # unselected, untouched
+    assert "C" not in vals                       # never selected, not pulled
+    # order is resequenced
+    assert [o["option_order"] for o in out] == list(range(len(out)))
+
+
+def test_merge_option_values_relabels_selected_value():
+    design = [{"option_value": "a", "option_label": "Apple"}]
+    source = [{"option_value": "a", "option_label": "Apricot"}]
+    out = reconcile_apply.merge_option_values(design, source, ["a"])
+    assert out == [{"option_value": "a", "option_label": "Apricot", "option_order": 0}]
+
+
+def _enum_field(s, options):
+    eid = entity_repo.create_entity(s, name="Acct", description="x")["entity_identifier"]
+    return field_repo.create_field(
+        s, field_belongs_to_entity_identifier=eid, name="status",
+        description="x", type="enum", required=False, options=options,
+    )["field_identifier"]
+
+
+def test_capture_field_option_values_merges_only_selected(v2_env):
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="t", url="https://t.example.org", role="both"
+        )["instance_identifier"]
+        fid = _enum_field(s, [{"option_value": "A", "option_label": "A"}])
+        # instance audited set has A,B,C(wrong),D
+        source = [{"option_value": v} for v in ("A", "B", "C", "D")]
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field", member_identifier=fid,
+            state="drifted", override={"field_options": source},
+        )
+        out = reconcile_apply.capture_field_option_values(
+            s, instance=iid, field_identifier=fid, option_values=["B", "D"], actor="Doug",
+        )
+        vals = {o["option_value"] for o in out["field"]["field_options"]}
+        assert vals == {"A", "B", "D"}          # C left behind
+        # still drifts (design != instance set), override kept
+        m = mb.list_memberships(s, instance_identifier=iid, member_type="field",
+                                member_identifier=fid)[0]
+        assert m["state"] == "drifted" and m["override"] is not None
+
+
+def test_capture_field_option_values_clears_override_when_fully_matched(v2_env):
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="t", url="https://t.example.org", role="both"
+        )["instance_identifier"]
+        fid = _enum_field(s, [{"option_value": "A", "option_label": "A"}])
+        source = [{"option_value": "A"}, {"option_value": "B"}]
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field", member_identifier=fid,
+            state="drifted", override={"field_options": source},
+        )
+        reconcile_apply.capture_field_option_values(
+            s, instance=iid, field_identifier=fid, option_values=["B"], actor="Doug",
+        )
+        m = mb.list_memberships(s, instance_identifier=iid, member_type="field",
+                                member_identifier=fid)[0]
+        assert m["state"] == "present" and m["override"] is None
+
+
+def test_capture_field_option_values_rollback_restores(v2_env):
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="t", url="https://t.example.org", role="both"
+        )["instance_identifier"]
+        fid = _enum_field(s, [{"option_value": "A", "option_label": "A"}])
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field", member_identifier=fid,
+            state="drifted", override={"field_options": [{"option_value": "A"}, {"option_value": "B"}]},
+        )
+        cap = reconcile_apply.capture_field_option_values(
+            s, instance=iid, field_identifier=fid, option_values=["B"], actor="Doug",
+        )
+        reconcile_apply.rollback(s, cap["transaction"]["id"], actor="Doug")
+        vals = {o["option_value"] for o in field_repo.get_field(s, fid)["field_options"]}
+        assert vals == {"A"}   # B removed again
+
+
+def test_capture_field_option_values_conflict_without_deviation(v2_env):
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="t", url="https://t.example.org", role="both"
+        )["instance_identifier"]
+        fid = _enum_field(s, [{"option_value": "A"}])
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field", member_identifier=fid,
+            state="present", override=None,
+        )
+        with pytest.raises(ConflictError):
+            reconcile_apply.capture_field_option_values(
+                s, instance=iid, field_identifier=fid, option_values=["A"], actor="Doug",
+            )

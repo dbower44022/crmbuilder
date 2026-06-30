@@ -76,6 +76,10 @@ OBJECT_GROUP_LABELS = {
 STATE_ROLE = Qt.ItemDataRole.UserRole + 1
 #: Role carrying the backing payload dict (existence row, group, or diff row).
 RECORD_ROLE = Qt.ItemDataRole.UserRole + 2
+#: Role carrying an option-value child's value (REQ-445); ``None`` on every other
+#: node. Lets the panel collect the specific option values an operator selected
+#: (vs. selecting the whole field row) for a per-value capture.
+OPTION_VALUE_ROLE = Qt.ItemDataRole.UserRole + 3
 
 
 def fmt_value(value: Any) -> str:
@@ -460,6 +464,8 @@ class EntityDetailModel(QAbstractItemModel):
         # field lacks it, or the field's presence token where it is not carried.
         if role == RECORD_ROLE:
             return child["_parent_row"]
+        if role == OPTION_VALUE_ROLE:
+            return child["option_value"]
         if col == 0:
             if role in (Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.ToolTipRole):
                 return child["option_value"]

@@ -8,6 +8,7 @@ from crmbuilder_v2.ui.panels.reconcile_grid import (
     _property_value_cells,
 )
 from crmbuilder_v2.ui.panels.reconcile_models import (
+    OPTION_VALUE_ROLE,
     RECORD_ROLE,
     STATE_ROLE,
     EntityDetailModel,
@@ -17,7 +18,7 @@ from crmbuilder_v2.ui.panels.reconcile_models import (
     fmt_value,
     plan_apply,
 )
-from PySide6.QtCore import QModelIndex, Qt
+from PySide6.QtCore import QItemSelectionModel, QModelIndex, Qt
 from PySide6.QtWidgets import QTableWidget
 
 from .conftest import build_client, envelope_ok
@@ -832,3 +833,109 @@ def test_plan_association_cardinality_from_design_source_cannot_publish():
     plan = plan_apply(_assoc_card_row(), "design", ["instance_b"])
     assert plan["ops"] == []
     assert any("by hand" in s for s in plan["skipped"])
+
+
+# --- REQ-445: per-value enum option capture ----------------------------------
+
+def _option_group():
+    row = {"member_type": "field", "member_identifier": "FLD-9", "member_name": "status",
+           "kind": "attribute", "attribute": "field_options",
+           "design": [{"option_value": "A", "option_label": "A"}],
+           "instance_a": [{"option_value": v, "option_label": None} for v in ("A", "B", "C", "D")],
+           "instance_b": "absent", "differs": True, "actionable": True}
+    return {"object_type": "fields", "differing_count": 1, "rows": [row]}
+
+
+def _select_option_children(panel, values):
+    m = panel._detail_model
+    gi = m.index(0, 0, QModelIndex())
+    parent = m.index(0, 0, gi)
+    panel._detail.expandAll()
+    sm = panel._detail.selectionModel()
+    for i in range(m.rowCount(parent)):
+        idx = m.index(i, 0, parent)
+        if m.data(idx, OPTION_VALUE_ROLE) in values:
+            sm.select(idx, QItemSelectionModel.SelectionFlag.Select)
+    return parent
+
+
+def test_option_value_role_only_on_children(qapp):
+    m = EntityDetailModel([_option_group()])
+    gi = m.index(0, 0, QModelIndex())
+    parent = m.index(0, 0, gi)
+    assert m.data(parent, OPTION_VALUE_ROLE) is None          # the field row
+    assert m.data(gi, OPTION_VALUE_ROLE) is None               # the group header
+    child_vals = {m.data(m.index(i, 0, parent), OPTION_VALUE_ROLE)
+                  for i in range(m.rowCount(parent))}
+    assert child_vals == {"A", "B", "C", "D"}
+
+
+def test_selected_option_values_gathers_chosen_values(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    panel._detail_model.set_groups([_option_group()])
+    _select_option_children(panel, {"B", "D"})
+    sel = panel._selected_option_values()
+    assert len(sel) == 1
+    entry = next(iter(sel.values()))
+    assert entry["field_selected"] is False
+    assert entry["values"] == {"B", "D"}
+
+
+class _RecClient:
+    def __init__(self):
+        self.calls = []
+    def reconcile_capture_field_options(self, **kw):
+        self.calls.append(("per_value", kw))
+        return {}
+
+    def reconcile_capture(self, **kw):
+        self.calls.append(("whole", kw))
+        return {}
+
+
+def _prime_apply(panel):
+    for combo, label, data in ((panel._combo_a, "CBMTEST", "INST-001"),
+                               (panel._combo_b, "Prod", "INST-002")):
+        combo.clear()
+        combo.addItem(label, data)
+    panel._source_combo.clear()
+    panel._source_combo.addItem("CBMTEST", "instance_a")
+    panel._target_design.setChecked(True)
+    panel._target_a.setChecked(False)
+    panel._target_b.setChecked(False)
+    panel._refresh_keeping_detail = lambda: None
+
+
+def test_on_apply_routes_selected_values_to_per_value_capture(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    panel._detail_model.set_groups([_option_group()])
+    _select_option_children(panel, {"B", "D"})
+    _prime_apply(panel)
+    rec = _RecClient()
+    panel._client = rec
+    panel._on_apply()
+    assert len(rec.calls) == 1
+    kind, kw = rec.calls[0]
+    assert kind == "per_value"
+    assert kw["field_identifier"] == "FLD-9"
+    assert kw["instance"] == "INST-001"
+    assert sorted(kw["option_values"]) == ["B", "D"]
+
+
+def test_on_apply_field_row_selected_captures_whole_set(qtbot):
+    panel = ReconcileGridPanel(build_client(_handler))
+    qtbot.addWidget(panel)
+    panel._detail_model.set_groups([_option_group()])
+    panel._detail.expandAll()
+    # select the field (parent) row itself → whole-set capture
+    gi = panel._detail_model.index(0, 0, QModelIndex())
+    parent = panel._detail_model.index(0, 0, gi)
+    panel._detail.selectionModel().select(parent, QItemSelectionModel.SelectionFlag.Select)
+    _prime_apply(panel)
+    rec = _RecClient()
+    panel._client = rec
+    panel._on_apply()
+    assert [c[0] for c in rec.calls] == ["whole"]
+    assert rec.calls[0][1]["field_identifier"] == "FLD-9"

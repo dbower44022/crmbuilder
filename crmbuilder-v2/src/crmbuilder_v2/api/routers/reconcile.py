@@ -58,6 +58,20 @@ class CaptureAssociationIn(BaseModel):
     note: str | None = None
 
 
+class CaptureFieldOptionsIn(BaseModel):
+    """Capture only the named option values of an enum field into the design (REQ-445).
+
+    Merges just ``option_values`` (the rows the operator selected) into the design's
+    option set rather than replacing it, so wrong source values are left behind."""
+
+    instance: str
+    field_identifier: str
+    option_values: list[str]
+    actor: str
+    batch_id: str | None = None
+    note: str | None = None
+
+
 class PublishObjectIn(BaseModel):
     """Publish an object's parent entity from the design to a live instance.
 
@@ -205,6 +219,29 @@ def capture_association(body: CaptureAssociationIn):
                 instance=body.instance,
                 association_identifier=body.association_identifier,
                 attribute=body.attribute,
+                actor=body.actor,
+                batch_id=body.batch_id,
+                note=body.note,
+            )
+        )
+
+
+@router.post("/capture-field-options", status_code=201)
+def capture_field_options(body: CaptureFieldOptionsIn):
+    """Capture only the selected option values of an enum field into the design (REQ-445).
+
+    Merges just ``option_values`` into the design's option set (add / relabel /
+    remove per the source), leaving the field's other options untouched, so the
+    operator can correct an enum one value at a time and leave wrong source values
+    behind. Records a reversible transaction.
+    """
+    with writable_session() as s:
+        return ok(
+            reconcile_apply.capture_field_option_values(
+                s,
+                instance=body.instance,
+                field_identifier=body.field_identifier,
+                option_values=body.option_values,
                 actor=body.actor,
                 batch_id=body.batch_id,
                 note=body.note,

@@ -2680,6 +2680,31 @@ class StorageClient:
         )
         return result if isinstance(result, dict) else {}
 
+    def reconcile_capture_field_options(
+        self,
+        *,
+        instance: str,
+        field_identifier: str,
+        option_values: list[str],
+        actor: str,
+        batch_id: str | None = None,
+        note: str | None = None,
+    ) -> dict[str, Any]:
+        """POST /reconcile/capture-field-options — capture only the selected enum
+        option values into the design (merge, not whole-set replace) (REQ-445)."""
+        body = {
+            "instance": instance,
+            "field_identifier": field_identifier,
+            "option_values": list(option_values),
+            "actor": actor,
+            "batch_id": batch_id,
+            "note": note,
+        }
+        result = self._request(
+            "POST", "/reconcile/capture-field-options", json_body=body
+        )
+        return result if isinstance(result, dict) else {}
+
     def reconcile_publish(
         self,
         *,
