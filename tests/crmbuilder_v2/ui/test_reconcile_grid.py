@@ -116,28 +116,33 @@ def test_plan_non_actionable_is_skipped():
 
 
 def test_fmt_value_operator_language():
-    assert fmt_value("present") == "In"
-    assert fmt_value("absent") == "Missing"
-    assert fmt_value("unknown") == "Not audited"  # REQ-390: not "n/a"
+    # REQ-434: three distinct, glossary-defined states.
+    assert fmt_value("present") == "Present"
+    assert fmt_value("absent") == "Not Found"     # audited, confirmed not there
+    assert fmt_value("unknown") == "Not Captured"  # no record — never captured here
     assert fmt_value(None) == "—"
     assert fmt_value(True) == "Yes"
     assert fmt_value(["a", "b"]) == "a, b"
 
 
-def test_unknown_presence_labelled_not_audited(qapp):
-    """REQ-390: an entity not recorded in a location's last audit reads
-    'Not audited', never the ambiguous 'n/a'."""
+def test_three_distinct_states_present_not_found_not_captured(qapp):
+    """REQ-434: present/absent/unknown map to three distinct labels, and the
+    not-yet-checked label ('Not Captured') no longer reuses the word 'Audit'."""
     from crmbuilder_v2.ui.panels.reconcile_models import STATE_LABELS
-    assert STATE_LABELS["unknown"] == "Not audited"
-    m = ExistenceGridModel(_EXISTENCE)
-    # ENT-002 Contact is present on B; build a row that is unknown on B
-    rows = [{"entity_identifier": "ENT-9", "entity": "Widget", "entity_label": None,
-             "design": "present", "instance_a": "present", "instance_b": "unknown"}]
-    m.set_rows(rows)
-    assert m.data(m.index(0, 3), Qt.ItemDataRole.DisplayRole) == "Not audited"
-    assert "n/a" not in {
-        m.data(m.index(0, c), Qt.ItemDataRole.DisplayRole) for c in range(4)
+    assert STATE_LABELS == {
+        "present": "Present", "absent": "Not Found", "unknown": "Not Captured"
     }
+    assert "audit" not in STATE_LABELS["unknown"].lower()
+    m = ExistenceGridModel(_EXISTENCE)
+    # one row exercising all three states: present / absent / unknown
+    rows = [{"entity_identifier": "ENT-9", "entity": "Widget", "entity_label": None,
+             "design": "present", "instance_a": "absent", "instance_b": "unknown"}]
+    m.set_rows(rows)
+    labels = {m.data(m.index(0, c), Qt.ItemDataRole.DisplayRole) for c in (1, 2, 3)}
+    assert labels == {"Present", "Not Found", "Not Captured"}
+    # absent is driven by an absent record; not-captured by the unknown token.
+    assert m.data(m.index(0, 2), STATE_ROLE) == "absent"
+    assert m.data(m.index(0, 3), STATE_ROLE) == "unknown"
 
 
 def test_existence_grid_model_shape(qapp):
@@ -148,7 +153,7 @@ def test_existence_grid_model_shape(qapp):
     # entity cell shows name + label
     assert "Account" in m.data(m.index(0, 0), Qt.ItemDataRole.DisplayRole)
     # location cell uses operator language + carries the raw state token
-    assert m.data(m.index(0, 3), Qt.ItemDataRole.DisplayRole) == "Missing"
+    assert m.data(m.index(0, 3), Qt.ItemDataRole.DisplayRole) == "Not Found"
     assert m.data(m.index(0, 3), STATE_ROLE) == "absent"
     # the record is reachable for drill
     assert m.data(m.index(0, 0), RECORD_ROLE)["entity_identifier"] == "ENT-001"
@@ -168,7 +173,7 @@ def test_entity_detail_model_tree(qapp):
     assert "phone" in m.data(child, Qt.ItemDataRole.DisplayRole)
     # value cells humanized; the record is reachable for apply
     assert m.data(m.index(0, 1, grp_idx), Qt.ItemDataRole.DisplayRole) == "255"
-    assert m.data(m.index(0, 3, grp_idx), Qt.ItemDataRole.DisplayRole) == "Missing"
+    assert m.data(m.index(0, 3, grp_idx), Qt.ItemDataRole.DisplayRole) == "Not Found"
     assert m.data(child, RECORD_ROLE)["member_identifier"] == "FLD-001"
 
 

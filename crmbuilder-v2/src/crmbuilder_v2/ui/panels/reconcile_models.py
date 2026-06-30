@@ -5,7 +5,7 @@ from the extended ``GET /reconcile/compare`` payload (PI-331):
 
 - :class:`ExistenceGridModel` — a ``QAbstractTableModel`` for the landing grid,
   one row per entity with a cell per location (the design + each instance) showing
-  whether the entity is present, missing, or never audited there (REQ-368).
+  whether the entity is Present, Not Found, or Not Captured there (REQ-368/434).
 - :class:`EntityDetailModel` — a ``QAbstractItemModel`` two-level tree for the
   drill: the six object-type groups (Fields / Layouts / Relationships / Formulas /
   Settings / Other), each collapsible and showing how many of its rows differ,
@@ -31,18 +31,23 @@ PRESENT = "present"
 ABSENT = "absent"
 UNKNOWN = "unknown"
 
-#: Operator-language label for each presence token (REQ-374) — "In" / "Missing" /
-#: "Not audited" rather than present/absent/unknown. The text always accompanies
-#: the colour so a cell is never colour-only (REQ-368). "Not audited" (REQ-390)
-#: replaces the ambiguous "n/a", which operators read as "not applicable": the
-#: state means the entity simply was not recorded in that location's last audit.
-STATE_LABELS = {PRESENT: "In", ABSENT: "Missing", UNKNOWN: "Not audited"}
+#: Operator-language label for each presence token (REQ-374/REQ-434). The three
+#: states are deliberately distinct and glossary-defined:
+#:   - ``present``  -> "Present"     — the member is carried on that location.
+#:   - ``absent``   -> "Not Found"   — a member whose location was read and the
+#:     member is confirmed not there (it has an absent membership record).
+#:   - ``unknown``  -> "Not Captured" — there is no membership record for the
+#:     member at that location; it has not been captured by an audit there.
+#: "Not Captured" (REQ-434) replaces the earlier "Not audited" (REQ-390), whose
+#: word collided with the "Audit" process step; "Not Found" replaces "Missing".
+#: The text always accompanies the colour so a cell is never colour-only (REQ-368).
+STATE_LABELS = {PRESENT: "Present", ABSENT: "Not Found", UNKNOWN: "Not Captured"}
 
 #: Background colour per state (soft, label always present alongside it).
 _STATE_BG = {
     PRESENT: QColor("#E8F5E9"),   # green-tint: here
-    ABSENT: QColor("#FFEBEE"),    # red-tint: missing
-    UNKNOWN: QColor("#F5F5F5"),   # grey: never audited
+    ABSENT: QColor("#FFEBEE"),    # red-tint: not found
+    UNKNOWN: QColor("#F5F5F5"),   # grey: not captured
 }
 _STATE_FG = {
     PRESENT: QColor("#2E7D32"),
@@ -69,7 +74,7 @@ RECORD_ROLE = Qt.ItemDataRole.UserRole + 2
 def fmt_value(value: Any) -> str:
     """Render a difference-cell value in operator language.
 
-    Presence tokens become "In" / "Missing" / "n/a"; ``None`` becomes an em dash;
+    Presence tokens become "Present" / "Not Found" / "Not Captured"; ``None`` -> em dash;
     a list is comma-joined; everything else is its string form.
     """
     if value is None:
@@ -87,7 +92,7 @@ class ExistenceGridModel(QAbstractTableModel):
     """One row per entity × one column per location for the landing grid (REQ-368).
 
     Columns are **Entity**, **Master design**, then one per instance (labelled
-    with the chosen instances). Each location cell shows In / Missing / n/a with a
+    with the chosen instances). Each location cell shows Present / Not Found / Not Captured with a
     matching soft background; the entity column shows the entity's name (and its
     friendly label when distinct).
     """
