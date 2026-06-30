@@ -823,3 +823,46 @@ def test_worker_error_pauses_not_hangs(monkeypatch):
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
     assert outcomes["WTK-1"] is TaskStatus.FAILED
     assert "WTK-1" in rt._flagged  # surfaced for a human
+
+
+def test_pool_watchdog_halts_a_stranded_worker(monkeypatch):
+    # REQ-440 / PI-379: a worker dispatched into `active` that never enqueues a
+    # result used to spin the drain loop forever (the REL-038 hang). The
+    # no-progress watchdog must halt the phase cleanly within budget + grace.
+    rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.01}, max_concurrent=1)
+    rt.config.agent_timeout = 0
+    rt.config.phase_no_progress_grace = 0.2
+    # The worker never reports — simulate a strand (e.g. a worktree-add failure
+    # that never made it onto the completion queue).
+    monkeypatch.setattr(rt, "_worker", lambda assignment: None)
+
+    start = time.time()
+    report = rt.run()
+    elapsed = time.time() - start
+
+    assert elapsed < 5.0, "watchdog did not halt the stranded phase — it hung"
+    assert report.paused is True
+    assert "watchdog" in (report.pause_reason or "").lower()
+    assert "WTK-1" in rt._flagged
+    assert any(r.outcome is TaskStatus.FAILED for r in report.task_reports)
+
+
+def test_worker_enqueues_result_even_when_token_revoke_raises(monkeypatch):
+    # REQ-440 / PI-379: the result must be enqueued BEFORE the best-effort token
+    # revoke, so a revoke error (a side-band write) can never strand the task.
+    rt = _make_runtime(monkeypatch, task_sleeps={"WTK-9": 0.01})
+
+    def boom(engagement, token_id):
+        raise RuntimeError("revoke failed")
+
+    monkeypatch.setattr(pr.agent_identity, "revoke", boom)
+    assignment = _ResolvedAssignment(
+        work_task={"work_task_identifier": "WTK-9", "work_task_status": "Ready"},
+        work_task_id="WTK-9", area="api", profile_id="AGP-runtime",
+        branch="ado/wtk-9", prompt="WTK-9",
+    )
+
+    rt._worker(assignment)  # must not raise despite the revoke error
+
+    result = rt._completed.get_nowait()  # the result IS on the queue
+    assert result.assignment.work_task_id == "WTK-9"

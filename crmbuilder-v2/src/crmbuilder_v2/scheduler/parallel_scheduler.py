@@ -530,12 +530,23 @@ class ParallelCoordinatingScheduler:
                 finished_at=now,
                 error=str(exc),
             )
-        finally:
-            # REQ-381: the agent's run (its spawn) is done — revoke its one-time
-            # token so it cannot be reused (the scheduler does the later merge,
-            # not the agent). No-op when auth is off / no token was minted.
-            agent_identity.revoke(self.config.engagement, assignment.agent_token_id)
+        # REQ-440 / PI-379: enqueue the result BEFORE any further cleanup. The
+        # pool's drain invariant is exactly one result per dispatched task; if the
+        # token revoke (a side-band write) had raised in a ``finally`` *before* the
+        # put, the task stranded in ``active`` and the pool spun forever. Queue
+        # first, then clean up best-effort.
         self._completed.put(result)
+        # REQ-381: the agent's run is done — revoke its one-time token so it cannot
+        # be reused (the scheduler does the later merge, not the agent). No-op when
+        # auth is off / no token was minted. Best-effort: a revoke error must never
+        # strand the task, whose result is already on the queue.
+        try:
+            agent_identity.revoke(self.config.engagement, assignment.agent_token_id)
+        except Exception as exc:  # noqa: BLE001
+            self.log(
+                f"  [{assignment.work_task_id}] token revoke failed "
+                f"(non-fatal): {exc!r}"
+            )
 
     # --- integrate one completed agent (main thread, serialized) --------
     def _failed_report(
@@ -770,6 +781,9 @@ class ParallelCoordinatingScheduler:
                 pre_phase_head = self._l1._base_head()
             report.pre_phase_head = pre_phase_head
             self._fill_slots(executor, active)
+            # REQ-440 / PI-379: timestamp of the last completion — the no-progress
+            # watchdog (below) measures stall against it.
+            last_progress = time.time()
             # The loop also stays alive while a migration is draining/running, so
             # an exclusive window that begins after the last agent completes still
             # gets its drained tick (PI-133).
@@ -783,7 +797,48 @@ class ParallelCoordinatingScheduler:
                 try:
                     run = self._completed.get(timeout=cfg.poll_interval)
                 except queue.Empty:
+                    # REQ-440 / PI-379: no-progress watchdog. A worker that died
+                    # without enqueuing a result (e.g. a worktree-add failure that
+                    # never reached the queue) would otherwise leave its task in
+                    # ``active`` forever and spin this loop indefinitely (the
+                    # REL-038 hang). If nothing has completed for longer than a
+                    # full agent budget plus grace while tasks are still in flight,
+                    # halt the phase cleanly: flag the stranded tasks and stop.
+                    grace = cfg.phase_no_progress_grace
+                    if (
+                        grace
+                        and active
+                        and not paused
+                        and time.time() - last_progress > cfg.agent_timeout + grace
+                    ):
+                        stranded = sorted(active)
+                        deadline = cfg.agent_timeout + grace
+                        self.log(
+                            f"⏸ pool watchdog: no completion for >{deadline:.0f}s "
+                            f"with {len(stranded)} task(s) in flight — halting the "
+                            f"phase (REQ-440): {stranded}"
+                        )
+                        for tid in stranded:
+                            self._l1._flag_needs_attention(
+                                tid,
+                                "pool watchdog: worker stranded with no result for "
+                                f">{deadline:.0f}s; halting the phase (REQ-440)",
+                            )
+                            tr = TaskReport(
+                                work_task_id=tid, branch="",
+                                outcome=TaskStatus.FAILED,
+                            )
+                            report.task_reports.append(tr)
+                            self.reports.append(tr)
+                        report.paused = True
+                        report.pause_reason = (
+                            report.pause_reason
+                            or f"pool watchdog: {len(stranded)} stranded task(s)"
+                        )
+                        active.clear()
+                        break
                     continue  # periodic wake — monitor the API + migration, re-wait
+                last_progress = time.time()
                 task_report = self._integrate(run)
                 report.task_reports.append(task_report)
                 self.reports.append(task_report)
