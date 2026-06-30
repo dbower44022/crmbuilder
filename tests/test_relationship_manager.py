@@ -406,3 +406,67 @@ def test_create_link_non_json_failure_surfaces_raw_text():
     messages = [m for m, _ in output_log]
     assert any("non-JSON response" in m for m in messages)
     assert any("nginx 502 bad gateway" in m for m in messages)
+
+
+# --- REQ-338 / PI-298: native-target foreign link name round-trips cleanly ----
+
+def test_strip_c_prefix_helper():
+    from espo_impl.core.relationship_manager import strip_c_prefix
+    assert strip_c_prefix("cEngagements") == "engagements"   # one prefix removed
+    # cCEngagements is Espo prefixing cEngagements, so stripping one prefix
+    # reverses exactly that and yields the single-prefixed cEngagements.
+    assert strip_c_prefix("cCEngagements") == "cEngagements"
+    assert strip_c_prefix("engagements") == "engagements"     # no prefix
+    assert strip_c_prefix("contacts") == "contacts"           # plain c-word, untouched
+    assert strip_c_prefix("c") == "c"                         # too short to be a prefix
+
+
+def test_build_payload_native_target_strips_foreign_prefix():
+    # REQ-338: a manyToOne to a NATIVE target (Account). EspoCRM auto-prefixes the
+    # foreign-side link, so a spec that already carries the prefix must be sent
+    # UNPREFIXED — else it double-prefixes (cMentorEngagements -> cCMentorEngagements).
+    manager, _ = make_manager()
+    rel = make_rel(
+        entity="MentorEngagement", entity_foreign="Account",
+        link_type="manyToOne", link="account",
+        link_foreign="cMentorEngagements",   # spec carries the auto-prefix
+    )
+    payload = manager._build_payload(rel)
+    assert payload["entityForeign"] == "Account"
+    assert payload["linkForeign"] == "mentorEngagements"  # Espo will re-apply ONE prefix
+
+
+def test_build_payload_native_target_unprefixed_spec_unchanged():
+    # An unprefixed spec to a native target is already correct — left as-is.
+    manager, _ = make_manager()
+    rel = make_rel(
+        entity="MentorEngagement", entity_foreign="Account",
+        link_type="manyToOne", link="account",
+        link_foreign="mentorEngagements",
+    )
+    assert manager._build_payload(rel)["linkForeign"] == "mentorEngagements"
+
+
+def test_build_payload_custom_target_keeps_foreign_link():
+    # A CUSTOM target is not auto-prefixed — leave linkForeign exactly as specified.
+    manager, _ = make_manager()
+    rel = make_rel(
+        entity="Session", entity_foreign="Engagement",
+        link_foreign="engagementSessions",
+    )
+    assert manager._build_payload(rel)["linkForeign"] == "engagementSessions"
+
+
+def test_compare_link_native_target_round_trips():
+    # The design carries the prefixed foreign name; the instance reads back the
+    # single-prefixed name; the comparator matches (acceptance: no manual unprefix).
+    manager, _ = make_manager()
+    rel = make_rel(
+        entity="MentorEngagement", entity_foreign="Account",
+        link_type="manyToOne", link="account",
+        link_foreign="cMentorEngagements",
+    )
+    existing = {
+        "type": "belongsTo", "entity": "Account", "foreign": "cMentorEngagements",
+    }
+    assert manager._compare_link(existing, rel, "Account") is True

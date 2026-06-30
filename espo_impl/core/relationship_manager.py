@@ -38,6 +38,20 @@ LINK_TYPE_TO_METADATA: dict[str, str] = {
 ONE_TO_ONE_METADATA_TYPES: frozenset[str] = frozenset({"hasOne", "belongsTo"})
 
 
+def strip_c_prefix(name: str) -> str:
+    """Remove a single leading EspoCRM ``c`` prefix from a link name.
+
+    EspoCRM auto-prefixes a custom link added to a *native* entity with ``c``
+    (``engagements`` → ``cEngagements``). The prefix is exactly the lowercase
+    ``c`` immediately followed by an uppercase letter; ``contacts`` (a plain
+    name beginning with ``c``) is left untouched. Idempotent-safe per call: it
+    strips at most one prefix, so ``cCEngagements`` → ``CEngagements``.
+    """
+    if len(name) > 1 and name[0] == "c" and name[1].isupper():
+        return name[1].lower() + name[2:]
+    return name
+
+
 class RelationshipManagerError(Exception):
     """Raised when the API returns 401 Unauthorized."""
 
@@ -299,10 +313,9 @@ class RelationshipManager:
         if "foreign" in existing:
             existing_foreign = existing["foreign"]
             expected_foreign = rel.link_foreign
-            # normalise: strip leading c-prefix for comparison
-            def strip_c(s):
-                return s[1].lower() + s[2:] if len(s) > 1 and s[0] == "c" and s[1].isupper() else s
-            if strip_c(existing_foreign) != strip_c(expected_foreign):
+            # Normalise: a native-target foreign link is auto-prefixed by EspoCRM
+            # (REQ-338), so compare both sides with one leading c-prefix stripped.
+            if strip_c_prefix(existing_foreign) != strip_c_prefix(expected_foreign):
                 logger.debug(
                     "Foreign mismatch: existing=%s expected=%s",
                     existing_foreign, expected_foreign
@@ -318,11 +331,20 @@ class RelationshipManager:
         :param rel: Relationship definition.
         :returns: API payload dict.
         """
+        # REQ-338 / PI-298: when the target is a native entity, EspoCRM
+        # auto-prefixes the foreign-side link name with ``c``. Send it UNPREFIXED
+        # so the platform applies the prefix exactly once — a spec that already
+        # carries the prefix (e.g. an audit read it back as ``cEngagements``)
+        # would otherwise deploy as ``cCEngagements`` (double prefix) and never
+        # round-trip back to the design's name.
+        link_foreign = rel.link_foreign
+        if rel.entity_foreign in NATIVE_ENTITIES:
+            link_foreign = strip_c_prefix(rel.link_foreign)
         return {
             "entity": get_espo_entity_name(rel.entity),
             "entityForeign": get_espo_entity_name(rel.entity_foreign),
             "link": rel.link,
-            "linkForeign": rel.link_foreign,
+            "linkForeign": link_foreign,
             "label": rel.label,
             "labelForeign": rel.label_foreign,
             "linkType": rel.link_type,
