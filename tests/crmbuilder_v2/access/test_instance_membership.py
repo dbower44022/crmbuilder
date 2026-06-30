@@ -188,6 +188,50 @@ def test_mark_absent_missing_gated_on_read_success(v2_env):
         assert states2 == {"ENT-001": "absent"}
 
 
+def test_absent_condition_gate_three_clauses(v2_env):
+    # WTK-271 / REQ-394: the absent-condition gate on mark_absent_missing,
+    # pinned as one explicit three-clause matrix at the storage layer. The
+    # contract: membership becomes absent only after a *successful* live read
+    # that confirms the object missing, and is left unchanged when the read
+    # failed OR when the object is still present.
+    with session_scope() as s:
+        iid = _make_instance(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="entity",
+            member_identifier="ENT-001", state="present",
+        )
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="entity",
+            member_identifier="ENT-002", state="present",
+        )
+
+        # Clause 1 — read failed: a no-op whatever it resolved, so a failed
+        # read can never erase the prior inventory (even with an empty set).
+        n_failed = mb.mark_absent_missing(
+            s, instance_identifier=iid, member_type="entity",
+            present_member_identifiers=set(), read_succeeded=False,
+        )
+        assert n_failed == 0
+        states = {r["member_identifier"]: r["state"]
+                  for r in mb.list_memberships(s, instance_identifier=iid)}
+        assert states == {"ENT-001": "present", "ENT-002": "present"}
+
+        # Clause 2 + 3 in one successful read — ENT-001 is confirmed present
+        # (stays unchanged), ENT-002 is confirmed missing (transitions absent).
+        n_ok = mb.mark_absent_missing(
+            s, instance_identifier=iid, member_type="entity",
+            present_member_identifiers={"ENT-001"}, read_succeeded=True,
+        )
+        assert n_ok == 1
+        states = {r["member_identifier"]: r["state"]
+                  for r in mb.list_memberships(s, instance_identifier=iid)}
+        # Clause 3: object present on a successful read -> unchanged.
+        assert states["ENT-001"] == "present"
+        # Clause 2: object missing on a successful read -> absent (positive
+        # observation, not an inference from an empty/failed read).
+        assert states["ENT-002"] == "absent"
+
+
 # --- reconcile --------------------------------------------------------------
 
 
