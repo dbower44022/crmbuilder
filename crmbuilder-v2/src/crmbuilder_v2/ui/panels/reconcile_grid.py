@@ -244,6 +244,9 @@ class ReconcileGridPanel(QWidget):
         self._audit_worker: _EntityAuditWorker | None = None
         # Show-all-values vs differences-only (REQ-432). Differences-only default.
         self._show_all = False
+        # The entity currently drilled into, so an apply can keep its detail view
+        # open instead of bouncing back to the entity list (REQ-439).
+        self._drilled_entity_id: str | None = None
         self._build_ui()
         self._load_instances()
 
@@ -590,6 +593,7 @@ class ReconcileGridPanel(QWidget):
 
     def _drill(self, existence_row: dict[str, Any]) -> None:
         eid = existence_row.get("entity_identifier")
+        self._drilled_entity_id = eid
         name = existence_row.get("entity") or eid or "?"
         a_label = self._instance_label(self._combo_a.currentData())
         b_label = self._instance_label(self._combo_b.currentData())
@@ -717,8 +721,29 @@ class ReconcileGridPanel(QWidget):
             )
         self._report_apply(applied, skipped, errors)
         if applied:
-            # Refresh the comparison so the surface reflects the new state.
-            self._on_compare()
+            # Refresh the comparison so the surface reflects the new state, but stay
+            # on the same entity's detail view so the operator can keep correcting
+            # values instead of being bounced back to the entity list (REQ-439).
+            self._refresh_keeping_detail()
+
+    def _refresh_keeping_detail(self) -> None:
+        """Re-run the comparison, returning to the open entity's detail view.
+
+        ``_on_compare`` resets the stacked view to the existence grid; when the
+        operator was drilled into an entity (e.g. just applied a change), re-drill
+        that same entity from the refreshed payload so the detail view stays open
+        (REQ-439). Falls back to the grid only if the entity is gone after refresh.
+        """
+        keep = self._drilled_entity_id if self._stack.currentIndex() == 1 else None
+        self._on_compare()
+        if keep:
+            fresh = next(
+                (r for r in self._payload.get("existence", [])
+                 if r.get("entity_identifier") == keep),
+                None,
+            )
+            if fresh:
+                self._drill(fresh)
 
     def _execute_op(self, row: dict[str, Any], op: dict[str, str]) -> None:
         """Run one capture/publish operation against the API."""
@@ -876,9 +901,10 @@ class ReconcileGridPanel(QWidget):
         self._audit_status.setText(
             f"Re-audited on {n} instance(s); refreshing comparison…"
         )
-        # Refresh the grid so the new state shows, if a comparison is loaded.
+        # Refresh so the new state shows, keeping the entity detail view open if
+        # the operator was drilled into one (REQ-439).
         if self._combo_a.currentData() and self._combo_b.currentData():
-            self._on_compare()
+            self._refresh_keeping_detail()
         self._audit_status.setText(f"Re-audited on {n} instance(s).")
 
     def _on_audit_failed(self, message: str) -> None:

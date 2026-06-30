@@ -497,6 +497,25 @@ def test_apply_capture_from_instance_a_into_design(qtbot):
     assert client.captures[0]["instance"] == "INST-001"
 
 
+def test_apply_keeps_entity_detail_open(qtbot):
+    """REQ-439: after applying a change while drilled into an entity, the panel
+    stays on that entity's detail view (with refreshed data), not the entity list."""
+    panel, client = _apply_panel(qtbot)
+    assert panel._stack.currentIndex() == 1  # drilled into the entity
+    grp = panel._detail_model.index(0, 0)
+    child = panel._detail_model.index(0, 0, grp)
+    panel._detail.selectionModel().select(
+        child, panel._detail.selectionModel().SelectionFlag.Select
+    )
+    panel._source_combo.setCurrentIndex(1)
+    panel._target_design.setChecked(True)
+    panel._on_apply()
+    assert len(client.captures) == 1              # the apply happened
+    assert panel._stack.currentIndex() == 1       # STILL on the detail view, not the grid
+    assert panel._drilled_entity_id == "ENT-001"  # same entity
+    assert panel._detail_model.rowCount() == 1    # the entity's groups are re-rendered
+
+
 def test_apply_publish_design_to_instance_b(qtbot):
     panel, client = _apply_panel(qtbot)
     grp = panel._detail_model.index(0, 0)
