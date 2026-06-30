@@ -52,6 +52,7 @@ from .parallel_scheduler import (
     PoolRunReport,
 )
 from .reconciliation import GateDecision
+from .repo_build_lock import BuildLockHeld, acquire_build_lock
 
 _DEVELOP_PHASE = "Develop"
 _TERMINAL_PHASE = frozenset({"Complete", "Not Applicable"})
@@ -1331,7 +1332,17 @@ def main(argv: list[str] | None = None) -> int:
         manage_api=args.manage_api,
         dry_run=args.dry_run,
     )
-    report = AdoScheduler(cfg).run()
+    # REQ-441 / PI-380: one builder per working copy. A dry-run does no git ops,
+    # so it does not contend; a real run refuses if another driver holds the lock.
+    if cfg.dry_run:
+        report = AdoScheduler(cfg).run()
+    else:
+        try:
+            with acquire_build_lock(cfg.repo_root, label=f"ado {cfg.planning_item}"):
+                report = AdoScheduler(cfg).run()
+        except BuildLockHeld as exc:
+            print(f"\n⏸ refused — {exc}")
+            return 2
     print(f"\nrun complete: {report.status}"
           + (f" — {report.reason}" if report.reason else "")
           + f"; phases completed: {report.completed_phases or '[]'}")
@@ -1371,7 +1382,15 @@ def project_main(argv: list[str] | None = None) -> int:
         review_on_complete=args.review_on_complete,
         max_parallel_pis=args.max_parallel_pis,
     )
-    report = ProjectScheduler(cfg).run()
+    # REQ-441 / PI-380: one builder per working copy — refuse a second concurrent
+    # driver against the same checkout (the PM shares one repo_lock internally,
+    # but two PM/ado processes do not serialize against each other).
+    try:
+        with acquire_build_lock(cfg.repo_root, label=f"ado-pm {cfg.project}"):
+            report = ProjectScheduler(cfg).run()
+    except BuildLockHeld as exc:
+        print(f"\n⏸ refused — {exc}")
+        return 2
     print(f"\nPM run complete: {len(report.driven)} PI(s) driven")
     for d in report.driven:
         print(f"  {d['planning_item']}: {d['status']}"

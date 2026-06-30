@@ -646,6 +646,13 @@ class SchedulerConfig:
     max_iterations: int = 1
     agent_timeout: int = 1800
     dry_run: bool = False  # resolve + report, never spawn/merge
+    # REQ-440 / PI-379: pool no-progress watchdog. A healthy worker always reports
+    # within ``agent_timeout`` (its spawn is bounded by it); if the pool goes this
+    # much longer than ``agent_timeout`` with tasks still in flight and NO
+    # completion arriving, those workers are stranded (e.g. a worktree-add failure
+    # that never made it onto the queue) and the phase is halted cleanly instead
+    # of spinning forever. 0 disables the watchdog.
+    phase_no_progress_grace: float = 300.0
 
 
 @dataclass
