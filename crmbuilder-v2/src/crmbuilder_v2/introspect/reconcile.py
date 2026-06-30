@@ -988,14 +988,6 @@ def _reconcile_fields_drift(
                 # mirrored value-type stays unset until known, never assumed.
                 if audited["field_type"] == "derived":
                     extra["derived_result_type"] = "text"
-                # A ``foreign`` field records WHAT it mirrors — the link and the
-                # field on the linked entity — so it round-trips and its result
-                # type can be resolved (REQ-435/436 / PI-374).
-                if audited["field_type"] == "foreign":
-                    if field_meta.get("link"):
-                        extra["foreign_link"] = field_meta.get("link")
-                    if field_meta.get("field"):
-                        extra["foreign_target"] = field_meta.get("field")
                 description = f"Discovered by auditing instance {instance_identifier}."
                 if is_unmapped_field_type(field_meta.get("type")):
                     description += (
@@ -1029,16 +1021,21 @@ def _reconcile_fields_drift(
             if label and label != cur.get("field_label"):
                 field_repo.patch_field(session, member_id, label=label)
 
-            # PI-378 (REQ-436): a foreign field's mirrored result type is resolved
-            # after the scan (it may reference a field on an entity not yet seen).
-            if (
-                audited["field_type"] == "foreign"
-                and field_meta.get("link")
-                and field_meta.get("field")
-            ):
-                foreign_pending.append(
-                    (member_id, scope_name, field_meta["link"], field_meta["field"])
-                )
+            # PI-374 (REQ-435): record/refresh a foreign field's mirror coordinates
+            # — the link and the field on the linked entity — whether it was just
+            # created or already existed, so it round-trips to deploy. Patch only on
+            # change so an unchanged re-audit is a no-op.
+            if audited["field_type"] == "foreign":
+                link = field_meta.get("link")
+                target = field_meta.get("field")
+                if link and link != cur.get("field_foreign_link"):
+                    field_repo.patch_field(session, member_id, foreign_link=link)
+                if target and target != cur.get("field_foreign_target"):
+                    field_repo.patch_field(session, member_id, foreign_target=target)
+                # PI-378 (REQ-436): resolve the mirrored result type after the scan
+                # (the target may live on an entity not yet seen).
+                if link and target:
+                    foreign_pending.append((member_id, scope_name, link, target))
 
             writer.upsert(member_id, state, override)
             summary[state] += 1
