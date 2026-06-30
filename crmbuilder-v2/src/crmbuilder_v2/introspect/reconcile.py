@@ -140,13 +140,30 @@ _FIELD_TYPE_MAP: dict[str, str] = {
     "link": "reference",
     "linkOne": "reference",
     "linkParent": "reference",
-    "foreign": "derived",
+    # A foreign field mirrors a scalar from a linked record — its own neutral
+    # kind (REQ-435 / PI-374), no longer collapsed into ``derived`` (which is a
+    # computed/formula value) and no longer surfacing as text.
+    "foreign": "foreign",
     "formula": "derived",
 }
 
 
+def is_unmapped_field_type(espo_type: object) -> bool:
+    """Whether the engine has no neutral mapping for this EspoCRM field type.
+
+    Such a type is surfaced for human review rather than silently stored as text
+    (REQ-437 / PI-374): the caller records it in the reconcile summary and notes
+    it on the field so unmapped kinds stay visible.
+    """
+    return str(espo_type) not in _FIELD_TYPE_MAP
+
+
 def _map_field_type(espo_type: object) -> str:
-    """Map an EspoCRM concrete field type to an engine-neutral FIELD_TYPE."""
+    """Map an EspoCRM concrete field type to an engine-neutral FIELD_TYPE.
+
+    An unrecognised type falls back to ``text`` so the field is still recorded,
+    but :func:`is_unmapped_field_type` lets the reconcile layer flag it for review
+    rather than letting the fallback pass silently (REQ-437)."""
     return _FIELD_TYPE_MAP.get(str(espo_type), "text")
 
 
@@ -912,22 +929,33 @@ def _reconcile_fields_drift(
                 field_name, entity_is_native=is_native
             )
             audited = _audited_field_attrs(field_meta)
+            # REQ-437: a source field kind the engine cannot map falls back to
+            # ``text`` but is surfaced for review, not silently misrepresented.
+            if is_unmapped_field_type(field_meta.get("type")):
+                summary.setdefault("unmapped_field_types", []).append(
+                    {"field": neutral_field, "source_type": str(field_meta.get("type"))}
+                )
 
             match = canon.get(_ci(neutral_field))
             if match is None:
                 extra: dict[str, Any] = {}
-                # A derived field (mapped from EspoCRM foreign/formula) requires
-                # a result type (PI-197); the audit can't infer it, so default to
-                # ``text`` — the override/later refinement can correct it.
+                # A ``derived`` (formula) field requires a result type the audit
+                # cannot infer (PI-197) — default to ``text``, correctable later.
+                # A ``foreign`` field is NOT defaulted to text (REQ-436): its
+                # mirrored value-type stays unset until known, never assumed.
                 if audited["field_type"] == "derived":
                     extra["derived_result_type"] = "text"
+                description = f"Discovered by auditing instance {instance_identifier}."
+                if is_unmapped_field_type(field_meta.get("type")):
+                    description += (
+                        f" Source field kind {field_meta.get('type')!r} is not "
+                        f"recognised by the engine and was recorded as text — review."
+                    )
                 created = field_repo.create_field(
                     session,
                     field_belongs_to_entity_identifier=parent_id,
                     name=neutral_field,
-                    description=(
-                        f"Discovered by auditing instance {instance_identifier}."
-                    ),
+                    description=description,
                     type=audited["field_type"],
                     required=audited["field_required"],
                     **extra,

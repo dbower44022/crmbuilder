@@ -164,6 +164,22 @@ def test_create_field_rejects_invalid_field_type(v2_env):
     assert any(e.field == "field_type" for e in exc.value.errors)
 
 
+def test_create_field_accepts_foreign_type(v2_env):
+    """REQ-435 / PI-374: ``foreign`` is a valid engine-neutral field kind — a field
+    mirroring a scalar from a linked record keeps a distinct type (not derived/text),
+    and the field_type CHECK admits it."""
+    with session_scope() as s:
+        ent_id = _seed_entity(s)
+        row = field.create_field(
+            s,
+            field_belongs_to_entity_identifier=ent_id,
+            name="postalCode",
+            description="mirrored postal code from the linked contact",
+            type="foreign",
+        )
+    assert row["field_type"] == "foreign"
+
+
 # ---------------------------------------------------------------------------
 # Criterion 5 — status enum and transition validation
 # ---------------------------------------------------------------------------
