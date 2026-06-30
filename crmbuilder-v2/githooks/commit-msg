@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Governance enforcement gate — commit-msg (REQ-320 / PI-287).
+# Validates the commit's Governed-By trailer against the live governance store.
+# Mode: CRMBUILDER_GOVERNANCE_GATE = off | warn (default) | enforce.
+# Resilient: any failure to run the validator degrades to allow (never blocks
+# committing on tooling breakage) unless the validator itself returns non-zero.
+mode="${CRMBUILDER_GOVERNANCE_GATE:-warn}"
+[ "$mode" = "off" ] && exit 0
+root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+py="$root/.venv/bin/python3"
+[ -x "$py" ] || py="$(command -v python3 || true)"
+[ -x "$py" ] || { echo "[governance-gate] python not found — skipping" >&2; exit 0; }
+PYTHONPATH="$root/crmbuilder-v2/src${PYTHONPATH:+:$PYTHONPATH}" \
+  "$py" -m crmbuilder_v2.governance_gate commit-msg "$1" --mode "$mode"

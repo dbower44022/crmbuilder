@@ -55,6 +55,8 @@ crmbuilder-v2-render-entity-prd = "crmbuilder_v2.render.entity_prd:main"
 crmbuilder-v2-spreadsheet-profile = "crmbuilder_v2.adapters.spreadsheet:main"
 crmbuilder-v2-register-source = "crmbuilder_v2.adapters.source_store:main"
 crmbuilder-v2-export-espocrm = "crmbuilder_v2.adapters.espocrm.adapter:main"
+crmbuilder-v2-governance-gate = "crmbuilder_v2.governance_gate:main"
+crmbuilder-v2-install-hooks = "crmbuilder_v2.governance_gate:install_main"
 
 [build-system]
 requires = ["hatchling"]
