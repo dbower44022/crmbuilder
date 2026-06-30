@@ -44,6 +44,12 @@ def _entity_patch_kwarg(attribute: str) -> str:
     return attribute.removeprefix("entity_")
 
 
+def _association_patch_kwarg(attribute: str) -> str:
+    """Map a neutral association attribute (``association_cardinality``) to its
+    ``patch_association`` keyword (``cardinality``)."""
+    return attribute.removeprefix("association_")
+
+
 def _membership_for(
     session: Session, instance: str, member_type: str, member_identifier: str
 ) -> dict[str, Any] | None:
@@ -189,6 +195,80 @@ def capture_entity_setting(
     return {
         "transaction": transaction,
         "entity": entity_repo.get_entity(session, entity_identifier),
+    }
+
+
+def capture_association_attribute(
+    session: Session,
+    *,
+    instance: str,
+    association_identifier: str,
+    attribute: str,
+    actor: str,
+    batch_id: str | None = None,
+    note: str | None = None,
+) -> dict[str, Any]:
+    """Capture an instance's value for one association attribute into the design (REQ-443).
+
+    The relationship twin of :func:`capture_field_attribute` — today the only
+    audited (and so reconcilable) attribute is ``association_cardinality``. Reads
+    the instance's recorded override value, writes it onto the canonical
+    association, records the transaction, and clears that attribute's drift on the
+    source instance. Raises ``ConflictError`` when the instance records no
+    deviation for ``attribute``.
+
+    Note this is **capture only** (instance → design): the deploy engine cannot
+    alter an existing link's cardinality in place, so publishing a cardinality
+    change is view-only (routed there by ``plan_apply``), not handled here.
+
+    :returns: ``{transaction, association}``.
+    """
+    membership = _membership_for(session, instance, "association", association_identifier)
+    override = (membership or {}).get("override") or {}
+    if attribute not in override:
+        raise ConflictError(
+            f"instance {instance} records no deviation for {association_identifier}."
+            f"{attribute}; nothing to capture"
+        )
+    new_value = override[attribute]
+
+    current = association_repo.get_association(session, association_identifier)
+    if current is None:
+        raise NotFoundError("association", association_identifier)
+    before_value = current.get(attribute)
+
+    association_repo.patch_association(
+        session, association_identifier,
+        **{_association_patch_kwarg(attribute): new_value},
+    )
+
+    transaction = txn_repo.record(
+        session,
+        direction="capture",
+        source_ref=instance,
+        target_ref=DESIGN,
+        member_type="association",
+        member_identifier=association_identifier,
+        attribute=attribute,
+        before_value=before_value,
+        after_value=new_value,
+        actor=actor,
+        batch_id=batch_id,
+        note=note,
+    )
+
+    remaining = {k: v for k, v in override.items() if k != attribute}
+    membership_repo.upsert_membership(
+        session,
+        instance_identifier=instance,
+        member_type="association",
+        member_identifier=association_identifier,
+        state="drifted" if remaining else "present",
+        override=remaining or None,
+    )
+    return {
+        "transaction": transaction,
+        "association": association_repo.get_association(session, association_identifier),
     }
 
 
@@ -350,26 +430,37 @@ def rollback(session: Session, transaction_id: int, *, actor: str) -> dict[str, 
             f"transaction {transaction_id} targets {txn['target_ref']}, not the "
             f"design; use the guarded live-instance revert instead"
         )
-    if txn["member_type"] != "field" or not txn["attribute"]:
+    member_type = txn["member_type"]
+    attribute = txn["attribute"]
+    if member_type not in ("field", "association") or not attribute:
         raise ConflictError(
-            f"transaction {transaction_id} is not a reversible field-attribute "
-            f"capture in this slice"
+            f"transaction {transaction_id} is not a reversible field- or "
+            f"relationship-attribute capture in this slice"
         )
 
-    field_repo.patch_field(
-        session,
-        txn["member_identifier"],
-        **{_field_patch_kwarg(txn["attribute"]): txn["before_value"]},
-    )
+    # Restore the canonical value via the member type's patch helper (REQ-443
+    # adds the relationship arm to the original field-only undo).
+    if member_type == "field":
+        field_repo.patch_field(
+            session,
+            txn["member_identifier"],
+            **{_field_patch_kwarg(attribute): txn["before_value"]},
+        )
+    else:
+        association_repo.patch_association(
+            session,
+            txn["member_identifier"],
+            **{_association_patch_kwarg(attribute): txn["before_value"]},
+        )
     rolled = txn_repo.mark_rolled_back(session, transaction_id, actor=actor)
     compensating = txn_repo.record(
         session,
         direction="capture",
         source_ref=DESIGN,
         target_ref=DESIGN,
-        member_type="field",
+        member_type=member_type,
         member_identifier=txn["member_identifier"],
-        attribute=txn["attribute"],
+        attribute=attribute,
         before_value=txn["after_value"],
         after_value=txn["before_value"],
         actor=actor,

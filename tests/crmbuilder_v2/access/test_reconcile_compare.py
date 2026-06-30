@@ -514,3 +514,43 @@ def test_compute_properties_includes_option_set_and_flags_difference():
     )
     opt_row2 = next(r for r in out2["rows"] if r["attribute"] == "field_options")
     assert opt_row2["differs"] is False
+
+
+# --- REQ-443: relationship (association) actionability -----------------------
+
+def test_association_presence_row_is_actionable():
+    """A relationship the design defines but an instance lacks yields a presence
+    row that is actionable (publishable), unlike other member types."""
+    rows = compute_member_rows(
+        member_type="association", member_identifier="ASN-1", member_name="clientContact",
+        design_obj={"association_cardinality": "many_to_one"},
+        attributes=[], membership_a=_mem(), membership_b=_mem(state="absent"),
+    )
+    pres = [r for r in rows if r["kind"] == "presence"]
+    assert len(pres) == 1
+    assert pres[0]["actionable"] is True
+
+
+def test_field_presence_row_stays_non_actionable():
+    """Only relationships get targeted presence-push; a missing field's presence
+    row remains view-only (brought over by the whole-entity promote)."""
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="phone",
+        design_obj={"field_type": "varchar"},
+        attributes=[], membership_a=_mem(), membership_b=_mem(state="absent"),
+    )
+    assert rows[0]["kind"] == "presence"
+    assert rows[0]["actionable"] is False
+
+
+def test_association_cardinality_attribute_is_actionable():
+    a = _mem(state="drifted", override={"association_cardinality": "many_to_many"})
+    rows = compute_member_rows(
+        member_type="association", member_identifier="ASN-1", member_name="mentorProfile",
+        design_obj={"association_cardinality": "many_to_one"},
+        attributes=["association_cardinality"], membership_a=a, membership_b=_mem(),
+    )
+    attr = [r for r in rows if r["kind"] == "attribute"]
+    assert len(attr) == 1
+    assert attr[0]["attribute"] == "association_cardinality"
+    assert attr[0]["actionable"] is True

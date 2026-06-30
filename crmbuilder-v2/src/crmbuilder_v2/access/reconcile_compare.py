@@ -52,20 +52,42 @@ RECONCILABLE_ENTITY_SETTINGS = frozenset({
     "entity_text_filter_fields",
 })
 
+#: Association attributes the apply engine can reconcile (REQ-443). Only
+#: ``association_cardinality`` is audited, and it is **capture-only** (instance →
+#: design): the deploy engine cannot alter an existing link's cardinality in place,
+#: so publishing a cardinality change stays view-only (handled in ``plan_apply``).
+RECONCILABLE_ASSOCIATION_ATTRS = frozenset({"association_cardinality"})
+
 
 def _attribute_actionable(member_type: str, attribute: str | None) -> bool:
     """Whether the apply engine can reconcile this attribute row.
 
     Field attributes are reconcilable (capture into the design, publish out);
-    entity-level rows are reconcilable only for the collection settings the apply
-    engine supports (REQ-375). Everything else is shown for visibility but not
-    offered an action (REQ-358 / view-only handling).
+    entity-level rows only for the collection settings the apply engine supports
+    (REQ-375); association rows only for the cardinality the apply engine can
+    capture (REQ-443). Everything else is shown for visibility but not offered an
+    action (REQ-358 / view-only handling). Direction limits (an association's
+    cardinality is capture-only; a missing relationship is publish-only) are
+    enforced when routing the apply, not here.
     """
     if member_type == "field":
         return True
     if member_type == "entity":
         return attribute in RECONCILABLE_ENTITY_SETTINGS
+    if member_type == "association":
+        return attribute in RECONCILABLE_ASSOCIATION_ATTRS
     return False
+
+
+def _presence_actionable(member_type: str) -> bool:
+    """Whether a member's *presence* difference can be acted on (REQ-443).
+
+    A relationship the design defines but an instance lacks can be published to
+    that instance (creating the link). Other member types have no targeted
+    presence-push here — a missing field/layout is brought over by the
+    whole-entity promote — so their presence rows stay view-only.
+    """
+    return member_type == "association"
 
 
 def _presence(membership: dict[str, Any] | None) -> str:
@@ -199,7 +221,7 @@ def compute_member_rows(
             "instance_a": pres_a,
             "instance_b": pres_b,
             "differs": True,
-            "actionable": False,
+            "actionable": _presence_actionable(member_type),
         })
 
     # Attributes: compare effective values across the design and the instances

@@ -510,6 +510,11 @@ def plan_apply(
     if not row.get("actionable"):
         return {"ops": [], "skipped": ["not reconcilable here — configure by hand"]}
 
+    # Relationships route differently from value attributes (REQ-443): a missing
+    # link is publish-only; a cardinality difference is capture-only.
+    if row.get("member_type") == "association":
+        return _plan_association(row, source_loc, target_locs)
+
     design_value = row.get("design")
     source_value = row.get(source_loc)
     targets = [t for t in target_locs if t != source_loc]
@@ -541,6 +546,53 @@ def plan_apply(
             continue
         ops.append({"kind": "publish", "location": t})
 
+    return {"ops": ops, "skipped": skipped}
+
+
+def _plan_association(
+    row: dict[str, Any], source_loc: str, target_locs: list[str]
+) -> dict[str, Any]:
+    """Route a relationship difference into capture/publish ops (REQ-443).
+
+    Two direction-limited cases (Decisions 1 & 2):
+
+    - **Missing link** (a *presence* row): the design defines the relationship and
+      an instance lacks it — publish it to that instance (creating the link).
+      Publishing to the design is meaningless (it already has it); a target that
+      already carries the link is skipped.
+    - **Cardinality drift** (an *attribute* row): capture the instance's
+      cardinality into the design. The deploy engine cannot alter an existing
+      link's cardinality, so a publish *to* an instance stays view-only and is
+      reported as a configure-by-hand skip — never silently attempted.
+    """
+    targets = [t for t in target_locs if t != source_loc]
+    ops: list[dict[str, str]] = []
+    skipped: list[str] = []
+
+    if row.get("kind") == "attribute":  # cardinality drift — capture only
+        for t in targets:
+            if t == "design":
+                # design is a target only when an instance is the source (it is
+                # filtered out when it is itself the source), so the capture source
+                # is always an instance here.
+                ops.append({"kind": "capture", "location": source_loc})
+            else:
+                skipped.append(
+                    f"{LOCATION_LABELS.get(t, t)}: changing an existing link's "
+                    "cardinality must be done by hand in the admin console"
+                )
+        return {"ops": ops, "skipped": skipped}
+
+    # Missing link (presence) — publish the design's relationship to instances
+    # that lack it; source is irrelevant (publish is always design → instance).
+    for t in targets:
+        if t == "design":
+            skipped.append("the design already defines this relationship")
+            continue
+        if row.get(t) == PRESENT:
+            skipped.append(f"{LOCATION_LABELS.get(t, t)} already has this relationship")
+            continue
+        ops.append({"kind": "publish", "location": t})
     return {"ops": ops, "skipped": skipped}
 
 
