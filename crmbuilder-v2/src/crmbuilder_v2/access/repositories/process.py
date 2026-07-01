@@ -51,6 +51,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access._helpers import (
     get_by_identifier,
     next_prefixed_identifier,
+    serialize_identifier_assignment,
     to_dict,
 )
 from crmbuilder_v2.access.change_log import emit
@@ -325,6 +326,9 @@ def _insert_with_autoassign(
     attempt repeats. Satisfies acceptance criterion 8 — two concurrent
     POSTs never share an identifier.
     """
+    # REQ-446 / PI-384: serialize per-prefix assignment so concurrent
+    # Postgres writers don't race the read-then-probe loop (no-op on SQLite).
+    serialize_identifier_assignment(session, _IDENTIFIER_PREFIX)
     candidate = next_process_identifier(session)
     last_error: IntegrityError | None = None
     for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):

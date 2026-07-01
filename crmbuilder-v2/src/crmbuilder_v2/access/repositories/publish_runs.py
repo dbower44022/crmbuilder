@@ -17,7 +17,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    next_prefixed_identifier,
+    serialize_identifier_assignment,
+    to_dict,
+)
 from crmbuilder_v2.access.exceptions import ConflictError
 from crmbuilder_v2.access.models import PublishRun
 from crmbuilder_v2.access.repositories import _governance as gov
@@ -92,6 +96,9 @@ def create_publish_run(
         status, PUBLISH_RUN_STATUSES, field="publish_run_status"
     )
 
+    # REQ-446 / PI-384: serialize per-prefix assignment so concurrent
+    # Postgres writers don't race the read-then-probe loop (no-op on SQLite).
+    serialize_identifier_assignment(session, _IDENTIFIER_PREFIX)
     candidate = next_publish_run_identifier(session)
     last_error: IntegrityError | None = None
     for _ in range(_MAX_AUTOASSIGN_ATTEMPTS):

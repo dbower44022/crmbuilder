@@ -8,7 +8,6 @@ the PRD documents in section 6; UUIDs are excluded from outputs (the
 
 from __future__ import annotations
 
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

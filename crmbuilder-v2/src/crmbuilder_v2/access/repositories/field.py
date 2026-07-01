@@ -57,6 +57,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access._helpers import (
     get_by_identifier,
     next_prefixed_identifier,
+    serialize_identifier_assignment,
     to_dict,
 )
 from crmbuilder_v2.access.change_log import emit
@@ -730,6 +731,9 @@ def _insert_with_autoassign(
     rolls that INSERT back, the candidate is incremented, and the
     attempt repeats.
     """
+    # REQ-446 / PI-384: serialize per-prefix assignment so concurrent
+    # Postgres writers don't race the read-then-probe loop (no-op on SQLite).
+    serialize_identifier_assignment(session, _IDENTIFIER_PREFIX)
     candidate = next_field_identifier(session)
     last_error: IntegrityError | None = None
     for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):

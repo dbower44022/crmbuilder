@@ -17,6 +17,7 @@ from crmbuilder_v2.access._helpers import (
     get_by_identifier,
     require_in,
     require_string,
+    serialize_identifier_assignment,
     to_dict,
 )
 from crmbuilder_v2.access.change_log import emit
@@ -484,6 +485,11 @@ def create(
                 ]
             )
 
+    # REQ-446 / PI-384: REF-NNNN is read-max-then-inserted with no retry loop, so
+    # a concurrent Postgres collision would hard-fail. Serialize per-prefix so
+    # writers assign a unique identifier (a no-op on SQLite). References are the
+    # highest-traffic write, so this is the most important call site.
+    serialize_identifier_assignment(session, "REF")
     row = Reference(
         reference_identifier=next_reference_identifier(session),
         source_type=source_type,

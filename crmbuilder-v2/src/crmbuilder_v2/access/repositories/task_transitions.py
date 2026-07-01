@@ -45,7 +45,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import next_prefixed_identifier, to_dict
+from crmbuilder_v2.access._helpers import (
+    next_prefixed_identifier,
+    serialize_identifier_assignment,
+    to_dict,
+)
 from crmbuilder_v2.access.change_log import emit
 from crmbuilder_v2.access.exceptions import FieldError, UnprocessableError
 from crmbuilder_v2.access.models import TaskTransitionRow
@@ -446,6 +450,9 @@ def record(
     outcome, reasoning_summary, escalation = _validate_report(to_status, agent_report)
 
     sequence = _next_sequence(session, task_type, task_identifier)
+    # REQ-446 / PI-384: serialize per-prefix assignment so concurrent Postgres
+    # writers don't race the read-then-probe loop (a no-op on SQLite).
+    serialize_identifier_assignment(session, _IDENTIFIER_PREFIX)
     identifiers = session.scalars(
         select(TaskTransitionRow.task_transition_identifier)
     ).all()
