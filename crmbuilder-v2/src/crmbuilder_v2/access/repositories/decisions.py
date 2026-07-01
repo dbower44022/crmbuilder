@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import (
+    check_lost_update,
     next_prefixed_identifier,
     require_in,
     require_string,
@@ -302,11 +303,17 @@ def update(
     *,
     superseded_by: str | None = None,
     supersedes: str | None = None,
+    expected_updated_at: str | None = None,
     **fields,
 ) -> dict:
     row = session.scalar(select(Decision).where(Decision.identifier == identifier))
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
+    # REQ-396 / PI-103: refuse a write based on stale state (lost-update guard).
+    check_lost_update(
+        row.updated_at, expected_updated_at,
+        entity_type=_ENTITY_TYPE, identifier=identifier,
+    )
     before = _enrich(session, row)
 
     unknown = set(fields) - _UPDATABLE_FIELDS

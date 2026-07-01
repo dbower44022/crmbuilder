@@ -315,3 +315,50 @@ def test_upsert_idempotent(v2_env):
         rows = decisions.list_all(s)
     assert len(rows) == 1
     assert rows[0]["identifier"] == "DEC-007"
+
+
+# -- REQ-396 / PI-103: optimistic lost-update guard --------------------------
+
+
+def test_update_with_matching_expected_updated_at_succeeds(v2_env):
+    with session_scope() as s:
+        created = _make(s, identifier="DEC-010")
+        token = created["updated_at"]
+        out = decisions.update(
+            s, "DEC-010", title="new title", expected_updated_at=token
+        )
+    assert out["title"] == "new title"
+    # A successful update advances the token.
+    assert out["updated_at"] != token
+
+
+def test_update_with_stale_expected_updated_at_is_refused(v2_env):
+    with session_scope() as s:
+        created = _make(s, identifier="DEC-011")
+        stale = created["updated_at"]
+        # First edit advances updated_at (a "concurrent" writer).
+        decisions.update(s, "DEC-011", title="edit-1")
+        # Second edit using the pre-edit token must be refused, not clobber edit-1.
+        with pytest.raises(ConflictError) as exc:
+            decisions.update(s, "DEC-011", title="edit-2", expected_updated_at=stale)
+        assert "stale_write" in str(exc.value)
+    with session_scope() as s:
+        # edit-1 survived; edit-2 never landed.
+        assert decisions.get(s, "DEC-011")["title"] == "edit-1"
+
+
+def test_update_without_precondition_is_backward_compatible(v2_env):
+    with session_scope() as s:
+        _make(s, identifier="DEC-012")
+        # No expected_updated_at → no guard → succeeds as before.
+        out = decisions.update(s, "DEC-012", title="unguarded")
+    assert out["title"] == "unguarded"
+
+
+def test_update_with_malformed_precondition_is_422(v2_env):
+    with session_scope() as s:
+        _make(s, identifier="DEC-013")
+        with pytest.raises(ValidationError):
+            decisions.update(
+                s, "DEC-013", title="x", expected_updated_at="not-a-timestamp"
+            )

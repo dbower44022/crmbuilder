@@ -23,6 +23,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import (
+    check_lost_update,
     get_by_identifier,
     next_prefixed_identifier,
     to_dict,
@@ -271,8 +272,14 @@ def update_workstream(
     needs_attention: bool | None = None,
     needs_attention_reason: str | None = None,
     references: list[dict] | None = None,
+    expected_updated_at: str | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
+    # REQ-396 / PI-103: refuse a write based on stale state (lost-update guard).
+    check_lost_update(
+        row.workstream_updated_at, expected_updated_at,
+        entity_type=_ENTITY_TYPE, identifier=identifier,
+    )
     if workstream_identifier is not None and workstream_identifier != identifier:
         raise UnprocessableError(
             [
@@ -319,7 +326,12 @@ def update_workstream(
 
 
 def patch_workstream(
-    session: Session, identifier: str, *, references: list[dict] | None = None, **fields
+    session: Session,
+    identifier: str,
+    *,
+    references: list[dict] | None = None,
+    expected_updated_at: str | None = None,
+    **fields,
 ) -> dict:
     unknown = set(fields) - _PATCHABLE_FIELDS
     if unknown:
@@ -333,6 +345,11 @@ def patch_workstream(
             ]
         )
     row = _get_row(session, identifier)
+    # REQ-396 / PI-103: refuse a write based on stale state (lost-update guard).
+    check_lost_update(
+        row.workstream_updated_at, expected_updated_at,
+        entity_type=_ENTITY_TYPE, identifier=identifier,
+    )
     before = to_dict(row)
 
     gov.apply_reference_list(session, references)

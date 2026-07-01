@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access._helpers import (
+    check_lost_update,
     get_by_identifier,
     next_prefixed_identifier,
     to_dict,
@@ -359,8 +360,14 @@ def update_work_task(
     references: list[dict] | None = None,
     status_reason: str | None = None,
     agent_report: dict | None = None,
+    expected_updated_at: str | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
+    # REQ-396 / PI-103: refuse a write based on stale state (lost-update guard).
+    check_lost_update(
+        row.work_task_updated_at, expected_updated_at,
+        entity_type=_ENTITY_TYPE, identifier=identifier,
+    )
     if work_task_identifier is not None and work_task_identifier != identifier:
         raise UnprocessableError(
             [
@@ -418,6 +425,7 @@ def patch_work_task(
     references: list[dict] | None = None,
     status_reason: str | None = None,
     agent_report: dict | None = None,
+    expected_updated_at: str | None = None,
     **fields,
 ) -> dict:
     unknown = set(fields) - _PATCHABLE_FIELDS
@@ -432,6 +440,11 @@ def patch_work_task(
             ]
         )
     row = _get_row(session, identifier)
+    # REQ-396 / PI-103: refuse a write based on stale state (lost-update guard).
+    check_lost_update(
+        row.work_task_updated_at, expected_updated_at,
+        entity_type=_ENTITY_TYPE, identifier=identifier,
+    )
     before = to_dict(row)
 
     gov.apply_reference_list(session, references)

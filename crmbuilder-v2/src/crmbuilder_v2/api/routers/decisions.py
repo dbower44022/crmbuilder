@@ -43,12 +43,14 @@ def update(identifier: str, body: DecisionUpdateIn):
         fields = {k: v for k, v in body.model_dump().items() if v is not None}
         supersedes = fields.pop("supersedes", None)
         superseded_by = fields.pop("superseded_by", None)
+        expected_updated_at = fields.pop("expected_updated_at", None)
         return ok(
             decisions.update(
                 s,
                 identifier,
                 supersedes=supersedes,
                 superseded_by=superseded_by,
+                expected_updated_at=expected_updated_at,
                 **fields,
             )
         )
