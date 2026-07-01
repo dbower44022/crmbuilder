@@ -207,6 +207,18 @@ PERSONA_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "rejected": frozenset(),
 }
 
+# Methodology entity `participant` lifecycle (REL-040 / PI-094).
+# A participant is the real engagement person/role a Persona is backed
+# by; its lifecycle is a simple active/inactive toggle (no candidate /
+# confirmed / rejected propose-verify gate — that governs the abstract
+# Persona, not the concrete participant record).
+PARTICIPANT_STATUSES: frozenset[str] = frozenset({"active", "inactive"})
+
+PARTICIPANT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "active": frozenset({"inactive"}),
+    "inactive": frozenset({"active"}),
+}
+
 # Methodology entity `field` lifecycle (v0.5+, PI-004 first slice).
 # Mirrors `domain` / `entity` exactly — three-status propose-verify
 # lifecycle with one-way gate out of `candidate` per ``field.md`` §3.4.
@@ -1507,6 +1519,10 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         #     mechanism permits multi-target).
         "persona_scopes_to_domain",
         "persona_realized_as_entity",
+        # REL-040 / PI-094 (REQ-412): a Persona (the abstract role in
+        # requirements) is backed by a participant (the real engagement
+        # person/role). Source persona → target participant; 0..1.
+        "persona_backed_by_participant",
         # v0.5+ field additions (PI-004 first slice, field.md §3.3.1):
         #   - `field_belongs_to_entity` (field → entity; mandatory 1:1
         #     at the source side per DEC-249). Cardinality enforced at
@@ -1750,6 +1766,9 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "commit",
         # v0.5+ methodology entity (PI-003). See persona.md.
         "persona",
+        # REL-040 / PI-094 (REQ-412) methodology entity — the real
+        # engagement participant (person/role) a Persona is backed by.
+        "participant",
         # v0.5+ methodology entity (PI-004 first slice). See field.md.
         "field",
         # v0.5+ methodology entity (PI-004 cohort). See requirement.md.
@@ -1900,6 +1919,9 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     * ``persona_realized_as_entity`` — source must be a persona, target
       must be an entity (v0.5+, persona.md §3.3.1; optional and most
       often single-target but mechanism permits multi-target).
+    * ``persona_backed_by_participant`` — source must be a persona,
+      target must be a participant (REL-040 / PI-094, REQ-412; each
+      engagement-participant persona is backed by a real record, 0..1).
     * ``field_belongs_to_entity`` — source must be a field, target must
       be an entity (v0.5+, field.md §3.3.1; mandatory 1:1 at source,
       access-layer cardinality enforcement per DEC-249).
@@ -2046,6 +2068,9 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("persona_scopes_to_domain")
     if source_type == "persona" and target_type == "entity":
         kinds.add("persona_realized_as_entity")
+    # REL-040 / PI-094 (REQ-412): a persona is backed by a participant.
+    if source_type == "persona" and target_type == "participant":
+        kinds.add("persona_backed_by_participant")
     # v0.5+ field additions (PI-004 first slice, field.md §3.3.1):
     if source_type == "field" and target_type == "entity":
         kinds.add("field_belongs_to_entity")
