@@ -280,8 +280,15 @@ def main(argv: list[str] | None = None) -> int:
     app.processEvents()
 
     settings = get_settings()
-    lifecycle = ServerLifecycle(base_url=settings.api_base_url)
-    client = StorageClient(base_url=settings.api_base_url)
+    # REQ-448 / PI-386: in remote mode the client authenticates with a bearer
+    # token and the lifecycle never spawns a local API.
+    remote_api = settings.is_remote_api()
+    lifecycle = ServerLifecycle(
+        base_url=settings.api_base_url, remote=remote_api
+    )
+    client = StorageClient(
+        base_url=settings.api_base_url, token=settings.api_token or None
+    )
     # PI-β: the active engagement is purely client-side desktop state. It is
     # mirrored onto the client's ``X-Engagement`` header on every change, so
     # switching engagements is a context change (no API restart, no marker).

@@ -95,6 +95,47 @@ def test_probe_failure_then_spawn_then_ready(qapp, qtbot, monkeypatch):
     assert fake_process.start.called
 
 
+def test_remote_mode_probe_failure_emits_spawn_failed_without_spawning(
+    qapp, qtbot, monkeypatch
+):
+    """REQ-448 / PI-386: in remote mode a failed probe surfaces spawn_failed
+    and never starts a local subprocess."""
+    monkeypatch.setattr(
+        server_lifecycle.httpx, "get",
+        _make_get([httpx.ConnectError("unreachable")]),
+    )
+    fake_process = _patch_qprocess(monkeypatch)
+
+    lifecycle = ServerLifecycle(_BASE_URL, remote=True)
+
+    with qtbot.waitSignal(lifecycle.spawn_failed, timeout=2000) as blocker:
+        lifecycle.start()
+
+    msg = blocker.args[0].lower()
+    assert "remote" in msg or "cloud" in msg
+    fake_process.start.assert_not_called()
+    assert lifecycle.ownership == "external"
+
+
+def test_remote_mode_probe_success_still_uses_external(
+    qapp, qtbot, monkeypatch
+):
+    """REQ-448 / PI-386: a reachable remote API is used as external, no spawn."""
+    monkeypatch.setattr(
+        server_lifecycle.httpx, "get",
+        _make_get([Mock(status_code=200)]),
+    )
+    fake_process = _patch_qprocess(monkeypatch)
+
+    lifecycle = ServerLifecycle(_BASE_URL, remote=True)
+
+    with qtbot.waitSignal(lifecycle.ready, timeout=1000):
+        lifecycle.start()
+
+    assert lifecycle.ownership == "external"
+    fake_process.start.assert_not_called()
+
+
 def test_spawn_failure_when_polling_deadline_expires(
     qapp, qtbot, monkeypatch
 ):
