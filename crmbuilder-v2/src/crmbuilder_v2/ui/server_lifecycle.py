@@ -53,9 +53,18 @@ class ServerLifecycle(QObject):
     spawn_failed = Signal(str)
     terminated = Signal()
 
-    def __init__(self, base_url: str, parent: QObject | None = None):
+    def __init__(
+        self,
+        base_url: str,
+        parent: QObject | None = None,
+        remote: bool = False,
+    ):
         super().__init__(parent)
         self._base_url = base_url.rstrip("/")
+        # REQ-448 / PI-386: when the client targets a remote backend it must
+        # never spawn a local API — a failed probe surfaces a reconnect banner
+        # instead of starting a stale local process.
+        self._remote = remote
         self._ownership = "unknown"
         self._process: QProcess | None = None
         self._poll_timer: QTimer | None = None
@@ -84,6 +93,20 @@ class ServerLifecycle(QObject):
             )
             self._post_ready = True
             self.ready.emit()
+            return
+        if self._remote:
+            # REQ-448 / PI-386: configured for a remote cloud API — do not
+            # spawn a local server. Surface a clear reconnect message instead.
+            msg = (
+                f"Cannot reach the CRMBuilder cloud API at {self._base_url}. "
+                "The desktop is configured for a remote backend and will not "
+                "start a local server. Check your connection and your "
+                "CRMBUILDER_V2_API_BASE_URL / CRMBUILDER_V2_API_TOKEN settings, "
+                "then reconnect."
+            )
+            _log.error(msg)
+            self._ownership = "external"
+            self.spawn_failed.emit(msg)
             return
         _log.info(
             "API not reachable at %s; spawning subprocess", self._base_url

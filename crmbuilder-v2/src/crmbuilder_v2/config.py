@@ -148,6 +148,32 @@ class Settings(BaseSettings):
     api_base_url: str = "http://127.0.0.1:8765"
     mcp_http_port: int = 8810
 
+    # REQ-448 / PI-386: bearer token the desktop client sends as
+    # ``Authorization: Bearer`` on every request when talking to a remote,
+    # authenticated cloud API. Empty (default) sends no header — correct for
+    # the localhost flow where auth is off. Set ``CRMBUILDER_V2_API_TOKEN`` per
+    # user when ``api_base_url`` points at the cloud service.
+    api_token: str = ""
+
+    # REQ-448 / PI-386: when the client targets a remote backend it must NOT
+    # fall back to spawning a local API process; a failed probe surfaces a
+    # reconnect banner instead. Explicit override via
+    # ``CRMBUILDER_V2_API_REMOTE=true``; otherwise a non-loopback
+    # ``api_base_url`` host is treated as remote automatically (see
+    # ``is_remote_api``).
+    api_remote: bool = False
+
+    def is_remote_api(self) -> bool:
+        """True when the client targets a remote backend and must not spawn a
+        local API. Explicit ``api_remote`` wins; otherwise inferred from a
+        non-loopback ``api_base_url`` host (REQ-448 / PI-386)."""
+        if self.api_remote:
+            return True
+        from urllib.parse import urlparse
+
+        host = (urlparse(self.api_base_url).hostname or "").lower()
+        return host not in ("", "127.0.0.1", "localhost", "::1")
+
     # requirements-provenance Phase 3 baseline cutoff. An ISO-8601 date (or
     # datetime) marking when the provenance model went live for this store;
     # the coverage report treats gaps on records created before it as legacy

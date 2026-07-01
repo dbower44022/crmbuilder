@@ -66,8 +66,14 @@ class StorageClient:
         base_url: str,
         client: httpx.Client | None = None,
         request_timeout: float = _DEFAULT_TIMEOUT,
+        token: str | None = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
+        # REQ-448 / PI-386: bearer token sent as ``Authorization: Bearer`` on
+        # every request when the client targets a remote, authenticated cloud
+        # API. ``None`` (the default) sends no auth header — the localhost flow
+        # where principal auth is off.
+        self._token: str | None = token or None
         if client is None:
             self._client = httpx.Client(
                 base_url=self._base_url, timeout=request_timeout
@@ -3414,16 +3420,18 @@ class StorageClient:
         timeout: float | None = None,
     ) -> Any:
         _log.debug("%s %s", method, path)
-        headers = (
-            {"X-Engagement": self._engagement} if self._engagement else None
-        )
+        headers: dict[str, str] = {}
+        if self._engagement:
+            headers["X-Engagement"] = self._engagement
+        if self._token:
+            headers["Authorization"] = f"Bearer {self._token}"
         # ``timeout`` overrides the client default for inherently-long calls
         # (e.g. a live audit area, which can run minutes of upstream HTTP), so a
         # slow-but-healthy operation is not mistaken for a lost connection.
         kw: dict[str, Any] = {"timeout": timeout} if timeout is not None else {}
         try:
             resp = self._client.request(
-                method, path, json=json_body, headers=headers, **kw
+                method, path, json=json_body, headers=headers or None, **kw
             )
         except (
             httpx.ConnectError,

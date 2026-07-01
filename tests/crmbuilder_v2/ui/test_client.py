@@ -42,6 +42,40 @@ def test_get_decisions_returns_data():
     assert result == [{"identifier": "DEC-001", "title": "Hello"}]
 
 
+def test_bearer_token_sent_when_set():
+    """REQ-448 / PI-386: a configured token is sent as ``Authorization: Bearer``."""
+    seen: dict[str, str | None] = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["auth"] = req.headers.get("Authorization")
+        return httpx.Response(
+            200, json={"data": {"ok": True}, "meta": {}, "errors": None}
+        )
+
+    transport = httpx.MockTransport(handler)
+    httpx_client = httpx.Client(base_url="http://test.invalid", transport=transport)
+    client = StorageClient(
+        base_url="http://test.invalid", client=httpx_client, token="tok-abc"
+    )
+    client._request("GET", "/health")
+    assert seen["auth"] == "Bearer tok-abc"
+
+
+def test_no_authorization_header_by_default():
+    """No token → no ``Authorization`` header (the localhost auth-off flow)."""
+    seen: dict[str, str | None] = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["auth"] = req.headers.get("Authorization")
+        return httpx.Response(
+            200, json={"data": {}, "meta": {}, "errors": None}
+        )
+
+    client = _client(handler)
+    client._request("GET", "/health")
+    assert seen["auth"] is None
+
+
 def test_validation_error_with_field_errors_helper():
     body = {
         "data": None,
