@@ -38,7 +38,7 @@ import paramiko
 
 from automation.core.deployment.ssh_deploy import run_remote
 from espo_impl.core.activity_panel_manager import (
-    PANEL_HOLDERS,
+    PARENT_HOLDERS,
     merge_client_activity_panels,
     merge_entity_activity_links,
     union_parent_list,
@@ -284,7 +284,7 @@ def register_activity_parents(
     client: Any,
     entities: list[str],
     timestamp: str,
-    holders: tuple[str, ...] = PANEL_HOLDERS,
+    holders: tuple[str, ...] = PARENT_HOLDERS,
     log: LogFn | None = None,
 ) -> dict[str, bool]:
     """Register ``entities`` as activity parents of each holder, via SSH patch.
@@ -298,7 +298,9 @@ def register_activity_parents(
     :param client: An :class:`EspoAdminClient` (for reading the merged list).
     :param entities: EspoCRM entity names to register (C-prefixed).
     :param timestamp: Backup-folder discriminator.
-    :param holders: Holders to register against (Meeting/Call/Task by default).
+    :param holders: Holders to register against (Meeting/Call/Task/**Email** by
+        default, per REQ-388 — registering the Email parent is what lets a user
+        compose an email from the entity's detail view).
     :param log: Optional logger.
     :returns: ``{holder: changed}`` — whether each holder's file was rewritten.
     """

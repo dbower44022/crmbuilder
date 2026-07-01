@@ -70,7 +70,7 @@ class FakeSSH:
 def _patches(client):
     """Patch connect_ssh + the SSH I/O so scaffold/register mark client state."""
 
-    def fake_register(ssh, c, entities, ts, holders=apd.PANEL_HOLDERS, log=None):
+    def fake_register(ssh, c, entities, ts, holders=apd.PARENT_HOLDERS, log=None):
         c.registered.update(entities)
         return dict.fromkeys(holders, True)
 
@@ -146,7 +146,7 @@ class TestDeployActivityPanels:
             apd.ams, "scaffold_entity_activity_metadata", side_effect=fake_scaffold
         ), patch.object(
             apd.ams, "register_activity_parents",
-            side_effect=lambda ssh, c, e, ts, h=apd.PANEL_HOLDERS, log=None: (
+            side_effect=lambda ssh, c, e, ts, h=apd.PARENT_HOLDERS, log=None: (
                 c.registered.update(e) or dict.fromkeys(h, True)
             ),
         ), patch.object(apd.ams, "rebuild_in_container", return_value=True):
@@ -193,6 +193,33 @@ class TestDeployActivityPanels:
             )
         assert not result.all_ok
         assert result.entities["CEngagement"].registered is False
+
+    def test_registers_entity_as_email_parent(self):
+        # REQ-388 / PI-348: the deploy must register the entity as a parent of
+        # Email (not only Meeting/Call/Task), so composing an email from the
+        # entity's detail view is not rejected by backend parent validation.
+        client = StatefulClient()
+        captured = {}
+
+        def capture_register(ssh, c, entities, ts, holders=apd.PARENT_HOLDERS, log=None):
+            captured["holders"] = tuple(holders)
+            c.registered.update(entities)
+            return dict.fromkeys(holders, True)
+
+        with patch.object(apd, "connect_ssh", return_value=FakeSSH()), patch.object(
+            apd.ams, "scaffold_entity_activity_metadata",
+            side_effect=lambda ssh, entities, ts, drop_links=None, log=None: (
+                client.scaffolded.update(entities) or dict.fromkeys(entities, True)
+            ),
+        ), patch.object(
+            apd.ams, "register_activity_parents", side_effect=capture_register
+        ), patch.object(apd.ams, "rebuild_in_container", return_value=True):
+            result = apd.deploy_activity_panels(
+                client, object(), ["CEngagement"], timestamp="ts",
+            )
+        assert "Email" in captured["holders"], captured["holders"]
+        # And the entity ends verified as registered against Email too.
+        assert result.entities["CEngagement"].registered
 
     def test_ssh_closed_even_on_no_entities(self):
         client = StatefulClient()
