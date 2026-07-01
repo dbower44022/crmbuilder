@@ -45,6 +45,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access._helpers import (
     get_by_identifier,
     next_prefixed_identifier,
+    serialize_identifier_assignment,
     to_dict,
 )
 from crmbuilder_v2.access.change_log import emit
@@ -282,6 +283,9 @@ def _insert_with_autoassign(session: Session, **columns) -> EngineOverride:
     here is an identifier collision; the savepoint rolls it back and the
     candidate is incremented.
     """
+    # REQ-446 / PI-384: serialize per-prefix assignment so concurrent
+    # Postgres writers don't race the read-then-probe loop (no-op on SQLite).
+    serialize_identifier_assignment(session, _IDENTIFIER_PREFIX)
     candidate = next_engine_override_identifier(session)
     last_error: IntegrityError | None = None
     for _attempt in range(_MAX_AUTOASSIGN_ATTEMPTS):

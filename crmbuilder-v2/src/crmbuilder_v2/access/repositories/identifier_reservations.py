@@ -27,6 +27,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access._helpers import serialize_identifier_assignment
 from crmbuilder_v2.access.exceptions import (
     FieldError,
     UnprocessableError,
@@ -113,6 +114,15 @@ def reserve(
         raise ValidationError(
             [FieldError("ttl_seconds", "invalid_value", "must be a positive integer")]
         )
+
+    # REQ-446 / PI-384: reserving a block reads max(table, active reservations)
+    # then inserts — a read-then-insert race between two concurrent reservers of
+    # the same entity type on Postgres. Serialize per entity type so blocks never
+    # overlap (a no-op on SQLite, where BEGIN IMMEDIATE already serialises). Note:
+    # this serialises reserve-vs-reserve; the reservation system is the sole
+    # assigner during parallel runs by design, so it need not also lock the
+    # per-prefix direct-create key.
+    serialize_identifier_assignment(session, f"reserve:{entity_type}")
 
     now = datetime.now(UTC)
     _purge_expired(session, now)

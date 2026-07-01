@@ -16,7 +16,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from crmbuilder_v2.access._helpers import to_dict
+from crmbuilder_v2.access._helpers import serialize_identifier_assignment, to_dict
 from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
 from crmbuilder_v2.access.models import ArtifactVersion, Release
 from crmbuilder_v2.access.repositories import _governance as gov
@@ -153,6 +153,13 @@ def snapshot(
     if not isinstance(snapshot, dict):
         raise ConflictError("snapshot must be a JSON object")
 
+    # REQ-446 / PI-384: version_number is assigned max(existing)+1 per artifact —
+    # the same read-then-insert race as identifier assignment. Serialize per
+    # artifact so concurrent Postgres appenders don't exhaust the retry loop (a
+    # no-op on SQLite, where BEGIN IMMEDIATE already serialises writers).
+    serialize_identifier_assignment(
+        session, f"artifact_version:{artifact_type}:{artifact_identifier}"
+    )
     last_error: IntegrityError | None = None
     for _ in range(_MAX_ATTEMPTS):
         number = _next_number(session, artifact_type, artifact_identifier)
