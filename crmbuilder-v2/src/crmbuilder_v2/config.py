@@ -163,6 +163,14 @@ class Settings(BaseSettings):
     # ``is_remote_api``).
     api_remote: bool = False
 
+    # REQ-452 / PI-390: the desktop targets the shared cloud backend by default
+    # and refuses to run against a local backend unless this opt-in is set, so a
+    # misconfigured client cannot silently connect to an empty or stale local
+    # database. Local development sets ``CRMBUILDER_V2_ALLOW_LOCAL=true``. This
+    # gate is enforced only by the desktop entry point (``ui/app.py``); server
+    # and on-droplet components that legitimately use localhost are unaffected.
+    allow_local: bool = False
+
     def is_remote_api(self) -> bool:
         """True when the client targets a remote backend and must not spawn a
         local API. Explicit ``api_remote`` wins; otherwise inferred from a

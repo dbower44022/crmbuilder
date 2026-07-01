@@ -55,8 +55,9 @@ def test_construct_shows_required_rows(qtbot):
     rows = _form_rows(dialog)
     assert "Application" in rows
     assert "Version" in rows
+    assert "Backend" in rows
     assert "API base url" in rows
-    assert "Database path" in rows
+    # "Database path" is backend-dependent (REQ-452): shown only in local mode.
 
 
 def test_application_name_is_crmbuilder_v2(qtbot):
@@ -115,7 +116,14 @@ def test_version_displays_package_version(qtbot, monkeypatch):
     assert rows["Version"] == crmbuilder_v2.__version__
 
 
-def test_paths_are_strings_from_settings(qtbot):
+def test_paths_are_strings_from_settings(qtbot, monkeypatch):
+    # Force local mode so the Database path row is present and deterministic
+    # regardless of the ambient crmbuilder.env (REQ-452).
+    monkeypatch.setattr(
+        about_module, "get_settings",
+        lambda: _FakeSettings(remote=False, api_base_url="http://127.0.0.1:8765",
+                              db_path="/tmp/v2-unified.db"),
+    )
     dialog = AboutDialog()
     qtbot.addWidget(dialog)
     rows = _form_rows(dialog)
@@ -151,3 +159,57 @@ def test_help_about_menu_opens_dialog(
     assert captured.get("constructed") is True
     assert captured.get("execed") is True
     assert captured.get("parent") is window
+
+
+# --- REQ-452 / PI-390: backend-aware rows + local guard ---------------------
+
+class _FakeSettings:
+    def __init__(self, *, remote, api_base_url, api_token="", allow_local=False,
+                 db_path="/tmp/v2-unified.db"):
+        self._remote = remote
+        self.api_base_url = api_base_url
+        self.api_token = api_token
+        self.allow_local = allow_local
+        self.db_path = db_path
+
+    def is_remote_api(self):
+        return self._remote
+
+
+def test_about_rows_remote_hides_db_path_shows_auth():
+    rows = dict(about_module._about_rows(
+        _FakeSettings(remote=True, api_base_url="https://api.crmbuilder.ai",
+                      api_token="tok")))
+    assert "Database path" not in rows           # unused in remote mode
+    assert rows["Backend"] == "Cloud (remote)"
+    assert rows["API base url"] == "https://api.crmbuilder.ai"
+    assert "token configured" in rows["Authentication"]
+
+
+def test_about_rows_remote_without_token_flags_it():
+    rows = dict(about_module._about_rows(
+        _FakeSettings(remote=True, api_base_url="https://api.crmbuilder.ai")))
+    assert "rejected" in rows["Authentication"]
+
+
+def test_about_rows_local_shows_db_path():
+    rows = dict(about_module._about_rows(
+        _FakeSettings(remote=False, api_base_url="http://127.0.0.1:8765",
+                      db_path="/tmp/x.db")))
+    assert rows["Backend"] == "Local"
+    assert rows["Database path"] == "/tmp/x.db"
+    assert "Authentication" not in rows
+
+
+def test_should_block_local_guard():
+    from crmbuilder_v2.ui.app import _should_block_local
+    # localhost + no opt-in -> blocked
+    assert _should_block_local(
+        _FakeSettings(remote=False, api_base_url="http://127.0.0.1:8765")) is True
+    # remote -> allowed
+    assert _should_block_local(
+        _FakeSettings(remote=True, api_base_url="https://api.crmbuilder.ai")) is False
+    # localhost + explicit opt-in -> allowed
+    assert _should_block_local(
+        _FakeSettings(remote=False, api_base_url="http://127.0.0.1:8765",
+                      allow_local=True)) is False
