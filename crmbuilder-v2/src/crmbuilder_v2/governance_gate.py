@@ -72,8 +72,36 @@ EXEMPT_GLOBS: tuple[str, ...] = (
 #: The auditable, git-tracked exemption log (design §6).
 EXEMPTION_LOG = "PRDs/product/crmbuilder-v2/governance-exemptions.log"
 
-_API_BASE = os.environ.get("CRMBUILDER_V2_API_BASE", "http://127.0.0.1:8765")
-_ENGAGEMENT = os.environ.get("CRMBUILDER_V2_GATE_ENGAGEMENT", "CRMBUILDER")
+_DEFAULT_API_BASE = "http://127.0.0.1:8765"
+
+
+def _api_config() -> tuple[str, str, str]:
+    """Resolve ``(base_url, token, engagement)`` for gate lookups (REQ-451).
+
+    Prefer explicit env vars; otherwise fall back to the standard application
+    settings (which read ``crmbuilder-v2/data/crmbuilder.env``), so the gate
+    validates against the same store — and with the same bearer token — the
+    project actually uses (e.g. the authenticated cloud API), instead of a
+    hardcoded unauthenticated localhost default. Any failure to load settings
+    degrades to the localhost default with no token.
+    """
+    base = os.environ.get("CRMBUILDER_V2_API_BASE")
+    token = os.environ.get("CRMBUILDER_V2_GATE_TOKEN")
+    engagement = os.environ.get("CRMBUILDER_V2_GATE_ENGAGEMENT")
+    if base is None or token is None or engagement is None:
+        try:  # lazy — avoid importing settings (and its deps) unless needed
+            from crmbuilder_v2.config import get_settings
+
+            s = get_settings()
+            if base is None:
+                base = s.api_base_url
+            if token is None:
+                token = s.api_token
+            if engagement is None:
+                engagement = s.mcp_engagement or None
+        except Exception:  # noqa: BLE001 — config must never break the gate
+            pass
+    return (base or _DEFAULT_API_BASE), (token or ""), (engagement or "CRMBUILDER")
 
 
 # --- result -----------------------------------------------------------------
@@ -155,8 +183,12 @@ def _http_get_json(path: str) -> object:
     validation verdict, not a transport failure. Any other HTTP/URL error
     propagates so the caller maps it to warn/block per mode (store unreachable).
     """
-    url = f"{_API_BASE.rstrip('/')}{path}"
-    req = urllib.request.Request(url, headers={"X-Engagement": _ENGAGEMENT})
+    base, token, engagement = _api_config()
+    url = f"{base.rstrip('/')}{path}"
+    headers = {"X-Engagement": engagement}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             return json.loads(resp.read().decode("utf-8")).get("data")
@@ -272,6 +304,19 @@ def _commit_files(sha: str) -> list[str]:
     return [p for p in out.splitlines() if p.strip()]
 
 
+def _push_rev_list_args(local_sha: str, remote_sha: str) -> list[str]:
+    """``rev-list`` args for one pushed ref (REQ-450).
+
+    An update to an existing remote branch validates ``remote..local``. A **new**
+    remote branch (``remote_sha`` all-zero) validates only commits not already on
+    any remote-tracking branch (``local --not --remotes``) — never the whole
+    ancestor history, which would re-report pre-existing commits.
+    """
+    if remote_sha == "0" * 40:
+        return [local_sha, "--not", "--remotes"]
+    return [f"{remote_sha}..{local_sha}"]
+
+
 def _log_exemption(reason: str, summary: str) -> None:
     try:
         top = _git("rev-parse", "--show-toplevel").strip()
@@ -383,9 +428,11 @@ def main(argv: list[str] | None = None) -> int:
         local_sha, remote_sha = parts[1], parts[3]
         if local_sha == "0" * 40:  # branch deletion
             continue
-        rng = local_sha if remote_sha == "0" * 40 else f"{remote_sha}..{local_sha}"
         try:
-            shas = _git("rev-list", "--no-merges", rng).split()
+            shas = _git(
+                "rev-list", "--no-merges",
+                *_push_rev_list_args(local_sha, remote_sha),
+            ).split()
         except subprocess.CalledProcessError:
             continue
         for sha in shas:

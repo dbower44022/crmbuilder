@@ -7,7 +7,11 @@ doc-only skip with no git, no server, no real commit.
 
 from __future__ import annotations
 
+from crmbuilder_v2 import governance_gate
 from crmbuilder_v2.governance_gate import (
+    _api_config,
+    _http_get_json,
+    _push_rev_list_args,
     evaluate,
     guarded_evaluate,
     parse_governance_trailers,
@@ -187,3 +191,73 @@ def test_guarded_evaluate_unreachable_store_degrades():
     enforce = guarded_evaluate("feat\n\nGoverned-By: PI-286", CODE,
                                get_json=unreachable, mode="enforce")
     assert enforce.allow is False
+
+
+# --- REQ-450: new-branch push range ------------------------------------------
+
+def test_push_range_existing_branch_uses_remote_dot_local():
+    assert _push_rev_list_args("abc", "def") == ["def..abc"]
+
+
+def test_push_range_new_branch_excludes_already_pushed():
+    """A new remote branch validates only commits not already on a remote."""
+    args = _push_rev_list_args("abc", "0" * 40)
+    assert args == ["abc", "--not", "--remotes"]  # not the whole ancestor history
+
+
+# --- REQ-451: gate targets the configured store with auth --------------------
+
+def test_api_config_prefers_env(monkeypatch):
+    monkeypatch.setenv("CRMBUILDER_V2_API_BASE", "https://api.example.test")
+    monkeypatch.setenv("CRMBUILDER_V2_GATE_TOKEN", "tok-123")
+    monkeypatch.setenv("CRMBUILDER_V2_GATE_ENGAGEMENT", "ENG-001")
+    base, token, engagement = _api_config()
+    assert base == "https://api.example.test"
+    assert token == "tok-123"
+    assert engagement == "ENG-001"
+
+
+def test_http_get_json_sends_bearer_when_token_set(monkeypatch):
+    """The lookup authenticates when a token is configured (REQ-451)."""
+    monkeypatch.setattr(
+        governance_gate, "_api_config",
+        lambda: ("https://api.example.test", "tok-abc", "ENG-001"),
+    )
+    seen = {}
+
+    class _Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return b'{"data": {"status": "Draft"}}'
+
+    def fake_urlopen(req, timeout=0):
+        seen["auth"] = req.headers.get("Authorization")
+        seen["engagement"] = req.headers.get("X-engagement")
+        seen["url"] = req.full_url
+        return _Resp()
+
+    monkeypatch.setattr(governance_gate.urllib.request, "urlopen", fake_urlopen)
+    _http_get_json("/planning-items/PI-1")
+    assert seen["auth"] == "Bearer tok-abc"
+    assert seen["url"].startswith("https://api.example.test/")
+
+
+def test_http_get_json_no_auth_header_without_token(monkeypatch):
+    monkeypatch.setattr(
+        governance_gate, "_api_config",
+        lambda: ("http://127.0.0.1:8765", "", "CRMBUILDER"),
+    )
+    seen = {}
+
+    class _Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return b'{"data": null}'
+
+    def fake_urlopen(req, timeout=0):
+        seen["auth"] = req.headers.get("Authorization")
+        return _Resp()
+
+    monkeypatch.setattr(governance_gate.urllib.request, "urlopen", fake_urlopen)
+    _http_get_json("/planning-items/PI-1")
+    assert seen["auth"] is None
