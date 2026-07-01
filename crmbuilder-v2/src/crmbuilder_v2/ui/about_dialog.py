@@ -46,6 +46,32 @@ _TAGLINE = "Declarative CRM deployment and methodology authoring"
 _MONO_LABELS = frozenset({"API base url", "Database path"})
 
 
+def _about_rows(settings) -> list[tuple[str, str]]:
+    """Metadata rows for the About dialog (REQ-452 / PI-390).
+
+    Shows the active backend the desktop is using. In remote mode the local
+    ``Database path`` is unused, so it is omitted (it would be misleading);
+    the authentication state is shown instead. In local mode the database path
+    is shown as before.
+    """
+    remote = settings.is_remote_api()
+    rows: list[tuple[str, str]] = [
+        ("Application", _APP_NAME),
+        ("Version", _resolve_version()),
+        ("Backend", "Cloud (remote)" if remote else "Local"),
+        ("API base url", settings.api_base_url),
+    ]
+    if remote:
+        rows.append((
+            "Authentication",
+            "Bearer token configured" if settings.api_token
+            else "No token — requests will be rejected",
+        ))
+    else:
+        rows.append(("Database path", str(settings.db_path)))
+    return rows
+
+
 def _resolve_version() -> str:
     try:
         return version(_APP_PACKAGE)
@@ -138,12 +164,7 @@ class AboutDialog(QDialog):
 
         # Metadata list — two lines per row, paths in mono.
         settings = get_settings()
-        rows: list[tuple[str, str]] = [
-            ("Application", _APP_NAME),
-            ("Version", _resolve_version()),
-            ("API base url", settings.api_base_url),
-            ("Database path", str(settings.db_path)),
-        ]
+        rows = _about_rows(settings)
         for label_text, value_text in rows:
             row_layout = QVBoxLayout()
             row_layout.setContentsMargins(0, 0, 0, 0)

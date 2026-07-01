@@ -42,6 +42,18 @@ _LOG_FILE = _LOG_DIR / "ui.log"
 _LOG_MAX_BYTES = 10 * 1024 * 1024  # 10MB
 _LOG_BACKUPS = 3
 _SPAWN_FAILED_EXIT_CODE = 1
+#: REQ-452 / PI-390: exit code when the desktop refuses to run against a local
+#: backend without the explicit local opt-in.
+_LOCAL_BLOCKED_EXIT_CODE = 2
+
+
+def _should_block_local(settings) -> bool:
+    """REQ-452: refuse a local backend unless local use is explicitly enabled.
+
+    True when the desktop is pointed at a local (loopback) API and
+    ``allow_local`` is not set — the accidental-local-connection case.
+    """
+    return not settings.is_remote_api() and not settings.allow_local
 
 _FONT_ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "fonts"
 _BUNDLED_FONTS = (
@@ -260,6 +272,24 @@ def _show_spawn_failure_dialog(
     box.exec()
 
 
+def _show_local_blocked_dialog(api_base_url: str) -> None:
+    """REQ-452 / PI-390: explain why a local backend was refused."""
+    box = CopyableMessageBox(None)
+    box.setIcon(QMessageBox.Icon.Critical)
+    box.setWindowTitle("Cloud backend not configured")
+    box.setText(
+        "CRMBuilder connects to the shared cloud service, but it is currently "
+        f"pointed at a local backend ({api_base_url}).\n\n"
+        "Set these in crmbuilder-v2/data/crmbuilder.env (or as environment "
+        "variables) and restart:\n"
+        "  CRMBUILDER_V2_API_BASE_URL=https://api.crmbuilder.ai\n"
+        "  CRMBUILDER_V2_API_TOKEN=<your token>\n\n"
+        "For local development only, set CRMBUILDER_V2_ALLOW_LOCAL=true."
+    )
+    box.setStandardButtons(QMessageBox.StandardButton.Ok)
+    box.exec()
+
+
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv
@@ -280,6 +310,14 @@ def main(argv: list[str] | None = None) -> int:
     app.processEvents()
 
     settings = get_settings()
+    # REQ-452 / PI-390: the desktop targets the cloud by default. If it is
+    # pointed at a local backend without the explicit local opt-in, refuse to
+    # start (rather than silently connect to an empty/stale local database) and
+    # explain how to configure the cloud.
+    if _should_block_local(settings):
+        splash.hide()
+        _show_local_blocked_dialog(settings.api_base_url)
+        return _LOCAL_BLOCKED_EXIT_CODE
     # REQ-448 / PI-386: in remote mode the client authenticates with a bearer
     # token and the lifecycle never spawns a local API.
     remote_api = settings.is_remote_api()
