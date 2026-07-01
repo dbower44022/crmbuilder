@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Iterable
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import select, text
@@ -44,6 +44,78 @@ def serialize_identifier_assignment(session: Session, prefix: str) -> None:
     session.execute(
         text("SELECT pg_advisory_xact_lock(:k)"), {"k": _advisory_key(prefix)}
     )
+
+
+def check_lost_update(
+    current_updated_at: datetime | str | None,
+    expected_updated_at: str | None,
+    *,
+    entity_type: str,
+    identifier: str,
+) -> None:
+    """Optimistic-concurrency precondition for promoted records (REQ-396 / PI-103).
+
+    Once a draft governance record is promoted to a real record its draft-time
+    write token retires, leaving it open to two agents editing concurrently and
+    silently overwriting one another (the lost-update / modify-modify problem).
+    This is the compare-and-swap guard: a caller that read the record passes the
+    ``updated_at`` it saw as ``expected_updated_at``; if the record has since
+    changed (its stored ``updated_at`` no longer matches), the write is **refused**
+    (409) rather than clobbering the concurrent change.
+
+    ``updated_at`` is a reliable token because every governance row bumps it via
+    ``onupdate=_utcnow`` on any successful update, so a committed edit always
+    advances it. When ``expected_updated_at`` is ``None`` the check is skipped —
+    the guard is opt-in per request and fully backward compatible, enforced only
+    when a precondition is supplied.
+
+    Both sides are parsed to aware datetimes and compared for equality so a
+    trailing ``Z`` vs ``+00:00`` or differing sub-second formatting never causes a
+    spurious mismatch. An unparseable ``expected_updated_at`` is a 422 (the caller
+    sent a malformed precondition), not a false 409.
+    """
+    if expected_updated_at is None:
+        return
+    expected = _parse_timestamp(expected_updated_at)
+    if expected is None:
+        raise ValidationError(
+            [
+                FieldError(
+                    "expected_updated_at",
+                    "invalid_format",
+                    "must be an ISO-8601 timestamp matching the record's updated_at",
+                )
+            ]
+        )
+    current = _parse_timestamp(current_updated_at)
+    if current is None or current != expected:
+        # Imported here to avoid a module-level import cycle
+        # (_helpers is imported very early by the repositories package).
+        from crmbuilder_v2.access.exceptions import ConflictError
+
+        raise ConflictError(
+            f"{entity_type} {identifier!r} was modified since you read it "
+            f"(stale_write): the update was refused to avoid overwriting a "
+            f"concurrent change. Re-read the record and retry."
+        )
+
+
+def _parse_timestamp(value: datetime | str | None) -> datetime | None:
+    """Parse a datetime or ISO-8601 string to an aware datetime, or ``None``."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    text_value = str(value).strip()
+    if not text_value:
+        return None
+    if text_value.endswith("Z"):
+        text_value = text_value[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text_value)
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 def get_by_identifier(session, model, id_column, identifier):

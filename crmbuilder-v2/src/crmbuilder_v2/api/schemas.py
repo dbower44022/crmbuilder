@@ -56,6 +56,10 @@ class DecisionUpdateIn(_Base):
     supersedes: str | None = None
     superseded_by: str | None = None
     executive_summary: str | None = None  # PI-074
+    # REQ-396 / PI-103: optional optimistic-concurrency precondition. When set to
+    # the updated_at the caller last read, the update is refused (409) if the
+    # record changed since — guarding against silent lost updates.
+    expected_updated_at: str | None = None
 
 
 # ---------- Sessions ----------
@@ -174,6 +178,7 @@ class PlanningItemUpdateIn(_Base):
     executive_summary: str | None = None  # PI-074
     area: list[str] | None = None  # PI-076
     execution_mode: str | None = None  # PI-183
+    expected_updated_at: str | None = None  # REQ-396 / PI-103 lost-update guard
 
 
 class PlanningItemClaimIn(_Base):
@@ -2094,6 +2099,7 @@ class WorkstreamPatchIn(_Base):
     workstream_status: str | None = None
     workstream_needs_attention: bool | None = None
     workstream_needs_attention_reason: str | None = None
+    workstream_expected_updated_at: str | None = None  # REQ-396 / PI-103
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -2537,6 +2543,7 @@ class WorkTaskPatchIn(_Base):
     work_task_notes: str | None = None
     work_task_status: str | None = None
     work_task_resolved_agent_profile: str | None = None
+    work_task_expected_updated_at: str | None = None  # REQ-396 / PI-103
     references: list[GovernanceEdgeIn] | None = None
 
 

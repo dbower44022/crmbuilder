@@ -164,3 +164,44 @@ def test_post_with_invalid_identifier_format_returns_422(client):
         },
     )
     assert r.status_code == 422, r.json()
+
+
+# -- REQ-396 / PI-103: optimistic lost-update guard (HTTP layer) -------------
+
+
+def test_patch_with_stale_precondition_is_409(client):
+    _create(client, identifier="DEC-050")
+    token = client.get("/decisions/DEC-050").json()["data"]["updated_at"]
+
+    # A concurrent edit advances updated_at.
+    r1 = client.patch("/decisions/DEC-050", json={"title": "edit-1"})
+    assert r1.status_code == 200
+
+    # A second edit using the pre-edit token is refused (409), not silently applied.
+    r2 = client.patch(
+        "/decisions/DEC-050",
+        json={"title": "edit-2", "expected_updated_at": token},
+    )
+    assert r2.status_code == 409, r2.json()
+    assert "stale_write" in str(r2.json()["errors"])
+
+    # edit-1 survived; edit-2 never landed.
+    assert client.get("/decisions/DEC-050").json()["data"]["title"] == "edit-1"
+
+
+def test_patch_with_fresh_precondition_succeeds(client):
+    _create(client, identifier="DEC-051")
+    token = client.get("/decisions/DEC-051").json()["data"]["updated_at"]
+    r = client.patch(
+        "/decisions/DEC-051",
+        json={"title": "guarded-ok", "expected_updated_at": token},
+    )
+    assert r.status_code == 200, r.json()
+    assert r.json()["data"]["title"] == "guarded-ok"
+
+
+def test_patch_without_precondition_still_works(client):
+    _create(client, identifier="DEC-052")
+    r = client.patch("/decisions/DEC-052", json={"title": "unguarded"})
+    assert r.status_code == 200
+    assert r.json()["data"]["title"] == "unguarded"
