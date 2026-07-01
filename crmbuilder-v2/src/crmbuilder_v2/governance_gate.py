@@ -21,6 +21,7 @@ import argparse
 import fnmatch
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -35,6 +36,11 @@ GOVERNED_BY = "Governed-By"
 #: The required reason accompanying a ``Governed-By: trivial`` exemption.
 EXEMPTION_REASON = "Exemption-Reason"
 TRIVIAL = "trivial"
+
+#: A well-formed governance identifier, e.g. ``PI-386``. A ``Governed-By`` value
+#: that is not ``trivial`` and does not match this is *malformed* — it is reported
+#: as a warning, never used as a lookup value (guards against building a bad URL).
+_IDENT_RE = re.compile(r"^[A-Z][A-Z0-9]*-\d+$")
 
 #: A PI must be in one of these (non-terminal) statuses to govern new code. Draft
 #: is allowed — the precondition only needs the PI to exist with a confirmed
@@ -100,15 +106,23 @@ def touches_code(changed_files: list[str]) -> bool:
     return False
 
 
-def parse_governance_trailers(commit_msg: str) -> tuple[list[str], str | None]:
-    """Return ``(planning_items, exemption_reason)`` parsed from the message.
+def parse_governance_trailers(
+    commit_msg: str,
+) -> tuple[list[str], str | None, list[str]]:
+    """Return ``(planning_items, exemption_reason, malformed)`` from the message.
 
     ``Governed-By: PI-NNN`` lines yield planning item ids; a ``Governed-By:
     trivial`` line marks an exemption whose reason is the ``Exemption-Reason:``
     trailer (``None`` if absent/blank — a rejectable state). Case-insensitive
     trailer keys; values trimmed.
+
+    A ``Governed-By`` value that is neither ``trivial`` nor a well-formed
+    identifier (``_IDENT_RE``) is collected into ``malformed`` — it is **never**
+    added to ``planning_items`` and therefore never used as a lookup value, which
+    is what prevents a bad trailer from being turned into an invalid request URL.
     """
     pis: list[str] = []
+    malformed: list[str] = []
     is_trivial = False
     reason: str | None = None
     for raw in commit_msg.splitlines():
@@ -122,13 +136,13 @@ def parse_governance_trailers(commit_msg: str) -> tuple[list[str], str | None]:
             if value.lower() == TRIVIAL:
                 is_trivial = True
             elif value:
-                pis.append(value)
+                (pis if _IDENT_RE.match(value) else malformed).append(value)
         elif key == EXEMPTION_REASON.lower():
             reason = value or None
     if is_trivial:
         # An exemption reason of "" is treated as missing (rejected upstream).
-        return [], reason if reason else None
-    return pis, None
+        return [], reason if reason else None, malformed
+    return pis, None, malformed
 
 
 # --- live-API validation ----------------------------------------------------
@@ -193,7 +207,12 @@ def evaluate(commit_msg: str, changed_files: list[str], *, get_json) -> GateDeci
         return GateDecision(allow=True, skipped=True,
                             warnings=["no code paths touched — gate not applicable"])
 
-    pis, exemption = parse_governance_trailers(commit_msg)
+    pis, exemption, malformed = parse_governance_trailers(commit_msg)
+    malformed_reasons = [
+        f"malformed 'Governed-By' trailer value {v!r} — expected an identifier "
+        f"like 'PI-123'"
+        for v in malformed
+    ]
 
     # Trivial exemption path: a non-empty reason is mandatory and gets logged.
     if not pis and ("Governed-By: trivial" in commit_msg
@@ -207,13 +226,16 @@ def evaluate(commit_msg: str, changed_files: list[str], *, get_json) -> GateDeci
         return GateDecision(allow=True, exemption_reason=exemption)
 
     if not pis:
+        # A malformed trailer is a violation in its own right (warn/block per
+        # mode) — reported, never looked up.
         return GateDecision(
             allow=False,
-            reasons=["code change carries no 'Governed-By: PI-NNN' trailer and no "
-                     "logged 'Governed-By: trivial' exemption (REQ-320)"],
+            reasons=malformed_reasons or [
+                "code change carries no 'Governed-By: PI-NNN' trailer and no "
+                "logged 'Governed-By: trivial' exemption (REQ-320)"],
         )
 
-    reasons: list[str] = []
+    reasons: list[str] = list(malformed_reasons)
     ok_pis: list[str] = []
     for pi in pis:
         ok, why = validate_planning_item(pi, get_json)
@@ -290,6 +312,39 @@ def _emit(decision: GateDecision, mode: str, *, context: str) -> int:
     return 0
 
 
+def guarded_evaluate(
+    commit_msg: str, changed_files: list[str], *, get_json, mode: str
+) -> GateDecision:
+    """``evaluate`` that never raises — the hook must not crash on its own defect.
+
+    A genuinely unreachable store (network/OS error) degrades to warn-allow /
+    enforce-block. Any *other* unexpected error (e.g. a malformed value that
+    slipped through to a bad request URL) is caught too and treated the same way,
+    so a gate bug can never abort a commit or push (REQ-449). In ``warn`` mode the
+    verdict is always allow; only ``enforce`` may block.
+    """
+    try:
+        return evaluate(commit_msg, changed_files, get_json=get_json)
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        d = GateDecision(
+            allow=(mode != "enforce"),
+            warnings=[f"governance store unreachable ({exc}) — cannot validate"],
+        )
+        if mode == "enforce":
+            d.reasons = ["governance store unreachable; start the API or set "
+                         "CRMBUILDER_GOVERNANCE_GATE=warn"]
+        return d
+    except Exception as exc:  # noqa: BLE001 — defensive: never crash the hook
+        detail = f"{type(exc).__name__}: {exc}"
+        d = GateDecision(
+            allow=(mode != "enforce"),
+            warnings=[f"unexpected gate error ({detail}) — treated as non-blocking"],
+        )
+        if mode == "enforce":
+            d.reasons = [f"unexpected gate error ({detail})"]
+        return d
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Governance enforcement gate (REQ-320).")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -305,19 +360,6 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     get_json = _http_get_json
 
-    # Unreachable store → warn-allow, enforce-block (never silently pass).
-    def guarded_eval(msg: str, files: list[str]) -> GateDecision:
-        try:
-            return evaluate(msg, files, get_json=get_json)
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            d = GateDecision(allow=(mode != "enforce"),
-                            warnings=[f"governance store unreachable ({exc}) — "
-                                      "cannot validate"])
-            if mode == "enforce":
-                d.reasons = ["governance store unreachable; start the API or set "
-                             "CRMBUILDER_GOVERNANCE_GATE=warn"]
-            return d
-
     if args.cmd == "commit-msg":
         if _is_merge_commit_in_progress():
             return 0  # merges integrate already-gated commits
@@ -325,7 +367,9 @@ def main(argv: list[str] | None = None) -> int:
             msg = open(args.message_file, encoding="utf-8").read()
         except OSError:
             return 0
-        decision = guarded_eval(msg, _staged_files())
+        decision = guarded_evaluate(
+            msg, _staged_files(), get_json=get_json, mode=mode
+        )
         if decision.exemption_reason:
             _log_exemption(decision.exemption_reason, msg.splitlines()[0] if msg else "")
         return _emit(decision, mode, context="commit-msg")
@@ -349,7 +393,9 @@ def main(argv: list[str] | None = None) -> int:
                 msg = _git("log", "-1", "--format=%B", sha)
             except subprocess.CalledProcessError:
                 continue
-            decision = guarded_eval(msg, _commit_files(sha))
+            decision = guarded_evaluate(
+                msg, _commit_files(sha), get_json=get_json, mode=mode
+            )
             worst = max(worst, _emit(decision, mode, context=f"pre-push {sha[:8]}"))
     return worst
 

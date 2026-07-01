@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from crmbuilder_v2.governance_gate import (
     evaluate,
+    guarded_evaluate,
     parse_governance_trailers,
     touches_code,
     validate_planning_item,
@@ -53,19 +54,28 @@ def test_touches_code():
 
 
 def test_parse_pi_trailer():
-    pis, reason = parse_governance_trailers("feat\n\nGoverned-By: PI-286\n")
-    assert pis == ["PI-286"] and reason is None
+    pis, reason, malformed = parse_governance_trailers("feat\n\nGoverned-By: PI-286\n")
+    assert pis == ["PI-286"] and reason is None and malformed == []
 
 
 def test_parse_multiple_pis():
-    pis, _ = parse_governance_trailers("x\n\nGoverned-By: PI-1\nGoverned-By: PI-2\n")
-    assert pis == ["PI-1", "PI-2"]
+    pis, _, malformed = parse_governance_trailers(
+        "x\n\nGoverned-By: PI-1\nGoverned-By: PI-2\n")
+    assert pis == ["PI-1", "PI-2"] and malformed == []
 
 
 def test_parse_trivial_with_reason():
-    pis, reason = parse_governance_trailers(
+    pis, reason, malformed = parse_governance_trailers(
         "typo\n\nGoverned-By: trivial\nExemption-Reason: fix a comment typo\n")
-    assert pis == [] and reason == "fix a comment typo"
+    assert pis == [] and reason == "fix a comment typo" and malformed == []
+
+
+def test_parse_malformed_trailer_is_not_a_pi():
+    """REQ-449: a malformed value is collected as malformed, never a lookup id."""
+    pis, reason, malformed = parse_governance_trailers(
+        "x\n\nGoverned-By: REQ-435 (confirmed via DEC-856) / PI-374 / PRJ-088\n")
+    assert pis == []
+    assert malformed == ["REQ-435 (confirmed via DEC-856) / PI-374 / PRJ-088"]
 
 
 # --- evaluation -------------------------------------------------------------
@@ -129,3 +139,51 @@ def test_pi_with_unconfirmed_requirement_blocked():
 def test_validate_planning_item_happy_path():
     ok, why = validate_planning_item("PI-286", _good_api())
     assert ok is True and "confirmed" in why
+
+
+# --- REQ-449: malformed trailer must not crash / must not be looked up -------
+
+def test_malformed_trailer_is_reported_and_never_looked_up():
+    """A malformed Governed-By value blocks (warn/enforce) without any lookup."""
+    def exploding_get_json(path: str):
+        raise AssertionError(f"malformed value must never be looked up: {path!r}")
+
+    d = evaluate(
+        "feat\n\nGoverned-By: REQ-435 (confirmed via DEC-856) / PI-374 / PRJ-088",
+        CODE, get_json=exploding_get_json)
+    assert d.allow is False
+    assert any("malformed" in r for r in d.reasons)
+
+
+def test_guarded_evaluate_warn_mode_never_crashes_on_unexpected_error():
+    """An unexpected error inside evaluation degrades to a warning in warn mode."""
+    def boom_get_json(path: str):
+        raise ValueError("URL can't contain control characters")  # simulate the old crash
+
+    d = guarded_evaluate("feat\n\nGoverned-By: PI-286", CODE,
+                         get_json=boom_get_json, mode="warn")
+    assert d.allow is True  # warn mode never blocks, even on a gate defect
+    assert any("unexpected gate error" in w for w in d.warnings)
+
+
+def test_guarded_evaluate_enforce_mode_blocks_on_unexpected_error():
+    def boom_get_json(path: str):
+        raise ValueError("kaboom")
+
+    d = guarded_evaluate("feat\n\nGoverned-By: PI-286", CODE,
+                         get_json=boom_get_json, mode="enforce")
+    assert d.allow is False and any("unexpected gate error" in r for r in d.reasons)
+
+
+def test_guarded_evaluate_unreachable_store_degrades():
+    import urllib.error
+
+    def unreachable(path: str):
+        raise urllib.error.URLError("connection refused")
+
+    warn = guarded_evaluate("feat\n\nGoverned-By: PI-286", CODE,
+                            get_json=unreachable, mode="warn")
+    assert warn.allow is True and any("unreachable" in w for w in warn.warnings)
+    enforce = guarded_evaluate("feat\n\nGoverned-By: PI-286", CODE,
+                               get_json=unreachable, mode="enforce")
+    assert enforce.allow is False
