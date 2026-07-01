@@ -48,6 +48,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from crmbuilder_v2 import agent_secrets
 from crmbuilder_v2.config import verify_log_dir
 from crmbuilder_v2.scheduler import agent_identity, dispatcher, reconciliation
 from crmbuilder_v2.scheduler.agent_prompt import build_agent_prompt
@@ -598,6 +599,13 @@ def spawn_claude_agent(
     session's token usage + ``total_cost_usd`` (captured for cost telemetry, PI-264).
     The agent's work is unchanged and is still verified by result (git + DB state, not
     stdout), and ``returncode`` semantics are preserved.
+
+    The subprocess environment is built by :func:`agent_secrets.resolved_agent_env`
+    (PI-321 / REQ-253): agent secrets such as ``ANTHROPIC_API_KEY`` are resolved
+    keyring-first with an environment fallback, so the key no longer has to live in
+    plaintext in ``crmbuilder.env``. When a secret is present only in the inherited
+    environment (headless/CI, or pre-migration), it is passed through unchanged, so
+    the fleet never loses a key it already had.
     """
     return subprocess.run(
         [
@@ -615,6 +623,7 @@ def spawn_claude_agent(
         capture_output=True,
         text=True,
         timeout=timeout,
+        env=agent_secrets.resolved_agent_env(),
     )
 
 

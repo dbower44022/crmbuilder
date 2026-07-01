@@ -999,3 +999,28 @@ def test_flag_needs_attention_flags_owning_workstream_over_real_http(live_api):
     status, wt_after = _api(base, "GET", f"/work-tasks/{wt_id}")
     assert status == 200, wt_after
     assert not wt_after["data"].get("work_task_needs_attention")
+
+
+def test_spawn_claude_agent_injects_resolved_secret_env(monkeypatch):
+    # PI-321 / REQ-253: the spawned agent's environment carries the resolved
+    # ANTHROPIC_API_KEY (keyring-first, env fallback), so the key need not live in
+    # plaintext in crmbuilder.env. Here we assert the env= passed to subprocess.run
+    # contains the value the resolver returns.
+    from crmbuilder_v2.scheduler import coordinating_scheduler as cr
+
+    captured = {}
+
+    def _fake_run(cmd, **kwargs):
+        captured["env"] = kwargs.get("env")
+        import subprocess as _sp
+
+        return _sp.CompletedProcess(cmd, 0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(cr.subprocess, "run", _fake_run)
+    monkeypatch.setattr(
+        cr.agent_secrets, "resolve_secret", lambda name: "sk-ant-resolved"
+    )
+
+    cr.spawn_claude_agent("do the thing", "/tmp/wt")
+    assert captured["env"] is not None
+    assert captured["env"]["ANTHROPIC_API_KEY"] == "sk-ant-resolved"

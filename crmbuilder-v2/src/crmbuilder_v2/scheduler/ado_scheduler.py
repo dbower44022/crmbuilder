@@ -281,12 +281,15 @@ def spawn_scoping_agent(prompt: str, *, timeout: int = 1800):
     import subprocess
     import tempfile
 
+    from crmbuilder_v2 import agent_secrets
+
     workdir = tempfile.mkdtemp(prefix="ado-scope-")
     try:
         return subprocess.run(
             ["claude", "-p", prompt, "--permission-mode", "bypassPermissions",
              "--add-dir", workdir],
             cwd=workdir, capture_output=True, text=True, timeout=timeout,
+            env=agent_secrets.resolved_agent_env(),
         )
     except (subprocess.TimeoutExpired, OSError):
         return None
