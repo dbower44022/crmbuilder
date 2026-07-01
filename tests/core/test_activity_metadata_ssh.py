@@ -68,10 +68,12 @@ class TestWriteCustomHolderDef:
 
 class TestRegisterActivityParents:
     def test_unions_merged_list_and_writes_each_holder(self):
-        # Live merged list for all three holders carries the platform defaults.
+        # Live merged list for all four holders carries the platform defaults.
+        # Email is registered too (REQ-388 / PI-348) so the entity can parent
+        # emails, not only meetings/calls/tasks.
         md = {
             f"entityDefs.{h}.fields.parent.entityList": ["Account", "Contact"]
-            for h in ("Meeting", "Call", "Task")
+            for h in ("Meeting", "Call", "Task", "Email")
         }
         client = FakeClient(md)
         writes = []
@@ -87,7 +89,9 @@ class TestRegisterActivityParents:
                 None, client, ["CEngagement"], "ts"
             )
 
-        assert results == {"Meeting": True, "Call": True, "Task": True}
+        assert results == {
+            "Meeting": True, "Call": True, "Task": True, "Email": True
+        }
         for _holder, entity_list in writes:
             # full list preserved + new entity appended
             assert entity_list == ["Account", "Contact", "CEngagement"]

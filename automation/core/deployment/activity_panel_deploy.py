@@ -13,7 +13,9 @@ Sequence (per ``entity-activity-panel-enablement-design.md``):
    audit-deployed one lacks. The side panels are what render the panels; without
    them registration alone surfaces nothing.
 2. **Register** (SSH, Path 2) every target entity not already an activity parent
-   of Meeting/Call/Task — one batched metadata write per holder.
+   of Meeting/Call/Task/Email — one batched metadata write per holder. Email is
+   included (REQ-388) so composing an email from the entity's detail view is not
+   rejected by backend parent validation.
 3. **Stream** (REST) — enable ``stream`` on the entities that ask for it.
 4. **Rebuild** once (SSH) to apply the metadata changes.
 5. **Verify** — poll each entity's registration (the cache can briefly lag after
@@ -33,7 +35,7 @@ from typing import Any
 from automation.core.deployment import activity_metadata_ssh as ams
 from automation.core.deployment.ssh_deploy import connect_ssh
 from espo_impl.core.activity_panel_manager import (
-    PANEL_HOLDERS,
+    PARENT_HOLDERS,
     ActivityPanelManager,
 )
 
@@ -81,7 +83,7 @@ def deploy_activity_panels(
     *,
     stream_entities: tuple[str, ...] = (),
     drop_links: dict[str, tuple[str, ...]] | None = None,
-    holders: tuple[str, ...] = PANEL_HOLDERS,
+    holders: tuple[str, ...] = PARENT_HOLDERS,
     timestamp: str,
     log: LogFn | None = None,
     verify_timeout: float = 20.0,
@@ -96,7 +98,9 @@ def deploy_activity_panels(
     :param stream_entities: Subset of entities to additionally enable Stream on.
     :param drop_links: Optional ``{entity: (link, …)}`` of mis-wired links to
         remove before scaffolding (e.g. a ``cParent``-based ``meetings`` link).
-    :param holders: Activity-parent holders (Meeting/Call/Task by default).
+    :param holders: Activity-parent holders (Meeting/Call/Task/**Email** by
+        default, per REQ-388 — the entity is registered as an email parent too,
+        so composing an email from its detail view passes backend validation).
     :param timestamp: Backup-folder discriminator for the SSH metadata writes.
     :param log: Optional ``(message, color)`` logger.
     :param verify_timeout: Seconds to poll registration after rebuild.
