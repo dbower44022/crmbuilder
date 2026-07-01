@@ -1536,6 +1536,147 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Participants (methodology entity — REL-040 / PI-094, REQ-412)
+    # ------------------------------------------------------------------
+
+    def list_participants(
+        self, *, include_deleted: bool = False
+    ) -> list[dict[str, Any]]:
+        """Return all participants as a list of dicts.
+
+        Shape matches ``crmbuilder_v2/api/routers/participant.py``. With
+        ``include_deleted=True`` soft-deleted participants are included;
+        otherwise the API filters them out.
+        """
+        path = "/participants"
+        if include_deleted:
+            path = "/participants?include_deleted=true"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_participant(self, identifier: str) -> dict[str, Any]:
+        """Return a single participant by identifier (e.g. ``"PTC-001"``).
+
+        Raises ``NotFoundError`` if the participant does not exist (or is
+        soft-deleted — the API 404s soft-deleted rows by default).
+        """
+        result = self._request("GET", f"/participants/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_participant",
+            )
+        return result
+
+    def create_participant(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /participants. Returns the created record dict.
+
+        The body uses the parent-prefixed field names
+        (``participant_name``, ``participant_role_kind``, optional
+        ``participant_affiliation`` / ``participant_contact`` /
+        ``participant_notes`` / ``participant_status``).
+        ``participant_identifier`` is server-assigned when omitted. The
+        persona-backing link is NOT inlined — attach it afterwards via
+        ``create_reference`` with the ``persona_backed_by_participant``
+        kind (source persona → target participant).
+
+        Raises ``RequestShapeError`` on 422 (identifier-format /
+        name-uniqueness / status-enum), ``ConflictError`` on 409
+        (explicit-identifier collision).
+        """
+        result = self._request("POST", "/participants", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_participant",
+            )
+        return result
+
+    def update_participant(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PUT /participants/{identifier} — full record replace.
+
+        The body is the full record; ``participant_identifier`` in the
+        body must match the path. Raises ``NotFoundError`` on 404,
+        ``RequestShapeError`` on 422 (identifier mismatch, validation,
+        or invalid status transition).
+        """
+        result = self._request(
+            "PUT", f"/participants/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_participant",
+            )
+        return result
+
+    def patch_participant(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /participants/{identifier} — partial update.
+
+        Body should contain only the changed fields. Raises
+        ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (validation or invalid status transition).
+        """
+        result = self._request(
+            "PATCH", f"/participants/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for patch_participant",
+            )
+        return result
+
+    def delete_participant(self, identifier: str) -> Any:
+        """DELETE /participants/{identifier}. Soft-deletes; idempotent.
+
+        Returns the API's response data. Raises ``NotFoundError`` on
+        404. The outbound ``persona_backed_by_participant`` reference
+        persists.
+        """
+        return self._request("DELETE", f"/participants/{identifier}")
+
+    def restore_participant(self, identifier: str) -> dict[str, Any]:
+        """POST /participants/{identifier}/restore. Clears the soft-delete.
+
+        Raises ``NotFoundError`` on 404, ``RequestShapeError`` on 422
+        (the record is not soft-deleted).
+        """
+        result = self._request(
+            "POST", f"/participants/{identifier}/restore"
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for restore_participant",
+            )
+        return result
+
+    def next_participant_identifier(self) -> str:
+        """GET /participants/next-identifier. Returns the next ``PTC-NNN``."""
+        result = self._request("GET", "/participants/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200,
+            errors=[],
+            message=(
+                "Expected {'next': str} body for next_participant_identifier"
+            ),
+        )
+
+    # ------------------------------------------------------------------
     # Fields (methodology entity — v0.5+, PI-004 first slice)
     # ------------------------------------------------------------------
 

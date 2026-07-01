@@ -581,6 +581,60 @@ class PersonaPatchIn(_Base):
     persona_status: str | None = None
 
 
+# ---------- Participants (methodology entity, REL-040 / PI-094) ----------
+
+
+class ParticipantCreateIn(_Base):
+    """POST /participants body. ``participant_identifier`` is
+    server-assigned when omitted; ``participant_status`` defaults to
+    ``active`` server-side.
+
+    The persona-backing link is NOT inlined here — it attaches via a
+    separate ``POST /references`` call with the
+    ``persona_backed_by_participant`` relationship kind (source persona →
+    target participant)."""
+
+    participant_name: str
+    participant_role_kind: str
+    participant_affiliation: str | None = None
+    participant_contact: str | None = None
+    participant_notes: str | None = None
+    participant_status: str | None = None
+    participant_identifier: str | None = None
+
+
+class ParticipantReplaceIn(_Base):
+    """PUT /participants/{identifier} body — full record replace.
+
+    ``participant_identifier`` is optional; when present it must match the
+    path identifier (mismatch → 422). ``participant_status`` is required
+    on a full replace."""
+
+    participant_identifier: str | None = None
+    participant_name: str
+    participant_role_kind: str
+    participant_affiliation: str | None = None
+    participant_contact: str | None = None
+    participant_notes: str | None = None
+    participant_status: str
+
+
+class ParticipantPatchIn(_Base):
+    """PATCH /participants/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an
+    explicit ``participant_notes: null`` (clear the field) is
+    distinguished from an omitted ``participant_notes`` (leave
+    unchanged)."""
+
+    participant_name: str | None = None
+    participant_role_kind: str | None = None
+    participant_affiliation: str | None = None
+    participant_contact: str | None = None
+    participant_notes: str | None = None
+    participant_status: str | None = None
+
+
 # ---------- Fields (methodology entity, v0.5+ PI-004 first slice) ----------
 
 

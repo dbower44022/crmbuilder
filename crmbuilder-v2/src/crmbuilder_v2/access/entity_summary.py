@@ -66,6 +66,7 @@ _SPECS: dict[str, _Spec] = {
     "field": _Spec(models.Field, "field_identifier", "field_name", "field_status", "field_created_at", "field_updated_at"),
     "requirement": _Spec(models.Requirement, "requirement_identifier", "requirement_name", "requirement_status", "requirement_created_at", "requirement_updated_at"),
     "persona": _Spec(models.Persona, "persona_identifier", "persona_name", "persona_status", "persona_created_at", "persona_updated_at"),
+    "participant": _Spec(models.Participant, "participant_identifier", "participant_name", "participant_status", "participant_created_at", "participant_updated_at"),
     "process": _Spec(models.Process, "process_identifier", "process_name", "process_classification", "process_created_at", "process_updated_at"),
     "manual_config": _Spec(models.ManualConfig, "manual_config_identifier", "manual_config_name", "manual_config_status", "manual_config_created_at", "manual_config_updated_at"),
     "test_spec": _Spec(models.TestSpec, "test_spec_identifier", "test_spec_name", "test_spec_status", "test_spec_created_at", "test_spec_updated_at"),

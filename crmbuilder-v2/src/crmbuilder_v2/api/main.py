@@ -66,6 +66,7 @@ from crmbuilder_v2.api.routers import (
     migration_mappings,
     orchestration,
     orientation,
+    participant,
     persona,
     planning_items,
     principals,
@@ -178,6 +179,7 @@ def create_app() -> FastAPI:
     app.include_router(processes.router)
     app.include_router(crm_candidates.router)
     app.include_router(persona.router)
+    app.include_router(participant.router)
     app.include_router(field.router)
     # PI-004 methodology cohort (v0.5+).
     app.include_router(requirements.router)

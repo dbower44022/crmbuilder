@@ -105,6 +105,7 @@ from crmbuilder_v2.access.vocab import (
     MIGRATION_MAPPING_LEVELS,
     MIGRATION_MAPPING_STATUSES,
     OVERRIDE_SUBJECT_TYPES,
+    PARTICIPANT_STATUSES,
     PERSONA_STATUSES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -1269,6 +1270,77 @@ class Persona(EngagementScopedPKMixin, Base):
         ),
         Index("ix_personas_persona_status", "persona_status"),
         Index("ix_personas_persona_deleted_at", "persona_deleted_at"),
+    )
+
+
+class Participant(EngagementScopedPKMixin, Base):
+    """Methodology entity — the real engagement participant a Persona backs.
+
+    REL-040 / PI-094 (REQ-412). Domain discovery surfaces real engagement
+    participants (Implementation Consultant, Client Administrator, Client
+    SME, Technical Administrator, Methodology Author, CRM Researcher,
+    Custom Developer, …) that a methodology ``Persona`` (the abstract role
+    in requirements) can be *backed by*. This is distinct from a
+    ``principal`` (an authenticated actor with tokens/RBAC) and a ``role``
+    (an engine-neutral CRM security role) — a participant is a governance-
+    layer record of the person/role in the engagement.
+
+    Follows the parent-prefix field-naming convention: every column is
+    prefixed ``participant_``. The primary key is the prefixed-string
+    identifier ``participant_identifier`` (format ``PTC-NNN``) with the
+    engagement discriminator, per :class:`EngagementScopedPKMixin`.
+
+    The persona-backing link lives in the ``refs`` table as
+    ``persona_backed_by_participant`` (source persona → target
+    participant); there is no FK column here.
+    """
+
+    __tablename__ = "participants"
+
+    participant_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    participant_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    participant_role_kind: Mapped[str] = mapped_column(
+        String(255), nullable=False
+    )
+    participant_affiliation: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    participant_contact: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    participant_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    participant_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    participant_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    participant_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    participant_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        # ``^PTC-\d{3}$`` expressed as a SQLite GLOB pattern.
+        CheckConstraint(
+            _IdentifierFormatCheck("participant_identifier", ["PTC"]),
+            name="ck_participant_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("participant_status", PARTICIPANT_STATUSES),
+            name="ck_participant_status",
+        ),
+        Index("ix_participants_participant_status", "participant_status"),
+        Index(
+            "ix_participants_participant_deleted_at", "participant_deleted_at"
+        ),
     )
 
 
