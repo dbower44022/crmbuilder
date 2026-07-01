@@ -638,6 +638,14 @@ class EntityDefinition:
     email_templates_raw: list | None = None
     workflows_raw: list | None = None
     filtered_tabs_raw: list | None = None
+    # PI-020 / REQ-403: when a cross-file layout aggregation assigns a merged
+    # layout to this entity, the panels may reference custom fields declared in
+    # *other* batched files. This carries the union of custom field names across
+    # every file that contributed to the merged layout, so the layout writer can
+    # resolve c-prefixes for those fields even though they are not in ``fields``
+    # (which stays this file's own fields, for field deployment). ``None`` outside
+    # aggregation — the writer falls back to ``fields``.
+    layout_field_names: set[str] | None = None
 
 
 @dataclass

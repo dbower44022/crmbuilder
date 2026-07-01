@@ -970,3 +970,34 @@ def test_panel_visible_when_with_field_clause_emits_dynamic_logic():
     # The block is populated; record list stays empty.
     assert saved_payload[0]["dynamicLogicVisible"] is not None
     assert manager._not_supported_role_clauses == []
+
+
+def test_layout_field_names_hint_cprefixes_cross_file_field():
+    # PI-020 / REQ-403: a merged cross-file layout on a native entity references a
+    # custom field declared in a sibling file (so NOT in this entity_def.fields).
+    # The layout_field_names hint (union across contributors) must still drive the
+    # c-prefix so the saved cell is `cSponsorType`, not `sponsorType`.
+    client = MagicMock(spec=EspoAdminClient)
+    client.get_layout.return_value = (200, [])
+    client.save_layout.return_value = (200, {})
+
+    manager, _ = make_manager(client)
+    entity = EntityDefinition(
+        name="Account",  # native -> custom fields get c-prefixed
+        fields=[],  # this file declares none of the layout's fields
+        layouts={
+            "detail": LayoutSpec(
+                layout_type="detail",
+                panels=[PanelSpec(label="Sponsor", rows=[["sponsorType"]])],
+            )
+        },
+        layout_field_names={"sponsorType"},  # supplied by the aggregator
+    )
+    manager.process_layouts(entity, [], dry_run=False)
+
+    client.save_layout.assert_called_once()
+    saved_payload = client.save_layout.call_args[0][2]
+    cells = [c for panel in saved_payload for row in panel["rows"] for c in row if c]
+    names = [c.get("name") for c in cells]
+    assert "cSponsorType" in names, names
+    assert "sponsorType" not in names

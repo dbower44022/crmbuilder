@@ -308,6 +308,36 @@ class ConfigureProgressDialog(QDialog):
             self._finish()
             return
 
+        # PI-020 / REQ-403: merge cross-file layout contributions. EspoCRM stores
+        # one layout per entity and the save-layout call replaces it wholesale, so
+        # when several batched files declare panels for the same entity, only the
+        # last file's panels would survive. Aggregate them into one layout per
+        # entity (panels ordered by file alphabetical then declaration order),
+        # written once by a canonical file; a duplicate panel label across files
+        # is a conflict that aborts before any ambiguous layout is deployed.
+        from espo_impl.core.layout_aggregator import aggregate_layouts
+        from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
+
+        aggregation = aggregate_layouts(
+            [(f.name, program.entities) for f, program in self._pending],
+            get_espo_entity_name,
+        )
+        if not aggregation.ok:
+            self._append_log("")
+            self._append_log("=== LAYOUT AGGREGATION FAILED ===", "error")
+            for conflict in aggregation.conflicts:
+                self._append_log(f"  - {conflict.message()}", "error")
+            self._append_log(
+                "  Two files cannot declare a panel with the same label on the "
+                "same entity — rename or remove one before re-running.",
+                "error",
+            )
+            self._append_log("")
+            self._finish()
+            return
+        for f, program in self._pending:
+            program.entities = aggregation.programs[f.name]
+
         self._run_next()
 
     def _discover_server_fields(

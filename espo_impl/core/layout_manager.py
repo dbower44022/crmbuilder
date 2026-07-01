@@ -94,7 +94,15 @@ class LayoutManager:
         # `_resolve_field_name` short-circuits on every cell and the
         # layout references the actual stored field names.
         if entity_def.name in NATIVE_ENTITIES:
-            custom_field_names = {f.name for f in field_definitions}
+            # PI-020 / REQ-403: a merged cross-file layout may reference custom
+            # fields declared in a sibling file (not in this file's
+            # field_definitions). When aggregation supplied the union of custom
+            # field names, use it so those cells still get their c-prefix.
+            custom_field_names = (
+                set(entity_def.layout_field_names)
+                if entity_def.layout_field_names is not None
+                else {f.name for f in field_definitions}
+            )
         else:
             custom_field_names = set()
 
