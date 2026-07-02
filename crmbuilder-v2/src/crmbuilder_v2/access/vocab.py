@@ -1716,6 +1716,16 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # ``finding_relates_to`` / ``deposit_event_wrote_record`` outbound-edge
         # precedents.
         "release_run_relates_to_finding",
+        # REL-039 / PI-357 (DEC-891) lesson provenance edges. A ``lesson`` (LSN-)
+        # points at the DB record it was welded to (``lesson_derived_from`` →
+        # decision / planning_item / commit — the lossless hybrid split), at a
+        # lesson it replaces (``lesson_supersedes`` → lesson), or at the
+        # agent-contract ``learning`` it becomes (``lesson_promoted_to_learning``
+        # → learning, the optional future bridge). See
+        # rel-039-pi-356-knowledge-structures-design.md §4.
+        "lesson_derived_from",
+        "lesson_supersedes",
+        "lesson_promoted_to_learning",
     }
 )
 
@@ -1889,6 +1899,15 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # closes that schema-vs-spec contradiction. ``reference`` was already in
         # ``CHANGE_LOG_ENTITY_TYPES`` (explicit union), so only the refs CHECK moves.
         "reference",
+        # REL-039 / PI-357 (REQ-416, DEC-891). Three system|engagement-scoped
+        # knowledge classes migrated out of CLAUDE.md + the file memory:
+        # ``preference`` (PRF-) advisory interaction/UI style, ``lesson`` (LSN-)
+        # operational gotchas/how-tos, ``reference_pointer`` (RFP-) external
+        # servers/dashboards/docs/credential locations. See
+        # rel-039-pi-356-knowledge-structures-design.md.
+        "preference",
+        "lesson",
+        "reference_pointer",
     }
 )
 
@@ -2270,6 +2289,23 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     # record's outbound link to any ``finding`` the run produced.
     if source_type == "release_run" and target_type == "finding":
         kinds.add("release_run_relates_to_finding")
+    # REL-039 / PI-357 (DEC-891) lesson provenance edges. ``lesson_derived_from``
+    # is what makes the hybrid-memory split lossless: it points at the DB record
+    # (decision / planning_item / commit) the migrated memory was welded to.
+    # ``lesson_supersedes`` is same-type (a corrected lesson); the same-type
+    # ``supersedes`` clause above already admits (lesson, lesson) too.
+    # ``lesson_promoted_to_learning`` is the optional bridge into the
+    # agent-contract world (future; admitted now, need not be exercised).
+    if source_type == "lesson" and target_type in (
+        "decision",
+        "planning_item",
+        "commit",
+    ):
+        kinds.add("lesson_derived_from")
+    if source_type == "lesson" and target_type == "lesson":
+        kinds.add("lesson_supersedes")
+    if source_type == "lesson" and target_type == "learning":
+        kinds.add("lesson_promoted_to_learning")
     return frozenset(kinds)
 
 
@@ -2448,6 +2484,56 @@ LEARNING_CATEGORIES: frozenset[str] = frozenset(
 )
 # Learnings are written by the standing design tier and the per-task executors.
 LEARNING_TIERS: frozenset[str] = frozenset({"architect", "developer", "tester"})
+
+
+# ---------------------------------------------------------------------------
+# REL-039 / PI-357 — Database as Single Source of Truth (DEC-891 design).
+#
+# Three new system|engagement-scoped knowledge classes migrated out of the
+# instruction files: preference (PRF-, advisory interaction/UI style), lesson
+# (LSN-, operational gotchas/how-tos split from hybrid memories), and
+# reference_pointer (RFP-, external servers/dashboards/docs/credential
+# locations). Vocab per rel-039-pi-356-knowledge-structures-design.md §3–§5.
+# ---------------------------------------------------------------------------
+
+# preference (PRF-) — advisory interaction/UI/workflow style. No enforcement by
+# construction (§7.4): the moment a preference needs enforcing it becomes a
+# governance_rule instead.
+PREFERENCE_CATEGORIES: frozenset[str] = frozenset(
+    {"interaction", "ui", "workflow"}
+)
+# Surface scoping — a UI preference need not load into a headless agent.
+PREFERENCE_APPLIES_TO: frozenset[str] = frozenset(
+    {"all", "claude_code", "sandbox", "ui"}
+)
+PREFERENCE_STATUSES: frozenset[str] = frozenset({"active", "retired"})
+
+# lesson (LSN-) — one operational gotcha / how-to. ``signal`` distinguishes a
+# don't-do-X hazard from generic guidance and a how-to.
+LESSON_CATEGORIES: frozenset[str] = frozenset(
+    {"engineering", "operations", "process", "deployment"}
+)
+LESSON_SIGNALS: frozenset[str] = frozenset({"guidance", "hazard", "howto"})
+LESSON_STATUSES: frozenset[str] = frozenset(
+    {"active", "superseded", "retired"}
+)
+
+# reference_pointer (RFP-) — a single addressable external target with
+# connection metadata and no version history (§5). ``access_note`` records
+# *where* a credential lives, never the secret value (the binding secret-safety
+# invariant).
+REFERENCE_POINTER_KINDS: frozenset[str] = frozenset(
+    {
+        "server",
+        "dashboard",
+        "doc",
+        "ticket",
+        "repo",
+        "credential_location",
+        "service",
+    }
+)
+REFERENCE_POINTER_STATUSES: frozenset[str] = frozenset({"active", "retired"})
 
 
 # Base entity catalog vocabularies (catalog-ingestion-PRD-v0.1.md section 4).
