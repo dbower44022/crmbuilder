@@ -783,6 +783,135 @@ LESSONS: list[dict] = [
         ),
         "derived_from": [("planning_item", "PI-051")],
     },
+    # --- Working-conventions procedural mechanics (migrated from CLAUDE.md by
+    #     PI-359 before trimming that prose; the rule *statements* are GVRs, these
+    #     are the operational HOW-TO). ---
+    {
+        "title": "Model A branch-work protocol — branches carry only code, governance applies on main",
+        "category": "process",
+        "signal": "howto",
+        "body": (
+            "Governance applies happen only on main. A pi-NNN branch carries only "
+            "code/schema/migration commits — it never runs apply_close_out.py and never "
+            "commits under deposit-event-logs/. The branch ships the migration; the "
+            "work's sessions/decisions/PIs are authored as a close-out (sandbox) or "
+            "recorded real-time on main after merge, re-keyed to main's current heads "
+            "(DEC-232/SES-074 build-closure pattern) so the identifier sequence + "
+            "committed deposit-event logs advance on one line. Enforced mechanically: "
+            "apply_close_out.py refuses to run off main (override --allow-branch-local "
+            "for Model B isolated-DB work), and the crmbuilder-v2/githooks/pre-commit "
+            "hook rejects staged deposit-event-logs/ off main "
+            "(override CRMBUILDER_ALLOW_BRANCH_SNAPSHOT=1)."
+        ),
+        "derived_from": [("decision", "DEC-232")],
+    },
+    {
+        "title": "Governance bookkeeping defers to main after merge — the requirement never defers",
+        "category": "process",
+        "signal": "guidance",
+        "body": (
+            "Distinguish two 'whens'. WHEN the requirement must exist: before any code "
+            "— the confirmed requirement + its human approval + the implementing PI are "
+            "the authorization to build and are NOT deferrable. WHEN the governance "
+            "bookkeeping lands: the session record, decisions, and deposit-event log "
+            "are deferred to main after merge by Model A. Model A defers the bookkeeping "
+            "ONLY — never the requirement, its approval, or the implementing PI. "
+            "Misreading 'governance happens at close-out' as 'build first, backfill "
+            "later' is the exact trap the requirement-first rule closes."
+        ),
+        "derived_from": [("decision", "DEC-538")],
+    },
+    {
+        "title": "Opening a V2 session — anchor on a planning_item + a kickoff work_ticket",
+        "category": "process",
+        "signal": "howto",
+        "body": (
+            "Each unit of V2 work is anchored by a planning_item (PI-NNN) with an "
+            "associated work_ticket of kind kickoff_prompt (WT-NNN) that carries the "
+            "kickoff summary + a work_ticket_file_path pointer to the canonical kickoff "
+            ".md, and an addresses edge to the PI. To open: GET /work-tickets/WT-NNN → "
+            "read the summary → fetch the file for the full kickoff. Or 'Open against "
+            "PI-NNN' → GET /references?target_id=PI-NNN&relationship=addresses to find "
+            "the WT. The kickoff is the source of truth for what the session does; the "
+            "PI for why and what artifact resolves it."
+        ),
+        "derived_from": [],
+    },
+    {
+        "title": "Scheduled-session handoff — pre-create a planned session, transition planned→in_flight to open",
+        "category": "process",
+        "signal": "howto",
+        "body": (
+            "A session may be pre-created in 'planned' status to hand work to the next "
+            "session: its session_description carries the kickoff, wired via "
+            "session_belongs_to_project and (for a Work Task) session_works_work_task → "
+            "WTK-NNN. To open it, fetch the planned SES-NNN, transition it "
+            "planned→in_flight, and execute. Session lifecycle is planned → in_flight → "
+            "complete/cancelled/not_started/superseded (no direct planned→complete)."
+        ),
+        "derived_from": [("planning_item", "PI-073")],
+    },
+    {
+        "title": "Closing a V2 session — the triple-artifact close-out",
+        "category": "process",
+        "signal": "howto",
+        "body": (
+            "Every session produces a triple-artifact close-out: (1) a content "
+            "deliverable (design doc, code+tests, methodology amendment); (2) a "
+            "close-out payload at close-out-payloads/ses_NNN.json (nine sections per "
+            "v0.8); (3) an apply prompt documenting pre-flight + the apply command + "
+            "post-apply verification. Run apply_close_out.py to atomically write all "
+            "records and lazy-create the close_out_payload + deposit_event, then commit "
+            "the new deposit-event-logs/dep_NNN.log + deliverable + payload + apply "
+            "prompt. In Claude Code with a live API, records are entered real-time via "
+            "direct POST instead; the payload path is the sandbox fallback and the "
+            "Model-A deposit-event-log producer."
+        ),
+        "derived_from": [("decision", "DEC-383")],
+    },
+    {
+        "title": "A planning_item resolves only via a resolves edge on its final close-out",
+        "category": "process",
+        "signal": "guidance",
+        "body": (
+            "A planning_item resolves only when its final delivering conversation's "
+            "resolves edge (conversation → planning_item) fires — POST /references "
+            "atomically creates the edge and flips the PI Draft/…→Resolved (PI-030 "
+            "slice A). Intermediate sessions that advance a PI without resolving it use "
+            "the non-resolving addresses edge instead. For multi-slice work, individual "
+            "slices address the PI; the build-closure conversation ingests the slice "
+            "commits and resolves the PI in the same transaction (DEC-232/SES-074)."
+        ),
+        "derived_from": [("decision", "DEC-232")],
+    },
+    {
+        "title": "Install the governance gate once per clone",
+        "category": "process",
+        "signal": "howto",
+        "body": (
+            "Install the governance-enforcement git hook once per clone with "
+            "'uv run crmbuilder-v2-install-hooks' (sets core.hooksPath="
+            "crmbuilder-v2/githooks; worktrees inherit it, covering the ADO fleet; "
+            "coexists with the deposit-event pre-commit guard). Mode via "
+            "CRMBUILDER_GOVERNANCE_GATE = off|warn|enforce (default warn during "
+            "rollout). Validation needs the live API; store-unreachable is treated as "
+            "skip, not block."
+        ),
+        "derived_from": [("planning_item", "PI-286")],
+    },
+    {
+        "title": "Push convention — sandbox commits+pushes together; Claude Code commits, Doug pushes",
+        "category": "process",
+        "signal": "guidance",
+        "body": (
+            "Claude.ai sandbox commits live in an ephemeral container Doug cannot "
+            "access, so in the sandbox Claude commits AND pushes together in the same "
+            "turn (a held commit between turns is lost). Claude Code commits land in "
+            "Doug's local clone, which Doug reviews before pushing; in Claude Code, "
+            "Claude commits and Doug pushes."
+        ),
+        "derived_from": [],
+    },
 ]
 
 # ---------------------------------------------------------------------------
