@@ -47,9 +47,15 @@ All four requirements are **confirmed** and each PI **implements** its requireme
 
 ## 3. The work, PI by PI
 
-### PI-357 — Migrate content into the DB (the big one; slice it)
+### PI-357 — Migrate content into the DB (the big one; already sliced)
 
-Implements the PI-356 design. This is **schema + data**, and it is large enough to decompose into slices (address the PI with each slice; resolve it on the final build-closure).
+Implements the PI-356 design. This is **schema + data**. **PI-357 is already decomposed** into its three phase workstreams (current four-step model, PI-129/DEC-392) with a serial `blocked_by` chain — do **not** re-decompose (it's once-only; re-running 409s). Scope each into Work Tasks (`POST /workstreams/{id}/scope`) or execute directly, addressing the PI as you go and resolving it on the final build-closure:
+
+| Workstream | Phase | Holds |
+|---|---|---|
+| **WSK-202** | Design (no blocker) | Confirm-only — design is PI-356; verify the three schemas + migration plan still fit the live schema. Likely → Not Applicable. |
+| **WSK-203** | Develop (blocked_by WSK-202) | Slice 1 schema/entities (3 models + repos + REST + client + vocab + **dual-head migrations with the change_log/refs CHECK rebuilds**); Slice 2 data migration (idempotent `--dry-run` ingest of instructions→GVR, prefs→PRF, lessons→LSN with `lesson_derived_from` edges, pointers→RFP with CBM→ENG-002 + never-store-secrets) + dup removal; then apply the migration to live cloud PG + restart. |
+| **WSK-204** | Test (blocked_by WSK-203) | Verify on Postgres: CRUD + scope-merge for all three entities, the new edge kinds + pair constraints, the CHECK rebuilds, and the REQ-416 lossless spot-check. |
 
 **3a. Schema (code, on a `pi-357-*` branch, Model A):**
 - Add three new entities per the design: **`preference` (`PRF-`)**, **`lesson` (`LSN-`)**, **`reference_pointer` (`RFP-`)** — models in `access/models.py` (plain `Base`, nullable `engagement_id`, dialect-rendered CHECKs via `_IdentifierFormatCheck` etc.), repositories under `access/repositories/`, REST endpoints, and client methods. Follow how `governance_rule`/`learning` are wired as the template.
