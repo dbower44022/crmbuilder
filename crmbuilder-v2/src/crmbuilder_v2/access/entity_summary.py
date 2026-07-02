@@ -137,6 +137,10 @@ _SPECS: dict[str, _Spec] = {
     "governance_rule": _Spec(models.GovernanceRuleRow, "identifier", "body", "status", "created_at", "updated_at"),
     "learning": _Spec(models.LearningRow, "identifier", "content", "status", "created_at", "updated_at"),
     "term": _Spec(models.TermRow, "identifier", "name", "status", "created_at", "updated_at"),
+    # REL-039 / PI-357 knowledge classes (REQ-416, DEC-891).
+    "preference": _Spec(models.PreferenceRow, "identifier", "title", "status", "created_at", "updated_at"),
+    "lesson": _Spec(models.LessonRow, "identifier", "title", "status", "created_at", "updated_at"),
+    "reference_pointer": _Spec(models.ReferencePointerRow, "identifier", "title", "status", "created_at", "updated_at"),
 }
 
 # Members of ENTITY_TYPES that intentionally carry no inline summary:
