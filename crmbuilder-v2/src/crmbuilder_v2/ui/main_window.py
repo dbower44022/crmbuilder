@@ -56,6 +56,7 @@ from crmbuilder_v2.ui.panels.field import FieldsPanel
 from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
 from crmbuilder_v2.ui.panels.instances import InstancesPanel
 from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
+from crmbuilder_v2.ui.panels.participant import ParticipantsPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
@@ -138,6 +139,8 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "process": "Processes",
     "crm_candidate": "CRM Candidates",
     "persona": "Personas",
+    # REL-069 / PI-391: engagement participants that back personas.
+    "participant": "Participants",
     "field": "Fields",
     # PI-004 methodology cohort (v0.5+).
     "requirement": "Requirements",
@@ -238,6 +241,9 @@ def build_panel(
         return CrmCandidatesPanel(client)
     if label == "Personas":
         return PersonasPanel(client)
+    # REL-069 / PI-391: participants that back personas.
+    if label == "Participants":
+        return ParticipantsPanel(client)
     if label == "Fields":
         return FieldsPanel(client)
     if label == "Manual Configs":

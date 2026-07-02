@@ -142,6 +142,8 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "Test Specs",
             "CRM Candidates",
             "Personas",
+            # REL-069 / PI-391: engagement participants that back personas.
+            "Participants",
             "Fields",
             "Manual Configs",
             # PI-061: the glossary — term definitions as records, migrated
