@@ -49,13 +49,24 @@ All four requirements are **confirmed** and each PI **implements** its requireme
 
 ### PI-357 — Migrate content into the DB (the big one; already sliced)
 
-Implements the PI-356 design. This is **schema + data**. **PI-357 is already decomposed** into its three phase workstreams (current four-step model, PI-129/DEC-392) with a serial `blocked_by` chain — do **not** re-decompose (it's once-only; re-running 409s). Scope each into Work Tasks (`POST /workstreams/{id}/scope`) or execute directly, addressing the PI as you go and resolving it on the final build-closure:
+Implements the PI-356 design. This is **schema + data**. **PI-357 is already decomposed** into its three phase workstreams (current four-step model, PI-129/DEC-392) with a serial `blocked_by` chain, and **WSK-203 is already scoped** into its six Work Tasks (status `Ready`) — do **not** re-decompose or re-scope WSK-203 (both are once-only; re-running 409s). Claim/execute the Work Tasks, addressing the PI as you go and resolving it on the final build-closure. Scope WSK-202/WSK-204 when you reach them (WSK-202 is likely `Not Applicable`).
 
-| Workstream | Phase | Holds |
+| Workstream | Phase | State | Holds |
+|---|---|---|---|
+| **WSK-202** | Design | Planned (unscoped) | Confirm-only — design is PI-356; verify the three schemas + migration plan still fit the live schema. Likely → Not Applicable. |
+| **WSK-203** | Develop (blocked_by WSK-202) | **Ready — scoped into WTK-283…288** | See the Work Task table below. |
+| **WSK-204** | Test (blocked_by WSK-203) | Planned (unscoped) | Verify on Postgres: CRUD + scope-merge for all three entities, the new edge kinds + pair constraints, the CHECK rebuilds, and the REQ-416 lossless spot-check. |
+
+**WSK-203 Work Tasks** (single-area, along the storage→access→api→ui→infrastructure spine; each `Planned`, claimable):
+
+| Work Task | Area | Covers |
 |---|---|---|
-| **WSK-202** | Design (no blocker) | Confirm-only — design is PI-356; verify the three schemas + migration plan still fit the live schema. Likely → Not Applicable. |
-| **WSK-203** | Develop (blocked_by WSK-202) | Slice 1 schema/entities (3 models + repos + REST + client + vocab + **dual-head migrations with the change_log/refs CHECK rebuilds**); Slice 2 data migration (idempotent `--dry-run` ingest of instructions→GVR, prefs→PRF, lessons→LSN with `lesson_derived_from` edges, pointers→RFP with CBM→ENG-002 + never-store-secrets) + dup removal; then apply the migration to live cloud PG + restart. |
-| **WSK-204** | Test (blocked_by WSK-203) | Verify on Postgres: CRUD + scope-merge for all three entities, the new edge kinds + pair constraints, the CHECK rebuilds, and the REQ-416 lossless spot-check. |
+| **WTK-283** | storage | 3 ORM models (PRF-/LSN-/RFP-) + dual-head migrations (SQLite + PG) **with the change_log/refs CHECK rebuilds** |
+| **WTK-284** | access | repositories (modeled on governance_rules/learnings) + vocab (ENTITY_TYPES, prefixes, the 3 `lesson_*` edge kinds + `_kinds_for_pair`) |
+| **WTK-285** | api | envelope-wrapped CRUD routers, identifier optional on POST |
+| **WTK-286** | ui | `StorageClient` methods + lesson-edge helpers (config panels out of scope) |
+| **WTK-287** | access | content ingest (REQ-416): idempotent `--dry-run` script off the PI-355 table → ~9 GVR, 7 PRF, ~40 LSN (+`lesson_derived_from` edges), ~8 RFP (CBM→ENG-002, never secrets) + dup removal |
+| **WTK-288** | infrastructure | apply migration to live cloud PG (backup → ship → `uv sync` → `alembic … upgrade head` → restart) |
 
 **3a. Schema (code, on a `pi-357-*` branch, Model A):**
 - Add three new entities per the design: **`preference` (`PRF-`)**, **`lesson` (`LSN-`)**, **`reference_pointer` (`RFP-`)** — models in `access/models.py` (plain `Base`, nullable `engagement_id`, dialect-rendered CHECKs via `_IdentifierFormatCheck` etc.), repositories under `access/repositories/`, REST endpoints, and client methods. Follow how `governance_rule`/`learning` are wired as the template.
