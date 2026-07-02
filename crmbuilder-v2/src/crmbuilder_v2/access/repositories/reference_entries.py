@@ -93,12 +93,35 @@ def _require_trigger_keywords(value) -> list | None:
     return value
 
 
+def _require_str_list(content: dict, key: str, *, non_empty: bool = False) -> list:
+    value = content.get(key)
+    if not isinstance(value, list) or not all(
+        isinstance(v, str) and v.strip() for v in value
+    ):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    f"content.{key}",
+                    "invalid",
+                    f"'{key}' must be a list of non-empty strings",
+                )
+            ]
+        )
+    if non_empty and not value:
+        raise UnprocessableError(
+            [FieldError(f"content.{key}", "empty", f"'{key}' must not be empty")]
+        )
+    return value
+
+
 def _validate_content(kind: str, content) -> dict:
     """Validate the per-kind ``content`` payload shape.
 
-    All kinds require a JSON object. ``domain_knowledge`` additionally requires a
-    non-empty ``body`` string (PI-063). The structural checks for
-    ``organization_structure`` and ``inventory_items`` are added by PI-064/065.
+    All kinds require a JSON object. ``domain_knowledge`` requires a non-empty
+    ``body`` string (PI-063). ``organization_structure`` requires string-list
+    ``typical_entities`` (non-empty) + ``typical_relationships`` (PI-064).
+    ``inventory_items`` requires string-list ``entities`` / ``personas`` /
+    ``processes``, at least one non-empty (PI-065).
     """
     if not isinstance(content, dict) or not content:
         raise UnprocessableError(
@@ -113,6 +136,26 @@ def _validate_content(kind: str, content) -> dict:
                         "content.body",
                         "missing_or_empty",
                         "domain_knowledge content requires a non-empty 'body'",
+                    )
+                ]
+            )
+    elif kind == "organization_structure":
+        _require_str_list(content, "typical_entities", non_empty=True)
+        _require_str_list(content, "typical_relationships")
+    elif kind == "inventory_items":
+        lists = [
+            _require_str_list(content, "entities"),
+            _require_str_list(content, "personas"),
+            _require_str_list(content, "processes"),
+        ]
+        if not any(lists):
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "content",
+                        "empty",
+                        "inventory_items requires at least one of entities / "
+                        "personas / processes to be non-empty",
                     )
                 ]
             )
