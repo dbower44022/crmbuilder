@@ -108,8 +108,145 @@ SEED_DOMAIN_KNOWLEDGE: list[dict] = [
 ]
 
 
+# Organization Structure entries (REL-016 / PI-064, REQ-399) — the typical
+# structural shape (entities + relationships) of an organization type.
+SEED_ORGANIZATION_STRUCTURE: list[dict] = [
+    {
+        "name": "Nonprofit Mentoring Organization — Structure",
+        "applies_to": "nonprofit mentoring",
+        "trigger_keywords": ["mentoring", "mentor", "mentee", "nonprofit mentoring"],
+        "content": {
+            "typical_entities": [
+                "Mentor",
+                "Mentee",
+                "Match",
+                "Mentoring Session",
+                "Program",
+                "Goal",
+                "Donor",
+                "Grant",
+            ],
+            "typical_relationships": [
+                "A Match links one Mentor to one Mentee",
+                "A Match belongs to a Program",
+                "A Mentoring Session belongs to a Match",
+                "A Goal belongs to a Match (or Mentee)",
+                "A Grant funds a Program",
+            ],
+        },
+    },
+    {
+        "name": "Charitable Foundation — Structure",
+        "applies_to": "charitable foundation",
+        "trigger_keywords": ["foundation", "grantmaking", "grants", "grantee"],
+        "content": {
+            "typical_entities": [
+                "Grant Application",
+                "Grant",
+                "Grantee",
+                "Program Area",
+                "Disbursement",
+                "Grantee Report",
+                "Donor",
+                "Endowment Fund",
+            ],
+            "typical_relationships": [
+                "A Grant Application is reviewed and becomes a Grant",
+                "A Grant is awarded to a Grantee",
+                "A Grant belongs to a Program Area",
+                "A Disbursement belongs to a Grant (installment schedule)",
+                "A Grantee Report belongs to a Grant",
+            ],
+        },
+    },
+    {
+        "name": "Membership Organization — Structure",
+        "applies_to": "membership organization",
+        "trigger_keywords": ["membership", "member", "dues", "chapter", "association"],
+        "content": {
+            "typical_entities": [
+                "Member",
+                "Membership",
+                "Membership Tier",
+                "Dues Payment",
+                "Chapter",
+                "Event",
+                "Event Registration",
+            ],
+            "typical_relationships": [
+                "A Membership belongs to a Member and a Membership Tier",
+                "A Dues Payment belongs to a Membership",
+                "A Member may belong to a Chapter",
+                "An Event Registration links a Member to an Event",
+            ],
+        },
+    },
+]
+
+# Inventory Items entries (REL-016 / PI-065, REQ-400) — the typical entities,
+# personas, and processes of an organization type (a discovery checklist).
+SEED_INVENTORY_ITEMS: list[dict] = [
+    {
+        "name": "Nonprofit Mentoring Organization — Inventory",
+        "applies_to": "nonprofit mentoring",
+        "trigger_keywords": ["mentoring", "mentor", "mentee", "nonprofit mentoring"],
+        "content": {
+            "entities": ["Mentor", "Mentee", "Match", "Mentoring Session", "Program", "Goal"],
+            "personas": ["Program Coordinator", "Mentor", "Mentee", "Parent/Guardian"],
+            "processes": [
+                "Recruit and screen mentors",
+                "Recruit and assess mentees",
+                "Match mentor to mentee",
+                "Onboard and train",
+                "Log mentoring sessions",
+                "Measure and report outcomes",
+            ],
+        },
+    },
+    {
+        "name": "Charitable Foundation — Inventory",
+        "applies_to": "charitable foundation",
+        "trigger_keywords": ["foundation", "grantmaking", "grants", "grantee"],
+        "content": {
+            "entities": ["Grant Application", "Grant", "Grantee", "Program Area", "Disbursement", "Grantee Report"],
+            "personas": ["Program Officer", "Review Committee/Board", "Grantee", "Donor"],
+            "processes": [
+                "Solicit or invite applications",
+                "Review and score applications",
+                "Award grants",
+                "Disburse funds on schedule",
+                "Collect and review grantee reports",
+            ],
+        },
+    },
+    {
+        "name": "Membership Organization — Inventory",
+        "applies_to": "membership organization",
+        "trigger_keywords": ["membership", "member", "dues", "chapter", "association"],
+        "content": {
+            "entities": ["Member", "Membership", "Membership Tier", "Dues Payment", "Chapter", "Event", "Event Registration"],
+            "personas": ["Membership Manager", "Member", "Chapter Leader", "Event Organizer"],
+            "processes": [
+                "Enroll and renew members",
+                "Collect dues",
+                "Manage tiers and benefits",
+                "Run member events",
+                "Track engagement and retention",
+            ],
+        },
+    },
+]
+
+# Kind → authored entries. Adding a kind is a one-line change here.
+_SEED_BY_KIND: dict[str, list[dict]] = {
+    "domain_knowledge": SEED_DOMAIN_KNOWLEDGE,
+    "organization_structure": SEED_ORGANIZATION_STRUCTURE,
+    "inventory_items": SEED_INVENTORY_ITEMS,
+}
+
+
 def seed_reference_entries(session: Session) -> dict:
-    """Create the initial Domain Knowledge entries; skip any that already exist.
+    """Create the initial reference entries (all kinds); skip existing ones.
 
     Idempotent by ``name`` (system scope). Returns a summary
     ``{"created": [...], "skipped": [...]}``.
@@ -120,18 +257,19 @@ def seed_reference_entries(session: Session) -> dict:
     }
     created: list[str] = []
     skipped: list[str] = []
-    for entry in SEED_DOMAIN_KNOWLEDGE:
-        if entry["name"].lower() in existing:
-            skipped.append(entry["name"])
-            continue
-        row = reference_entries.create(
-            session,
-            name=entry["name"],
-            kind="domain_knowledge",
-            content=entry["content"],
-            applies_to=entry["applies_to"],
-            trigger_keywords=entry["trigger_keywords"],
-            scope="system",
-        )
-        created.append(row["identifier"])
+    for kind, entries in _SEED_BY_KIND.items():
+        for entry in entries:
+            if entry["name"].lower() in existing:
+                skipped.append(entry["name"])
+                continue
+            row = reference_entries.create(
+                session,
+                name=entry["name"],
+                kind=kind,
+                content=entry["content"],
+                applies_to=entry["applies_to"],
+                trigger_keywords=entry["trigger_keywords"],
+                scope="system",
+            )
+            created.append(row["identifier"])
     return {"created": created, "skipped": skipped}

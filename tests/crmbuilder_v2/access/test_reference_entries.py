@@ -111,23 +111,76 @@ def test_empty_content_rejected(v2_env):
         )
 
 
-def test_other_kinds_accept_object_content(v2_env):
-    """PI-063 only tightens domain_knowledge; org/inventory take any object."""
+# --- organization_structure content (PI-064 / REQ-399) ---
+
+_ORG = {
+    "typical_entities": ["Grant", "Donor"],
+    "typical_relationships": ["A Grant is awarded to a Grantee"],
+}
+_INV = {
+    "entities": ["Grant", "Grantee"],
+    "personas": ["Program Officer"],
+    "processes": ["Award grants"],
+}
+
+
+def test_organization_structure_valid(v2_env):
     with session_scope() as s:
-        r1 = reference_entries.create(
+        r = reference_entries.create(
+            s, name="OrgShape", kind="organization_structure", content=_ORG
+        )
+    assert r["kind"] == "organization_structure"
+
+
+def test_organization_structure_requires_typical_entities(v2_env):
+    with session_scope() as s, pytest.raises(UnprocessableError):
+        reference_entries.create(
             s,
-            name="OrgShape",
+            name="A",
             kind="organization_structure",
-            content={"typical_entities": ["Grant", "Donor"]},
+            content={"typical_entities": [], "typical_relationships": []},
         )
-        r2 = reference_entries.create(
+
+
+def test_organization_structure_requires_relationships_list(v2_env):
+    with session_scope() as s, pytest.raises(UnprocessableError):
+        reference_entries.create(
             s,
-            name="Checklist",
-            kind="inventory_items",
-            content={"personas": ["Donor", "Volunteer"]},
+            name="A",
+            kind="organization_structure",
+            content={"typical_entities": ["Grant"]},
         )
-    assert r1["kind"] == "organization_structure"
-    assert r2["kind"] == "inventory_items"
+
+
+# --- inventory_items content (PI-065 / REQ-400) ---
+
+
+def test_inventory_items_valid(v2_env):
+    with session_scope() as s:
+        r = reference_entries.create(
+            s, name="Checklist", kind="inventory_items", content=_INV
+        )
+    assert r["kind"] == "inventory_items"
+
+
+def test_inventory_items_all_empty_rejected(v2_env):
+    with session_scope() as s, pytest.raises(UnprocessableError):
+        reference_entries.create(
+            s,
+            name="A",
+            kind="inventory_items",
+            content={"entities": [], "personas": [], "processes": []},
+        )
+
+
+def test_inventory_items_non_list_rejected(v2_env):
+    with session_scope() as s, pytest.raises(UnprocessableError):
+        reference_entries.create(
+            s,
+            name="A",
+            kind="inventory_items",
+            content={"entities": "Grant", "personas": [], "processes": []},
+        )
 
 
 def test_trigger_keywords_must_be_string_list(v2_env):
@@ -190,7 +243,10 @@ def test_list_filters_by_kind_and_scope(v2_env):
             s,
             name="OrgSys",
             kind="organization_structure",
-            content={"typical_entities": []},
+            content={
+                "typical_entities": ["Grant"],
+                "typical_relationships": [],
+            },
         )
     with session_scope() as s:
         dk = reference_entries.list_all(s, kind="domain_knowledge")
@@ -251,22 +307,31 @@ def test_delete(v2_env):
 # ---------------------------------------------------------------------------
 
 
-def test_seed_creates_domain_knowledge(v2_env):
+def test_seed_creates_all_kinds(v2_env):
     with session_scope() as s:
         summary = reference_entry_seed.seed_reference_entries(s)
-    assert len(summary["created"]) == 3
+    # 3 domain_knowledge + 3 organization_structure + 3 inventory_items.
+    assert len(summary["created"]) == 9
     with session_scope() as s:
-        rows = reference_entries.list_all(s, kind="domain_knowledge")
-    names = {r["name"] for r in rows}
-    assert names == {
+        dk = reference_entries.list_all(s, kind="domain_knowledge")
+        org = reference_entries.list_all(s, kind="organization_structure")
+        inv = reference_entries.list_all(s, kind="inventory_items")
+    assert len(dk) == 3 and len(org) == 3 and len(inv) == 3
+    assert {r["name"] for r in dk} == {
         "Nonprofit Mentoring Organization",
         "Charitable Foundation",
         "Social Marketing Program",
     }
-    for r in rows:
+    # Every seeded entry is system-scoped, keyworded, and content-valid.
+    for r in dk + org + inv:
         assert r["scope"] == "system"
-        assert isinstance(r["content"].get("body"), str) and r["content"]["body"]
         assert isinstance(r["trigger_keywords"], list) and r["trigger_keywords"]
+    for r in org:
+        assert r["content"]["typical_entities"]
+    for r in inv:
+        assert any(
+            r["content"].get(k) for k in ("entities", "personas", "processes")
+        )
 
 
 def test_seed_is_idempotent(v2_env):
@@ -275,7 +340,7 @@ def test_seed_is_idempotent(v2_env):
     with session_scope() as s:
         summary = reference_entry_seed.seed_reference_entries(s)
     assert summary["created"] == []
-    assert len(summary["skipped"]) == 3
+    assert len(summary["skipped"]) == 9
     with session_scope() as s:
-        rows = reference_entries.list_all(s, kind="domain_knowledge")
-    assert len(rows) == 3
+        rows = reference_entries.list_all(s)
+    assert len(rows) == 9

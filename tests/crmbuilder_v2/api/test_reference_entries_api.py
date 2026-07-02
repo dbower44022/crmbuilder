@@ -43,7 +43,10 @@ def test_get_and_list_with_filters(client):
         client,
         name="OrgB",
         kind="organization_structure",
-        content={"typical_entities": ["Grant"]},
+        content={
+            "typical_entities": ["Grant"],
+            "typical_relationships": ["A Grant is awarded to a Grantee"],
+        },
     )
     assert len(client.get("/reference-entries").json()["data"]) == 2
     dk = client.get("/reference-entries?kind=domain_knowledge").json()["data"]
@@ -73,6 +76,51 @@ def test_invalid_kind_422(client):
         json={"name": "A", "kind": "bogus", "content": _DK},
     )
     assert r.status_code == 422
+
+
+def test_organization_structure_valid_and_invalid(client):
+    ok = client.post(
+        "/reference-entries",
+        json={
+            "name": "Org",
+            "kind": "organization_structure",
+            "content": {
+                "typical_entities": ["Grant"],
+                "typical_relationships": ["A Grant is awarded to a Grantee"],
+            },
+        },
+    )
+    assert ok.status_code == 201, ok.text
+    bad = client.post(
+        "/reference-entries",
+        json={
+            "name": "OrgBad",
+            "kind": "organization_structure",
+            "content": {"typical_entities": []},
+        },
+    )
+    assert bad.status_code == 422
+
+
+def test_inventory_items_valid_and_invalid(client):
+    ok = client.post(
+        "/reference-entries",
+        json={
+            "name": "Inv",
+            "kind": "inventory_items",
+            "content": {"entities": ["Grant"], "personas": [], "processes": []},
+        },
+    )
+    assert ok.status_code == 201, ok.text
+    bad = client.post(
+        "/reference-entries",
+        json={
+            "name": "InvBad",
+            "kind": "inventory_items",
+            "content": {"entities": [], "personas": [], "processes": []},
+        },
+    )
+    assert bad.status_code == 422
 
 
 def test_engagement_scope_and_filter(client):
