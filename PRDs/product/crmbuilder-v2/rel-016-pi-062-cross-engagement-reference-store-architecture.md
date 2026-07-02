@@ -9,6 +9,8 @@
 2. **Naming** of the three content kinds: **Domain Knowledge**, **Organization Structure**, **Inventory Items**.
 3. **One entity distinguished by a `kind` field** (combined mechanism, distinct kinds) — not three separate tables.
 
+**Naming LOCKED (DEC-887, 2026-07-01):** umbrella entity **Reference Entry** (table `reference_entries`, identifier prefix **`RFE-NNN`**); `kind` tokens **`domain_knowledge`** / **`organization_structure`** / **`inventory_items`** (display: Domain Knowledge / Organization Structure / Inventory Items). PI-063 is unblocked. See §7.
+
 ---
 
 ## 1. The problem, and why the store is already built
@@ -51,13 +53,13 @@ These are distinct from **Agent Skill** (an agent's operating capability) and fr
 
 REQ-399 asks whether the three are "cleanly distinguished or deliberately combined." The answer is **both**: **distinct by `kind`, combined in mechanism** — one record family mirroring the existing `skill` entity's "one table + `kind` discriminator + JSON payload" shape.
 
-### 3.1 The `Reference Entry` entity *(umbrella name PROVISIONAL — see §7)*
+### 3.1 The `Reference Entry` entity *(name LOCKED — DEC-887, §7)*
 
-Table `reference_entries`, identifier prefix **`RFE-NNN`** *(provisional, pending §7)*, engagement-scoped by the shared pattern:
+Table `reference_entries`, identifier prefix **`RFE-NNN`**, engagement-scoped by the shared pattern:
 
 | Column | Type | Notes |
 |---|---|---|
-| `identifier` | str PK | `RFE-NNN` *(provisional)*, server-assignable |
+| `identifier` | str PK | `RFE-NNN`, server-assignable |
 | `engagement_id` | str **NULL** FK → engagements | **The scope discriminator.** NULL = system (shared by all engagements); set = private to that engagement. Reused pattern. |
 | `name` | str, required | e.g. "Nonprofit Mentoring Organization" |
 | `kind` | str, required | CHECK ∈ `{domain_knowledge, organization_structure, inventory_items}` (display names per the table above) |
@@ -126,15 +128,28 @@ All three use the same `system | engagement` store; each is a distinct entity wi
 
 ---
 
-## 7. Open items requiring Doug's sign-off before PI-063 build
+## 7. Naming — LOCKED (DEC-887, 2026-07-01)
 
-Per the terminology-governance rule (no new term in code without approval), the following are **proposed** here and must be confirmed before the first build PI (PI-063) writes code:
+Doug locked the naming so PI-063 can build:
 
-1. **The umbrella entity name** — used provisionally as **"Reference Entry"** (table `reference_entries`, prefix `RFE-NNN`). Alternatives: "Reference Library Entry", "Domain Reference". *Doug's call.*
-2. **The `kind` tokens** — proposed `domain_knowledge` / `organization_structure` / `inventory_items` (display: Domain Knowledge / Organization Structure / Inventory Items). Confirm the tokens.
-3. **Glossary additions** — add the four new terms above once names are locked.
+1. **Umbrella entity: `Reference Entry`** — table `reference_entries`, identifier prefix **`RFE-NNN`**.
+2. **`kind` tokens:** `domain_knowledge` / `organization_structure` / `inventory_items` (display: Domain Knowledge / Organization Structure / Inventory Items).
 
-Everything else (reuse the store, one-entity-by-kind, keyword loader, RegistryCrudPanel UI) is decided.
+**PI-063 is unblocked** — everything (reuse the store, one-entity-by-kind, keyword loader, RegistryCrudPanel UI, names) is decided.
+
+### 7.1 Glossary reconciliation (follow-up to the lock)
+
+The glossary already carries these three concepts under **old names**, each noting the distinction was "still being refined":
+
+| Glossary term (old) | → Locked name | Action |
+|---|---|---|
+| `TERM-002 "Skill"` (methodology domain-knowledge) | **Domain Knowledge** | rename + resolve the "still being refined" note (now a `kind` of Reference Entry) |
+| `TERM-003 "Pattern"` | **Organization Structure** | rename + resolve |
+| `TERM-004 "Inventory"` | **Inventory Items** | rename + resolve |
+| `TERM-008 "Agent Skill"` | *(unchanged)* | update its `related_terms` to point at Domain Knowledge |
+| *(new)* | **Reference Entry** | add the umbrella term |
+
+This reconciliation aligns the vocabulary SSoT with the locked names; it is content-only (no code) and can land alongside PI-063.
 
 ---
 
