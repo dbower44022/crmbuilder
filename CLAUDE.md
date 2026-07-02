@@ -26,7 +26,7 @@ Sections below this one describe the existing federated V1/V2 state and are reta
 
 ## Session bootstrap — the database is the source of truth
 
-The V2 database is the **single source of truth** for governance rules, preferences, lessons, and reference pointers (REL-039 / PI-360; see the `SSoT` governance_rule in the DB). This file holds only bootstrap + repo/architecture reference; the durable operating knowledge lives in the DB and is read at session start — do not re-add it here (that is the no-duplication rule the SSoT `governance_rule` states).
+The V2 database is the **single source of truth** for governance rules, preferences, lessons, and reference pointers (REL-039 / PI-360; the governing rule is **`governance_rule` GVR-238** in the DB). This file holds only bootstrap + repo/architecture reference; the durable operating knowledge lives in the DB and is read at session start — do not re-add it here (that is the no-duplication constraint GVR-238 states).
 
 **Reaching the store** (in order of preference):
 - **Cloud API** `https://api.crmbuilder.ai` — auth ON; name the engagement with the `X-Engagement: ENG-001` header. The base URL + bearer token live in the gitignored `crmbuilder-v2/data/crmbuilder.env` (`CRMBUILDER_V2_API_BASE_URL` / `CRMBUILDER_V2_API_TOKEN`) — send `Authorization: Bearer <token>`.
