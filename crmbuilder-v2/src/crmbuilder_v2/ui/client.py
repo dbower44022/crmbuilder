@@ -3542,6 +3542,164 @@ class StorageClient:
             op="curate_learnings",
         )
 
+    # --- knowledge classes (REL-039 / PI-357) ---------------------------
+
+    def list_preferences(
+        self,
+        *,
+        category: str | None = None,
+        applies_to: str | None = None,
+        status: str | None = None,
+        scope: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /preferences (optionally filtered)."""
+        path = "/preferences" + self._query(
+            {"category": category, "applies_to": applies_to, "status": status, "scope": scope}
+        )
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_preference(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/preferences/{identifier}"), op="get_preference"
+        )
+
+    def create_preference(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/preferences", json_body=body), op="create_preference"
+        )
+
+    def patch_preference(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/preferences/{identifier}", json_body=body),
+            op="patch_preference",
+        )
+
+    def delete_preference(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/preferences/{identifier}")
+
+    def list_lessons(
+        self,
+        *,
+        category: str | None = None,
+        signal: str | None = None,
+        status: str | None = None,
+        scope: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /lessons (optionally filtered)."""
+        path = "/lessons" + self._query(
+            {"category": category, "signal": signal, "status": status, "scope": scope}
+        )
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_lesson(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/lessons/{identifier}"), op="get_lesson"
+        )
+
+    def create_lesson(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/lessons", json_body=body), op="create_lesson"
+        )
+
+    def patch_lesson(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/lessons/{identifier}", json_body=body),
+            op="patch_lesson",
+        )
+
+    def delete_lesson(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/lessons/{identifier}")
+
+    def list_reference_pointers(
+        self,
+        *,
+        kind: str | None = None,
+        status: str | None = None,
+        scope: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /reference-pointers (optionally filtered)."""
+        path = "/reference-pointers" + self._query(
+            {"kind": kind, "status": status, "scope": scope}
+        )
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_reference_pointer(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/reference-pointers/{identifier}"),
+            op="get_reference_pointer",
+        )
+
+    def create_reference_pointer(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/reference-pointers", json_body=body),
+            op="create_reference_pointer",
+        )
+
+    def patch_reference_pointer(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/reference-pointers/{identifier}", json_body=body),
+            op="patch_reference_pointer",
+        )
+
+    def delete_reference_pointer(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/reference-pointers/{identifier}")
+
+    # --- lesson provenance edges (REL-039 / PI-357) ---------------------
+
+    def add_lesson_derived_from(
+        self, lesson_id: str, target_type: str, target_id: str
+    ) -> None:
+        """Link a lesson to the DB record it was welded to (decision / planning_item / commit)."""
+        self.create_reference(
+            {
+                "source_type": "lesson",
+                "source_id": lesson_id,
+                "target_type": target_type,
+                "target_id": target_id,
+                "relationship": "lesson_derived_from",
+            }
+        )
+
+    def add_lesson_supersedes(self, lesson_id: str, superseded_lesson_id: str) -> None:
+        """Record that ``lesson_id`` supersedes an earlier lesson."""
+        self.create_reference(
+            {
+                "source_type": "lesson",
+                "source_id": lesson_id,
+                "target_type": "lesson",
+                "target_id": superseded_lesson_id,
+                "relationship": "lesson_supersedes",
+            }
+        )
+
+    def add_lesson_promoted_to_learning(self, lesson_id: str, learning_id: str) -> None:
+        """Bridge a lesson to the agent-contract learning it was promoted into."""
+        self.create_reference(
+            {
+                "source_type": "lesson",
+                "source_id": lesson_id,
+                "target_type": "learning",
+                "target_id": learning_id,
+                "relationship": "lesson_promoted_to_learning",
+            }
+        )
+
+    def remove_lesson_edge(
+        self, lesson_id: str, target_id: str, relationship: str
+    ) -> None:
+        """Remove a lesson provenance edge by locating its numeric reference id."""
+        ref_id = self._find_reference_id(
+            source_type="lesson",
+            source_id=lesson_id,
+            target_id=target_id,
+            relationship=relationship,
+        )
+        if ref_id is not None:
+            self.delete_reference(ref_id)
+
     # --- bindings (agent_profile -> skill / governance_rule edges) ------
 
     _SKILL_EDGE = "agent_profile_has_skill"

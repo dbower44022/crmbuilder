@@ -440,6 +440,83 @@ class CurateAreaIn(_Base):
     scope: str | None = None
 
 
+# ---------- Knowledge classes (REL-039 / PI-357 — REQ-416, DEC-891) ----------
+
+
+class PreferenceCreateIn(_Base):
+    """POST /preferences body. ``identifier`` server-assigned when omitted."""
+
+    identifier: str | None = None
+    category: str
+    title: str
+    body: str
+    applies_to: str = "all"
+    status: str = "active"
+    scope: str | None = None
+
+
+class PreferenceUpdateIn(_Base):
+    """PATCH /preferences/{identifier} — partial update."""
+
+    category: str | None = None
+    title: str | None = None
+    body: str | None = None
+    applies_to: str | None = None
+    status: str | None = None
+    scope: str | None = None
+
+
+class LessonCreateIn(_Base):
+    """POST /lessons body. ``identifier`` server-assigned when omitted."""
+
+    identifier: str | None = None
+    category: str
+    title: str
+    body: str
+    signal: str = "guidance"
+    status: str = "active"
+    scope: str | None = None
+
+
+class LessonUpdateIn(_Base):
+    """PATCH /lessons/{identifier} — partial update."""
+
+    category: str | None = None
+    title: str | None = None
+    body: str | None = None
+    signal: str | None = None
+    status: str | None = None
+    scope: str | None = None
+
+
+class ReferencePointerCreateIn(_Base):
+    """POST /reference-pointers body. ``identifier`` server-assigned when omitted.
+
+    ``access_note`` records *where* a credential lives, never the secret value.
+    """
+
+    identifier: str | None = None
+    kind: str
+    title: str
+    target: str
+    access_note: str | None = None
+    body: str | None = None
+    status: str = "active"
+    scope: str | None = None
+
+
+class ReferencePointerUpdateIn(_Base):
+    """PATCH /reference-pointers/{identifier} — partial update."""
+
+    kind: str | None = None
+    title: str | None = None
+    target: str | None = None
+    access_note: str | None = None
+    body: str | None = None
+    status: str | None = None
+    scope: str | None = None
+
+
 # ---------- Domains (methodology entity, UI v0.4 slice B) ----------
 
 

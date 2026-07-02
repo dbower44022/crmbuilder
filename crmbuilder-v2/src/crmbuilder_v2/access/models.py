@@ -96,6 +96,9 @@ from crmbuilder_v2.access.vocab import (
     LEARNING_CATEGORIES,
     LEARNING_STATUSES,
     LEARNING_TIERS,
+    LESSON_CATEGORIES,
+    LESSON_SIGNALS,
+    LESSON_STATUSES,
     MANUAL_CONFIG_CATEGORIES,
     MANUAL_CONFIG_STATUSES,
     MAPPING_CANDIDATE_TYPES,
@@ -109,6 +112,9 @@ from crmbuilder_v2.access.vocab import (
     PERSONA_STATUSES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
+    PREFERENCE_APPLIES_TO,
+    PREFERENCE_CATEGORIES,
+    PREFERENCE_STATUSES,
     PROCESS_CLASSIFICATIONS,
     PROJECT_STATUSES,
     PUBLISH_RUN_STATUSES,
@@ -119,6 +125,8 @@ from crmbuilder_v2.access.vocab import (
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
     REFERENCE_ENTRY_KINDS,
+    REFERENCE_POINTER_KINDS,
+    REFERENCE_POINTER_STATUSES,
     REFERENCE_RELATIONSHIPS,
     REGISTRY_STATUSES,
     RELEASE_BACK_HALF_MODES,
@@ -6420,6 +6428,166 @@ class LearningRow(Base):
         CheckConstraint(_check_in("status", LEARNING_STATUSES), name="ck_learning_status"),
         Index("ix_learnings_engagement", "engagement_id"),
         Index("ix_learnings_area_tier", "area", "tier"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# REL-039 / PI-357 knowledge classes (REQ-416, DEC-891). Three system|engagement
+# -scoped tables migrated out of the instruction files. All three are plain
+# ``Base`` with a NULLABLE ``engagement_id`` (NULL = a system-wide default, set =
+# an engagement overlay) — NOT ``EngagementScopedMixin`` — so system rows stay
+# globally visible and the repository merges the scope explicitly, mirroring
+# ``governance_rule`` / ``learning`` / the registry entities. See
+# rel-039-pi-356-knowledge-structures-design.md §3–§6.
+# ---------------------------------------------------------------------------
+
+
+class PreferenceRow(Base):
+    """One advisory interaction/UI/workflow preference (PRF-, REL-039 §3).
+
+    Purely advisory by construction — no ``enforcement``/``severity``/``predicate``
+    (§7.4: the moment a preference needs enforcing it becomes a governance_rule).
+    """
+
+    __tablename__ = "preferences"
+
+    identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    applies_to: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="all"
+    )
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("identifier", ["PRF"]),
+            name="ck_preference_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("category", PREFERENCE_CATEGORIES),
+            name="ck_preference_category",
+        ),
+        CheckConstraint(
+            _check_in("applies_to", PREFERENCE_APPLIES_TO),
+            name="ck_preference_applies_to",
+        ),
+        CheckConstraint(
+            _check_in("status", PREFERENCE_STATUSES), name="ck_preference_status"
+        ),
+        Index("ix_preferences_engagement", "engagement_id"),
+    )
+
+
+class LessonRow(Base):
+    """One operational gotcha / how-to (LSN-, REL-039 §4).
+
+    Split out of the hybrid ``project_*`` memories; a ``lesson_derived_from`` edge
+    (built in the repository) points back at the decision / planning_item /
+    commit the memory was welded to, making the hybrid split lossless.
+    """
+
+    __tablename__ = "lessons"
+
+    identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    signal: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="guidance"
+    )
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("identifier", ["LSN"]),
+            name="ck_lesson_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("category", LESSON_CATEGORIES), name="ck_lesson_category"
+        ),
+        CheckConstraint(
+            _check_in("signal", LESSON_SIGNALS), name="ck_lesson_signal"
+        ),
+        CheckConstraint(
+            _check_in("status", LESSON_STATUSES), name="ck_lesson_status"
+        ),
+        Index("ix_lessons_engagement", "engagement_id"),
+        Index("ix_lessons_category", "category"),
+    )
+
+
+class ReferencePointerRow(Base):
+    """One external reference pointer (RFP-, REL-039 §5).
+
+    A single addressable target with connection metadata and no version history.
+    ``access_note`` records *where* a credential lives (keyring entry, env var
+    name, ``~/.ssh`` key path) — NEVER the secret value (the binding
+    secret-safety invariant, §5).
+    """
+
+    __tablename__ = "reference_pointers"
+
+    identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    target: Mapped[str] = mapped_column(Text, nullable=False)
+    access_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("identifier", ["RFP"]),
+            name="ck_reference_pointer_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("kind", REFERENCE_POINTER_KINDS),
+            name="ck_reference_pointer_kind",
+        ),
+        CheckConstraint(
+            _check_in("status", REFERENCE_POINTER_STATUSES),
+            name="ck_reference_pointer_status",
+        ),
+        Index("ix_reference_pointers_engagement", "engagement_id"),
+        Index("ix_reference_pointers_kind", "kind"),
     )
 
 
