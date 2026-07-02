@@ -63,6 +63,7 @@ from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.panels.publish_history import PublishHistoryPanel
 from crmbuilder_v2.ui.panels.reconcile_grid import ReconcileGridPanel
 from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
+from crmbuilder_v2.ui.panels.reference_entries import ReferenceEntriesPanel
 from crmbuilder_v2.ui.panels.references import ReferencesPanel
 from crmbuilder_v2.ui.panels.registry_learnings import LearningsPanel
 from crmbuilder_v2.ui.panels.registry_rules import GovernanceRulesPanel
@@ -168,6 +169,8 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "skill": "Skills",
     "governance_rule": "Governance Rules",
     "learning": "Learnings",
+    # REL-016 / PI-067: cross-engagement reference libraries.
+    "reference_entry": "Reference Entries",
 }
 
 
@@ -241,6 +244,9 @@ def build_panel(
         return ManualConfigPanel(client)
     if label == "Glossary":
         return GlossaryPanel(client)
+    # REL-016 / PI-067: cross-engagement reference libraries.
+    if label == "Reference Entries":
+        return ReferenceEntriesPanel(client)
     if label == "Engagements":
         return EngagementsPanel(client, active_context=active_context)
     # v0.7 governance entities.

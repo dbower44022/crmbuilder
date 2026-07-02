@@ -147,6 +147,9 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # PI-061: the glossary — term definitions as records, migrated
             # out of specifications/glossary.md.
             "Glossary",
+            # REL-016 / PI-067: cross-engagement reference libraries
+            # (Domain Knowledge / Organization Structure / Inventory Items).
+            "Reference Entries",
         ),
     ),
 )
