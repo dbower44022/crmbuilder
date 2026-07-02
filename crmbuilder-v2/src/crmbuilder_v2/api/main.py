@@ -58,6 +58,7 @@ from crmbuilder_v2.api.routers import (
     health,
     identifiers,
     instances,
+    knowledge,
     layouts,
     locks,
     manual_configs,
@@ -244,6 +245,10 @@ def create_app() -> FastAPI:
     app.include_router(registry.learnings_router)
     # Glossary terms (PI-061).
     app.include_router(terms.router)
+    # Knowledge classes (REL-039 / PI-357 — DB as single source of truth).
+    app.include_router(knowledge.preferences_router)
+    app.include_router(knowledge.lessons_router)
+    app.include_router(knowledge.reference_pointers_router)
 
     @app.get("/", tags=["meta"], include_in_schema=False)
     def root():
