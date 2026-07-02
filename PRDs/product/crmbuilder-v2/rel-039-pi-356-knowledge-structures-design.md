@@ -2,7 +2,7 @@
 
 **Requirement:** REQ-415 — *Design database structures for instructions, preferences, lessons, and reference pointers.*
 **Acceptance:** a design names the target structure for each class with its reuse-or-new decision justified, and any new structure has a schema and a migration plan.
-**Status:** DRAFT for Doug's review (contains open decisions §7). Produced 2026-07-02 (Claude Code, ENG-001).
+**Status:** FINAL — approved by Doug 2026-07-02 (the §7 recommendations were accepted; PI-356 resolved). Produced 2026-07-02 (Claude Code, ENG-001).
 **Input:** the PI-355 classification work-list — `PRDs/product/crmbuilder-v2/rel-039-pi-355-knowledge-inventory-classification.md`.
 **Downstream:** PI-357 (migrate) → PI-358 (bootstrap read) → PI-359 (reduce files) → PI-360 (SSoT rule). This design is produced before any migration code, per REQ-415.
 
@@ -161,12 +161,12 @@ The cold-start problem is real: the cloud DB is **auth-gated and may be unreacha
 
 ---
 
-## 7. Open decisions for Doug (not decided here)
+## 7. Resolved decisions (approved by Doug 2026-07-02)
 
-1. **CBM-scoped rows — ENG-001 or ENG-002?** The 7 `*_cbm_*` pointers/memories are CBM-client knowledge. Home them as `engagement_id='ENG-002'` overlays (my recommendation — they're CBM's), or keep on ENG-001 as the dogfood operator's working notes?
-2. **Global `~/.claude/CLAUDE.md`.** The one cross-project rule ("respect each repo's process") has no crmbuilder-DB home. Leave it as a global bootstrap file (out of REL-039 scope), or stand up a future global store? Recommend: out of scope, stays a file.
-3. **REL-016 dependency.** If REL-016's generic Reference Entry entity lands before PI-357 runs, re-evaluate whether pointers fold into it. Recommend: proceed independently; `reference_pointer` (infra) and Reference Entry (client-domain) are genuinely different classes.
-4. **Preference enforceability.** Confirm preferences stay purely advisory (no enforcement column). Recommend: yes — the moment a "preference" needs enforcing it should be a `governance_rule`.
+1. **CBM-scoped rows → `ENG-002`.** The 7 `*_cbm_*` pointers/memories are CBM-client knowledge and migrate as `engagement_id='ENG-002'` overlays, not ENG-001. PI-357 homes them there.
+2. **Global `~/.claude/CLAUDE.md` → out of scope.** The one cross-project rule ("respect each repo's process") has no crmbuilder-DB home; it stays a global bootstrap file. No future global store in REL-039.
+3. **REL-016 → proceed independently.** `reference_pointer` (infra/ops) and REL-016's Reference Entry (client-domain knowledge) are genuinely different classes; PI-357 does not wait on or fold into REL-016.
+4. **Preferences stay purely advisory.** No enforcement column on `preference`. The moment a "preference" needs enforcing, it becomes a `governance_rule` instead.
 
 ---
 
@@ -176,4 +176,4 @@ The cold-start problem is real: the cloud DB is **auth-gated and may be unreacha
 - ✅ Each **new** structure (`preference`, `lesson`, `reference_pointer`) has a schema (§3–§5) and a migration plan (§6.2).
 - ✅ Produced before any migration code.
 
-Resolution of PI-356 is held pending Doug's sign-off on §7.
+PI-356 **resolved** 2026-07-02 (Doug approved §7). Next: PI-357 (migrate) executes this schema + migration plan.
