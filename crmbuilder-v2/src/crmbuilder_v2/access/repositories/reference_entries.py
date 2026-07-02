@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -192,6 +192,81 @@ def list_all(
             ReferenceEntry.engagement_id == resolve_scope(session, scope)
         )
     return [_enrich(r) for r in session.scalars(stmt).all()]
+
+
+def search_reference_entries(
+    session: Session,
+    *,
+    text: str | None = None,
+    keywords: list[str] | None = None,
+    kind: str | None = None,
+    status: str = "active",
+    engagement_id: str | None = None,
+) -> list[dict]:
+    """Contextual loader (REL-016 / PI-066, REQ-401).
+
+    The deterministic matching primitive beneath the AI's "recognize a client's
+    defining statements and load the right reference content" flow. The LLM
+    supplies the client's defining statements (``text``) and/or explicit
+    ``keywords``; this function matches them against each in-scope entry's
+    ``trigger_keywords`` + ``applies_to`` and returns the matches ranked by
+    overlap. One mechanism serves all three kinds (``kind`` narrows to one;
+    ``None`` searches all) — REQ-401's "extensible to patterns and inventories".
+
+    Scope merge (reused registry pattern): an entry is eligible iff its
+    ``engagement_id`` is ``NULL`` (a system row) or equals ``engagement_id``.
+
+    :param text: the client's defining-statement free text (matched
+        case-insensitively as a substring haystack).
+    :param keywords: explicit match keywords (folded into the haystack).
+    :param kind: optional single ``kind`` to restrict to.
+    :param status: registry status to require (default ``active``).
+    :param engagement_id: the active engagement for the system∪engagement merge;
+        ``None`` keeps only system rows.
+    :returns: matching entries (overlap > 0) ranked by descending overlap then
+        identifier. When neither ``text`` nor ``keywords`` is given, returns all
+        in-scope entries ordered by identifier (no ranking).
+    """
+    stmt = (
+        select(ReferenceEntry)
+        .where(ReferenceEntry.status == status)
+        .where(
+            or_(
+                ReferenceEntry.engagement_id.is_(None),
+                ReferenceEntry.engagement_id == engagement_id,
+            )
+        )
+        .order_by(ReferenceEntry.identifier)
+    )
+    if kind is not None:
+        stmt = stmt.where(ReferenceEntry.kind == kind)
+    records = [_enrich(r) for r in session.scalars(stmt).all()]
+
+    haystack = " ".join(
+        part
+        for part in ([text] if text else []) + list(keywords or [])
+        if isinstance(part, str)
+    ).lower()
+    if not haystack.strip():
+        # No match terms — behave as a scoped list.
+        return records
+
+    def _overlap(record: dict) -> int:
+        score = 0
+        for kw in record.get("trigger_keywords") or []:
+            if isinstance(kw, str) and kw.strip() and kw.lower() in haystack:
+                score += 1
+        applies = record.get("applies_to")
+        if isinstance(applies, str) and applies.strip() and applies.lower() in haystack:
+            score += 1
+        return score
+
+    scored = [(r, _overlap(r)) for r in records]
+    matched = [r for r, s in scored if s > 0]
+    # Stable sort by descending overlap; the query already ordered by identifier,
+    # so equal-overlap matches keep that deterministic order.
+    matched.sort(key=_overlap, reverse=True)
+    return matched
 
 
 def _new_row(
