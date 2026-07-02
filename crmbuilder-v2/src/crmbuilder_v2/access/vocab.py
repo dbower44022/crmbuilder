@@ -1769,6 +1769,10 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # REL-040 / PI-094 (REQ-412) methodology entity — the real
         # engagement participant (person/role) a Persona is backed by.
         "participant",
+        # REL-016 / PI-063 (REQ-398, DEC-887) — a cross-engagement
+        # reference-library record (Domain Knowledge / Organization
+        # Structure / Inventory Items), system|engagement scoped.
+        "reference_entry",
         # v0.5+ methodology entity (PI-004 first slice). See field.md.
         "field",
         # v0.5+ methodology entity (PI-004 cohort). See requirement.md.
@@ -2413,6 +2417,14 @@ AGENT_PROFILE_TIERS: frozenset[str] = frozenset(
 # Two skill kinds (PRD §7.2): a tool is "code-backed" when it carries a backing
 # callable, instruction otherwise.
 SKILL_KINDS: frozenset[str] = frozenset({"instruction", "tool"})
+
+# REL-016 / PI-063 (REQ-398, DEC-887): the three kinds of a Reference Entry —
+# a cross-engagement reference-library record of client-industry knowledge for
+# discovery. Domain Knowledge = prose guidance; Organization Structure = typical
+# entities + relationships; Inventory Items = a typical-items checklist.
+REFERENCE_ENTRY_KINDS: frozenset[str] = frozenset(
+    {"domain_knowledge", "organization_structure", "inventory_items"}
+)
 
 # Hybrid governance (PRD §5): advisory guidance, machine-enforced, or enforced
 # pending a logged human override (the Needs Attention path).

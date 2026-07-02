@@ -76,6 +76,7 @@ from crmbuilder_v2.api.routers import (
     reconcile,
     reconciliation_conflicts,
     reference_books,
+    reference_entries,
     references,
     registry,
     release_runs,
@@ -180,6 +181,7 @@ def create_app() -> FastAPI:
     app.include_router(crm_candidates.router)
     app.include_router(persona.router)
     app.include_router(participant.router)
+    app.include_router(reference_entries.router)
     app.include_router(field.router)
     # PI-004 methodology cohort (v0.5+).
     app.include_router(requirements.router)

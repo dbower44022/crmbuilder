@@ -118,6 +118,7 @@ from crmbuilder_v2.access.vocab import (
     RECONCILIATION_CONFLICT_TYPES,
     REFERENCE_BOOK_KINDS,
     REFERENCE_BOOK_STATUSES,
+    REFERENCE_ENTRY_KINDS,
     REFERENCE_RELATIONSHIPS,
     REGISTRY_STATUSES,
     RELEASE_BACK_HALF_MODES,
@@ -6269,6 +6270,71 @@ class SkillRow(Base):
         CheckConstraint(_check_in("kind", SKILL_KINDS), name="ck_skill_kind"),
         CheckConstraint(_check_in("status", REGISTRY_STATUSES), name="ck_skill_status"),
         Index("ix_skills_engagement", "engagement_id"),
+    )
+
+
+class ReferenceEntry(Base):
+    """A cross-engagement reference-library record (REL-016 / PI-063, REQ-398).
+
+    Client-industry knowledge for the discovery phase, distinguished by
+    ``kind`` (Domain Knowledge / Organization Structure / Inventory Items —
+    DEC-887). A **system/shared row with a nullable ``engagement_id`` scope**
+    (``NULL`` = system, shared by all engagements; set = an engagement overlay),
+    reusing the Agent Profile Registry's cross-engagement store pattern
+    (DEC-886). Plain ``Base``, not the methodology parent-prefix / composite-PK
+    convention — the registry scope resolver merges scope explicitly.
+
+    The ``content`` payload is JSON, shaped per ``kind`` (validated at the access
+    layer): ``domain_knowledge`` → ``{"body": ...}``; ``organization_structure``
+    → ``{"typical_entities": [...], "typical_relationships": [...]}``;
+    ``inventory_items`` → ``{"entities": [...], "personas": [...],
+    "processes": [...]}``. ``trigger_keywords`` feeds the contextual loader
+    (PI-066).
+    """
+
+    __tablename__ = "reference_entries"
+
+    identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    # The org-type / domain this describes (the matchable subject).
+    applies_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Terms the contextual loader (PI-066) matches a client's statements against.
+    trigger_keywords: Mapped[list | None] = mapped_column(
+        JSONColumn, nullable=True
+    )
+    # Per-kind payload; shape validated at the access layer.
+    content: Mapped[dict] = mapped_column(JSONColumn, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("identifier", ["RFE"]),
+            name="ck_reference_entry_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("kind", REFERENCE_ENTRY_KINDS),
+            name="ck_reference_entry_kind",
+        ),
+        CheckConstraint(
+            _check_in("status", REGISTRY_STATUSES),
+            name="ck_reference_entry_status",
+        ),
+        Index("ix_reference_entries_engagement", "engagement_id"),
+        Index("ix_reference_entries_kind", "kind"),
     )
 
 
