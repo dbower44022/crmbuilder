@@ -145,3 +145,59 @@ def test_delete(client):
     _make(client, name="A")
     assert client.delete("/reference-entries/RFE-001").status_code == 200
     assert client.get("/reference-entries/RFE-001").status_code == 404
+
+
+# --- contextual loader (PI-066 / REQ-401) ---
+
+
+def test_search_by_q(client):
+    _make(
+        client,
+        name="Mentoring",
+        content={"body": "x"},
+        trigger_keywords=["mentoring", "mentor"],
+        applies_to="nonprofit mentoring",
+    )
+    _make(
+        client,
+        name="Foundation",
+        content={"body": "x"},
+        trigger_keywords=["grantmaking"],
+        applies_to="charitable foundation",
+    )
+    r = client.get("/reference-entries/search?q=we run a mentoring program")
+    assert r.status_code == 200, r.text
+    names = {e["name"] for e in r.json()["data"]}
+    assert names == {"Mentoring"}
+
+
+def test_search_keywords_and_kind(client):
+    _make(
+        client,
+        name="Mentoring",
+        content={"body": "x"},
+        trigger_keywords=["mentoring"],
+    )
+    _make(
+        client,
+        name="MentorOrg",
+        kind="organization_structure",
+        content={
+            "typical_entities": ["Mentor"],
+            "typical_relationships": [],
+        },
+        trigger_keywords=["mentoring"],
+    )
+    both = client.get("/reference-entries/search?keywords=mentoring").json()["data"]
+    assert {e["name"] for e in both} == {"Mentoring", "MentorOrg"}
+    dk = client.get(
+        "/reference-entries/search?keywords=mentoring&kind=domain_knowledge"
+    ).json()["data"]
+    assert {e["name"] for e in dk} == {"Mentoring"}
+
+
+def test_search_route_not_shadowed_by_identifier(client):
+    """`/search` resolves to the loader, not the get-by-identifier route."""
+    r = client.get("/reference-entries/search")
+    assert r.status_code == 200
+    assert isinstance(r.json()["data"], list)
