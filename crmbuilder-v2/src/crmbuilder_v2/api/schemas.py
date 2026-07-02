@@ -275,6 +275,38 @@ class SkillUpdateIn(_Base):
     scope: str | None = None
 
 
+class ReferenceEntryCreateIn(_Base):
+    """POST /reference-entries body (REL-016 / PI-063, REQ-398).
+
+    ``identifier`` is server-assigned when omitted; ``scope`` defaults to
+    ``system`` (a universal row). ``kind`` ∈ {domain_knowledge,
+    organization_structure, inventory_items}; ``content`` is the per-kind JSON
+    payload (domain_knowledge requires a non-empty ``body``)."""
+
+    identifier: str | None = None
+    name: str
+    kind: str
+    content: dict
+    applies_to: str | None = None
+    trigger_keywords: list | None = None
+    version: int = 1
+    status: str = "active"
+    scope: str | None = None
+
+
+class ReferenceEntryUpdateIn(_Base):
+    """PATCH /reference-entries/{identifier} body — partial update."""
+
+    name: str | None = None
+    kind: str | None = None
+    content: dict | None = None
+    applies_to: str | None = None
+    trigger_keywords: list | None = None
+    version: int | None = None
+    status: str | None = None
+    scope: str | None = None
+
+
 class SkillScanIn(_Base):
     """Body for ``POST /skills/scan`` (REQ-421 / PI-362).
 
