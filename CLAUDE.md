@@ -24,6 +24,29 @@ Each carries a transitional status header pointing to the Master CRMBuilder PRD 
 
 Sections below this one describe the existing federated V1/V2 state and are retained as orientation until the Master CRMBuilder PRD subsumes them.
 
+## Session bootstrap — the database is the source of truth
+
+The V2 database is the **single source of truth** for governance rules, preferences, lessons, and reference pointers (REL-039 / PI-360; see the `SSoT` governance_rule in the DB). This file holds only bootstrap + repo/architecture reference; the durable operating knowledge lives in the DB and is read at session start — do not re-add it here (that is the no-duplication rule the SSoT `governance_rule` states).
+
+**Reaching the store** (in order of preference):
+- **Cloud API** `https://api.crmbuilder.ai` — auth ON (bearer token needed); name the engagement with the `X-Engagement: ENG-001` header.
+- **Droplet access layer** (token-less governance reads/writes): `ssh -i ~/.ssh/id_ed25519 root@138.197.72.15`, then `cd /opt/crmbuilder && QT_QPA_PLATFORM=offscreen .venv/bin/python3 -` piping a script that uses `with active_engagement("ENG-001"): with session_scope() as s:` and the repositories in `crmbuilder_v2/access/repositories/`.
+- **Local API** `http://127.0.0.1:8765` for local dev (start with `crmbuilder-v2-api &`).
+
+**At session start (any V2 work), read from the DB:**
+1. Governance recording rules — topic **TOP-013** and its children (`GET /topics/TOP-013`, then the child topics).
+2. Active **governance_rules** (`GET /governance-rules?status=active`) — the binding operating rules migrated from this file.
+3. Active **preferences** (`GET /preferences?status=active`) — interaction/UI working style.
+4. The **reference_pointer** index (`GET /reference-pointers?status=active`) — servers, dashboards, docs, credential locations (CBM pointers are `scope=ENG-002`).
+5. **lessons** on demand (`GET /lessons`, filter by `category`/`signal`) when a task touches a known gotcha area.
+
+**Graceful degradation** — if the store is unreachable at cold start (the cloud API is auth-gated and may be unreachable before you have a token), proceed on this irreducible core and reconcile with the DB once reachable:
+- **Requirement-first:** a **confirmed requirement + implementing PI** must exist before any code — never by editing a status field.
+- Every code commit carries a **`Governed-By: PI-NNN`** trailer (or `Governed-By: trivial` + `Exemption-Reason:`).
+- Record governance **real-time** via direct API / access-layer writes (not batched close-out JSON) in Claude Code.
+- **Commit with an explicit pathspec**; verify the branch first; **Model A** — governance applies on `main`.
+- **No new terminology** without Doug's approval; every term belongs in the glossary.
+
 ## Project
 
 This is the **CRM Builder** — a PySide6 desktop application that covers
