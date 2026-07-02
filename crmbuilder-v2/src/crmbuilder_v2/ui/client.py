@@ -3345,6 +3345,63 @@ class StorageClient:
             self._request("POST", "/skills/scan", json_body=body), op="scan_skills"
         )
 
+    # --- reference_entries (REL-016 / PI-063..067) ---------------------
+
+    def list_reference_entries(
+        self, *, kind: str | None = None, status: str | None = None, scope: str | None = None
+    ) -> list[dict[str, Any]]:
+        """GET /reference-entries (optionally filtered)."""
+        path = "/reference-entries" + self._query(
+            {"kind": kind, "status": status, "scope": scope}
+        )
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_reference_entry(self, identifier: str) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("GET", f"/reference-entries/{identifier}"),
+            op="get_reference_entry",
+        )
+
+    def create_reference_entry(self, body: dict[str, Any]) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("POST", "/reference-entries", json_body=body),
+            op="create_reference_entry",
+        )
+
+    def patch_reference_entry(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        return self._expect_dict(
+            self._request("PATCH", f"/reference-entries/{identifier}", json_body=body),
+            op="patch_reference_entry",
+        )
+
+    def delete_reference_entry(self, identifier: str) -> Any:
+        return self._request("DELETE", f"/reference-entries/{identifier}")
+
+    def search_reference_entries(
+        self,
+        *,
+        q: str | None = None,
+        keywords: str | None = None,
+        kind: str | None = None,
+        status: str | None = None,
+        engagement: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /reference-entries/search — the PI-066 contextual loader."""
+        path = "/reference-entries/search" + self._query(
+            {
+                "q": q,
+                "keywords": keywords,
+                "kind": kind,
+                "status": status,
+                "engagement": engagement,
+            }
+        )
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
     # --- governance_rules ----------------------------------------------
 
     def list_governance_rules(
