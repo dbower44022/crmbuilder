@@ -1,8 +1,13 @@
 # Delivery Efficiency Plan — 2026-07-02
 
-**Status:** DRAFT — pending Doug's review. Nothing below is a requirement, PI, or
-release yet; §6 defines how this document is processed into governance records
-after approval.
+**Status:** DRAFT v1.1 — pending Doug's approval pass. Nothing below is a
+requirement, PI, or release yet; §6 defines how this document is processed into
+governance records after approval.
+**v1.1 (07-02-26, same-day revision):** Phase 2 rescoped after discussion with
+Doug — from an all-domains CBM re-run to a **single-domain (mentoring) delivery
+culminating in the CBM mentor application**, validating that EspoCRM can support
+a custom app's backend. Two feasibility spikes ran and are folded in (§2a):
+mentor-auth (answered) and ADO-foreign-repo (answered). Candidates C14–C18 added.
 **Pass type:** review + plan only. Nothing built, resolved, or recorded in the
 governance store by this document's authoring session.
 **Engagement:** ENG-001. **Store consulted:** cloud API (`https://api.crmbuilder.ai`),
@@ -64,6 +69,39 @@ The two open releases are the strategic ones:
    through three weeks of heavy delivery; CLAUDE.md grew to ~880 lines that every
    session pays to read. (Exactly what REL-039 fixes.)
 
+## 2a. Discussion outcomes and spike results (07-02-26)
+
+Decisions taken in discussion with Doug, and the two feasibility spikes run the
+same day, that reshape Phase 2:
+
+1. **Scope: one domain, not all — and the deliverable is an application.** The
+   validation run covers the **mentoring domain** and culminates in the **CBM
+   mentor application** (`cbm-custom-mentor-app` — four L1/L2 PRDs drafted
+   05-12/13, dormant since). Goal: make the domain more efficient for CBM *and*
+   validate that EspoCRM can support a custom app's backend. This exercises the
+   part of the product promise ("through deployed, functional application") that
+   the 13-phase process has never defined — the stretch that was hand-built for
+   `cbm-client-intake` outside the methodology.
+2. **Mentor-auth spike — ANSWERED (Option 1 wins).** Live spike on crm-test
+   proved Espo's `own` ACL honors `assignedUsers` membership; the pre-existing
+   Mentor Role confines a mentor to their own engagements; session logging works
+   self-assigned. Portals are structurally mismatched (they scope by
+   Contact/Account; CBM keys mentor access by User) and are skipped. Report:
+   `cbm-custom-mentor-app/prds/CBM_Mentor_App_Spike_Report_Mentor_Authentication.md`.
+3. **ADO-foreign-repo spike — ANSWERED (feasible, two small gaps).** The
+   scheduler takes `--engagement`/`--repo-root`; worktrees/agents/test-runner are
+   repo-agnostic; the **`CBMMENTOR`** engagement already exists in the cloud
+   store. Gaps: the affected-test gate hardcodes CRMBuilder's tree (needs a
+   per-repo config PI), and engagement-scoped *profiles* are not
+   dispatcher-selectable (rules/learnings overlays DO flow; profile selection is
+   an optional second PI). Report: `ado-foreign-repo-spike-2026-07-02.md`.
+4. **Who builds: hybrid, structured as a bounded ADO audition.** Human-paired
+   (architecture, scaffold, auth/Espo integration); ADO auditions on
+   well-specified mechanical work tasks after the spike's prep list clears; an
+   explicit escape hatch (fixed friction budget → fall back to hand-build,
+   record every failure as a finding/lesson). Full V2 governance under
+   `CBMMENTOR` regardless of who builds.
+
 ## 3. The plan
 
 Organizing principle: **stop improving the machine speculatively; run a real client
@@ -79,19 +117,44 @@ delivery through it and let measured friction drive the backlog.**
   commitments — three weeks of evidence says they don't happen "in the gaps." The
   PRD only needs to be complete enough to run Phase 2 of this plan, not perfect.
 
-### Phase 2 — The CBM end-to-end re-run as forcing function
+### Phase 2 — The mentor-domain delivery as forcing function (rescoped v1.1)
 
-Run the full pipeline against CBM on a fresh instance — Master PRD → domain
-discovery → Entity/Process PRDs → YAML generation → deploy → verify (the
-"planned remediation" already on record in the CBM repo). Rules of engagement:
+One domain (mentoring), end-to-end, culminating in the **CBM mentor
+application** — requirements through deployed, functional app. The shape:
+
+1. **Ingest** — the four mentor-app PRDs plus existing MR/MN artifacts into V2
+   under the CBM engagements (`CBM` for the CRM domain, `CBMMENTOR` for the app).
+   Real test of the ingest path on pre-governance documents.
+2. **Capture** — audit the mentor-domain entities on live prod (CMentorProfile,
+   CEngagement, CSession, Contact, Account) and reconcile into design records.
+   This slice drifted heavily past every PRD (the mentoradmin build); after
+   capture, the design finally reflects reality. Realistic client simulation:
+   clients always have a drifted live system.
+3. **Gap interviews** — genuinely new requirements: the mentor's experience of
+   the app. Nobody has specified what a mentor sees at login.
+4. **Backend feasibility** — the new methodology phase: derive the app's API
+   contract, validate Espo supports it before app code. The auth model is
+   already answered (§2a-2); the remaining feasibility items follow the same
+   spike pattern.
+5. **CRM config delivery** — new fields/entities the app needs: generated from
+   the DB, deployed, verified (the CRMBuilder pipeline proper).
+6. **App build** — hybrid per §2a-4: human-paired scaffold/auth, bounded ADO
+   audition on mechanical work tasks after the prep list
+   (`ado-foreign-repo-spike-2026-07-02.md` §4) clears.
+
+**Finish line (functional, not clerical):** a mentor logs in with their
+provisioned Espo credentials, sees exactly their engagements, logs a session —
+and the data lands correctly in Espo with ACL enforced server-side.
+
+Rules of engagement (unchanged from v1.0):
 
 - **Instrument every phase:** start/end timestamps, manual-intervention count,
   workaround log. Pipeline events already exist; this is mostly discipline plus a
   small metrics read.
 - **Every manual workaround becomes a requirement candidate with cycle-time data
   attached** — the efficiency backlog gets prioritized by measured cost.
-- **ADO handles the mechanical phases** (YAML generation from Entity PRDs, deploy,
-  verification); humans handle stakeholder-facing phases only.
+- **Humans handle stakeholder-facing phases; mechanical phases go to the ADO**
+  within the audition bounds.
 
 ### Phase 3 — Close the deploy-engine gaps that hit every client
 
@@ -135,15 +198,15 @@ Three metrics, computed from data the store already captures, surfaced on a pane
 2. **Autonomy rate** — agent-delivered vs. human-intervened work tasks.
 3. **Manual-config burden** — MANUAL CONFIG items per client deploy.
 
-**Success criterion for the whole plan:** the second client delivery (after the
-CBM re-run) is measurably faster than the first, with a lower manual-intervention
-count.
+**Success criterion for the whole plan:** the next domain/app delivery (after the
+mentor-domain run) is measurably faster than the first, with a lower
+manual-intervention count.
 
 ## 4. Sequencing
 
 ```
-Phase 1 (REL-039 finish, REL-013 time-box)  ──►  Phase 2 (CBM re-run)
-        │                                            │
+Phase 1 (REL-039 finish, REL-013 time-box)  ──►  Phase 2 (mentor-domain delivery
+        │                                            │     → mentor app)
         └── lowers every session's cost              ├── Phase 3 items pulled in
                                                      │   as their gap is hit live
 Phase 4 (process-overhead cuts)  — continuous, independent
@@ -152,8 +215,9 @@ Phase 5 (metrics)                — stand up before Phase 2 starts
 
 Phase 2 is the spine. Phase 1's REL-039 goes first because it lowers the cost of
 everything after it. Phase 3 items are *not* built speculatively — each is pulled
-into a release when (and in the order that) the CBM re-run actually hits it,
-except the topological-sort fix, which is certain to be hit and can be built ahead.
+into a release when (and in the order that) the mentor-domain run actually hits
+it, except the topological-sort fix, which is certain to be hit and can be built
+ahead. The ADO-audition prep (C15–C17) precedes Phase 2 step 6 but not steps 1–5.
 
 ## 5. Candidate requirements (for the approval pass)
 
@@ -175,6 +239,11 @@ creation in the store. Each maps to a plan phase.
 | C11 | The status record is derived from release/PI state at each release close rather than manually authored | 4 |
 | C12 | The governance enforcement gate runs in enforce mode once existing warnings are clean | 4 |
 | C13 | Delivery metrics (PI lead time, autonomy rate, manual-config burden per deploy) are computable from the store and surfaced on a panel | 5 |
+| C14 | The mentor application authenticates mentors as regular EspoCRM users via their provisioned logins, acts as the authenticated mentor on all CRM operations, and relies on EspoCRM ACL (Mentor Role) for row-level authorization | 2 |
+| C15 | The ADO scheduler's affected-test gate takes its test root / source prefix / mirror map from per-repo configuration, with a plain `tests/` fallback | 2 |
+| C16 | Agent dispatch prefers an engagement-scoped agent profile over the system profile for the same (area, tier, technology) cell when one exists | 2 (optional) |
+| C17 | The CBMMENTOR engagement carries registry-seeded governance rules and learnings (Espo integration gotchas, house conventions, spike lessons) that reach every spawned agent's contract | 2 |
+| C18 | The ADO's first foreign-repo build runs as a bounded audition: a fixed friction budget, hand-build fallback, and every failure recorded as a finding or lesson | 2 |
 
 ## 6. How this document is processed
 
