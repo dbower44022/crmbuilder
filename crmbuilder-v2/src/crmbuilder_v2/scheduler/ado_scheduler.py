@@ -174,6 +174,10 @@ class AdoSchedulerConfig:
     # release-dev driver sets this True when walking a dev-lane release; default
     # off keeps a plain ADO run byte-identical.
     enable_file_locks: bool = False
+    # REQ-460 (foreign-repo spike Gap 1): the target repo's plain test root for
+    # the affected-test gate. None → CRMBuilder's own mirrored-tree mapping;
+    # set (e.g. "tests") → every non-doc change gates on that full suite.
+    test_root: str | None = None
     log: Callable[[str], None] = print
 
 
@@ -193,6 +197,11 @@ class AdoRunReport:
 
 def run_pool_for_workstream(cfg: AdoSchedulerConfig, workstream_id: str) -> PoolRunReport:
     """Run the L2 parallel pool over exactly one phase Workstream's Work Tasks."""
+    from crmbuilder_v2.scheduler.coordinating_scheduler import (
+        CRMBUILDER_TEST_MAP,
+        TestTargetMap,
+    )
+
     pool_cfg = ParallelSchedulerConfig(
         api_base=cfg.api_base,
         engagement=cfg.engagement,
@@ -204,6 +213,11 @@ def run_pool_for_workstream(cfg: AdoSchedulerConfig, workstream_id: str) -> Pool
         max_concurrent=cfg.max_concurrent,
         manage_api=cfg.manage_api,
         enable_file_locks=cfg.enable_file_locks,
+        test_target_map=(
+            TestTargetMap.plain(cfg.test_root)
+            if cfg.test_root is not None
+            else CRMBUILDER_TEST_MAP
+        ),
     )
     # `log` is a field on the runtime, not the config — pass it there.
     return ParallelCoordinatingScheduler(

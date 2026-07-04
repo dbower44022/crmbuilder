@@ -754,6 +754,7 @@ def ado_pi_runner(
     base_branch: str = "main",
     max_concurrent: int = 2,
     agent_timeout: int = 1800,
+    test_root: str | None = None,
 ) -> PiRunner:
     """The real dev-org delegation seam: deliver one in-scope PI by running the ADO
     runtime over its phases with the file-lock backstop engaged (PI-220). The PI is
@@ -769,7 +770,7 @@ def ado_pi_runner(
             planning_item=planning_item, api_base=api_base, engagement=engagement,
             repo_root=repo_root, base_branch=base_branch,
             max_concurrent=max_concurrent, agent_timeout=agent_timeout,
-            enable_file_locks=True,
+            enable_file_locks=True, test_root=test_root,
         )).run()
 
     return _run
@@ -798,6 +799,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo-root", default=".")
     parser.add_argument("--base-branch", default="main")
     parser.add_argument("--max-concurrent", type=int, default=2)
+    parser.add_argument("--test-root", default=None,
+                        help="foreign-repo plain test root for the affected-test "
+                        "gate (e.g. 'tests'); omit for CRMBuilder's mirrored-tree "
+                        "mapping")
     parser.add_argument("--engagement", default="CRMBUILDER",
                         help="engagement identifier (ENG-NNN) or code the release "
                         "lives in; scopes the loop's in-process writes")
@@ -807,6 +812,7 @@ def main(argv: list[str] | None = None) -> int:
     pi_runner = ado_pi_runner(
         repo_root=args.repo_root, base_branch=args.base_branch,
         max_concurrent=args.max_concurrent, engagement=args.engagement,
+        test_root=args.test_root,
     ) if args.dev_lane else None
     gate_runner = None
     if args.dev_lane and not args.manual_gates:

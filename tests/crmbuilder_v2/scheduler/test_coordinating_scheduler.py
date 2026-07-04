@@ -24,9 +24,11 @@ from crmbuilder_v2.scheduler import coordinating_scheduler as cr
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
     _NO_OP_MARKER,
     _TIMEOUT_RC,
+    CRMBUILDER_TEST_MAP,
     CoordinatingScheduler,
     SchedulerConfig,
     TestRunResult,
+    TestTargetMap,
     _is_harness_crash,
     _safe_run_tests,
     interpret_merge,
@@ -1024,3 +1026,51 @@ def test_spawn_claude_agent_injects_resolved_secret_env(monkeypatch):
     cr.spawn_claude_agent("do the thing", "/tmp/wt")
     assert captured["env"] is not None
     assert captured["env"]["ANTHROPIC_API_KEY"] == "sk-ant-resolved"
+
+
+# --------------------------------------------------------------------------
+# REQ-460 (PI-392, foreign-repo spike Gap 1): per-repo test-target maps
+# --------------------------------------------------------------------------
+
+
+def test_plain_map_routes_any_source_change_to_declared_root():
+    plain = TestTargetMap.plain("tests")
+    assert select_test_target(["src/app/api/routes.py"], plain) == "tests"
+
+
+def test_plain_map_custom_root():
+    plain = TestTargetMap.plain("tests/unit")
+    assert select_test_target(["anything/at/all.py"], plain) == "tests/unit"
+
+
+def test_plain_map_mixed_doc_and_code_still_full_root():
+    plain = TestTargetMap.plain("tests")
+    assert select_test_target(["docs/spec.md", "src/app/main.py"], plain) == "tests"
+
+
+def test_default_map_is_crmbuilders_tree_and_behavior_is_unchanged():
+    # The explicit default must equal the historical constants, and passing it
+    # explicitly must match the implicit-default call exactly.
+    assert CRMBUILDER_TEST_MAP.test_root == "tests/crmbuilder_v2"
+    paths = [f"{_P}scheduler/a.py", f"{_P}ui/b.py"]
+    assert select_test_target(paths, CRMBUILDER_TEST_MAP) == select_test_target(paths)
+
+
+def test_scheduler_config_defaults_to_crmbuilder_map():
+    assert SchedulerConfig().test_target_map is CRMBUILDER_TEST_MAP
+
+
+def test_custom_mirrored_map_localizes_with_foreign_prefixes():
+    tmap = TestTargetMap(
+        src_prefix="src/mentorapp/",
+        test_root="tests/mentorapp",
+        mirrored_subtrees=frozenset({"api", "storage"}),
+    )
+    assert select_test_target(["src/mentorapp/api/routes.py"], tmap) == (
+        "tests/mentorapp/api"
+    )
+    assert select_test_target(
+        ["src/mentorapp/api/a.py", "src/mentorapp/storage/b.py"], tmap
+    ) == "tests/mentorapp/api tests/mentorapp/storage"
+    # unmirrored subtree → conservative full declared suite
+    assert select_test_target(["src/mentorapp/newpkg/c.py"], tmap) == "tests/mentorapp"

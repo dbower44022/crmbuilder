@@ -121,6 +121,37 @@ _SRC_PREFIX = "crmbuilder-v2/src/crmbuilder_v2/"
 _TEST_ROOT = "tests/crmbuilder_v2"
 
 
+@dataclass(frozen=True)
+class TestTargetMap:
+    """Per-repository affected-test mapping (REQ-460, foreign-repo spike Gap 1).
+
+    The gate's tree knowledge — where sources live, where the test suite
+    lives, and which src subtrees mirror a tests package 1:1 — as
+    configuration instead of module constants, so the runtime can gate a
+    repository other than CRMBuilder. An EMPTY ``mirrored_subtrees`` set is
+    the "plain" convention: the repository declares no localization mapping,
+    and every non-documentation change runs the full ``test_root`` suite.
+    """
+
+    src_prefix: str
+    test_root: str
+    mirrored_subtrees: frozenset[str]
+
+    @classmethod
+    def plain(cls, test_root: str = "tests") -> TestTargetMap:
+        """A repo with no mirror convention: every change gates on ``test_root``."""
+        return cls(src_prefix="", test_root=test_root, mirrored_subtrees=frozenset())
+
+
+# The default map — CRMBuilder's own tree, byte-identical to the historical
+# constants so every existing caller and test behaves unchanged.
+CRMBUILDER_TEST_MAP = TestTargetMap(
+    src_prefix=_SRC_PREFIX,
+    test_root=_TEST_ROOT,
+    mirrored_subtrees=_MIRRORED_SUBTREES,
+)
+
+
 # Documentation-only file shapes: a change touching ONLY these cannot alter any
 # Python test outcome, so the test-gate is skipped for it (PI-147 follow-up). A
 # Design-phase Work Task that writes only a spec .md was otherwise mapped to the
@@ -131,7 +162,7 @@ _DOC_ONLY_DIRS = ("PRDs/", "docs/")
 # The tests mirror the src tree 1:1 under tests/crmbuilder_v2/<sub>/, so a
 # touched test file belongs to the same subtree as the source it covers — a
 # change to a ui widget AND its ui test is still localized to the ``ui`` package.
-_TEST_PREFIX = _TEST_ROOT + "/"
+_TEST_PREFIX = _TEST_ROOT + "/"  # retained for external readers; selection uses the map
 
 
 def _is_doc_path(path: str) -> bool:
@@ -150,20 +181,22 @@ def is_doc_only_change(touched_paths: Iterable[str]) -> bool:
     return bool(paths) and all(_is_doc_path(p) for p in paths)
 
 
-def _subtree_of(path: str) -> str | None:
+def _subtree_of(path: str, tmap: TestTargetMap) -> str | None:
     """The mirrored subtree a touched path belongs to, or ``None`` if it cannot
     be localized. Recognizes BOTH the source tree
-    (``crmbuilder-v2/src/crmbuilder_v2/<sub>/…``) and its mirror test tree
-    (``tests/crmbuilder_v2/<sub>/…``). A file directly under either root with no
+    (``<src_prefix><sub>/…``) and its mirror test tree
+    (``<test_root>/<sub>/…``). A file directly under either root with no
     ``<sub>/`` segment (a top-level module/test) has no mirror package → None."""
-    for prefix in (_SRC_PREFIX, _TEST_PREFIX):
+    for prefix in (tmap.src_prefix, tmap.test_root + "/"):
         if path.startswith(prefix):
             segments = path[len(prefix):].split("/")
             return segments[0] if len(segments) >= 2 else None
     return None  # outside both the src and test trees
 
 
-def select_test_target(touched_paths: Iterable[str]) -> str:
+def select_test_target(
+    touched_paths: Iterable[str], tmap: TestTargetMap = CRMBUILDER_TEST_MAP
+) -> str:
     """Map the files a task touched to the pytest target to run (PI-147, PI-200).
 
     Returns the **union** of mirroring packages ``tests/crmbuilder_v2/<sub>``
@@ -180,22 +213,26 @@ def select_test_target(touched_paths: Iterable[str]) -> str:
     yet. Doc-only paths are ignored for selection (they cannot affect a test
     outcome). A localization miss widens coverage, never narrows it.
     """
+    if not tmap.mirrored_subtrees:
+        # Plain convention (REQ-460): the repo declares no localization
+        # mapping, so any non-doc change gates on the full declared suite.
+        return tmap.test_root
     subtrees: set[str] = set()
     for path in touched_paths:
         if _is_doc_path(path):
             continue  # docs can't affect tests → irrelevant to target selection
-        sub = _subtree_of(path)
+        sub = _subtree_of(path, tmap)
         if sub is None:
-            return _TEST_ROOT  # an un-localizable non-doc change → full suite
+            return tmap.test_root  # an un-localizable non-doc change → full suite
         subtrees.add(sub)
     # Every touched non-doc file localized to some subtree. If they ALL map to
     # mirrored packages — one subtree or several — run the union of just those,
     # never the whole suite. A single subtree yields the same one-package target
     # as before; the change is the multi-subtree case (PI-200).
-    if subtrees and subtrees <= _MIRRORED_SUBTREES:
-        return " ".join(f"{_TEST_ROOT}/{sub}" for sub in sorted(subtrees))
+    if subtrees and subtrees <= tmap.mirrored_subtrees:
+        return " ".join(f"{tmap.test_root}/{sub}" for sub in sorted(subtrees))
     # Empty (all-doc — handled upstream) or an unmirrored subtree → full suite.
-    return _TEST_ROOT
+    return tmap.test_root
 
 
 @dataclass
@@ -655,6 +692,10 @@ class SchedulerConfig:
     max_iterations: int = 1
     agent_timeout: int = 1800
     dry_run: bool = False  # resolve + report, never spawn/merge
+    # REQ-460 (foreign-repo spike Gap 1): the affected-test gate's tree mapping
+    # for THIS repo. Default = CRMBuilder's own tree (behavior unchanged); a
+    # foreign repo passes TestTargetMap.plain(<its test root>).
+    test_target_map: TestTargetMap = CRMBUILDER_TEST_MAP
     # REQ-440 / PI-379: pool no-progress watchdog. A healthy worker always reports
     # within ``agent_timeout`` (its spawn is bounded by it); if the pool goes this
     # much longer than ``agent_timeout`` with tasks still in flight and NO
@@ -1078,7 +1119,7 @@ class CoordinatingScheduler:
                 "— skipping the test gate"
             )
             return TaskResult(TaskStatus.SUCCEEDED), None
-        target = select_test_target(touched)
+        target = select_test_target(touched, self.config.test_target_map)
         runner = self.test_runner_fn or run_pytest
         result = _safe_run_tests(runner, worktree.path, target)
         if not result.passed and _is_harness_crash(result.returncode):
