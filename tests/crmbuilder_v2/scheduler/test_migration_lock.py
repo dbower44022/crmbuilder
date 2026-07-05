@@ -22,7 +22,6 @@ import threading
 import time
 
 import pytest
-from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 from crmbuilder_v2.scheduler import parallel_scheduler as pr
 from crmbuilder_v2.scheduler.coordinating_scheduler import (
     TestRunResult,
@@ -38,6 +37,7 @@ from crmbuilder_v2.scheduler.parallel_scheduler import (
     ParallelCoordinatingScheduler,
     ParallelSchedulerConfig,
 )
+from crmbuilder_v2.scheduler.task_contract import TaskResult, TaskStatus
 
 
 def _pass_runner(worktree_path, target):
@@ -155,6 +155,13 @@ class _FakeWorktree:
 
     def changed_files(self, base_ref):
         return []  # PI-147: full-suite target, harmless under the fake runner
+
+    def refresh_from(self, base_ref):
+        # REQ-463: the pre-landing refresh takes the "Already up to date" fast
+        # path here — this suite exercises the migration window, not merges.
+        return subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="Already up to date.\n", stderr=""
+        )
 
     def remove(self):
         return None

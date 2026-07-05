@@ -253,13 +253,21 @@ def test_run_pool_for_workstream_builds_a_valid_config(monkeypatch):
             return PoolRunReport(paused=False)
 
     monkeypatch.setattr(ado, "ParallelCoordinatingScheduler", _FakePool)
-    cfg = AdoSchedulerConfig(planning_item="PI-1", log=lambda _m: None)
+    cfg = AdoSchedulerConfig(
+        planning_item="PI-1", log=lambda _m: None,
+        auto_resolve_conflicts=False, conflict_agent_timeout=123,
+    )
     report = ado.run_pool_for_workstream(cfg, "WSK-1")
     assert report.paused is False
     # real ParallelSchedulerConfig built (would TypeError on a bad kwarg), and log
     # routed to the runtime instance, not the config.
     assert captured["log"] is cfg.log
     assert captured["config"].target_workstream == "WSK-1"
+    # REQ-463: the conflict-tolerant merge knobs flow into the pool config the
+    # same way enable_file_locks does.
+    assert captured["config"].refresh_before_merge is True
+    assert captured["config"].auto_resolve_conflicts is False
+    assert captured["config"].conflict_agent_timeout == 123
 
 
 def test_spawn_scoping_agent_degrades_on_timeout(monkeypatch):
@@ -457,11 +465,32 @@ def test_pauses_when_the_pool_pauses():
     assert report.status is TaskStatus.NEEDS_HUMAN and "WSK-1" in report.reason
 
 
-def test_orchestrator_does_not_advance_phase_when_pool_rolls_back():
-    # PI-145 (a)/(c) "phase not advanced": an atomic-rollback pool report is
-    # paused, so the orchestrator short-circuits on `report.paused` — it never
-    # POSTs /complete-phase, leaving the phase un-advanced for a human (the
-    # rollback already restored main).
+def test_orchestrator_does_not_advance_phase_when_pool_pauses_on_failure():
+    # REQ-463: the pool no longer rolls a failed phase back — sibling merges
+    # stand on the base and the report is simply paused. The paused report
+    # still short-circuits the orchestrator: it never POSTs /complete-phase,
+    # leaving the phase un-advanced for a human (with the kept merges intact).
+    world = _World(1)
+    world.pi_status = "In Progress"
+    world.decomposed = True
+    world.phase_status["WSK-1"] = "Ready"
+    paused = PoolRunReport(paused=True, pre_phase_head="abc1234")
+    driver = _FakeDriver(
+        world, config=_cfg(),
+        pool_runner=lambda c, w: paused,
+        scope_runner=_scopes_to_ready(world), gate_checker=_open_gate,
+    )
+    report = driver.run()
+    assert report.status is TaskStatus.NEEDS_HUMAN
+    assert not any("complete-phase" in c for c in world.calls)
+    assert world.phase_status["WSK-1"] != "Complete"
+
+
+def test_orchestrator_tolerates_a_rolled_back_pool_report():
+    # Compat: ``rolled_back`` / ``rolled_back_to`` stay on PoolRunReport for
+    # report compatibility even though the pool never sets them anymore
+    # (REQ-463). A report that still carries them (older tooling) is handled
+    # identically — the driver keys off `paused` alone.
     world = _World(1)
     world.pi_status = "In Progress"
     world.decomposed = True

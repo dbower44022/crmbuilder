@@ -203,6 +203,14 @@ class _FakeWorktree:
     """Stands in for a real git worktree — records lifecycle, no git calls."""
 
     _counter = 0
+    # REQ-463: per-test injectable refresh behavior, keyed by the branch suffix
+    # exactly the way ``merge_for`` keys the landing merge. ``refresh_results``
+    # maps suffix → CompletedProcess (default: rc=0 "Already up to date." — the
+    # fast path, so pre-REQ-463 tests behave unchanged); ``unmerged_results``
+    # maps suffix → the conflicted paths ``ls-files -u`` would report (a test's
+    # stub resolver clears its entry to simulate a concluded resolution).
+    refresh_results: dict = {}
+    unmerged_results: dict = {}
 
     def __init__(self, *, repo_root, branch, base_ref):
         self.branch = branch
@@ -210,6 +218,10 @@ class _FakeWorktree:
         self.path = f"/tmp/fake-wt-{branch.replace('/', '-')}-{self._counter}"
         self.created = False
         self.removed = False
+        self.abort_calls = 0
+
+    def _key(self):
+        return self.branch.rsplit("/", 1)[-1]
 
     def create(self):
         self.created = True
@@ -220,6 +232,25 @@ class _FakeWorktree:
 
     def changed_files(self, base_ref):
         return []  # PI-147: no git read in the fake → full-suite target, harmless
+
+    def refresh_from(self, base_ref):
+        return self.refresh_results.get(
+            self._key(),
+            subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="Already up to date.\n", stderr=""
+            ),
+        )
+
+    def unmerged_paths(self):
+        return list(self.unmerged_results.get(self._key(), []))
+
+    def merge_in_progress(self):
+        # The fake ties "merge concluded" to "no markers left": a resolver that
+        # clears the unmerged entry has both resolved and concluded the merge.
+        return bool(self.unmerged_results.get(self._key()))
+
+    def abort_merge(self):
+        self.abort_calls += 1
 
     def remove(self):
         self.removed = True
@@ -242,6 +273,8 @@ def _make_runtime(
     task_sleeps: dict[str, float],
     max_concurrent: int = 2,
     merge_for=None,
+    refresh_for=None,
+    unmerged_for=None,
     spawn_stdout: str = "",
     engagement: str = "CRMBUILDER",
 ):
@@ -249,7 +282,9 @@ def _make_runtime(
 
     ``task_sleeps`` maps Work Task id → how long its fake agent runs (to force
     overlap and control completion order). ``merge_for`` maps id → TaskResult
-    (default: all clean).
+    (default: all clean). ``refresh_for`` / ``unmerged_for`` map id → the
+    branch-refresh CompletedProcess / conflicted paths (REQ-463; default:
+    every refresh is "Already up to date", the fast path).
     """
     recorder = _Recorder()
     merge_for = merge_for or {}
@@ -302,27 +337,47 @@ def _make_runtime(
 
     monkeypatch.setattr(rt._l1, "_assignment_for", fake_assignment_for)
 
-    # Worktree + post-spawn task re-read + merge + flag all stubbed.
-    monkeypatch.setattr(pr, "Worktree", _FakeWorktree)
+    # Worktree + post-spawn task re-read + merge + flag all stubbed. The
+    # worktree fake is a per-runtime subclass so a test's injected refresh /
+    # unmerged behavior (REQ-463) never leaks across tests; the created
+    # instances are kept for assertions (e.g. abort_merge calls).
+    worktrees: list[_FakeWorktree] = []
+
+    class _Wt(_FakeWorktree):
+        refresh_results = refresh_for or {}
+        unmerged_results = unmerged_for if unmerged_for is not None else {}
+
+        def __init__(self, **kw):
+            super().__init__(**kw)
+            worktrees.append(self)
+
+    monkeypatch.setattr(pr, "Worktree", _Wt)
+    rt._worktrees = worktrees
     monkeypatch.setattr(
         pr.dispatcher, "_get", lambda api, path, eng: {"work_task_status": "Complete"}
     )
-    monkeypatch.setattr(
-        rt._l1,
-        "_merge",
-        lambda branch: merge_for.get(
+    # The landing-merge stub also records its calls so a test can assert a
+    # refresh-conflicted branch never reached the landing merge (REQ-463).
+    merge_calls: list[str] = []
+
+    def fake_merge(branch):
+        merge_calls.append(branch)
+        return merge_for.get(
             branch.rsplit("/", 1)[-1], TaskResult(TaskStatus.SUCCEEDED, "merged")
-        ),
-    )
+        )
+
+    monkeypatch.setattr(rt._l1, "_merge", fake_merge)
+    rt._merge_calls = merge_calls
     flagged: dict[str, str] = {}
     monkeypatch.setattr(
         rt._l1, "_flag_needs_attention", lambda wt, reason: flagged.update({wt: reason})
     )
     rt._flagged = flagged
     monkeypatch.setattr(rt, "_record_finding", lambda wt, summary: None)
-    # PI-145: the atomic-phase-merge helpers run real git; stub them so the
-    # pool-loop tests stay git-free. ``_base_head`` returns a fixed anchor SHA;
-    # ``_reset_base_to`` records its target (the Test task asserts over this).
+    # The phase-anchor helpers run real git; stub them so the pool-loop tests
+    # stay git-free. ``_base_head`` returns a fixed anchor SHA;
+    # ``_reset_base_to`` records its target — under REQ-463 the pool never
+    # rolls back, so the tests assert this recorder stays EMPTY.
     reset_calls: list[str] = []
     monkeypatch.setattr(rt._l1, "_base_head", lambda: "PRE_PHASE_HEAD")
     monkeypatch.setattr(
@@ -422,8 +477,9 @@ def test_build_agent_retried_once_on_incomplete_then_merges(monkeypatch):
 
 
 def test_build_agent_incomplete_twice_fails_the_phase(monkeypatch):
-    # If the retry is also incomplete, the task fails (and the all-or-nothing
-    # phase rolls back) — the retry does not mask a persistently-failing agent.
+    # If the retry is also incomplete, the task fails (pausing the phase —
+    # REQ-463: only this task, sibling merges stand) — the retry does not mask
+    # a persistently-failing agent.
     rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.02}, max_concurrent=1)
     monkeypatch.setattr(
         pr.dispatcher, "_get", lambda api, path, eng: {"work_task_status": "In Progress"}
@@ -434,12 +490,12 @@ def test_build_agent_incomplete_twice_fails_the_phase(monkeypatch):
     assert "WTK-1" in rt._flagged
 
 
-def test_affected_tests_failure_rolls_back_phase(monkeypatch):
+def test_affected_tests_failure_pauses_phase_and_keeps_sibling(monkeypatch):
     # PI-147: a lifecycle-clean task (Complete + commits) whose affected tests
     # are RED gets verdict TESTS_FAILED, which routes through the same fail path
-    # as a verify failure — so a clean sibling that already merged is rolled back
-    # and the Workstream is flagged. Proves PI-147 composes with the PI-145
-    # rollback with no change to either.
+    # as a verify failure — the phase pauses, and per REQ-463 the clean sibling
+    # that already merged is KEPT while the Workstream is flagged. Proves the
+    # PI-147 gate composes with the REQ-463 pause with no change to either.
     rt = _make_runtime(
         monkeypatch,
         task_sleeps={"WTK-1": 0.05, "WTK-2": 0.15},
@@ -453,11 +509,13 @@ def test_affected_tests_failure_rolls_back_phase(monkeypatch):
     )
     report = rt.run()
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED  # the clean sibling stands
     assert outcomes["WTK-2"] is TaskStatus.FAILED
     verdicts = {r.work_task_id: r.verify for r in report.task_reports}
     assert verdicts["WTK-2"].detail == "tests_failed"
-    assert report.rolled_back is True
-    assert rt._reset_calls == ["PRE_PHASE_HEAD"]  # the clean sibling is undone
+    assert report.rolled_back is False
+    assert rt._reset_calls == []  # no reset — REQ-463 keeps the sibling merge
+    assert report.paused is True
     assert "WTK-2" in rt._flagged
 
 
@@ -582,22 +640,22 @@ def test_worktrees_are_created_and_removed_per_task(monkeypatch):
 
 
 # ==========================================================================
-# PI-145 — atomic (all-or-nothing) phase merge: control-flow (injected seams)
+# REQ-463 — conflict-tolerant phase merge: control-flow (injected seams)
 #
-# The acceptance criteria from the WTK-083 design spec (§8 a–d), pinned with
-# the same stubbed seams as the pool-loop tests above. ``_make_runtime`` already
-# records the rollback: ``_base_head`` returns the fixed anchor "PRE_PHASE_HEAD"
-# and ``_reset_base_to`` appends its target into ``rt._reset_calls`` instead of
-# running git, so these tests assert the rollback *decision* without git. The
-# git *semantics* (real merge + reset --hard) are proven separately below.
+# REQ-463 replaced the PI-145 all-or-nothing rollback: a failed task pauses
+# only itself and every verified sibling merge STANDS on the base.
+# ``_make_runtime`` still records ``_reset_base_to`` calls into
+# ``rt._reset_calls`` — these tests now assert that recorder stays EMPTY. The
+# git *semantics* (real merge; the retained manual reset helper) are proven
+# separately below.
 # ==========================================================================
 
 
-def test_phase_rollback_on_conflict_undoes_clean_sibling(monkeypatch):
-    # (a) Two parallel tasks, the second conflicts. WTK-1 merges clean first
-    # (shorter sleep); WTK-2 then conflicts → the whole phase is atomic, so the
-    # base is hard-reset to pre_phase_head, undoing WTK-1's already-landed merge,
-    # and the run is paused (the orchestrator never advances the phase).
+def test_conflict_keeps_clean_sibling_merges(monkeypatch):
+    # Two parallel tasks, the second conflicts. WTK-1 merges clean first
+    # (shorter sleep); WTK-2 then conflicts → REQ-463: the failed task pauses
+    # only itself. WTK-1's landed merge stands (no hard reset), WTK-2 is
+    # surfaced for a human, and the pool pauses new dispatch.
     rt = _make_runtime(
         monkeypatch,
         task_sleeps={"WTK-1": 0.05, "WTK-2": 0.15},
@@ -606,15 +664,14 @@ def test_phase_rollback_on_conflict_undoes_clean_sibling(monkeypatch):
     )
     report = rt.run()
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
-    assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED  # the sibling did land...
+    assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED  # the sibling landed…
     assert outcomes["WTK-2"] is TaskStatus.NEEDS_HUMAN
-    # ...but the phase failed, so base is reset to the captured anchor — neither
-    # sibling merge survives on main.
-    assert report.pre_phase_head == "PRE_PHASE_HEAD"
-    assert report.rolled_back is True
-    assert report.rolled_back_to == "PRE_PHASE_HEAD"
-    assert rt._reset_calls == ["PRE_PHASE_HEAD"]  # reset ran once, to the anchor
-    # The owning Workstream is flagged needs_attention; the phase is not advanced.
+    # …and STAYS landed: no reset was issued and the report says so.
+    assert rt._reset_calls == []
+    assert report.rolled_back is False
+    assert report.rolled_back_to is None
+    assert report.pre_phase_head == "PRE_PHASE_HEAD"  # still captured (observability)
+    # The owning Workstream is flagged needs_attention; the phase is paused.
     assert "WTK-2" in rt._flagged
     assert report.paused is True
 
@@ -635,11 +692,12 @@ def test_all_clean_phase_keeps_merges_and_does_not_roll_back(monkeypatch):
     assert report.pre_phase_head == "PRE_PHASE_HEAD"  # still captured up front
 
 
-def test_verify_failure_triggers_same_rollback_as_conflict(monkeypatch):
-    # (c) A VERIFY_FAILED task rolls the phase back exactly like a conflict: the
-    # clean sibling that already merged is undone, the Workstream is flagged, and
-    # the phase is not advanced. Proves the rollback predicate keys off ANY
-    # non-MERGED outcome, not specifically a conflict.
+def test_verify_failure_keeps_clean_sibling_merges(monkeypatch):
+    # A VERIFY_FAILED task pauses the phase exactly like a conflict — and, per
+    # REQ-463, exactly as narrowly: the clean sibling that already merged is
+    # KEPT, no reset is issued, the Workstream is flagged, and the phase is not
+    # advanced. Proves the pause predicate keys off ANY non-MERGED outcome
+    # while the keep-siblings behavior holds for all of them.
     rt = _make_runtime(
         monkeypatch,
         task_sleeps={"WTK-1": 0.05, "WTK-2": 0.15},
@@ -655,9 +713,9 @@ def test_verify_failure_triggers_same_rollback_as_conflict(monkeypatch):
     outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
     assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED
     assert outcomes["WTK-2"] is TaskStatus.FAILED
-    assert report.rolled_back is True
-    assert report.rolled_back_to == "PRE_PHASE_HEAD"
-    assert rt._reset_calls == ["PRE_PHASE_HEAD"]  # the clean sibling is also undone
+    assert report.rolled_back is False
+    assert report.rolled_back_to is None
+    assert rt._reset_calls == []  # the clean sibling merge stands
     assert "WTK-2" in rt._flagged
     assert report.paused is True
 
@@ -679,13 +737,131 @@ def test_cap_one_happy_path_is_structurally_unchanged(monkeypatch):
 
 
 # ==========================================================================
-# PI-145 — atomic phase merge: real-git integration (actual merge + reset)
+# REQ-463 / PI-394 — the refresh-and-resolve flow (injected seams)
+# ==========================================================================
+
+
+def _conflict_proc() -> subprocess.CompletedProcess:
+    return subprocess.CompletedProcess(
+        args=[], returncode=1,
+        stdout="CONFLICT (content): Merge conflict in pkg/__init__.py\n",
+        stderr="",
+    )
+
+
+def test_refresh_conflict_without_auto_resolve_pauses_and_aborts(monkeypatch):
+    # REQ-463 with the resolution agent OFF: a textual refresh conflict aborts
+    # the worktree merge and takes the human-pause path — the branch never
+    # reaches the landing merge, while the clean sibling's merge is kept.
+    rt = _make_runtime(
+        monkeypatch,
+        task_sleeps={"WTK-1": 0.05, "WTK-2": 0.15},
+        max_concurrent=2,
+        refresh_for={"wtk-2": _conflict_proc()},
+    )
+    rt.config.auto_resolve_conflicts = False
+    report = rt.run()
+    outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED  # the sibling merge stands
+    assert outcomes["WTK-2"] is TaskStatus.NEEDS_HUMAN
+    assert report.paused is True
+    assert rt._reset_calls == []
+    # The conflicted worktree merge was aborted, and the landing merge was
+    # never invoked for the conflicted branch.
+    aborted = [w for w in rt._worktrees if w.branch == "ado/wtk-2"]
+    assert aborted and aborted[0].abort_calls == 1
+    assert rt._merge_calls == ["ado/wtk-1"]
+    assert "WTK-2" in rt._flagged
+    assert "refresh conflict on ado/wtk-2" in rt._flagged["WTK-2"]
+
+
+def test_refresh_conflict_auto_resolved_by_agent_then_lands(monkeypatch):
+    # REQ-463 with the resolution agent ON: the spawned agent resolves the
+    # markers and concludes the merge (the fake clears the unmerged entry), so
+    # the task lands instead of pausing — and the resolution prompt named the
+    # conflicted files.
+    unmerged = {"wtk-1": ["pkg/__init__.py"]}
+    rt = _make_runtime(
+        monkeypatch,
+        task_sleeps={"WTK-1": 0.02},
+        max_concurrent=1,
+        refresh_for={"wtk-1": _conflict_proc()},
+        unmerged_for=unmerged,
+    )
+    resolution_prompts: list[str] = []
+    inner_spawn = rt.spawn_fn
+
+    def spawn(prompt, worktree_path):
+        if prompt.startswith("You are resolving a git merge conflict"):
+            resolution_prompts.append(prompt)
+            unmerged["wtk-1"] = []  # the agent resolved + concluded the merge
+            return subprocess.CompletedProcess(
+                args=[], returncode=0, stdout="", stderr=""
+            )
+        return inner_spawn(prompt, worktree_path)
+
+    rt.spawn_fn = spawn
+    report = rt.run()
+    outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED
+    assert report.paused is False
+    assert rt._merge_calls == ["ado/wtk-1"]  # the branch reached the landing merge
+    assert "WTK-1" not in rt._flagged
+    assert len(resolution_prompts) == 1
+    assert "pkg/__init__.py" in resolution_prompts[0]  # the files were named
+    assert "WTK-1" in resolution_prompts[0]
+
+
+def test_refresh_merge_reruns_the_affected_test_gate(monkeypatch):
+    # REQ-463: a clean refresh that actually folded base commits in (NOT
+    # "Already up to date") changes the code under test, so the affected-test
+    # gate runs a second time before the landing merge.
+    refreshed = subprocess.CompletedProcess(
+        args=[], returncode=0, stdout="Merge made by the 'ort' strategy.\n",
+        stderr="",
+    )
+    rt = _make_runtime(
+        monkeypatch, task_sleeps={"WTK-1": 0.02}, max_concurrent=1,
+        refresh_for={"wtk-1": refreshed},
+    )
+    runs = {"n": 0}
+
+    def counting_runner(worktree_path, target):
+        runs["n"] += 1
+        return TestRunResult(passed=True, returncode=0, target=target)
+
+    rt._l1.test_runner_fn = counting_runner
+    report = rt.run()
+    outcomes = {r.work_task_id: r.outcome for r in report.task_reports}
+    assert outcomes["WTK-1"] is TaskStatus.SUCCEEDED
+    assert runs["n"] == 2  # the pre-merge gate + the post-refresh gate
+
+
+def test_refresh_up_to_date_skips_the_re_test(monkeypatch):
+    # The fast path: the default fake refresh is "Already up to date", so the
+    # gate runs exactly once — refresh adds no re-test when nothing changed.
+    rt = _make_runtime(monkeypatch, task_sleeps={"WTK-1": 0.02}, max_concurrent=1)
+    runs = {"n": 0}
+
+    def counting_runner(worktree_path, target):
+        runs["n"] += 1
+        return TestRunResult(passed=True, returncode=0, target=target)
+
+    rt._l1.test_runner_fn = counting_runner
+    report = rt.run()
+    assert report.task_reports[0].outcome is TaskStatus.SUCCEEDED
+    assert runs["n"] == 1
+
+
+# ==========================================================================
+# Real-git integration (actual merge; the retained manual reset helper)
 #
 # The control-flow tests above stub the git helpers; these exercise the real
-# ``CoordinatingScheduler._base_head`` / ``_merge`` / ``_reset_base_to`` against a
-# throwaway ``tmp_path`` repo, so the git semantics behind the rollback (merge
-# --no-ff landing on main, then ``reset --hard`` undoing every sibling merge) are
-# proven, not just the control flow (spec §8 — "at least one real-git test").
+# ``CoordinatingScheduler._base_head`` / ``_merge`` / ``_reset_base_to`` against
+# a throwaway ``tmp_path`` repo. The merge --no-ff semantics and the REQ-463
+# keep-sibling behavior are proven on real git; ``_reset_base_to`` is now
+# manual tooling (the pool's automatic PI-145 use was removed by REQ-463) but
+# its git semantics stay pinned.
 # ==========================================================================
 
 
@@ -727,6 +903,9 @@ def _l1(repo: Path) -> CoordinatingScheduler:
 
 
 def test_real_git_clean_merges_land_then_reset_undoes_them(tmp_path):
+    # ``_reset_base_to`` is manual tooling now — REQ-463 removed the pool's
+    # automatic PI-145 use — but its git semantics (checkout base, then
+    # ``reset --hard``) stay pinned here for the operator/tests that keep it.
     repo = tmp_path / "repo"
     anchor = _init_real_repo(repo)
     rt = _l1(repo)
@@ -738,14 +917,17 @@ def test_real_git_clean_merges_land_then_reset_undoes_them(tmp_path):
     assert rt._merge("ado/wtk-2").status is TaskStatus.SUCCEEDED
     assert rt._base_head() != anchor
     assert (repo / "a.txt").exists() and (repo / "b.txt").exists()
-    # The atomic rollback hard-resets main to the anchor — neither merge survives.
+    # The manual reset hard-resets main to the anchor — neither merge survives.
     rt._reset_base_to(anchor)
     assert rt._base_head() == anchor
     assert not (repo / "a.txt").exists()
     assert not (repo / "b.txt").exists()
 
 
-def test_real_git_conflict_then_rollback_leaves_main_at_anchor(tmp_path):
+def test_real_git_conflict_keeps_clean_sibling_on_main(tmp_path):
+    # REQ-463 on real git: a conflicted branch pauses only itself. A lands and
+    # STAYS on main; B's conflict is aborted (auto-resolve off — no agent);
+    # no reset is ever issued, so main still carries A's merge afterwards.
     repo = tmp_path / "repo"
     anchor = _init_real_repo(repo)
     rt = _l1(repo)
@@ -754,14 +936,95 @@ def test_real_git_conflict_then_rollback_leaves_main_at_anchor(tmp_path):
     _branch_with_file(repo, "ado/wtk-2", "shared.txt", "from two\n")
     # The first merges clean and lands on main...
     assert rt._merge("ado/wtk-1").status is TaskStatus.SUCCEEDED
-    assert rt._base_head() != anchor
+    head_after_a = rt._base_head()
+    assert head_after_a != anchor
     # ...the second conflicts; ``_merge`` aborts it, leaving no merge in progress.
     assert rt._merge("ado/wtk-2").status is TaskStatus.NEEDS_HUMAN
-    # Atomic phase rollback: reset main to the anchor — the clean sibling merge is
-    # undone too, so main carries NEITHER task's work (all-or-nothing).
-    rt._reset_base_to(anchor)
-    assert rt._base_head() == anchor
-    assert not (repo / "shared.txt").exists()
+    # Main is exactly where A's merge left it — the clean sibling stands, with
+    # A's content intact (nothing rolled back).
+    assert rt._base_head() == head_after_a
+    assert (repo / "shared.txt").read_text() == "from one\n"
+
+
+def test_real_git_refresh_conflict_stub_resolver_lands_both(tmp_path):
+    # REQ-463 end-to-end on real git: two branches fork from one base and BOTH
+    # append to the same __all__-style list — the canonical union conflict. A
+    # lands first; B's refresh from main then textually conflicts; a stubbed
+    # resolution agent writes the union and concludes the merge inside B's
+    # worktree — so B lands too and main carries BOTH additions (the conflict
+    # cost an agent, not a human pause).
+    from crmbuilder_v2.scheduler.coordinating_scheduler import Worktree
+
+    repo = tmp_path / "repo"
+    _init_real_repo(repo)
+    (repo / "pkg.py").write_text('__all__ = [\n    "alpha",\n]\n')
+    _git(repo, "add", "pkg.py")
+    _git(repo, "commit", "-q", "-m", "add pkg.py")
+
+    def _wt_git(path: str, *args: str) -> None:
+        subprocess.run(
+            ["git", *args], cwd=path, check=True, capture_output=True, text=True
+        )
+
+    def _fork_and_commit(branch: str, name: str) -> Worktree:
+        wt = Worktree(repo_root=str(repo), branch=branch, base_ref="main")
+        wt.create()
+        (Path(wt.path) / "pkg.py").write_text(
+            f'__all__ = [\n    "alpha",\n    "{name}",\n]\n'
+        )
+        _wt_git(wt.path, "add", "pkg.py")
+        _wt_git(wt.path, "commit", "-q", "-m", f"{branch}: add {name}")
+        return wt
+
+    # Both worktrees fork BEFORE either lands, so B goes stale once A merges.
+    wt_a = _fork_and_commit("ado/wtk-a", "bravo")
+    wt_b = _fork_and_commit("ado/wtk-b", "charlie")
+
+    prompts: list[str] = []
+
+    def stub_resolver(prompt, worktree_path):
+        # The "resolution agent": write the union resolution, then conclude
+        # the merge exactly as the prompt instructs (add + commit --no-edit).
+        prompts.append(prompt)
+        (Path(worktree_path) / "pkg.py").write_text(
+            '__all__ = [\n    "alpha",\n    "bravo",\n    "charlie",\n]\n'
+        )
+        _wt_git(worktree_path, "add", "pkg.py")
+        _wt_git(worktree_path, "commit", "-q", "--no-edit")
+        return subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+
+    cfg = ParallelSchedulerConfig(
+        repo_root=str(repo), base_branch="main", max_concurrent=1
+    )
+    rt = ParallelCoordinatingScheduler(
+        config=cfg, spawn_fn=stub_resolver, log=lambda _m: None,
+        test_runner_fn=_pass_runner,
+    )
+
+    def _integrate(wt: Worktree, tid: str):
+        assignment = _ResolvedAssignment(
+            work_task={"work_task_identifier": tid, "work_task_status": "Complete"},
+            work_task_id=tid, area="scheduler", profile_id="AGP-runtime",
+            branch=wt.branch, prompt=tid,
+        )
+        run = pr._AgentRun(
+            assignment=assignment, worktree=wt, returncode=0,
+            refreshed_task={"work_task_status": "Complete"},
+            has_commits=True, spawned_at=0.0, finished_at=0.0,
+        )
+        return rt._integrate(run)
+
+    # A lands clean (its refresh is "Already up to date" — main never moved).
+    assert _integrate(wt_a, "WTK-A").outcome is TaskStatus.SUCCEEDED
+    assert prompts == []  # no conflict, no resolution agent
+
+    # B's refresh conflicts; the stub resolver settles it; B lands too.
+    assert _integrate(wt_b, "WTK-B").outcome is TaskStatus.SUCCEEDED
+    assert len(prompts) == 1
+    assert "pkg.py" in prompts[0] and "WTK-B" in prompts[0]
+
+    merged = (repo / "pkg.py").read_text()
+    assert '"bravo"' in merged and '"charlie"' in merged  # both additions on main
 
 
 def test_parallel_run_records_fleet_cost(v2_env, monkeypatch):

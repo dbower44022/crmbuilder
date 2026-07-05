@@ -174,6 +174,14 @@ class AdoSchedulerConfig:
     # release-dev driver sets this True when walking a dev-lane release; default
     # off keeps a plain ADO run byte-identical.
     enable_file_locks: bool = False
+    # REQ-463 / PI-394: conflict-tolerant merges — threaded into the pool config
+    # exactly as enable_file_locks is. Refresh a stale branch from the base
+    # before its landing merge; settle a textual refresh conflict with a
+    # bounded resolution agent (budget ``conflict_agent_timeout`` seconds)
+    # instead of pausing the phase immediately.
+    refresh_before_merge: bool = True
+    auto_resolve_conflicts: bool = True
+    conflict_agent_timeout: int = 600
     # REQ-460 (foreign-repo spike Gap 1): the target repo's plain test root for
     # the affected-test gate. None → CRMBuilder's own mirrored-tree mapping;
     # set (e.g. "tests") → every non-doc change gates on that full suite.
@@ -213,6 +221,11 @@ def run_pool_for_workstream(cfg: AdoSchedulerConfig, workstream_id: str) -> Pool
         max_concurrent=cfg.max_concurrent,
         manage_api=cfg.manage_api,
         enable_file_locks=cfg.enable_file_locks,
+        # REQ-463: the conflict-tolerant merge knobs flow through like the
+        # file-lock backstop does.
+        refresh_before_merge=cfg.refresh_before_merge,
+        auto_resolve_conflicts=cfg.auto_resolve_conflicts,
+        conflict_agent_timeout=cfg.conflict_agent_timeout,
         test_target_map=(
             TestTargetMap.plain(cfg.test_root)
             if cfg.test_root is not None
@@ -432,19 +445,24 @@ def develop_gate_open(cfg: AdoSchedulerConfig, workstream_id: str) -> GateDecisi
 
 
 # --------------------------------------------------------------------------
-# Rollback-residue seam (PI-157 §2.6) — detects a PI-145 un-merged Complete task
+# Unmerged-branch residue seam (PI-157 §2.6) — detects a Complete task whose
+# branch never landed on the base
 # --------------------------------------------------------------------------
 
 
 def task_branch_unmerged(cfg: AdoSchedulerConfig, work_task_id: str) -> bool:
-    """Whether a Complete task's ``ado/<wtk-id>`` branch is un-merged (PI-145 residue).
+    """Whether a Complete task's ``ado/<wtk-id>`` branch is un-merged residue.
 
-    Under PI-145 a failed phase rolls back every sibling merge, but the
-    rolled-back siblings' Work Task rows stay ``Complete``. Detection-only: the
-    branch still exists *and* carries commits not reachable from
-    ``cfg.base_branch`` means the task's verified work was un-merged by a
-    rollback. A task whose branch is absent or fully merged passes silently —
-    two fast local git reads per Complete task.
+    Historically (PI-145) a failed phase hard-reset the base, un-merging every
+    verified sibling while their Work Task rows stayed ``Complete`` — this
+    guard caught that residue on resume. REQ-463 removed the phase-wide
+    rollback (the pool keeps sibling merges), so Complete-with-unmerged-branch
+    residue now normally means only a conflicted task whose branch a human
+    must merge or re-open; the guard's refusal semantics are unchanged, just
+    narrowly scoped. Detection-only: the branch still exists *and* carries
+    commits not reachable from ``cfg.base_branch``. A task whose branch is
+    absent or fully merged passes silently — two fast local git reads per
+    Complete task.
     """
     import subprocess
 
@@ -910,7 +928,10 @@ class AdoScheduler:
         """Recovery pass over an ``In Progress`` phase's recorded task states (PI-157).
 
         Reconciles each Work Task by its recorded state — skip ``Complete``
-        (subject to the PI-145 rollback-residue guard), release stale claims
+        (subject to the unmerged-branch residue guard,
+        :func:`task_branch_unmerged` — since REQ-463 removed the PI-145
+        rollback, residue normally means a conflicted task whose branch a
+        human must merge or re-open), release stale claims
         (a claim observed at resume time is stale by definition: one runtime
         per PI, and agents are synchronous children of the dead run), and
         rewind stale statuses along legal lifecycle transitions only. The
