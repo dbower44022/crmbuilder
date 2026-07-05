@@ -234,3 +234,25 @@ def test_gate_open_helper_logs_and_returns(monkeypatch):
     )
     assert rt._reconciliation_gate_open({"work_task_identifier": "WTK-9"}) is False
     assert any("reconciliation gate holds WTK-9" in m for m in logs)
+
+
+def test_gate_read_failure_fails_closed(monkeypatch):
+    """REQ-465 / PI-395: a gate read that fails (after the dispatcher's
+    transient retries) withholds the task this iteration — never fail-open."""
+    from crmbuilder_v2.scheduler.coordinating_scheduler import (
+        CoordinatingScheduler,
+        SchedulerConfig,
+    )
+
+    logs: list[str] = []
+    rt = CoordinatingScheduler(config=SchedulerConfig(), log=logs.append)
+
+    def boom(api, eng, wt):
+        raise TimeoutError("store unreachable")
+
+    monkeypatch.setattr(
+        "crmbuilder_v2.scheduler.coordinating_scheduler.reconciliation.develop_gate",
+        boom,
+    )
+    assert rt._reconciliation_gate_open({"work_task_identifier": "WTK-9"}) is False
+    assert any("fail-closed" in m and "WTK-9" in m for m in logs)

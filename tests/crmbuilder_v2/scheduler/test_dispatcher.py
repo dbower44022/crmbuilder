@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+import io
+import json as _json
+import urllib.error
+import urllib.request
+
+from crmbuilder_v2.scheduler import dispatcher as _d
 from crmbuilder_v2.scheduler.dispatcher import (
     is_work_task_eligible,
     resolve_profile_for_task,
@@ -145,3 +151,129 @@ def test_resolve_falls_back_with_warning_when_stamp_fails_revalidation():
     assert profile_id == "AGP-010"
     assert warning is not None
     assert "AGP-013" in warning
+
+
+# ---------------------------------------------------------------------------
+# REQ-465 / PI-395 — transient-retry policy on the store HTTP layer
+# ---------------------------------------------------------------------------
+
+
+class _FakeResponse:
+    def __init__(self, payload):
+        self._body = _json.dumps(payload).encode("utf-8")
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _no_sleep(monkeypatch):
+    monkeypatch.setattr(_d.time, "sleep", lambda s: None)
+
+
+def test_get_retries_transient_urlerror_then_succeeds(monkeypatch):
+    _no_sleep(monkeypatch)
+    calls = {"n": 0}
+
+    def fake_urlopen(req, timeout=None):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise urllib.error.URLError(TimeoutError("timed out"))
+        return _FakeResponse({"data": {"ok": True}, "errors": None})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    assert _d._get("http://x", "/work-tasks/WTK-1", "ENG-004") == {"ok": True}
+    assert calls["n"] == 3
+
+
+def test_get_raises_after_persistent_transients(monkeypatch):
+    _no_sleep(monkeypatch)
+    calls = {"n": 0}
+
+    def fake_urlopen(req, timeout=None):
+        calls["n"] += 1
+        raise urllib.error.URLError(TimeoutError("timed out"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    try:
+        _d._get("http://x", "/work-tasks/WTK-1", "ENG-004")
+        raise AssertionError("expected URLError")
+    except urllib.error.URLError:
+        pass
+    assert calls["n"] == len(_d._RETRY_BACKOFF_SECONDS)
+
+
+def test_get_never_retries_a_4xx_verdict(monkeypatch):
+    _no_sleep(monkeypatch)
+    calls = {"n": 0}
+
+    def fake_urlopen(req, timeout=None):
+        calls["n"] += 1
+        raise urllib.error.HTTPError(
+            "http://x", 404, "not found", hdrs=None, fp=io.BytesIO(b"")
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    try:
+        _d._get("http://x", "/work-tasks/WTK-404", "ENG-004")
+        raise AssertionError("expected HTTPError")
+    except urllib.error.HTTPError:
+        pass
+    assert calls["n"] == 1  # a real API verdict, never retried
+
+
+def test_get_retries_5xx(monkeypatch):
+    _no_sleep(monkeypatch)
+    calls = {"n": 0}
+
+    def fake_urlopen(req, timeout=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise urllib.error.HTTPError(
+                "http://x", 503, "unavailable", hdrs=None, fp=io.BytesIO(b"")
+            )
+        return _FakeResponse({"data": {"ok": True}, "errors": None})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    assert _d._get("http://x", "/topics/TOP-1", "ENG-004") == {"ok": True}
+    assert calls["n"] == 2
+
+
+def test_post_does_not_retry_ambiguous_delivery(monkeypatch):
+    """A write whose request may have reached the server must not repeat:
+    only connection-phase failures (refused/reset) retry for non-idempotent
+    requests; a generic timeout after send surfaces immediately."""
+    _no_sleep(monkeypatch)
+    calls = {"n": 0}
+
+    def fake_urlopen(req, timeout=None):
+        calls["n"] += 1
+        raise urllib.error.URLError(TimeoutError("timed out"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    try:
+        _d._post("http://x", "/findings", "ENG-004", {"finding_summary": "s"})
+        raise AssertionError("expected URLError")
+    except urllib.error.URLError:
+        pass
+    assert calls["n"] == 1
+
+
+def test_post_retries_connection_refused(monkeypatch):
+    _no_sleep(monkeypatch)
+    calls = {"n": 0}
+
+    def fake_urlopen(req, timeout=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise urllib.error.URLError(ConnectionRefusedError("refused"))
+        return _FakeResponse({"data": {"ok": True}, "errors": None})
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    assert _d._post("http://x", "/findings", "ENG-004", {"a": 1}) == {"ok": True}
+    assert calls["n"] == 2

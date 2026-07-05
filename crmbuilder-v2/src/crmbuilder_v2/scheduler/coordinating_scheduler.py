@@ -778,18 +778,23 @@ class CoordinatingScheduler:
 
         Non-Develop Work Tasks always clear it. A Develop Work Task clears it only
         when its Planning Item's Design phase is Complete and the PI has no open
-        blocking findings. Best-effort: if the gate read fails, do not silently
-        block — fall back to open and let the normal verify path catch problems.
+        blocking findings. REQ-465 / PI-395 (reversing the PI-134 best-effort
+        policy): a gate read that still fails after the dispatcher's transient
+        retries fails CLOSED — the task is withheld this iteration and re-checked
+        on the next dispatch pass. A governance gate that cannot answer must not
+        wave work through; the retry layer, not fail-open, is what keeps a
+        transient from wedging dispatch.
         """
         cfg = self.config
         try:
             decision = reconciliation.develop_gate(cfg.api_base, cfg.engagement, work_task)
-        except Exception as exc:  # never wedge dispatch on a gate-read failure
+        except Exception as exc:  # fail closed: withhold, surface, re-check next pass
             self.log(
-                f"  (warning) reconciliation gate read failed for "
-                f"{work_task.get('work_task_identifier')}: {exc}"
+                f"⛔ reconciliation gate read failed for "
+                f"{work_task.get('work_task_identifier')} — withholding this "
+                f"iteration (REQ-465 fail-closed): {exc}"
             )
-            return True
+            return False
         if not decision.allow:
             self.log(
                 f"⛔ reconciliation gate holds {work_task.get('work_task_identifier')}: "

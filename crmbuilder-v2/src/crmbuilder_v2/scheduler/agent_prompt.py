@@ -25,12 +25,15 @@ from dataclasses import dataclass
 
 
 def _get(api_base: str, path: str, engagement: str) -> dict:
-    from crmbuilder_v2.scheduler import runtime_auth
+    # REQ-465 / PI-395: contract/task reads at dispatch time inherit the
+    # dispatcher's transient-retry policy instead of crashing the dispatch
+    # on one timed-out read. Local import to keep module import acyclic
+    # (dispatcher imports this module).
+    from crmbuilder_v2.scheduler import dispatcher, runtime_auth
 
     url = f"{api_base.rstrip('/')}{path}"
     req = urllib.request.Request(url, headers=runtime_auth.auth_headers(engagement))
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
+    payload = dispatcher._urlopen_retry(req, idempotent=True)
     if payload.get("errors"):
         raise RuntimeError(f"API error for {path}: {payload['errors']}")
     return payload["data"]
