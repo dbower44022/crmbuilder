@@ -112,6 +112,32 @@ def _resolve_rule_overlay(visible_rules: list[dict]) -> list[dict]:
     return [r for r in visible_rules if _keep(r)]
 
 
+# REQ-464 / PI-393: the reserved name of the per-engagement repo-context record.
+# One active engagement-scoped instruction skill with this name describes the
+# engagement's target repository/stack; it composes into every contract resolved
+# for that engagement — no per-profile binding — and supersedes any host-repo
+# description baked into the profile role text.
+_REPO_CONTEXT_SKILL_NAME = "engagement-repo-context"
+
+
+def _engagement_repo_context(session: Session, engagement_id: str | None) -> dict | None:
+    """The engagement's repo-context skill, or ``None`` (system scope has none)."""
+    if engagement_id is None:
+        return None
+    try:
+        rows = skills.list_all(
+            session, kind="instruction", status="active", scope=engagement_id
+        )
+    except Exception:
+        # An engagement the scope resolver doesn't know (D-δ4 permits resolving
+        # for any engagement id) simply has no repo context.
+        return None
+    for row in rows:
+        if row.get("name") == _REPO_CONTEXT_SKILL_NAME:
+            return row
+    return None
+
+
 def _bound_targets(session: Session, profile_id: str, relationship: str) -> list[str]:
     edges = references.list_references(
         session,
@@ -159,9 +185,19 @@ def resolve_contract(
     advisory_rules = [r for r in visible_rules if r["enforcement"] == "advisory"]
     enforced_rules = [r for r in visible_rules if r["enforcement"] in _ENFORCED]
 
-    # Composed system prompt: profile description + instruction-skill text +
-    # advisory-rule bodies (the pure-guidance half; PRD §4/§5).
+    # Composed system prompt: profile description + engagement repo context
+    # (REQ-464) + instruction-skill text + advisory-rule bodies (the
+    # pure-guidance half; PRD §4/§5).
+    repo_context = _engagement_repo_context(session, engagement_id)
     prompt_parts = [profile["description"]]
+    if repo_context is not None:
+        prompt_parts.append(
+            "ENGAGEMENT TARGET REPOSITORY — this contract is resolved for "
+            f"{engagement_id}. The build runs against the repository described "
+            "below; where the role text above describes a different codebase or "
+            "technology stack, THIS section governs.\n\n"
+            f"{repo_context['description']}"
+        )
     prompt_parts += [s["description"] for s in instruction_skills]
     prompt_parts += [f"RULE (advisory): {r['body']}" for r in advisory_rules]
     system_prompt = "\n\n".join(p for p in prompt_parts if p)
@@ -203,7 +239,8 @@ def resolve_contract(
             session, profile, engagement_id, min_confidence
         ),
     }
-    contract["version_stamp"] = _version_stamp(profile, visible_skills, visible_rules)
+    stamped_skills = visible_skills + ([repo_context] if repo_context else [])
+    contract["version_stamp"] = _version_stamp(profile, stamped_skills, visible_rules)
     return contract
 
 

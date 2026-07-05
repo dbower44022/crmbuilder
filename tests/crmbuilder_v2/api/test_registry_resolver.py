@@ -244,3 +244,75 @@ def test_search_agents_needs_ranking(client):
 
 def test_search_agents_requires_area(client):
     assert client.get("/agent-profiles/search").status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# REQ-464 / PI-393 — engagement repo context in resolved contracts
+# ---------------------------------------------------------------------------
+
+
+def _repo_context_skill(client, scope, description="CBM web app: FastAPI + SQLAlchemy."):
+    return client.post(
+        "/skills",
+        json={
+            "name": "engagement-repo-context",
+            "kind": "instruction",
+            "description": description,
+            "scope": scope,
+        },
+    ).json()["data"]["identifier"]
+
+
+def test_engagement_repo_context_composes_with_precedence(client):
+    """An active engagement-scoped skill named ``engagement-repo-context``
+    composes into every contract resolved for that engagement — no
+    per-profile binding — with the supersedence header (REQ-464)."""
+    prof = client.post(
+        "/agent-profiles",
+        json={"area": "ui", "tier": "developer",
+              "description": "UI dev for the host PySide6 desktop app."},
+    ).json()["data"]["identifier"]
+    _repo_context_skill(client, "ENG-001")
+
+    contract = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-001").json()["data"]
+    assert "ENGAGEMENT TARGET REPOSITORY" in contract["system_prompt"]
+    assert "CBM web app: FastAPI + SQLAlchemy." in contract["system_prompt"]
+    # Precedence: the repo-context block lands immediately after the role text.
+    role_at = contract["system_prompt"].index("UI dev for the host")
+    ctx_at = contract["system_prompt"].index("ENGAGEMENT TARGET REPOSITORY")
+    assert role_at < ctx_at
+    # It is context, not a tool: never in the tools list.
+    assert all(t["name"] != "engagement-repo-context" for t in contract["tools"])
+
+
+def test_engagement_repo_context_absent_is_unchanged(client):
+    """No repo-context record → the composed prompt has no engagement block,
+    for system scope and engagement scope alike."""
+    prof = client.post(
+        "/agent-profiles",
+        json={"area": "api", "tier": "developer", "description": "API dev."},
+    ).json()["data"]["identifier"]
+
+    plain = client.get(f"/agent-profiles/{prof}/contract").json()["data"]
+    scoped = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-001").json()["data"]
+    assert "ENGAGEMENT TARGET REPOSITORY" not in plain["system_prompt"]
+    assert "ENGAGEMENT TARGET REPOSITORY" not in scoped["system_prompt"]
+
+
+def test_engagement_repo_context_scope_isolation_and_stamp(client):
+    """Another engagement's repo context never leaks (D-δ4), and the stamp
+    changes when the record enters the resolution."""
+    prof = client.post(
+        "/agent-profiles",
+        json={"area": "storage", "tier": "developer", "description": "Storage dev."},
+    ).json()["data"]["identifier"]
+
+    before = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-001").json()["data"]
+    _repo_context_skill(client, "ENG-001", description="ENG-001 repo facts.")
+
+    other = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-002").json()["data"]
+    assert "ENG-001 repo facts." not in other["system_prompt"]
+
+    mine = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-001").json()["data"]
+    assert "ENG-001 repo facts." in mine["system_prompt"]
+    assert mine["version_stamp"] != before["version_stamp"]
