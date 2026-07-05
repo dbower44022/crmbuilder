@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import json
 import logging
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -154,11 +156,48 @@ def resolve_profile_for_task(
 # --------------------------------------------------------------------------
 # HTTP I/O
 # --------------------------------------------------------------------------
+# REQ-465 / PI-395: transient network failures against a healthy store crashed
+# the driver (resume path) and let a gate read fail open during the 2026-07-05
+# ENG-004 runs. Every store read now retries with bounded backoff HERE, once,
+# so all callers (driver, pool, prompt building) inherit it. Retry only what
+# is safe and transient: URLError (connect/read failure — for GETs) and 5xx
+# responses. A 4xx is a real API verdict and never retried. Writes retry only
+# on URLError, where the request may not have reached the server; a delivered-
+# but-failed write must surface, not silently repeat.
+_RETRY_BACKOFF_SECONDS = (1.0, 3.0, 9.0)
+
+
+def _urlopen_retry(req: urllib.request.Request, *, idempotent: bool) -> object:
+    last_exc: Exception | None = None
+    for attempt, delay in enumerate(_RETRY_BACKOFF_SECONDS, start=1):
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            if exc.code < 500:
+                raise  # a real API verdict — never retried
+            last_exc = exc
+        except urllib.error.URLError as exc:
+            if not idempotent and not isinstance(
+                exc.reason, (ConnectionRefusedError, ConnectionResetError)
+            ):
+                # A non-idempotent request that may have been delivered
+                # (e.g. read timeout after send) must not repeat.
+                raise
+            last_exc = exc
+        if attempt < len(_RETRY_BACKOFF_SECONDS):
+            log.warning(
+                "store request failed (%s); retry %d/%d in %.0fs",
+                last_exc, attempt, len(_RETRY_BACKOFF_SECONDS) - 1, delay,
+            )
+            time.sleep(delay)
+    raise last_exc  # type: ignore[misc]  # loop always sets it before falling through
+
+
 def _get(api_base: str, path: str, engagement: str) -> object:
     url = f"{api_base.rstrip('/')}{path}"
     req = urllib.request.Request(url, headers=runtime_auth.auth_headers(engagement))
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
+    payload = _urlopen_retry(req, idempotent=True)
     if payload.get("errors"):
         raise RuntimeError(f"API error for {path}: {payload['errors']}")
     return payload["data"]
@@ -171,8 +210,7 @@ def _post(api_base: str, path: str, engagement: str, body: dict) -> object:
         url, data=data, method="POST",
         headers=runtime_auth.auth_headers(engagement, content_type=True),
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
+    payload = _urlopen_retry(req, idempotent=False)
     if payload.get("errors"):
         raise RuntimeError(f"API error for POST {path}: {payload['errors']}")
     return payload["data"]
@@ -185,8 +223,7 @@ def _patch(api_base: str, path: str, engagement: str, body: dict) -> object:
         url, data=data, method="PATCH",
         headers=runtime_auth.auth_headers(engagement, content_type=True),
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
+    payload = _urlopen_retry(req, idempotent=False)
     if payload.get("errors"):
         raise RuntimeError(f"API error for PATCH {path}: {payload['errors']}")
     return payload["data"]
