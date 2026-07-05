@@ -10,9 +10,12 @@ into a **capped parallel pool** per **DEC-397**:
 2. **start-on-slot-free** — whenever a slot frees and eligible (unblocked) work
    exists, a new agent starts, up to the cap;
 3. **merge-as-complete** — as each agent finishes, the runtime verifies by
-   result and merges its branch back (``--no-ff``) **in completion order**; a
-   merge conflict halts *that* merge, records a finding, raises
-   ``needs_attention``, and stops new dispatch — never force-resolved;
+   result, refreshes its branch from the advanced base (REQ-463: a textual
+   refresh conflict may be settled by a bounded resolution agent *inside the
+   worktree*, never on the base), and merges the branch back (``--no-ff``)
+   **in completion order**; an unresolved conflict halts *that task only* —
+   it records a finding, raises ``needs_attention``, and stops new dispatch,
+   while sibling merges stand (REQ-463 removed the PI-145 phase rollback);
 4. **the runtime owns the API process** — it starts it if needed, monitors
    ``/health``, and restarts it on crash, so **no agent ever restarts it**.
 
@@ -159,11 +162,13 @@ class PoolRunReport:
     # PI-133: each exclusive migration window held during the run (proof of the
     # drained, no-concurrent-writer property is ``active_at_run == 0``).
     migrations: list = field(default_factory=list)
-    # PI-145: atomic (all-or-nothing) phase merge. ``pre_phase_head`` is the
-    # base_branch HEAD captured before the phase pool dispatched its first
-    # worker; if any task failed, ``run()`` resets base_branch back to it,
-    # undoing every sibling merge from this phase (``rolled_back`` /
-    # ``rolled_back_to`` record that distinctly from a plain pause).
+    # ``pre_phase_head`` is the base_branch HEAD captured before the phase pool
+    # dispatched its first worker. Under PI-145 a failed phase was hard-reset
+    # back to it; REQ-463 removed that rollback — a failed task pauses only
+    # itself and sibling merges stand — so the anchor is now observability
+    # only. ``rolled_back`` / ``rolled_back_to`` are never set by the pool
+    # anymore; they are retained solely for report compatibility (other code
+    # still reads them).
     pre_phase_head: str | None = None
     rolled_back: bool = False
     rolled_back_to: str | None = None
@@ -291,10 +296,48 @@ class ParallelSchedulerConfig(SchedulerConfig):
     # Default off; a no-op anyway outside a dev-lane release. The release-dev driver
     # sets it True. Existing ADO runs are byte-identical with it off.
     enable_file_locks: bool = False
+    # REQ-463 / PI-394: conflict-tolerant merges. Fold the advanced base into a
+    # stale branch (in its own worktree) BEFORE the landing merge, so a
+    # cross-sibling conflict surfaces where a bounded resolution agent can
+    # settle it instead of pausing the phase immediately.
+    refresh_before_merge: bool = True
+    # REQ-463: on a textual refresh conflict, spawn the resolution agent rather
+    # than pausing for a human straight away (the pause remains the fallback).
+    auto_resolve_conflicts: bool = True
+    # The resolution agent's budget (seconds).
+    conflict_agent_timeout: int = 600
 
 
 # Type alias for the injectable spawn seam.
 SpawnFn = Callable[[str, str], subprocess.CompletedProcess]
+
+
+def build_conflict_resolution_prompt(
+    work_task_id: str, base_branch: str, files: list[str]
+) -> str:
+    """The bounded resolution agent's prompt for a textual refresh conflict.
+
+    REQ-463 / PI-394: a stale branch being refreshed from the advanced base
+    typically conflicts on union-style edits (two siblings appending to the
+    same ``__all__`` list, dependency list, or adjacent additions). The
+    agent's remit is deliberately narrow — resolve the markers preserving both
+    sides, conclude the merge, change nothing else; the affected-test gate
+    re-runs afterwards and the landing merge still decides what reaches the
+    base.
+    """
+    listed = ", ".join(files)
+    return (
+        f"You are resolving a git merge conflict inside a worktree — the "
+        f"branch for {work_task_id} is being refreshed from {base_branch}. "
+        f"Conflicted files: {listed}. Resolve EVERY conflict marker by "
+        "preserving BOTH sides' intent (these are typically union-style "
+        "conflicts: package __all__ re-export lists, dependency lists, "
+        "adjacent additions). Do not drop either side's additions; do not "
+        "make any change beyond resolving the markers. Then `git add` the "
+        "resolved files and conclude the merge with `git commit --no-edit`. "
+        "Run the repo's test command if one is obvious and cheap; fix "
+        "nothing else. Exit when the merge is concluded."
+    )
 
 
 @dataclass
@@ -585,9 +628,10 @@ class ParallelCoordinatingScheduler:
             # Per-agent retry: an agent that exits without driving its task to
             # Complete (or with an empty branch) is most often a transient agent
             # incompletion — not bad work the gate should reject. Re-spawn the
-            # agent ONCE before failing the task (which would roll the whole
-            # all-or-nothing phase back). A genuine test failure (TESTS_FAILED)
-            # or merge conflict is NOT retried here — only incompletion.
+            # agent ONCE before failing the task (which pauses the phase —
+            # REQ-463: sibling merges stand). A genuine test failure
+            # (TESTS_FAILED) or merge conflict is NOT retried here — only
+            # incompletion.
             self.log(
                 f"  [{a.work_task_id}] incomplete ({(verdict.detail or verdict.status.value)}) "
                 "— retrying agent once"
@@ -635,8 +679,19 @@ class ParallelCoordinatingScheduler:
                 finished_at=run.finished_at,
                 verify_log_path=verify_log_path,
             )
+        # REQ-463 / PI-394: fold the advanced base into the branch BEFORE the
+        # landing merge. A sibling that landed while this agent worked would
+        # otherwise surface as a landing-merge conflict on the base branch
+        # itself; refreshing first keeps any conflict in the worktree, where a
+        # bounded resolution agent can settle it without ever touching the base.
+        if self.config.refresh_before_merge:
+            early = self._refresh_before_landing(run, verdict)
+            if early is not None:
+                return early
         # PI-220 (FL-5): capture the sub-agent's touched files from its worktree
         # before it is removed, so the lock backstop can verify the real diff.
+        # Captured AFTER the refresh (REQ-463) so the diff reflects the
+        # refreshed branch.
         touched_paths: list[str] = []
         if self.config.enable_file_locks:
             try:
@@ -686,6 +741,157 @@ class ParallelCoordinatingScheduler:
             finished_at=run.finished_at,
             merged_at=merged_at,
         )
+
+    def _refresh_before_landing(
+        self, run: _AgentRun, verdict: TaskResult
+    ) -> TaskReport | None:
+        """Refresh the branch from the base and settle any conflict (REQ-463).
+
+        Returns ``None`` to proceed to the landing merge, or a finalized
+        ``TaskReport`` when the refresh ends the task here (post-refresh tests
+        red → FAILED; an unresolved textual conflict → NEEDS_HUMAN). The
+        worktree-local refresh merge never touches the base branch, so it runs
+        OUTSIDE ``_repo_lock`` — the lock stays reserved for base-branch git
+        ops; only the affected-test gate's changed-files read takes it.
+        """
+        a = run.assignment
+        cfg = self.config
+        proc = run.worktree.refresh_from(cfg.base_branch)
+        clean = proc.returncode == 0
+        up_to_date = clean and "Already up to date" in (proc.stdout or "")
+        state = "up-to-date" if up_to_date else ("refreshed" if clean else "conflict")
+        self.log(f"  [{a.work_task_id}] refresh from {cfg.base_branch}: {state}")
+        if up_to_date:
+            return None  # fast path — nothing folded in, no re-test needed
+        if clean:
+            # A real refresh merge landed in the worktree: the code under test
+            # changed, so the affected-test gate must hold again before landing.
+            gate_verdict, gate_log = self._run_gate(run)
+            if gate_verdict.ok:
+                return None
+            detail = (
+                "post-refresh tests failed: "
+                f"{(gate_verdict.detail or gate_verdict.status.value)}"
+            )
+            log_suffix = f" — output: {gate_log}" if gate_log else ""
+            self._l1._flag_needs_attention(
+                a.work_task_id,
+                f"{detail} (agent rc={run.returncode}){log_suffix}",
+            )
+            self._record_finding(a.work_task_id, f"{detail}{log_suffix}")
+            self._reclaim_locks(a.work_task_id)  # PI-220: free the child's locks
+            run.worktree.remove()
+            return TaskReport(
+                work_task_id=a.work_task_id,
+                branch=a.branch,
+                outcome=TaskStatus.FAILED,
+                verify=gate_verdict,
+                agent_returncode=run.returncode,
+                spawned_at=run.spawned_at,
+                finished_at=run.finished_at,
+                verify_log_path=gate_log,
+            )
+        # Textual conflict — refresh_from deliberately left the conflicted
+        # state in place for the resolution agent (REQ-463).
+        if not cfg.auto_resolve_conflicts:
+            run.worktree.abort_merge()
+            return self._refresh_conflict_report(
+                run, verdict, f"refresh conflict on {a.branch}"
+            )
+        files = run.worktree.unmerged_paths()
+        resolved = self._spawn_conflict_resolution(run, files)
+        if resolved:
+            # Verify the agent's work by git state, not by its exit: every
+            # marker resolved AND the merge concluded (no MERGE_HEAD left).
+            resolved = (
+                run.worktree.unmerged_paths() == []
+                and not run.worktree.merge_in_progress()
+            )
+        if resolved:
+            # The resolution changed the code under test — re-run the gate.
+            gate_verdict, _gate_log = self._run_gate(run)
+            resolved = gate_verdict.ok
+        if not resolved:
+            run.worktree.abort_merge()
+            return self._refresh_conflict_report(
+                run, verdict,
+                f"refresh conflict on {a.branch} unresolved: {files}",
+            )
+        self.log(
+            f"  [{a.work_task_id}] refresh conflict auto-resolved "
+            f"({len(files)} file(s))"
+        )
+        return None
+
+    def _run_gate(self, run: _AgentRun) -> tuple[TaskResult, str | None]:
+        """The affected-test gate, exactly as the pre-merge call runs it: the
+        changed-files git read touches the shared repo, so take the lock."""
+        with self._repo_lock:
+            return self._l1._run_affected_tests(
+                run.worktree, run.assignment.work_task_id
+            )
+
+    def _refresh_conflict_report(
+        self, run: _AgentRun, verdict: TaskResult, reason: str
+    ) -> TaskReport:
+        """The refresh-conflict human-pause path (REQ-463): mirrors the landing
+        merge-conflict path — flag, finding, reclaim locks, remove the worktree,
+        ``NEEDS_HUMAN``. The conflict is surfaced, never force-resolved by the
+        runtime itself; only the bounded resolution agent may settle it."""
+        a = run.assignment
+        self._l1._flag_needs_attention(a.work_task_id, reason)
+        self._record_finding(a.work_task_id, reason)
+        self._reclaim_locks(a.work_task_id)  # PI-220: free the child's locks (FL-6)
+        run.worktree.remove()
+        return TaskReport(
+            work_task_id=a.work_task_id,
+            branch=a.branch,
+            outcome=TaskStatus.NEEDS_HUMAN,
+            verify=verdict,
+            agent_returncode=run.returncode,
+            spawned_at=run.spawned_at,
+            finished_at=run.finished_at,
+        )
+
+    def _spawn_conflict_resolution(self, run: _AgentRun, files: list[str]) -> bool:
+        """Spawn the bounded resolution agent over the conflicted worktree
+        (REQ-463). True when the spawn itself completed — the caller verifies
+        the actual resolution by git state (verify-by-result, DEC-396 in
+        spirit). Runs OUTSIDE the repo lock: it only ever touches this
+        worktree. A spawn error/timeout returns False, never raises."""
+        a = run.assignment
+        cfg = self.config
+        prompt = build_conflict_resolution_prompt(
+            a.work_task_id, cfg.base_branch, files
+        )
+        self.log(
+            f"  [{a.work_task_id}] spawning conflict-resolution agent "
+            f"({len(files)} file(s), budget {cfg.conflict_agent_timeout}s)"
+        )
+        try:
+            spawn = self.spawn_fn or (
+                lambda p, wp: spawn_claude_agent(
+                    p, wp, timeout=cfg.conflict_agent_timeout
+                )
+            )
+            proc = spawn(prompt, run.worktree.path)
+            # Side-band cost telemetry, as for every agent spawn (PI-264).
+            from crmbuilder_v2.scheduler import cost_capture
+
+            cost_capture.record_cli_result(
+                getattr(proc, "stdout", None),
+                engagement=cfg.engagement,
+                work_task=a.work_task_id,
+                area=getattr(a, "area", None),
+                tier=getattr(cfg, "tier", None),
+                stage="conflict_resolution",
+            )
+            return True
+        except Exception as exc:  # noqa: BLE001 — resolution is best-effort
+            self.log(
+                f"  [{a.work_task_id}] conflict-resolution agent failed: {exc!r}"
+            )
+            return False
 
     def _coordinate_locks_on_merge(
         self, work_task_id: str, touched_paths: list[str]
@@ -773,10 +979,11 @@ class ParallelCoordinatingScheduler:
         try:
             if cfg.manage_api and self.api is not None:
                 self.api.ensure_started()
-            # PI-145: capture the phase's pre-merge anchor BEFORE any worker forks
-            # a worktree or merges, so a failed phase can be rolled back to a main
-            # that still carries none of this phase's work. Locked so the rev-parse
-            # cannot race a worker's worktree create/merge git ops.
+            # Capture the phase's pre-merge anchor BEFORE any worker forks a
+            # worktree or merges. Since REQ-463 removed the automatic PI-145
+            # rollback this is observability only (what the base looked like
+            # when the phase began). Locked so the rev-parse cannot race a
+            # worker's worktree create/merge git ops.
             with self._repo_lock:
                 pre_phase_head = self._l1._base_head()
             report.pre_phase_head = pre_phase_head
@@ -861,26 +1068,24 @@ class ParallelCoordinatingScheduler:
             executor.shutdown(wait=True)
             if cfg.manage_api and self.api is not None:
                 self.api.stop()
-            # PI-145: phase-level atomicity. After every worker is quiesced (so no
-            # `_merge` can race the reset), if ANY task in the phase failed
-            # (a merge CONFLICT or a VERIFY_FAILED), undo every sibling merge by
-            # hard-resetting base_branch to the captured anchor — leaving main
-            # either whole or untouched, never partial. The owning Workstream was
-            # already flagged needs_attention per-failure in `_integrate`; the
-            # rollback only restores main. An empty drain (no task_reports) has
-            # nothing to undo and never used pre_phase_head.
+            # REQ-463 (supersedes the PI-145 phase-wide rollback): a failed
+            # task pauses only itself. Sibling merges that verified green
+            # STAND on the base branch — the hard reset that undid them was
+            # removed, so good verified work is never discarded because an
+            # unrelated sibling failed. A failed task's own branch never
+            # merged (its failure path returns before the landing merge), so
+            # the base carries only whole, verified merges. The owning
+            # Workstream was already flagged needs_attention per-failure in
+            # `_integrate`; ``pre_phase_head`` stays captured on the report
+            # purely for observability.
             phase_failed = any(
                 r.outcome is not TaskStatus.SUCCEEDED for r in report.task_reports
             )
-            if phase_failed and report.task_reports:
-                with self._repo_lock:
-                    self._l1._reset_base_to(pre_phase_head)
-                report.rolled_back = True
-                report.rolled_back_to = pre_phase_head
+            if phase_failed:
                 self.log(
-                    f"↩ phase rolled back: {cfg.base_branch} reset --hard "
-                    f"{pre_phase_head[:8]} — undoing every sibling merge from this "
-                    f"phase (a task failed; workstream flagged needs_attention)"
+                    f"⏸ phase paused with {len(report.merged)} verified "
+                    f"merge(s) kept on {cfg.base_branch} — REQ-463: a failed "
+                    f"task pauses only itself; sibling merges stand"
                 )
         if lock is not None and lock.records:
             report.migrations = list(lock.records)

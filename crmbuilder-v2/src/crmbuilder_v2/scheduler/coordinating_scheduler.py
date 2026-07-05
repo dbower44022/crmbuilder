@@ -616,6 +616,45 @@ class Worktree:
         ).stdout
         return [line.strip() for line in out.splitlines() if line.strip()]
 
+    def refresh_from(self, base_ref: str) -> subprocess.CompletedProcess:
+        """Fold ``base_ref`` into this worktree's branch (REQ-463 / PI-394).
+
+        Runs ``git merge --no-edit <base_ref>`` here in the worktree with
+        ``check=False`` and returns the proc. Deliberately NO abort on a
+        non-zero exit: the conflicted state is left in place so the *caller*
+        decides — spawn a bounded resolution agent over it, or
+        :meth:`abort_merge`. A worktree-local merge never touches the base
+        branch, so callers need not hold the shared repo lock for it.
+        """
+        return _git(self.path, "merge", "--no-edit", base_ref, check=False)
+
+    def unmerged_paths(self) -> list[str]:
+        """Paths with unresolved conflict entries in the index, sorted + unique.
+
+        Parses ``git ls-files -u`` (one line per conflict *stage*, so a
+        conflicted path appears up to three times). An empty list means no
+        unresolved conflict remains — the first half of how a resolution
+        agent's work is verified by result (REQ-463).
+        """
+        out = _git(self.path, "ls-files", "-u", check=False).stdout
+        paths = {line.split("\t", 1)[1] for line in out.splitlines() if "\t" in line}
+        return sorted(paths)
+
+    def merge_in_progress(self) -> bool:
+        """True while a merge here is unconcluded (``MERGE_HEAD`` still exists).
+
+        The second half of the resolution-agent verification (REQ-463):
+        resolved markers with an unconcluded merge means the agent stopped
+        before ``git commit``, so the refresh must be aborted, not landed.
+        """
+        proc = _git(self.path, "rev-parse", "-q", "--verify", "MERGE_HEAD",
+                    check=False)
+        return proc.returncode == 0
+
+    def abort_merge(self) -> None:
+        """Abort an in-progress merge in this worktree (best-effort, REQ-463)."""
+        _git(self.path, "merge", "--abort", check=False)
+
     def remove(self) -> None:
         if self.path:
             _git(self.repo_root, "worktree", "remove", "--force", self.path, check=False)
@@ -1099,8 +1138,9 @@ class CoordinatingScheduler:
         single pytest target (pure :func:`select_test_target`), and runs it
         through the injectable runner. ``OK`` if the run is green, else
         ``TESTS_FAILED`` — which the caller routes through the existing non-OK
-        fail path (flag + pause, and on the parallel site the PI-145 rollback),
-        so a branch that breaks a pre-existing test never merges.
+        fail path (flag + pause; on the parallel site the failed task pauses
+        only itself — REQ-463 removed the PI-145 phase rollback, so sibling
+        merges stand), so a branch that breaks a pre-existing test never merges.
 
         On a red run the captured output is persisted to ``verify_log_dir()``
         (PI-157) and the log's absolute path is returned alongside the verdict,
@@ -1214,21 +1254,24 @@ class CoordinatingScheduler:
         Resolves by branch name, not ``HEAD`` — the worktree-parent repo may be
         checked out on some other branch at capture time, and ``_merge`` itself
         references ``cfg.base_branch`` rather than the current ref. The parallel
-        runtime captures this once before a phase's pool dispatches so a failed
-        phase can be rolled back to it (PI-145).
+        runtime captures this once before a phase's pool dispatches; since
+        REQ-463 removed the automatic PI-145 rollback the anchor is recorded
+        for observability, not for a reset.
         """
         cfg = self.config
         return _git(cfg.repo_root, "rev-parse", cfg.base_branch).stdout.strip()
 
     def _reset_base_to(self, head: str) -> None:
-        """Hard-reset base_branch back to ``head``, undoing this phase's merges.
+        """Hard-reset base_branch back to ``head``, undoing merges landed on it.
 
         Checks out base_branch first (mirrors :meth:`_merge`, which checks it out
-        before merging), then ``git reset --hard <head>``. Used by the parallel
-        runtime to make a phase's merges all-or-nothing: if any sibling failed,
-        every clean sibling merge from the same phase is undone in one step
-        (PI-145). Runs with ``check=True`` — a failure to reset ``main`` is a hard
-        environment error the operator must see, not something to swallow.
+        before merging), then ``git reset --hard <head>``. Historically the
+        parallel runtime called this to make a phase's merges all-or-nothing
+        (PI-145); REQ-463 removed that automatic use — a failed task now pauses
+        only itself and sibling merges stand. The method is retained as manual
+        tooling (and its git semantics stay test-pinned). Runs with
+        ``check=True`` — a failure to reset ``main`` is a hard environment error
+        the operator must see, not something to swallow.
         """
         cfg = self.config
         _git(cfg.repo_root, "checkout", cfg.base_branch)
