@@ -13,6 +13,7 @@ from fastapi import APIRouter
 from crmbuilder_v2.access import skill_scan
 from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.repositories import (
+    agent_profile_bindings,
     agent_profiles,
     governance_rules,
     learnings,
@@ -24,6 +25,7 @@ from crmbuilder_v2.access.repositories import (
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
+    AgentProfileBindingCreateIn,
     AgentProfileCreateIn,
     AgentProfileUpdateIn,
     CurateAreaIn,
@@ -113,12 +115,15 @@ def resolve_agent_profile_contract(identifier: str, engagement: str | None = Non
 def get_agent_profile_bindings(identifier: str):
     """List the skills and governance_rules bound to this profile (PI-122).
 
-    Bindings are plain reference edges out of the profile:
-    ``agent_profile_has_skill`` → skill, ``agent_profile_governed_by_rule``
-    → governance_rule. Returns the bound target identifiers (with the
-    edge kind) under ``skills`` and ``governance_rules``. 404 if the
-    profile does not exist.
+    Two binding sources compose (REQ-472 / PI-396). ``skills`` /
+    ``governance_rules`` keep their original shape and list the
+    engagement-scoped reference edges (``agent_profile_has_skill`` /
+    ``agent_profile_governed_by_rule``). ``registry_bindings`` lists the
+    registry-native binding rows visible for the active engagement — the
+    system baseline plus that engagement's bind/disable overlay — each with
+    its ``scope`` and ``mode``. 404 if the profile does not exist.
     """
+    active = get_active_engagement()
     with readonly_session() as s:
         # Existence check (raises NotFoundError → 404 if absent).
         agent_profiles.get(s, identifier)
@@ -144,8 +149,36 @@ def get_agent_profile_bindings(identifier: str):
                     {"identifier": e["target_id"], "relationship": e["relationship"]}
                     for e in rule_edges
                 ],
+                "registry_bindings": agent_profile_bindings.list_for_profile(
+                    s, identifier, engagement_id=active
+                ),
             }
         )
+
+
+@agent_profiles_router.post("/{identifier}/bindings", status_code=201)
+def create_agent_profile_binding(identifier: str, body: AgentProfileBindingCreateIn):
+    """Create a registry-native binding row (REQ-472 / PI-396).
+
+    ``scope="system"`` (or omitted) writes a system-baseline binding every
+    engagement inherits at contract resolution; an engagement identifier
+    writes that engagement's overlay. ``mode='disable'`` (engagement-scoped
+    only) masks the baseline binding of the same target for that engagement.
+    """
+    with writable_session() as s:
+        return ok(
+            agent_profile_bindings.create(s, profile_id=identifier, **body.model_dump())
+        )
+
+
+@agent_profiles_router.delete("/{identifier}/bindings/{binding_id}")
+def delete_agent_profile_binding(identifier: str, binding_id: int):
+    """Delete a registry-native binding row by its integer id."""
+    with writable_session() as s:
+        # Existence check for a coherent 404 on a bad profile identifier.
+        agent_profiles.get(s, identifier)
+        agent_profile_bindings.delete(s, binding_id)
+        return ok({"deleted": binding_id})
 
 
 @agent_profiles_router.get("/{identifier}")

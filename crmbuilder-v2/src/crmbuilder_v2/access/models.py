@@ -44,6 +44,8 @@ from crmbuilder_v2.access.vocab import (
     ASSOCIATION_STATUSES,
     AUTOMATION_STATUSES,
     AUTOMATION_TRIGGERS,
+    BINDING_MODES,
+    BINDING_TARGET_TYPES,
     CATALOG_ATTRIBUTE_TYPES,
     CATALOG_DATA_MODEL_ROLES,
     CATALOG_ENTRY_KINDS,
@@ -6428,6 +6430,48 @@ class LearningRow(Base):
         CheckConstraint(_check_in("status", LEARNING_STATUSES), name="ck_learning_status"),
         Index("ix_learnings_engagement", "engagement_id"),
         Index("ix_learnings_area_tier", "area", "tier"),
+    )
+
+
+class AgentProfileBindingRow(Base):
+    """A registry-native agent-profile binding (REQ-472 / PI-396).
+
+    Binds a profile to a skill or governance_rule with the same nullable
+    ``engagement_id`` scope semantics as the registry entities themselves:
+    NULL = a system-baseline binding every engagement inherits, set = that
+    engagement's overlay. ``refs`` cannot host these — its ``engagement_id``
+    is NOT NULL — which is why per-engagement ``agent_profile_has_skill``
+    edges continue to live there while system-baseline bindings live here.
+    ``mode='disable'`` (engagement-scoped only) masks the system-baseline
+    binding of the same target for that engagement.
+    """
+
+    __tablename__ = "agent_profile_bindings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    profile_id: Mapped[str] = mapped_column(
+        ForeignKey("agent_profiles.identifier", ondelete="CASCADE"),
+        nullable=False,
+    )
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False)
+    target_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    mode: Mapped[str] = mapped_column(String(8), nullable=False, default="bind")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("target_type", BINDING_TARGET_TYPES),
+            name="ck_apb_target_type",
+        ),
+        CheckConstraint(_check_in("mode", BINDING_MODES), name="ck_apb_mode"),
+        Index("ix_apb_profile", "profile_id"),
+        Index("ix_apb_engagement", "engagement_id"),
     )
 
 
