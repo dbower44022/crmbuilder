@@ -275,6 +275,21 @@ class SkillUpdateIn(_Base):
     scope: str | None = None
 
 
+class AgentProfileBindingCreateIn(_Base):
+    """POST /agent-profiles/{id}/bindings body (REQ-472 / PI-396).
+
+    ``scope`` follows the registry convention: ``"system"`` (or omitted) =
+    a system-baseline binding every engagement inherits; an engagement
+    identifier = that engagement's overlay. ``mode='disable'`` must be
+    engagement-scoped and masks the baseline binding of the same target.
+    """
+
+    target_type: str
+    target_id: str
+    mode: str = "bind"
+    scope: str | None = None
+
+
 class ReferenceEntryCreateIn(_Base):
     """POST /reference-entries body (REL-016 / PI-063, REQ-398).
 

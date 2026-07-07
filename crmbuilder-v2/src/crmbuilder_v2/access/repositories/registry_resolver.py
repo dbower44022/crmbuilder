@@ -29,6 +29,7 @@ import json
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.repositories import (
+    agent_profile_bindings,
     agent_profiles,
     governance_rules,
     learnings,
@@ -167,14 +168,22 @@ def resolve_contract(
     """
     profile = agent_profiles.get(session, profile_id)
 
-    skill_records = [
-        skills.get(session, sid)
-        for sid in _bound_targets(session, profile_id, _HAS_SKILL)
-    ]
-    rule_records = [
-        governance_rules.get(session, rid)
-        for rid in _bound_targets(session, profile_id, _GOVERNED_BY)
-    ]
+    # Binding targets come from two sources (REQ-472 / PI-396): the
+    # engagement-scoped reference edges (unchanged, additive) and the
+    # registry-native binding table, whose system-baseline rows reach every
+    # engagement (minus that engagement's disable overlay). Edge-derived
+    # targets keep their historical order; baseline/overlay targets append,
+    # duplicates collapsing to the first occurrence.
+    registry_bound = agent_profile_bindings.effective_targets(
+        session, profile_id, engagement_id=engagement_id
+    )
+    skill_ids = _bound_targets(session, profile_id, _HAS_SKILL)
+    skill_ids += [s for s in registry_bound["skill"] if s not in skill_ids]
+    rule_ids = _bound_targets(session, profile_id, _GOVERNED_BY)
+    rule_ids += [r for r in registry_bound["governance_rule"] if r not in rule_ids]
+
+    skill_records = [skills.get(session, sid) for sid in skill_ids]
+    rule_records = [governance_rules.get(session, rid) for rid in rule_ids]
     visible_skills = [s for s in skill_records if _visible(s, engagement_id)]
     visible_rules = _resolve_rule_overlay(
         [r for r in rule_records if _visible(r, engagement_id)]

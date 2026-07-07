@@ -2454,6 +2454,16 @@ AGENT_PROFILE_TIERS: frozenset[str] = frozenset(
 # callable, instruction otherwise.
 SKILL_KINDS: frozenset[str] = frozenset({"instruction", "tool"})
 
+# Agent-profile binding rows (REQ-472 / PI-396): the registry-native binding
+# table (``agent_profile_bindings``) that lets a binding itself be
+# system-scoped (``engagement_id IS NULL``) so every engagement inherits it —
+# the ``refs`` table cannot host these because its ``engagement_id`` is NOT
+# NULL. A ``bind`` row attaches a target; an engagement-scoped ``disable`` row
+# masks the system-baseline binding of the same target for that engagement
+# (mirroring the governance-rule ``disable:<target>`` overlay semantics).
+BINDING_TARGET_TYPES: frozenset[str] = frozenset({"skill", "governance_rule"})
+BINDING_MODES: frozenset[str] = frozenset({"bind", "disable"})
+
 # REL-016 / PI-063 (REQ-398, DEC-887): the three kinds of a Reference Entry —
 # a cross-engagement reference-library record of client-industry knowledge for
 # discovery. Domain Knowledge = prose guidance; Organization Structure = typical
