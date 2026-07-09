@@ -1668,12 +1668,18 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         #   - `requirement_approved_by_decision` / `requirement_changed_by_decision`
         #     (requirement → decision; the deliver and change outcomes — decline
         #     reuses the existing `rejected_by_decision`).
+        #   - `requirement_recorded_by_decision` (requirement → decision; the
+        #     status-neutral outcome. A decision that records a completion or a
+        #     note against a requirement carries no dispatch and leaves status,
+        #     review_state, and approved_at untouched. Without it a close-out
+        #     decision has only `changed_by`, which reopens the requirement.)
         "requirement_refines_requirement",
         "requirement_defined_in_conversation",
         "requirement_belongs_to_topic",
         "conversation_belongs_to_topic",
         "requirement_approved_by_decision",
         "requirement_changed_by_decision",
+        "requirement_recorded_by_decision",
         # Requirements-provenance Phase 3 (no-orphan-capability): a planning item
         # implements (realizes) a requirement — the "planned" stage of the spine.
         # A planning item with no such edge is planned/built work with no
@@ -2268,6 +2274,7 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     if source_type == "requirement" and target_type == "decision":
         kinds.add("requirement_approved_by_decision")
         kinds.add("requirement_changed_by_decision")
+        kinds.add("requirement_recorded_by_decision")
     if source_type == "planning_item" and target_type == "requirement":
         kinds.add("planning_item_implements_requirement")
     # PI-205 release pipeline (PRJ-031). A Project is release-scoped (REQ-211);

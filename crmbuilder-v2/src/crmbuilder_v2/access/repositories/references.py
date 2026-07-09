@@ -558,6 +558,8 @@ def create(
     # the requirement (provenance-gated, A1); change reopens it (gated, B1). A
     # guard that raises (e.g. activating an unrooted requirement) rolls back the
     # whole transaction, so no edge lands without its flip succeeding.
+    # `requirement_recorded_by_decision` is deliberately absent: it is the
+    # status-neutral outcome, so it must fall through without a flip.
     if relationship == "requirement_approved_by_decision":
         from crmbuilder_v2.access.repositories import requirement as _req
         _req.activate_by_decision(session, source_id)

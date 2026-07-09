@@ -179,3 +179,69 @@ def test_reapprove_clears_drift_flag_on_already_confirmed(client):
     rec = client.get(f"/requirements/{cid}").json()["data"]
     assert rec["requirement_status"] == "confirmed"
     assert rec["requirement_review_state"] == "current"
+
+
+def _record(client, rid, did="DEC-002"):
+    return _ref(client, "requirement", rid, "decision", did,
+                "requirement_recorded_by_decision")
+
+
+def test_recorded_decision_leaves_confirmed_requirement_untouched(client):
+    """REQ-476 — the status-neutral outcome. A decision that records a
+    completion against a confirmed requirement must not de-confirm it; this is
+    the regression DEC-903 caused on REQ-472 by using the change edge."""
+    rid = _make(client)["requirement_identifier"]
+    _provenance(client, rid)
+    _topic(client, rid)
+    _approve(client, rid)
+    before = client.get(f"/requirements/{rid}").json()["data"]
+    assert before["requirement_status"] == "confirmed"
+
+    assert _record(client, rid).status_code == 201
+
+    rec = client.get(f"/requirements/{rid}").json()["data"]
+    assert rec["requirement_status"] == "confirmed"
+    assert rec["requirement_review_state"] == "current"
+    assert rec["requirement_approved_at"] == before["requirement_approved_at"]
+
+
+def test_recorded_decision_does_not_activate_a_candidate(client):
+    """The neutral edge records; it never approves. A candidate stays candidate
+    even when the requirement is fully rooted and would otherwise activate."""
+    rid = _make(client)["requirement_identifier"]
+    _provenance(client, rid)
+    _topic(client, rid)
+
+    assert _record(client, rid).status_code == 201
+
+    rec = client.get(f"/requirements/{rid}").json()["data"]
+    assert rec["requirement_status"] == "candidate"
+    assert rec["requirement_approved_at"] is None
+
+
+def test_recorded_decision_does_not_require_provenance(client):
+    """Recording is not an approval, so it is not provenance-gated: an unrooted
+    requirement (no conversation, no topic) accepts the edge, where approval
+    would roll the transaction back."""
+    rid = _make(client)["requirement_identifier"]
+
+    assert _record(client, rid).status_code == 201
+
+    rec = client.get(f"/requirements/{rid}").json()["data"]
+    assert rec["requirement_status"] == "candidate"
+
+
+def test_change_edge_still_reopens_after_neutral_kind_added(client):
+    """The neutral kind must not blunt the change outcome it sits beside."""
+    rid = _make(client)["requirement_identifier"]
+    _provenance(client, rid)
+    _topic(client, rid)
+    _approve(client, rid)
+    assert _record(client, rid, did="DEC-002").status_code == 201
+    # the change edge still reopens, unaffected by the recorded edge alongside it
+    assert _ref(client, "requirement", rid, "decision", "DEC-003",
+                "requirement_changed_by_decision").status_code == 201
+    rec = client.get(f"/requirements/{rid}").json()["data"]
+    assert rec["requirement_status"] == "candidate"
+    assert rec["requirement_review_state"] == "needs_review"
+    assert rec["requirement_approved_at"] is None
