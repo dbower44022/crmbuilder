@@ -777,3 +777,76 @@ def test_show_all_fields_section_carries_field_values(v2_env):
         assert fields["differing_count"] == 0
         # the presence anchor is still there, so the member is listed as existing
         assert any(r["kind"] == "presence" for r in fields["rows"])
+
+
+# --- REQ-479: per-direction capability ----------------------------------------
+
+def test_activity_tracking_entity_settings_are_reconcilable():
+    """The reported defect: capturing PartnerProfile's tracks-activities setting
+    from an instance into the design was refused, though patch_entity accepts
+    tracks_activities and the EspoCRM adapter consumes it for the BasePlus base
+    type. Both activity-tracking flags are reconcilable in both directions."""
+    for attr in ("entity_track_activity", "entity_tracks_activities"):
+        a = _mem(state="drifted", override={attr: True})
+        rows = compute_member_rows(
+            member_type="entity", member_identifier="ENT-1",
+            member_name="PartnerProfile", design_obj={attr: False},
+            attributes=[attr], membership_a=a, membership_b=_mem(),
+        )
+        row = next(r for r in rows if r["attribute"] == attr)
+        assert row["capturable"] is True, attr
+        assert row["publishable"] is True, attr
+        assert row["actionable"] is True, attr
+
+
+def test_unreconcilable_entity_setting_is_neither_direction():
+    """An entity attribute outside the reconcilable set stays view-only both ways."""
+    a = _mem(state="drifted", override={"entity_notes": "x"})
+    rows = compute_member_rows(
+        member_type="entity", member_identifier="ENT-1", member_name="PartnerProfile",
+        design_obj={"entity_notes": "y"}, attributes=["entity_notes"],
+        membership_a=a, membership_b=_mem(),
+    )
+    row = rows[0]
+    assert row["capturable"] is False and row["publishable"] is False
+    assert row["actionable"] is False
+
+
+def test_association_cardinality_is_capture_only():
+    """REQ-443 direction limit, now expressed on the row rather than only inside
+    the apply router: the deploy engine cannot alter an existing link's
+    cardinality, so it can be captured but never published."""
+    a = _mem(state="drifted", override={"association_cardinality": "many_to_many"})
+    rows = compute_member_rows(
+        member_type="association", member_identifier="ASN-1", member_name="clientContact",
+        design_obj={"association_cardinality": "one_to_many"},
+        attributes=["association_cardinality"], membership_a=a, membership_b=_mem(),
+    )
+    row = next(r for r in rows if r["attribute"] == "association_cardinality")
+    assert row["capturable"] is True
+    assert row["publishable"] is False
+    assert row["actionable"] is True
+
+
+def test_association_presence_is_publish_only():
+    """A relationship the design defines but an instance lacks is published to
+    create the link; there is nothing to capture back."""
+    rows = compute_member_rows(
+        member_type="association", member_identifier="ASN-1", member_name="clientContact",
+        design_obj={}, attributes=[],
+        membership_a=_mem(state="absent"), membership_b=_mem(),
+    )
+    row = next(r for r in rows if r["kind"] == "presence")
+    assert row["capturable"] is False
+    assert row["publishable"] is True
+
+
+def test_agreeing_property_is_actionable_in_neither_direction():
+    """A show-all verification row offers no action either way (REQ-478)."""
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="phone",
+        design_obj={"field_type": "varchar"}, attributes=[],
+        membership_a=_mem(), membership_b=_mem(), include_unchanged=True,
+    )
+    for row in rows:
+        assert row["capturable"] is False and row["publishable"] is False

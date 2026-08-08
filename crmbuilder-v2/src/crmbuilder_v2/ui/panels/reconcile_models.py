@@ -510,12 +510,17 @@ def plan_apply(
     the panel resolves each to a concrete instance and member before calling the
     API. Pure logic, so the routing is unit-tested without a window or a network.
 
-    :returns: ``{"ops": [{"kind": "capture"|"publish", "location": <loc>}],
-        "skipped": [<reason str>]}``.
-    """
-    if not row.get("actionable"):
-        return {"ops": [], "skipped": ["not reconcilable here — configure by hand"]}
+    Capability is evaluated **per direction** (REQ-479): a row carries
+    ``capturable`` and ``publishable`` separately, so a property writable only one
+    way is planned in that direction and refused only in the other. A refusal is
+    returned as a structured ``refused`` entry naming the direction and location,
+    so the caller can say what could not go where rather than emitting one
+    direction-blind sentence.
 
+    :returns: ``{"ops": [{"kind": "capture"|"publish", "location": <loc>}],
+        "skipped": [<reason str>],
+        "refused": [{"direction": "capture"|"publish", "location": <loc>}]}``.
+    """
     # Relationships route differently from value attributes (REQ-443): a missing
     # link is publish-only; a cardinality difference is capture-only.
     if row.get("member_type") == "association":
@@ -526,6 +531,8 @@ def plan_apply(
     targets = [t for t in target_locs if t != source_loc]
     ops: list[dict[str, str]] = []
     skipped: list[str] = []
+    refused: list[dict[str, str]] = []
+    capturable, publishable = row_capabilities(row)
 
     # Value equality is option-aware for an enum option-set row (REQ-442) so an
     # order- or label-default-only difference in the raw lists doesn't force a
@@ -538,21 +545,44 @@ def plan_apply(
     # A capture is needed only when the source is an instance whose value the
     # design does not already hold. After it, the design carries the chosen value.
     capture_needed = source_loc != "design" and not _eq(source_value, design_value)
-    effective = source_value if capture_needed else design_value
-    if capture_needed:
+    # Refusing the capture leaves the design on its own value, so that — not the
+    # source's — is what any publish would carry.
+    capture_refused = capture_needed and not capturable
+    effective = source_value if (capture_needed and capturable) else design_value
+    if capture_needed and capturable:
         ops.append({"kind": "capture", "location": source_loc})
+    elif capture_refused:
+        refused.append({"direction": "capture", "location": "design"})
     elif source_loc != "design" and "design" in targets:
         skipped.append(f"{LOCATION_LABELS['design']} already matches the chosen value")
 
     for t in targets:
         if t == "design":
-            continue  # served by the capture above (or already matching)
+            continue  # served by the capture above (or already matching/refused)
         if _eq(row.get(t), effective):
             skipped.append(f"{LOCATION_LABELS.get(t, t)} already matches the chosen value")
             continue
+        if not publishable:
+            refused.append({"direction": "publish", "location": t})
+            continue
         ops.append({"kind": "publish", "location": t})
 
-    return {"ops": ops, "skipped": skipped}
+    return {"ops": ops, "skipped": skipped, "refused": refused}
+
+
+def row_capabilities(row: dict[str, Any]) -> tuple[bool, bool]:
+    """``(capturable, publishable)`` for a compare row (REQ-479).
+
+    A row from a store that predates per-direction capability carries only
+    ``actionable``; both directions then fall back to it, which is exactly the old
+    behaviour. This matters beyond tests — the desktop talks to a deployed API
+    that may be older than it is, and without the fallback every apply against
+    such a server would be refused.
+    """
+    if "capturable" in row or "publishable" in row:
+        return bool(row.get("capturable")), bool(row.get("publishable"))
+    legacy = bool(row.get("actionable"))
+    return legacy, legacy
 
 
 def _plan_association(
@@ -568,12 +598,27 @@ def _plan_association(
       already carries the link is skipped.
     - **Cardinality drift** (an *attribute* row): capture the instance's
       cardinality into the design. The deploy engine cannot alter an existing
-      link's cardinality, so a publish *to* an instance stays view-only and is
-      reported as a configure-by-hand skip — never silently attempted.
+      link's cardinality, so a publish *to* an instance is refused rather than
+      silently attempted.
+
+    Both limits are the row's own ``capturable`` / ``publishable`` capability
+    (REQ-479) when it carries them, and returns refusals in the same structured
+    shape as ``plan_apply``. On a legacy row that carries only ``actionable``,
+    the generic fallback would read as "both directions" and would wrongly
+    publish a cardinality change — so the direction limit is re-derived from the
+    association's own semantics here, where it is intrinsic rather than a payload
+    flag: an attribute row is capture-only, a presence row publish-only.
     """
     targets = [t for t in target_locs if t != source_loc]
     ops: list[dict[str, str]] = []
     skipped: list[str] = []
+    refused: list[dict[str, str]] = []
+    if "capturable" in row or "publishable" in row:
+        capturable, publishable = row_capabilities(row)
+    else:
+        legacy = bool(row.get("actionable"))
+        is_attribute = row.get("kind") == "attribute"
+        capturable, publishable = (legacy and is_attribute, legacy and not is_attribute)
 
     if row.get("kind") == "attribute":  # cardinality drift — capture only
         for t in targets:
@@ -581,13 +626,15 @@ def _plan_association(
                 # design is a target only when an instance is the source (it is
                 # filtered out when it is itself the source), so the capture source
                 # is always an instance here.
-                ops.append({"kind": "capture", "location": source_loc})
+                if capturable:
+                    ops.append({"kind": "capture", "location": source_loc})
+                else:
+                    refused.append({"direction": "capture", "location": "design"})
+            elif publishable:
+                ops.append({"kind": "publish", "location": t})
             else:
-                skipped.append(
-                    f"{LOCATION_LABELS.get(t, t)}: changing an existing link's "
-                    "cardinality must be done by hand in the admin console"
-                )
-        return {"ops": ops, "skipped": skipped}
+                refused.append({"direction": "publish", "location": t})
+        return {"ops": ops, "skipped": skipped, "refused": refused}
 
     # Missing link (presence) — publish the design's relationship to instances
     # that lack it; source is irrelevant (publish is always design → instance).
@@ -598,17 +645,25 @@ def _plan_association(
         if row.get(t) == PRESENT:
             skipped.append(f"{LOCATION_LABELS.get(t, t)} already has this relationship")
             continue
+        if not publishable:
+            refused.append({"direction": "publish", "location": t})
+            continue
         ops.append({"kind": "publish", "location": t})
-    return {"ops": ops, "skipped": skipped}
+    return {"ops": ops, "skipped": skipped, "refused": refused}
 
 
 def _humanize_attr(attribute: str) -> str:
     """Turn a neutral attribute name into a readable label (REQ-374).
 
     ``field_max_length`` -> "Max length"; ``entity_default_sort_field`` -> "Default
-    sort field". The leading ``field_`` / ``entity_`` namespace is dropped.
+    sort field". The leading member-type namespace is dropped — it is already
+    carried by the group heading in the tree and by the type noun in a refusal
+    message, so keeping it would read "Sales Role · Role scope (role)".
     """
-    for prefix in ("field_", "entity_", "layout_", "association_"):
+    for prefix in (
+        "field_", "entity_", "layout_", "association_",
+        "role_", "team_", "filtered_tab_",
+    ):
         if attribute.startswith(prefix):
             attribute = attribute[len(prefix):]
             break

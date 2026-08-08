@@ -41,53 +41,83 @@ UNKNOWN = "unknown"
 #: Membership states that mean the member is carried on the instance.
 _PRESENT_STATES = frozenset({"present", "drifted"})
 
-#: Entity-level collection settings that can be reconciled in either direction
-#: (REQ-375). An entity attribute row is actionable when its attribute is one of
-#: these — the apply engine captures them into the design and publishes them out.
+#: Entity-level settings that can be reconciled in either direction (REQ-375,
+#: extended by REQ-479). Five collection-search settings (REQ-340 / PI-300) plus
+#: the two activity-tracking flags (REQ-337 / PI-297): ``entity_track_activity``
+#: is EspoCRM's ``stream`` flag and ``entity_tracks_activities`` its ``BasePlus``
+#: base type. All seven are what ``_audited_entity_attrs`` records, and all seven
+#: are writable both ways — ``entity.patch_entity`` accepts each one and the
+#: EspoCRM adapter consumes each when generating the program. The tracking pair
+#: was simply never added when they were introduced (REQ-479).
 RECONCILABLE_ENTITY_SETTINGS = frozenset({
     "entity_default_sort_field",
     "entity_default_sort_direction",
     "entity_full_text_search",
     "entity_full_text_search_min_length",
     "entity_text_filter_fields",
+    "entity_track_activity",
+    "entity_tracks_activities",
 })
 
 #: Association attributes the apply engine can reconcile (REQ-443). Only
 #: ``association_cardinality`` is audited, and it is **capture-only** (instance →
-#: design): the deploy engine cannot alter an existing link's cardinality in place,
-#: so publishing a cardinality change stays view-only (handled in ``plan_apply``).
+#: design): the deploy engine cannot alter an existing link's cardinality in place.
 RECONCILABLE_ASSOCIATION_ATTRS = frozenset({"association_cardinality"})
 
+#: Capability tokens a row carries per direction (REQ-479).
+CAPTURE = "capture"
+PUBLISH = "publish"
 
-def _attribute_actionable(member_type: str, attribute: str | None) -> bool:
-    """Whether the apply engine can reconcile this attribute row.
 
-    Field attributes are reconcilable (capture into the design, publish out);
-    entity-level rows only for the collection settings the apply engine supports
-    (REQ-375); association rows only for the cardinality the apply engine can
-    capture (REQ-443). Everything else is shown for visibility but not offered an
-    action (REQ-358 / view-only handling). Direction limits (an association's
-    cardinality is capture-only; a missing relationship is publish-only) are
-    enforced when routing the apply, not here.
+def _attribute_capabilities(member_type: str, attribute: str | None) -> tuple[bool, bool]:
+    """``(capturable, publishable)`` for one attribute row (REQ-479).
+
+    Capability differs by direction, and one boolean cannot say so. A field
+    attribute and a reconcilable entity setting are writable both ways — captured
+    into the design and published out. An association's cardinality is
+    **capture-only**: the deploy engine cannot alter an existing link's
+    cardinality in place, so the design can learn the instance's value but cannot
+    push one back (REQ-443). Everything else is shown for visibility and offered
+    no action at all (REQ-358 / view-only handling).
     """
     if member_type == "field":
-        return True
+        return True, True
     if member_type == "entity":
-        return attribute in RECONCILABLE_ENTITY_SETTINGS
+        both = attribute in RECONCILABLE_ENTITY_SETTINGS
+        return both, both
     if member_type == "association":
-        return attribute in RECONCILABLE_ASSOCIATION_ATTRS
-    return False
+        return attribute in RECONCILABLE_ASSOCIATION_ATTRS, False
+    return False, False
 
 
-def _presence_actionable(member_type: str) -> bool:
-    """Whether a member's *presence* difference can be acted on (REQ-443).
+def _presence_capabilities(member_type: str) -> tuple[bool, bool]:
+    """``(capturable, publishable)`` for a member's *presence* row (REQ-479).
 
-    A relationship the design defines but an instance lacks can be published to
-    that instance (creating the link). Other member types have no targeted
+    A relationship the design defines but an instance lacks is **publish-only** —
+    publishing creates the link; there is nothing to capture, since the design
+    already carries the member (REQ-443). Other member types have no targeted
     presence-push here — a missing field/layout is brought over by the
     whole-entity promote — so their presence rows stay view-only.
     """
-    return member_type == "association"
+    return False, member_type == "association"
+
+
+def _attribute_actionable(member_type: str, attribute: str | None) -> bool:
+    """Whether this attribute row can be acted on in *either* direction.
+
+    Retained as the disjunction of :func:`_attribute_capabilities` so callers that
+    only need "is there any action here" (the detail tree's selectability, the
+    view-only bucketing) keep working. Routing an actual apply must consult the
+    specific direction instead — see ``plan_apply``.
+    """
+    capturable, publishable = _attribute_capabilities(member_type, attribute)
+    return capturable or publishable
+
+
+def _presence_actionable(member_type: str) -> bool:
+    """Whether a presence difference can be acted on in *either* direction."""
+    capturable, publishable = _presence_capabilities(member_type)
+    return capturable or publishable
 
 
 def _presence(membership: dict[str, Any] | None) -> str:
@@ -228,6 +258,9 @@ def compute_member_rows(
     # row, as the anchor each member's property rows hang beneath.
     presence_differs = pres_a != PRESENT or pres_b != PRESENT
     if presence_differs or include_unchanged:
+        cap, pub = (
+            _presence_capabilities(member_type) if presence_differs else (False, False)
+        )
         rows.append({
             "member_type": member_type,
             "member_identifier": member_identifier,
@@ -238,7 +271,9 @@ def compute_member_rows(
             "instance_a": pres_a,
             "instance_b": pres_b,
             "differs": presence_differs,
-            "actionable": _presence_actionable(member_type) if presence_differs else False,
+            "capturable": cap,
+            "publishable": pub,
+            "actionable": cap or pub,
         })
 
     # Attributes: compare effective values across the design and the instances
@@ -261,6 +296,13 @@ def compute_member_rows(
         if agrees and not include_unchanged:
             continue  # design and every carrying instance agree: no drift
 
+        # An agreeing property is shown for verification only — never offered an
+        # apply action in either direction, so batch apply can't act on a
+        # non-difference.
+        cap, pub = (
+            (False, False) if agrees
+            else _attribute_capabilities(member_type, attr)
+        )
         rows.append({
             "member_type": member_type,
             "member_identifier": member_identifier,
@@ -271,11 +313,9 @@ def compute_member_rows(
             "instance_a": a_value if a_carries else pres_a,
             "instance_b": b_value if b_carries else pres_b,
             "differs": not agrees,
-            # An agreeing property is shown for verification only — never offered
-            # an apply action, so batch apply can't act on a non-difference.
-            "actionable": (
-                False if agrees else _attribute_actionable(member_type, attr)
-            ),
+            "capturable": cap,
+            "publishable": pub,
+            "actionable": cap or pub,
         })
 
     # REQ-447: an enum/multi-select field shown in the tree should always be
@@ -315,6 +355,8 @@ def compute_member_rows(
             "instance_a": opt_a,
             "instance_b": opt_b,
             "differs": False,
+            "capturable": False,
+            "publishable": False,
             "actionable": False,
         })
 
@@ -404,6 +446,7 @@ def compute_member_properties(
         differs = not all(
             _attr_equal(attr, v, carrying_values[0]) for v in carrying_values
         )
+        cap, pub = _attribute_capabilities(member_type, attr)
         rows.append({
             "member_type": member_type,
             "member_identifier": member_identifier,
@@ -414,7 +457,9 @@ def compute_member_properties(
             "instance_a": a_eff if a_carries else pres_a,
             "instance_b": b_eff if b_carries else pres_b,
             "differs": differs,
-            "actionable": _attribute_actionable(member_type, attr),
+            "capturable": cap,
+            "publishable": pub,
+            "actionable": cap or pub,
         })
 
     return {
