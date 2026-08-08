@@ -729,6 +729,79 @@ class ReconcileGridPanel(QWidget):
                 entry["values"].add(str(value))
         return out
 
+    #: Operator-facing name for each member type, used in refusal messages.
+    _MEMBER_TYPE_NOUNS = {
+        "entity": "entity setting",
+        "field": "field",
+        "association": "relationship",
+        "layout": "layout",
+        "role": "role",
+        "team": "team",
+        "filtered_tab": "filtered tab",
+    }
+
+    def _row_label(self, row: dict[str, Any]) -> str:
+        """Identify a row in prose: entity, member, property and kind (REQ-479).
+
+        The old label was ``member_name`` alone, so a refusal listed "PartnerProfile"
+        without saying *which* setting of it was refused. Renders e.g.
+        ``PartnerProfile · Tracks activities (entity setting)``.
+        """
+        member = row.get("member_name") or row.get("member_identifier") or "?"
+        entity = self._entity_name_for(row)
+        head = f"{entity} · {member}" if entity and entity != member else member
+        attr = row.get("attribute")
+        if attr:
+            head = f"{head} · {_humanize_attr(attr)}"
+        noun = self._MEMBER_TYPE_NOUNS.get(row.get("member_type") or "")
+        return f"{head} ({noun})" if noun else head
+
+    def _entity_name_for(self, row: dict[str, Any]) -> str | None:
+        """The entity a row sits under, for labelling. None when not resolvable."""
+        if row.get("member_type") == "entity":
+            return None  # the member name is already the entity
+        group = self._groups_by_entity.get(self._drilled_entity_id or "")
+        return (group or {}).get("entity")
+
+    def _refusal_message(
+        self,
+        direction: str,
+        location: str,
+        source_loc: str,
+        labels: list[str],
+    ) -> tuple[str, str]:
+        """Title + body for a refused direction (REQ-479).
+
+        Names the direction attempted and both endpoints by the labels the
+        operator picked, so a capture is never described as a push. The remedy
+        differs by target: the master design is edited in CRMBuilder, a live
+        instance in the CRM's own admin console — telling someone to open the CRM
+        admin console to fix a capture into the design was the reported defect.
+        """
+        target_label = self._location_label(location)
+        source_label = self._location_label(source_loc)
+        if direction == "capture":
+            title = f"Cannot capture into {target_label}"
+            where = (
+                f"CRMBuilder cannot copy these from {source_label} into "
+                f"{target_label}, so the master design has to be edited directly:"
+            )
+        else:
+            title = f"Cannot publish to {target_label}"
+            where = (
+                f"CRMBuilder cannot write these to {target_label}, so they must be "
+                f"set by hand in that instance's CRM admin console:"
+            )
+        return title, where + "\n\n• " + "\n• ".join(labels)
+
+    def _location_label(self, location: str) -> str:
+        """Operator-facing name of a location — the chosen instance, or the design."""
+        if location == "instance_a":
+            return self._instance_label(self._combo_a.currentData())
+        if location == "instance_b":
+            return self._instance_label(self._combo_b.currentData())
+        return LOCATION_LABELS.get(location, location)
+
     def _on_apply(self) -> None:
         rows = self._selected_diff_rows()
         if not rows:
@@ -754,16 +827,17 @@ class ReconcileGridPanel(QWidget):
         applied = 0
         skipped: list[str] = []
         errors: list[str] = []
-        view_only: list[str] = []
         in_sync: list[str] = []
+        # Refusals keyed by (direction, location) so the dialog can say what could
+        # not go where, instead of one direction-blind sentence (REQ-479).
+        refusals: dict[tuple[str, str], list[str]] = {}
         for row in rows:
-            label = row.get("member_name") or row.get("member_identifier") or "?"
-            # A non-actionable row is one of two very different things, and saying
-            # the wrong one misleads. Already-matching (REQ-478 show-all rows, and
-            # the REQ-447 matching-options view row): nothing to reconcile. Genuinely
-            # view-only config (REQ-377): the platform has no write path at all.
-            if not row.get("actionable"):
-                (in_sync if not row.get("differs") else view_only).append(label)
+            label = self._row_label(row)
+            # An already-matching row is not a refusal — there is simply nothing to
+            # reconcile (REQ-478 show-all rows, and the REQ-447 matching-options
+            # view row). Real refusals come back from plan_apply per direction.
+            if not row.get("differs"):
+                in_sync.append(label)
                 continue
             # REQ-445: when specific option values (not the field row) were selected
             # on an enum field, a capture merges just those values into the design;
@@ -778,6 +852,10 @@ class ReconcileGridPanel(QWidget):
             plan = plan_apply(row, source_loc, targets)
             for reason in plan["skipped"]:
                 skipped.append(f"{label}: {reason}")
+            for ref in plan.get("refused", []):
+                refusals.setdefault(
+                    (ref["direction"], ref["location"]), []
+                ).append(label)
             for op in plan["ops"]:
                 try:
                     if op["kind"] == "capture" and per_value is not None:
@@ -800,13 +878,11 @@ class ReconcileGridPanel(QWidget):
                 "configuration can be verified, not to offer an action:\n\n• "
                 + "\n• ".join(in_sync),
             )
-        if view_only:
-            CopyableMessageBox.information(
-                self, "Configure by hand",
-                "These items can be compared but cannot be pushed automatically — "
-                "the platform has no way to write them, so they must be set by hand "
-                "in the admin console:\n\n• " + "\n• ".join(view_only),
+        for (direction, location), labels in refusals.items():
+            title, text = self._refusal_message(
+                direction, location, source_loc, labels
             )
+            CopyableMessageBox.information(self, title, text)
         self._report_apply(applied, skipped, errors)
         if applied:
             # Refresh the comparison so the surface reflects the new state, but stay

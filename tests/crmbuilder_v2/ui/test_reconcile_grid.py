@@ -112,10 +112,41 @@ def test_plan_skips_already_matching_target():
     assert any("Instance B" in s for s in plan["skipped"])
 
 
-def test_plan_non_actionable_is_skipped():
+def test_plan_non_actionable_is_refused_with_its_direction():
+    """REQ-479: a row that cannot be written is refused with the direction and
+    location named, so the caller can say what could not go where."""
     plan = plan_apply(_row(actionable=False), "instance_a", ["design"])
     assert plan["ops"] == []
-    assert plan["skipped"]
+    assert plan["refused"] == [{"direction": "capture", "location": "design"}]
+
+
+def test_plan_capture_only_row_still_publishes_nothing():
+    """REQ-479: capability is per direction — a capture-only property is planned
+    for capture and refused only for the publish."""
+    row = {**_row(design=255, a=100, b=300), "capturable": True, "publishable": False}
+    plan = plan_apply(row, "instance_a", ["design", "instance_b"])
+    assert plan["ops"] == [{"kind": "capture", "location": "instance_a"}]
+    assert plan["refused"] == [{"direction": "publish", "location": "instance_b"}]
+
+
+def test_plan_publish_only_row_refuses_the_capture():
+    """The mirror case: publish-only, so the capture leg is refused and the design's
+    own value — not the source instance's — is what gets published."""
+    row = {**_row(design=255, a=100, b=300), "capturable": False, "publishable": True}
+    plan = plan_apply(row, "instance_a", ["design", "instance_b"])
+    assert plan["ops"] == [{"kind": "publish", "location": "instance_b"}]
+    assert plan["refused"] == [{"direction": "capture", "location": "design"}]
+
+
+def test_plan_legacy_row_without_capability_keys_behaves_as_before():
+    """A payload from a store predating per-direction capability carries only
+    `actionable`; both directions fall back to it so an older API still works."""
+    plan = plan_apply(_row(design=255, a=100, b=300), "instance_a", ["instance_b"])
+    assert plan["ops"] == [
+        {"kind": "capture", "location": "instance_a"},
+        {"kind": "publish", "location": "instance_b"},
+    ]
+    assert plan["refused"] == []
 
 
 # --- models -----------------------------------------------------------------
@@ -560,7 +591,12 @@ _VIEW_ONLY_GROUPS = [
 
 def test_view_only_item_explains_and_is_not_applied(qtbot, monkeypatch):
     """A non-actionable (view-only) difference: Apply stays available, but acting
-    on it explains rather than writing anything (REQ-377)."""
+    on it explains rather than writing anything (REQ-377).
+
+    REQ-479: the explanation now names the direction actually attempted and the
+    target by its operator-facing name. The target here is the master design, so
+    it must talk about capturing — never about pushing to a CRM admin console.
+    """
     import crmbuilder_v2.ui.panels.reconcile_grid as mod
     seen: dict[str, str] = {}
     monkeypatch.setattr(
@@ -585,7 +621,12 @@ def test_view_only_item_explains_and_is_not_applied(qtbot, monkeypatch):
     panel._target_design.setChecked(True)
     panel._on_apply()
     assert client.captures == [] and client.publishes == []
-    assert "Configure by hand" in seen.get("title", "")
+    assert seen.get("title") == "Cannot capture into Master design"
+    body = seen.get("text", "")
+    assert "Master design" in body
+    assert "admin console" not in body  # the reported defect: wrong remedy
+    # member, property and member-type all named, so the row is identifiable
+    assert "• Account · Sales Role · Scope (role)" in body
 
 
 #: A show-all verification row (REQ-478): matching everywhere, so non-actionable —
@@ -874,7 +915,7 @@ def test_plan_association_cardinality_captures_to_design():
 def test_plan_association_cardinality_publish_is_view_only():
     plan = plan_apply(_assoc_card_row(), "instance_a", ["instance_b"])
     assert plan["ops"] == []
-    assert any("by hand" in s for s in plan["skipped"])
+    assert plan["refused"] == [{"direction": "publish", "location": "instance_b"}]
 
 
 def test_plan_association_cardinality_from_design_source_cannot_publish():
@@ -882,7 +923,21 @@ def test_plan_association_cardinality_from_design_source_cannot_publish():
     it's view-only, never a silent no-op publish."""
     plan = plan_apply(_assoc_card_row(), "design", ["instance_b"])
     assert plan["ops"] == []
-    assert any("by hand" in s for s in plan["skipped"])
+    assert plan["refused"] == [{"direction": "publish", "location": "instance_b"}]
+
+
+def test_legacy_association_row_keeps_its_intrinsic_direction_limits():
+    """REQ-479 regression guard: a legacy association row carries only `actionable`,
+    and the generic both-directions fallback would wrongly publish a cardinality
+    change. The association router re-derives the limit from the row's kind."""
+    card = _assoc_card_row()
+    assert "capturable" not in card and "publishable" not in card
+    plan = plan_apply(card, "instance_a", ["instance_b"])
+    assert plan["ops"] == []  # never a silent cardinality publish
+    presence = _assoc_presence_row(b="absent")
+    assert plan_apply(presence, "design", ["instance_b"])["ops"] == [
+        {"kind": "publish", "location": "instance_b"}
+    ]
 
 
 # --- REQ-445: per-value enum option capture ----------------------------------
