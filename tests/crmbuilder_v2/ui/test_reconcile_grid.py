@@ -588,6 +588,56 @@ def test_view_only_item_explains_and_is_not_applied(qtbot, monkeypatch):
     assert "Configure by hand" in seen.get("title", "")
 
 
+#: A show-all verification row (REQ-478): matching everywhere, so non-actionable —
+#: but for a completely different reason than the view-only row above.
+_IN_SYNC_GROUPS = [
+    {
+        "entity": "Account", "entity_identifier": "ENT-001", "entity_label": None,
+        "rows": [],
+        "object_groups": [
+            {"object_type": "settings", "differing_count": 0, "rows": [
+                {"member_type": "entity", "member_identifier": "ENT-001",
+                 "member_name": "Account", "kind": "attribute",
+                 "attribute": "entity_default_sort_field",
+                 "design": "name", "instance_a": "name", "instance_b": "name",
+                 "differs": False, "actionable": False},
+            ]},
+        ],
+    }
+]
+
+
+def test_in_sync_row_says_in_sync_not_configure_by_hand(qtbot, monkeypatch):
+    """REQ-478: a matching show-all row is non-actionable because there is nothing
+    to reconcile — not because the platform cannot write it. Applying to one must
+    say so, rather than sending the operator to the admin console for no reason."""
+    import crmbuilder_v2.ui.panels.reconcile_grid as mod
+    seen: dict[str, str] = {}
+    monkeypatch.setattr(
+        mod.CopyableMessageBox, "information",
+        classmethod(lambda cls, parent, title, text, *a, **k: seen.update(title=title, text=text)),
+    )
+    client = _RecordingClient(build_client(_handler))
+    panel = ReconcileGridPanel(client)
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    panel._groups_by_entity["ENT-001"] = _IN_SYNC_GROUPS[0]
+    panel._drill(_EXISTENCE[0])
+    grp = panel._detail_model.index(0, 0)
+    child = panel._detail_model.index(0, 0, grp)
+    panel._detail.selectionModel().select(
+        child, panel._detail.selectionModel().SelectionFlag.Select
+    )
+    panel._source_combo.setCurrentIndex(1)
+    panel._target_design.setChecked(True)
+    panel._on_apply()
+    assert client.captures == [] and client.publishes == []
+    assert "Already in sync" in seen.get("title", "")
+    assert "Configure by hand" not in seen.get("title", "")
+
+
 def test_entity_audit_worker_audits_each_instance(qapp):
     """REQ-392: the worker re-audits the entity on each given instance."""
     from crmbuilder_v2.ui.panels.reconcile_grid import _EntityAuditWorker

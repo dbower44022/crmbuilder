@@ -104,17 +104,19 @@ def compare(
     ),
     include_unchanged: bool = Query(
         False,
-        description="Show all members (one present-everywhere row per in-sync member) "
-        "instead of only the differing ones, so all fields can be verified (REQ-432)",
+        description="Show every member with every one of its comparable property "
+        "values, instead of only the differing ones, so all configuration can be "
+        "verified (REQ-478)",
     ),
 ):
     """Three-way diff across the canonical design and two instances (REQ-352/353).
 
     Returns differing rows grouped by entity. Supply ``entity`` to scope to one
     entity (the drill); omit it for the full scan across every member type. Set
-    ``include_unchanged`` to also surface in-sync members as present-everywhere
-    rows so an operator can verify every field exists (REQ-432); the default
-    stays differences-only.
+    ``include_unchanged`` to surface every member with a presence anchor row plus
+    one row per comparable property — matching values included, flagged
+    ``differs: False`` and never actionable (REQ-478). The default stays
+    differences-only; expect a substantially larger payload with it on.
     """
     with readonly_session() as s:
         for inst in (instance_a, instance_b):

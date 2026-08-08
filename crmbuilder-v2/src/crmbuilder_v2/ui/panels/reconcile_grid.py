@@ -267,7 +267,7 @@ class ReconcileGridPanel(QWidget):
         self._payload: dict[str, Any] = {}
         self._groups_by_entity: dict[str, dict[str, Any]] = {}
         self._audit_worker: _EntityAuditWorker | None = None
-        # Show-all-values vs differences-only (REQ-432). Differences-only default.
+        # Show-all-values vs differences-only (REQ-478). Differences-only default.
         self._show_all = False
         # The entity currently drilled into, so an apply can keep its detail view
         # open instead of bouncing back to the entity list (REQ-439).
@@ -306,10 +306,17 @@ class ReconcileGridPanel(QWidget):
         self._attention.setObjectName("reconcile_attention_filter")
         self._attention.toggled.connect(self._on_attention_toggled)
         picker.addWidget(self._attention)
-        # Show all members so every field can be verified, not just the differing
-        # ones (REQ-432). Toggling re-runs the comparison in the chosen mode.
+        # Show every member with every one of its property values, so the whole
+        # configuration can be verified and not just the differing parts of it
+        # (REQ-478). Toggling re-runs the comparison in the chosen mode; the
+        # all-values payload is much larger, hence differences-only by default.
         self._show_all_check = QCheckBox("Show all values (not just differences)")
         self._show_all_check.setObjectName("reconcile_show_all_values")
+        self._show_all_check.setToolTip(
+            "Show every field, relationship, layout and setting with all of its "
+            "property values in the design and both instances — matching values "
+            "included. Slower on a full scan."
+        )
         self._show_all_check.toggled.connect(self._on_show_all_toggled)
         picker.addWidget(self._show_all_check)
         picker.addStretch()
@@ -557,7 +564,7 @@ class ReconcileGridPanel(QWidget):
         self._populate(a, b)
 
     def _on_show_all_toggled(self, on: bool) -> None:
-        """Switch between all-values and differences-only, re-comparing (REQ-432)."""
+        """Switch between all-values and differences-only, re-comparing (REQ-478)."""
         self._show_all = on
         # Re-run the comparison in the new mode when two instances are chosen.
         if self._combo_a.currentData() and self._combo_b.currentData():
@@ -748,12 +755,15 @@ class ReconcileGridPanel(QWidget):
         skipped: list[str] = []
         errors: list[str] = []
         view_only: list[str] = []
+        in_sync: list[str] = []
         for row in rows:
             label = row.get("member_name") or row.get("member_identifier") or "?"
-            # View-only config (REQ-377): shown and selectable, but the platform
-            # has no write path, so acting on it explains rather than no-ops.
+            # A non-actionable row is one of two very different things, and saying
+            # the wrong one misleads. Already-matching (REQ-478 show-all rows, and
+            # the REQ-447 matching-options view row): nothing to reconcile. Genuinely
+            # view-only config (REQ-377): the platform has no write path at all.
             if not row.get("actionable"):
-                view_only.append(label)
+                (in_sync if not row.get("differs") else view_only).append(label)
                 continue
             # REQ-445: when specific option values (not the field row) were selected
             # on an enum field, a capture merges just those values into the design;
@@ -782,6 +792,14 @@ class ReconcileGridPanel(QWidget):
                 except Exception as exc:  # noqa: BLE001
                     errors.append(f"{label}: {op['kind']} failed — {exc}")
 
+        if in_sync:
+            CopyableMessageBox.information(
+                self, "Already in sync",
+                "These already match across the design and both instances, so there "
+                "is nothing to bring into line. Show all values lists them so the "
+                "configuration can be verified, not to offer an action:\n\n• "
+                + "\n• ".join(in_sync),
+            )
         if view_only:
             CopyableMessageBox.information(
                 self, "Configure by hand",

@@ -194,23 +194,40 @@ def compute_member_rows(
     whose effective value differs across the design and the *present* instances.
     Returns ``[]`` when the member is present everywhere with no attribute drift.
 
-    With ``include_unchanged`` (REQ-432), a member that is in sync everywhere
-    instead yields a single **present-everywhere confirmation row**
-    (``differs: False``) so the operator can verify the field exists in each
-    instance, not just inspect the ones that differ. A member that *does* differ
-    is unaffected — its existing presence/attribute rows already show it.
+    With ``include_unchanged`` (REQ-478) the member is instead shown in full: an
+    in-sync **presence anchor row** followed by one row per *comparable* property
+    — every key of the design object and of either override that
+    :func:`_is_property_key` admits, not merely the ones some instance overrides.
+    Properties that agree everywhere (including ones empty in all three locations)
+    are emitted with ``differs: False`` and ``actionable: False``: show-all is
+    verification, so apply/promote stays bound to real differences. This corrects
+    REQ-432, which widened the set of *members* shown without widening the set of
+    *attributes* compared — leaving an in-sync member as a bare presence row under
+    a checkbox that promises values.
 
     :param attributes: candidate attribute names to compare — typically the union
-        of the two memberships' override keys. The design value of each is read
+        of the two memberships' override keys. Under ``include_unchanged`` the full
+        comparable-property set is unioned in. The design value of each is read
         from ``design_obj``.
     """
     pres_a = _presence(membership_a)
     pres_b = _presence(membership_b)
     rows: list[dict[str, Any]] = []
 
+    if include_unchanged:
+        # Every comparable property, not just the deviating ones — the whole point
+        # of show-all. Union rather than replace so an override key the design
+        # object happens not to carry is still compared.
+        attributes = sorted(
+            set(attributes)
+            | set(_property_attrs(design_obj, membership_a, membership_b))
+        )
+
     # Presence: the design always carries the member; flag any instance that does
-    # not (absent or never audited).
-    if pres_a != PRESENT or pres_b != PRESENT:
+    # not (absent or never audited). Under show-all the in-sync case still gets a
+    # row, as the anchor each member's property rows hang beneath.
+    presence_differs = pres_a != PRESENT or pres_b != PRESENT
+    if presence_differs or include_unchanged:
         rows.append({
             "member_type": member_type,
             "member_identifier": member_identifier,
@@ -220,8 +237,8 @@ def compute_member_rows(
             "design": PRESENT,
             "instance_a": pres_a,
             "instance_b": pres_b,
-            "differs": True,
-            "actionable": _presence_actionable(member_type),
+            "differs": presence_differs,
+            "actionable": _presence_actionable(member_type) if presence_differs else False,
         })
 
     # Attributes: compare effective values across the design and the instances
@@ -240,7 +257,8 @@ def compute_member_rows(
             present_values.append(a_value)
         if b_carries:
             present_values.append(b_value)
-        if all(_attr_equal(attr, v, present_values[0]) for v in present_values):
+        agrees = all(_attr_equal(attr, v, present_values[0]) for v in present_values)
+        if agrees and not include_unchanged:
             continue  # design and every carrying instance agree: no drift
 
         rows.append({
@@ -252,8 +270,12 @@ def compute_member_rows(
             "design": design_value,
             "instance_a": a_value if a_carries else pres_a,
             "instance_b": b_value if b_carries else pres_b,
-            "differs": True,
-            "actionable": _attribute_actionable(member_type, attr),
+            "differs": not agrees,
+            # An agreeing property is shown for verification only — never offered
+            # an apply action, so batch apply can't act on a non-difference.
+            "actionable": (
+                False if agrees else _attribute_actionable(member_type, attr)
+            ),
         })
 
     # REQ-447: an enum/multi-select field shown in the tree should always be
@@ -261,8 +283,10 @@ def compute_member_rows(
     # exists — even when the options all match. When no option-difference row was
     # emitted above, add a non-differing options "view" row (the model expands it
     # into per-value children, matching values included) whenever the field is
-    # already shown for another reason or every member is being verified
-    # (include_unchanged). A fully matching set is verification only — not actionable.
+    # already shown for another reason. A fully matching set is verification only
+    # — not actionable. Under include_unchanged the loop above already emitted
+    # ``field_options`` as one comparable property among the rest (REQ-478), so
+    # this stays the differences-only carve-out it was written as.
     is_option_field = member_type == "field" and design_obj.get("field_type") in (
         "enum", "multi_enum"
     )
@@ -271,7 +295,7 @@ def compute_member_rows(
         is_option_field
         and isinstance(opt_design, (list, tuple)) and opt_design
         and not any(r.get("attribute") == FIELD_OPTIONS_ATTR for r in rows)
-        and (rows or include_unchanged)
+        and rows
     ):
         opt_a = (
             _effective_value(membership_a, FIELD_OPTIONS_ATTR, opt_design)
@@ -294,24 +318,8 @@ def compute_member_rows(
             "actionable": False,
         })
 
-    # Show-all-values verification (REQ-432): a member present everywhere with no
-    # attribute drift produced no rows above. When asked, surface it as a single
-    # in-sync presence row so the operator can confirm the field exists in each
-    # instance. A member that already produced diff rows is left as-is.
-    if include_unchanged and not rows:
-        rows.append({
-            "member_type": member_type,
-            "member_identifier": member_identifier,
-            "member_name": member_name,
-            "kind": "presence",
-            "attribute": None,
-            "design": PRESENT,
-            "instance_a": pres_a,
-            "instance_b": pres_b,
-            "differs": False,
-            "actionable": False,
-        })
-
+    # (REQ-432's trailing in-sync-presence fallback is gone: show-all now emits the
+    # presence anchor up front, so `rows` is never empty in that mode.)
     return rows
 
 
@@ -334,6 +342,25 @@ def _is_property_key(key: str) -> bool:
     if key in _NON_PROPERTY_KEYS:
         return False
     return not key.endswith(("_identifier", "_at"))
+
+
+def _property_attrs(
+    design_obj: dict[str, Any],
+    *memberships: dict[str, Any] | None,
+) -> list[str]:
+    """Every comparable property of a member — the show-all attribute set (REQ-478).
+
+    The union of the design object's keys and each membership's override keys,
+    minus identity / bookkeeping keys. This is the same set
+    :func:`compute_member_properties` shows in the per-member property view
+    (REQ-433), so "every property" means one thing across both surfaces. A key
+    whose value is empty everywhere is kept: show-all must not silently drop a
+    property just because nothing has set it.
+    """
+    keys = {k for k in design_obj if _is_property_key(k)}
+    for m in memberships:
+        keys |= {k for k in ((m or {}).get("override") or {}) if _is_property_key(k)}
+    return sorted(keys)
 
 
 def compute_member_properties(
@@ -364,15 +391,8 @@ def compute_member_properties(
     pres_b = _presence(membership_b)
     a_carries = pres_a == PRESENT
     b_carries = pres_b == PRESENT
-    override_a = (membership_a or {}).get("override") or {}
-    override_b = (membership_b or {}).get("override") or {}
-
-    keys = {k for k in design_obj if _is_property_key(k)}
-    keys |= {k for k in override_a if _is_property_key(k)}
-    keys |= {k for k in override_b if _is_property_key(k)}
-
     rows: list[dict[str, Any]] = []
-    for attr in sorted(keys):
+    for attr in _property_attrs(design_obj, membership_a, membership_b):
         design_value = design_obj.get(attr)
         a_eff = _effective_value(membership_a, attr, design_value) if a_carries else None
         b_eff = _effective_value(membership_b, attr, design_value) if b_carries else None
@@ -583,7 +603,11 @@ def three_way_compare(
     under both endpoint entities (REQ-355); roles/teams/filtered tabs fall under a
     synthetic global group. When ``entity_identifier`` is given the comparison is
     scoped to that one entity — the per-entity drill (REQ-353); otherwise it spans
-    everything (the full scan). Only groups with at least one differing row appear.
+    everything (the full scan). Only groups with at least one row appear — which
+    in the default mode means at least one *differing* row, and under
+    ``include_unchanged`` means every group with any member at all, each carrying
+    its members' full property values (REQ-478). Expect a substantially larger
+    result in that mode: it is one row per comparable property per member.
 
     Two redesign-era additions (REL-027): ``existence`` is one row per entity with
     its presence in the design and each instance — the landing-grid source (REQ-368)

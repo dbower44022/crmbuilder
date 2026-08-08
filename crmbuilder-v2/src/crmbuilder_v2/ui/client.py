@@ -2721,9 +2721,10 @@ class StorageClient:
     ) -> dict[str, Any]:
         """GET /reconcile/compare — three-way diff across design + two instances.
 
-        ``include_unchanged`` shows all members (one present-everywhere row per
-        in-sync member) so every field can be verified, not only the differing
-        ones (REQ-432); the default is differences-only.
+        ``include_unchanged`` shows every member with every one of its comparable
+        property values — matching values included, as non-differing,
+        non-actionable verification rows — not only the differing ones (REQ-478);
+        the default is differences-only.
         """
         params = [f"instance_a={instance_a}", f"instance_b={instance_b}"]
         if entity:

@@ -32,45 +32,112 @@ def test_no_difference_emits_nothing():
     assert rows == []
 
 
-def test_include_unchanged_emits_present_everywhere_row():
-    """REQ-432: with include_unchanged, an in-sync member yields one
-    present-everywhere confirmation row (differs=False) so it can be verified."""
+def test_include_unchanged_emits_presence_anchor_plus_every_property():
+    """REQ-478: with include_unchanged, an in-sync member yields a presence anchor
+    row *and* one row per comparable property, so show-all shows values and not
+    merely membership. Matching properties are non-differing and non-actionable."""
     rows = compute_member_rows(
         member_type="field",
         member_identifier="FLD-1",
         member_name="phone",
-        design_obj={"field_type": "varchar"},
+        design_obj={"field_type": "varchar", "field_required": False},
         attributes=[],
         membership_a=_mem(),
         membership_b=_mem(),
         include_unchanged=True,
     )
-    assert len(rows) == 1
-    r = rows[0]
-    assert r["kind"] == "presence"
-    assert r["differs"] is False
-    assert r["actionable"] is False
-    assert r["design"] == PRESENT
-    assert r["instance_a"] == PRESENT
-    assert r["instance_b"] == PRESENT
+    anchor = rows[0]
+    assert anchor["kind"] == "presence"
+    assert anchor["differs"] is False
+    assert anchor["actionable"] is False
+    assert anchor["design"] == PRESENT
+    assert anchor["instance_a"] == PRESENT
+    assert anchor["instance_b"] == PRESENT
+
+    by_attr = {r["attribute"]: r for r in rows[1:]}
+    assert set(by_attr) == {"field_type", "field_required"}
+    for r in by_attr.values():
+        assert r["kind"] == "attribute"
+        assert r["differs"] is False
+        assert r["actionable"] is False
+    # the value itself is carried in every location, not a presence token
+    assert by_attr["field_type"]["design"] == "varchar"
+    assert by_attr["field_type"]["instance_a"] == "varchar"
+    assert by_attr["field_type"]["instance_b"] == "varchar"
 
 
-def test_include_unchanged_does_not_add_row_when_member_differs():
-    """A member that already differs keeps only its diff rows — no extra in-sync
-    row is appended even when include_unchanged is set."""
+def test_include_unchanged_covers_properties_no_instance_overrides():
+    """The show-all attribute set comes from the design object, not from the
+    override keys — the REQ-432 defect was that a property nothing deviates on was
+    never even a comparison candidate, so it could never be shown."""
+    rows = compute_member_rows(
+        member_type="field",
+        member_identifier="FLD-1",
+        member_name="phone",
+        design_obj={"field_type": "varchar", "field_label": "Phone"},
+        attributes=_override_attrs(_mem(), _mem()),  # empty: nothing is overridden
+        membership_a=_mem(),
+        membership_b=_mem(),
+        include_unchanged=True,
+    )
+    assert {r["attribute"] for r in rows if r["kind"] == "attribute"} == {
+        "field_type", "field_label"
+    }
+
+
+def test_include_unchanged_keeps_properties_empty_in_every_location():
+    """A property unset in the design and both instances still gets a row: show-all
+    must not quietly exclude a property just because nothing has set it."""
+    rows = compute_member_rows(
+        member_type="field",
+        member_identifier="FLD-1",
+        member_name="phone",
+        design_obj={"field_type": "varchar", "field_tooltip": None},
+        attributes=[],
+        membership_a=_mem(),
+        membership_b=_mem(),
+        include_unchanged=True,
+    )
+    tip = next(r for r in rows if r["attribute"] == "field_tooltip")
+    assert tip["design"] is None
+    assert tip["differs"] is False
+
+
+def test_include_unchanged_keeps_a_differing_member_actionable():
+    """A member that differs keeps its difference flagged and actionable while its
+    agreeing properties come along as verification-only rows."""
     a = _mem(state="drifted", override={"field_type": "text"})
     rows = compute_member_rows(
         member_type="field",
         member_identifier="FLD-1",
         member_name="notes",
-        design_obj={"field_type": "varchar"},
+        design_obj={"field_type": "varchar", "field_label": "Notes"},
         attributes=_override_attrs(a, _mem()),
         membership_a=a,
         membership_b=_mem(),
         include_unchanged=True,
     )
-    assert len(rows) == 1
-    assert rows[0]["differs"] is True
+    by_attr = {r["attribute"]: r for r in rows}
+    assert by_attr["field_type"]["differs"] is True
+    assert by_attr["field_type"]["actionable"] is True
+    assert by_attr["field_label"]["differs"] is False
+    assert by_attr["field_label"]["actionable"] is False
+
+
+def test_differences_only_ignores_non_overridden_properties():
+    """The default path is untouched: an in-sync member yields no rows at all, and
+    the widened attribute set never leaks into differences-only mode."""
+    a = _mem(state="drifted", override={"field_type": "text"})
+    rows = compute_member_rows(
+        member_type="field",
+        member_identifier="FLD-1",
+        member_name="notes",
+        design_obj={"field_type": "varchar", "field_label": "Notes"},
+        attributes=_override_attrs(a, _mem()),
+        membership_a=a,
+        membership_b=_mem(),
+    )
+    assert [r["attribute"] for r in rows] == ["field_type"]
 
 
 def test_member_properties_lists_every_property_with_differs_flags():
@@ -559,8 +626,10 @@ def test_association_cardinality_attribute_is_actionable():
 # --- REQ-447: view a matching enum field's option values ----------------------
 
 def test_matching_enum_shows_expandable_options_with_show_all():
-    """An in-sync enum field, in show-all mode, yields an expandable (non-differing,
-    not-actionable) field_options row instead of a bare presence row (REQ-447)."""
+    """An in-sync enum field, in show-all mode, still yields exactly one expandable
+    (non-differing, not-actionable) field_options row (REQ-447) — now emitted by the
+    general property sweep rather than the differences-only carve-out. Under REQ-478
+    it sits alongside the member's presence anchor instead of replacing it."""
     design = {"field_type": "enum", "field_options": _opts("a", "b")}
     rows = compute_member_rows(
         member_type="field", member_identifier="FLD-1", member_name="status",
@@ -571,7 +640,8 @@ def test_matching_enum_shows_expandable_options_with_show_all():
     assert len(opt) == 1
     assert opt[0]["differs"] is False
     assert opt[0]["actionable"] is False
-    assert all(r["kind"] != "presence" for r in rows)  # replaced the bare presence row
+    assert opt[0]["design"] == design["field_options"]
+    assert [r["kind"] for r in rows].count("presence") == 1
 
 
 def test_matching_enum_hidden_without_show_all():
@@ -613,11 +683,97 @@ def test_enum_with_option_diff_not_double_rowed():
     assert len(opt) == 1 and opt[0]["differs"] is True
 
 
-def test_non_enum_field_still_gets_bare_presence_row_in_show_all():
-    """A non-enum in-sync field keeps the plain present-everywhere confirmation row."""
+def test_non_enum_field_gets_presence_anchor_and_its_values_in_show_all():
+    """A non-enum in-sync field keeps its present-everywhere anchor row and, under
+    REQ-478, carries its property values behind it — no option children, since it
+    has no option set."""
     rows = compute_member_rows(
         member_type="field", member_identifier="FLD-1", member_name="phone",
         design_obj={"field_type": "varchar"}, attributes=[],
         membership_a=_mem(), membership_b=_mem(), include_unchanged=True,
     )
-    assert len(rows) == 1 and rows[0]["kind"] == "presence"
+    assert rows[0]["kind"] == "presence"
+    assert [r["attribute"] for r in rows[1:]] == ["field_type"]
+    assert not any(r["attribute"] == "field_options" for r in rows)
+
+
+# --- REQ-478: show-all shows values in every section --------------------------
+
+def test_show_all_settings_section_carries_entity_setting_values(v2_env):
+    """The reported defect, end to end: with show-all on, the 'settings' section
+    must carry the entity's actual setting values, not just a presence row.
+
+    Entity-level settings are almost never overridden per instance, so under the
+    old override-keyed attribute set this section rendered one bare
+    present/present/present row per entity and no values at all.
+    """
+    with session_scope() as s:
+        a = _inst(s, "alpha", "source")
+        b = _inst(s, "beta", "target")
+        eid = entity_repo.create_entity(s, name="Account", description="x")[
+            "entity_identifier"
+        ]
+        # in sync everywhere, nothing overridden — the case that used to show nothing
+        for inst in (a, b):
+            mb.upsert_membership(
+                s, instance_identifier=inst, member_type="entity",
+                member_identifier=eid, state="present",
+            )
+
+        plain = three_way_compare(s, instance_a=a, instance_b=b)
+        assert not any(g["entity_identifier"] == eid for g in plain["groups"]), (
+            "differences-only must stay clean for an in-sync entity"
+        )
+
+        result = three_way_compare(
+            s, instance_a=a, instance_b=b, include_unchanged=True
+        )
+        grp = next(g for g in result["groups"] if g["entity_identifier"] == eid)
+        settings = next(
+            og for og in grp["object_groups"] if og["object_type"] == "settings"
+        )
+        attrs = {r["attribute"] for r in settings["rows"] if r["kind"] == "attribute"}
+        assert "entity_name" in attrs and "entity_description" in attrs
+        assert settings["differing_count"] == 0
+        # values, not presence tokens
+        name_row = next(r for r in settings["rows"] if r["attribute"] == "entity_name")
+        assert name_row["design"] == "Account"
+        assert name_row["instance_a"] == "Account"
+        assert name_row["instance_b"] == "Account"
+        assert name_row["differs"] is False and name_row["actionable"] is False
+
+
+def test_show_all_fields_section_carries_field_values(v2_env):
+    """Same guarantee for the fields section: every field's properties come
+    through with their values, not a single membership row."""
+    with session_scope() as s:
+        a = _inst(s, "alpha", "source")
+        b = _inst(s, "beta", "target")
+        eid = entity_repo.create_entity(s, name="Account", description="x")[
+            "entity_identifier"
+        ]
+        fid = field_repo.create_field(
+            s, field_belongs_to_entity_identifier=eid, name="phone",
+            description="x", type="text", required=False,
+        )["field_identifier"]
+        for inst in (a, b):
+            for mtype, mid in (("entity", eid), ("field", fid)):
+                mb.upsert_membership(
+                    s, instance_identifier=inst, member_type=mtype,
+                    member_identifier=mid, state="present",
+                )
+
+        result = three_way_compare(
+            s, instance_a=a, instance_b=b, include_unchanged=True
+        )
+        grp = next(g for g in result["groups"] if g["entity_identifier"] == eid)
+        fields = next(
+            og for og in grp["object_groups"] if og["object_type"] == "fields"
+        )
+        type_row = next(r for r in fields["rows"] if r["attribute"] == "field_type")
+        assert type_row["design"] == "text"
+        assert type_row["instance_a"] == "text"
+        assert type_row["instance_b"] == "text"
+        assert fields["differing_count"] == 0
+        # the presence anchor is still there, so the member is listed as existing
+        assert any(r["kind"] == "presence" for r in fields["rows"])
