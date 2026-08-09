@@ -11,7 +11,6 @@ These are wired into ``[project.scripts]`` in ``pyproject.toml``:
 
 from __future__ import annotations
 
-import os
 import sys
 
 
@@ -272,124 +271,131 @@ def run_ui() -> int:
 def run_migrate_instance_secrets() -> int:
     """``crmbuilder-v2-migrate-instance-secrets`` — keyring → encrypted store (PI-402).
 
-    Run this **on the machine whose OS keyring holds the secrets** (Doug's
-    laptop), pointed at the shared store. For every instance in the engagement it
-    reads each ``*_secret_ref`` from the local keyring and rewrites the value into
-    the encrypted store *under the same reference*, so nothing on the instance row
-    changes and no credential has to be retyped.
+    Run this **on the machine whose OS keyring holds the secrets** (the one that
+    created the instances). For every instance in the engagement it reads each
+    stored secret from the local keyring and re-supplies it to the API, which
+    encrypts it into the shared store (REQ-481). Nothing is retyped from memory.
 
     Needed because instance secrets predate the encrypted store: they were minted
     when the API ran locally, and OS keyring entries could not travel with the
-    database to the droplet (DEC-913). Until a secret is migrated the hosted
-    service cannot resolve it at all.
+    database to the hosted service (DEC-913). Until a secret is migrated the
+    hosted service cannot resolve it at all.
 
-    Idempotent: a reference already present in the store is left alone unless
-    ``--force`` is given. Values are never printed. Requires
-    ``CRMBUILDER_V2_SECRET_KEY`` — without it there is no store to write to.
+    **Writes through the API, not the database.** Two earlier shapes were wrong:
+    going through the access layer wrote to the local SQLite fallback and
+    reported success while production stayed empty; pointing it at the shared
+    Postgres directly cannot work either, because the managed database only
+    accepts connections from the droplet. The API is the one path a developer
+    machine actually has to the shared store — and the same path the desktop
+    uses.
 
-    **Refuses to run against a local SQLite store.** The access layer falls back
-    to the local ``db_path`` when no ``CRMBUILDER_V2_DATABASE_URL`` is set, and
-    that file is the retired pre-cutover store — writing there looks like a
-    successful migration while the hosted service still cannot resolve a thing
-    (observed 2026-08-09: four secrets "moved" into ``v2-unified.db`` while
-    production had none). The target store must be named explicitly.
+    Re-supplying through ``PATCH /instances/{id}`` mints fresh references and
+    stores the values encrypted server-side; the superseded keyring entries are
+    left alone, so the old values remain recoverable until you clear them.
+
+    Values are never printed. Requires ``CRMBUILDER_V2_API_BASE_URL`` and
+    ``CRMBUILDER_V2_API_TOKEN`` (as the desktop does), and the *service* must
+    already have its encryption key — otherwise the API answers 422 and this
+    reports it rather than appearing to succeed.
 
     Usage::
 
-        CRMBUILDER_V2_DATABASE_URL=<the shared store> \
-            crmbuilder-v2-migrate-instance-secrets --engagement ENG-002 [--dry-run]
-
-    or equivalently ``--database-url``.
+        crmbuilder-v2-migrate-instance-secrets --engagement ENG-002 [--dry-run]
     """
     import argparse
+    import json
+    import urllib.error
+    import urllib.request
 
     from crmbuilder_v2 import secrets as _secrets
-    from crmbuilder_v2.access.db import session_scope
-    from crmbuilder_v2.access.engagement_scope import active_engagement
-    from crmbuilder_v2.access.models import SecretValue
-    from crmbuilder_v2.access.repositories import instances as _instances
+    from crmbuilder_v2.config import get_settings
 
     parser = argparse.ArgumentParser(prog="crmbuilder-v2-migrate-instance-secrets")
     parser.add_argument("--engagement", required=True, help="ENG-NNN to migrate.")
     parser.add_argument(
         "--dry-run", action="store_true", help="Report what would move; write nothing."
     )
-    parser.add_argument(
-        "--force", action="store_true",
-        help="Overwrite a reference already present in the store.",
-    )
-    parser.add_argument(
-        "--database-url", default=None,
-        help="The shared store to migrate into. Defaults to "
-             "CRMBUILDER_V2_DATABASE_URL; one or the other is required.",
-    )
     args = parser.parse_args(sys.argv[1:])
 
-    if args.database_url:
-        os.environ["CRMBUILDER_V2_DATABASE_URL"] = args.database_url
-
-    from crmbuilder_v2.config import get_settings, reset_settings_cache
-
-    reset_settings_cache()
-    if not get_settings().database_url:
+    settings = get_settings()
+    base = (settings.api_base_url or "").rstrip("/")
+    token = settings.api_token or ""
+    if not base or not token:
         _fail_loud(
-            "Refusing to run: no CRMBUILDER_V2_DATABASE_URL is set, so the access "
-            "layer would write to the local SQLite store instead of the shared one. "
-            "That reports a successful migration while the hosted service still "
-            "cannot resolve any secret. Pass --database-url, or export "
-            "CRMBUILDER_V2_DATABASE_URL, naming the shared store."
+            "CRMBUILDER_V2_API_BASE_URL and CRMBUILDER_V2_API_TOKEN must both be set: "
+            "this migrates through the API, which is the only route a developer "
+            "machine has to the shared store."
         )
 
-    if not _secrets.store_available():
-        _fail_loud(
-            "CRMBUILDER_V2_SECRET_KEY is not set, so there is no encrypted store to "
-            "migrate into. Set it (the same value the service uses) and re-run."
-        )
+    def _call(method: str, path: str, payload: dict | None = None) -> dict:
+        data = json.dumps(payload).encode() if payload is not None else None
+        req = urllib.request.Request(f"{base}{path}", data=data, method=method)
+        req.add_header("Authorization", f"Bearer {token}")
+        req.add_header("X-Engagement", args.engagement)
+        req.add_header("Content-Type", "application/json")
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return json.loads(resp.read())
+
+    try:
+        rows = _call("GET", "/instances")["data"]
+    except urllib.error.HTTPError as exc:
+        _fail_loud(f"could not list instances: HTTP {exc.code} {exc.read().decode()[:300]}")
+    except OSError as exc:
+        _fail_loud(f"could not reach {base}: {exc}")
 
     import keyring
 
     moved = skipped = missing = 0
-    with active_engagement(args.engagement):
-        with session_scope() as s:
-            rows = _instances.list_instances(s, include_deleted=True)
-        for rec in rows:
-            iid = rec["instance_identifier"]
-            for field in ("instance_secret_ref", "instance_secret_key_ref"):
-                ref = rec.get(field)
-                if not ref or not _secrets.is_ref(ref):
-                    continue
-                with session_scope() as s:
-                    already = s.get(SecretValue, ref) is not None
-                if already and not args.force:
-                    print(f"  {iid}.{field}: already in the store — skipped")
-                    skipped += 1
-                    continue
-                try:
-                    value = keyring.get_password(_secrets.SERVICE_NAME, ref)
-                except Exception as exc:  # noqa: BLE001
-                    print(f"  {iid}.{field}: keyring unreadable here ({exc})")
-                    missing += 1
-                    continue
-                if value is None:
-                    print(f"  {iid}.{field}: not in this machine's keyring — cannot move")
-                    missing += 1
-                    continue
-                if args.dry_run:
-                    print(f"  {iid}.{field}: would move ({len(value)} chars)")
-                    moved += 1
-                    continue
-                _secrets.put_secret(value, ref=ref)
-                print(f"  {iid}.{field}: moved into the encrypted store")
-                moved += 1
+    for rec in rows:
+        iid = rec["instance_identifier"]
+        payload: dict[str, str] = {}
+        for field, body_key in (
+            ("instance_secret_ref", "secret"),
+            ("instance_secret_key_ref", "secret_key"),
+        ):
+            ref = rec.get(field)
+            if not ref or not _secrets.is_ref(ref):
+                continue
+            try:
+                value = keyring.get_password(_secrets.SERVICE_NAME, ref)
+            except Exception as exc:  # noqa: BLE001 — no/locked backend
+                print(f"  {iid}.{field}: keyring unreadable here ({exc})")
+                missing += 1
+                continue
+            if value is None:
+                print(f"  {iid}.{field}: not in this machine's keyring — cannot move")
+                missing += 1
+                continue
+            payload[body_key] = value
+
+        if not payload:
+            skipped += 1
+            continue
+        if args.dry_run:
+            for k in payload:
+                print(f"  {iid}.{k}: would re-supply through the API")
+            moved += len(payload)
+            continue
+        try:
+            _call("PATCH", f"/instances/{iid}", payload)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode()[:300]
+            print(f"  {iid}: FAILED HTTP {exc.code} {body}")
+            missing += len(payload)
+            continue
+        for k in payload:
+            print(f"  {iid}.{k}: stored encrypted in the shared store")
+        moved += len(payload)
 
     verb = "would move" if args.dry_run else "moved"
-    print(f"\n{verb} {moved}, skipped {skipped}, unresolvable {missing}")
+    print(f"\n{verb} {moved}, instances without secrets {skipped}, unresolved {missing}")
     if missing:
         print(
-            "Unresolvable entries hold no value in this machine's keyring. Re-enter "
-            "those credentials through the desktop once the service has the key."
+            "Unresolved entries hold no value in this machine's keyring, or the API "
+            "refused them. Re-enter those credentials through the desktop."
         )
-    return 0
+    return 1 if missing else 0
+
 
 def run_token_admin() -> int:
     """``crmbuilder-v2-token`` — provision principals + bearer tokens (PI-γ).
