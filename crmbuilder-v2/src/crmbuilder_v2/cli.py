@@ -267,6 +267,99 @@ def run_ui() -> int:
     return ui_main(sys.argv)
 
 
+
+def run_migrate_instance_secrets() -> int:
+    """``crmbuilder-v2-migrate-instance-secrets`` — keyring → encrypted store (PI-402).
+
+    Run this **on the machine whose OS keyring holds the secrets** (Doug's
+    laptop), pointed at the shared store. For every instance in the engagement it
+    reads each ``*_secret_ref`` from the local keyring and rewrites the value into
+    the encrypted store *under the same reference*, so nothing on the instance row
+    changes and no credential has to be retyped.
+
+    Needed because instance secrets predate the encrypted store: they were minted
+    when the API ran locally, and OS keyring entries could not travel with the
+    database to the droplet (DEC-913). Until a secret is migrated the hosted
+    service cannot resolve it at all.
+
+    Idempotent: a reference already present in the store is left alone unless
+    ``--force`` is given. Values are never printed. Requires
+    ``CRMBUILDER_V2_SECRET_KEY`` — without it there is no store to write to.
+
+    Usage::
+
+        crmbuilder-v2-migrate-instance-secrets --engagement ENG-002 [--dry-run]
+    """
+    import argparse
+
+    from crmbuilder_v2 import secrets as _secrets
+    from crmbuilder_v2.access.db import session_scope
+    from crmbuilder_v2.access.engagement_scope import active_engagement
+    from crmbuilder_v2.access.models import SecretValue
+    from crmbuilder_v2.access.repositories import instances as _instances
+
+    parser = argparse.ArgumentParser(prog="crmbuilder-v2-migrate-instance-secrets")
+    parser.add_argument("--engagement", required=True, help="ENG-NNN to migrate.")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Report what would move; write nothing."
+    )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Overwrite a reference already present in the store.",
+    )
+    args = parser.parse_args(sys.argv[1:])
+
+    if not _secrets.store_available():
+        _fail_loud(
+            "CRMBUILDER_V2_SECRET_KEY is not set, so there is no encrypted store to "
+            "migrate into. Set it (the same value the service uses) and re-run."
+        )
+
+    import keyring
+
+    moved = skipped = missing = 0
+    with active_engagement(args.engagement):
+        with session_scope() as s:
+            rows = _instances.list_instances(s, include_deleted=True)
+        for rec in rows:
+            iid = rec["instance_identifier"]
+            for field in ("instance_secret_ref", "instance_secret_key_ref"):
+                ref = rec.get(field)
+                if not ref or not _secrets.is_ref(ref):
+                    continue
+                with session_scope() as s:
+                    already = s.get(SecretValue, ref) is not None
+                if already and not args.force:
+                    print(f"  {iid}.{field}: already in the store — skipped")
+                    skipped += 1
+                    continue
+                try:
+                    value = keyring.get_password(_secrets.SERVICE_NAME, ref)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"  {iid}.{field}: keyring unreadable here ({exc})")
+                    missing += 1
+                    continue
+                if value is None:
+                    print(f"  {iid}.{field}: not in this machine's keyring — cannot move")
+                    missing += 1
+                    continue
+                if args.dry_run:
+                    print(f"  {iid}.{field}: would move ({len(value)} chars)")
+                    moved += 1
+                    continue
+                _secrets.put_secret(value, ref=ref)
+                print(f"  {iid}.{field}: moved into the encrypted store")
+                moved += 1
+
+    verb = "would move" if args.dry_run else "moved"
+    print(f"\n{verb} {moved}, skipped {skipped}, unresolvable {missing}")
+    if missing:
+        print(
+            "Unresolvable entries hold no value in this machine's keyring. Re-enter "
+            "those credentials through the desktop once the service has the key."
+        )
+    return 0
+
 def run_token_admin() -> int:
     """``crmbuilder-v2-token`` — provision principals + bearer tokens (PI-γ).
 
