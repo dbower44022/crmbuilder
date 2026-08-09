@@ -32,6 +32,41 @@ say()  { printf '\n==> %s\n' "$*"; }
 die()  { printf 'DEPLOY ABORTED: %s\n' "$*" >&2; exit 1; }
 rssh() { ssh -o BatchMode=yes -o ConnectTimeout=10 "$HOST" "$@"; }
 
+# Poll a check until it succeeds or the deadline passes (REQ-480 / PI-401).
+#
+# `systemctl is-active` reports a process active the moment it is spawned, which
+# is before uvicorn binds its socket — so probing a network endpoint once,
+# straight after a restart, tests timing rather than health. The 2026-08-08
+# deploy aborted that way with production already healthy and fully migrated,
+# which is the most dangerous shape of false alarm: it invites a re-run or a
+# rollback of a working system. Same defect v1 fixed in `phase_verify`; this
+# mirrors its backoff.
+#
+# Nothing is printed while waiting, so a check that passes first time leaves the
+# output byte-identical to the single-probe version. Returns non-zero once the
+# deadline passes, leaving the `|| die "<message>"` at each call site intact.
+POLL_BACKOFF="1 1 2 2 3 3 5"
+POLL_DEADLINE=60
+
+poll_until() {
+    local started elapsed waited=0
+    started=$(date +%s)
+    while true; do
+        # `set -e` must not fire on an expected failed attempt.
+        if "$@"; then return 0; fi
+        elapsed=$(( $(date +%s) - started ))
+        [ "$elapsed" -ge "$POLL_DEADLINE" ] && return 1
+        # Walk the backoff, then hold at its last step.
+        local i=0 step=5
+        for s in $POLL_BACKOFF; do
+            i=$((i + 1))
+            if [ "$i" -gt "$waited" ]; then step=$s; break; fi
+        done
+        waited=$((waited + 1))
+        sleep "$step"
+    done
+}
+
 # --- Human gate (GVR-240) --------------------------------------------------
 [ -t 0 ] && [ -t 1 ] || die "no interactive terminal — production deploy is human-run only (GVR-240)"
 printf 'This deploys to PRODUCTION (%s).\nType exactly "deploy production" to continue: ' "$HOST"
@@ -92,10 +127,16 @@ for i in $(seq 1 15); do
     sleep 2
 done
 echo "    service: active"
-rssh "curl -sf -m 5 http://127.0.0.1:8765/health >/dev/null" || die "/health not ok after restart"
+# Poll, don't race: the unit is "active" before uvicorn is listening (REQ-480).
+poll_until rssh "curl -sf -m 5 http://127.0.0.1:8765/health >/dev/null" \
+    || die "/health not ok after restart (waited ${POLL_DEADLINE}s)"
 echo "    local /health: ok"
+# Reachability first (the proxy can lag the app coming up), then read the version
+# — so a slow proxy is waited out rather than reported as "not serving".
+poll_until curl -sf -m 10 -o /dev/null "$PUBLIC_URL/" \
+    || die "public endpoint $PUBLIC_URL not serving (waited ${POLL_DEADLINE}s)"
 version=$(curl -sf -m 10 "$PUBLIC_URL/" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])') \
-    || die "public endpoint $PUBLIC_URL not serving"
+    || die "public endpoint $PUBLIC_URL served an unreadable response"
 echo "    public endpoint: serving version $version"
 head_after=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI current 2>/dev/null | tail -1")
 heads=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI heads 2>/dev/null | tail -1")
