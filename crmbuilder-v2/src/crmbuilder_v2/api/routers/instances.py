@@ -70,12 +70,24 @@ def _edges(body) -> list[dict] | None:
 
 
 def _store(value: str | None) -> str | None:
-    """Store a plaintext secret in the keyring, returning its opaque reference.
+    """Store a plaintext secret, returning its opaque reference.
+
+    The value goes to the encrypted store when the service has an encryption key
+    and to the OS keyring otherwise. A host with neither cannot save credentials
+    at all — that must say so at save time (422) rather than escaping as a 500,
+    which is how it surfaced before this path had a backend it could use.
 
     :param value: A plaintext secret, or ``None``/empty for no secret.
-    :returns: The keyring reference, or ``None`` when no secret was supplied.
+    :returns: The opaque reference, or ``None`` when no secret was supplied.
     """
-    return secrets.put_secret(value) if value else None
+    if not value:
+        return None
+    try:
+        return secrets.put_secret(value)
+    except secrets.SecretBackendError as exc:
+        raise UnprocessableError(
+            [FieldError("secret", "secret_backend_unavailable", str(exc))]
+        ) from exc
 
 
 @router.get("")
@@ -261,8 +273,7 @@ def _audit_introspection_client(s, identifier: str) -> EspoIntrospectionClient:
                 )
             ]
         )
-    ref = rec.get("instance_secret_ref")
-    api_key = secrets.get_secret(ref) if ref else ""
+    api_key = _resolve_secret_or_none(rec.get("instance_secret_ref"))
     if not api_key:
         raise UnprocessableError(
             [
@@ -274,11 +285,10 @@ def _audit_introspection_client(s, identifier: str) -> EspoIntrospectionClient:
                 )
             ]
         )
-    key_ref = rec.get("instance_secret_key_ref")
     return EspoIntrospectionClient(
         base_url=rec["instance_url"],
         api_key=api_key,
-        secret_key=secrets.get_secret(key_ref) if key_ref else None,
+        secret_key=_resolve_secret_or_none(rec.get("instance_secret_key_ref")),
         auth_method=rec.get("instance_auth_method") or "api_key",
     )
 
@@ -475,7 +485,7 @@ def put_deploy_config(identifier: str, body: InstanceDeployConfigIn):
             cred = provided["ssh_credential"]
             auth = fields.get("ssh_auth_type", current.get("ssh_auth_type"))
             if cred and auth == "password":
-                fields["ssh_credential_ref"] = secrets.put_secret(cred)
+                fields["ssh_credential_ref"] = _store(cred)
                 old = current.get("ssh_credential_ref")
                 if old and (old or "").startswith(secrets.REF_PREFIX):
                     secrets.delete_secret(old)
@@ -484,9 +494,7 @@ def put_deploy_config(identifier: str, body: InstanceDeployConfigIn):
         # DB root password is always keyring-backed.
         if "db_root_password" in provided:
             pw = provided["db_root_password"]
-            fields["db_root_password_ref"] = (
-                secrets.put_secret(pw) if pw else None
-            )
+            fields["db_root_password_ref"] = _store(pw)
             old = current.get("db_root_password_ref")
             if pw and old:
                 secrets.delete_secret(old)
@@ -620,8 +628,30 @@ def _record_publish_run(
         return None
 
 
+def _resolve_secret_or_none(ref: str | None) -> str | None:
+    """Resolve one secret reference, mapping "not stored here" to ``None``.
+
+    A reference with no value anywhere reachable (``KeyError``) is a missing
+    credential, which the caller reports as a 422. A backend that cannot answer
+    at all (``SecretBackendError`` — no keyring *and* no encryption key, or a key
+    that does not match the stored ciphertext) is a misconfigured host, and is
+    re-raised as its own 422 naming the real cause. Neither may escape as an
+    unhandled 500, which is how a bare ``NoKeyringError`` used to surface here.
+    """
+    if not ref:
+        return None
+    try:
+        return secrets.get_secret(ref)
+    except KeyError:
+        return None
+    except secrets.SecretBackendError as exc:
+        raise UnprocessableError(
+            [FieldError("secret", "secret_backend_unavailable", str(exc))]
+        ) from exc
+
+
 def _resolve_publish_target(identifier: str) -> tuple[dict, str, str | None]:
-    """Fetch the target instance and resolve its keyring credentials.
+    """Fetch the target instance and resolve its stored credentials.
 
     Mirrors the audit resolution, inverted for the target role: a
     ``source``-only instance cannot be published to, and a target with no
@@ -642,8 +672,7 @@ def _resolve_publish_target(identifier: str) -> tuple[dict, str, str | None]:
                     )
                 ]
             )
-        ref = rec.get("instance_secret_ref")
-        api_key = secrets.get_secret(ref) if ref else ""
+        api_key = _resolve_secret_or_none(rec.get("instance_secret_ref"))
         if not api_key:
             raise UnprocessableError(
                 [
@@ -655,8 +684,7 @@ def _resolve_publish_target(identifier: str) -> tuple[dict, str, str | None]:
                     )
                 ]
             )
-        key_ref = rec.get("instance_secret_key_ref")
-        secret_key = secrets.get_secret(key_ref) if key_ref else None
+        secret_key = _resolve_secret_or_none(rec.get("instance_secret_key_ref"))
     return rec, api_key, secret_key
 
 

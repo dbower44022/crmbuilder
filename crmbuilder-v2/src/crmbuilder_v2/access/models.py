@@ -19,6 +19,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -6845,4 +6846,41 @@ class PipelineEvent(EngagementScopedMixin, Base):
               "release_identifier", "pipeline_event_created_at"),
         Index("ix_pipeline_events_created", "engagement_id",
               "pipeline_event_created_at"),
+    )
+
+
+class SecretValue(Base):
+    """Ciphertext for one opaque secret reference — REQ-157 (amended) / PI-402.
+
+    The store-side half of :mod:`crmbuilder_v2.secrets`. An instance row still
+    holds only an opaque ``crmbuilder:{uuid}`` reference (REQ-157's
+    referenced-indirectly guarantee is unchanged); this table maps that reference
+    to the Fernet ciphertext of its value. Nothing here is readable without
+    ``CRMBUILDER_V2_SECRET_KEY``, so REQ-157's never-plaintext guarantee holds
+    with the value inside the database rather than outside it.
+
+    Why this exists: secrets used to live only in an OS keyring, which the hosted
+    service has no backend for — so the droplet could neither save an instance's
+    credentials nor resolve them to publish (DEC-913). Ciphertext in the shared
+    store travels with the database instead of stranding on whichever machine
+    created it.
+
+    **Deliberately not engagement-scoped.** The reference is a UUID minted per
+    secret and never enumerated, and the row carries no hint of what it belongs
+    to — so scoping would add a join without adding isolation. It follows the
+    unscoped-table precedent (the catalog tables) rather than the
+    engagement-discriminator one.
+    """
+
+    __tablename__ = "secret_values"
+
+    #: The opaque ``crmbuilder:{uuid}`` reference stored on the owning row.
+    secret_ref: Mapped[str] = mapped_column(String(64), primary_key=True)
+    #: Fernet token. Bytes, not text — never rendered, never logged.
+    secret_ciphertext: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    secret_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    secret_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
     )

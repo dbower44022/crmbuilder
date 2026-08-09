@@ -228,3 +228,66 @@ def test_validate_does_not_record_run(client, monkeypatch):
     r = client.post(f"/instances/{iid}/publish-validate")
     assert r.status_code == 200, r.text
     assert "publish_run" not in r.json()["data"]
+
+
+# --- REQ-481 / PI-402: a broken secret backend is a 422, never a 500 ----------
+
+
+def test_publish_reports_422_when_no_secret_backend_is_reachable(client, monkeypatch):
+    """The reported production failure: the droplet has no keyring backend, so
+    resolving the target's credentials raised NoKeyringError uncaught and the
+    publish returned an opaque 500. It must be the actionable 422 instead — and
+    the message must name the real cause, not "no stored credentials"."""
+    iid = _make_instance(client)
+
+    def _boom(ref):
+        raise secrets.SecretBackendError(
+            "Cannot resolve the secret: this host has no OS keyring backend and "
+            "CRMBUILDER_V2_SECRET_KEY is not set."
+        )
+
+    monkeypatch.setattr(secrets, "get_secret", _boom)
+    r = client.post(f"/instances/{iid}/publish", json={})
+    assert r.status_code == 422, r.text
+    err = r.json()["errors"][0]
+    assert err["code"] == "secret_backend_unavailable"
+    assert "CRMBUILDER_V2_SECRET_KEY" in err["message"]
+
+
+def test_publish_still_reports_missing_credentials_when_simply_unset(client, monkeypatch):
+    """A reference that resolves nowhere is a missing credential, which must stay
+    distinguishable from a host that cannot read secrets at all."""
+    iid = _make_instance(client)
+
+    def _miss(ref):
+        raise KeyError(ref)
+
+    monkeypatch.setattr(secrets, "get_secret", _miss)
+    r = client.post(f"/instances/{iid}/publish", json={})
+    assert r.status_code == 422, r.text
+    assert r.json()["errors"][0]["code"] == "missing_credentials"
+
+
+def test_creating_an_instance_reports_422_when_nothing_can_store_the_secret(
+    client, monkeypatch
+):
+    """The write half of the same defect: put_secret raised at save time on a
+    host with no keyring, surfacing as a 500 rather than a usable message."""
+    def _boom(value, *, ref=None):
+        raise secrets.SecretBackendError(
+            "Cannot store the secret: this host has no OS keyring backend and "
+            "CRMBUILDER_V2_SECRET_KEY is not set."
+        )
+
+    monkeypatch.setattr(secrets, "put_secret", _boom)
+    r = client.post(
+        "/instances",
+        json={
+            "instance_name": "Target",
+            "instance_url": "https://t.example.org",
+            "instance_role": "target",
+            "secret": "api-key",
+        },
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["errors"][0]["code"] == "secret_backend_unavailable"

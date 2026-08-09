@@ -171,6 +171,19 @@ class Settings(BaseSettings):
     # and on-droplet components that legitimately use localhost are unaffected.
     allow_local: bool = False
 
+    # REQ-157 (amended) / REQ-481 / PI-402: the key that encrypts instance
+    # connection secrets at rest in the store. A urlsafe-base64 32-byte Fernet
+    # key, supplied from the environment — on the droplet from the same 0600
+    # root-owned ``crmbuilder.env`` that already carries the database URL, so it
+    # introduces no trust boundary that file does not already hold.
+    #
+    # Empty (the default) means "no server-side secret store": secrets fall back
+    # to the OS keyring, which is what a developer machine does. It is
+    # deliberately not an error to be unset — a laptop with a working keyring
+    # needs no key — but a host without a keyring *and* without a key can store
+    # nothing, and says so plainly rather than failing obscurely.
+    secret_key: str = ""
+
     def is_remote_api(self) -> bool:
         """True when the client targets a remote backend and must not spawn a
         local API. Explicit ``api_remote`` wins; otherwise inferred from a
