@@ -11,6 +11,7 @@ These are wired into ``[project.scripts]`` in ``pyproject.toml``:
 
 from __future__ import annotations
 
+import os
 import sys
 
 
@@ -286,9 +287,19 @@ def run_migrate_instance_secrets() -> int:
     ``--force`` is given. Values are never printed. Requires
     ``CRMBUILDER_V2_SECRET_KEY`` — without it there is no store to write to.
 
+    **Refuses to run against a local SQLite store.** The access layer falls back
+    to the local ``db_path`` when no ``CRMBUILDER_V2_DATABASE_URL`` is set, and
+    that file is the retired pre-cutover store — writing there looks like a
+    successful migration while the hosted service still cannot resolve a thing
+    (observed 2026-08-09: four secrets "moved" into ``v2-unified.db`` while
+    production had none). The target store must be named explicitly.
+
     Usage::
 
-        crmbuilder-v2-migrate-instance-secrets --engagement ENG-002 [--dry-run]
+        CRMBUILDER_V2_DATABASE_URL=<the shared store> \
+            crmbuilder-v2-migrate-instance-secrets --engagement ENG-002 [--dry-run]
+
+    or equivalently ``--database-url``.
     """
     import argparse
 
@@ -307,7 +318,27 @@ def run_migrate_instance_secrets() -> int:
         "--force", action="store_true",
         help="Overwrite a reference already present in the store.",
     )
+    parser.add_argument(
+        "--database-url", default=None,
+        help="The shared store to migrate into. Defaults to "
+             "CRMBUILDER_V2_DATABASE_URL; one or the other is required.",
+    )
     args = parser.parse_args(sys.argv[1:])
+
+    if args.database_url:
+        os.environ["CRMBUILDER_V2_DATABASE_URL"] = args.database_url
+
+    from crmbuilder_v2.config import get_settings, reset_settings_cache
+
+    reset_settings_cache()
+    if not get_settings().database_url:
+        _fail_loud(
+            "Refusing to run: no CRMBUILDER_V2_DATABASE_URL is set, so the access "
+            "layer would write to the local SQLite store instead of the shared one. "
+            "That reports a successful migration while the hosted service still "
+            "cannot resolve any secret. Pass --database-url, or export "
+            "CRMBUILDER_V2_DATABASE_URL, naming the shared store."
+        )
 
     if not _secrets.store_available():
         _fail_loud(
