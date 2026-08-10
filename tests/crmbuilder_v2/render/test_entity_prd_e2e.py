@@ -23,7 +23,7 @@ from crmbuilder_v2.access.repositories import (
     field,
     rule,
 )
-from crmbuilder_v2.adapters.espocrm.client import DesignClient
+from crmbuilder_v2.adapters.espocrm.client import AccessDesignClient
 from crmbuilder_v2.render.entity_prd import (
     build_prd_model,
     fetch_prd_inputs,
@@ -33,50 +33,18 @@ from crmbuilder_v2.render.entity_prd import (
 
 RENDERED_AT = "2026-06-14T12:00:00+00:00"
 
+# The production design client (REQ-482 / PI-405), not a local analog. The copy
+# this replaces diverged twice over: its list_fields walked entities collecting
+# their fields — the shape the promoted class deliberately rejected — and five
+# surfaces were hardcoded to []. Those five read empty tables on this seed, so
+# they stay empty on their own; the renderer picks the engagement up off the
+# client via getattr, so passing it to the constructor is equivalent to the
+# class attribute it replaces.
+_ENGAGEMENT = "ENG-001"
 
-class AccessDesignClient(DesignClient):
-    """A GET-only design client reading straight from the access layer
-    (the test analog of ``RestDesignClient``)."""
 
-    engagement = "ENG-001"
-
-    def list_entities(self) -> list[dict]:
-        with session_scope() as s:
-            return entity.list_entities(s)
-
-    def list_fields(self) -> list[dict]:
-        with session_scope() as s:
-            entities = entity.list_entities(s)
-            rows: list[dict] = []
-            for ent in entities:
-                eid = ent["entity_identifier"]
-                for f in field.list_fields(s, entity_identifier=eid):
-                    f["parent_entity_identifier"] = eid
-                    rows.append(f)
-            return rows
-
-    def list_engine_overrides(self) -> list[dict]:
-        return []
-
-    def list_associations(self) -> list[dict]:
-        with session_scope() as s:
-            return association.list_associations(s)
-
-    def list_rules(self) -> list[dict]:
-        with session_scope() as s:
-            return rule.list_rules(s)
-
-    def list_views(self) -> list[dict]:
-        return []
-
-    def list_automations(self) -> list[dict]:
-        return []
-
-    def list_dedup_rules(self) -> list[dict]:
-        return []
-
-    def list_message_templates(self) -> list[dict]:
-        return []
+def _client() -> AccessDesignClient:
+    return AccessDesignClient(engagement=_ENGAGEMENT)
 
 
 def _seed() -> dict:
@@ -172,7 +140,7 @@ def _seed() -> dict:
 
 def test_entity_prd_field_table_matches_source_and_prose(v2_env, tmp_path):
     _seed()
-    client = AccessDesignClient()
+    client = _client()
     inputs = fetch_prd_inputs(client)
     model = build_prd_model(inputs, rendered_at=RENDERED_AT)
 
@@ -225,7 +193,7 @@ def test_entity_prd_field_table_matches_source_and_prose(v2_env, tmp_path):
 
 def test_entity_prd_determinism_and_write(v2_env, tmp_path):
     _seed()
-    client = AccessDesignClient()
+    client = _client()
 
     model1 = build_prd_model(fetch_prd_inputs(client), rendered_at=RENDERED_AT)
     written1 = write_documents(model1, tmp_path / "run1")
@@ -243,7 +211,7 @@ def test_entity_prd_determinism_and_write(v2_env, tmp_path):
 
 def test_entity_prd_single_entity_restriction(v2_env, tmp_path):
     ids = _seed()
-    client = AccessDesignClient()
+    client = _client()
     model = build_prd_model(
         fetch_prd_inputs(client, entity=ids["app"]),
         rendered_at=RENDERED_AT,
