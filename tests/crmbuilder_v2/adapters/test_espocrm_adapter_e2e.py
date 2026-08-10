@@ -29,69 +29,17 @@ from crmbuilder_v2.access.repositories import (
     view,
 )
 from crmbuilder_v2.adapters.espocrm.adapter import EspoCrmAdapter, validate_yaml_text
-from crmbuilder_v2.adapters.espocrm.client import DesignClient
+from crmbuilder_v2.adapters.espocrm.client import AccessDesignClient
 
 RENDERED_AT = "2026-06-14T12:00:00+00:00"
 
-
-class AccessDesignClient(DesignClient):
-    """A GET-only design client reading straight from the access layer
-    (the test analog of ``RestDesignClient``)."""
-
-    def list_entities(self) -> list[dict]:
-        with session_scope() as s:
-            return entity.list_entities(s)
-
-    def list_fields(self) -> list[dict]:
-        with session_scope() as s:
-            entities = entity.list_entities(s)
-            rows: list[dict] = []
-            for ent in entities:
-                eid = ent["entity_identifier"]
-                for f in field.list_fields(s, entity_identifier=eid):
-                    f["parent_entity_identifier"] = eid
-                    rows.append(f)
-            return rows
-
-    def list_engine_overrides(self) -> list[dict]:
-        with session_scope() as s:
-            return engine_override.list_engine_overrides(s)
-
-    def list_associations(self) -> list[dict]:
-        with session_scope() as s:
-            return association.list_associations(s)
-
-    def list_rules(self) -> list[dict]:
-        with session_scope() as s:
-            return rule.list_rules(s)
-
-    def list_views(self) -> list[dict]:
-        with session_scope() as s:
-            return view.list_views(s)
-
-    def list_automations(self) -> list[dict]:
-        with session_scope() as s:
-            return automation.list_automations(s)
-
-    def list_dedup_rules(self) -> list[dict]:
-        with session_scope() as s:
-            return dedup_rule.list_dedup_rules(s)
-
-    def list_message_templates(self) -> list[dict]:
-        with session_scope() as s:
-            return message_template.list_message_templates(s)
-
-    def list_field_permission_rules(self) -> list[dict]:
-        with session_scope() as s:
-            return field_permission_rule.list_field_permission_rules(s)
-
-    def list_field_visibility_rules(self) -> list[dict]:
-        with session_scope() as s:
-            return field_visibility_rule.list_field_visibility_rules(s)
-
-    def list_roles(self) -> list[dict]:
-        with session_scope() as s:
-            return roles.list_roles(s)
+# The design client here is the production one (REQ-482 / PI-405), not a local
+# analog. This file used to carry its own, whose list_fields walked entities
+# collecting their fields — the exact shape the promoted class deliberately did
+# not copy, because it drops any field lacking a parent edge where the real path
+# keeps it. Validating the generator against a client nothing ships is how a
+# defect in the shipped one goes unnoticed, which is what happened: every field
+# came back parentless in production while this suite stayed green.
 
 
 def _seed() -> None:
