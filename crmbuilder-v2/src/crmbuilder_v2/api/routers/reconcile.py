@@ -264,12 +264,11 @@ def publish_object(body: PublishObjectIn):
     from datetime import UTC, datetime
 
     from crmbuilder_v2.access.engagement_scope import get_active_engagement
-    from crmbuilder_v2.adapters.espocrm.client import RestDesignClient
+    from crmbuilder_v2.adapters.espocrm.client import AccessDesignClient
     from crmbuilder_v2.api.routers.instances import (
         _resolve_publish_target,
         _serialize_publish_result,
     )
-    from crmbuilder_v2.config import get_settings
     from crmbuilder_v2.publish import service as publish_service
 
     # Resolve which entity (and generated program) this object publishes with.
@@ -280,9 +279,10 @@ def publish_object(body: PublishObjectIn):
 
     rec, api_key, secret_key = _resolve_publish_target(body.instance)
     engagement = get_active_engagement()
-    design_client = RestDesignClient(
-        base_url=get_settings().api_base_url, engagement=engagement
-    )
+    # In-process: read the design straight from the store rather than having the
+    # service authenticate to its own API, which it cannot do on a host with
+    # PRINCIPAL_AUTH_ENABLED and no credential of its own (REQ-482).
+    design_client = AccessDesignClient(engagement=engagement)
     result = publish_service.publish(
         rec,
         design_client,

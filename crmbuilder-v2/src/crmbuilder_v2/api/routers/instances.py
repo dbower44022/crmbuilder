@@ -33,7 +33,7 @@ from crmbuilder_v2.access.repositories import (
     inventory,
     publish_runs,
 )
-from crmbuilder_v2.adapters.espocrm.client import RestDesignClient
+from crmbuilder_v2.adapters.espocrm.client import AccessDesignClient
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
@@ -43,7 +43,6 @@ from crmbuilder_v2.api.schemas import (
     InstanceReplaceIn,
     RecordExportIn,
 )
-from crmbuilder_v2.config import get_settings
 from crmbuilder_v2.introspect.entity_audit import reconcile_entity_slice
 from crmbuilder_v2.introspect.espo_client import EspoIntrospectionClient
 from crmbuilder_v2.introspect.reconcile import (
@@ -704,9 +703,10 @@ def _run_publish(
     """
     rec, api_key, secret_key = _resolve_publish_target(identifier)
     engagement = get_active_engagement()
-    design_client = RestDesignClient(
-        base_url=get_settings().api_base_url, engagement=engagement
-    )
+    # In-process: read the design straight from the store rather than having the
+    # service authenticate to its own API, which it cannot do on a host with
+    # PRINCIPAL_AUTH_ENABLED and no credential of its own (REQ-482).
+    design_client = AccessDesignClient(engagement=engagement)
     started_at = datetime.now(UTC)
     result = publish_service.publish(
         rec,
