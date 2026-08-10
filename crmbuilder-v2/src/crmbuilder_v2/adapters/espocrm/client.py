@@ -122,11 +122,11 @@ class RestDesignClient(DesignClient):
             "/references?source_type=field"
             "&relationship_kind=field_belongs_to_entity"
         )
-        parent_by_field = {
-            r["source_id"]: r["target_id"]
-            for r in refs
-            if r.get("relationship_kind") == "field_belongs_to_entity"
-        }
+        # The query already narrows to the kind we want; the serialized row calls
+        # the edge kind ``relationship``, not ``relationship_kind``. Re-filtering
+        # on the wrong key silently emptied this map, so *every* field came back
+        # with no parent entity — 0 of 254 on CBM (REQ-482). Trust the query.
+        parent_by_field = {r["source_id"]: r["target_id"] for r in refs}
         for row in fields:
             row["parent_entity_identifier"] = parent_by_field.get(
                 row["field_identifier"]
@@ -162,3 +162,128 @@ class RestDesignClient(DesignClient):
 
     def list_roles(self) -> list[dict]:
         return self._get("/roles")
+
+
+class AccessDesignClient(DesignClient):
+    """Design client reading straight from the access layer — REQ-482 / PI-403.
+
+    The in-process counterpart to :class:`RestDesignClient`. Use this whenever the
+    service itself is serving the request; use the REST client only from *outside*
+    the service (the export and render CLIs).
+
+    Why it exists: the publish path used to build a ``RestDesignClient`` against
+    the service's own ``api_base_url`` and call its own endpoints. On a host with
+    ``PRINCIPAL_AUTH_ENABLED`` and no credential of its own, the service's request
+    to itself is rejected — publish failed with an opaque 500 wrapping
+    ``HTTPError 401``. Reading the design directly removes the dependency rather
+    than satisfying it: no token to issue, rotate, or have expire, and no HTTP
+    round-trip per list call.
+
+    Reads are wrapped in :func:`active_engagement` so row-level scoping applies
+    exactly as the ``X-Engagement`` header applies it on the REST path.
+
+    **Shape parity is the contract.** Every method must return what the REST
+    client returns for the same store, since both feed the same generator. The
+    endpoints are themselves thin wrappers over these repositories, so parity is
+    structural for all but ``list_fields`` — see that method.
+    """
+
+    def __init__(self, engagement: str | None = None) -> None:
+        self.engagement = engagement
+
+    def _scope(self):
+        """Apply the engagement scope for the duration of a read."""
+        from contextlib import nullcontext
+
+        from crmbuilder_v2.access.engagement_scope import active_engagement
+
+        return active_engagement(self.engagement) if self.engagement else nullcontext()
+
+    def _rows(self, fn, **kwargs) -> list[dict]:
+        from crmbuilder_v2.access.db import session_scope
+
+        with self._scope():
+            with session_scope() as s:
+                return fn(s, **kwargs)
+
+    def list_entities(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import entity
+
+        return self._rows(entity.list_entities)
+
+    def list_fields(self) -> list[dict]:
+        """Every field, each stamped with its parent entity.
+
+        Deliberately mirrors ``RestDesignClient.list_fields``: take *all* fields,
+        then resolve parents from the ``field_belongs_to_entity`` edges. Walking
+        entities and collecting their fields instead — the shape the test fake
+        used — would silently drop any field lacking a parent edge, where the REST
+        path keeps it with a ``None`` parent. Same records, same order, either way.
+        """
+        from crmbuilder_v2.access.db import session_scope
+        from crmbuilder_v2.access.repositories import field, references
+
+        with self._scope():
+            with session_scope() as s:
+                fields = field.list_fields(s)
+                refs = references.list_references(
+                    s,
+                    source_type="field",
+                    relationship_kind="field_belongs_to_entity",
+                )
+        parent_by_field = {r["source_id"]: r["target_id"] for r in refs}
+        for row in fields:
+            row["parent_entity_identifier"] = parent_by_field.get(
+                row["field_identifier"]
+            )
+        return fields
+
+    def list_engine_overrides(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import engine_override
+
+        return self._rows(engine_override.list_engine_overrides)
+
+    def list_associations(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import association
+
+        return self._rows(association.list_associations)
+
+    def list_rules(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import rule
+
+        return self._rows(rule.list_rules)
+
+    def list_views(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import view
+
+        return self._rows(view.list_views)
+
+    def list_automations(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import automation
+
+        return self._rows(automation.list_automations)
+
+    def list_dedup_rules(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import dedup_rule
+
+        return self._rows(dedup_rule.list_dedup_rules)
+
+    def list_message_templates(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import message_template
+
+        return self._rows(message_template.list_message_templates)
+
+    def list_field_permission_rules(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import field_permission_rule
+
+        return self._rows(field_permission_rule.list_field_permission_rules)
+
+    def list_field_visibility_rules(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import field_visibility_rule
+
+        return self._rows(field_visibility_rule.list_field_visibility_rules)
+
+    def list_roles(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import roles
+
+        return self._rows(roles.list_roles)
