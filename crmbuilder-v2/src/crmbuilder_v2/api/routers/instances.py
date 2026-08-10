@@ -530,7 +530,17 @@ def export_records_endpoint(identifier: str, body: RecordExportIn):
 
 
 def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
-    """Render a :class:`PublishResult` as a JSON-safe envelope payload."""
+    """Render a :class:`PublishResult` as a JSON-safe envelope payload.
+
+    Each program reports what it *generated* — its entities, its field names and
+    count, its relationship count — not only whether the run finished. Status
+    alone is not enough to tell a healthy publish from a hollow one: the number
+    of programs follows the count of confirmed entities and is independent of
+    fields, so a design whose field-to-entity edges went missing generates the
+    same programs, passes the same validation, and returns the same 200. That is
+    exactly how one such defect stayed invisible while every run reported green
+    (REQ-483 / LSN-052). These counts are what the publish check asserts against.
+    """
     return {
         "engine": result.engine,
         "target_instance": result.target_instance,
@@ -552,6 +562,10 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
                 "filename": p.filename,
                 "deployed": p.deployed,
                 "validation_errors": p.validation_errors,
+                "entities": p.entities,
+                "field_count": len(p.field_names),
+                "field_names": p.field_names,
+                "relationship_count": p.relationship_count,
                 "summary": (
                     dataclasses.asdict(p.report.summary) if p.report else None
                 ),

@@ -59,6 +59,10 @@ class ProgramOutcome:
     :ivar deployed: Whether this program was applied to the target.
     :ivar report: The deploy :class:`RunReport`, or ``None`` if not deployed.
     :ivar log: Captured ``(message, color)`` deploy log lines.
+    :ivar entities: Natural entity names this program declares.
+    :ivar field_names: Field names this program declares, across its entities,
+        de-duplicated in first-seen order.
+    :ivar relationship_count: Link relationships this program declares.
     """
 
     filename: str
@@ -66,6 +70,35 @@ class ProgramOutcome:
     deployed: bool = False
     report: RunReport | None = None
     log: list[tuple[str, str]] = field(default_factory=list)
+    entities: list[str] = field(default_factory=list)
+    field_names: list[str] = field(default_factory=list)
+    relationship_count: int = 0
+
+    @classmethod
+    def for_program(
+        cls, filename: str, program: ProgramFile, **kwargs
+    ) -> ProgramOutcome:
+        """Build an outcome stamped with what the program actually declares.
+
+        Every outcome carries this census, on every path — validate-only,
+        validation failure, abort, and deploy alike — because a caller has no
+        other way to tell a program that generated its objects from one that
+        generated an empty shell. A publish whose design lost the field-to-entity
+        edges still produces one program per entity and still validates clean
+        (REQ-483): the count is the only signal that anything is missing.
+        """
+        names: list[str] = []
+        for entity in program.entities:
+            for fld in entity.fields:
+                if fld.name not in names:
+                    names.append(fld.name)
+        return cls(
+            filename=filename,
+            entities=[e.name for e in program.entities],
+            field_names=names,
+            relationship_count=len(program.relationships),
+            **kwargs,
+        )
 
 
 @dataclass
@@ -454,10 +487,11 @@ def publish(
     # Validation gate: never touch a program that does not pass its own engine
     # pre-flight (REQ-288). A validate-only run stops here too.
     if validate_only or validation_failed:
-        for filename, _program in programs:
+        for filename, program in programs:
             pub.programs.append(
-                ProgramOutcome(
-                    filename=filename,
+                ProgramOutcome.for_program(
+                    filename,
+                    program,
                     validation_errors=failures.get(filename, []),
                     deployed=False,
                 )
@@ -475,9 +509,11 @@ def publish(
             if not allow_no_backup:
                 pub.aborted = True
                 pub.abort_reason = str(exc)
-                for filename, _program in programs:
+                for filename, program in programs:
                     pub.programs.append(
-                        ProgramOutcome(filename=filename, deployed=False)
+                        ProgramOutcome.for_program(
+                            filename, program, deployed=False
+                        )
                     )
                 return pub
             # Overridden: proceed with no backup recorded.
@@ -493,8 +529,9 @@ def publish(
         field_mgr = FieldManager(client, FieldComparator(), ofn)
         outcome = deploy_pipeline(program, client, field_mgr, ofn, dry_run=preview)
         pub.programs.append(
-            ProgramOutcome(
-                filename=filename,
+            ProgramOutcome.for_program(
+                filename,
+                program,
                 validation_errors=[],
                 deployed=not preview,
                 report=outcome.report,

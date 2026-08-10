@@ -19,6 +19,7 @@
 #   4. Migrate          — alembic (pg) upgrade head, before serving
 #   5. Restart          — systemctl restart crmbuilder-v2-api
 #   6. Verify           — service, health, public endpoint, migration head
+#   7. Publish check    — validate-only publish against CBMTEST (advisory)
 set -euo pipefail
 
 HOST="root@138.197.72.15"
@@ -74,7 +75,7 @@ read -r confirm
 [ "$confirm" = "deploy production" ] || die "confirmation phrase not entered"
 
 # --- 1. Local preflight ----------------------------------------------------
-say "1/6 Local preflight"
+say "1/7 Local preflight"
 cd "$(git rev-parse --show-toplevel)" || die "not inside the repository"
 branch=$(git branch --show-current)
 [ "$branch" = "main" ] || die "on branch '$branch' — deploys run from main only"
@@ -86,7 +87,7 @@ commit=$(git rev-parse --short HEAD)
 echo "    deploying commit $commit"
 
 # --- 2. Remote preflight ---------------------------------------------------
-say "2/6 Remote preflight"
+say "2/7 Remote preflight"
 rssh true || die "cannot reach $HOST over SSH"
 [ "$(rssh systemctl is-active "$UNIT")" = "active" ] || die "$UNIT is not active on the droplet"
 head_before=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI current 2>/dev/null | tail -1")
@@ -103,7 +104,7 @@ fi
 echo "    uv.lock unchanged — code-only deploy"
 
 # --- 3. Copy the committed tree --------------------------------------------
-say "3/6 Copy committed tree -> $HOST:$DEST"
+say "3/7 Copy committed tree -> $HOST:$DEST"
 # Exactly the git-tracked files: gitignored local files (crmbuilder-v2/data/,
 # instance profiles, caches) are never sent; no --delete, so droplet-local
 # files (.venv, backups/, logs) are never removed.
@@ -111,16 +112,16 @@ git ls-files -z | rsync -az --files-from=- --from0 . "$HOST:$DEST/" \
     || die "rsync failed"
 
 # --- 4. Migrate (before serving) -------------------------------------------
-say "4/6 Migrate the live store (alembic pg upgrade head)"
+say "4/7 Migrate the live store (alembic pg upgrade head)"
 rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI upgrade head" \
     || die "alembic upgrade failed — service NOT restarted; investigate before retrying"
 
 # --- 5. Restart ------------------------------------------------------------
-say "5/6 Restart $UNIT"
+say "5/7 Restart $UNIT"
 rssh "systemctl restart $UNIT" || die "systemctl restart failed"
 
 # --- 6. Verify -------------------------------------------------------------
-say "6/6 Verify"
+say "6/7 Verify"
 for i in $(seq 1 15); do
     [ "$(rssh systemctl is-active "$UNIT" || true)" = "active" ] && break
     [ "$i" = 15 ] && die "$UNIT did not come back active after restart"
@@ -144,6 +145,39 @@ case "$head_after" in
     "${heads%% *}"*) echo "    alembic: $head_after" ;;
     *) die "alembic current ($head_after) != head ($heads) after upgrade" ;;
 esac
+
+# --- 7. Publish check ------------------------------------------------------
+# A healthy /health says the process is serving. It says nothing about whether
+# publishing still works, and publishing is what silently broke: the 2026-07-01
+# cutover left it broken in three independent places for weeks because nothing
+# exercised it after a deploy (REQ-483 / DEC-915). This is that exercise, run
+# where it matters most — right after the change that could have broken it.
+#
+# Validate-only against CBMTEST: generates the design, resolves the target's
+# credentials, reads the live target and validates, writing nothing. Production
+# (INST-002) is refused by the check itself, by name.
+#
+# Advisory, not fatal. The deploy has already copied, migrated and restarted
+# successfully by this point; aborting here would report a completed deploy as a
+# failure and invite a rollback of a working system — the exact mistake REQ-480
+# fixed one step above.
+#
+# Invoked as a module, not through the console script: a deploy is an rsync of
+# the committed tree, and the droplet venv has no pip/uv to regenerate entry
+# points, so .venv/bin/crmbuilder-v2-publish-check will not exist there. The
+# module always will.
+say "7/7 Publish check (validate-only, writes nothing)"
+if rssh "cd $DEST && $REMOTE_PY -m crmbuilder_v2.publish.check --base-url http://127.0.0.1:8765"; then
+    echo "    publish path: healthy"
+else
+    rc=$?
+    if [ "$rc" = 2 ]; then
+        printf '    WARNING: publish check could not run (exit 2) — deploy is fine, the check is not\n'
+    else
+        printf '    WARNING: PUBLISH CHECK FAILED (exit %s). The deploy succeeded; publishing did not.\n' "$rc"
+        printf '             Investigate before relying on publish: crmbuilder-v2-publish-check\n'
+    fi
+fi
 
 printf '\nDEPLOY OK: commit %s | %s | alembic %s | %s\n' \
     "$commit" "v$version" "$head_after" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
