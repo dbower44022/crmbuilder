@@ -162,12 +162,21 @@ esac
 # failure and invite a rollback of a working system — the exact mistake REQ-480
 # fixed one step above.
 #
-# Invoked as a module, not through the console script: a deploy is an rsync of
-# the committed tree, and the droplet venv has no pip/uv to regenerate entry
-# points, so .venv/bin/crmbuilder-v2-publish-check will not exist there. The
-# module always will.
+# Run from HERE, not on the droplet, for two reasons. The droplet's environment
+# file holds no API token and the service runs with principal auth enabled, so a
+# check invoked there could only ever report "cannot authenticate" — and issuing
+# it a token would add a credential to rotate for the sake of a health check,
+# which is the shape DEC-914 declined. This machine already has the token the
+# desktop uses. Going through the public URL rather than the droplet's loopback
+# also exercises Caddy and the auth middleware, which is the path a real caller
+# takes.
+#
+# Invoked as a module rather than the console script so a venv that has not been
+# reinstalled since this entry point was added still runs it.
 say "7/7 Publish check (validate-only, writes nothing)"
-if rssh "cd $DEST && $REMOTE_PY -m crmbuilder_v2.publish.check --base-url http://127.0.0.1:8765"; then
+LOCAL_PY="$(git rev-parse --show-toplevel)/.venv/bin/python"
+[ -x "$LOCAL_PY" ] || LOCAL_PY="python3"
+if "$LOCAL_PY" -m crmbuilder_v2.publish.check; then
     echo "    publish path: healthy"
 else
     rc=$?
