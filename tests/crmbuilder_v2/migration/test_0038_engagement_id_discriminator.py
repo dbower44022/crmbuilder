@@ -141,6 +141,10 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "association_mappings",
         # PI-201 (PRJ-027) the per-instance deploy config (migration 0098).
         "instance_deploy_configs",
+        # PI-094 the participant entity (migration 0105). Scoped in the model and
+        # NOT NULL VARCHAR(32) in the live store; it was simply never recorded
+        # here, which failed both tests on main until 2026-08-10.
+        "participants",
     }
 )
 
