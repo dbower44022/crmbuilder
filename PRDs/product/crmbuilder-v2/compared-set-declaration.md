@@ -25,6 +25,7 @@ carried on the design records themselves (REQ-490); PI-409 materializes them fro
 | `seq` | order-**sensitive** sequence equality |
 | `map` | key-wise comparison, key order irrelevant |
 | `canonical` | normalize to a canonical form, then compare (semantic, not textual) |
+| `mapped` | translate the design's engine-neutral value to its engine equivalent, then compare |
 | `join-key` | not an attribute comparison — this is the identity used to match design to instance |
 | `—` | not compared |
 
@@ -60,7 +61,7 @@ would hide a real divergence. Any attribute needing the opposite policy says so.
 |---|---|---|---|
 | `field_identifier` | no | — | design's own ID |
 | `field_name` | identity | `join-key` | |
-| `field_type` | yes | `exact` | already special-cased as a type conflict |
+| `field_type` | yes | `mapped` | **neutral→engine mapping first** — see below |
 | `field_required` | yes | `bool` | |
 | `field_read_only` | yes | `bool` | |
 | `field_unique` | yes | `bool` | |
@@ -82,6 +83,13 @@ would hide a real divergence. Any attribute needing the opposite policy says so.
 | `field_externally_populated` ⚑ | **no** | — | see contested set |
 | `field_derived_result_type` | no | — | design-side derivation metadata |
 | `field_previous_parent_entity_identifier` | no | — | design bookkeeping |
+
+**`field_type` must not compare textually.** The design stores engine-neutral types
+and EspoCRM stores engine types: `boolean`→`bool`, `long_text`→`text`, `text`→`varchar`.
+Verified against the live CBM test instance 2026-08-22 — comparing these by `==` would
+report drift on essentially every field of every entity, permanently. The comparison
+must run the design value through the adapter's neutral→engine mapping first, then
+compare. Any neutral type with no mapping is an `unknown` outcome, never a match.
 
 **Enum options** are carried by the `FieldOption` child collection, not a column.
 Compared as `set` over `(value, effective-label)` — order-insensitive, per REQ-442,
