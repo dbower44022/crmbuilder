@@ -438,6 +438,13 @@ count as step failures (they are platform constraints, not deployment
 errors). The operator configures these manually via the EspoCRM admin
 UI before the deployment is considered complete.
 
+**The disposition of these three is under governed change** — read the DB, not
+this file. Saved views are now captured-in-the-design but deliberately not applied
+or compared, so they must stop emitting a manual-config instruction; duplicate checks
+stay compared because they are behavioural and detectable through read-only metadata;
+workflows are compared but not yet applied. The engine behaviour described above is
+still current because the implementing work is unbuilt.
+
 This was originally a bug — `EspoAdminClient.put_metadata()` calls a
 non-existent endpoint method (`/api/v1/Metadata` accepts GET only;
 there is no PUT/POST/PATCH). It was rerouted to the short-circuit path
@@ -659,7 +666,11 @@ limitation.
   it is destructive. Use `upgrade_ssh.phase3_run_upgrade` which calls
   the EspoCRM CLI upgrader inside the container
 - Do not store secrets in plaintext columns — route through
-  `automation/core/secrets.py` (keyring-backed) and store opaque refs
+  `automation/core/secrets.py` (keyring-backed) and store opaque refs.
+  **v2 instance credentials use a different path**: they live Fernet-encrypted
+  in the shared store via `crmbuilder_v2/secrets.py`, not the OS keyring, so
+  they resolve on a headless host (REQ-481/REQ-484). Do not reach for the
+  keyring module from v2 code
 - Do not show the Upgrade or Recovery buttons for cloud-hosted or
   bring-your-own scenarios — they cannot be SSHed into
 - Do not add new top-level directories — all deployment code lives within
