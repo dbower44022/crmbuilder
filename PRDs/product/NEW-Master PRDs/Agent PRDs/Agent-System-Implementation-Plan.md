@@ -3,13 +3,13 @@
 > **Status:** DRAFT plan, **2026-06-20**. Turns `Agent-System-Target-Model.md`
 > (decisions D1–D16) into a sequenced, governance-gated build, by diffing the
 > target against the built system (`Agent-System-Technical-Reference.md`).
->
+> 
 > **This is not authorization to build.** Per the repo `CLAUDE.md`
 > ("governance is a precondition"), every phase below needs — *before any code* —
 > a **confirmed requirement** (human-approved via the decision path) and an
 > **implementing PI** inside a project. This plan **proposes** those; it does not
 > create them. §6 maps each phase to the requirement/PI it needs.
->
+> 
 > **Companion docs (same folder):** the **target** is `Agent-System-Target-Model.md`;
 > the **built reality** is `Agent-System-Technical-Reference.md`.
 
@@ -41,26 +41,26 @@
 Action key: **REUSE** (keep as-is) · **EXTEND** (add to) · **CHANGE** (alter
 behavior) · **NEW** (build from scratch).
 
-| Target component | Built today | Action |
-|---|---|---|
-| "scheduler" naming | code is literally `*_runtime.py` in `runtime/` | **CHANGE** (rename) |
-| Uniform task contract (status vocab + persisted outputs) | heterogeneous statuses/results across tasks | **CHANGE** (refactor to a common interface) |
-| Reconciliation (Demands Agent + merge + conflicts) | exists | **REUSE** |
-| Persist the reconciled change-set | re-derived on demand, not stored | **NEW** (small) |
-| Reconciliation Review (human task) | deterministic gate, no review task | **NEW** |
-| Architecture-Planning (designs + decompose + sequence) | exists | **REUSE** |
-| Architecture-Planning Review (human task) | deterministic gate, no review task | **NEW** |
-| Release Scheduler **monitor** + single-occupancy arbitration | pointed at one release; single-occupancy gate exists, no scan | **EXTEND** |
-| Freeze gate: not-all-PIs-ready = ready-or-**explicitly-deferred** | defers not-ready PIs (no explicit human action) | **CHANGE** |
-| Per-area **Design** task (WHAT/HOW split → implementation + testable spec) | no per-area design; no testable-spec artifact | **NEW** (big) |
-| Design Review (consolidated human task) | none | **NEW** |
-| Per-area **Develop** Agents | one **generic** Coding Agent for all areas | **CHANGE** (big) |
-| Per-area **Test** Agents (blind, independent) | tests written by the coding agent (not blind) | **NEW** (big) |
-| Two-level testing (per-area + release gates) | release-level QA/Test gates only | **EXTEND** |
-| Registry catalog of 31 per-`(area,tier)` profiles | 5 profiles seeded | **EXTEND** |
-| QA gate + Test gate (Release-gate Agent) | exists | **REUSE** |
-| Ship Approval (human gate) | deployment→shipped, no human sign-off | **NEW** |
-| Substrate: repos, reconciliation engine, versioning spine, locks, coordination, reopen, registry resolver/lifecycle, migration lock | exist | **REUSE** |
+| Target component                                                                                                                    | Built today                                                   | Action                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------- |
+| "scheduler" naming                                                                                                                  | code is literally `*_runtime.py` in `runtime/`                | **CHANGE** (rename)                         |
+| Uniform task contract (status vocab + persisted outputs)                                                                            | heterogeneous statuses/results across tasks                   | **CHANGE** (refactor to a common interface) |
+| Reconciliation (Demands Agent + merge + conflicts)                                                                                  | exists                                                        | **REUSE**                                   |
+| Persist the reconciled change-set                                                                                                   | re-derived on demand, not stored                              | **NEW** (small)                             |
+| Reconciliation Review (human task)                                                                                                  | deterministic gate, no review task                            | **NEW**                                     |
+| Architecture-Planning (designs + decompose + sequence)                                                                              | exists                                                        | **REUSE**                                   |
+| Architecture-Planning Review (human task)                                                                                           | deterministic gate, no review task                            | **NEW**                                     |
+| Release Scheduler **monitor** + single-occupancy arbitration                                                                        | pointed at one release; single-occupancy gate exists, no scan | **EXTEND**                                  |
+| Freeze gate: not-all-PIs-ready = ready-or-**explicitly-deferred**                                                                   | defers not-ready PIs (no explicit human action)               | **CHANGE**                                  |
+| Per-area **Design** task (WHAT/HOW split → implementation + testable spec)                                                          | no per-area design; no testable-spec artifact                 | **NEW** (big)                               |
+| Design Review (consolidated human task)                                                                                             | none                                                          | **NEW**                                     |
+| Per-area **Develop** Agents                                                                                                         | one **generic** Coding Agent for all areas                    | **CHANGE** (big)                            |
+| Per-area **Test** Agents (blind, independent)                                                                                       | tests written by the coding agent (not blind)                 | **NEW** (big)                               |
+| Two-level testing (per-area + release gates)                                                                                        | release-level QA/Test gates only                              | **EXTEND**                                  |
+| Registry catalog of 31 per-`(area,tier)` profiles                                                                                   | 5 profiles seeded                                             | **EXTEND**                                  |
+| QA gate + Test gate (Release-gate Agent)                                                                                            | exists                                                        | **REUSE**                                   |
+| Ship Approval (human gate)                                                                                                          | deployment→shipped, no human sign-off                         | **NEW**                                     |
+| Substrate: repos, reconciliation engine, versioning spine, locks, coordination, reopen, registry resolver/lifecycle, migration lock | exist                                                         | **REUSE**                                   |
 
 **The headline:** the front half and substrate are largely **REUSE/EXTEND**; the
 genuinely large build is the **per-area matrix back half** (Design/Develop/Test)
@@ -74,6 +74,7 @@ Each phase: **goal · scope · depends-on · areas touched · risk · verificati
 proposed requirement + PI.** Sizes are rough estimates (S/M/L/XL).
 
 ### Phase 0 — Foundations (enables everything) — **L**
+
 - **Goal.** Align the code with the target's vocabulary and task interface.
 - **Scope.**
   - **0a Rename `runtime → scheduler`** (`CHANGE`): modules, symbols, the
@@ -94,6 +95,7 @@ proposed requirement + PI.** Sizes are rough estimates (S/M/L/XL).
 - **Proposed:** REQ "scheduler vocabulary + uniform task contract" → PI(s) 0a, 0b.
 
 ### Phase 1 — Front-half completion — **M**
+
 - **Goal.** Bring reconciliation/architecture-planning up to the target shape.
 - **Scope.**
   - Persist the **reconciled change-set** as a durable, reviewable artifact
@@ -113,6 +115,7 @@ proposed requirement + PI.** Sizes are rough estimates (S/M/L/XL).
 - **Proposed:** REQ "human-reviewed front half + explicit defer" → PI(s).
 
 ### Phase 2 — Release Scheduler & Ship Approval — **M**
+
 - **Goal.** Make the release start/finish match the target's human-commit ends.
 - **Scope.**
   - **Release Scheduler monitor** (`EXTEND`): scan for **frozen** releases and
@@ -130,6 +133,7 @@ proposed requirement + PI.** Sizes are rough estimates (S/M/L/XL).
 - **Proposed:** REQ "release monitor + ship approval" → PI(s).
 
 ### Phase 3 — Registry catalog — **M** (prerequisite for Phase 4)
+
 - **Goal.** Populate the registry with the per-`(area,tier)` Agent profiles the
   back half resolves.
 - **Scope.** Seed the **31 per-area profiles** (§4.12 of the target): build areas
@@ -146,6 +150,7 @@ proposed requirement + PI.** Sizes are rough estimates (S/M/L/XL).
 - **Proposed:** REQ "per-area agent profile catalog" → PI(s).
 
 ### Phase 4 — The matrix back half — **XL** (the core build)
+
 - **Goal.** Replace per-PI execution with per-area Architect → Developer → Tester.
 - **Scope.**
   - **Per-area Design task** (`NEW`): scheduler fans out one Design task per
@@ -170,6 +175,7 @@ proposed requirement + PI.** Sizes are rough estimates (S/M/L/XL).
   several PIs (Design, Develop, Test, two-level wiring).
 
 ### Phase 5 — Cutover & retire — **M**
+
 - **Goal.** Make per-area the default; remove the superseded per-PI path.
 - **Scope.** Switch the scheduler's back half from per-PI to per-area by default
   (`CHANGE`); retire the generic Coding-Agent path and the built auto-defer
@@ -221,14 +227,14 @@ confirm them via the decision path, and create the implementing PI(s). The
 target-model decisions **D1–D16** are the design provenance each requirement
 traces to.
 
-| Phase | Proposed requirement (capability) | Proposed PI(s) |
-|---|---|---|
-| 0 | scheduler vocabulary + uniform task contract | 0a rename, 0b contract |
-| 1 | human-reviewed front half + explicit defer | 1 |
-| 2 | release monitor + ship approval | 2 |
-| 3 | per-area agent profile catalog | 3 |
-| 4 | per-area matrix execution | 4-Design, 4-Develop, 4-Test, 4-wiring |
-| 5 | cut over to per-area; retire per-PI | 5 |
+| Phase | Proposed requirement (capability)            | Proposed PI(s)                        |
+| ----- | -------------------------------------------- | ------------------------------------- |
+| 0     | scheduler vocabulary + uniform task contract | 0a rename, 0b contract                |
+| 1     | human-reviewed front half + explicit defer   | 1                                     |
+| 2     | release monitor + ship approval              | 2                                     |
+| 3     | per-area agent profile catalog               | 3                                     |
+| 4     | per-area matrix execution                    | 4-Design, 4-Develop, 4-Test, 4-wiring |
+| 5     | cut over to per-area; retire per-PI          | 5                                     |
 
 *(These are proposals. Creating the requirements/decisions/PIs in the V2 DB is
 the actual governance step — human-owned — and is not done by this document.)*

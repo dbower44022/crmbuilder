@@ -5,45 +5,21 @@
 > and specialists — that take a planned piece of work and carry it from an idea
 > all the way to shipped, tested code. This document explains, in plain
 > language, what those agents are and how a piece of work travels through them.
->
+> 
 > **Audience.** A smart person who knows nothing about this system.
 > **Companion:** for exact code paths, status enums, and component internals,
 > read `Agent-System-Technical-Reference.md` in this same folder.
->
+> 
 > **⚠️ Built vs. target.** This document describes the system **as built today**.
 > A separate **target redesign** — different terminology and structure — is under
 > active design in `Agent-System-Target-Model.md` (same folder). Where the two
 > differ, that doc is the *future direction*, not current reality.
->
+> 
 > **Two names you'll see a lot.** **ADO** = *Agent Delivery Organization*, the
 > org of agents that builds one planned item at a time. **Release pipeline** =
 > the bigger machine that batches many planned items into a single shipped
 > release and runs the whole org safely. The ADO sits *inside* the release
 > pipeline.
-
-> **Built vs. Target at a glance.** This Overview teaches the system **as built**.
-> The target redesign (`Agent-System-Target-Model.md`) inverts three things at
-> the structural level — keep these in mind so you don't mistake the built shape
-> for the destination:
->
-> 1. **Org shape.** Built = a four-tier hierarchy (Project Manager → PI Lead →
->    Phase Specialist → Area Specialist Agents) running one generic agent prompt.
->    Target = a per-`(area, tier)` **matrix** of named experts (e.g. *Storage
->    Developer Agent*, *API Architect Agent*); the Project-Manager and
->    Phase-Specialist *tiers dissolve* into the scheduler (an app) doing
->    deterministic area routing — "no managing Agent."
-> 2. **Task & status model.** Built = many separate lifecycles (Planning Item,
->    Workstream, Work Task, Release) plus a `needs_attention` flag. Target = one
->    **uniform task contract** (declared inputs / persisted outputs) with a single
->    status vocabulary `not_started → in_progress → succeeded | needs_human |
->    failed`; the scheduler reads only the status.
-> 3. **Where humans stand.** Built = humans plan and **freeze**, then the org runs
->    hands-off until an agent raises `needs_attention`. Target = humans also do
->    explicit **review tasks mid-pipeline** (after Reconciliation, Architecture
->    Planning, and Design) and a final **Ship Approval** (symmetric to freeze).
->
-> Everything below describes the built shape; §4 lists what is thin or partial,
-> and §5 + the target doc describe the intended direction.
 
 ---
 
@@ -102,19 +78,6 @@ programs, not job titles for staff.
 - An **Area Specialist Agent** is the agent that actually does one Work Task. Each one
   is a real AI coding agent that gets its own private copy of the codebase (a
   git "worktree"), does its one task, and its work is checked and merged in.
-
-**Two kinds of work — code and content.** Most Planning Items build *software* (the
-flow above: write code, prove it with tests, merge it). But some build *content* —
-the methodology itself: requirements, rules, glossary terms, process definitions.
-Content work runs the **same** Design → Develop → Test phases, but with content
-meanings: *Develop* means **author the records** (not write code), and *Test* means
-an **independent reviewer agent reads them and checks they're correct and complete**
-against the acceptance criteria (not run a test suite). So content Planning Items
-skip the code machinery (no private codebase copy, no commits, no merging) and go
-down a **review lane** instead — and a human still gives the final sign-off. A
-Planning Item is "content" when all its areas are methodology areas; otherwise it's
-software. (DEC-444/763/764; built in PI-202 and proven on a live content PI — see
-the Technical Reference §11.1.)
 
 **A coherence check before building.** When the Design phase finishes, the
 system pauses to look for places where the separate design decisions don't fit
@@ -240,17 +203,9 @@ Design→Develop reconciliation gate with findings, the locks, the release entit
 with its 12-state pipeline, and the registry (resolver + lifecycle). What is
 **partial or thin** today (true as of the live DB on 2026-06-20):
 
-- The registry's **surface is now complete** (as of 2026-06-27): it has a full
-  configurable desktop UI (the Agent Registry sidebar group — CRUD, bindings,
-  effective-contract preview, scope editing, learning evidence/confidence +
-  promotion + curation, and agent search), its contract now actually drives
-  spawned agents including their **tools** and run provenance, and per-agent +
-  orchestrator **identity** make `principal_auth_enabled` usable end-to-end
-  (default off). See the Technical Reference §22.5/§23/§26. What's still **thin is
-  the *content***: ~38 agent profiles, ~98 skills, ~134 rules (only ~1 enforced),
-  and just 1 learning — the "living knowledge base that gets smarter every
-  release" is now fully *operable* but still lightly *populated*, and a single
-  generic agent prompt is still string-substituted across areas.
+- The registry is built but **lightly populated** — 5 agent profiles, 23 tool
+  skills, 18 rules (only 1 enforced), and just 1 learning. The "living knowledge
+  base that gets smarter every release" is mostly *capacity*, not yet *content*.
 - The **matrix org** (per-area Architect Agent / Developer Agent / Tester Agent experts, cross-PI
   coordination, standing learning experts) is the **design direction**
   (`agent-delivery-organization-evolution.md`); the *built* scheduler still drives
@@ -264,55 +219,7 @@ The Technical Reference marks each component "verified in code" vs "designed."
 
 ---
 
-## 5. Planned hardening — the SES-216 architecture walk (designed, pending approval)
-
-> **Status:** design direction only. The requirements below are **candidate /
-> awaiting human approval** in the Requirements Review panel; **nothing here is
-> built.** The authoritative records live in the V2 database — topics **TOP-099**
-> ("Release Pipeline Agent Guardrails") and **TOP-100** ("Pipeline Observability
-> and Progress Reporting") — not in this doc. Full narrative:
-> `Archive/agent-pipeline-annotated-map.md`. This complements the broader
-> `Agent-System-Target-Model.md` (same folder), which is designing the same
-> direction from first principles.
-
-A structured walk of the *running* pipeline — prompted by the costly REL-005 run,
-which spent roughly two hours and ~$40 rebuilding work that was already shipped —
-traced, agent by agent, *why* it went wrong, and turned the findings into
-requirements. The thrust, in plain language:
-
-- **Strict, database-stored contracts (REQ-278).** Every agent's instruction
-  sheet must be a *strict* job card — its role and hard limits, a checkable
-  definition of "done," and a required end-of-run report — and it must match what
-  the agent actually does. Today the cards are generic and advisory.
-- **Hard, area-specific rules + technology variants (REQ-280, REQ-281).** A
-  screen agent and a database agent must carry *different* enforced rules
-  (framework, design-and-color, conventions, tests); and one area (e.g. the UI)
-  must support more than one technology — a desktop UI *and* a web UI — as
-  distinct agents, even within a single customer.
-- **Stop-and-check guardrails (REQ-265…276).** Don't plan or build work that is
-  already shipped; check before starting (and stop if it's already done); commit
-  before verifying; verify within a time budget; and give every agent a real
-  "halt and ask a human" exit.
-- **Verify every handoff (REQ-279).** A receiving agent validates the inputs it
-  was handed before starting, instead of trusting them blindly.
-- **One area, one batch (REQ-283).** An Area Specialist Agent builds *all* of its
-  area's work for a phase in one go, across the whole release — not a fresh agent
-  per tiny Work Task — so context loads once and the agent sequences its own
-  steps. (This amends the older per-item split, REQ-024, and lifts the coherence
-  check to release scope, REQ-027/031.)
-- **Real observability (REQ-277).** One durable, queryable record of where a
-  release is and how it got there — replacing today's scatter of database
-  statuses, vanishing console output, and per-agent transcript files.
-
-The single sharpest finding: the system already contains one *excellent* example
-of how an agent gate should work — the release QA/Test gate, with its
-deterministic "fail-closed floor" plus grounded judgment plus structured
-findings. Most of the redesign is **propagating that one good pattern down** to
-the levels that were built without it.
-
----
-
-## 6. Glossary (every term, explained as if to a five-year-old)
+## 5. Glossary (every term, explained as if to a five-year-old)
 
 Ordered so you can read top to bottom: the big ideas first, then the org, then
 the named "things" (entities), then the verbs and the safety mechanisms. An
@@ -489,22 +396,22 @@ front and step back in when an agent asks for help via `needs_attention`.)*
 
 ### Alphabetical index of acronyms
 
-| Acronym | Means | One-liner |
-|---|---|---|
-| **ADO** | Agent Delivery Organization | The org of robot helpers that builds a Planning Item. |
-| **AGP** | Agent profile | One agent's job description in the registry. |
-| **FND** | Finding | A sticky-note: a clash or gap in the plans. |
-| **GVR** | Governance rule | A rule an agent must follow (advice or hard). |
-| **LRN** | Learning | A lesson agents remembered from real work. |
-| **PI** | Planning Item | One unit of work inside a project. |
-| **PM** | Project Manager Agent | The boss who picks the next Planning Item. |
-| **PRJ** | Project | A big long-running theme of work. |
-| **QA** | Quality Assurance | The gate checking the design covers everything. |
-| **REL** | Release | A bundle of finished Planning Items that ship together. |
-| **SKL** | Skill | Something an agent knows or a tool it may use. |
-| **WSK** | Workstream | The record for one phase (Design/Develop/Test) of a Planning Item. |
-| **WT** | Work Ticket | A note that kicks off a work session. |
-| **WTK** | Work Task | One tiny single-topic to-do an Area Specialist Agent claims. |
+| Acronym | Means                       | One-liner                                                          |
+| ------- | --------------------------- | ------------------------------------------------------------------ |
+| **ADO** | Agent Delivery Organization | The org of robot helpers that builds a Planning Item.              |
+| **AGP** | Agent profile               | One agent's job description in the registry.                       |
+| **FND** | Finding                     | A sticky-note: a clash or gap in the plans.                        |
+| **GVR** | Governance rule             | A rule an agent must follow (advice or hard).                      |
+| **LRN** | Learning                    | A lesson agents remembered from real work.                         |
+| **PI**  | Planning Item               | One unit of work inside a project.                                 |
+| **PM**  | Project Manager Agent       | The boss who picks the next Planning Item.                         |
+| **PRJ** | Project                     | A big long-running theme of work.                                  |
+| **QA**  | Quality Assurance           | The gate checking the design covers everything.                    |
+| **REL** | Release                     | A bundle of finished Planning Items that ship together.            |
+| **SKL** | Skill                       | Something an agent knows or a tool it may use.                     |
+| **WSK** | Workstream                  | The record for one phase (Design/Develop/Test) of a Planning Item. |
+| **WT**  | Work Ticket                 | A note that kicks off a work session.                              |
+| **WTK** | Work Task                   | One tiny single-topic to-do an Area Specialist Agent claims.       |
 
 ---
 
@@ -514,6 +421,7 @@ This overview was reconciled against code and the live database, not just the
 design docs. Drawn from:
 
 **Code (ground truth):**
+
 - `crmbuilder-v2/src/crmbuilder_v2/scheduler/` — `ado_scheduler.py`,
   `coordinating_scheduler.py`, `parallel_scheduler.py`, `release_scheduler.py`,
   `dispatcher.py`, `migration_lock.py`, `reconciliation.py`, `release_gate.py`,
