@@ -999,6 +999,16 @@ class Field(EngagementScopedPKMixin, Base):
     field_default_value: Mapped[str | None] = mapped_column(Text, nullable=True)
     field_format: Mapped[str | None] = mapped_column(Text, nullable=True)
     field_numeric_scale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # PI-414 — the four qualifying properties the field vocabulary gained so it
+    # can describe any CRM's fields without loss (REQ-508/510/512/514). Like
+    # ``field_format`` above they are nullable Text validated against their
+    # vocabulary at the access layer rather than by a database CHECK, following
+    # the intrinsic-attribute precedent set in PI-182; only ``field_type`` and
+    # ``field_status`` carry CHECKs on this table.
+    field_display: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_values: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_holds: Mapped[str | None] = mapped_column(Text, nullable=True)
+    field_supplied_by: Mapped[str | None] = mapped_column(Text, nullable=True)
     field_max_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
     field_min: Mapped[str | None] = mapped_column(Text, nullable=True)
     field_max: Mapped[str | None] = mapped_column(Text, nullable=True)

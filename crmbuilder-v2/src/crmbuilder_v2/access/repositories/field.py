@@ -73,11 +73,15 @@ from crmbuilder_v2.access.models import Entity, Field, FieldOption, Reference
 from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     DERIVED_RESULT_TYPES,
+    FIELD_DISPLAYS,
     FIELD_FORMATS,
+    FIELD_HOLDS,
     FIELD_NUMERIC_SCALES,
     FIELD_STATUS_TRANSITIONS,
     FIELD_STATUSES,
+    FIELD_SUPPLIED_BY,
     FIELD_TYPES,
+    FIELD_VALUES,
 )
 
 _ENTITY_TYPE = "field"
@@ -100,6 +104,12 @@ _INTRINSIC_COLUMN_BY_KWARG: dict[str, str] = {
     "default_value": "field_default_value",
     "format": "field_format",
     "numeric_scale": "field_numeric_scale",
+    # PI-414 — the four qualifying properties (REQ-508/510/512/514). Each is
+    # enum-validated against its vocabulary, like ``format`` above.
+    "display": "field_display",
+    "values": "field_values",
+    "holds": "field_holds",
+    "supplied_by": "field_supplied_by",
     "max_length": "field_max_length",
     "min": "field_min",
     "max": "field_max",
@@ -113,6 +123,16 @@ _INTRINSIC_COLUMN_BY_KWARG: dict[str, str] = {
 _INTRINSIC_BOOL_KWARGS = frozenset(
     {"read_only", "unique", "externally_populated"}
 )
+
+# PI-414 — the qualifying properties added with the expressive field vocabulary,
+# each validated against its own vocabulary when present. Kept as a map rather
+# than four branches so a fifth property is a one-line addition.
+_INTRINSIC_ENUM_VOCAB: dict[str, frozenset[str]] = {
+    "display": FIELD_DISPLAYS,
+    "values": FIELD_VALUES,
+    "holds": FIELD_HOLDS,
+    "supplied_by": FIELD_SUPPLIED_BY,
+}
 
 # PRJ-025 PI-197 (design §7/§9, DEC-438) — derived/formula kwargs. These
 # carry cross-field semantics (gated on the effective ``field_type``) so
@@ -237,6 +257,11 @@ def _coerce_intrinsic(kwarg: str, value: object) -> object:
     if kwarg == "numeric_scale":
         return _require_enum_or_none(
             value, FIELD_NUMERIC_SCALES, "field_numeric_scale"
+        )
+    if kwarg in _INTRINSIC_ENUM_VOCAB:
+        vocab = _INTRINSIC_ENUM_VOCAB[kwarg]
+        return _require_enum_or_none(
+            value, vocab, _INTRINSIC_COLUMN_BY_KWARG[kwarg]
         )
     if kwarg == "max_length":
         return _coerce_int_or_none(value, "field_max_length")

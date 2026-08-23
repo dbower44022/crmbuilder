@@ -56,6 +56,14 @@ _EXPECTED_COLUMNS = {
     # PI-374 — foreign-field mirror coordinates (link + target field).
     "field_foreign_link": "TEXT",
     "field_foreign_target": "TEXT",
+    # PI-414 — the four qualifying properties the expressive field vocabulary
+    # gained (REQ-508/510/512/514). Nullable Text like the other intrinsics,
+    # validated against their vocabulary at the access layer rather than by a
+    # CHECK on this table.
+    "field_display": "TEXT",
+    "field_values": "TEXT",
+    "field_holds": "TEXT",
+    "field_supplied_by": "TEXT",
     "field_previous_parent_entity_identifier": "VARCHAR",
     "field_created_at": "DATETIME",
     "field_updated_at": "DATETIME",

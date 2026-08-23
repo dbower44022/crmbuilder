@@ -89,6 +89,25 @@ SURVIVES_TODAY: frozenset[str] = frozenset({
 #: relationship — so it will drop out of this set rather than be fixed in it.
 NOT_EMITTED_TODAY: frozenset[str] = frozenset({"derived", "foreign", "reference"})
 
+#: Kinds the design can express that the EspoCRM adapter cannot yet produce.
+#: Each has a genuine EspoCRM counterpart — ``address``, ``personName``, ``map``,
+#: ``file``, ``jsonObject`` — so these are unfinished work, not engine limits,
+#: and the set should empty as the emitter is taught them. Declaring the kinds
+#: before the adapter can build them is deliberate: the vocabulary is settled
+#: first (DEC-934, DEC-936), the adapters follow.
+AWAITING_EMITTER: frozenset[str] = frozenset({
+    "postal_address", "person_name", "place", "file", "structured_data",
+})
+
+#: Kinds EspoCRM genuinely cannot hold, however much work is done. EspoCRM has no
+#: plain time-of-day type — its 46 types include ``datetime`` and
+#: ``datetimeOptional`` but nothing for a time alone — so a design that says
+#: ``time`` has no faithful EspoCRM rendering. This is the declared exception
+#: REQ-502 requires: the translation must say what is lost rather than
+#: substitute a near equivalent, and a per-CRM not-comparable declaration
+#: (DEC-930) follows for it.
+ENGINE_CANNOT_HOLD: frozenset[str] = frozenset({"time"})
+
 
 def _round_trip_engine(espo_type: str) -> tuple[str, str | None]:
     """Return ``(design_kind, engine_type_returned)`` for one engine type.
@@ -162,14 +181,72 @@ def test_the_silent_fallback_is_what_hides_the_loss():
 
 @pytest.mark.parametrize("kind", sorted(FIELD_TYPES))
 def test_design_kind_round_trip(kind: str):
-    """Every design kind either survives, or is one that never reaches the engine."""
+    """Every design kind survives, or is accounted for in exactly one category.
+
+    The three categories are not interchangeable and the distinction is the
+    point. A kind that leaves the field vocabulary is settled. A kind waiting on
+    the emitter is unfinished work with a known destination. A kind the engine
+    cannot hold at all is a declared exception that will never close — and under
+    REQ-502 the translation has to say so rather than quietly substitute
+    something near it.
+    """
     engine, returned = _round_trip_design({"field_type": kind})
-    if kind in NOT_EMITTED_TODAY:
-        assert engine is None, f"{kind!r} now emits {engine!r} — update NOT_EMITTED_TODAY"
+    if kind in NOT_EMITTED_TODAY | AWAITING_EMITTER | ENGINE_CANNOT_HOLD:
+        assert engine is None, (
+            f"{kind!r} now emits {engine!r} — it is recorded as not reaching the "
+            f"engine, so move it out of that set and say why"
+        )
         return
     assert returned == kind, (
         f"design kind {kind!r} emitted as {engine!r} and returned as {returned!r}"
     )
+
+
+def test_the_categories_do_not_overlap_and_cover_what_they_claim():
+    """A kind belongs to exactly one category, and every kind is accounted for.
+
+    Without this, a kind could sit in two sets and its real status would depend
+    on which one was read first.
+    """
+    assert not NOT_EMITTED_TODAY & AWAITING_EMITTER
+    assert not NOT_EMITTED_TODAY & ENGINE_CANNOT_HOLD
+    assert not AWAITING_EMITTER & ENGINE_CANNOT_HOLD
+    accounted = NOT_EMITTED_TODAY | AWAITING_EMITTER | ENGINE_CANNOT_HOLD
+    assert accounted <= FIELD_TYPES, "a category names a kind the design does not have"
+
+
+def test_every_kind_awaiting_the_emitter_has_an_espocrm_counterpart():
+    """The distinction between unfinished work and an engine limit must be real.
+
+    Each kind in :data:`AWAITING_EMITTER` is claimed to have somewhere to go in
+    EspoCRM. If one does not, it belongs in :data:`ENGINE_CANNOT_HOLD` instead,
+    and calling it unfinished work would be a standing false promise.
+    """
+    counterparts = {
+        "postal_address": "address",
+        "person_name": "personName",
+        "place": "map",
+        "file": "file",
+        "structured_data": "jsonObject",
+    }
+    assert set(counterparts) == set(AWAITING_EMITTER)
+    for kind, espo_type in counterparts.items():
+        assert espo_type in ESPOCRM_FIELD_TYPES, (
+            f"{kind!r} is recorded as awaiting the emitter, but EspoCRM has no "
+            f"{espo_type!r} — it belongs in ENGINE_CANNOT_HOLD"
+        )
+
+
+def test_a_time_of_day_has_no_espocrm_counterpart():
+    """The one declared exception, verified against the engine's own type list.
+
+    EspoCRM carries ``datetime`` and ``datetimeOptional`` but nothing for a time
+    alone, so a design that says ``time`` cannot be rendered faithfully. Pinned
+    so the exception rests on the engine's inventory rather than on memory.
+    """
+    assert "time" not in ESPOCRM_FIELD_TYPES
+    assert "datetime" in ESPOCRM_FIELD_TYPES
+    assert ENGINE_CANNOT_HOLD == {"time"}
 
 
 # ---------------------------------------------------------------------------

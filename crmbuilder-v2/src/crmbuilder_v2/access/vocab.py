@@ -256,6 +256,24 @@ FIELD_TYPES: frozenset[str] = frozenset(
         # (REQ-435 / PI-374). Its mirrored value-type, when known, is carried in
         # ``field_derived_result_type``.
         "foreign",
+        # PI-414 kinds. Values made of several fixed parts, described as one
+        # field rather than one field per part (REQ-509 / DEC-934) — the CRM
+        # builds an address as a single field, so describing it as five would
+        # report five things missing and one extra on every instance.
+        "postal_address",
+        "person_name",
+        "place",
+        # Kinds the vocabulary simply lacked (REQ-511 / DEC-936). Without these
+        # an attachment, a time of day or a structured value read from a CRM
+        # fell through the translation table and was recorded as plain text.
+        # An image is ``file`` with an ``image`` format; a length of time is
+        # ``number`` with a ``duration`` format.
+        "file",
+        "time",
+        "structured_data",
+        # ``multi_enum`` is retired by DEC-937 — a multi-select is ``enum`` that
+        # holds several. It stays here until the 21 design fields still using it
+        # are converted; removing it is the subtractive half of the schema work.
     }
 )
 
@@ -275,8 +293,61 @@ FIELD_FORMATS: frozenset[str] = frozenset(
         "date",
         "datetime",
         "time",
+        # ``multiline`` moves to FIELD_DISPLAYS under DEC-933 — it says how a
+        # field is shown, not what sort of value it holds. It stays here until
+        # the subtractive half of the schema work, so nothing breaks meanwhile.
         "multiline",
+        # PI-414 additions (DEC-936, DEC-939). Each says what sort of value a
+        # field holds beyond its kind: an image is a ``file`` in this format, a
+        # length of time is a ``number`` in this one, and a secret is text that
+        # must never be built as an ordinary field (REQ-515).
+        "image",
+        "duration",
+        "secret",
+        "colour",
+        # A date-and-time whose time part may be absent (EspoCRM
+        # ``datetimeOptional``) — an all-day event rather than a timed one.
+        "time_optional",
     }
+)
+
+# PI-414 (REQ-508 / DEC-933) — how a field is shown, as distinct from what sort
+# of value it holds. The two were one property before, which is why nothing
+# stopped a field being declared both an email address and a tick-list. HubSpot
+# splits its properties the same way, independently: what the value is, and how
+# it appears. Nullable; validated only when present.
+FIELD_DISPLAYS: frozenset[str] = frozenset(
+    {
+        "multiline",
+        "rich_text",
+        "tick_list",
+        "radio",
+        "barcode",
+        # A low-to-high range over the field's own kind, so a range of numbers
+        # and a range of money need no kinds of their own (DEC-934).
+        "range",
+    }
+)
+
+# PI-414 (REQ-510 / DEC-935) — how constrained a field's permitted values are.
+# ``fixed`` admits only the values listed, ``open`` admits any value and carries
+# no list, ``suggested`` admits the listed values and any other. A choice whose
+# stored values are numbers is the ``number`` kind with ``fixed`` values, needing
+# no kind of its own. A ``fixed`` field listing no options is drift, not an empty
+# set (REQ-516 / DEC-940).
+FIELD_VALUES: frozenset[str] = frozenset({"fixed", "open", "suggested"})
+
+# PI-414 (REQ-512 / DEC-937) — whether a field holds one value or several. Any
+# kind may state it, which is what lets several attachments and several web
+# addresses be described at all, and what retires ``multi_enum`` as a kind: a
+# multi-select is ``enum`` that holds several.
+FIELD_HOLDS: frozenset[str] = frozenset({"one", "several"})
+
+# PI-414 (REQ-514 / DEC-939) — who provides a field's value. Replaces the
+# unused ``field_externally_populated`` flag, which could say only that some
+# outside system filled a field and never that the CRM numbered it itself.
+FIELD_SUPPLIED_BY: frozenset[str] = frozenset(
+    {"person", "this_crm", "another_system"}
 )
 
 # Engine-neutral numeric scale (PRJ-025 PI-182, design §5/§7). Carried on
