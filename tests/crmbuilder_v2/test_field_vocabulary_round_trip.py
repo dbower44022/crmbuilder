@@ -13,14 +13,24 @@ check that measures it.
   qualifying properties. A kind that comes back as something else did not
   survive either.
 
-**Today it fails, and that is the point.** Nine of EspoCRM's forty-six field
-types survive; thirty-seven do not. An email address, a phone number and a web
-address all collapse into plain text and return as ``varchar``. Rich text
-returns as plain multi-line text. Every type the translation table does not
-recognise — an attachment, an image, a duration, a colour, a barcode, a postal
-address, structured data — falls through to text and returns as ``varchar``,
-silently. That silent fallback is why the gap was invisible from reading the
-code, and why REQ-503 replaces it with an unrecognized outcome.
+**Today it fails, and that is the point.** Thirteen of EspoCRM's forty-six field
+types survive; thirty-three do not. Rich text returns as plain multi-line text.
+Every type the translation table does not recognise — an attachment, an image, a
+duration, a colour, a barcode, a postal address, structured data — falls through
+to text and returns as ``varchar``, silently. That silent fallback is why the gap
+was invisible from reading the code, and why REQ-503 replaces it with an
+unrecognized outcome.
+
+It was nine when this check was first written. Reading the two qualifying
+properties the design already stored but never filled — the format that separates
+an email address, a phone number and a web address from plain text, and the scale
+that separates a decimal from a whole number — moved four types from lost to
+surviving without a single new word entering the vocabulary.
+
+**The round trip runs through the whole field, not just its type.** ``varchar``
+and ``email`` are the same neutral kind and are told apart only by the format, so
+a check that compared kinds alone would measure the wrong thing and could never
+record an improvement.
 
 The surviving set is frozen in :data:`SURVIVES_TODAY` rather than asserted
 loosely, so this check does two jobs at once: it fails if a type that used to
@@ -42,6 +52,7 @@ from __future__ import annotations
 import pytest
 from crmbuilder_v2.access.vocab import FIELD_TYPES
 from crmbuilder_v2.adapters.espocrm.model import _map_field_type as emit_type
+from crmbuilder_v2.introspect.reconcile import _audited_field_attrs
 from crmbuilder_v2.introspect.reconcile import _map_field_type as capture_type
 
 #: Every field type EspoCRM declares, one per file in
@@ -61,11 +72,15 @@ ESPOCRM_FIELD_TYPES: tuple[str, ...] = (
 )
 
 #: The EspoCRM types that survive engine → design → engine unchanged, as of
-#: 2026-08-23. Nine of forty-six. Update this deliberately, naming the ruling
-#: that changed it — never to make a failing run pass.
+#: 2026-08-23. Thirteen of forty-six. Update this deliberately, naming the change
+#: that moved it — never to make a failing run pass.
+#:
+#: History: nine at the baseline. ``email``, ``phone``, ``url`` and ``float``
+#: joined when the reader began recording the format and numeric scale it had
+#: always been able to derive but never wrote (PI-414 / REQ-501).
 SURVIVES_TODAY: frozenset[str] = frozenset({
-    "bool", "currency", "date", "datetime", "enum", "int", "multiEnum",
-    "text", "varchar",
+    "bool", "currency", "date", "datetime", "email", "enum", "float", "int",
+    "multiEnum", "phone", "text", "url", "varchar",
 })
 
 #: Design kinds that do not reach the engine at all: the emitter returns no type
@@ -76,9 +91,14 @@ NOT_EMITTED_TODAY: frozenset[str] = frozenset({"derived", "foreign", "reference"
 
 
 def _round_trip_engine(espo_type: str) -> tuple[str, str | None]:
-    """Return ``(design_kind, engine_type_returned)`` for one engine type."""
-    kind = capture_type(espo_type)
-    return kind, emit_type({"field_type": kind})
+    """Return ``(design_kind, engine_type_returned)`` for one engine type.
+
+    Reads the whole field, not just its type: ``varchar`` and ``email`` share a
+    neutral kind and are separated only by the format the reader derives, so
+    comparing kinds alone would measure the wrong thing.
+    """
+    audited = _audited_field_attrs({"type": espo_type})
+    return audited["field_type"], emit_type(audited)
 
 
 def _round_trip_design(field_row: dict) -> tuple[str | None, str | None]:
@@ -116,7 +136,7 @@ def test_engine_type_round_trip_matches_the_frozen_baseline(espo_type: str):
 
 
 def test_the_survival_rate_is_recorded_not_assumed():
-    """Nine of forty-six. The number is the point; it should climb deliberately."""
+    """Thirteen of forty-six. The number is the point; it should climb deliberately."""
     survivors = {t for t in ESPOCRM_FIELD_TYPES if _round_trip_engine(t)[1] == t}
     assert survivors == SURVIVES_TODAY
 
@@ -157,36 +177,40 @@ def test_design_kind_round_trip(kind: str):
 # ---------------------------------------------------------------------------
 
 
-def test_format_reaches_the_engine_but_does_not_come_back():
-    """A format refines the emitted type, and the reading loses it again.
+def test_format_survives_the_round_trip_in_both_directions():
+    """The asymmetry REQ-501 exists to remove, now closed for these three.
 
-    This is the asymmetry REQ-501 exists to remove: the design can say a field
-    is an email address and the CRM will build one, but reading that CRM back
-    yields a design that no longer knows. It is also why the format property is
-    empty on all 254 CBM design fields — nothing ever writes it.
+    The emitter always refined a text field to the richer engine type from its
+    format; the reader never wrote one back, so a design could build an email
+    field and then fail to recognise it. Both halves now hold, which is why the
+    format property being empty on all 254 CBM design fields is a backfill
+    question rather than a missing capability.
     """
     for fmt, expected_engine in (("email", "email"), ("phone", "phone"), ("url", "url")):
-        row = {"field_type": "text", "field_format": fmt}
-        engine, returned = _round_trip_design(row)
-        assert engine == expected_engine, f"format {fmt!r} did not refine the type"
+        engine, returned = _round_trip_design({"field_type": "text", "field_format": fmt})
+        assert engine == expected_engine, f"format {fmt!r} did not refine the emitted type"
         assert returned == "text", "the returned kind should still be text"
-        # The kind survives; the format does not, because nothing reads it back.
+        assert _audited_field_attrs({"type": engine})["field_format"] == fmt, (
+            f"the reader lost the {fmt!r} format on the way back"
+        )
 
 
-def test_numeric_scale_reaches_the_engine_but_does_not_come_back():
-    """The same asymmetry for whole versus decimal numbers.
+def test_numeric_scale_survives_the_round_trip_in_both_directions():
+    """Whole versus decimal numbers, the one loss that changed a field's value.
 
-    A decimal number emits as ``float`` and returns as the ``number`` kind with
-    no scale, so a second emit produces ``int`` — the round trip changes the
-    field. This is the one loss in this module that is a *silent value change*
-    rather than a lost distinction.
+    A decimal used to emit as ``float``, return as the ``number`` kind with no
+    scale, and emit again as ``int`` — the round trip silently turned a decimal
+    into a whole number. Reading the scale back closes it.
     """
-    decimal = {"field_type": "number", "field_numeric_scale": "decimal"}
-    engine, returned = _round_trip_design(decimal)
-    assert engine == "float"
-    assert returned == "number"
-    # Second pass, with the scale no longer known:
-    assert emit_type({"field_type": returned}) == "int"
+    for scale, expected_engine in (("decimal", "float"), ("integer", "int")):
+        row = {"field_type": "number", "field_numeric_scale": scale}
+        engine, returned = _round_trip_design(row)
+        assert engine == expected_engine
+        assert returned == "number"
+        read_back = _audited_field_attrs({"type": engine})
+        assert read_back["field_numeric_scale"] == scale
+        # The second pass now reproduces the same engine type, not int-by-default.
+        assert emit_type(read_back) == expected_engine
 
 
 def test_report(capsys):

@@ -154,6 +154,31 @@ _FIELD_TYPE_MAP: dict[str, str] = {
 }
 
 
+# EspoCRM concrete field type -> the neutral ``field_format`` that records what
+# sort of value it holds beyond its kind (PI-414 / REQ-501, DEC-933). These three
+# are the reason ``varchar``, ``email``, ``phone`` and ``url`` all collapse onto
+# neutral ``text``: the kind is genuinely the same, and the format is what tells
+# them apart. The emitter has always refined ``varchar`` back to the richer type
+# from this same property — it was only the reading that dropped it, which is why
+# the round trip lost three types and why the property is empty on every design
+# field. DEC-933 trims format to these value-kind meanings; the display-only
+# values it drops were never read here anyway.
+_FIELD_FORMAT_MAP: dict[str, str] = {
+    "email": "email",
+    "phone": "phone",
+    "url": "url",
+}
+
+# EspoCRM concrete field type -> neutral ``field_numeric_scale``. Both map onto
+# neutral ``number``, so without the scale a decimal read from an instance
+# renders back as a whole number — a round trip that changes the field rather
+# than merely losing a distinction (PI-414 / REQ-501).
+_FIELD_NUMERIC_SCALE_MAP: dict[str, str] = {
+    "int": "integer",
+    "float": "decimal",
+}
+
+
 def is_unmapped_field_type(espo_type: object) -> bool:
     """Whether the engine has no neutral mapping for this EspoCRM field type.
 
@@ -778,6 +803,17 @@ _FIELD_VALUE_ATTR_KEYS: dict[str, str] = {
     "field_max": "max",
 }
 
+# The qualifying attributes derived from the concrete type rather than read from
+# a metadata key (PI-414 / REQ-501). They compare under the same forward
+# asymmetry as the value-carrying attributes above: a deviation is recorded only
+# where the design declares a value the instance contradicts. Design records
+# carry neither today — both are empty on all 254 CBM fields — so the stricter
+# absent-is-not-empty rule DEC-928 declares is deliberately NOT applied here; it
+# belongs with the compared-set materialization, which is sequenced after this
+# work. Applying it now would mark fields drifted against a design that has not
+# yet been given the chance to declare anything.
+_FIELD_QUALIFIER_ATTRS: tuple[str, ...] = ("field_format", "field_numeric_scale")
+
 
 def _audited_field_attrs(field_meta: dict[str, Any]) -> dict[str, Any]:
     """Derive the neutral field attributes the inventory compares on (PI-314).
@@ -788,11 +824,20 @@ def _audited_field_attrs(field_meta: dict[str, Any]) -> dict[str, Any]:
     ``field_default_value``, ``field_min``, ``field_max`` — read from the concrete
     EspoCRM field metadata. This is the value-level substrate the three-way
     reconciliation diff reads (REQ-357).
+
+    Also derives the two qualifying properties that distinguish types sharing a
+    neutral kind — ``field_format`` for email/phone/url and
+    ``field_numeric_scale`` for whole versus decimal numbers (PI-414 / REQ-501).
+    Both are ``None`` for a type they do not apply to, so a field that carries no
+    format reads as carrying none rather than as unread.
     """
+    espo_type = str(field_meta.get("type"))
     attrs: dict[str, Any] = {
         "field_type": _map_field_type(field_meta.get("type")),
         "field_required": bool(field_meta.get("required", False)),
         "field_read_only": bool(field_meta.get("readOnly", False)),
+        "field_format": _FIELD_FORMAT_MAP.get(espo_type),
+        "field_numeric_scale": _FIELD_NUMERIC_SCALE_MAP.get(espo_type),
     }
     for neutral, espo_key in _FIELD_VALUE_ATTR_KEYS.items():
         attrs[neutral] = field_meta.get(espo_key)
@@ -853,7 +898,7 @@ def _field_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict:
     for key in _FIELD_BOOL_ATTRS:
         if bool(canonical.get(key)) != bool(audited.get(key)):
             override[key] = audited.get(key)
-    for key in _FIELD_VALUE_ATTR_KEYS:
+    for key in (*_FIELD_VALUE_ATTR_KEYS, *_FIELD_QUALIFIER_ATTRS):
         canonical_value = canonical.get(key)
         if canonical_value is not None and canonical_value != audited.get(key):
             override[key] = audited.get(key)
@@ -1034,6 +1079,15 @@ def _reconcile_fields_drift(
                 # mirrored value-type stays unset until known, never assumed.
                 if audited["field_type"] == "derived":
                     extra["derived_result_type"] = "text"
+                # PI-414 / REQ-501: record the qualifying properties that tell
+                # apart types sharing a neutral kind. Without these a discovered
+                # email field is indistinguishable from a plain text one, and a
+                # decimal from a whole number, so the design cannot render back
+                # what it read.
+                if audited["field_format"] is not None:
+                    extra["format"] = audited["field_format"]
+                if audited["field_numeric_scale"] is not None:
+                    extra["numeric_scale"] = audited["field_numeric_scale"]
                 description = f"Discovered by auditing instance {instance_identifier}."
                 if is_unmapped_field_type(field_meta.get("type")):
                     description += (
