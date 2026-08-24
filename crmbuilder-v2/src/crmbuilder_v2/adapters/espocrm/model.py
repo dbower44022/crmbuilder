@@ -23,6 +23,7 @@ from crmbuilder_v2.adapters.espocrm.conditions import (
     CompileError,
     compile_condition,
 )
+from crmbuilder_v2.adapters.espocrm.field_types import properties_not_carried
 from crmbuilder_v2.adapters.espocrm.formulas import (
     FormulaCompileError,
     compile_formula,
@@ -639,10 +640,32 @@ def _build_field(
                 identifier=fid,
                 name=fname,
                 parent=parent_name,
-                detail=f"field_type {semantic!r} has no EspoCRM mapping",
+                detail=(
+                    f"field kind {semantic!r} has no EspoCRM equivalent — "
+                    f"nothing was created for this field"
+                ),
             )
         )
         return None
+
+    # REQ-502 / DEC-941 — the field is built, but EspoCRM may not carry every
+    # property the design asked for. Say so rather than substituting silently:
+    # a percentage becomes a plain number, and before this the intent simply
+    # vanished with nothing recording that it had.
+    for prop, requested in properties_not_carried(field_row, espo_type):
+        deferrals.append(
+            Deferral(
+                kind="unsupported_field_property",
+                identifier=fid,
+                name=fname,
+                parent=parent_name,
+                detail=(
+                    f"{prop.removeprefix('field_')} {requested!r} has no EspoCRM "
+                    f"equivalent — the field was created as {espo_type!r} without "
+                    f"it"
+                ),
+            )
+        )
 
     internal_name = str(
         _override(index, "field", fid, "internal_name", derive_internal_name(fname))

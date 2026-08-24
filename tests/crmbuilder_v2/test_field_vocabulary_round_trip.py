@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import pytest
 from crmbuilder_v2.access.vocab import FIELD_TYPES
+from crmbuilder_v2.adapters.espocrm.field_types import properties_not_carried
 from crmbuilder_v2.adapters.espocrm.model import _map_field_type as emit_type
 from crmbuilder_v2.introspect.reconcile import _audited_field_attrs
 
@@ -293,3 +294,66 @@ def test_report(capsys):
         lines.append(f"  {kind:<16} {str(engine):<18} {str(returned):<16} {state}")
     with capsys.disabled():
         print("\n".join(lines))
+
+
+# ---------------------------------------------------------------------------
+# What the engine cannot carry must be declared, not dropped
+# ---------------------------------------------------------------------------
+
+
+def test_a_percentage_is_declared_lost_rather_than_silently_dropped():
+    """DEC-941 / REQ-502 — EspoCRM has no percentage of any kind.
+
+    Not a field type, not a setting on its number fields, and nothing in its
+    codebase but stylesheet maths and an icon name. So a design that says a
+    number is a percentage builds a plain number, and the percentage intent has
+    to be reported. Before this it vanished with nothing recording that it had —
+    the silent substitution REQ-502 exists to forbid.
+    """
+    design = {"field_type": "number", "field_format": "percent"}
+    espo_type = emit_type(design)
+    assert espo_type == "int", "a percentage should still build a number"
+    assert properties_not_carried(design, espo_type) == [("field_format", "percent")]
+
+
+def test_the_loss_check_does_not_cry_wolf():
+    """A declared property the engine *does* carry is never reported as lost.
+
+    A check that over-reports is as useless as one that under-reports: an
+    operator who learns to ignore these lines will ignore the percentage one
+    too. Every combination here has a faithful EspoCRM rendering.
+    """
+    faithful = [
+        {"field_type": "text", "field_format": "email"},
+        {"field_type": "text", "field_format": "secret"},
+        {"field_type": "long_text", "field_display": "rich_text"},
+        {"field_type": "number", "field_numeric_scale": "decimal"},
+        {"field_type": "money", "field_display": "range"},
+        {"field_type": "enum", "field_values": "open", "field_holds": "several"},
+        {"field_type": "file", "field_holds": "several"},
+        {"field_type": "file", "field_format": "image"},
+        {"field_type": "datetime", "field_format": "time_optional"},
+        {"field_type": "number", "field_supplied_by": "this_crm"},
+    ]
+    for design in faithful:
+        espo_type = emit_type(design)
+        assert espo_type is not None, f"{design} built nothing"
+        assert properties_not_carried(design, espo_type) == [], (
+            f"{design} was wrongly reported as losing something"
+        )
+
+
+def test_a_property_left_unsaid_is_not_a_loss():
+    """Defaults are not requests. A field that says nothing has asked for nothing.
+
+    Holding one value, admitting only the values listed, and being filled in by a
+    person are what a field means when it is silent, so their absence on the far
+    side is not something to report.
+    """
+    for design in (
+        {"field_type": "text"},
+        {"field_type": "enum", "field_holds": "one", "field_values": "fixed"},
+        {"field_type": "money", "field_supplied_by": "person"},
+    ):
+        espo_type = emit_type(design)
+        assert properties_not_carried(design, espo_type) == []

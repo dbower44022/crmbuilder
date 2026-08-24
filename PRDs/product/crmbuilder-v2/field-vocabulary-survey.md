@@ -99,7 +99,7 @@ close by teaching the reader to read them, not by using what is already held.
 | Decimal number | all three | ~ |
 | Money | Espo `currency`, SF `Currency` | ✓ |
 | Money converted to another currency | Espo `currencyConverted` | ✓ DEC-939 |
-| Percentage | SF `Percent`, Espo format | ~ |
+| Percentage | SF `Percent`; EspoCRM has none at all | ✓ DEC-941 |
 | Length of time | Espo `duration` | ✓ DEC-936 |
 | A range, low to high | Espo `rangeInt`, `rangeFloat`, `rangeCurrency` | ✓ DEC-934 |
 
@@ -229,6 +229,7 @@ keeping them in step.
 | DEC-936 | Three kinds added — **file**, **time**, **structured data**; **image** and **duration** become format values | one file, an image, time of day, length of time, structured data (several attachments pending) |
 | DEC-937 | A field states whether it **holds** one value or several; the separate multi-choice kind is removed | several attachments, several web addresses |
 | DEC-938 | An attribute the design does not declare is **unknown**, with the reason naming the design rather than the instance | (correctness, not coverage — no survey row) |
+| DEC-941 | **Percent** stays in the format list (DEC-933's six dropped becomes five), and publishing declares any property the target CRM cannot carry | percentage |
 | DEC-939 | All six remaining distinctions carried; **supplied by** records who provides a value, replacing the unused externally-populated flag; **secret**, **colour**, **time optional** join format and **barcode** joins display | secret text, barcode, colour, system-generated number, converted money, optional-time date |
 
 ## Survey complete
