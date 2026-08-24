@@ -33,13 +33,35 @@ def test_audited_option_set_label_none_when_untranslated():
     ]
 
 
-def test_audited_field_attrs_carries_options_for_enum_and_multienum():
+def test_audited_field_attrs_carries_options_for_single_and_multi_select():
+    """Options are read for a choice however many values it holds.
+
+    ``multiEnum`` reads as a choice that **holds several** rather than as a kind
+    of its own (DEC-937 / REQ-512): multiplicity is a property every kind can
+    state, so a separate multi-choice word was retired. This test previously
+    asserted the retired representation.
+    """
     enum_meta = {"type": "enum", "options": ["a"], "translatedOptions": {"a": "A"}}
     assert "field_options" in _audited_field_attrs(enum_meta)
     multi_meta = {"type": "multiEnum", "options": ["x", "y"]}
     attrs = _audited_field_attrs(multi_meta)
-    assert attrs["field_type"] == "multi_enum"
+    assert attrs["field_type"] == "enum"
+    assert attrs["field_holds"] == "several"
+    assert attrs["field_values"] == "fixed"
     assert [o["option_value"] for o in attrs["field_options"]] == ["x", "y"]
+
+
+def test_an_open_list_is_not_a_choice_with_no_options():
+    """EspoCRM ``array`` reads as a choice whose values are open, not fixed.
+
+    The distinction matters for the verdict: a fixed list with no options is
+    drift (REQ-516 / DEC-940), while an open list legitimately has none. Before
+    the values property existed the two were indistinguishable.
+    """
+    attrs = _audited_field_attrs({"type": "array"})
+    assert attrs["field_type"] == "enum"
+    assert attrs["field_values"] == "open"
+    assert attrs["field_holds"] == "several"
 
 
 def test_audited_field_attrs_omits_options_for_non_enum():

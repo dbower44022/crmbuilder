@@ -120,62 +120,111 @@ _LINK_CARDINALITY: dict[str, str] = {
 }
 
 
-# EspoCRM concrete field type -> engine-neutral FIELD_TYPE (DEC-431 normalize
-# step). Unmapped types fall back to ``text`` — the safest lossless default for
-# a first reconcile; the per-attribute override still records the audited
-# specifics that matter. Kept here (not in audit_utils) because the target
-# vocabulary is a V2 design concept, not a V1 audit concept.
+# EspoCRM concrete field type -> the full engine-neutral shape of the field
+# (PI-414 / REQ-501; supersedes the kind-only table this replaces). A kind alone
+# cannot describe a field: ``varchar`` and ``email`` are both neutral ``text``
+# and are told apart only by the format, ``multiEnum`` and ``checklist`` are both
+# a choice holding several and are told apart by the display, and ``int`` and
+# ``float`` are both a number told apart by the scale. Reading only the kind is
+# what made 33 of EspoCRM's 46 types unable to survive a round trip.
+#
+# Each value is the neutral field this engine type reads as. Omitted properties
+# are None — a field that carries no format reads as carrying none, not as
+# unread. The emitter in ``adapters/espocrm/model.py`` is the inverse and the
+# round-trip check in ``tests/crmbuilder_v2/test_field_vocabulary_round_trip.py``
+# holds the two honest.
+#
+# Deliberately absent: ``link``, ``linkOne``, ``linkParent`` and ``linkMultiple``.
+# A link between records is described once, as a relationship, never as a field
+# (DEC-932 / REQ-505), so they are not field-vocabulary concerns at all. ``base``
+# is the shared definition the other types extend, not a type an administrator
+# picks.
+_ESPO_FIELD_SHAPE: dict[str, dict[str, str]] = {
+    # Text-shaped. The format says what sort of value beyond the kind; the
+    # display says how it is shown (DEC-933).
+    "varchar": {"field_type": "text"},
+    "email": {"field_type": "text", "field_format": "email"},
+    "phone": {"field_type": "text", "field_format": "phone"},
+    "url": {"field_type": "text", "field_format": "url"},
+    "urlMultiple": {
+        "field_type": "text", "field_format": "url", "field_holds": "several",
+    },
+    "password": {"field_type": "text", "field_format": "secret"},
+    "colorpicker": {"field_type": "text", "field_format": "colour"},
+    "barcode": {"field_type": "text", "field_display": "barcode"},
+    "text": {"field_type": "long_text"},
+    "wysiwyg": {"field_type": "long_text", "field_display": "rich_text"},
+    # Number-shaped. Scale separates whole from decimal; a range is the same
+    # kind shown as a range (DEC-934); a duration is a number in that format.
+    "int": {"field_type": "number", "field_numeric_scale": "integer"},
+    "float": {"field_type": "number", "field_numeric_scale": "decimal"},
+    "decimal": {"field_type": "number", "field_numeric_scale": "decimal"},
+    "duration": {"field_type": "number", "field_format": "duration"},
+    "rangeInt": {
+        "field_type": "number", "field_numeric_scale": "integer",
+        "field_display": "range",
+    },
+    "rangeFloat": {
+        "field_type": "number", "field_numeric_scale": "decimal",
+        "field_display": "range",
+    },
+    "rangeCurrency": {"field_type": "money", "field_display": "range"},
+    "currency": {"field_type": "money"},
+    # The CRM computes the converted amount; nobody types it (DEC-939).
+    "currencyConverted": {"field_type": "money", "field_supplied_by": "this_crm"},
+    # A number the CRM assigns rather than a person entering it.
+    "autoincrement": {"field_type": "number", "field_supplied_by": "this_crm"},
+    "number": {"field_type": "number", "field_supplied_by": "this_crm"},
+    # Dates. ``datetimeOptional`` is a datetime whose time part may be absent.
+    "date": {"field_type": "date"},
+    "datetime": {"field_type": "datetime"},
+    "datetimeOptional": {"field_type": "datetime", "field_format": "time_optional"},
+    # Choices. How many are held and how they are shown are separate from the
+    # kind (DEC-935, DEC-937); an open list carries no option set at all.
+    "enum": {"field_type": "enum", "field_values": "fixed", "field_holds": "one"},
+    "multiEnum": {
+        "field_type": "enum", "field_values": "fixed", "field_holds": "several",
+    },
+    "checklist": {
+        "field_type": "enum", "field_values": "fixed", "field_holds": "several",
+        "field_display": "tick_list",
+    },
+    "array": {"field_type": "enum", "field_values": "open", "field_holds": "several"},
+    # A choice whose stored values are numbers is the number kind with fixed
+    # values — no kind of its own (DEC-935).
+    "enumInt": {
+        "field_type": "number", "field_numeric_scale": "integer",
+        "field_values": "fixed", "field_holds": "one",
+    },
+    "enumFloat": {
+        "field_type": "number", "field_numeric_scale": "decimal",
+        "field_values": "fixed", "field_holds": "one",
+    },
+    "arrayInt": {
+        "field_type": "number", "field_numeric_scale": "integer",
+        "field_values": "open", "field_holds": "several",
+    },
+    "bool": {"field_type": "boolean"},
+    # Files. An image is a file in that format; several attachments is a file
+    # that holds several (DEC-936, DEC-937).
+    "file": {"field_type": "file"},
+    "image": {"field_type": "file", "field_format": "image"},
+    "attachmentMultiple": {"field_type": "file", "field_holds": "several"},
+    # Values made of several fixed parts, described as one field (DEC-934).
+    "address": {"field_type": "postal_address"},
+    "personName": {"field_type": "person_name"},
+    "map": {"field_type": "place"},
+    # Structured data; an array of them holds several.
+    "jsonObject": {"field_type": "structured_data"},
+    "jsonArray": {"field_type": "structured_data", "field_holds": "several"},
+    # A field mirroring a scalar from a linked record, and a computed value.
+    "foreign": {"field_type": "foreign"},
+    "formula": {"field_type": "derived"},
+}
+
+#: Kind-only view of the table above, kept because callers and tests read it.
 _FIELD_TYPE_MAP: dict[str, str] = {
-    "varchar": "text",
-    "text": "long_text",
-    "wysiwyg": "long_text",
-    "bool": "boolean",
-    "int": "number",
-    "float": "number",
-    "currency": "money",
-    "date": "date",
-    "datetime": "datetime",
-    "datetimeOptional": "datetime",
-    "enum": "enum",
-    "multiEnum": "multi_enum",
-    "checklist": "multi_enum",
-    "array": "multi_enum",
-    "url": "text",
-    "phone": "text",
-    "email": "text",
-    "link": "reference",
-    "linkOne": "reference",
-    "linkParent": "reference",
-    # A foreign field mirrors a scalar from a linked record — its own neutral
-    # kind (REQ-435 / PI-374), no longer collapsed into ``derived`` (which is a
-    # computed/formula value) and no longer surfacing as text.
-    "foreign": "foreign",
-    "formula": "derived",
-}
-
-
-# EspoCRM concrete field type -> the neutral ``field_format`` that records what
-# sort of value it holds beyond its kind (PI-414 / REQ-501, DEC-933). These three
-# are the reason ``varchar``, ``email``, ``phone`` and ``url`` all collapse onto
-# neutral ``text``: the kind is genuinely the same, and the format is what tells
-# them apart. The emitter has always refined ``varchar`` back to the richer type
-# from this same property — it was only the reading that dropped it, which is why
-# the round trip lost three types and why the property is empty on every design
-# field. DEC-933 trims format to these value-kind meanings; the display-only
-# values it drops were never read here anyway.
-_FIELD_FORMAT_MAP: dict[str, str] = {
-    "email": "email",
-    "phone": "phone",
-    "url": "url",
-}
-
-# EspoCRM concrete field type -> neutral ``field_numeric_scale``. Both map onto
-# neutral ``number``, so without the scale a decimal read from an instance
-# renders back as a whole number — a round trip that changes the field rather
-# than merely losing a distinction (PI-414 / REQ-501).
-_FIELD_NUMERIC_SCALE_MAP: dict[str, str] = {
-    "int": "integer",
-    "float": "decimal",
+    espo: shape["field_type"] for espo, shape in _ESPO_FIELD_SHAPE.items()
 }
 
 
@@ -812,7 +861,14 @@ _FIELD_VALUE_ATTR_KEYS: dict[str, str] = {
 # belongs with the compared-set materialization, which is sequenced after this
 # work. Applying it now would mark fields drifted against a design that has not
 # yet been given the chance to declare anything.
-_FIELD_QUALIFIER_ATTRS: tuple[str, ...] = ("field_format", "field_numeric_scale")
+_FIELD_QUALIFIER_ATTRS: tuple[str, ...] = (
+    "field_format",
+    "field_numeric_scale",
+    "field_display",
+    "field_values",
+    "field_holds",
+    "field_supplied_by",
+)
 
 
 def _audited_field_attrs(field_meta: dict[str, Any]) -> dict[str, Any]:
@@ -832,13 +888,17 @@ def _audited_field_attrs(field_meta: dict[str, Any]) -> dict[str, Any]:
     format reads as carrying none rather than as unread.
     """
     espo_type = str(field_meta.get("type"))
+    shape = _ESPO_FIELD_SHAPE.get(espo_type, {})
     attrs: dict[str, Any] = {
         "field_type": _map_field_type(field_meta.get("type")),
         "field_required": bool(field_meta.get("required", False)),
         "field_read_only": bool(field_meta.get("readOnly", False)),
-        "field_format": _FIELD_FORMAT_MAP.get(espo_type),
-        "field_numeric_scale": _FIELD_NUMERIC_SCALE_MAP.get(espo_type),
     }
+    # Every qualifying property is set explicitly, to None where the engine type
+    # does not carry it, so an absent property reads as genuinely absent rather
+    # than as unread — the distinction REQ-491 turns on.
+    for prop in _FIELD_QUALIFIER_ATTRS:
+        attrs[prop] = shape.get(prop)
     for neutral, espo_key in _FIELD_VALUE_ATTR_KEYS.items():
         attrs[neutral] = field_meta.get(espo_key)
     # REQ-442: enum / multi_enum fields additionally carry their option set, read

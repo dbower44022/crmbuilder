@@ -92,6 +92,14 @@ _TYPE_MAP: dict[str, str] = {
     "datetime": "datetime",
     "money": "currency",
     "boolean": "bool",
+    # PI-414 kinds. A value made of several fixed parts is one EspoCRM field,
+    # not one per part (DEC-934); structured data and files are kinds the
+    # vocabulary previously lacked (DEC-936).
+    "postal_address": "address",
+    "person_name": "personName",
+    "place": "map",
+    "file": "file",
+    "structured_data": "jsonObject",
 }
 
 # §7 ``field_format`` tokens that refine a string field to a richer
@@ -102,9 +110,27 @@ _FORMAT_REFINEMENT: dict[str, str] = {
     "email": "email",
     "phone": "phone",
     "url": "url",
+    # PI-414 (DEC-939). A secret must never be built as an ordinary field
+    # (REQ-515) — the one case in this table where getting it wrong is a
+    # real-world harm rather than a reporting gap.
+    "secret": "password",
+    "colour": "colorpicker",
 }
 
 _ENUM_TYPES = frozenset({"enum", "multiEnum"})
+
+# Neutral kinds that never reach EspoCRM, for two different reasons.
+#
+# ``reference`` left the field vocabulary entirely: a link between records is
+# described once, as a relationship (DEC-932 / REQ-505). ``derived`` and
+# ``foreign`` are emitted by their own paths, which need a result type and
+# mirror coordinates this function does not see.
+#
+# ``time`` is the first declared exception under REQ-502: EspoCRM's 46 field
+# types include ``datetime`` and ``datetimeOptional`` but nothing for a time of
+# day alone, so a design that says ``time`` has no faithful EspoCRM rendering.
+# Unlike the others this will never close, however much work is done.
+_KINDS_NEVER_EMITTED = frozenset({"reference", "derived", "foreign", "time"})
 
 
 # ---------------------------------------------------------------------------
@@ -306,23 +332,94 @@ def _coerce_default(raw: object, espo_type: str) -> object | None:
 def _map_field_type(field_row: dict) -> str | None:
     """Map a neutral field record to its EspoCRM platform ``type``.
 
-    Returns ``None`` for ``reference``/``derived`` (deferred) and any
-    unknown semantic type. ``number`` resolves to int/float by neutral
-    scale (default int); a string ``field_format`` of email/phone/url
-    refines the base ``varchar``.
+    The inverse of ``introspect.reconcile._ESPO_FIELD_SHAPE``: that table says
+    what each engine type reads as, this says what each neutral field builds as,
+    and the round-trip check holds the two honest (PI-414 / REQ-501).
+
+    A kind alone is not enough to choose an engine type. ``text`` builds a
+    ``varchar``, an ``email``, a ``password`` or a ``barcode`` depending on its
+    format and display; a choice builds an ``enum``, a ``multiEnum``, a
+    ``checklist`` or an ``array`` depending on how many it holds, how it is
+    shown, and whether its values are open. Resolution order below is therefore:
+    the kinds that never reach the engine, then the kind, then its qualifying
+    properties within that kind.
+
+    Returns ``None`` when the design describes something EspoCRM cannot build.
+    That is a real answer, not a failure: REQ-502 requires the translation to say
+    what a target CRM cannot hold rather than substitute a near equivalent. The
+    caller routes it to a deferral.
     """
-    semantic = field_row.get("field_type")
-    if semantic == "number":
-        scale = field_row.get("field_numeric_scale")
-        return "float" if scale == "decimal" else "int"
-    espo_type = _TYPE_MAP.get(semantic)
-    if espo_type is None:
+    kind = field_row.get("field_type")
+    fmt = field_row.get("field_format")
+    display = field_row.get("field_display")
+    holds = field_row.get("field_holds")
+    values = field_row.get("field_values")
+    supplied_by = field_row.get("field_supplied_by")
+    several = holds == "several"
+
+    if kind in _KINDS_NEVER_EMITTED:
         return None
-    if espo_type == "varchar":
-        refined = _FORMAT_REFINEMENT.get(field_row.get("field_format"))
-        if refined is not None:
-            return refined
-    return espo_type
+
+    if kind == "text":
+        if several and fmt == "url":
+            return "urlMultiple"
+        if display == "barcode":
+            return "barcode"
+        if fmt in _FORMAT_REFINEMENT:
+            return _FORMAT_REFINEMENT[fmt]
+        return "varchar"
+
+    if kind == "long_text":
+        return "wysiwyg" if display == "rich_text" else "text"
+
+    if kind == "number":
+        decimal = field_row.get("field_numeric_scale") == "decimal"
+        if fmt == "duration":
+            return "duration"
+        # A choice whose stored values are numbers is this kind with declared
+        # values, not a kind of its own (DEC-935).
+        if values == "fixed":
+            return "enumFloat" if decimal else "enumInt"
+        if values == "open" and several:
+            return "arrayInt"
+        if display == "range":
+            return "rangeFloat" if decimal else "rangeInt"
+        # A number the CRM assigns rather than a person entering it (DEC-939).
+        if supplied_by == "this_crm":
+            return "autoincrement"
+        return "float" if decimal else "int"
+
+    if kind == "money":
+        if display == "range":
+            return "rangeCurrency"
+        if supplied_by == "this_crm":
+            return "currencyConverted"
+        return "currency"
+
+    if kind == "enum":
+        if values == "open":
+            return "array"
+        if several:
+            return "checklist" if display == "tick_list" else "multiEnum"
+        return "enum"
+
+    # Retired by DEC-937 — a multi-select is a choice that holds several — and
+    # kept only until the 21 design fields still carrying it are converted.
+    if kind == "multi_enum":
+        return "multiEnum"
+
+    if kind == "datetime":
+        return "datetimeOptional" if fmt == "time_optional" else "datetime"
+
+    if kind == "file":
+        if several:
+            return "attachmentMultiple"
+        return "image" if fmt == "image" else "file"
+
+    if kind == "structured_data":
+        return "jsonArray" if several else "jsonObject"
+
+    return _TYPE_MAP.get(kind)
 
 
 def _derived_field_type(field_row: dict) -> str | None:
