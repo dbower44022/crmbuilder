@@ -108,14 +108,22 @@ _LANDED_WIRE_TYPE_MAP = {
     "email": "text",
     "phone": "text",
     "url": "text",
+    # Still text: the catalog vocabulary has no person-name type to route
+    # through, though the design now has the kind. Closing that needs a
+    # stage-1 change and a spec amendment — noted, not done here.
     "personName": "text",
-    "address": "text",
+    # PI-414: the design gained a shape for a postal address (DEC-934), so it
+    # is no longer flattened to text.
+    "address": "postal_address",
     "text": "long_text",
     "wysiwyg": "long_text",
     "enum": "enum",
-    "multiEnum": "multi_enum",
-    "checklist": "multi_enum",
-    "array": "multi_enum",
+    "multiEnum": "enum",
+    # PI-414: a multi-select is a choice that holds several, not a kind of its
+    # own (DEC-937). The tick-list and open-list distinctions survive in the
+    # display and values properties, which a kind-only map cannot show.
+    "checklist": "enum",
+    "array": "enum",
     "date": "date",
     "datetime": "datetime",
     "datetimeOptional": "datetime",
@@ -160,14 +168,14 @@ def test_multivalued_promotion():
     # collapses it (multireference -> reference).
     assert normalize.resolve_type("attio", "select", multivalued=True)[:2] == (
         "multienum",
-        "multi_enum",
+        "enum",
     )
     assert normalize.resolve_type(
         "attio", "record-reference", multivalued=True
     )[:2] == ("multireference", "reference")
     assert normalize.resolve_type(
         "civicrm", "StateProvince", multivalued=True
-    )[:2] == ("multienum", "multi_enum")
+    )[:2] == ("multienum", "enum")
     # No promotion exists for non-enum/reference kinds.
     assert normalize.resolve_type("attio", "text", multivalued=True)[:2] == (
         "string",
@@ -181,7 +189,7 @@ def test_resolve_type_exposes_stage1_catalog_type():
     catalog_type, field_type, anomaly = normalize.resolve_type(
         "salesforce", "Time"
     )
-    assert (catalog_type, field_type, anomaly) == ("time", "text", None)
+    assert (catalog_type, field_type, anomaly) == ("time", "time", None)
 
 
 # ---------------------------------------------------------------------------
@@ -194,16 +202,16 @@ def test_resolve_type_exposes_stage1_catalog_type():
 _N4_TYPE_CASES = {
     "espocrm": [
         ("varchar", None, "text"),
-        ("multiEnum", None, "multi_enum"),
+        ("multiEnum", None, "enum"),
         ("currency", None, "money"),
         ("linkMultiple", None, "reference"),
         ("foreign", None, "derived"),
     ],
     "salesforce": [
         ("Text", None, "text"),
-        ("MultiselectPicklist", None, "multi_enum"),
+        ("MultiselectPicklist", None, "enum"),
         ("MasterDetail", None, "reference"),
-        ("Time", None, "text"),
+        ("Time", None, "time"),
         ("Summary", None, "derived"),
         ("Geolocation", None, "text"),
     ],
@@ -214,8 +222,8 @@ _N4_TYPE_CASES = {
     ],
     "hubspot": [
         ("string", "html", "long_text"),
-        ("string", "file", "text"),
-        ("enumeration", "checkbox", "multi_enum"),
+        ("string", "file", "file"),
+        ("enumeration", "checkbox", "enum"),
         ("enumeration", "booleancheckbox", "boolean"),
         ("phone_number", None, "text"),
         ("number", None, "number"),
@@ -224,12 +232,12 @@ _N4_TYPE_CASES = {
         ("rating", None, "number"),
         ("status", None, "enum"),
         ("timestamp", None, "datetime"),
-        ("location", None, "text"),
+        ("location", None, "postal_address"),
         ("actor-reference", None, "reference"),
     ],
     "civicrm": [
         ("String", "Text", "text"),
-        ("String", "CheckBox", "multi_enum"),
+        ("String", "CheckBox", "enum"),
         ("Memo", "RichTextEditor", "long_text"),
         ("Date", None, "date"),
         ("Date", "time_format", "datetime"),
@@ -240,7 +248,7 @@ _N4_TYPE_CASES = {
     "bloomerang": [
         ("text", None, "text"),
         ("text", "pick_one", "enum"),
-        ("text", "pick_many", "multi_enum"),
+        ("text", "pick_many", "enum"),
         ("currency", None, "money"),
         ("note", None, "long_text"),
         ("reference", None, "reference"),

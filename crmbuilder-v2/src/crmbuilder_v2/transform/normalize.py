@@ -53,30 +53,63 @@ from crmbuilder_v2.access.vocab import CATALOG_SYSTEMS
 # programming error, not an input condition (criterion N2).
 # ---------------------------------------------------------------------------
 
+# Stage 2, PI-414 — the fixed projection from the 21 catalog attribute types
+# to the design's field vocabulary. Each maps to a **shape**, not a bare kind:
+# the design now separates what a value is from how it is shown, how many are
+# held, and who supplies it, so a projection to one string cannot carry what a
+# source system says.
+#
+# This is the change the module was written for. Its own docstring says stage 2
+# is the only place the lossy collapse happens, and that when the design
+# vocabulary grows only this table changes and all seven systems inherit the
+# refinement at once. That is what happened: every "lossy" note that used to sit
+# in this table — rich text is presentation not shape, there is no time-of-day,
+# email and phone and web address are refinement candidates, there is no file
+# shape — described a design that no longer exists.
+#
+# Stage 1 is untouched. The catalog vocabulary already drew every distinction
+# needed, so no adapter contract moves and no spec amendment is required.
+CATALOG_TO_FIELD_SHAPE: dict[str, dict[str, str]] = {
+    "string": {"field_type": "text"},
+    "text": {"field_type": "long_text"},
+    # Formatting is presentation — and the design can now say so (DEC-933).
+    "richtext": {"field_type": "long_text", "field_display": "rich_text"},
+    "integer": {"field_type": "number", "field_numeric_scale": "integer"},
+    "decimal": {"field_type": "number", "field_numeric_scale": "decimal"},
+    "currency": {"field_type": "money"},
+    "boolean": {"field_type": "boolean"},
+    "date": {"field_type": "date"},
+    "datetime": {"field_type": "datetime"},
+    # Was text, because asserting a datetime would invent a date that does not
+    # exist. The design now has the kind (DEC-936), so neither compromise is
+    # needed. EspoCRM still cannot build one — that is declared at publish.
+    "time": {"field_type": "time"},
+    "enum": {"field_type": "enum", "field_values": "fixed", "field_holds": "one"},
+    # A multi-select is a choice that holds several, not a kind of its own
+    # (DEC-937). This is the last place that produced the retired kind.
+    "multienum": {
+        "field_type": "enum", "field_values": "fixed", "field_holds": "several",
+    },
+    "reference": {"field_type": "reference"},
+    "multireference": {"field_type": "reference", "field_holds": "several"},
+    # Was text with the note "refinement candidates"; the refinement landed
+    # (DEC-933).
+    "email": {"field_type": "text", "field_format": "email"},
+    "phone": {"field_type": "text", "field_format": "phone"},
+    "url": {"field_type": "text", "field_format": "url"},
+    # Both were text for want of a shape; both now have one (DEC-934, DEC-936).
+    "address": {"field_type": "postal_address"},
+    "attachment": {"field_type": "file"},
+    # A number the CRM assigns rather than a person entering it (DEC-939).
+    "autonumber": {"field_type": "number", "field_supplied_by": "this_crm"},
+    "formula": {"field_type": "derived"},
+}
+
+#: Kind-only view, preserving the long-standing interface. Callers wanting the
+#: whole shape use :func:`resolve_shape` or :func:`composed_shape_map`.
 CATALOG_TO_FIELD_TYPE: dict[str, str] = {
-    "string": "text",
-    "text": "long_text",
-    "richtext": "long_text",  # formatting is presentation, not shape
-    "integer": "number",
-    "decimal": "number",
-    "currency": "money",
-    "boolean": "boolean",
-    "date": "date",
-    "datetime": "datetime",
-    # Lossy: FIELD_TYPES has no time-of-day; `datetime` would assert a
-    # date that does not exist. Finer type recoverable from evidence.
-    "time": "text",
-    "enum": "enum",
-    "multienum": "multi_enum",
-    "reference": "reference",
-    "multireference": "reference",  # cardinality survives in evidence detail
-    "email": "text",  # PI-054 refinement candidates: email/phone/url/address
-    "phone": "text",
-    "url": "text",
-    "address": "text",
-    "attachment": "text",  # no file shape in FIELD_TYPES; survives in notes
-    "autonumber": "number",
-    "formula": "derived",
+    catalog: shape["field_type"]
+    for catalog, shape in CATALOG_TO_FIELD_SHAPE.items()
 }
 
 # §3.10 rule 1: an unknown native type maps to `string` (hence `text`)
@@ -408,6 +441,47 @@ def normalize_type(
         multivalued=multivalued,
     )
     return field_type, anomaly
+
+
+def resolve_shape(
+    system: str,
+    native: str,
+    *,
+    subtype: str | None = None,
+    calculated: bool = False,
+    multivalued: bool = False,
+) -> tuple[str, dict[str, str], Anomaly | None]:
+    """Map one native type to the full design shape it means (PI-414 / REQ-501).
+
+    The same two-stage resolution as :func:`resolve_type`, returning the whole
+    shape rather than only the kind. A caller that records just the kind cannot
+    tell an email address from a text box or a multi-select from a single
+    choice — the coarseness this table existed to concentrate in one place, and
+    which the design vocabulary no longer forces.
+
+    The returned mapping is a copy, so a caller may add to it without editing
+    the table every other caller reads.
+    """
+    catalog_type, _kind, anomaly = resolve_type(
+        system,
+        native,
+        subtype=subtype,
+        calculated=calculated,
+        multivalued=multivalued,
+    )
+    return catalog_type, dict(CATALOG_TO_FIELD_SHAPE[catalog_type]), anomaly
+
+
+def composed_shape_map(system: str) -> dict[StageOneKey, dict[str, str]]:
+    """The stage-1 table composed with stage 2, carrying the whole shape.
+
+    The shape-aware counterpart of :func:`composed_type_map`, for callers
+    depositing discovered fields rather than merely naming their kind.
+    """
+    return {
+        key: dict(CATALOG_TO_FIELD_SHAPE[catalog_type])
+        for key, catalog_type in _require_system(system).items()
+    }
 
 
 def composed_type_map(system: str) -> dict[StageOneKey, str]:

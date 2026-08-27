@@ -67,12 +67,16 @@ SPREADSHEET_COMPOSED = {
     "boolean": "boolean",
     "date": "date",
     "datetime": "datetime",
-    "time": "text",
+    # PI-414 (DEC-936): the design gained a time-of-day kind, so a time column
+    # is no longer flattened to text.
+    "time": "time",
     "email": "text",
     "phone": "text",
     "url": "text",
     "enum": "enum",
-    "multi_enum": "multi_enum",
+    # PI-414 (DEC-937): a multi-select is a choice that holds several. The
+    # spreadsheet adapter keeps its own name; only the design side changed.
+    "multi_enum": "enum",
     "reference": "reference",
     "auto_number": "number",
     "empty": "text",
