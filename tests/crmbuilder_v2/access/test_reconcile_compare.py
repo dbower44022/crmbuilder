@@ -487,7 +487,7 @@ def test_compare_group_carries_entity_label(v2_env):
         assert grp["entity_label"] == "CBM Member"
 
 
-# --- REQ-442: enum / multi_enum field option-value reconciliation -------------
+# --- REQ-442: choice-field option-value reconciliation -----------------------
 
 
 def _opts(*items):
@@ -552,7 +552,11 @@ def test_compute_rows_label_only_drift_surfaces():
 
 def test_compute_rows_order_only_difference_is_not_drift():
     """An override that merely reorders the same options is not a difference."""
-    design = {"field_type": "multi_enum", "field_options": _opts("a", "b", "c")}
+    design = {
+        "field_type": "enum",
+        "field_holds": "several",
+        "field_options": _opts("a", "b", "c"),
+    }
     a = _mem(state="present", override={"field_options": _opts("c", "a", "b")})
     rows = compute_member_rows(
         member_type="field", member_identifier="FLD-1", member_name="tags",

@@ -556,7 +556,8 @@ def test_list_fields_filtered_by_entity_identifier(v2_env):
             field_belongs_to_entity_identifier=ent_mentor,
             name="expertise",
             description="d",
-            type="multi_enum",
+            type="enum",
+            holds="several",
         )
     with session_scope() as s:
         contact_fields = field.list_fields(s, entity_identifier=ent_contact)

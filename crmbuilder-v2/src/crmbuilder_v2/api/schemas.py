@@ -763,7 +763,7 @@ class ParticipantPatchIn(_Base):
 
 
 class FieldOptionIn(_Base):
-    """One enum/multi_enum option value (PRJ-025 PI-182, §8 field_option).
+    """One option value on a choice field (PRJ-025 PI-182, §8 field_option).
 
     ``option_order`` defaults to the list position when omitted. A
     field's ``field_options`` list, when supplied, replaces its entire

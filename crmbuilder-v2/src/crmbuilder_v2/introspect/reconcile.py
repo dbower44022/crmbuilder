@@ -805,16 +805,17 @@ def _audited_field_attrs(field_meta: dict[str, Any]) -> dict[str, Any]:
         attrs[prop] = shape.get(prop)
     for neutral, espo_key in _FIELD_VALUE_ATTR_KEYS.items():
         attrs[neutral] = field_meta.get(espo_key)
-    # REQ-442: enum / multi_enum fields additionally carry their option set, read
+    # REQ-442: a choice field additionally carries its option set, read
     # from EspoCRM's ``options`` (values) and ``translatedOptions`` (value->label)
     # into the canonical ``field_options`` shape so it round-trips and captures back.
-    if attrs["field_type"] in ("enum", "multi_enum"):
+    # A choice carries options whether it holds one value or several (DEC-937).
+    if attrs["field_type"] == "enum":
         attrs["field_options"] = _audited_option_set(field_meta)
     return attrs
 
 
 def _audited_option_set(field_meta: dict[str, Any]) -> list[dict[str, Any]]:
-    """Read an enum/multi_enum field's option set in canonical ``field_options`` shape.
+    """Read a choice field's option set in canonical ``field_options`` shape.
 
     Values come from EspoCRM ``options`` (an ordered value list); labels from
     ``translatedOptions`` (a value->label map), left ``None`` when EspoCRM carries
@@ -866,7 +867,7 @@ def _field_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict:
         canonical_value = canonical.get(key)
         if canonical_value is not None and canonical_value != audited.get(key):
             override[key] = audited.get(key)
-    # REQ-442: an enum/multi_enum field's option set deviates when the audited and
+    # REQ-442: a choice field's option set deviates when the audited and
     # canonical sets differ by value or effective-label, order-insensitively. The
     # override stores the audited set in canonical shape so it both renders the
     # difference and captures back through the generic ``patch_field(options=)`` path.

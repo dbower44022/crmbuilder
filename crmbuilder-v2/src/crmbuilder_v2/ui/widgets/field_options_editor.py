@@ -1,6 +1,6 @@
 """Editable ``field_options`` collection editor (PRJ-025 PI-182 UI slice).
 
-A small repeating-row editor for an enum / multi_enum field's option set.
+A small repeating-row editor for a choice field's option set.
 There was no pre-existing in-dialog repeating-row collection editor in the
 v2 UI (``references_section`` is a read-only grid; the catalog/sub-row
 hits are list panels, not editable in-dialog tables), so this is a fresh

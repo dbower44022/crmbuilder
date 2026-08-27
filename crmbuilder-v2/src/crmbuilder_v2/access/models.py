@@ -992,7 +992,7 @@ class Field(EngagementScopedPKMixin, Base):
     # values are stored as the authored string (adapters coerce per
     # engine). ``field_format`` / ``field_numeric_scale`` are validated
     # against FIELD_FORMATS / FIELD_NUMERIC_SCALES at the access layer
-    # when present. Enum/multi_enum option values live in the
+    # when present. A choice field's option values live in the
     # ``field_options`` child collection, not here.
     field_tooltip: Mapped[str | None] = mapped_column(Text, nullable=True)
     field_usage_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -1095,7 +1095,7 @@ class Field(EngagementScopedPKMixin, Base):
 
 
 class FieldOption(EngagementScopedMixin, Base):
-    """Child of ``fields`` — one allowed enum/multi_enum option value.
+    """Child of ``fields`` — one allowed option value on a choice field.
 
     PRJ-025 PI-182 (design §7 "allowed values (enum)" / §8 ``field_option``).
     A plain child collection of ``field``, **not** a prefixed-identifier

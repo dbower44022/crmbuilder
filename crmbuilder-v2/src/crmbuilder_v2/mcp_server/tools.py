@@ -1075,14 +1075,14 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         date/datetime/time/multiline), ``numeric_scale`` (integer/decimal),
         ``max_length``, ``min``, ``max``, and the booleans ``read_only`` /
         ``unique`` / ``externally_populated``. ``options`` is an ordered
-        list of enum/multi_enum options, each
+        list of options for a choice field, each
         ``{"option_value": str, "option_label": str|None,
         "option_order": int|None}`` — supplying it populates the field's
         option set.
 
         PRJ-025 PI-197 — derived/formula intent (DEC-438):
         ``derived_result_type`` is the value-type a formula yields (one of
-        text/long_text/number/money/date/datetime/boolean/enum/multi_enum)
+        text/long_text/number/money/date/datetime/boolean/enum)
         — REQUIRED when ``type`` is ``derived`` and forbidden otherwise;
         ``formula`` is the neutral structured-formula AST (one of
         ``{"kind":"concat","parts":[...]}`` /

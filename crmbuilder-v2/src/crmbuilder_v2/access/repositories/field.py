@@ -826,7 +826,7 @@ def create_field(
 
     PRJ-025 PI-182: ``**intrinsics`` accepts the §7 neutral design-intent
     kwargs (``tooltip``, ``format``, ``read_only``, …) and ``options`` an
-    optional ordered enum/multi_enum option set that, when supplied,
+    optional ordered option set for a choice field that, when supplied,
     populates the ``field_options`` child collection in the same
     transaction.
 

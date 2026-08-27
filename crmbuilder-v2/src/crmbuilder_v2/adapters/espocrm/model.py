@@ -88,7 +88,6 @@ _TYPE_MAP: dict[str, str] = {
     "text": "varchar",
     "long_text": "text",
     "enum": "enum",
-    "multi_enum": "multiEnum",
     "date": "date",
     "datetime": "datetime",
     "money": "currency",
@@ -403,11 +402,6 @@ def _map_field_type(field_row: dict) -> str | None:
         if several:
             return "checklist" if display == "tick_list" else "multiEnum"
         return "enum"
-
-    # Retired by DEC-937 — a multi-select is a choice that holds several — and
-    # kept only until the 21 design fields still carrying it are converted.
-    if kind == "multi_enum":
-        return "multiEnum"
 
     if kind == "datetime":
         return "datetimeOptional" if fmt == "time_optional" else "datetime"

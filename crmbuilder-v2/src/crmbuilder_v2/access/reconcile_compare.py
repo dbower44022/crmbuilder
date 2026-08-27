@@ -127,7 +127,7 @@ def _presence(membership: dict[str, Any] | None) -> str:
     return PRESENT if membership["state"] in _PRESENT_STATES else ABSENT
 
 
-#: The field attribute whose value is an enum/multi_enum option set (REQ-442). Its
+#: The field attribute whose value is a choice field's option set (REQ-442). Its
 #: value is the canonical ``field_options`` shape — a list of
 #: ``{"option_value": str, "option_label": str|None, "option_order": int?}`` — and
 #: it is compared order-insensitively by ``(value, effective-label)`` rather than
@@ -327,8 +327,11 @@ def compute_member_rows(
     # — not actionable. Under include_unchanged the loop above already emitted
     # ``field_options`` as one comparable property among the rest (REQ-478), so
     # this stays the differences-only carve-out it was written as.
-    is_option_field = member_type == "field" and design_obj.get("field_type") in (
-        "enum", "multi_enum"
+    # A choice carries an option set however many values it holds — the
+    # multi-choice kind was retired in favour of the ``holds`` property
+    # (DEC-937), so one kind now covers both.
+    is_option_field = (
+        member_type == "field" and design_obj.get("field_type") == "enum"
     )
     opt_design = design_obj.get(FIELD_OPTIONS_ATTR)
     if (

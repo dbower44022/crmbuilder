@@ -1,4 +1,4 @@
-"""Audit capture of enum/multi_enum field option sets — REQ-442 (PI-381).
+"""Audit capture of choice-field option sets — REQ-442 (PI-381).
 
 Unit tests for the introspect-layer helpers that read an EspoCRM enum field's
 option list and decide whether it deviates from the canonical design.

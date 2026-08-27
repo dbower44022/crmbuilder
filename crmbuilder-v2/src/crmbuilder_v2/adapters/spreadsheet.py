@@ -86,6 +86,11 @@ INFERRED_TYPES: frozenset[str] = frozenset(
         "phone",
         "url",
         "enum",
+        # This adapter's own name for a multi-valued column, like EspoCRM's
+        # ``multiEnum``. It shares a spelling with the design kind retired by
+        # DEC-937 but is a different vocabulary: stage 2 of the catalog
+        # normalizer translates it to a choice that holds several. Renaming it
+        # would be an adapter-contract change needing a spec amendment.
         "multi_enum",
         "reference",
         "auto_number",

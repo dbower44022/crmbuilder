@@ -57,7 +57,8 @@ def test_get_fields_filtered_by_entity_identifier(client):
     ent_mentor = _seed_entity(client, "Mentor")
     _make(client, ent_contact, field_name="email", field_type="text")
     _make(client, ent_contact, field_name="phone", field_type="text")
-    _make(client, ent_mentor, field_name="expertise", field_type="multi_enum")
+    # A multi-select is a choice that holds several (DEC-937 / REQ-512).
+    _make(client, ent_mentor, field_name="expertise", field_type="enum")
 
     response = client.get(f"/fields?entity_identifier={ent_contact}")
     assert response.status_code == 200

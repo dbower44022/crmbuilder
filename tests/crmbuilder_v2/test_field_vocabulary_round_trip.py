@@ -94,11 +94,8 @@ KIND_NOT_EMITTED: frozenset[str] = frozenset(
     {"reference", "derived", "foreign", "time"}
 )
 
-#: Retired by DEC-937 and kept only until the 21 design fields carrying it are
-#: converted. It emits correctly and reads back as the representation that
-#: replaces it — a choice that holds several — so its "failure" to round-trip is
-#: the retirement working, not a defect.
-RETIRED_KIND: frozenset[str] = frozenset({"multi_enum"})
+# The multi-choice kind DEC-937 retired is gone from the vocabulary as of
+# 2026-08-27, so it no longer needs a category here.
 
 
 def _round_trip_engine(espo_type: str) -> tuple[str, str | None]:
@@ -186,11 +183,6 @@ def test_design_kind_round_trip(kind: str):
             f"and say why"
         )
         return
-    if kind in RETIRED_KIND:
-        # It emits correctly; it reads back as the representation replacing it.
-        assert engine == "multiEnum"
-        assert returned == "enum"
-        return
     assert returned == kind, (
         f"design kind {kind!r} emitted as {engine!r} and returned as {returned!r}"
     )
@@ -198,8 +190,7 @@ def test_design_kind_round_trip(kind: str):
 
 def test_the_categories_do_not_overlap():
     """A kind belongs to exactly one category, so its status is unambiguous."""
-    assert not KIND_NOT_EMITTED & RETIRED_KIND
-    assert (KIND_NOT_EMITTED | RETIRED_KIND) <= FIELD_TYPES
+    assert KIND_NOT_EMITTED <= FIELD_TYPES
 
 
 def test_a_time_of_day_has_no_espocrm_counterpart():
@@ -287,8 +278,6 @@ def test_report(capsys):
         ok = returned == kind
         if kind in KIND_NOT_EMITTED:
             state = "declared: not emitted"
-        elif kind in RETIRED_KIND:
-            state = "retired by DEC-937"
         else:
             state = "ok" if ok else "LOST"
         lines.append(f"  {kind:<16} {str(engine):<18} {str(returned):<16} {state}")

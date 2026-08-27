@@ -171,7 +171,16 @@ def test_pluralize():
         ("text", {}, "varchar"),
         ("long_text", {}, "text"),
         ("enum", {"field_options": [{"option_value": "a", "option_order": 0}]}, "enum"),
-        ("multi_enum", {"field_options": [{"option_value": "a", "option_order": 0}]}, "multiEnum"),
+        # A multi-select is a choice that holds several (DEC-937 / REQ-512);
+        # the separate multi-choice kind was retired.
+        (
+            "enum",
+            {
+                "field_holds": "several",
+                "field_options": [{"option_value": "a", "option_order": 0}],
+            },
+            "multiEnum",
+        ),
         ("date", {}, "date"),
         ("datetime", {}, "datetime"),
         ("money", {}, "currency"),

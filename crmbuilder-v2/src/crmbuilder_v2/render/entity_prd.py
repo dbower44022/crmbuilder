@@ -164,7 +164,7 @@ class PrdModel:
 
 
 def _option_labels(field_row: dict) -> list[str]:
-    """Ordered, human option labels for an enum/multi_enum field.
+    """Ordered, human option labels for a choice field.
 
     Mirrors the adapter's option ordering (``option_order`` then value), but
     prefers a human ``option_label`` over the raw ``option_value`` so the
@@ -224,6 +224,22 @@ def _format_text(field_row: dict) -> str:
     return "; ".join(parts)
 
 
+def _rendered_type(field_row: dict) -> str:
+    """The field's kind as a reader should see it, including multiplicity.
+
+    ``holds`` is a property rather than part of the kind (DEC-937 / REQ-512), so
+    the kind alone no longer distinguishes a multi-select from a single choice.
+    The rendered document has to, or it silently loses a distinction it used to
+    show.
+    """
+    kind = field_row.get("field_type") or ""
+    if not kind:
+        return ""
+    if field_row.get("field_holds") == "several":
+        return f"{kind} (holds several)"
+    return kind
+
+
 def _field_row(field_row: dict) -> dict:
     """One field's render dict — faithfully derived from the source record.
 
@@ -252,7 +268,11 @@ def _field_row(field_row: dict) -> dict:
     return {
         "identifier": field_row["field_identifier"],
         "name": field_row.get("field_name") or "",
-        "type": field_row.get("field_type") or "",
+        # A field holding several values used to be a kind of its own; DEC-937
+        # made it a property, so the rendered type says so explicitly. Without
+        # this a multi-select and a single choice would read identically in the
+        # document, which they did not before the retirement.
+        "type": _rendered_type(field_row),
         "required": "Yes" if field_row.get("field_required") else "No",
         "default": "" if default is None else str(default),
         "format": _format_text(field_row),

@@ -242,7 +242,6 @@ FIELD_TYPES: frozenset[str] = frozenset(
         "text",
         "long_text",
         "enum",
-        "multi_enum",
         "date",
         "datetime",
         "money",
@@ -271,9 +270,10 @@ FIELD_TYPES: frozenset[str] = frozenset(
         "file",
         "time",
         "structured_data",
-        # ``multi_enum`` is retired by DEC-937 — a multi-select is ``enum`` that
-        # holds several. It stays here until the 21 design fields still using it
-        # are converted; removing it is the subtractive half of the schema work.
+        # Retired 2026-08-27 (DEC-937 / REQ-512): a multi-select is ``enum``
+        # that holds several. Multiplicity is a property every kind may state,
+        # so a second choice word said nothing the first could not, and having
+        # both left nothing to stop them contradicting each other.
     }
 )
 
@@ -372,7 +372,9 @@ DERIVED_RESULT_TYPES: frozenset[str] = frozenset(
         "datetime",
         "boolean",
         "enum",
-        "multi_enum",
+        # A formula yielding several choices is ``enum`` with ``holds`` set to
+        # several, like any other multi-valued field (DEC-937). No record used
+        # the retired kind as a result type when it was removed.
     }
 )
 

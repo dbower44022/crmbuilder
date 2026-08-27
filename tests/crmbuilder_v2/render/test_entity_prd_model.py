@@ -44,6 +44,7 @@ def _field(identifier: str, parent: str, name: str, ftype: str, **kw) -> dict:
         "field_default_value": kw.get("default"),
         "field_format": kw.get("format"),
         "field_numeric_scale": kw.get("numeric_scale"),
+        "field_holds": kw.get("holds"),
         "field_min": kw.get("min"),
         "field_max": kw.get("max"),
         "field_max_length": kw.get("max_length"),
@@ -126,7 +127,8 @@ def test_no_platform_type_names_leak():
         entities=[_entity("ENT-001", "Donation", kind="transaction")],
         fields=[
             _field("FLD-001", "ENT-001", "Amount", "money"),
-            _field("FLD-002", "ENT-001", "Tags", "multi_enum",
+            _field("FLD-002", "ENT-001", "Tags", "enum",
+                   holds="several",
                    options=[{"option_value": "vip", "option_order": 1}]),
             _field("FLD-003", "ENT-001", "Notes", "long_text"),
         ],
@@ -137,7 +139,9 @@ def test_no_platform_type_names_leak():
         assert platform_token not in rendered
     # Neutral types are present.
     assert "money" in rendered
-    assert "multi_enum" in rendered
+    # A multi-select is a choice that holds several (DEC-937); the rendered
+    # document must still distinguish it from a single choice.
+    assert "enum (holds several)" in rendered
     assert "long_text" in rendered
 
 
