@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.ui.panels.reconcile_models import (
     FIELD_OPTIONS_ATTR,
     LOCATION_LABELS,
+    OBJECT_GROUP_LABELS,
     OPTION_VALUE_ROLE,
     RECORD_ROLE,
     EntityDetailModel,
@@ -266,12 +267,20 @@ class ReconcileGridPanel(QWidget):
         self._instances: list[dict[str, Any]] = []
         self._payload: dict[str, Any] = {}
         self._groups_by_entity: dict[str, dict[str, Any]] = {}
+        # Groups the comparison returns with no entity identifier (REQ-517):
+        # roles, teams and filtered tabs belong to the instance, not to an
+        # entity, so they have no row in the per-entity existence list and were
+        # previously dropped here and unreachable in the surface.
+        self._global_groups: list[dict[str, Any]] = []
         self._audit_worker: _EntityAuditWorker | None = None
         # Show-all-values vs differences-only (REQ-478). Differences-only default.
         self._show_all = False
         # The entity currently drilled into, so an apply can keep its detail view
         # open instead of bouncing back to the entity list (REQ-439).
         self._drilled_entity_id: str | None = None
+        # The non-entity member type currently drilled into, mutually exclusive
+        # with ``_drilled_entity_id`` — a drill comes from one tab or the other.
+        self._drilled_global_type: str | None = None
         self._build_ui()
         self._load_instances()
 
@@ -323,7 +332,7 @@ class ReconcileGridPanel(QWidget):
         outer.addLayout(picker)
 
         self._stack = QStackedWidget()
-        self._stack.addWidget(self._build_grid_view())
+        self._stack.addWidget(self._build_results_view())
         self._stack.addWidget(self._build_detail_view())
         outer.addWidget(self._stack)
 
@@ -331,6 +340,121 @@ class ReconcileGridPanel(QWidget):
         self._summary.setStyleSheet("color: #757575;")
         outer.addWidget(self._summary)
         return tab
+
+    def _build_results_view(self) -> QWidget:
+        """Entity-scoped and instance-wide results as sibling tabs (REQ-518).
+
+        Both feed the same detail tree; they differ only in what a row stands
+        for. Keeping them as tabs rather than one list is what lets an operator
+        go straight to role drift without reading past twenty-three entities.
+        """
+        tabs = QTabWidget()
+        tabs.setObjectName("reconcile_results_tabs")
+        tabs.addTab(self._build_grid_view(), "Entities")
+        tabs.addTab(self._build_groups_view(), "Groups")
+        self._results_tabs = tabs
+        return tabs
+
+    def _build_groups_view(self) -> QWidget:
+        """Differences belonging to the instance rather than to an entity.
+
+        One row per member type, because the compare payload buckets every
+        non-entity member into a single ``other`` object group — useful to a
+        machine, unreadable to an operator deciding whether to look at roles.
+        """
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        self._groups_table = QTableWidget(0, 3)
+        self._groups_table.setObjectName("reconcile_groups_table")
+        self._groups_table.setHorizontalHeaderLabels(
+            ["Type", "Members", "Differences"]
+        )
+        self._groups_table.verticalHeader().setVisible(False)
+        self._groups_table.setAlternatingRowColors(True)
+        self._groups_table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self._groups_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+        _fill_width(
+            self._groups_table.horizontalHeader(), stretch_col=0, content_cols=(1, 2)
+        )
+        self._groups_table.doubleClicked.connect(self._on_groups_activated)
+        lay.addWidget(self._groups_table)
+        self._groups_hint = QLabel("Double-click a type to see its differences.")
+        self._groups_hint.setStyleSheet("color: #9E9E9E;")
+        lay.addWidget(self._groups_hint)
+        return page
+
+    def _global_rows_by_type(self) -> dict[str, list[dict[str, Any]]]:
+        """Non-entity comparison rows, keyed by member type, in stable order."""
+        out: dict[str, list[dict[str, Any]]] = {}
+        for group in self._global_groups:
+            for row in group.get("rows") or []:
+                mt = row.get("member_type")
+                if mt:
+                    out.setdefault(mt, []).append(row)
+        return out
+
+    def _populate_groups_table(self) -> None:
+        """Fill the Groups tab from the current payload (REQ-517)."""
+        by_type = self._global_rows_by_type()
+        self._groups_table.setRowCount(0)
+        for mt in sorted(by_type):
+            rows = by_type[mt]
+            members = {r.get("member_identifier") for r in rows}
+            differing = sum(1 for r in rows if r.get("differs"))
+            at = self._groups_table.rowCount()
+            self._groups_table.insertRow(at)
+            label = OBJECT_GROUP_LABELS.get(mt, mt.replace("_", " ").title())
+            cells = [label, str(len(members)), str(differing)]
+            for col, text in enumerate(cells):
+                item = QTableWidgetItem(text)
+                if col == 0:
+                    item.setData(RECORD_ROLE, mt)
+                self._groups_table.setItem(at, col, item)
+        if self._groups_table.rowCount() == 0:
+            self._groups_hint.setText(
+                "No roles, teams or filtered tabs differ between these locations."
+            )
+        else:
+            self._groups_hint.setText("Double-click a type to see its differences.")
+
+    def _on_groups_activated(self, index: QModelIndex) -> None:
+        item = self._groups_table.item(index.row(), 0)
+        member_type = item.data(RECORD_ROLE) if item else None
+        if member_type:
+            self._drill_global(str(member_type))
+
+    def _drill_global(self, member_type: str) -> None:
+        """Open the detail tree on one non-entity member type (REQ-517)."""
+        rows = self._global_rows_by_type().get(member_type) or []
+        self._drilled_entity_id = None
+        self._drilled_global_type = member_type
+        a_label = self._instance_label(self._combo_a.currentData())
+        b_label = self._instance_label(self._combo_b.currentData())
+        object_groups = (
+            [
+                {
+                    "object_type": member_type,
+                    "differing_count": sum(1 for r in rows if r.get("differs")),
+                    "rows": rows,
+                }
+            ]
+            if rows
+            else []
+        )
+        self._detail_model.set_groups(
+            object_groups, instance_a_label=a_label, instance_b_label=b_label
+        )
+        label = OBJECT_GROUP_LABELS.get(member_type, member_type.title())
+        suffix = "all values" if self._show_all else "differences"
+        self._detail_title.setText(
+            f"{label} — {suffix}" if rows else f"{label} — no differences found"
+        )
+        self._detail.expandAll()
+        self._stack.setCurrentIndex(1)
 
     def _build_grid_view(self) -> QWidget:
         page = QWidget()
@@ -392,7 +516,7 @@ class ReconcileGridPanel(QWidget):
         page = QWidget()
         lay = QVBoxLayout(page)
         bar = QHBoxLayout()
-        back = QPushButton("← Back to all entities")
+        back = QPushButton("← Back to results")
         back.setStyleSheet(_SECONDARY)
         back.setObjectName("reconcile_back_button")
         back.clicked.connect(lambda: self._stack.setCurrentIndex(0))
@@ -586,6 +710,13 @@ class ReconcileGridPanel(QWidget):
             for g in self._payload.get("groups", [])
             if g.get("entity_identifier")
         }
+        # Everything the comparison could not key to an entity (REQ-517).
+        self._global_groups = [
+            g
+            for g in self._payload.get("groups", [])
+            if not g.get("entity_identifier")
+        ]
+        self._populate_groups_table()
         self._grid_model.set_rows(
             self._payload.get("existence", []),
             instance_a_label=a_label,
@@ -608,9 +739,22 @@ class ReconcileGridPanel(QWidget):
             if r.get("differs")
         )
         mode = " · showing all values" if self._show_all else ""
+        # Count the non-entity differences separately and say so. Reporting only
+        # the per-entity total presented an instance whose every role had drifted
+        # as clean, which is the defect REQ-517 exists to close.
+        global_diffs = sum(
+            1
+            for rows in self._global_rows_by_type().values()
+            for r in rows
+            if r.get("differs")
+        )
+        global_note = (
+            f" · {global_diffs} in the Groups tab" if global_diffs else ""
+        )
         self._summary.setText(
             f"{entity_count} entities · {diff_count} difference(s) across "
-            f"{len(differing)} entit(y/ies){mode}. Double-click an entity to drill in."
+            f"{len(differing)} entit(y/ies){global_note}{mode}. "
+            "Double-click a row to drill in."
         )
 
     def _on_attention_toggled(self, on: bool) -> None:
@@ -626,6 +770,7 @@ class ReconcileGridPanel(QWidget):
     def _drill(self, existence_row: dict[str, Any]) -> None:
         eid = existence_row.get("entity_identifier")
         self._drilled_entity_id = eid
+        self._drilled_global_type = None
         name = existence_row.get("entity") or eid or "?"
         a_label = self._instance_label(self._combo_a.currentData())
         b_label = self._instance_label(self._combo_b.currentData())
@@ -898,8 +1043,13 @@ class ReconcileGridPanel(QWidget):
         that same entity from the refreshed payload so the detail view stays open
         (REQ-439). Falls back to the grid only if the entity is gone after refresh.
         """
-        keep = self._drilled_entity_id if self._stack.currentIndex() == 1 else None
+        drilled = self._stack.currentIndex() == 1
+        keep = self._drilled_entity_id if drilled else None
+        keep_global = self._drilled_global_type if drilled else None
         self._on_compare()
+        if keep_global:
+            self._drill_global(keep_global)
+            return
         if keep:
             fresh = next(
                 (r for r in self._payload.get("existence", [])

@@ -70,6 +70,13 @@ OBJECT_GROUP_LABELS = {
     "formulas": "Formulas",
     "settings": "Settings",
     "other": "Other",
+    # Member types that belong to the instance rather than to any entity
+    # (REQ-517). The compare payload buckets them all under ``other`` inside a
+    # group carrying no entity identifier; the panel re-groups them by member
+    # type so each is named for what it is instead of reading as "Other".
+    "role": "Roles",
+    "team": "Teams",
+    "filtered_tab": "Filtered tabs",
 }
 
 #: Role carrying the raw presence/state token for cell colouring/inspection.

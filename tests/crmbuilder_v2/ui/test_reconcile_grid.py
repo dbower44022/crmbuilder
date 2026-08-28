@@ -1067,3 +1067,136 @@ def test_matching_enum_view_row_expands_to_all_values(qapp):
     assert m.data(m.index(a_idx, 1, parent), Qt.ItemDataRole.DisplayRole) == "Active"
     assert m.data(m.index(a_idx, 2, parent), Qt.ItemDataRole.DisplayRole) == "Active"
     assert m.data(m.index(a_idx, 3, parent), Qt.ItemDataRole.DisplayRole) == "Active"
+
+
+# --- differences that belong to no entity (PI-415 — REQ-517 / REQ-518) ------
+
+_GLOBAL_EXISTENCE = [
+    {"entity_identifier": "ENT-001", "entity": "Account", "entity_label": "Org",
+     "design": "present", "instance_a": "present", "instance_b": "present"},
+]
+_ROLE_ROWS = [
+    {"member_type": "role", "member_identifier": "ROL-001", "member_name": "Mentor Role",
+     "kind": "attribute", "attribute": "role_system_permissions",
+     "design": {"exportPermission": "not-set"}, "instance_a": {"exportPermission": "not-set"},
+     "instance_b": {"exportPermission": "no"}, "differs": True, "actionable": False},
+    {"member_type": "role", "member_identifier": "ROL-002", "member_name": "Marketing Admin",
+     "kind": "attribute", "attribute": "role_scope_access",
+     "design": {"Email": "all"}, "instance_a": {"Email": "all"},
+     "instance_b": {"Email": "own"}, "differs": True, "actionable": False},
+]
+_TAB_ROWS = [
+    {"member_type": "filtered_tab", "member_identifier": "FTB-001", "member_name": "My Clients",
+     "kind": "attribute", "attribute": "filtered_tab_filters",
+     "design": ["mine"], "instance_a": ["mine"], "instance_b": ["all"],
+     "differs": True, "actionable": False},
+]
+_GLOBAL_GROUPS = [
+    {"entity": "Account", "entity_identifier": "ENT-001", "entity_label": "Org",
+     "rows": [], "object_groups": []},
+    # The group the surface used to discard: no entity identifier at all.
+    {"entity": "(global)", "entity_identifier": None, "entity_label": None,
+     "rows": _ROLE_ROWS + _TAB_ROWS,
+     "object_groups": [{"object_type": "other", "differing_count": 3,
+                        "rows": _ROLE_ROWS + _TAB_ROWS}]},
+]
+_GLOBAL_COMPARE = {
+    "instance_a": "INST-001", "instance_b": "INST-002", "scope": "all",
+    "existence": _GLOBAL_EXISTENCE, "groups": _GLOBAL_GROUPS, "row_count": 3,
+}
+
+
+def _global_handler(req: httpx.Request) -> httpx.Response:
+    p = req.url.path
+    if req.method == "GET" and p == "/instances":
+        return httpx.Response(200, json=envelope_ok(_INSTANCES))
+    if req.method == "GET" and p == "/reconcile/compare":
+        return httpx.Response(200, json=envelope_ok(_GLOBAL_COMPARE))
+    if req.method == "GET" and p == "/reconcile/transactions":
+        return httpx.Response(200, json=envelope_ok([]))
+    return httpx.Response(404, json={"data": None, "meta": {}, "errors": [{"code": "x"}]})
+
+
+def _global_panel(qtbot):
+    panel = ReconcileGridPanel(build_client(_global_handler))
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    return panel
+
+
+def test_results_are_split_into_entities_and_groups_tabs(qtbot):
+    """REQ-518: entity-scoped and instance-wide results are sibling tabs, each
+    reachable in one step rather than buried in one undifferentiated list."""
+    panel = _global_panel(qtbot)
+    assert [panel._results_tabs.tabText(i) for i in range(panel._results_tabs.count())] == [
+        "Entities",
+        "Groups",
+    ]
+
+
+def test_groups_tab_lists_each_member_type_with_its_counts(qtbot):
+    """REQ-517/518: a group belonging to no entity is listed, split by member
+    type, each stating how many members and how many differences it holds."""
+    panel = _global_panel(qtbot)
+    table = panel._groups_table
+    rows = {
+        table.item(r, 0).text(): (table.item(r, 1).text(), table.item(r, 2).text())
+        for r in range(table.rowCount())
+    }
+    assert rows == {"Filtered tabs": ("1", "1"), "Roles": ("2", "2")}
+
+
+def test_global_differences_never_reach_the_entity_grid(qtbot):
+    """The (global) group carries no entity identifier, so it must not be keyed
+    into the per-entity map — the entity grid still shows only real entities."""
+    panel = _global_panel(qtbot)
+    assert list(panel._groups_by_entity) == ["ENT-001"]
+    assert panel._grid_model.rowCount() == 1
+    assert len(panel._global_groups) == 1
+
+
+def test_drilling_a_member_type_opens_its_own_detail(qtbot):
+    """REQ-517: the listed differences can be opened to their detail. The rows
+    are regrouped under the member type, so roles read as "Roles", not "Other"."""
+    panel = _global_panel(qtbot)
+    idx = panel._groups_table.model().index(0, 0)  # Filtered tabs (sorted first)
+    panel._on_groups_activated(idx)
+    assert panel._stack.currentIndex() == 1
+    assert panel._drilled_global_type == "filtered_tab"
+    assert panel._drilled_entity_id is None
+    assert "Filtered tabs" in panel._detail_title.text()
+    root = panel._detail_model.index(0, 0, QModelIndex())
+    assert "Filtered tabs" in panel._detail_model.data(root, Qt.ItemDataRole.DisplayRole)
+    assert panel._detail_model.rowCount(root) == 1
+
+
+def test_an_instance_differing_only_outside_entities_is_not_reported_clean(qtbot):
+    """REQ-517: every entity is in sync here and three non-entity differences
+    exist. The summary must say so — reporting only the per-entity total is what
+    presented an instance whose every role had drifted as conformant."""
+    panel = _global_panel(qtbot)
+    assert not panel._grid_proxy._differing          # no entity differs
+    assert "3 in the Groups tab" in panel._summary.text()
+
+
+def test_refresh_returns_to_the_open_member_type(qtbot):
+    """A refresh after an apply keeps a global drill open, as it already does
+    for an entity drill — otherwise the operator is bounced to the grid."""
+    panel = _global_panel(qtbot)
+    panel._drill_global("role")
+    assert panel._stack.currentIndex() == 1
+    panel._refresh_keeping_detail()
+    assert panel._stack.currentIndex() == 1
+    assert panel._drilled_global_type == "role"
+
+
+def test_entity_drill_clears_any_open_member_type(qtbot):
+    """The two drill kinds are mutually exclusive; entering one leaves the other
+    unset so a refresh cannot restore the wrong view."""
+    panel = _global_panel(qtbot)
+    panel._drill_global("role")
+    panel._drill(_GLOBAL_EXISTENCE[0])
+    assert panel._drilled_global_type is None
+    assert panel._drilled_entity_id == "ENT-001"
