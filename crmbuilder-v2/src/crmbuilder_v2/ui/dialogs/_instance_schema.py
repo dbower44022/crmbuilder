@@ -3,7 +3,15 @@
 A declarative ``FieldSchema`` list consumed by ``EntityCrudDialog``. The schema
 keys are the parent-prefixed ``instance_*`` names the REST bodies expect, except
 the two secret inputs whose keys are the write-only plaintext ``secret`` /
-``secret_key`` the router translates into keyring references (REQ-157).
+``secret_key`` the router translates into secret references (REQ-157).
+
+What the two inputs hold depends on ``instance_auth_method``, and the labels say
+so: ``secret`` is the API key under ``api_key``/``hmac`` but the **username**
+under ``basic``, and ``secret_key`` is the HMAC secret under ``hmac`` but the
+**password** under ``basic`` (see ``introspect.espo_client``). Labelling them
+'API key / password' and 'HMAC secret key' led an operator to put a basic-auth
+password in ``secret`` and leave ``secret_key`` empty, which stores and resolves
+cleanly and then 401s at the CRM.
 
 The create dialog omits ``instance_identifier`` (server-assigned); the edit
 dialog includes it read-only. The secret fields use
@@ -79,17 +87,23 @@ _CONTENT_FIELDS: list[FieldSchema] = [
     ),
     FieldSchema(
         key="secret",
-        label="API key / password",
+        label="API key / username",
         widget="line",
         omit_when_empty_in_create=True,
-        placeholder="Stored in the OS keyring; leave blank to keep the current value",
+        placeholder=(
+            "API key (API key & HMAC auth) or username (Basic auth). "
+            "Stored encrypted; leave blank to keep the current value"
+        ),
     ),
     FieldSchema(
         key="secret_key",
-        label="HMAC secret key",
+        label="Password / HMAC secret",
         widget="line",
         omit_when_empty_in_create=True,
-        placeholder="Only for HMAC auth; stored in the OS keyring",
+        placeholder=(
+            "Password (Basic auth) or HMAC secret key (HMAC auth); unused for "
+            "API key auth. Stored encrypted; leave blank to keep the current value"
+        ),
     ),
     FieldSchema(
         key="instance_status",
