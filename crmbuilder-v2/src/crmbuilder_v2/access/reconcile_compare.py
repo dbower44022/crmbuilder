@@ -64,6 +64,11 @@ RECONCILABLE_ENTITY_SETTINGS = frozenset({
 #: design): the deploy engine cannot alter an existing link's cardinality in place.
 RECONCILABLE_ASSOCIATION_ATTRS = frozenset({"association_cardinality"})
 
+#: Member types that belong to the instance rather than to any entity and whose
+#: design record can be written from an instance's value (REQ-519). Publish stays
+#: closed until the emitter renders them into a program.
+CAPTURABLE_GLOBAL_MEMBERS = frozenset({"role", "team", "filtered_tab"})
+
 #: Capability tokens a row carries per direction (REQ-479).
 CAPTURE = "capture"
 PUBLISH = "publish"
@@ -87,6 +92,13 @@ def _attribute_capabilities(member_type: str, attribute: str | None) -> tuple[bo
         return both, both
     if member_type == "association":
         return attribute in RECONCILABLE_ASSOCIATION_ATTRS, False
+    if member_type in CAPTURABLE_GLOBAL_MEMBERS:
+        # Capture-only for now (REQ-519). These belong to the instance rather
+        # than to an entity, and publish granularity is one entity = one
+        # generated program — but more decisively, the emitter renders no
+        # ``roles:`` / ``teams:`` / ``filteredTabs:`` block at all, so there is
+        # nothing to push even though the deploy engine could apply one.
+        return True, False
     return False, False
 
 

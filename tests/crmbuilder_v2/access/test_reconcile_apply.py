@@ -11,7 +11,9 @@ from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as mb
 from crmbuilder_v2.access.repositories import instances as inst_repo
 from crmbuilder_v2.access.repositories import reconcile_transactions as txn_repo
+from crmbuilder_v2.access.repositories import roles as role_repo
 from crmbuilder_v2.access.repositories import source_mapping as sm_repo
+from crmbuilder_v2.access.repositories import teams as team_repo
 
 
 def _setup(s, *, role="source"):
@@ -540,4 +542,115 @@ def test_capture_field_option_values_conflict_without_deviation(v2_env):
         with pytest.raises(ConflictError):
             reconcile_apply.capture_field_option_values(
                 s, instance=iid, field_identifier=fid, option_values=["A"], actor="Doug",
+            )
+
+
+# --- non-entity members: role / team / filtered tab (PI-416 — REQ-519) ------
+
+def _role_setup(s):
+    iid = inst_repo.create_instance(
+        s, name="src", url="https://src.example.org", role="source"
+    )["instance_identifier"]
+    rid = role_repo.create_role(
+        s, name="Mentor Role",
+        scope_access={"Email": {"read": "all"}},
+        system_permissions={"exportPermission": "not-set"},
+    )["role_identifier"]
+    return iid, rid
+
+
+def test_capture_role_writes_design_logs_and_clears_override(v2_env):
+    """REQ-519: a role's drifted permissions can be captured into the design,
+    exactly as a field attribute can — the design ends up holding the instance's
+    definition, with a reversible transaction and the drift cleared."""
+    with session_scope() as s:
+        iid, rid = _role_setup(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="role", member_identifier=rid,
+            state="drifted",
+            override={"role_system_permissions": {"exportPermission": "no"}},
+        )
+        out = reconcile_apply.capture_member_attribute(
+            s, instance=iid, member_type="role", member_identifier=rid,
+            attribute="role_system_permissions", actor="Doug",
+        )
+        assert out["member"]["role_system_permissions"] == {"exportPermission": "no"}
+        txn = out["transaction"]
+        assert txn["direction"] == "capture"
+        assert txn["before_value"] == {"exportPermission": "not-set"}
+        assert txn["after_value"] == {"exportPermission": "no"}
+        row = mb.list_memberships(
+            s, instance_identifier=iid, member_type="role", member_identifier=rid,
+        )[0]
+        assert row["state"] == "present"
+        assert row["override"] is None
+
+
+def test_capture_role_leaves_other_drifted_attributes_alone(v2_env):
+    """Capturing one attribute clears only that one; the member stays drifted on
+    whatever else still differs, so a partial capture never reads as conformant."""
+    with session_scope() as s:
+        iid, rid = _role_setup(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="role", member_identifier=rid,
+            state="drifted",
+            override={
+                "role_system_permissions": {"exportPermission": "no"},
+                "role_scope_access": {"Email": {"read": "own"}},
+            },
+        )
+        reconcile_apply.capture_member_attribute(
+            s, instance=iid, member_type="role", member_identifier=rid,
+            attribute="role_system_permissions", actor="Doug",
+        )
+        row = mb.list_memberships(
+            s, instance_identifier=iid, member_type="role", member_identifier=rid,
+        )[0]
+        assert row["state"] == "drifted"
+        assert row["override"] == {"role_scope_access": {"Email": {"read": "own"}}}
+
+
+def test_capture_team_uses_the_same_route(v2_env):
+    """Teams share the mechanism; only the repository pair and prefix differ."""
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="src", url="https://src.example.org", role="source"
+        )["instance_identifier"]
+        tid = team_repo.create_team(s, name="Mentor Team", description="before")[
+            "team_identifier"
+        ]
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="team", member_identifier=tid,
+            state="drifted", override={"team_description": "after"},
+        )
+        out = reconcile_apply.capture_member_attribute(
+            s, instance=iid, member_type="team", member_identifier=tid,
+            attribute="team_description", actor="Doug",
+        )
+        assert out["member"]["team_description"] == "after"
+
+
+def test_capture_member_refuses_a_type_with_no_design_repository(v2_env):
+    """A member type outside the mapping is refused rather than silently no-oping."""
+    with session_scope() as s:
+        iid, rid = _role_setup(s)
+        with pytest.raises(ConflictError):
+            reconcile_apply.capture_member_attribute(
+                s, instance=iid, member_type="layout", member_identifier=rid,
+                attribute="layout_rows", actor="Doug",
+            )
+
+
+def test_capture_member_refuses_when_the_instance_records_no_deviation(v2_env):
+    """Nothing to capture is a conflict, not a write of the design's own value."""
+    with session_scope() as s:
+        iid, rid = _role_setup(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="role", member_identifier=rid,
+            state="present", override=None,
+        )
+        with pytest.raises(ConflictError):
+            reconcile_apply.capture_member_attribute(
+                s, instance=iid, member_type="role", member_identifier=rid,
+                attribute="role_scope_access", actor="Doug",
             )

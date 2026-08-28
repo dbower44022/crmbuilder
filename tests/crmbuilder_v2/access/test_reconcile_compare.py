@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from crmbuilder_v2.access.reconcile_compare import (
     ABSENT,
     PRESENT,
@@ -854,3 +855,47 @@ def test_agreeing_property_is_actionable_in_neither_direction():
     )
     for row in rows:
         assert row["capturable"] is False and row["publishable"] is False
+
+
+# --- non-entity members become capture-only (PI-416 — REQ-519) --------------
+
+@pytest.mark.parametrize(
+    ("member_type", "attribute", "instance_value", "design_value"),
+    [
+        ("role", "role_system_permissions", {"exportPermission": "no"},
+         {"exportPermission": "not-set"}),
+        ("team", "team_description", "after", "before"),
+        ("filtered_tab", "filtered_tab_label", "My Clients", "Clients"),
+    ],
+)
+def test_non_entity_members_are_capture_only(
+    member_type, attribute, instance_value, design_value
+):
+    """REQ-519: roles, teams and filtered tabs stop being view-only. They are
+    writable through the platform, so the read-only handling for non-writable
+    settings never described them. Publish stays closed because the emitter
+    renders no program block for them — nothing to push, not nothing to say."""
+    a = _mem(state="drifted", override={attribute: instance_value})
+    rows = compute_member_rows(
+        member_type=member_type, member_identifier="X-1", member_name="Thing",
+        design_obj={attribute: design_value}, attributes=[attribute],
+        membership_a=a, membership_b=_mem(),
+    )
+    row = next(r for r in rows if r["attribute"] == attribute)
+    assert row["capturable"] is True
+    assert row["publishable"] is False
+    assert row["actionable"] is True
+
+
+def test_layout_attributes_stay_view_only():
+    """REQ-520: a layout is not in the capturable set — its variants bound to a
+    portal or a role have no mechanism to set, and the whole type stays
+    non-actionable until that subset can be told apart."""
+    a = _mem(state="drifted", override={"layout_rows": ["name"]})
+    rows = compute_member_rows(
+        member_type="layout", member_identifier="LAY-1", member_name="detailLayout",
+        design_obj={"layout_rows": ["name", "phone"]}, attributes=["layout_rows"],
+        membership_a=a, membership_b=_mem(),
+    )
+    row = rows[0]
+    assert row["capturable"] is False and row["publishable"] is False

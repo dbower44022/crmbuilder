@@ -25,9 +25,12 @@ from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.repositories import filtered_tabs as filtered_tab_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
 from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import reconcile_transactions as txn_repo
+from crmbuilder_v2.access.repositories import roles as role_repo
+from crmbuilder_v2.access.repositories import teams as team_repo
 
 #: Canonical design literal used as a transaction source/target ref.
 DESIGN = "design"
@@ -386,6 +389,95 @@ def capture_association_attribute(
         "transaction": transaction,
         "association": association_repo.get_association(session, association_identifier),
     }
+
+
+#: Member types that belong to the instance rather than to any entity, mapped to
+#: the repository pair used to read and patch their design record (REQ-519).
+#: Publish is deliberately absent: these carry no generated program block yet, so
+#: the design cannot be rendered back to a CRM — see ``_attribute_capabilities``.
+_GLOBAL_MEMBER_REPOS: dict[str, tuple[Any, Any, str]] = {
+    "role": (role_repo.get_role, role_repo.patch_role, "role_"),
+    "team": (team_repo.get_team, team_repo.patch_team, "team_"),
+    "filtered_tab": (
+        filtered_tab_repo.get_filtered_tab,
+        filtered_tab_repo.patch_filtered_tab,
+        "filtered_tab_",
+    ),
+}
+
+
+def capture_member_attribute(
+    session: Session,
+    *,
+    instance: str,
+    member_type: str,
+    member_identifier: str,
+    attribute: str,
+    actor: str,
+    batch_id: str | None = None,
+    note: str | None = None,
+) -> dict[str, Any]:
+    """Capture an instance's value for a non-entity member into the design (REQ-519).
+
+    The role / team / filtered-tab twin of :func:`capture_entity_setting`. These
+    members belong to the instance rather than to an entity, so they carry no
+    parent to publish with, but capturing them is the same operation: read the
+    instance's recorded override for ``attribute``, write it onto the canonical
+    record, log the transaction, and clear that attribute's drift on the source.
+
+    Raises ``ConflictError`` when the member type has no design repository or the
+    instance records no deviation for ``attribute``.
+
+    :returns: ``{transaction, member}``.
+    """
+    repos = _GLOBAL_MEMBER_REPOS.get(member_type)
+    if repos is None:
+        raise ConflictError(
+            f"member type {member_type!r} cannot be captured into the design"
+        )
+    get_one, patch_one, prefix = repos
+
+    membership = _membership_for(session, instance, member_type, member_identifier)
+    override = (membership or {}).get("override") or {}
+    if attribute not in override:
+        raise ConflictError(
+            f"instance {instance} records no deviation for {member_identifier}."
+            f"{attribute}; nothing to capture"
+        )
+    new_value = override[attribute]
+
+    current = get_one(session, member_identifier)
+    if current is None:
+        raise NotFoundError(member_type, member_identifier)
+    before_value = current.get(attribute)
+
+    patch_one(session, member_identifier, **{attribute.removeprefix(prefix): new_value})
+
+    transaction = txn_repo.record(
+        session,
+        direction="capture",
+        source_ref=instance,
+        target_ref=DESIGN,
+        member_type=member_type,
+        member_identifier=member_identifier,
+        attribute=attribute,
+        before_value=before_value,
+        after_value=new_value,
+        actor=actor,
+        batch_id=batch_id,
+        note=note,
+    )
+
+    remaining = {k: v for k, v in override.items() if k != attribute}
+    membership_repo.upsert_membership(
+        session,
+        instance_identifier=instance,
+        member_type=member_type,
+        member_identifier=member_identifier,
+        state="drifted" if remaining else "present",
+        override=remaining or None,
+    )
+    return {"transaction": transaction, "member": get_one(session, member_identifier)}
 
 
 def entity_for_member(

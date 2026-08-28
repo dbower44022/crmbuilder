@@ -2778,6 +2778,34 @@ class StorageClient:
         result = self._request("POST", "/reconcile/capture", json_body=body)
         return result if isinstance(result, dict) else {}
 
+    def reconcile_capture_member(
+        self,
+        *,
+        instance: str,
+        member_type: str,
+        member_identifier: str,
+        attribute: str,
+        actor: str,
+    ) -> dict[str, Any]:
+        """POST /reconcile/capture-member — non-entity member into the design.
+
+        Roles, teams and filtered tabs belong to the instance rather than to an
+        entity (REQ-519). Capture-only: the emitter renders no program block for
+        them, so there is no publish twin.
+        """
+        result = self._request(
+            "POST",
+            "/reconcile/capture-member",
+            json={
+                "instance": instance,
+                "member_type": member_type,
+                "member_identifier": member_identifier,
+                "attribute": attribute,
+                "actor": actor,
+            },
+        )
+        return result if isinstance(result, dict) else {}
+
     def reconcile_capture_setting(
         self,
         *,

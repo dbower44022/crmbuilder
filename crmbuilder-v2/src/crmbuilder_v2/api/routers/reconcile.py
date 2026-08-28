@@ -72,6 +72,18 @@ class CaptureFieldOptionsIn(BaseModel):
     note: str | None = None
 
 
+class CaptureMemberIn(BaseModel):
+    """Capture one attribute of a role, team or filtered tab into the design."""
+
+    instance: str
+    member_type: str
+    member_identifier: str
+    attribute: str
+    actor: str
+    batch_id: str | None = None
+    note: str | None = None
+
+
 class PublishObjectIn(BaseModel):
     """Publish an object's parent entity from the design to a live instance.
 
@@ -244,6 +256,30 @@ def capture_field_options(body: CaptureFieldOptionsIn):
                 instance=body.instance,
                 field_identifier=body.field_identifier,
                 option_values=body.option_values,
+                actor=body.actor,
+                batch_id=body.batch_id,
+                note=body.note,
+            )
+        )
+
+
+@router.post("/capture-member", status_code=201)
+def capture_member(body: CaptureMemberIn):
+    """Capture an instance's value for a non-entity member into the design (REQ-519).
+
+    The role / team / filtered-tab twin of ``/capture-setting``: writes the
+    instance's value onto the canonical record, logs the transaction, and clears
+    that attribute's drift on the source. Capture-only — the emitter renders no
+    program block for these members, so the publish direction has nothing to push.
+    """
+    with writable_session() as s:
+        return ok(
+            reconcile_apply.capture_member_attribute(
+                s,
+                instance=body.instance,
+                member_type=body.member_type,
+                member_identifier=body.member_identifier,
+                attribute=body.attribute,
                 actor=body.actor,
                 batch_id=body.batch_id,
                 note=body.note,

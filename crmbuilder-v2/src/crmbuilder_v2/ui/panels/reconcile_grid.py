@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from crmbuilder_v2.access.reconcile_compare import CAPTURABLE_GLOBAL_MEMBERS
 from crmbuilder_v2.ui.panels.reconcile_models import (
     FIELD_OPTIONS_ATTR,
     LOCATION_LABELS,
@@ -1075,6 +1076,14 @@ class ReconcileGridPanel(QWidget):
                 self._client.reconcile_capture_association(
                     instance=instance, association_identifier=mid,
                     attribute=attribute, actor=_ACTOR,
+                )
+            elif member_type in CAPTURABLE_GLOBAL_MEMBERS:
+                # Roles, teams and filtered tabs have no parent entity, so they
+                # capture through their own route rather than the field one
+                # (REQ-519).
+                self._client.reconcile_capture_member(
+                    instance=instance, member_type=member_type,
+                    member_identifier=mid, attribute=attribute, actor=_ACTOR,
                 )
             else:
                 self._client.reconcile_capture(
