@@ -56,7 +56,11 @@ from crmbuilder_v2.access.vocab import (
     INSTANCE_MEMBERSHIP_MEMBER_TYPES,
     LAYOUT_TYPES,
 )
-from crmbuilder_v2.adapters.espocrm.field_types import ESPO_FIELD_SHAPE
+from crmbuilder_v2.adapters.espocrm.field_types import (
+    ESPO_FIELD_SHAPE,
+    ESPO_LINK_FIELD_TYPES,
+    ESPO_LINK_TYPES_READ_AS_RELATIONSHIPS,
+)
 from crmbuilder_v2.introspect.audit_utils import (
     NATIVE_ENTITIES,
     EntityClass,
@@ -1023,6 +1027,31 @@ def _reconcile_fields_drift(
         # custom-entity fields keep their natural names (REQ-342).
         is_native = entity_class is EntityClass.NATIVE
         for field_name, field_meta in custom_fields:
+            # DEC-932 / REQ-505: a link between records is described once, as
+            # a relationship, so a link-typed field is not read as a field at
+            # all. Skipping is what closes the plain-text gap by construction —
+            # these types are absent from the shape table, so falling through
+            # would record them as text and assert something false. ``linkParent``
+            # is reported separately: the relationship reader does not describe
+            # it yet (REQ-506), and an undescribed link is a known gap rather
+            # than a wrong answer.
+            espo_type = str(field_meta.get("type"))
+            if espo_type in ESPO_LINK_FIELD_TYPES:
+                bucket = (
+                    "links_read_as_relationships"
+                    if espo_type in ESPO_LINK_TYPES_READ_AS_RELATIONSHIPS
+                    else "links_not_yet_described"
+                )
+                summary.setdefault(bucket, []).append(
+                    {
+                        "field": strip_field_c_prefix(
+                            field_name, entity_is_native=is_native
+                        ),
+                        "entity": scope_name,
+                        "source_type": espo_type,
+                    }
+                )
+                continue
             summary["seen"] += 1
             neutral_field = strip_field_c_prefix(
                 field_name, entity_is_native=is_native
@@ -1208,6 +1237,31 @@ def _reconcile_fields_candidate_gated(
 
         seen_source_fields: set[str] = set()
         for field_name, field_meta in custom_fields:
+            # DEC-932 / REQ-505: a link between records is described once, as
+            # a relationship, so a link-typed field is not read as a field at
+            # all. Skipping is what closes the plain-text gap by construction —
+            # these types are absent from the shape table, so falling through
+            # would record them as text and assert something false. ``linkParent``
+            # is reported separately: the relationship reader does not describe
+            # it yet (REQ-506), and an undescribed link is a known gap rather
+            # than a wrong answer.
+            espo_type = str(field_meta.get("type"))
+            if espo_type in ESPO_LINK_FIELD_TYPES:
+                bucket = (
+                    "links_read_as_relationships"
+                    if espo_type in ESPO_LINK_TYPES_READ_AS_RELATIONSHIPS
+                    else "links_not_yet_described"
+                )
+                summary.setdefault(bucket, []).append(
+                    {
+                        "field": strip_field_c_prefix(
+                            field_name, entity_is_native=is_native
+                        ),
+                        "entity": scope_name,
+                        "source_type": espo_type,
+                    }
+                )
+                continue
             summary["seen"] += 1
             seen_source_fields.add(field_name)
             neutral_field = strip_field_c_prefix(

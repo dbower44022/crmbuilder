@@ -31,6 +31,23 @@ from __future__ import annotations
 # (DEC-932 / REQ-505), so they are not field-vocabulary concerns at all. ``base``
 # is the shared definition the other types extend, not a type an administrator
 # picks.
+#: EspoCRM field types that describe a link between records (DEC-932 / REQ-505).
+#: Absent from ``ESPO_FIELD_SHAPE`` on purpose, and named here so the reader can
+#: skip them rather than fall through to the unmapped-type ``text`` default — a
+#: link read as text is the confident wrong answer this vocabulary work exists to
+#: remove. ``linkParent`` is the polymorphic one; the relationship reader does not
+#: yet describe it (REQ-506), so it is reported as undescribed rather than
+#: recorded as something it is not.
+ESPO_LINK_FIELD_TYPES: frozenset[str] = frozenset(
+    {"link", "linkOne", "linkParent", "linkMultiple"}
+)
+
+#: The subset the relationship reader already records from the link's owning
+#: side, so skipping them as fields loses nothing.
+ESPO_LINK_TYPES_READ_AS_RELATIONSHIPS: frozenset[str] = frozenset(
+    {"link", "linkOne", "linkMultiple"}
+)
+
 ESPO_FIELD_SHAPE: dict[str, dict[str, str]] = {
     # Text-shaped. The format says what sort of value beyond the kind; the
     # display says how it is shown (DEC-933).
