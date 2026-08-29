@@ -1053,6 +1053,12 @@ class AssociationCreateIn(_Base):
     association_cardinality: str
     association_source_role: str | None = None
     association_target_role: str | None = None
+    # PI-414 (REQ-506 / REQ-507): what the retired reference field carried.
+    association_target_kinds: list[str] | None = None
+    association_source_label: str | None = None
+    association_target_label: str | None = None
+    association_source_required: bool | None = None
+    association_target_required: bool | None = None
     association_description: str | None = None
     association_notes: str | None = None
     association_status: str | None = None
@@ -1069,6 +1075,12 @@ class AssociationReplaceIn(_Base):
     association_cardinality: str
     association_source_role: str | None = None
     association_target_role: str | None = None
+    # PI-414 (REQ-506 / REQ-507): what the retired reference field carried.
+    association_target_kinds: list[str] | None = None
+    association_source_label: str | None = None
+    association_target_label: str | None = None
+    association_source_required: bool | None = None
+    association_target_required: bool | None = None
     association_description: str | None = None
     association_notes: str | None = None
     association_status: str
@@ -1087,6 +1099,12 @@ class AssociationPatchIn(_Base):
     association_cardinality: str | None = None
     association_source_role: str | None = None
     association_target_role: str | None = None
+    # PI-414 (REQ-506 / REQ-507): what the retired reference field carried.
+    association_target_kinds: list[str] | None = None
+    association_source_label: str | None = None
+    association_target_label: str | None = None
+    association_source_required: bool | None = None
+    association_target_required: bool | None = None
     association_description: str | None = None
     association_notes: str | None = None
     association_status: str | None = None

@@ -75,6 +75,14 @@ _PATCHABLE_FIELDS = frozenset(
         "cardinality",
         "source_role",
         "target_role",
+        # PI-414 (REQ-506 / REQ-507). What the retired reference field carried:
+        # a link whose target may be any of several kinds, and each side's
+        # label and required flag.
+        "target_kinds",
+        "source_label",
+        "target_label",
+        "source_required",
+        "target_required",
         "description",
         "notes",
         "status",
@@ -133,6 +141,47 @@ def _optional_text(value: object, *, field: str) -> str | None:
     if not isinstance(value, str):
         _fail(field, "invalid_value", "must be a string or null")
     return value
+
+
+def _optional_flag(value: object, *, field: str) -> bool | None:
+    """A tri-state flag: True, False, or "not stated". ``None`` is a real answer
+    here — a relationship read from an instance that does not report a side's
+    required flag must say so rather than claim False."""
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        _fail(field, "invalid_type", f"{field} must be true, false or null")
+    return bool(value)
+
+
+def _optional_target_kinds(
+    value: object, *, field: str, session: Session
+) -> list[str] | None:
+    """The permitted kinds of a link that may point at several (REQ-506).
+
+    ``None`` is the ordinary single-target case. A list must name at least two
+    kinds — one kind is what ``association_target_entity`` already says, and
+    admitting a one-element list would create a second way to state the same
+    thing, which is the duplication DEC-932 exists to remove. Every named kind
+    is validated as a live entity, exactly as the single target is.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, (list, tuple)):
+        _fail(field, "invalid_type", f"{field} must be a list of entity identifiers")
+    kinds = list(value)
+    if len(kinds) < 2:
+        _fail(
+            field,
+            "too_few_kinds",
+            f"{field} must name at least two kinds; a single target belongs in "
+            "association_target_entity",
+        )
+    if len(set(kinds)) != len(kinds):
+        _fail(field, "duplicate_kinds", f"{field} names the same kind twice")
+    return [
+        _require_live_entity(k, field=field, session=session) for k in kinds
+    ]
 
 
 def _require_live_entity(value: object, *, field: str, session: Session) -> str:
@@ -249,6 +298,11 @@ def _new_row(
     cardinality: str,
     source_role: str | None,
     target_role: str | None,
+    target_kinds: list[str] | None,
+    source_label: str | None,
+    target_label: str | None,
+    source_required: bool | None,
+    target_required: bool | None,
     description: str | None,
     notes: str | None,
     status: str,
@@ -261,6 +315,11 @@ def _new_row(
         association_cardinality=cardinality,
         association_source_role=source_role,
         association_target_role=target_role,
+        association_target_kinds=target_kinds,
+        association_source_label=source_label,
+        association_target_label=target_label,
+        association_source_required=source_required,
+        association_target_required=target_required,
         association_description=description,
         association_notes=notes,
         association_status=status,
@@ -302,6 +361,11 @@ def create_association(
     cardinality: str,
     source_role: str | None = None,
     target_role: str | None = None,
+    target_kinds: list[str] | None = None,
+    source_label: str | None = None,
+    target_label: str | None = None,
+    source_required: bool | None = None,
+    target_required: bool | None = None,
     description: str | None = None,
     notes: str | None = None,
     status: str | None = None,
@@ -321,6 +385,17 @@ def create_association(
     status = _require_status(status)
     source_role = _optional_text(source_role, field="association_source_role")
     target_role = _optional_text(target_role, field="association_target_role")
+    source_label = _optional_text(source_label, field="association_source_label")
+    target_label = _optional_text(target_label, field="association_target_label")
+    source_required = _optional_flag(
+        source_required, field="association_source_required"
+    )
+    target_required = _optional_flag(
+        target_required, field="association_target_required"
+    )
+    target_kinds = _optional_target_kinds(
+        target_kinds, field="association_target_kinds", session=session
+    )
     description = _optional_text(
         description, field="association_description"
     )
@@ -340,6 +415,11 @@ def create_association(
         "cardinality": cardinality,
         "source_role": source_role,
         "target_role": target_role,
+        "target_kinds": target_kinds,
+        "source_label": source_label,
+        "target_label": target_label,
+        "source_required": source_required,
+        "target_required": target_required,
         "description": description,
         "notes": notes,
         "status": status,
@@ -394,6 +474,11 @@ def update_association(
     cardinality: str,
     source_role: str | None = None,
     target_role: str | None = None,
+    target_kinds: list[str] | None = None,
+    source_label: str | None = None,
+    target_label: str | None = None,
+    source_required: bool | None = None,
+    target_required: bool | None = None,
     description: str | None = None,
     notes: str | None = None,
     status: str,
@@ -420,6 +505,17 @@ def update_association(
     cardinality = _require_cardinality(cardinality)
     source_role = _optional_text(source_role, field="association_source_role")
     target_role = _optional_text(target_role, field="association_target_role")
+    source_label = _optional_text(source_label, field="association_source_label")
+    target_label = _optional_text(target_label, field="association_target_label")
+    source_required = _optional_flag(
+        source_required, field="association_source_required"
+    )
+    target_required = _optional_flag(
+        target_required, field="association_target_required"
+    )
+    target_kinds = _optional_target_kinds(
+        target_kinds, field="association_target_kinds", session=session
+    )
     description = _optional_text(
         description, field="association_description"
     )
@@ -442,6 +538,11 @@ def update_association(
     row.association_cardinality = cardinality
     row.association_source_role = source_role
     row.association_target_role = target_role
+    row.association_target_kinds = target_kinds
+    row.association_source_label = source_label
+    row.association_target_label = target_label
+    row.association_source_required = source_required
+    row.association_target_required = target_required
     row.association_description = description
     row.association_notes = notes
     session.flush()

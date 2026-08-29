@@ -1899,6 +1899,31 @@ class Association(EngagementScopedPKMixin, Base):
     association_target_role: Mapped[str | None] = mapped_column(
         String(255), nullable=True
     )
+    # PI-414 (REQ-506 / DEC-932). A link whose target may be any of several
+    # kinds of record — EspoCRM's ``linkParent``, which ``Call.parent`` and
+    # ``Meeting.parent`` both use. ``association_target_entity`` names one kind
+    # and cannot say "any of these", so such a link previously fell through the
+    # field translation table and was recorded as plain text. NULL means the
+    # ordinary single-target case; a list names every permitted kind.
+    association_target_kinds: Mapped[list | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    # PI-414 (REQ-507 / DEC-932). What the retired reference field carried for
+    # the link: how each side is labelled and whether it is required. Held per
+    # side, because the two ends of one link are labelled independently and the
+    # field record only ever described the end it sat on.
+    association_source_label: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    association_target_label: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    association_source_required: Mapped[bool | None] = mapped_column(
+        Boolean, nullable=True
+    )
+    association_target_required: Mapped[bool | None] = mapped_column(
+        Boolean, nullable=True
+    )
     association_description: Mapped[str | None] = mapped_column(
         Text, nullable=True
     )

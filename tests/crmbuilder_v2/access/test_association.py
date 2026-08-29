@@ -32,6 +32,12 @@ _EXPECTED_COLUMNS = {
     "association_cardinality": "VARCHAR",
     "association_source_role": "VARCHAR",
     "association_target_role": "VARCHAR",
+    # PI-414 (REQ-506 / REQ-507): what the retired reference field carried.
+    "association_target_kinds": "JSON",
+    "association_source_label": "VARCHAR",
+    "association_target_label": "VARCHAR",
+    "association_source_required": "BOOLEAN",
+    "association_target_required": "BOOLEAN",
     "association_description": "TEXT",
     "association_notes": "TEXT",
     "association_status": "VARCHAR",
@@ -267,3 +273,82 @@ def test_list_filters_by_endpoint(v2_env):
     with session_scope() as s:
         assert len(association.list_associations(s)) == 2
         assert len(association.list_associations(s, target_entity=c)) == 1
+
+
+# --- link properties the reference field used to carry (PI-414 — REQ-506/507) ---
+
+def test_relationship_records_a_link_whose_target_may_be_several_kinds(v2_env):
+    """REQ-506: EspoCRM's linkParent — Call.parent, Meeting.parent — may point at
+    any of several kinds. association_target_entity names exactly one, so such a
+    link previously fell through the field translation table and was recorded as
+    plain text. The permitted kinds round-trip."""
+    with session_scope() as s:
+        call = _seed_entity(s, "Call")
+        acct = _seed_entity(s, "Account")
+        cont = _seed_entity(s, "Contact")
+        out = association.create_association(
+            s, name="parent", source_entity=call, target_entity=acct,
+            cardinality="many_to_many", target_kinds=[acct, cont],
+        )
+        assert out["association_target_kinds"] == [acct, cont]
+        again = association.get_association(s, out["association_identifier"])
+        assert again["association_target_kinds"] == [acct, cont]
+
+
+def test_a_single_target_kind_is_refused_as_a_second_way_to_say_one_thing(v2_env):
+    """One kind is what association_target_entity already states. Admitting a
+    one-element list would recreate the two-descriptions-of-one-link duplication
+    DEC-932 exists to remove."""
+    with session_scope() as s:
+        call = _seed_entity(s, "Call")
+        acct = _seed_entity(s, "Account")
+        with pytest.raises(UnprocessableError):
+            association.create_association(
+                s, name="parent", source_entity=call, target_entity=acct,
+                cardinality="many_to_many", target_kinds=[acct],
+            )
+
+
+def test_target_kinds_must_name_live_entities(v2_env):
+    """Every named kind is validated exactly as the single target is."""
+    with session_scope() as s:
+        call = _seed_entity(s, "Call")
+        acct = _seed_entity(s, "Account")
+        with pytest.raises(UnprocessableError):
+            association.create_association(
+                s, name="parent", source_entity=call, target_entity=acct,
+                cardinality="many_to_many", target_kinds=[acct, "ENT-999"],
+            )
+
+
+def test_each_side_carries_its_own_label_and_required_flag(v2_env):
+    """REQ-507: the two ends of one link are labelled and required
+    independently, and a reference field only ever described the end it sat on.
+    Held per side so nothing is lost when the field side goes."""
+    with session_scope() as s:
+        acct = _seed_entity(s, "Account")
+        cont = _seed_entity(s, "Contact")
+        out = association.create_association(
+            s, name="primaryContact", source_entity=acct, target_entity=cont,
+            cardinality="one_to_many",
+            source_label="Account", target_label="Primary Contact",
+            source_required=False, target_required=True,
+        )
+        assert out["association_source_label"] == "Account"
+        assert out["association_target_label"] == "Primary Contact"
+        assert out["association_source_required"] is False
+        assert out["association_target_required"] is True
+
+
+def test_an_unstated_required_flag_stays_unstated(v2_env):
+    """None is a real answer: a relationship read from an instance that does not
+    report a side's required flag must say so rather than claim False."""
+    with session_scope() as s:
+        acct = _seed_entity(s, "Account")
+        cont = _seed_entity(s, "Contact")
+        out = association.create_association(
+            s, name="primaryContact", source_entity=acct, target_entity=cont,
+            cardinality="one_to_many",
+        )
+        assert out["association_source_required"] is None
+        assert out["association_target_kinds"] is None
