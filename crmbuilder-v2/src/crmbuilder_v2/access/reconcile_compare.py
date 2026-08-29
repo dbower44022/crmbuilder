@@ -147,6 +147,46 @@ def _presence(membership: dict[str, Any] | None) -> str:
 #: merely echoes its value is not drift.
 FIELD_OPTIONS_ATTR = "field_options"
 
+#: Outcome of one compared attribute (REQ-513 / DEC-938). ``differs`` alone could
+#: not say *why* a row is not a match, so an attribute the design never declared
+#: was indistinguishable from one the instance had genuinely changed — and the
+#: remedies are opposite: finish the design, or investigate the instance.
+DRIFT = "drift"
+MATCH = "match"
+#: ``UNKNOWN`` is reused rather than a fourth word being coined (DEC-938): it
+#: already exists and already carries a reason.
+
+#: Reason tokens for an ``unknown`` attribute outcome. The two causes of an
+#: unanswerable attribute have nothing in common but the outcome, so the reason
+#: is what makes the result actionable (DEC-938).
+UNDECLARED_IN_DESIGN = "undeclared_in_design"
+
+
+def _declares(design_obj: dict[str, Any], attribute: str) -> bool:
+    """Whether the design states a value for ``attribute``.
+
+    A missing key and a ``None`` value are the same statement — the design does
+    not say — because a design record carries every column of its table, so an
+    unset attribute arrives as ``None`` rather than as an absent key. ``False``,
+    ``0`` and ``""`` are declarations and must not be swept in by truthiness.
+    """
+    return design_obj.get(attribute) is not None
+
+
+def _is_empty_fixed_option_set(design_obj: dict[str, Any], attribute: str) -> bool:
+    """The DEC-940 case: a field declared to hold fixed values, listing none.
+
+    This is *not* an undeclared attribute — it is a declared one in an invalid
+    state, on both sides, so it reports as drift. An ``unknown`` would say nobody
+    can tell; drift says something is wrong and names it. DEC-940 amends DEC-938
+    for this case only.
+    """
+    return (
+        attribute == FIELD_OPTIONS_ATTR
+        and design_obj.get("field_values") == "fixed"
+        and not design_obj.get(FIELD_OPTIONS_ATTR)
+    )
+
 
 def normalize_option_set(options: Any) -> frozenset[tuple[str, str]]:
     """Reduce an option list to the order-insensitive set used for comparison.
@@ -315,6 +355,16 @@ def compute_member_rows(
             (False, False) if agrees
             else _attribute_capabilities(member_type, attr)
         )
+        # Why this row is not a match, not merely that it isn't (REQ-513). An
+        # attribute the design never declared is unknown with the design named,
+        # so a reader knows to finish the design rather than to go and look at
+        # the CRM. It still counts against conformance — undeclared is not clean.
+        if agrees:
+            outcome, reason = MATCH, None
+        elif _declares(design_obj, attr) or _is_empty_fixed_option_set(design_obj, attr):
+            outcome, reason = DRIFT, None
+        else:
+            outcome, reason = UNKNOWN, UNDECLARED_IN_DESIGN
         rows.append({
             "member_type": member_type,
             "member_identifier": member_identifier,
@@ -325,6 +375,8 @@ def compute_member_rows(
             "instance_a": a_value if a_carries else pres_a,
             "instance_b": b_value if b_carries else pres_b,
             "differs": not agrees,
+            "outcome": outcome,
+            "reason": reason,
             "capturable": cap,
             "publishable": pub,
             "actionable": cap or pub,

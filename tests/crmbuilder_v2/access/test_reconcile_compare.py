@@ -899,3 +899,79 @@ def test_layout_attributes_stay_view_only():
     )
     row = rows[0]
     assert row["capturable"] is False and row["publishable"] is False
+
+
+# --- undeclared vs drifted (PI-414 — REQ-513 / DEC-938 / DEC-940) -----------
+
+def _one_attr(design_obj, attribute, instance_value, member_type="entity"):
+    rows = compute_member_rows(
+        member_type=member_type, member_identifier="X-1", member_name="Contact",
+        design_obj=design_obj, attributes=[attribute],
+        membership_a=_mem(state="drifted", override={attribute: instance_value}),
+        membership_b=_mem(),
+    )
+    return next(r for r in rows if r["kind"] == "attribute")
+
+
+def test_attribute_the_design_never_declared_is_unknown_naming_the_design():
+    """REQ-513: the design says nothing and the CRM returns its own default. That
+    is not the instance disagreeing — it is the design being unfinished, and the
+    reason must say so, because the remedies are opposite."""
+    row = _one_attr({"entity_default_sort_field": None},
+                    "entity_default_sort_field", "createdAt")
+    assert row["outcome"] == "unknown"
+    assert row["reason"] == "undeclared_in_design"
+
+
+def test_undeclared_attribute_still_counts_against_conformance():
+    """REQ-513: unknown is not clean. The row is emitted and still differs, so an
+    instance carrying an undeclared compared attribute is never reported
+    conformant — it is only reported for a different reason."""
+    row = _one_attr({"entity_default_sort_field": None},
+                    "entity_default_sort_field", "createdAt")
+    assert row["differs"] is True
+
+
+def test_declared_attribute_that_disagrees_is_drift_with_no_reason():
+    """The design states a value and the instance holds another: a real
+    disagreement, and nothing to explain."""
+    row = _one_attr({"entity_default_sort_field": "name"},
+                    "entity_default_sort_field", "createdAt")
+    assert row["outcome"] == "drift"
+    assert row["reason"] is None
+
+
+def test_fixed_values_field_listing_no_options_is_drift_not_unknown():
+    """DEC-940 amends DEC-938 for exactly this case: a field declared to hold
+    fixed values while listing none is a declared attribute in an invalid state,
+    not an undeclared one. An unknown would say nobody can tell; drift says
+    something is wrong."""
+    row = _one_attr(
+        {"field_values": "fixed", "field_options": []},
+        "field_options", [{"option_value": "a", "option_label": "A"}],
+        member_type="field",
+    )
+    assert row["outcome"] == "drift"
+
+
+def test_a_declared_false_is_a_declaration_not_an_absence():
+    """``False``, ``0`` and ``""`` are things the design says. Testing
+    truthiness rather than ``is None`` would sweep them into unknown and hide
+    real drift behind an unfinished-design label."""
+    row = _one_attr({"field_required": False}, "field_required", True,
+                    member_type="field")
+    assert row["outcome"] == "drift"
+
+
+def test_agreeing_attribute_is_a_match_when_shown():
+    """Under show-all an in-sync property is a match, distinct from both drift
+    and unknown."""
+    rows = compute_member_rows(
+        member_type="entity", member_identifier="ENT-1", member_name="Contact",
+        design_obj={"entity_default_sort_field": "name"},
+        attributes=["entity_default_sort_field"],
+        membership_a=_mem(), membership_b=_mem(), include_unchanged=True,
+    )
+    row = next(r for r in rows if r["kind"] == "attribute")
+    assert row["outcome"] == "match"
+    assert row["differs"] is False

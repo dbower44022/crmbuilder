@@ -41,7 +41,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from crmbuilder_v2.access.reconcile_compare import CAPTURABLE_GLOBAL_MEMBERS
+from crmbuilder_v2.access.reconcile_compare import CAPTURABLE_GLOBAL_MEMBERS, UNKNOWN
 from crmbuilder_v2.ui.panels.reconcile_models import (
     FIELD_OPTIONS_ATTR,
     LOCATION_LABELS,
@@ -752,9 +752,21 @@ class ReconcileGridPanel(QWidget):
         global_note = (
             f" · {global_diffs} in the Groups tab" if global_diffs else ""
         )
+        # Separate the rows that differ because the design never said (REQ-513)
+        # from the rows where the instance genuinely disagrees. Reporting one
+        # total conflated "finish the design" with "go and look at the CRM".
+        undeclared = sum(
+            1
+            for g in self._payload.get("groups", [])
+            for r in g.get("rows", [])
+            if r.get("outcome") == UNKNOWN
+        )
+        undeclared_note = (
+            f" · {undeclared} undeclared in the design" if undeclared else ""
+        )
         self._summary.setText(
             f"{entity_count} entities · {diff_count} difference(s) across "
-            f"{len(differing)} entit(y/ies){global_note}{mode}. "
+            f"{len(differing)} entit(y/ies){global_note}{undeclared_note}{mode}. "
             "Double-click a row to drill in."
         )
 
