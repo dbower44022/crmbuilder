@@ -75,6 +75,9 @@ def test_association_registered_in_vocab():
         "one_to_one",
         "one_to_many",
         "many_to_many",
+        # PI-414 / REQ-506: the polymorphic parent link is recorded from the
+        # child side, because its owning side is several entities at once.
+        "many_to_one",
     }
     assert ASSOCIATION_STATUSES == {
         "candidate",

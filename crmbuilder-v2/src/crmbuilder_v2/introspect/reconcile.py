@@ -106,9 +106,17 @@ class _FieldsClient(_ScopesClient, Protocol):
 
 
 class _LinksClient(_ScopesClient, Protocol):
-    """Adds the per-entity link listing the association reconcile needs."""
+    """Adds the per-entity link listing the association reconcile needs.
+
+    ``get_entity_field_list`` is needed too, and only for the polymorphic case:
+    EspoCRM states a parent link's permitted kinds on the *field*
+    (``linkParent.entityList``), not on the link, so the two must be read
+    together to describe one relationship (REQ-506).
+    """
 
     def get_all_links(self, entity: str) -> tuple[int, dict | None]: ...
+
+    def get_entity_field_list(self, entity: str) -> tuple[int, dict | None]: ...
 
 
 # EspoCRM link ``type`` -> engine-neutral cardinality (DEC-433). Only the
@@ -122,7 +130,17 @@ _LINK_CARDINALITY: dict[str, str] = {
     "manyMany": "many_to_many",
     "hasMany": "one_to_many",
     "hasOne": "one_to_one",
+    # PI-414 / REQ-506. The polymorphic parent is the one link that cannot be
+    # recorded from its owning side, because that side is several entities at
+    # once — so it is recorded from the child, and ``many_to_one`` is the word
+    # that makes that truthful. ``hasChildren``, its reciprocal, stays absent:
+    # it appears on every permitted parent kind, and processing it would create
+    # one relationship per kind, which is the duplication DEC-932 removes.
+    "belongsToParent": "many_to_one",
 }
+
+#: The EspoCRM link type whose target may be any of several kinds (REQ-506).
+_POLYMORPHIC_LINK_TYPE = "belongsToParent"
 
 
 # The engine's own table lives with the engine adapter (PI-414 / REQ-501): one
@@ -1308,6 +1326,41 @@ def _reconcile_fields_candidate_gated(
     return summary
 
 
+def _parent_link_kinds(
+    client: _LinksClient,
+    scope_name: str,
+    link_name: str,
+    ent_by_name: dict[str, str],
+) -> list[str] | None:
+    """The canonical entity ids a polymorphic parent link permits (REQ-506).
+
+    EspoCRM states them on the field (``linkParent.entityList``), not on the
+    link, so this is a second read against the same entity. Kinds outside the
+    canonical inventory are dropped, exactly as a single target outside it is
+    skipped; fewer than two survivors means the design cannot describe the link
+    as polymorphic, and the caller treats it as undescribed rather than
+    recording a narrower claim than the CRM actually makes.
+    """
+    status, fields = client.get_entity_field_list(scope_name)
+    if status != 200 or not isinstance(fields, dict):
+        return None
+    meta = fields.get(link_name)
+    if not isinstance(meta, dict):
+        return None
+    listed = meta.get("entityList")
+    if not isinstance(listed, (list, tuple)):
+        return None
+    resolved = [
+        ent_by_name[_ci(strip_entity_c_prefix(str(k)))]
+        for k in listed
+        if _ci(strip_entity_c_prefix(str(k))) in ent_by_name
+    ]
+    # De-duplicate while keeping the CRM's order — the order is the operator's.
+    seen: set[str] = set()
+    unique = [k for k in resolved if not (k in seen or seen.add(k))]
+    return unique if len(unique) >= 2 else None
+
+
 def reconcile_associations(
     session: Session,
     *,
@@ -1563,16 +1616,42 @@ def _reconcile_associations_drift(
         for link_name, link_meta in links.items():
             if not isinstance(link_meta, dict):
                 continue
-            cardinality = _LINK_CARDINALITY.get(str(link_meta.get("type")))
+            link_type = str(link_meta.get("type"))
+            cardinality = _LINK_CARDINALITY.get(link_type)
             if cardinality is None:
                 continue
-            foreign_scope = link_meta.get("entity")
-            if not foreign_scope:
-                continue
-            target_id = ent_by_name.get(_ci(strip_entity_c_prefix(foreign_scope)))
-            if target_id is None:
-                # Endpoint is native / not in the canonical inventory — skip.
-                continue
+            target_kinds: list[str] | None = None
+            if link_type == _POLYMORPHIC_LINK_TYPE:
+                # REQ-506: the permitted kinds live on the field, not the link,
+                # so this is a second read. Without at least two resolvable
+                # kinds the design cannot describe the link as polymorphic, and
+                # recording one kind would claim the link is narrower than the
+                # CRM actually allows — so it is left undescribed instead.
+                target_kinds = _parent_link_kinds(
+                    client, scope_name, link_name, ent_by_name
+                )
+                if target_kinds is None:
+                    summary.setdefault("links_not_yet_described", []).append(
+                        {
+                            "entity": scope_name,
+                            "link": link_name,
+                            "source_type": link_type,
+                        }
+                    )
+                    continue
+                # The column is single-valued and non-null; the kind list is the
+                # authoritative statement when present (see migration 0113).
+                target_id = target_kinds[0]
+            else:
+                foreign_scope = link_meta.get("entity")
+                if not foreign_scope:
+                    continue
+                target_id = ent_by_name.get(
+                    _ci(strip_entity_c_prefix(foreign_scope))
+                )
+                if target_id is None:
+                    # Endpoint is native / not in the canonical inventory — skip.
+                    continue
 
             if cardinality == "many_to_many":
                 relation_name = link_meta.get("relationName") or link_name
@@ -1598,6 +1677,7 @@ def _reconcile_associations_drift(
                     source_entity=source_id,
                     target_entity=target_id,
                     cardinality=cardinality,
+                    target_kinds=target_kinds,
                 )
                 canon[assoc_name] = created
                 member_id = created["association_identifier"]

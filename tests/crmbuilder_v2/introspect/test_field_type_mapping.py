@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+from crmbuilder_v2.access.vocab import ASSOCIATION_CARDINALITIES
 from crmbuilder_v2.adapters.espocrm.field_types import (
     ESPO_FIELD_SHAPE,
     ESPO_LINK_FIELD_TYPES,
     ESPO_LINK_TYPES_READ_AS_RELATIONSHIPS,
 )
 from crmbuilder_v2.introspect.reconcile import (
+    _LINK_CARDINALITY,
     _audited_field_attrs,
     _map_field_type,
+    _parent_link_kinds,
     is_unmapped_field_type,
 )
 
@@ -74,3 +77,70 @@ def test_the_polymorphic_link_is_the_one_with_no_relationship_counterpart():
     assert ESPO_LINK_FIELD_TYPES - ESPO_LINK_TYPES_READ_AS_RELATIONSHIPS == {
         "linkParent"
     }
+
+
+# --- the polymorphic parent link (PI-414 — REQ-506) ------------------------
+
+def test_the_polymorphic_parent_is_recorded_from_the_child_side():
+    """REQ-506: every other many-to-one link is recorded as one_to_many from its
+    owning side, but a parent link's owning side is several entities at once.
+    It is recorded from the child, which is what many_to_one exists to say."""
+    assert _LINK_CARDINALITY["belongsToParent"] == "many_to_one"
+    assert "many_to_one" in ASSOCIATION_CARDINALITIES
+
+
+def test_the_reciprocal_of_the_parent_link_stays_unprocessed():
+    """hasChildren appears on every permitted parent kind, so processing it
+    would create one relationship per kind — the duplication DEC-932 removes."""
+    assert "hasChildren" not in _LINK_CARDINALITY
+    assert "belongsTo" not in _LINK_CARDINALITY
+
+
+class _FieldListClient:
+    def __init__(self, fields): self._fields = fields
+    def get_entity_field_list(self, entity): return 200, self._fields
+
+
+def test_permitted_kinds_are_read_from_the_field_not_the_link():
+    """EspoCRM states a parent link's permitted kinds on the field
+    (linkParent.entityList), never on the link, so describing one relationship
+    needs both reads."""
+    client = _FieldListClient(
+        {"parent": {"type": "linkParent", "entityList": ["Account", "Contact"]}}
+    )
+    kinds = _parent_link_kinds(
+        client, "Call", "parent", {"account": "ENT-1", "contact": "ENT-2"}
+    )
+    assert kinds == ["ENT-1", "ENT-2"]
+
+
+def test_kinds_outside_the_canonical_inventory_are_dropped():
+    """A kind the design does not carry is dropped, exactly as a single target
+    outside the inventory is skipped."""
+    client = _FieldListClient(
+        {"parent": {"type": "linkParent",
+                    "entityList": ["Account", "Contact", "Lead"]}}
+    )
+    kinds = _parent_link_kinds(
+        client, "Call", "parent", {"account": "ENT-1", "contact": "ENT-2"}
+    )
+    assert kinds == ["ENT-1", "ENT-2"]
+
+
+def test_fewer_than_two_surviving_kinds_is_undescribed_not_narrowed():
+    """Recording one kind would claim the link is narrower than the CRM allows.
+    The reader reports it undescribed instead — a known gap beats a false
+    statement, which is the whole premise of this vocabulary work."""
+    client = _FieldListClient(
+        {"parent": {"type": "linkParent", "entityList": ["Account", "Lead"]}}
+    )
+    assert _parent_link_kinds(
+        client, "Call", "parent", {"account": "ENT-1"}
+    ) is None
+
+
+def test_an_unreadable_field_list_is_undescribed_rather_than_assumed():
+    """A failed read is not an empty answer."""
+    class _Broken:
+        def get_entity_field_list(self, entity): return 403, None
+    assert _parent_link_kinds(_Broken(), "Call", "parent", {}) is None

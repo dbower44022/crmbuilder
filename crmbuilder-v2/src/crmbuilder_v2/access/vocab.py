@@ -570,8 +570,17 @@ SERVICE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 # EspoCRM relationship ``type`` (``oneToOne`` / ``oneToMany`` /
 # ``manyToMany``) and a HubSpot association cardinality.
 ASSOCIATION_CARDINALITIES: frozenset[str] = frozenset(
-    {"one_to_one", "one_to_many", "many_to_many"}
+    {"one_to_one", "one_to_many", "many_to_many", "many_to_one"}
 )
+
+# ``many_to_one`` added PI-414 (REQ-506), approved by Doug 2026-08-29 under
+# GVR-232. Every other many-to-one link is recorded as ``one_to_many`` from the
+# "one" (owning) side, which is why the set did without it — but a link whose
+# target may be any of several kinds has no single owning side to record from,
+# and recording one relationship per permitted kind is the duplication DEC-932
+# exists to remove. So the polymorphic case is recorded from the child side,
+# and needs the word that says so; ``one_to_many`` there would assert that one
+# child has many parents, which is false.
 
 # Methodology entity ``association`` lifecycle (PI-189). The standard
 # four-status propose-verify lifecycle, identical to ``entity`` / ``service``
