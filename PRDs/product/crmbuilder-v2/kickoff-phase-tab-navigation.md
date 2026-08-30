@@ -1,6 +1,6 @@
 # Kickoff — Phase-tab navigation for the v2 desktop
 
-**Status:** governed design, not yet built.
+**Status:** delivered — main `e040e261` (2026-08-30); PI-432 resolved via CNV-329.
 **Records (ENG-001):** decision DEC-953 · requirement REQ-526 (confirmed) · planning item PI-432 · project PRJ-113 · release REL-079 · session SES-365 · conversation CNV-328 · kickoff work ticket WT-072.
 **Decided:** 2026-08-30, Doug, in a one-decision-at-a-time design conversation (three revisions of the proposal; option A chosen).
 **Proposal page (rendered, with screenshots and wireframes):** https://claude.ai/code/artifact/c637ca0e-9839-4060-ad44-c244c31c63e1
@@ -65,7 +65,7 @@ DEC-258 (Chat single-active, no tabs inside Chat), DEC-530/532 (Releases hub unc
 
 ## Terminology
 
-Proposed new glossary terms, pending Doug's approval before they appear in UI copy: **phase tab**, **step** (a panel's position in a phase), **phase checklist**, **Quick open**, **All panels**, **Operate CRMBuilder**. "Phase", "session", "planning item", "hub", "workbench" and every panel name are existing terms. "Finding" (TERM-014) is reused, not redefined.
+Glossary terms approved by Doug on 2026-08-30 and recorded as TERM-036–041: **Phase tab**, **Step** (a panel's position in a phase), **Phase checklist**, **Quick open**, **All panels**, **Operate CRMBuilder**. "Phase", "session", "planning item", "hub", "workbench" and every panel name are existing terms. "Finding" (TERM-014) is reused, not redefined.
 
 ## Build shape (for the PI)
 
