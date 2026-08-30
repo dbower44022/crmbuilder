@@ -360,6 +360,20 @@ def _map_field_type(field_row: dict) -> str | None:
     if kind in _KINDS_NEVER_EMITTED:
         return None
 
+    # REQ-515 / DEC-939. Sensitivity outranks every other qualifying property,
+    # and is resolved before any kind-specific refinement can reach an ordinary
+    # type. Left in format order it did not: a secret carrying a barcode display
+    # emitted ``barcode``, a plainly readable field, because the display branch
+    # ran first. Every other property in this function trades one reporting
+    # shape for another; this one decides whether a value is protected at all.
+    #
+    # EspoCRM protects text and nothing else, so a sensitive value of any other
+    # kind is something it cannot hold. That is reported as such under REQ-502
+    # rather than emitted as an ordinary field of that kind — substituting the
+    # near equivalent is precisely the harm.
+    if fmt == "secret":
+        return "password" if kind == "text" else None
+
     if kind == "text":
         if several and fmt == "url":
             return "urlMultiple"

@@ -219,6 +219,42 @@ def test_a_secret_is_never_built_as_an_ordinary_field():
     assert _audited_field_attrs({"type": "password"})["field_format"] == "secret"
 
 
+def test_no_other_property_can_downgrade_a_secret():
+    """REQ-515 / DEC-939: sensitivity outranks every other qualifying property.
+
+    The defect this pins: display was resolved before format, so a secret
+    carrying a barcode display emitted ``barcode`` — a plainly readable field.
+    Every other property here trades one reporting shape for another; this one
+    decides whether the value is protected at all, so it must win.
+    """
+    for extra in (
+        {"field_display": "barcode"},
+        {"field_holds": "several"},
+        {"field_values": "open"},
+        {"field_supplied_by": "this_crm"},
+        {"field_display": "barcode", "field_holds": "several"},
+    ):
+        row = {"field_type": "text", "field_format": "secret", **extra}
+        assert emit_type(row) == "password", extra
+
+
+def test_a_secret_of_a_kind_the_crm_cannot_protect_is_not_emitted():
+    """EspoCRM protects text and nothing else. A sensitive value of another kind
+    is something it cannot hold, reported as such under REQ-502 — emitting the
+    near equivalent would be an ordinary, readable field holding a secret, which
+    is the harm rather than a reporting gap."""
+    for kind in ("number", "long_text", "date", "money"):
+        assert emit_type({"field_type": kind, "field_format": "secret"}) is None, kind
+
+
+def test_the_ordinary_paths_are_untouched_by_the_precedence_rule():
+    """The rule is narrow: a field that is not sensitive still resolves by
+    display, holds and values exactly as before."""
+    assert emit_type({"field_type": "text", "field_display": "barcode"}) == "barcode"
+    assert emit_type({"field_type": "text"}) == "varchar"
+    assert emit_type({"field_type": "text", "field_format": "email"}) == "email"
+
+
 def test_qualifying_properties_survive_in_both_directions():
     """Each property that separates types sharing a kind round-trips."""
     cases = [
