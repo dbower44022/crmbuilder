@@ -866,6 +866,52 @@ PUBLISH_RUN_STATUSES: frozenset[str] = frozenset(
 )
 
 # ---------------------------------------------------------------------------
+# deploy_run (PI-419 — PRJ-111, REQ-522). One recorded execution of a
+# provisioning job that creates a server, sets its DNS record, installs and
+# verifies the CRM over SSH, and registers the resulting instance. Unlike a
+# publish_run it is NOT born terminal: a deploy worker claims a ``queued`` run,
+# holds it ``running`` with a heartbeat, and lands a terminal status —
+# succeeded, succeeded_with_issues (verification found gaps), failed (a phase
+# raised; everything built is kept and reported — DEC-945), or cancelled.
+# ---------------------------------------------------------------------------
+DEPLOY_RUN_STATUSES: frozenset[str] = frozenset(
+    {
+        "queued",
+        "running",
+        "succeeded",
+        "succeeded_with_issues",
+        "failed",
+        "cancelled",
+    }
+)
+DEPLOY_RUN_TERMINAL_STATUSES: frozenset[str] = frozenset(
+    {"succeeded", "succeeded_with_issues", "failed", "cancelled"}
+)
+
+# The ordered deploy phases (each idempotent so an interrupted run resumes at
+# the phase that did not complete). The tuple is the execution order; the
+# frozenset backs the CHECK.
+DEPLOY_RUN_PHASE_ORDER: tuple[str, ...] = (
+    "validate",
+    "create_droplet",
+    "wait_droplet",
+    "create_dns",
+    "wait_dns",
+    "server_prep",
+    "install_espocrm",
+    "post_install",
+    "verify",
+    "create_instance",
+)
+DEPLOY_RUN_PHASES: frozenset[str] = frozenset(DEPLOY_RUN_PHASE_ORDER)
+
+# provider_credential (PI-419): an engagement-scoped API token for an
+# infrastructure provider, stored as an opaque secret ref (REQ-157).
+PROVIDER_CREDENTIAL_PROVIDERS: frozenset[str] = frozenset(
+    {"digitalocean", "cloudflare"}
+)
+
+# ---------------------------------------------------------------------------
 # instance_membership join (PI-185 — PRJ-027). A lightweight engagement-scoped
 # child table (NOT a prefixed-identifier governance entity), one row per
 # (canonical design object, instance), recording whether the object is present,

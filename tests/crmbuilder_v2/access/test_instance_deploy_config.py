@@ -71,3 +71,19 @@ def test_backfill_noop_when_not_json_or_no_config(v2_env):
         no_dc = json.dumps({"label": "x"})
         assert idc.backfill_from_notes(s, iid, no_dc) == (None, no_dc)
         assert idc.get_deploy_config(s, iid) is None
+
+
+def test_deploy_run_written_fields_round_trip(v2_env):
+    """PI-419 (REQ-522): the columns a deploy run writes are upsertable."""
+    with session_scope() as s:
+        cfg = idc.upsert_deploy_config(
+            s, _instance(s),
+            admin_username="admin", admin_password_ref="crmbuilder:p",
+            db_password_ref="crmbuilder:d", droplet_ip="203.0.113.7",
+            droplet_region="nyc3", droplet_size="s-2vcpu-4gb",
+            dns_record_id="abc123", last_deploy_run_identifier="DEP-001",
+        )
+    assert cfg["admin_username"] == "admin"
+    assert cfg["admin_password_ref"] == "crmbuilder:p"
+    assert cfg["droplet_ip"] == "203.0.113.7"
+    assert cfg["last_deploy_run_identifier"] == "DEP-001"

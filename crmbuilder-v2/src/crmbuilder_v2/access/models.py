@@ -68,6 +68,8 @@ from crmbuilder_v2.access.vocab import (
     DEDUP_RULE_STATUSES,
     DEPLOY_CONFIG_SCENARIOS,
     DEPLOY_CONFIG_SSH_AUTH_TYPES,
+    DEPLOY_RUN_PHASES,
+    DEPLOY_RUN_STATUSES,
     DEPOSIT_EVENT_KINDS,
     DEPOSIT_EVENT_OUTCOMES,
     DOMAIN_STATUSES,
@@ -120,6 +122,7 @@ from crmbuilder_v2.access.vocab import (
     PREFERENCE_STATUSES,
     PROCESS_CLASSIFICATIONS,
     PROJECT_STATUSES,
+    PROVIDER_CREDENTIAL_PROVIDERS,
     PUBLISH_RUN_STATUSES,
     RECONCILE_TRANSACTION_DIRECTIONS,
     RECONCILE_TRANSACTION_STATUSES,
@@ -2983,6 +2986,22 @@ class InstanceDeployConfig(EngagementScopedMixin, Base):
     domain_registrar: Mapped[str | None] = mapped_column(Text, nullable=True)
     dns_provider: Mapped[str | None] = mapped_column(Text, nullable=True)
     droplet_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # PI-419 (REQ-522) — facts a deploy run writes when it provisions the
+    # server itself: the CRM admin login (secret ref + username; the same
+    # password backs the instance's basic-auth credential), the application
+    # DB password ref (the installer needs both DB passwords), the droplet's
+    # public IP / region / size, the DNS record it created, and the run that
+    # last provisioned or re-provisioned this instance.
+    db_password_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    admin_username: Mapped[str | None] = mapped_column(Text, nullable=True)
+    admin_password_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
+    droplet_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    droplet_region: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    droplet_size: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    dns_record_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_deploy_run_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -3143,6 +3162,126 @@ class PublishRun(EngagementScopedMixin, Base):
             "ix_publish_runs_instance",
             "engagement_id",
             "instance_identifier",
+        ),
+    )
+
+
+class DeployRun(EngagementScopedMixin, Base):
+    """PI-419 (REQ-522, PRJ-111) — one recorded execution of a provisioning job.
+
+    A lean engagement-scoped operational log (integer PK plus a friendly
+    ``DEP-NNN`` identifier; **not** a prefixed-identifier governance entity — no
+    ``change_log`` / ``refs`` participation, mirroring ``PublishRun``). Unlike a
+    publish run it is *not* born terminal: it is created ``queued``, a deploy
+    worker claims it (``deploy_run_worker_id`` + heartbeat) and drives it through
+    the ordered deploy phases, and a terminal status lands at the end. The
+    ``state`` JSON is the resume checkpoint — what has already been created
+    (droplet id / IP, DNS record, SSH key), per-phase outcomes, verification
+    results, and the cancel flag — so a run abandoned by a restarted service is
+    reclaimed and resumed at the phase that did not complete. ``spec`` holds the
+    non-secret request; ``secret_refs`` only opaque secret references (REQ-157);
+    ``log`` a capped list of ``[timestamp, level, message]`` lines, already
+    masked. ``instance_identifier`` is null until the run registers the instance.
+    """
+
+    __tablename__ = "deploy_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    deploy_run_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    instance_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    deploy_run_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    deploy_run_phase: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    deploy_run_spec: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    deploy_run_secret_refs: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    deploy_run_state: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    deploy_run_log: Mapped[list | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    deploy_run_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deploy_run_requested_by: Mapped[str | None] = mapped_column(
+        String(128), nullable=True
+    )
+    deploy_run_worker_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    deploy_run_heartbeat_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deploy_run_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deploy_run_ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("deploy_run_identifier", ["DEP"]),
+            name="ck_deploy_run_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("deploy_run_status", DEPLOY_RUN_STATUSES),
+            name="ck_deploy_run_status",
+        ),
+        CheckConstraint(
+            _check_in("deploy_run_phase", DEPLOY_RUN_PHASES),
+            name="ck_deploy_run_phase",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "deploy_run_identifier",
+            name="uq_deploy_run_identifier",
+        ),
+        Index("ix_deploy_runs_status", "engagement_id", "deploy_run_status"),
+        Index("ix_deploy_runs_instance", "engagement_id", "instance_identifier"),
+    )
+
+
+class ProviderCredential(EngagementScopedMixin, Base):
+    """PI-419 (REQ-522, PRJ-111) — an engagement's infrastructure-provider token.
+
+    One row per (engagement, provider) — DigitalOcean or Cloudflare — holding
+    only an opaque secret reference (REQ-157; the ciphertext lives in
+    ``secret_values``) plus a human label. A lightweight engagement-scoped
+    child (no change_log / refs participation), like ``InstanceDeployConfig``.
+    CRMBuilder's own accounts are entered as an engagement's credentials by
+    default; a customer may replace them with its own (DEC-945).
+    """
+
+    __tablename__ = "provider_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    provider: Mapped[str] = mapped_column(String(24), nullable=False)
+    token_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    label: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _check_in("provider", PROVIDER_CREDENTIAL_PROVIDERS),
+            name="ck_provider_credential_provider",
+        ),
+        UniqueConstraint(
+            "engagement_id", "provider", name="uq_provider_credential_provider"
         ),
     )
 

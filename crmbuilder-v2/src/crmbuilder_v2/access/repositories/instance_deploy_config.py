@@ -25,6 +25,10 @@ _FIELDS: frozenset[str] = frozenset({
     "admin_email", "current_espocrm_version", "latest_espocrm_version",
     "last_upgrade_at", "cert_expiry_date", "last_backup_paths", "backups_enabled",
     "last_record_version", "domain_registrar", "dns_provider", "droplet_id",
+    # PI-419 (REQ-522): written by a deploy run that provisioned the server.
+    "db_password_ref", "admin_username", "admin_password_ref", "droplet_ip",
+    "droplet_region", "droplet_size", "dns_record_id",
+    "last_deploy_run_identifier",
 })
 
 
