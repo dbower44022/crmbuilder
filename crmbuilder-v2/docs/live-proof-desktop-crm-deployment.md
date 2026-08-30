@@ -166,6 +166,8 @@ instances.
    cd ~/Dropbox/Projects/crmbuilder
    export CRMBUILDER_V2_SECRET_KEY="$(uv run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')"
    ```
+   Nothing is printed; the key is held in the variable for this terminal only
+   (to confirm, `echo $CRMBUILDER_V2_SECRET_KEY` shows a 44-character string).
 
 2. Point this shell at a local, throwaway store and allow the desktop to use
    it (these override `crmbuilder-v2/data/crmbuilder.env`, which targets the
