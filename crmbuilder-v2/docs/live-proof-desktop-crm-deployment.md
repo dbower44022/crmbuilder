@@ -460,9 +460,9 @@ we move to section 5 (optional restart check) or straight to section 6
 
 ---
 
-## 5. Run 3 — a restarted service resumes an interrupted install
+## 5. Run 4 (Proof 4) — a restarted service resumes an interrupted install
 
-### 5a. In the deploy wizard — request Proof 3
+### 5a. In the deploy wizard — request Proof 4
 
 A third throwaway server, so the interruption cannot disturb the two proven
 runs.
@@ -471,30 +471,30 @@ runs.
    **Instances**, then click **Deploy new…** at the top of the panel. The
    window *Deploy a new CRM instance* opens on *Step 1 of 5 — Providers*;
    both lines read **✓ Configured**. Click **Next**.
-2. On *Step 2 of 5 — Server*: click in *Instance name* and type `Proof 3`;
+2. On *Step 2 of 5 — Server*: click in *Instance name* and type `Proof 4`;
    Region **New York 3 (nyc3)**; Size **s-2vcpu-4gb**; Image **Ubuntu 24.04
    LTS**; leave every box in *Extra SSH keys* unticked. Click **Next**.
 3. On *Step 3 of 5 — Domain*: Zone **acmeconstruction.us**; click in
-   *Subdomain* and type `proof-3` — the *Instance address* line shows
-   `proof-3.acmeconstruction.us`; click in *Let's Encrypt email* and type
+   *Subdomain* and type `proof-4` — the *Instance address* line shows
+   `proof-4.acmeconstruction.us`; click in *Let's Encrypt email* and type
    `doug@dougbower.com`. Click **Next**.
 4. On *Step 4 of 5 — Accounts*: *Administrator username* stays `admin`; click
    in *Administrator email* and type `doug@dougbower.com`; click **Generate**
    next to *Administrator password* and record the shown value in the
-   password manager as `Proof 3 admin`; leave *Generate database passwords
+   password manager as `Proof 4 admin`; leave *Generate database passwords
    automatically* ticked. Click **Next**.
 5. On *Step 5 of 5 — Review*: the summary should read address
-   `https://proof-3.acmeconstruction.us`. Click **Deploy**. The progress
-   window *Deploy run DEP-003* opens.
+   `https://proof-4.acmeconstruction.us`. Click **Deploy**. The progress
+   window *Deploy run DEP-004* opens.
 
 ### 5b. In the progress window — interrupt during the install
 
 The interruption must land while the installer is streaming, after the server
 and DNS exist — that is the exact moment the plan flagged as untested.
 
-1. Watch the *Deploy run DEP-003* log through *Creating server*, *Setting
+1. Watch the *Deploy run DEP-004* log through *Creating server*, *Setting
    DNS* and *Preparing server* (about 6–8 minutes; the resolver line
-   `proof-3.acmeconstruction.us resolves to <an address> on public resolvers`
+   `proof-4.acmeconstruction.us resolves to <an address> on public resolvers`
    should appear within a minute of *Waiting for DNS*). Do nothing yet.
 2. When the status line reads **Running — Installing CRM** and installer
    output is streaming (lines mentioning `install.sh`, image pulls, or
@@ -523,25 +523,25 @@ Within about three minutes of the relaunch, the new service notices the
 abandoned run and takes it over.
 
 1. In the left sidebar under **Governance**, click **Deploy History**. You
-   should see *DEP-003* with status **▶ running**, phase *Installing CRM* —
+   should see *DEP-004* with status **▶ running**, phase *Installing CRM* —
    the run is still marked running even though nothing is executing yet; that
    is the stale claim.
-2. Click the row **DEP-003**, then click **Open progress…** at the top of the
+2. Click the row **DEP-004**, then click **Open progress…** at the top of the
    right-hand pane. The progress window opens showing the old log.
 3. Wait up to four minutes without clicking anything. A new log line
-   `Resuming deploy run DEP-003` should appear, then `↷ create_droplet:
+   `Resuming deploy run DEP-004` should appear, then `↷ create_droplet:
    already complete, skipping`, then the installer re-runs on the same
    server. If nothing new appears after five minutes, stop and tell me.
 4. Watch to the end: **Deployment complete.** (or **Deployment complete with
    verification gaps** — either is a pass for this test) with `Registered
-   instance INST-003`, roughly 10–15 minutes from the resume. If a red ✗
+   instance INST-004`, roughly 10–15 minutes from the resume. If a red ✗
    appears during *Installing CRM*, paste the last 30 log lines — that is
    precisely the finding this run exists to capture (the installer refusing
    to re-run on a half-installed server).
 
 ### 5e. In the web browser — confirm the result
 
-1. Open `https://proof-3.acmeconstruction.us`. You should see the EspoCRM
+1. Open `https://proof-4.acmeconstruction.us`. You should see the EspoCRM
    login page with no certificate warning.
 2. Open <https://cloud.digitalocean.com> → **Droplets**. You should see
    exactly three droplets, one per proof name — none duplicated.
@@ -555,7 +555,7 @@ we move to section 6 (clean-up of all three servers).
 
 In this order, so nothing is left billing:
 
-1. DigitalOcean → Droplets: destroy the `proof-1`, `proof-2` and `proof-3` droplets.
+1. DigitalOcean → Droplets: destroy the `proof-1`, `proof-2`, `proof-3` (orphaned by the lost key) and `proof-4` droplets.
 2. DigitalOcean → Settings → Security: delete SSH keys `crmbuilder-DEP-001`, `crmbuilder-DEP-002` (and `-003` if you ran step 5 separately).
 3. Cloudflare → DNS: delete the `proof-1` and `proof-2` A records.
 4. Revoke Cloudflare token B (and A, if it was created only for this).
