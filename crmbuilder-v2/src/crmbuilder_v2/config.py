@@ -117,6 +117,18 @@ class Settings(BaseSettings):
     # module-level ``sources_dir()`` helper.
     sources_dir: Path | None = None
 
+    # PI-419 (REQ-522 / DEC-945): the deploy worker that executes queued deploy
+    # runs. ``deploy_worker_inprocess`` starts it as a daemon thread inside the
+    # API process (the default — one systemd unit, nothing new to operate);
+    # ``crmbuilder-v2-deploy-worker`` runs the same loop standalone, in which
+    # case set this False on the API so two workers do not compete. The poll
+    # interval bounds how long a queued run waits to start; the heartbeat
+    # interval and stale threshold decide when a run whose service restarted
+    # mid-job is reclaimed and resumed.
+    deploy_worker_inprocess: bool = True
+    deploy_worker_poll_seconds: int = 5
+    deploy_worker_heartbeat_seconds: int = 30
+    deploy_worker_stale_seconds: int = 180
     api_host: str = "127.0.0.1"
     api_port: int = 8765
 

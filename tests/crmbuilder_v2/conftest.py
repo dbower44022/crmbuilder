@@ -173,6 +173,9 @@ def v2_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     # Postgres is explicitly configured below.
     monkeypatch.setenv("CRMBUILDER_V2_DATABASE_URL", "")
     monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "true")
+    # PI-419: never auto-start the in-process deploy worker under test; the
+    # worker tests drive ``run_once`` (or opt in) explicitly.
+    monkeypatch.setenv("CRMBUILDER_V2_DEPLOY_WORKER_INPROCESS", "false")
     # Hermetic coverage baseline: a deployment may set a durable
     # CRMBUILDER_V2_PROVENANCE_BASELINE in data/crmbuilder.env; force it empty
     # for tests (a real env var overrides the file) so the coverage report's

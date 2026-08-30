@@ -2465,6 +2465,37 @@ class InstanceDeployConfigIn(_Base):
     domain_registrar: str | None = None
     dns_provider: str | None = None
     droplet_id: str | None = None
+    # PI-419 (REQ-522): written by a deploy run; ``db_password`` /
+    # ``admin_password`` are write-only plaintext like ``db_root_password``.
+    db_password: str | None = None
+    admin_username: str | None = None
+    admin_password: str | None = None
+    droplet_ip: str | None = None
+    droplet_region: str | None = None
+    droplet_size: str | None = None
+    dns_record_id: str | None = None
+    last_deploy_run_identifier: str | None = None
+
+
+# --- Deploy runs (PI-419 / REQ-522) ------------------------------------------
+# POST body for /deploy-runs: the non-secret spec plus the three write-only
+# passwords (DB passwords auto-generate when omitted). Validated by
+# ``crmbuilder_v2.deploy.spec.validate_spec`` so the API and runner agree.
+class DeployRunCreateIn(_Base):
+    instance_name: str
+    region: str
+    size: str
+    image: str
+    ssh_key_ids: list[int | str] | None = None
+    zone_id: str
+    zone_name: str
+    subdomain: str
+    letsencrypt_email: str
+    admin_username: str = "admin"
+    admin_email: str
+    admin_password: str
+    db_password: str | None = None
+    db_root_password: str | None = None
 
 
 # --- Provider credentials (PI-419 / REQ-522) --------------------------------

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
@@ -44,6 +46,7 @@ from crmbuilder_v2.api.routers import (
     crm_candidates,
     decisions,
     dedup_rules,
+    deploy_runs,
     deposit_events,
     domains,
     engagements,
@@ -104,10 +107,34 @@ from crmbuilder_v2.api.routers import (
     workstreams,
 )
 from crmbuilder_v2.api.scope_middleware import EngagementScopeMiddleware
+from crmbuilder_v2.config import get_settings
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Start the in-process deploy worker (PI-419) for the life of the app.
+
+    Gated by ``Settings.deploy_worker_inprocess``; when a standalone
+    ``crmbuilder-v2-deploy-worker`` runs instead, that flag is off on the API.
+    """
+    worker = None
+    if get_settings().deploy_worker_inprocess:
+        from crmbuilder_v2.deploy.worker import DeployWorker
+
+        worker = DeployWorker()
+        worker.start()
+        deploy_runs.register_worker(worker)
+    try:
+        yield
+    finally:
+        if worker is not None:
+            worker.stop()
+            deploy_runs.register_worker(None)
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
+        lifespan=_lifespan,
         title="CRMBuilder v2 — Storage System",
         version=crmbuilder_v2.__version__,
         description=(
@@ -228,6 +255,7 @@ def create_app() -> FastAPI:
     app.include_router(commits.router)
     app.include_router(instances.router)
     app.include_router(provider_credentials.router)
+    app.include_router(deploy_runs.router)
     app.include_router(publish_runs.router)
     app.include_router(layouts.router)
     app.include_router(filtered_tabs.router)

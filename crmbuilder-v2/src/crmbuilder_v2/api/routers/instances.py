@@ -492,7 +492,9 @@ def put_deploy_config(identifier: str, body: InstanceDeployConfigIn):
         current = instance_deploy_config.get_deploy_config(s, identifier) or {}
         fields = {
             k: v for k, v in provided.items()
-            if k not in ("ssh_credential", "db_root_password")
+            if k not in (
+                "ssh_credential", "db_root_password", "db_password", "admin_password"
+            )
         }
         # SSH credential: a key path is stored inline; a password is keyring-backed.
         if "ssh_credential" in provided:
@@ -512,6 +514,18 @@ def put_deploy_config(identifier: str, body: InstanceDeployConfigIn):
             old = current.get("db_root_password_ref")
             if pw and old:
                 secrets.delete_secret(old)
+        # PI-419 (REQ-522): the two further write-only passwords a deploy run
+        # records, handled exactly like the DB root password.
+        for plain, ref_col in (
+            ("db_password", "db_password_ref"),
+            ("admin_password", "admin_password_ref"),
+        ):
+            if plain in provided:
+                pw = provided[plain]
+                fields[ref_col] = _store(pw)
+                old = current.get(ref_col)
+                if pw and old:
+                    secrets.delete_secret(old)
         return ok(
             instance_deploy_config.upsert_deploy_config(s, identifier, **fields)
         )

@@ -2699,6 +2699,63 @@ class StorageClient:
         result = self._request("GET", "/provider-credentials/cloudflare/zones")
         return result if isinstance(result, list) else []
 
+    # --- deploy runs (PI-419 / REQ-522) ---------------------------------------
+
+    def create_deploy_run(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /deploy-runs — queue a provisioning run (202)."""
+        result = self._request("POST", "/deploy-runs", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for create_deploy_run",
+            )
+        return result
+
+    def list_deploy_runs(
+        self,
+        *,
+        instance: str | None = None,
+        status: str | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """GET /deploy-runs (newest first, log omitted)."""
+        params = [f"{k}={v}" for k, v in (
+            ("instance", instance), ("status", status), ("limit", limit)
+        ) if v is not None]
+        path = "/deploy-runs" + (f"?{'&'.join(params)}" if params else "")
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_deploy_run(
+        self, identifier: str, *, log_after: int | None = None
+    ) -> dict[str, Any]:
+        """GET /deploy-runs/{id}; ``log_after`` returns only new log lines."""
+        path = f"/deploy-runs/{identifier}"
+        if log_after is not None:
+            path = f"{path}?log_after={log_after}"
+        result = self._request("GET", path)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for get_deploy_run",
+            )
+        return result
+
+    def cancel_deploy_run(self, identifier: str) -> dict[str, Any]:
+        """POST /deploy-runs/{id}/cancel."""
+        result = self._request("POST", f"/deploy-runs/{identifier}/cancel")
+        return result if isinstance(result, dict) else {}
+
+    def retry_deploy_run(self, identifier: str) -> dict[str, Any]:
+        """POST /deploy-runs/{id}/retry."""
+        result = self._request("POST", f"/deploy-runs/{identifier}/retry")
+        return result if isinstance(result, dict) else {}
+
+    def get_deploy_worker_status(self) -> dict[str, Any]:
+        """GET /deploy-runs/worker."""
+        result = self._request("GET", "/deploy-runs/worker")
+        return result if isinstance(result, dict) else {}
+
     def _publish_request(
         self,
         path: str,
