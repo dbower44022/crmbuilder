@@ -553,14 +553,78 @@ we move to section 6 (clean-up of all three servers).
 
 ## 6. Clean up
 
-In this order, so nothing is left billing:
+Everything created for the proof gets removed, in billing-first order. The two
+lessons of the day are baked in: nothing here can lose data you still need,
+and each step says what you should see.
 
-1. DigitalOcean → Droplets: destroy the `proof-1`, `proof-2`, `proof-3` (orphaned by the lost key) and `proof-4` droplets.
-2. DigitalOcean → Settings → Security: delete SSH keys `crmbuilder-DEP-001`, `crmbuilder-DEP-002` (and `-003` if you ran step 5 separately).
-3. Cloudflare → DNS: delete the `proof-1` and `proof-2` A records.
-4. Revoke Cloudflare token B (and A, if it was created only for this).
-5. Quit the desktop; delete the throwaway store:
-   `rm crmbuilder-v2/data/live-proof.db*`. The exported variables die with the shell.
+### 6a. In the DigitalOcean console — destroy the four servers
+
+1. Open <https://cloud.digitalocean.com> → **Droplets**. You should see four
+   droplets: `proof-1.acmeconstruction.us` through `proof-4.acmeconstruction.us`.
+2. For each of the four in turn: click the droplet's **⋯ (More)** menu →
+   **Destroy** → on the destroy page click **Destroy this Droplet** and type
+   the droplet name if asked. The droplet disappears from the list.
+3. When done, the Droplets list shows none of the `proof-` names. If any
+   remains, repeat step 2 for it.
+
+### 6b. In the DigitalOcean console — delete the four SSH keys
+
+1. Click your profile icon (bottom left) → **Settings** → **Security** tab.
+   Under *SSH keys* you should see `crmbuilder-DEP-001` through
+   `crmbuilder-DEP-004`.
+2. For each of the four: click its **⋯** menu → **Delete** → confirm. The key
+   disappears from the list.
+
+### 6c. In the Cloudflare dashboard — delete the four DNS records
+
+1. Open <https://dash.cloudflare.com> → click **acmeconstruction.us** → left
+   menu **DNS** → **Records**.
+2. Type `proof` in the *Search DNS Records* box and press Enter. You should
+   see four A records: `proof-1` … `proof-4`.
+3. For each: click **Edit** on the record's row → **Delete** → confirm. When
+   done, the `proof` search shows no matching records.
+
+### 6d. In the Cloudflare dashboard — revoke the proof tokens
+
+1. Click the profile icon (top right) → **My Profile** → **API Tokens**.
+2. On the row `crmbuilder-proof-B-readonly`: click **⋯** → **Delete** →
+   confirm. (Its permissions turned out to include DNS Edit — gone either way.)
+3. Do the same for `crmbuilder-proof-A-full`, unless you want to keep it for
+   a future proof — your call; it only reaches this one zone.
+4. Optional: in DigitalOcean → **API** → **Tokens**, delete
+   `crmbuilder-deploy-proof-2` the same way if you do not want to keep it.
+
+### 6e. In the terminal — remove the local proof pieces
+
+1. In the CRMBuilder desktop window, close the window. It closes (close any
+   open progress window first — a progress window keeps the app alive).
+2. In the terminal whose prompt ends in `crmbuilder-proof`, type the line
+   below and press Enter:
+   ```bash
+   rm ~/Dropbox/Projects/crmbuilder/crmbuilder-v2/data/live-proof.db*
+   ```
+   Nothing is printed. The throwaway database (deploy runs, instances,
+   tokens) is gone.
+3. Type the line below and press Enter:
+   ```bash
+   rm ~/.crmbuilder-proof-secret-key
+   ```
+   Nothing is printed. The encryption key is gone with the data it protected.
+4. Type the line below and press Enter:
+   ```bash
+   cd ~/Dropbox/Projects/crmbuilder
+   ```
+   The prompt now ends in `crmbuilder`.
+5. Type the line below and press Enter:
+   ```bash
+   git worktree remove --force ../crmbuilder-proof
+   ```
+   Nothing is printed; the `crmbuilder-proof` folder is gone (the
+   `proof-env.sh` helper goes with it). If an error mentions the directory
+   is missing, that is fine — it was already gone.
+
+When 6a–6e are done, say so and I assemble the final report and close out
+the planning item.
 
 ---
 
