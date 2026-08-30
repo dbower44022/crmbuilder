@@ -50,6 +50,8 @@ _EXPECTED_COLUMNS = {
     "field_read_only": "BOOLEAN",
     "field_unique": "BOOLEAN",
     "field_externally_populated": "BOOLEAN",
+    # PI-425 / REQ-523 — platform-shipped field; compared, never created.
+    "field_built_in": "BOOLEAN",
     # PRJ-025 PI-197 — derived/formula intent (DEC-438).
     "field_derived_result_type": "TEXT",
     "field_formula": "JSON",

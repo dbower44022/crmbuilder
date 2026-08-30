@@ -836,6 +836,16 @@ def _build_entity_program(
     payload_by_field_id: dict[str, dict] = {}
     ref_map: dict[str, str] = {}
     for field_row in sorted(field_rows, key=lambda f: f["field_identifier"]):
+        if field_row.get("field_built_in"):
+            # PI-425 / REQ-523: the platform ships this field; publish must
+            # never create it. It still resolves as a condition reference so a
+            # rule on or about a built-in field compiles (a built-in field
+            # carries no platform prefix, so its name is its engine name).
+            fname = field_row.get("field_name")
+            if fname:
+                ref_map[field_row["field_identifier"]] = fname
+                ref_map[fname] = fname
+            continue
         block = _build_field(field_row, index, deferrals, ename)
         if block is not None:
             field_blocks.append(block)

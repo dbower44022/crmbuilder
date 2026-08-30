@@ -1066,6 +1066,12 @@ class Field(EngagementScopedPKMixin, Base):
     field_externally_populated: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    # PI-425 / REQ-523 — a field the platform ships with the entity (EspoCRM
+    # native field). Audited and compared like any other field, but publish
+    # never creates it: it already exists on every target.
+    field_built_in: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     # PRJ-025 PI-197 (design §7/§9, DEC-438) — derived/formula intent.
     # ``field_derived_result_type`` is the value-type the formula yields
     # (validated against DERIVED_RESULT_TYPES, required when ``field_type``
@@ -1132,6 +1138,10 @@ class Field(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _BooleanDomainCheck("field_externally_populated"),
             name="ck_field_externally_populated_boolean",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("field_built_in"),
+            name="ck_field_built_in_boolean",
         ),
         Index("ix_fields_field_status", "field_status"),
         Index("ix_fields_field_type", "field_type"),

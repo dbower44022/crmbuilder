@@ -76,7 +76,11 @@ CAPTURE = "capture"
 PUBLISH = "publish"
 
 
-def _attribute_capabilities(member_type: str, attribute: str | None) -> tuple[bool, bool]:
+def _attribute_capabilities(
+    member_type: str,
+    attribute: str | None,
+    design_obj: dict[str, Any] | None = None,
+) -> tuple[bool, bool]:
     """``(capturable, publishable)`` for one attribute row (REQ-479).
 
     Capability differs by direction, and one boolean cannot say so. A field
@@ -88,7 +92,10 @@ def _attribute_capabilities(member_type: str, attribute: str | None) -> tuple[bo
     no action at all (REQ-358 / view-only handling).
     """
     if member_type == "field":
-        return True, True
+        # PI-425 / REQ-523: a built-in field is compared and can be captured,
+        # but publish never creates it — it already exists on the target.
+        built_in = bool((design_obj or {}).get("field_built_in"))
+        return True, not built_in
     if member_type == "entity":
         both = attribute in RECONCILABLE_ENTITY_SETTINGS
         return both, both
@@ -355,7 +362,7 @@ def compute_member_rows(
         # non-difference.
         cap, pub = (
             (False, False) if agrees
-            else _attribute_capabilities(member_type, attr)
+            else _attribute_capabilities(member_type, attr, design_obj)
         )
         # Why this row is not a match, not merely that it isn't (REQ-513). An
         # attribute the design never declared is unknown with the design named,
@@ -515,7 +522,7 @@ def compute_member_properties(
         differs = not all(
             _attr_equal(attr, v, carrying_values[0]) for v in carrying_values
         )
-        cap, pub = _attribute_capabilities(member_type, attr)
+        cap, pub = _attribute_capabilities(member_type, attr, design_obj)
         rows.append({
             "member_type": member_type,
             "member_identifier": member_identifier,

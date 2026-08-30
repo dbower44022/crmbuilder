@@ -116,12 +116,14 @@ _INTRINSIC_COLUMN_BY_KWARG: dict[str, str] = {
     "read_only": "field_read_only",
     "unique": "field_unique",
     "externally_populated": "field_externally_populated",
+    # PI-425 / REQ-523 — platform-shipped field; compared, never created.
+    "built_in": "field_built_in",
     # PI-374 — a ``foreign`` field's mirror coordinates (link + target field).
     "foreign_link": "field_foreign_link",
     "foreign_target": "field_foreign_target",
 }
 _INTRINSIC_BOOL_KWARGS = frozenset(
-    {"read_only", "unique", "externally_populated"}
+    {"read_only", "unique", "externally_populated", "built_in"}
 )
 
 # PI-414 — the qualifying properties added with the expressive field vocabulary,

@@ -1130,18 +1130,26 @@ def _reconcile_fields_drift(
                 "warning",
             )
             continue
-        custom_fields = [
-            (fn, fm)
+        classified = [
+            (fn, fm, classify_field(fn, fm, base_type))
             for fn, fm in fields_meta.items()
             if isinstance(fm, dict)
-            and classify_field(fn, fm, base_type) is FieldClass.CUSTOM
         ]
-        if not custom_fields:
-            # Nothing to reconcile; don't create an empty (native) parent.
-            continue
+        custom_fields = [(fn, fm) for fn, fm, cls in classified if cls is FieldClass.CUSTOM]
+        # PI-425 / REQ-523: a built-in entity's built-in fields are audited once
+        # the entity is in the design (customised, or added by hand). System
+        # bookkeeping fields stay excluded by classification.
+        built_in_fields = (
+            [(fn, fm) for fn, fm, cls in classified if cls is FieldClass.NATIVE]
+            if entity_class is EntityClass.NATIVE
+            else []  # every field of a custom entity is the implementer's
+        )
 
         neutral_entity = strip_entity_c_prefix(scope_name)
         parent_id = ent_by_name.get(_ci(neutral_entity))
+        if not custom_fields and parent_id is None:
+            # Nothing the design describes; don't create an empty (native) parent.
+            continue
         if parent_id is None:
             origin = (
                 "Native EspoCRM entity"
@@ -1167,7 +1175,10 @@ def _reconcile_fields_drift(
         # Only native-entity custom fields carry the platform c-prefix;
         # custom-entity fields keep their natural names (REQ-342).
         is_native = entity_class is EntityClass.NATIVE
-        for field_name, field_meta in custom_fields:
+        audit_set = [(fn, fm, False) for fn, fm in custom_fields] + [
+            (fn, fm, True) for fn, fm in built_in_fields
+        ]
+        for field_name, field_meta, built_in in audit_set:
             # DEC-932 / REQ-505: a link between records is described once, as
             # a relationship, so a link-typed field is not read as a field at
             # all. Skipping is what closes the plain-text gap by construction —
@@ -1245,7 +1256,12 @@ def _reconcile_fields_drift(
                     extra["format"] = audited["field_format"]
                 if audited["field_numeric_scale"] is not None:
                     extra["numeric_scale"] = audited["field_numeric_scale"]
-                description = f"Discovered by auditing instance {instance_identifier}."
+                if built_in:
+                    extra["built_in"] = True
+                origin = "Built-in field" if built_in else "Discovered"
+                description = (
+                    f"{origin} discovered by auditing instance {instance_identifier}."
+                )
                 created = field_repo.create_field(
                     session,
                     field_belongs_to_entity_identifier=parent_id,
