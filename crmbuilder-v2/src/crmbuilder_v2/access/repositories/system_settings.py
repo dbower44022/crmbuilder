@@ -366,3 +366,56 @@ def clear_value(
     session.delete(row)
     session.flush()
     return True
+
+
+def delete_system_setting(session: Session, identifier: str) -> dict:
+    """Soft-delete a governed setting; idempotent.
+
+    The declared values are deliberately left in place. A setting withdrawn from
+    governance and later restored should come back with what each instance was
+    said to hold, and discarding those on the way out would make an undo lossy
+    for no gain — nothing reads a deleted setting's values.
+    """
+    row = _get_row(session, identifier)
+    if row.system_setting_deleted_at is not None:
+        return to_dict(row)
+    before = to_dict(row)
+    row.system_setting_deleted_at = datetime.now(UTC)
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after
+
+
+def restore_system_setting(session: Session, identifier: str) -> dict:
+    row = _get_row(session, identifier)
+    if row.system_setting_deleted_at is None:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "system_setting_deleted_at",
+                    "not_deleted",
+                    "system_setting is not soft-deleted",
+                )
+            ]
+        )
+    before = to_dict(row)
+    row.system_setting_deleted_at = None
+    session.flush()
+    after = to_dict(row)
+    emit(
+        session,
+        entity_type=_ENTITY_TYPE,
+        entity_identifier=identifier,
+        operation="update",
+        before=before,
+        after=after,
+    )
+    return after

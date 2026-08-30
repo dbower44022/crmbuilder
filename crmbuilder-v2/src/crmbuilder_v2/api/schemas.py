@@ -1149,6 +1149,52 @@ class AssociationPatchIn(_Base):
     association_status: str | None = None
 
 
+# ---------- System settings (per-instance-valued design record, PI-406) ------
+
+
+class SystemSettingCreateIn(_Base):
+    """POST /system-settings body — declare one governed setting (REQ-485).
+
+    ``system_setting_key`` is the name the CRM itself uses, so the applier and
+    any consumer can find the setting without a mapping table.
+    ``system_setting_value_type`` is validated against the field vocabulary
+    rather than a parallel one — a setting's value is a value like any other."""
+
+    system_setting_key: str
+    system_setting_name: str
+    system_setting_value_type: str
+    system_setting_description: str | None = None
+    system_setting_notes: str | None = None
+    system_setting_status: str | None = None
+    system_setting_identifier: str | None = None
+
+
+class SystemSettingPatchIn(_Base):
+    """PATCH /system-settings/{identifier} body — partial update.
+
+    Consumed with ``model_dump(exclude_unset=True)`` so an explicit null
+    (clear) stays distinguishable from an omitted key (leave unchanged)."""
+
+    system_setting_key: str | None = None
+    system_setting_name: str | None = None
+    system_setting_value_type: str | None = None
+    system_setting_description: str | None = None
+    system_setting_notes: str | None = None
+    system_setting_status: str | None = None
+
+
+class SystemSettingValueIn(_Base):
+    """PUT /system-settings/{identifier}/values/{instance} body.
+
+    ``value`` is what this instance is *declared* to hold. It is deliberately
+    nullable and deliberately required: sending null declares that the instance
+    should hold nothing, which is a different statement from never having
+    declared anything — the latter is expressed by there being no value at all,
+    and is what DELETE returns the setting to."""
+
+    value: Any = None
+
+
 # ---------- Engine overrides (composite design record, PRJ-025 PI-189) -------
 
 

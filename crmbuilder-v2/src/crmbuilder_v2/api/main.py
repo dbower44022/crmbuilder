@@ -95,6 +95,7 @@ from crmbuilder_v2.api.routers import (
     source_mapping_targets,
     source_mappings,
     status,
+    system_settings,
     teams,
     terms,
     test_specs,
@@ -259,6 +260,7 @@ def create_app() -> FastAPI:
     app.include_router(publish_runs.router)
     app.include_router(layouts.router)
     app.include_router(filtered_tabs.router)
+    app.include_router(system_settings.router)
     app.include_router(roles.router)
     app.include_router(teams.router)
     # Source-mapping model (PI-255).
