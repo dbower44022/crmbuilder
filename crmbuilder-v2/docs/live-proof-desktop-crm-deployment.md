@@ -14,15 +14,97 @@ under a dollar for the exercise). Everything created is deleted at the end.
 
 ## 0. What you need before starting
 
-| Item | Detail |
+### 0.1 Repository
+
+```bash
+cd ~/Dropbox/Projects/crmbuilder
+git checkout main && git pull --ff-only
+git log --oneline -1          # 573709b4 or later
+git status --short            # must print nothing
+uv sync
+```
+
+### 0.2 DigitalOcean token (CRMBuilder's account)
+
+1. Log in at <https://cloud.digitalocean.com> as the CRMBuilder account.
+2. Left sidebar → **API** (under *Manage*) → **Tokens** tab → **Generate New Token**.
+3. Token name: `crmbuilder-deploy-proof`. Expiration: **30 days**.
+4. Scopes: choose **Full Access** (the run needs to read the catalog, create a
+   droplet, register an SSH key and read the droplet back; *Read* alone is not
+   enough). → **Generate Token**.
+5. The token (`dop_v1_…`) is shown **once**. Copy it into the password manager
+   as `CRMBuilder DO — deploy proof`. You will paste it into the desktop in
+   section 2 and never need it again.
+
+Also confirm the account has **payment method on file** and no droplet-limit
+warning (Settings → Billing); a fresh account can be capped at a low droplet
+count.
+
+### 0.3 A Cloudflare zone you can experiment on
+
+The zone is the domain whose DNS the run will write to. It must be:
+
+- managed by Cloudflare (nameservers already pointed at Cloudflare and the
+  zone showing **Active** on the Cloudflare dashboard home), and
+- **not** `crmbuilder.ai` or `crmbuilder.com` — the run refuses those as the
+  production host.
+
+Use a personal domain you already have on Cloudflare. If you have none:
+Cloudflare dashboard → **Add a domain** → enter a domain you own at your
+registrar → Free plan → follow the nameserver change at the registrar → wait
+for *Active* (minutes to a few hours). Do this before the day of the proof.
+
+Note the zone name exactly (e.g. `dougbower.com`); the wizard lists zones the
+token can see and you will pick it from that list.
+
+### 0.4 Cloudflare token A — full (Zone Read + DNS Edit)
+
+1. Cloudflare dashboard → click the profile icon (top right) → **My Profile**
+   → **API Tokens** → **Create Token**.
+2. Scroll to *Custom token* → **Get started**.
+3. Token name: `crmbuilder-proof-A-full`.
+4. Permissions — add two rows:
+   - **Zone · Zone · Read**
+   - **Zone · DNS · Edit**
+5. Zone Resources: **Include → Specific zone → your zone**.
+6. Leave Client IP filtering and TTL blank → **Continue to summary** →
+   **Create Token**.
+7. Copy the token (shown once) into the password manager as
+   `Cloudflare — proof A (full)`. The page offers a *test this token* curl
+   command; running it returns `"status":"active"` — optional.
+
+### 0.5 Cloudflare token B — read-only (makes run 2 fail after the server exists)
+
+Repeat 0.4 with:
+
+- Token name: `crmbuilder-proof-B-readonly`
+- Permissions: **Zone · Zone · Read** only (do **not** add DNS Edit)
+- Same specific zone.
+
+Save it as `Cloudflare — proof B (read-only)`. With this token the run can
+verify the zone (so it gets past *Checking credentials* and creates the
+server) but cannot create the A record — exactly the failure run 2 needs.
+
+### 0.6 Names and emails
+
+- Confirm neither `proof-1` nor `proof-2` exists yet in the zone's DNS
+  (Cloudflare → your zone → **DNS → Records**; search for `proof`). If either
+  exists, delete it or pick other labels.
+- Choose the **Let's Encrypt contact email** (receives certificate expiry
+  notices; your own address is fine) and the **CRM administrator email**
+  (goes on the admin user inside EspoCRM; can be the same address).
+
+### 0.7 Keep to hand
+
+| | |
 |---|---|
-| Repository | `main` at or after `959a7f20`, clean tree, `uv sync` done. |
-| DigitalOcean token | On **CRMBuilder's** account, *Personal access token*, scopes: **read + write** (full). You will paste it once into the desktop; note it in the password manager under `CRMBuilder DO — deploy proof`. |
-| Cloudflare zone | A zone **you own and can experiment on** — not `crmbuilder.ai` / `crmbuilder.com` (the run refuses those, by design). A personal domain is ideal. |
-| Cloudflare token **A** (full) | *Create Custom Token* → permissions **Zone · Zone · Read** and **Zone · DNS · Edit**, zone resources: *Include → Specific zone → your zone*. |
-| Cloudflare token **B** (read-only) | Same, but **Zone · Zone · Read only** (no DNS Edit). This is what forces run 2 to fail *after* the server exists. |
-| Names | `proof-1.<your-zone>` for run 1, `proof-2.<your-zone>` for run 2. Neither may exist as a DNS record yet. |
-| Emails | A Let's Encrypt contact address and a CRM administrator address (can be the same). |
+| DO token | password manager — pasted once in section 2 |
+| CF token A | password manager — pasted in section 2, and again in section 4 step 3 |
+| CF token B | password manager — pasted in section 4 step 1 |
+| Zone name | e.g. `dougbower.com` |
+| Two labels | `proof-1`, `proof-2` |
+| Two emails | Let's Encrypt contact; CRM admin |
+| A place to write the generated admin passwords | password manager entries `Proof 1 admin`, `Proof 2 admin` |
 
 Nothing here touches the cloud service, the production droplet, or the CBM
 instances.
