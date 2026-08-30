@@ -168,3 +168,27 @@ def test_admin_only_when_auth_on(client, monkeypatch):
         "/provider-credentials", headers={"Authorization": f"Bearer {otok.plaintext}"}
     )
     assert allowed.status_code == 200
+
+
+def test_put_with_the_encrypted_store_on_sqlite(client, monkeypatch):
+    """PI-419 live-proof finding: storing the token must not nest a second
+    write transaction inside the request's own — on SQLite that deadlocks
+    until the busy timeout and surfaces as a 500 ``database is locked``."""
+    from crmbuilder_v2.config import reset_settings_cache
+    from cryptography.fernet import Fernet
+
+    monkeypatch.delenv(secrets.DISABLE_ENV_VAR, raising=False)
+    monkeypatch.setenv("CRMBUILDER_V2_SECRET_KEY", Fernet.generate_key().decode())
+    reset_settings_cache()
+    try:
+        assert secrets.store_available()
+        r = client.put("/provider-credentials/digitalocean", json={"token": "dop_v1_first"})
+        assert r.status_code == 200, r.text
+        r = client.put("/provider-credentials/digitalocean", json={"token": "dop_v1_second"})
+        assert r.status_code == 200, r.text
+        with session_scope() as s:
+            from crmbuilder_v2.access.repositories import provider_credentials as repo
+            ref = repo.get_provider_credential(s, "digitalocean")["token_ref"]
+        assert secrets.get_secret(ref) == "dop_v1_second"
+    finally:
+        reset_settings_cache()

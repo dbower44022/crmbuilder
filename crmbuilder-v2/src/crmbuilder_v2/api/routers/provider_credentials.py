@@ -135,16 +135,19 @@ def put(provider: str, body: ProviderCredentialIn):
 
     The plaintext token is stored behind the secret boundary; the previous
     secret (if any) is deleted only after the new one is safely stored.
+
+    The secret store is written *outside* the row's transaction: on SQLite a
+    second connection cannot begin a write while the first holds the lock, so
+    nesting the two deadlocks the request until the busy timeout (the
+    ``database is locked`` 500 seen in the live proof). Read → store → write.
     """
     if not body.token.strip():
         raise UnprocessableError([FieldError("token", "required", "token is required")])
-    with writable_session() as s:
+    with readonly_session() as s:
         current = repo.get_provider_credential(s, provider)
-        ref = replace_secret(
-            body.token.strip(),
-            current["token_ref"] if current else None,
-            field="token",
-        )
+    previous_ref = current["token_ref"] if current else None
+    ref = replace_secret(body.token.strip(), previous_ref, field="token")
+    with writable_session() as s:
         row = repo.upsert_provider_credential(
             s, provider, token_ref=ref, label=body.label
         )

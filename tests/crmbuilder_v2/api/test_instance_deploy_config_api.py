@@ -109,3 +109,33 @@ def test_bad_ssh_auth_type_rejected(client):
         "ssh_auth_type": "telnet", "ssh_host": "h",
     })
     assert r.status_code == 422
+
+
+def test_put_passwords_with_the_encrypted_store_on_sqlite(client, monkeypatch):
+    """PI-419 live-proof finding: the three password refs are stored outside
+    the row transaction so SQLite does not deadlock on the store's connection."""
+    from crmbuilder_v2 import secrets
+    from crmbuilder_v2.config import reset_settings_cache
+    from cryptography.fernet import Fernet
+
+    monkeypatch.delenv(secrets.DISABLE_ENV_VAR, raising=False)
+    monkeypatch.setenv("CRMBUILDER_V2_SECRET_KEY", Fernet.generate_key().decode())
+    reset_settings_cache()
+    try:
+        assert secrets.store_available()
+        inst = client.post(
+            "/instances",
+            json={"instance_name": "p", "instance_url": "https://crm.example.org"},
+        ).json()["data"]["instance_identifier"]
+        r = client.put(
+            f"/instances/{inst}/deploy-config",
+            json={"db_root_password": "root1", "db_password": "db1", "admin_password": "adm1"},
+        )
+        assert r.status_code == 200, r.text
+        r = client.put(f"/instances/{inst}/deploy-config", json={"admin_password": "adm2"})
+        assert r.status_code == 200, r.text
+        cfg = client.get(f"/instances/{inst}/deploy-config").json()["data"]
+        assert secrets.get_secret(cfg["admin_password_ref"]) == "adm2"
+        assert secrets.get_secret(cfg["db_password_ref"]) == "db1"
+    finally:
+        reset_settings_cache()

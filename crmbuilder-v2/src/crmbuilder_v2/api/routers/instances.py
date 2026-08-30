@@ -480,55 +480,57 @@ def get_deploy_config(identifier: str):
 def put_deploy_config(identifier: str, body: InstanceDeployConfigIn):
     """Create or update the instance's deploy config (PI-201 / REQ-172).
 
-    Write-only plaintext secrets cross the keyring boundary here: ``ssh_credential``
+    Write-only plaintext secrets cross the secret boundary here: ``ssh_credential``
     becomes ``ssh_credential_ref`` — the key file path inline for key auth, a
-    keyring reference for password auth — and ``db_root_password`` becomes a
-    keyring reference. Omitted keys are left unchanged; an explicit null clears.
+    secret reference for password auth — and the three passwords become secret
+    references. Omitted keys are left unchanged; an explicit null clears.
+
+    Secrets are stored *between* the read and the write transactions, never
+    inside one: on SQLite the encrypted store's own connection cannot begin a
+    write while the request's transaction holds the lock (PI-419 live-proof
+    finding — ``database is locked``). Postgres never minded; SQLite does.
     """
     provided = body.model_dump(exclude_unset=True)
-    with writable_session() as s:
+    with readonly_session() as s:
         if instances.get_instance(s, identifier) is None:
             raise NotFoundError("instance", identifier)
         current = instance_deploy_config.get_deploy_config(s, identifier) or {}
-        fields = {
-            k: v for k, v in provided.items()
-            if k not in (
-                "ssh_credential", "db_root_password", "db_password", "admin_password"
-            )
-        }
-        # SSH credential: a key path is stored inline; a password is keyring-backed.
-        if "ssh_credential" in provided:
-            cred = provided["ssh_credential"]
-            auth = fields.get("ssh_auth_type", current.get("ssh_auth_type"))
-            if cred and auth == "password":
-                fields["ssh_credential_ref"] = _store(cred)
-                old = current.get("ssh_credential_ref")
-                if old and (old or "").startswith(secrets.REF_PREFIX):
-                    secrets.delete_secret(old)
-            else:
-                fields["ssh_credential_ref"] = cred  # key path inline, or cleared
-        # DB root password is always keyring-backed.
-        if "db_root_password" in provided:
-            pw = provided["db_root_password"]
-            fields["db_root_password_ref"] = _store(pw)
-            old = current.get("db_root_password_ref")
-            if pw and old:
-                secrets.delete_secret(old)
-        # PI-419 (REQ-522): the two further write-only passwords a deploy run
-        # records, handled exactly like the DB root password.
-        for plain, ref_col in (
-            ("db_password", "db_password_ref"),
-            ("admin_password", "admin_password_ref"),
-        ):
-            if plain in provided:
-                pw = provided[plain]
-                fields[ref_col] = _store(pw)
-                old = current.get(ref_col)
-                if pw and old:
-                    secrets.delete_secret(old)
-        return ok(
-            instance_deploy_config.upsert_deploy_config(s, identifier, **fields)
+    fields = {
+        k: v for k, v in provided.items()
+        if k not in (
+            "ssh_credential", "db_root_password", "db_password", "admin_password"
         )
+    }
+    stale_refs: list[str] = []
+    # SSH credential: a key path is stored inline; a password is a secret ref.
+    if "ssh_credential" in provided:
+        cred = provided["ssh_credential"]
+        auth = fields.get("ssh_auth_type", current.get("ssh_auth_type"))
+        if cred and auth == "password":
+            fields["ssh_credential_ref"] = _store(cred)
+            old = current.get("ssh_credential_ref")
+            if old and (old or "").startswith(secrets.REF_PREFIX):
+                stale_refs.append(old)
+        else:
+            fields["ssh_credential_ref"] = cred  # key path inline, or cleared
+    # The three passwords are always secret refs (db_password / admin_password
+    # were added by PI-419 for the facts a deploy run records).
+    for plain, ref_col in (
+        ("db_root_password", "db_root_password_ref"),
+        ("db_password", "db_password_ref"),
+        ("admin_password", "admin_password_ref"),
+    ):
+        if plain in provided:
+            pw = provided[plain]
+            fields[ref_col] = _store(pw)
+            old = current.get(ref_col)
+            if pw and old:
+                stale_refs.append(old)
+    with writable_session() as s:
+        result = instance_deploy_config.upsert_deploy_config(s, identifier, **fields)
+    for old in stale_refs:
+        secrets.delete_secret(old)
+    return ok(result)
 
 
 # ── Record-data export (PI-234 — REQ-130) ─────────────────────────────────
