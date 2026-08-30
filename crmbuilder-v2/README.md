@@ -482,6 +482,18 @@ already running, and shuts it down on close. If the API is already
 running externally (e.g., for the MCP server), the UI uses the
 existing instance instead of spawning a duplicate.
 
+> **Current navigation (08-30-26, REQ-526 / PI-432, DEC-953):** the window
+> is organised by **phase tabs** — a pinned Chat tab plus one tab per open
+> phase of the Master CRMBuilder PRD process, opened on demand from the
+> **+** control and remembered per engagement. Each tab's sidebar is that
+> phase's checklist: the Every-session group, the phase's numbered steps
+> with advisory ✓/▶ markers, and a collapsed alphabetical **All panels**
+> index; **Quick open** (Ctrl+K) reaches any panel or record. The fixed
+> Governance / Methodology / Release Pipeline / Agent Registry sidebar
+> groups described in the version notes below are retired — those notes
+> remain as release history. See the USER-GUIDE's "Tour of the desktop
+> UI" and `PRDs/product/crmbuilder-v2/kickoff-phase-tab-navigation.md`.
+
 ### v0.1 (read-only foundation + decisions write surface)
 
 - Sidebar navigation across all eight v2 entity types: Charter,

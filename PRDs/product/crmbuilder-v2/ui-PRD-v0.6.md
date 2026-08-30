@@ -1,5 +1,16 @@
 # CRMBuilder v2 — User Interface PRD
 
+> **Transitional status (08-30-26):** the navigation model this PRD series
+> specifies — one fixed sidebar of entity-type entries in grouped sections —
+> was superseded by **phase-tab navigation** (REQ-526 / PI-432, DEC-953,
+> delivered on `main` `e040e261`): a pinned Chat tab plus one tab per open
+> phase, each with a phase checklist sidebar (Every session · numbered phase
+> steps · a collapsed All panels index) and quick open (Ctrl+K). The design
+> record is `kickoff-phase-tab-navigation.md`; the visual system (§ tokens,
+> panel chrome, master/detail, dialogs) in this PRD and
+> `styling-design-pass.md` remains current. Screenshots:
+> `styling-screenshots/pi-432-phase-tabs/`.
+
 **Version:** 0.6
 **Last Updated:** 05-16-26 19:15
 **Status:** Approved
