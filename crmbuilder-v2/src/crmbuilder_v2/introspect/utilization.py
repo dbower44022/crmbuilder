@@ -716,24 +716,51 @@ class Profiler:
             )
         if status != 200 or total is None:
             raise _EntityFailure(status, f"record count failed (HTTP {status})")
-        record_count = total
+        # An entity with counting disabled (the ``countDisabled`` collection
+        # setting the audit captures) answers ``total: -1`` — the platform will
+        # not count, and every count-mode query would answer the same. V1 wrote
+        # the -1 through unchecked (PI-428 live parity finding); here the record
+        # count comes from the scan instead — exact when the scan completes,
+        # otherwise a flagged lower bound — and every field metric is scan-derived.
+        count_disabled = total < 0
+        record_count = total if not count_disabled else 0
+        if count_disabled:
+            self._anomalies.append({
+                "scope": "entity", "entity": espo, "field": None,
+                "metric": "record_count", "status": status,
+                "note": (
+                    "counting is disabled on this entity; record count taken "
+                    "from the scan (exact if the scan completed, else a lower bound)"
+                ),
+            })
 
         # 2. last_record_created_at — recency query, skipped when empty.
         last_record_created: datetime | None = None
-        if record_count > 0:
+        if record_count > 0 or count_disabled:
             last_record_created = self._recency_query(espo, None)
 
         field_metrics: dict[str, dict[str, Any]] = {}
         scan_fallback: dict[str, set[str]] = {}
 
-        # 3–5. Count mode per field.
+        # 3–5. Count mode per field (none when the platform will not count).
         for target in item.targets:
-            field_metrics[target.api_name] = self._count_mode_field(
-                espo, target, record_count, scan_fallback,
-            )
+            if count_disabled:
+                field_metrics[target.api_name] = {}
+                scan_fallback[target.api_name] = {
+                    "populated_count", "last_populated_at", "value_distribution",
+                }
+            else:
+                field_metrics[target.api_name] = self._count_mode_field(
+                    espo, target, record_count, scan_fallback,
+                )
 
         # 6. Scan pass — value inspection plus count→scan fallback (§4.4).
-        scan_info = self._scan_entity(item, record_count, field_metrics, scan_fallback)
+        scan_info = self._scan_entity(
+            item, record_count, field_metrics, scan_fallback,
+            count_known=not count_disabled,
+        )
+        if count_disabled:
+            record_count = scan_info.get("scanned", 0)
 
         # 7. Assemble, deriving flags (§5) and the §6 shape rules.
         fields_out: dict[str, dict[str, Any]] = {}
@@ -754,8 +781,13 @@ class Profiler:
         }
         if scan_info.get("sampled"):
             detail["scan_count"] = scan_info["scan_count"]
-            detail["sample_fraction"] = scan_info["sample_fraction"]
+            if "sample_fraction" in scan_info:
+                detail["sample_fraction"] = scan_info["sample_fraction"]
             detail["sample_basis"] = "most_recent_by_created_at"
+        if count_disabled:
+            detail["count_disabled"] = True
+            if scan_info.get("sampled"):
+                detail["count_lower_bound"] = True
 
         entity_out: dict[str, Any] = {
             "record_count": record_count,
@@ -885,13 +917,22 @@ class Profiler:
         record_count: int,
         field_metrics: dict[str, dict[str, Any]],
         scan_fallback: dict[str, set[str]],
+        *,
+        count_known: bool = True,
     ) -> dict[str, Any]:
-        """Run the §4.4 paged scan and fold results into field metrics."""
+        """Run the §4.4 paged scan and fold results into field metrics.
+
+        With ``count_known`` False (counting disabled on the entity) the scan
+        runs to the cap or the end of the data, and ``scanned`` is the record
+        count the caller adopts; ``sampled`` then means the cap was hit.
+        """
         opts = self._options
         espo = item.espo_name
         scannable = [t for t in item.targets if select_attributes_for(t.api_name, t.field_type)]
+        if not count_known:
+            record_count = opts.scan_cap
         if not scannable or record_count == 0:
-            return {"sampled": False}
+            return {"sampled": False, "scanned": 0}
 
         select = ["id", "createdAt"]
         for target in scannable:
@@ -932,8 +973,10 @@ class Profiler:
             offset += len(rows)
             if offset >= record_count:
                 break
+            if not count_known and len(rows) < page_size:
+                break  # end of the data — the scan is complete
 
-        sampled = scanned < record_count
+        sampled = (scanned >= opts.scan_cap) if not count_known else (scanned < record_count)
         complete_scan = not sampled and not truncated_by_error
 
         for target in scannable:
@@ -942,12 +985,13 @@ class Profiler:
             fallbacks = scan_fallback.get(target.api_name, set())
             self._fold_scan_stats(target, stat, metrics, fallbacks, complete_scan, scanned)
 
-        info: dict[str, Any] = {"sampled": sampled}
+        info: dict[str, Any] = {"sampled": sampled, "scanned": scanned}
         if sampled:
             info["scan_count"] = scanned
-            info["sample_fraction"] = (
-                round(scanned / record_count, 3) if record_count else 0.0
-            )
+            if count_known:
+                info["sample_fraction"] = (
+                    round(scanned / record_count, 3) if record_count else 0.0
+                )
         return info
 
     def _fold_scan_stats(

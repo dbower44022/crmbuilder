@@ -124,6 +124,8 @@ class _RecordsFake:
 
     def count_records(self, entity, where=None):
         self.calls.append(("count", entity, {"where": where}))
+        if entity in getattr(self, "count_disabled", ()):
+            return 200, -1  # EspoCRM's answer for an entity with countDisabled
         status, body = self.list_records(entity, where=where, max_size=0)
         if status == 200:
             return 200, body["total"]
@@ -659,3 +661,35 @@ def test_per_area_endpoint_runs_utilization(api):
         assert {r["evidence_deposit_event_identifier"] for r in rows} == {
             summary["deposit_event_identifier"]
         }
+
+
+def test_profiler_count_disabled_entity_is_counted_by_the_scan():
+    """``total: -1`` (countDisabled) — V1 wrote it through; V2 must not store a
+    negative count. The scan supplies the count and every field metric."""
+    fake = _RecordsFake({"CEngagement": _engagement_records(3)})
+    fake.count_disabled = {"CEngagement"}
+    item = _item(targets=[
+        _target("stage", "enum", ["open", "won", "lost"], fid="FLD-001"),
+        _target("notes", "varchar", fid="FLD-004"),
+    ])
+    run = Profiler(fake, ProfileOptions()).run([item])
+    assert not run.aborted
+    ent = run.entities["CEngagement"]
+    assert ent["record_count"] == 3
+    assert ent["detail"]["count_disabled"] is True
+    assert "count_lower_bound" not in ent["detail"]
+    assert ent["fields"]["stage"]["populated_count"] == 3
+    assert ent["fields"]["stage"]["detail"]["value_distribution"] == {"open": 2, "won": 1, "lost": 0}
+    assert any(a["metric"] == "record_count" for a in run.anomalies)
+    # No per-field count query was issued — the platform would answer -1 to each.
+    assert not [c for c in fake.calls if c[0] == "count" and c[2]["where"]]
+
+
+def test_profiler_count_disabled_entity_hitting_the_cap_is_a_lower_bound():
+    fake = _RecordsFake({"CEngagement": _engagement_records(5)})
+    fake.count_disabled = {"CEngagement"}
+    item = _item(targets=[_target("notes", "varchar", fid="FLD-004")])
+    run = Profiler(fake, ProfileOptions(scan_cap=2, page_size=2)).run([item])
+    ent = run.entities["CEngagement"]
+    assert ent["record_count"] == 2
+    assert ent["detail"]["count_lower_bound"] is True and ent["detail"]["sampled"] is True
