@@ -1760,13 +1760,28 @@ def _reconcile_associations_drift(
 
 
 # Neutral LAYOUT_TYPES -> EspoCRM layout-name used by get_layout.
+# The eighteen editable types the V1 audit fetches by default
+# (``AuditManager._layout_types_to_extract``); portal and forRoles variants
+# are deliberately not read (PI-418).
 _LAYOUT_TYPE_TO_ESPO: dict[str, str] = {
     "detail": "detail",
-    "list": "list",
+    "edit": "edit",
     "detail_small": "detailSmall",
+    "detail_convert": "detailConvert",
+    "list": "list",
     "list_small": "listSmall",
     "kanban": "kanban",
+    "filters": "filters",
     "mass_update": "massUpdate",
+    "relationships": "relationships",
+    "side_panels_detail": "sidePanelsDetail",
+    "side_panels_edit": "sidePanelsEdit",
+    "side_panels_detail_small": "sidePanelsDetailSmall",
+    "side_panels_edit_small": "sidePanelsEditSmall",
+    "bottom_panels_detail": "bottomPanelsDetail",
+    "bottom_panels_edit": "bottomPanelsEdit",
+    "bottom_panels_detail_small": "bottomPanelsDetailSmall",
+    "bottom_panels_edit_small": "bottomPanelsEditSmall",
 }
 
 

@@ -1002,7 +1002,30 @@ FILTERED_TAB_STATUSES: frozenset[str] = frozenset(
 # entity, audit-captured and publishable. Reconcile-populated; full ENTITY_TYPE.
 # ---------------------------------------------------------------------------
 LAYOUT_TYPES: frozenset[str] = frozenset(
-    {"detail", "list", "detail_small", "list_small", "kanban", "mass_update"}
+    {
+        # panel-structured record views
+        "detail",
+        "edit",
+        "detail_small",
+        "detail_convert",
+        # column-structured list views
+        "list",
+        "list_small",
+        "kanban",
+        # plain field lists
+        "filters",
+        "mass_update",
+        "relationships",
+        # side / bottom panel maps (PI-423 — V1 audit parity)
+        "side_panels_detail",
+        "side_panels_edit",
+        "side_panels_detail_small",
+        "side_panels_edit_small",
+        "bottom_panels_detail",
+        "bottom_panels_edit",
+        "bottom_panels_detail_small",
+        "bottom_panels_edit_small",
+    }
 )
 LAYOUT_STATUSES: frozenset[str] = frozenset(
     {"candidate", "confirmed", "deferred", "rejected"}
