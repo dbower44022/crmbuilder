@@ -195,32 +195,15 @@ Save it as `Cloudflare — proof B (read-only)`. With this token the run can
 verify the zone (so it gets past *Checking credentials* and creates the
 server) but cannot create the A record — exactly the failure run 2 needs.
 
-### 0.6 Check two names are free, and decide one email address
-
-**Part 1 — check the names `proof-1` and `proof-2` are not already in use**
+### 0.6 Check the names `proof-1` and `proof-2` are free
 
 1. Open <https://dash.cloudflare.com> and click **acmeconstruction.us** in the
    list.
 2. In the left menu click **DNS**, then **Records**.
 3. In the *Search DNS Records* box type `proof` and press Enter.
-4. You should see **no matching records**. That means the names are free —
-   move on to Part 2. If a record named `proof-1` or `proof-2` is listed,
-   click its **Delete** link on the right, confirm, and it is free.
-
-**Part 2 — decide the email address**
-
-Nothing to do here except decide. In section 3 (run 1) you will click
-**Instances → Deploy new…** in the CRMBuilder desktop app; the screens that
-open ask for an email address twice — on the *Domain* screen and on the
-*Accounts* screen. This is the address you will type there:
-
-- Box labelled **Let's Encrypt email** → type `doug@dougbower.com`.
-  *(Let's Encrypt is the name of the free service that issues the website's
-  HTTPS certificate; it emails this address before the certificate expires.)*
-- Box labelled **Administrator email** → type `doug@dougbower.com` again.
-  *(This becomes the email on the admin user inside the new CRM.)*
-
-That is all for 0.6.
+4. You should see **no matching records** — the names are free. If a record
+   named `proof-1` or `proof-2` is listed, click its **Delete** link on the
+   right and confirm.
 
 ### 0.7 Keep to hand
 
@@ -231,7 +214,6 @@ That is all for 0.6.
 | CF token B | password manager — pasted in section 4 step 1 |
 | Zone name | e.g. `dougbower.com` |
 | Two labels | `proof-1`, `proof-2` |
-| One email address | `doug@dougbower.com` — typed into both email boxes of the wizard |
 | A place to write the generated admin passwords | password manager entries `Proof 1 admin`, `Proof 2 admin` |
 
 Nothing here touches the cloud service, the production droplet, or the CBM
@@ -301,8 +283,8 @@ Wizard, in order:
 | Step | Enter |
 |---|---|
 | 2 Server | Instance name `Proof 1`; region **nyc3** (or the one nearest you); size **s-2vcpu-4gb**; image **Ubuntu 24.04 LTS**; tick your laptop's SSH key if it is listed (optional). |
-| 3 Domain | Zone: your zone; subdomain `proof-1` — the address line shows `proof-1.<zone>`; Let's Encrypt email. |
-| 4 Accounts | Username `admin`; administrator email; **Generate** a password and **write it down now** (it is never shown again); leave *Generate database passwords automatically* ticked. |
+| 3 Domain | Zone: **acmeconstruction.us**; subdomain `proof-1` — the address line shows `proof-1.acmeconstruction.us`; in *Let's Encrypt email* type `doug@dougbower.com` (the certificate service sends expiry notices there). |
+| 4 Accounts | Username `admin`; in *Administrator email* type `doug@dougbower.com`; **Generate** a password and **write it down now** (it is never shown again); leave *Generate database passwords automatically* ticked. |
 | 5 Review | Read it back; **Deploy**. |
 
 The progress window opens on `DEP-001`. Expected timeline:
