@@ -57,8 +57,11 @@ def test_entity_type_registered():
 
 
 def test_sidebar_has_instances_in_governance():
-    governance = dict(SIDEBAR_GROUPS)["Governance"]
-    assert "Instances" in governance
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Instances" in all_panels
 
 
 def test_build_panel_returns_instances_panel(qtbot, instance_client):

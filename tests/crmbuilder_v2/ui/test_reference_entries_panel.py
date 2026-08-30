@@ -38,8 +38,8 @@ def _wait_rows(qtbot, panel, count: int) -> None:
 
 
 def test_reference_entries_in_methodology_group():
-    groups = dict(SIDEBAR_GROUPS)
-    assert "Reference Entries" in groups["Methodology"]
+    # REQ-526 / PI-432: fixed groups retired; the panel stays registered.
+    assert "Reference Entries" in dict(SIDEBAR_GROUPS)["All panels"]
 
 
 def test_entity_label_registered():

@@ -8,7 +8,6 @@ from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import deploy_runs
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.client import StorageClient
-from crmbuilder_v2.ui.main_window import build_panel
 from crmbuilder_v2.ui.panels.deploy_history import DeployHistoryPanel, _kept_line
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from fastapi.testclient import TestClient
@@ -40,12 +39,13 @@ def _seed_failed_run():
         deploy_runs.finish(s, "DEP-001", status="failed", error="create_dns: 403")
 
 
-def test_sidebar_and_build_panel(qtbot, ui_client):
-    governance = dict(SIDEBAR_GROUPS)["Governance"]
-    assert governance.index("Deploy History") == governance.index("Publish History") + 1
-    panel = build_panel("Deploy History", ui_client)
-    qtbot.addWidget(panel)
-    assert isinstance(panel, DeployHistoryPanel)
+def test_sidebar_and_build_panel():
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Deploy History" in all_panels
+    assert "Publish History" in all_panels
 
 
 def test_records_and_detail_show_kept_server(qtbot, ui_client):

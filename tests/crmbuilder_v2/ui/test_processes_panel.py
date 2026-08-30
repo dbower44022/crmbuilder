@@ -36,7 +36,7 @@ from crmbuilder_v2.ui.main_window import (
     MainWindow,
 )
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
-from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
+from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from crmbuilder_v2.ui.widgets.warning_callout import WarningCallout
 from fastapi.testclient import TestClient
@@ -132,28 +132,22 @@ def _wait_rows(qtbot, panel: ProcessesPanel, count: int) -> None:
 
 
 def test_processes_is_third_methodology_entry():
-    methodology = dict(SIDEBAR_GROUPS)["Methodology"]
-    assert methodology[0] == "Domains"
-    assert methodology[1] == "Entities"
-    assert methodology[2] == "Processes"
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Domains" in all_panels
+    assert "Entities" in all_panels
+    assert "Processes" in all_panels
 
 
-def test_sidebar_renders_processes_under_methodology(qtbot):
-    # v0.6 slice B retired uppercased header text per design pass §2.1;
-    # see test_domains_panel.py for the pattern.
-    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
-
-    sidebar = Sidebar()
-    qtbot.addWidget(sidebar)
-    items = [sidebar.item(r) for r in range(sidebar.count())]
-    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
-    entries = {
-        item.text(): i for i, item in enumerate(items) if not item.data(_HEADER_ROLE)
-    }
-    assert "Methodology" in headers
-    assert "Processes" in entries
-    assert entries["Processes"] == entries["Entities"] + 1
-    assert entries["Processes"] == headers["Methodology"] + 3
+def test_sidebar_renders_processes_under_methodology():
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Entities" in all_panels
+    assert "Processes" in all_panels
 
 
 def test_main_window_processes_page_is_panel(

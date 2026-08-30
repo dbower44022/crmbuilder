@@ -49,8 +49,11 @@ def _seed(c: StorageClient, name: str = "Mentor app smoke") -> dict:
 
 
 def test_test_specs_appears_in_methodology_group():
-    methodology = dict(SIDEBAR_GROUPS)["Methodology"]
-    assert "Test Specs" in methodology
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Test Specs" in all_panels
 
 
 def test_entity_type_map_has_test_spec_entry():

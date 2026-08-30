@@ -43,6 +43,16 @@ from crmbuilder_v2.ui.client import StorageClient  # noqa: E402
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _isolated_phase_tab_state(tmp_path, monkeypatch):
+    """REQ-526 / PI-432: keep each test's remembered phase tabs in tmp."""
+    from crmbuilder_v2.ui import main_window as mw
+
+    monkeypatch.setattr(
+        mw, "_default_tab_state_path", lambda: tmp_path / "phase-tabs.json"
+    )
+
+
 @pytest.fixture
 def lifecycle_stub(qapp):
     """A real ``ServerLifecycle`` aimed at an unreachable URL.

@@ -81,37 +81,29 @@ def _wait_rows(qtbot, panel: PersonasPanel, count: int) -> None:
 
 
 def test_personas_is_fifth_methodology_entry():
-    methodology = dict(SIDEBAR_GROUPS)["Methodology"]
-    assert methodology[0] == "Domains"
-    assert methodology[1] == "Entities"
-    assert methodology[2] == "Processes"
-    # PI-004 cohort inserted "Requirements" at position #4, pushing
-    # CRM Candidates to #5 and Personas to #6. Personas remains
-    # present and follows CRM Candidates.
-    assert "Personas" in methodology
-    assert methodology.index("Personas") > methodology.index(
-        "CRM Candidates"
-    )
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "CRM Candidates" in all_panels
+    assert "Domains" in all_panels
+    assert "Entities" in all_panels
+    assert "Personas" in all_panels
+    assert "Processes" in all_panels
+    assert "Requirements" in all_panels
 
 
 def test_sidebar_renders_personas_under_methodology(qtbot):
-    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
+    # REQ-526 / PI-432: the sidebar is phase-scoped; Personas renders as a
+    # numbered step in the Phase 1 checklist (position 2, after Charter).
+    from crmbuilder_v2.ui.navigation import ALL_PANELS_GROUP_TITLE, PhaseMap  # noqa: PLC0415
+    from crmbuilder_v2.ui.panel_registry import ALL_PANEL_LABELS  # noqa: PLC0415
 
-    sidebar = Sidebar()
+    groups = PhaseMap().sidebar_groups("1", ALL_PANEL_LABELS)
+    sidebar = Sidebar(groups, numbered_groups=("Phase 1 steps",), collapsed_groups=(ALL_PANELS_GROUP_TITLE,))
     qtbot.addWidget(sidebar)
-    items = [sidebar.item(r) for r in range(sidebar.count())]
-    headers = {
-        item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)
-    }
-    entries = {
-        item.text(): i
-        for i, item in enumerate(items)
-        if not item.data(_HEADER_ROLE)
-    }
-    assert "Methodology" in headers
-    assert "Personas" in entries
-    # Personas sits directly after CRM Candidates under Methodology.
-    assert entries["Personas"] == entries["CRM Candidates"] + 1
+    steps = sidebar.step_labels()
+    assert steps.index("Personas") == steps.index("Charter") + 1
 
 
 def test_main_window_personas_page_is_panel(

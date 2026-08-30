@@ -135,23 +135,67 @@ plus `crmbuilder-v2-bootstrap-db`.
 
 ## Tour of the desktop UI
 
-The window is divided into a **left sidebar** (entity-type navigation)
-and a **content area** (master/detail panel for the selected entity).
+The window is organised by the **phase** you are working in. Across the
+top is a tab strip: a pinned **Chat** tab, then one tab per open phase
+(numbered in Master CRMBuilder PRD order — `1 · Business Context Capture`,
+`3 · Inventory Reconciliation`, `13 · Verification`, …). Each phase tab has
+its own **left sidebar** and **content area**, and keeps its own place:
+switch to another tab to check something and come back, and the step,
+record and scroll position you left are still there.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Help                                                   │
-├──────────┬──────────────────────────────────────────────┤
-│ Charter  │  Decisions                       [N records] │
-│ Status   │  ┌────────────────────┬───────────────────┐  │
-│ Decisions│  │ Identifier  │ Title │ Detail of        │  │
-│ Sessions │  │ DEC-001     │ ...   │ selected record  │  │
-│ Risks    │  │ DEC-002     │ ...   │                  │  │
-│ Planning │  │ ...         │       │                  │  │
-│ Topics   │  └────────────────────┴───────────────────┘  │
-│ References│                                              │
-└──────────┴──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  File  Go  Help                                                  │
+│  Cleveland Business Mentors ▾                 [Quick open Ctrl+K] │
+├──────┬─────────────────────────┬───────────────────────────┬─────┤
+│ Chat │ 1 · Business Context ×  │ 13 · Verification ×       │  +  │
+├──────┴──────────┬──────────────┴───────────────────────────┴─────┤
+│ Every session   │  Domains                          [4 records]  │
+│  Sessions       │  ┌──────────────────────┬───────────────────┐  │
+│  Decisions      │  │ Identifier │ Name    │ Detail of         │  │
+│  Planning Items │  │ DOM-001    │ …       │ selected record   │  │
+│  Chat           │  │ DOM-002    │ …       │                   │  │
+│ Phase 1 steps   │  └──────────────────────┴───────────────────┘  │
+│  ✓ 1 Charter    │                                                 │
+│  ✓ 2 Personas   │                                                 │
+│  ▶ 3 Domains    │                                                 │
+│    4 Processes  │                                                 │
+│    5 References │                                                 │
+│    6 Glossary   │                                                 │
+│ All panels ▸    │                                                 │
+└─────────────────┴─────────────────────────────────────────────────┘
 ```
+
+The sidebar of a phase tab has three groups:
+
+- **Every session** — Sessions, Decisions, Planning Items and Chat: the
+  four things every phase uses (the Open → Conduct → Close session
+  lifecycle is the same in all thirteen phases). Chat switches to the
+  pinned Chat tab.
+- **Phase N steps** — the panels the phase produces records in, numbered
+  in the order the process performs them. A **✓** marks a step whose panel
+  already has records; **▶** marks the first step that has none — the
+  obvious next thing to do. Markers are advisory: nothing is locked and
+  no button is ever disabled by them.
+- **All panels ▸** — a collapsed, alphabetical index of every panel in the
+  product, so nothing is out of reach. Click the header to expand it, or
+  type in the **Filter navigation…** box above the list.
+
+**Opening a phase.** Click **+** at the right end of the tab strip and pick
+a phase (the thirteen PRD phases, then **Operate CRMBuilder** — the
+product's own operations: agent registry, releases, cost, locks and the
+system-written tables). Tabs stay open until you close them with their
+**×**; the last phase tab cannot be closed. Which tabs you have open is
+remembered per engagement, so switching engagement (or restarting) brings
+back the tabs you had for it. Phases whose PRD section is still a
+placeholder (4–10) carry a tooltip saying their step sequence is
+provisional.
+
+**Quick open (Ctrl+K).** Type a panel name fragment (`dep` → Deploy
+History, Deposit Events) or an identifier prefix (`REQ-52` → the matching
+requirements) and press Enter to open the highlighted result in the
+current tab. Back/Forward (Alt+Left / Alt+Right, Go menu) still step
+through the cross-record trail.
 
 ### Live refresh
 
@@ -563,7 +607,7 @@ service's log, **Cancel run** while it is running (takes effect between
 phases), and **Close** at any time. When the run registers the instance, the
 Instances panel selects it.
 
-**Deploy History** (sidebar, Governance group) lists every run with its
+**Deploy History** (step in phase 11 · CRM Deployment; also under All panels) lists every run with its
 status and phase. Select one to see what it created (server id and IP,
 certificate expiry), the verification results, the error that stopped it, and
 its log; **Open progress…** reattaches to a running run.

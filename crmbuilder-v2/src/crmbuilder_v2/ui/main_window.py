@@ -1,21 +1,26 @@
-"""Main window — sidebar + stacked content area, with crash banner.
+"""Main window — phase tabs over a crash banner (REQ-526 / PI-432, DEC-953).
 
-Per DEC-021 the main window structure is a sidebar (left, fixed-width)
-plus a ``QStackedWidget`` (right, swapping per selection). Slice B added
-the lifecycle ownership and crash banner. Slice C threads the
-``StorageClient`` through the constructor, replaces the Decisions
-placeholder with a live ``DecisionsPanel``, and wires panel-level
-``connection_lost`` to the same crash banner the lifecycle uses. Slice
-D added Sessions and Risks. Slice E completes the round-2 read-only
-panels: Charter, Status, Topics, Planning Items, References — every
-sidebar entry now routes to a real panel. (PI-β slice 4 removed the
-JSON-snapshot file-watch RefreshService along with the snapshot
-machinery; panels refresh on selection, on lifecycle-ready, and via the
-manual Refresh button.)
+The window is organised by the **phase** the user is working in. A
+``QTabWidget`` holds one pinned Chat tab (DEC-258 — one shared chat
+surface, never one per tab) plus one :class:`PhasePage` per open phase.
+Each phase page owns its own phase-scoped sidebar (Every session · Phase N
+steps · All panels) and its own lazily-built panel stack, so switching
+tabs and back restores the selected step, record and scroll position.
+
+Phases open on demand from the "+" control at the end of the tab strip
+(the PRD §4 phase list plus Operate CRMBuilder); open tabs persist per
+engagement in a small JSON file. Quick open (Ctrl+K) reaches any record by
+identifier prefix or any panel by name, so nothing behind the collapsed
+All-panels index is more than a keystroke away.
+
+Lifecycle ownership, the crash banner, bounded auto-reconnect, the
+flap guard (REQ-297) and the health heartbeat (PI-111) are unchanged from
+the single-sidebar window this replaced.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from pathlib import Path
@@ -24,9 +29,11 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QCloseEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
-    QLabel,
     QMainWindow,
-    QStackedWidget,
+    QMenu,
+    QPushButton,
+    QTabWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -38,57 +45,25 @@ from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.crash_banner import CrashBanner
 from crmbuilder_v2.ui.detail_window_manager import DetailWindowManager
 from crmbuilder_v2.ui.exceptions import StorageConnectionError
-from crmbuilder_v2.ui.panels.agent_profiles import AgentProfilesPanel
-from crmbuilder_v2.ui.panels.candidate_review import CandidateReviewPanel
-from crmbuilder_v2.ui.panels.charter import CharterPanel
-from crmbuilder_v2.ui.panels.chat import ChatPanel
-from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
-from crmbuilder_v2.ui.panels.commits import CommitsPanel
-from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
-from crmbuilder_v2.ui.panels.cost import CostPanel
-from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
-from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
-from crmbuilder_v2.ui.panels.deploy_history import DeployHistoryPanel
-from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
-from crmbuilder_v2.ui.panels.domains import DomainsPanel
-from crmbuilder_v2.ui.panels.engagements import EngagementsPanel
-from crmbuilder_v2.ui.panels.entities import EntitiesPanel
-from crmbuilder_v2.ui.panels.field import FieldsPanel
-from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
-from crmbuilder_v2.ui.panels.instances import InstancesPanel
-from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
-from crmbuilder_v2.ui.panels.participant import ParticipantsPanel
-from crmbuilder_v2.ui.panels.persona import PersonasPanel
-from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
-from crmbuilder_v2.ui.panels.processes import ProcessesPanel
-from crmbuilder_v2.ui.panels.projects import ProjectsPanel
-from crmbuilder_v2.ui.panels.publish_history import PublishHistoryPanel
-from crmbuilder_v2.ui.panels.reconcile_grid import ReconcileGridPanel
-from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
-from crmbuilder_v2.ui.panels.reference_entries import ReferenceEntriesPanel
-from crmbuilder_v2.ui.panels.references import ReferencesPanel
-from crmbuilder_v2.ui.panels.registry_learnings import LearningsPanel
-from crmbuilder_v2.ui.panels.registry_rules import GovernanceRulesPanel
-from crmbuilder_v2.ui.panels.registry_skills import SkillsPanel
-from crmbuilder_v2.ui.panels.releases import ReleasesPanel
-from crmbuilder_v2.ui.panels.requirements import RequirementsPanel
-from crmbuilder_v2.ui.panels.resource_locks import ResourceLocksPanel
-from crmbuilder_v2.ui.panels.review import ReviewPanel
-from crmbuilder_v2.ui.panels.risks import RisksPanel
-from crmbuilder_v2.ui.panels.sessions import SessionsPanel
-from crmbuilder_v2.ui.panels.status import StatusPanel
-from crmbuilder_v2.ui.panels.test_spec import TestSpecsPanel
-from crmbuilder_v2.ui.panels.topics import TopicsPanel
-from crmbuilder_v2.ui.panels.work_tasks import WorkTasksPanel
-from crmbuilder_v2.ui.panels.work_tickets import WorkTicketsPanel
-from crmbuilder_v2.ui.panels.workstreams import WorkstreamsPanel
+from crmbuilder_v2.ui.navigation import (
+    DEFAULT_PHASE_KEY,
+    OPERATE_KEY,
+    PHASES,
+    PHASES_BY_KEY,
+    PhaseMap,
+    load_phase_map,
+)
+from crmbuilder_v2.ui.panel_registry import (  # noqa: F401 — re-exported
+    ALL_PANEL_LABELS,
+    build_panel,
+)
+from crmbuilder_v2.ui.phase_page import CHAT_LABEL, PhasePage
 from crmbuilder_v2.ui.server_lifecycle import ServerLifecycle
-from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES, Sidebar
-from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
+from crmbuilder_v2.ui.sidebar import SIDEBAR_ENTRIES
+from crmbuilder_v2.ui.styling import t
 from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.main_window")
-_DEFAULT_ENTRY = "Decisions"
 
 # Bounded auto-reconnect: on connection loss or an owned-subprocess
 # crash, the window drives ``ServerLifecycle.start()`` (probe-then-spawn)
@@ -115,13 +90,18 @@ _FLAP_WINDOW_S = 30.0
 # thread; only a connection failure triggers recovery.
 _HEARTBEAT_INTERVAL_MS = 15000
 
+# Where the per-engagement set of open phase tabs is remembered. Tests point
+# this at a temporary directory.
+_TAB_STATE_FILENAME = "phase-tabs.json"
+
+
+def _default_tab_state_path() -> Path:
+    return Path.home() / ".crmbuilder-v2" / _TAB_STATE_FILENAME
+
+
 # Maps reference ``entity_type`` values (as stored in the database) to
-# sidebar entry labels so the navigation router (cross-panel link
-# clicks) and the file-watch refresh router (slice F) can resolve a
-# data event to a panel. ``reference`` maps to the References panel
-# even though no current detail-pane link targets it — the file watcher
-# still needs the mapping so writes to ``references.json`` refresh the
-# panel.
+# panel labels so the navigation router (cross-panel link clicks), the
+# detail-window manager and quick open can resolve a record type to a panel.
 ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "charter": "Charter",
     "status": "Status",
@@ -178,147 +158,51 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
 }
 
 
+
 def _is_refreshable(page: object) -> bool:
-    """Whether a stacked page exposes a ``refresh()`` the window should drive.
+    """Whether a panel exposes a ``refresh()`` the window should drive.
 
     Every ``ListDetailPanel`` has one. A few panels are bare ``QWidget``s outside
     that base (e.g. the reconcile grid); those that nonetheless expose a
-    ``refresh()`` are refreshed on navigation and engagement switch too (REQ-431),
-    so a panel that loads engagement-scoped data at construction is not stranded
-    with whatever it saw before an engagement was active. Plain ``QWidget`` has no
-    ``refresh`` attribute, so non-data pages are unaffected.
+    ``refresh()`` are refreshed on navigation and engagement switch too (REQ-431).
     """
     return callable(getattr(page, "refresh", None))
 
 
-def build_panel(
-    label: str,
-    client: StorageClient,
-    *,
-    active_context=None,
-) -> QWidget:
-    """Construct the page widget for a sidebar label (PI-121 / WTK-079).
+class PhaseTabStore:
+    """Remembers which phase tabs each engagement has open (best-effort JSON)."""
 
-    One label→class table, two callers: ``MainWindow.__init__`` builds every
-    sidebar page through it, and ``DetailWindowManager`` builds a standalone
-    detail window's content through it — so a new entity panel is registered
-    once. Entity panels are ``ListDetailPanel`` subclasses taking only the
-    client; Chat takes the API base URL (DEC-253), Engagements additionally
-    takes the active context, and an unmapped label falls through to a
-    placeholder ``QLabel`` (which the detail-window manager treats as
-    non-openable, C7).
-    """
-    if label == "Chat":
-        # PI-052 Slice B: the chat tab consumes the FastAPI surface directly
-        # (DEC-253/§2.8), so it takes the API base URL, not the StorageClient.
-        return ChatPanel(get_settings().api_base_url)
-    if label == "Charter":
-        return CharterPanel(client)
-    if label == "Status":
-        return StatusPanel(client)
-    if label == "Decisions":
-        return DecisionsPanel(client)
-    if label == "Sessions":
-        return SessionsPanel(client)
-    if label == "Risks":
-        return RisksPanel(client)
-    if label == "Planning Items":
-        return PlanningItemsPanel(client)
-    if label == "Topics":
-        return TopicsPanel(client)
-    if label == "References":
-        return ReferencesPanel(client)
-    if label == "Domains":
-        return DomainsPanel(client)
-    if label == "Entities":
-        return EntitiesPanel(client)
-    if label == "Processes":
-        return ProcessesPanel(client)
-    if label == "Requirements":
-        return RequirementsPanel(client)
-    if label == "Test Specs":
-        return TestSpecsPanel(client)
-    if label == "CRM Candidates":
-        return CrmCandidatesPanel(client)
-    if label == "Personas":
-        return PersonasPanel(client)
-    # REL-069 / PI-391: participants that back personas.
-    if label == "Participants":
-        return ParticipantsPanel(client)
-    if label == "Fields":
-        return FieldsPanel(client)
-    if label == "Manual Configs":
-        return ManualConfigPanel(client)
-    if label == "Glossary":
-        return GlossaryPanel(client)
-    # REL-016 / PI-067: cross-engagement reference libraries.
-    if label == "Reference Entries":
-        return ReferenceEntriesPanel(client)
-    if label == "Engagements":
-        return EngagementsPanel(client, active_context=active_context)
-    # v0.7 governance entities.
-    if label == "Projects":
-        return ProjectsPanel(client)
-    if label == "Conversations":
-        return ConversationsPanel(client)
-    if label == "Reference Books":
-        return ReferenceBooksPanel(client)
-    if label == "Work Tickets":
-        return WorkTicketsPanel(client)
-    if label == "Close-Out Payloads":
-        return CloseOutPayloadsPanel(client)
-    if label == "Deposit Events":
-        return DepositEventsPanel(client)
-    if label == "Commits":
-        return CommitsPanel(client)
-    # WTK-004: ADO delivery-model monitoring panels.
-    if label == "Workstreams":
-        return WorkstreamsPanel(client)
-    if label == "Work Tasks":
-        return WorkTasksPanel(client)
-    # PI-330 (REL-026 / REQ-367): Agent Profile Registry configuration panels.
-    if label == "Agent Profiles":
-        return AgentProfilesPanel(client)
-    if label == "Skills":
-        return SkillsPanel(client)
-    if label == "Governance Rules":
-        return GovernanceRulesPanel(client)
-    if label == "Learnings":
-        return LearningsPanel(client)
-    # PI-186 (PRJ-027): CRM-connection instances.
-    if label == "Instances":
-        return InstancesPanel(client)
-    # PI-266 (PRJ-042 / REQ-293): read-only publish history.
-    if label == "Publish History":
-        return PublishHistoryPanel(client)
-    # PI-419 (REQ-522): deploy runs — provisioning history + progress/retry.
-    if label == "Deploy History":
-        return DeployHistoryPanel(client)
-    # PI-319 (REL-024): three-way design/instance reconciliation surface.
-    if label == "Candidate Review":
-        return CandidateReviewPanel(client)
-    if label == "Reconcile":
-        return ReconcileGridPanel(client)
-    # requirements-provenance Phase 6b: topic-first review surface.
-    if label == "Requirements Review":
-        return ReviewPanel(client)
-    # PI-224: the release-pipeline operability surface.
-    if label == "Releases":
-        return ReleasesPanel(client)
-    # PI-225: the file-level check-out backstop monitor.
-    if label == "Resource Locks":
-        return ResourceLocksPanel(client)
-    # PI-265: the read-only AI-spend cost monitor.
-    if label == "Cost":
-        return CostPanel(client)
-    placeholder = QLabel(f"Panel for {label} — not yet implemented.")
-    placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    placeholder.setObjectName(f"placeholder_{label.lower().replace(' ', '_')}")
-    return placeholder
+    def __init__(self, path: Path) -> None:
+        self._path = path
+
+    def load(self, engagement_key: str) -> tuple[list[str], str | None]:
+        """``(open phase keys in order, current phase key)`` or ``([], None)``."""
+        try:
+            data = json.loads(self._path.read_text(encoding="utf-8"))
+            entry = data.get(engagement_key) or {}
+            keys = [k for k in entry.get("open", []) if k in PHASES_BY_KEY]
+            current = entry.get("current")
+            return keys, current if current in keys else None
+        except (OSError, ValueError, AttributeError):
+            return [], None
+
+    def save(self, engagement_key: str, open_keys: list[str], current: str | None) -> None:
+        try:
+            data = {}
+            if self._path.exists():
+                try:
+                    data = json.loads(self._path.read_text(encoding="utf-8")) or {}
+                except ValueError:
+                    data = {}
+            data[engagement_key] = {"open": list(open_keys), "current": current}
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            self._path.write_text(json.dumps(data, indent=1), encoding="utf-8")
+        except OSError:
+            _log.debug("could not persist phase tabs to %s", self._path, exc_info=True)
 
 
 class MainWindow(QMainWindow):
-    """Top-level window containing the crash banner, sidebar, and content stack."""
+    """Top-level window: crash banner, engagement strip, phase tabs."""
 
     def __init__(
         self,
@@ -326,6 +210,8 @@ class MainWindow(QMainWindow):
         client: StorageClient,
         snapshot_dir: Path | None = None,
         active_context=None,
+        tab_state_path: Path | None = None,
+        phase_map: PhaseMap | None = None,
     ):
         super().__init__()
         self.setWindowTitle("CRMBuilder v2")
@@ -334,60 +220,50 @@ class MainWindow(QMainWindow):
         self._lifecycle = lifecycle
         self._client = client
         self._active_context = active_context
-        self._sidebar = Sidebar()
         self._top_strip = None
         self._picker = None
-        self._stack = QStackedWidget()
         self._crash_banner = CrashBanner()
-        self._pages_by_entry: dict[str, int] = {}
-        self._stale_entries: set[str] = set()
+        self._phase_map = phase_map if phase_map is not None else load_phase_map(client)
+        self._tab_store = PhaseTabStore(tab_state_path or _default_tab_state_path())
+        # Stale-marked (page, label) pairs: panels whose data changed while
+        # the user was elsewhere (engagement switch). Refreshed on next select.
+        self._stale: set[tuple[int, str]] = set()
+        self._retired_pages: list[PhasePage] = []
+        self._reap_timer = QTimer(self)
+        self._reap_timer.setSingleShot(True)
+        self._reap_timer.setInterval(500)
+        self._reap_timer.timeout.connect(self._reap_retired_pages)
         # REQ-138 (PI-179): cross-record navigation history. Following a
         # reference pushes the originating (entry, identifier) onto the back
         # stack so the user can step back to where they came from.
         self._nav_back: list[tuple[str, str | None]] = []
         self._nav_forward: list[tuple[str, str | None]] = []
-        # Tracks whether the storage API is currently reachable. Used by
-        # ``_on_sidebar_selected`` to gate the on-select refresh so that
-        # the synchronous ``setCurrentRow`` during ``__init__`` does not
-        # fire an HTTP request before the lifecycle's probe completes.
-        # ``_on_lifecycle_ready`` flips this to True; ``handle_crash``
-        # and ``_on_panel_connection_lost`` flip it back to False.
+        # Tracks whether the storage API is currently reachable — gates the
+        # on-select refresh so the default selection during ``__init__`` does
+        # not fire an HTTP request before the lifecycle's probe completes.
         self._lifecycle_ready = False
 
         # Auto-reconnect state. ``_had_first_ready`` lets app.py route a
         # *runtime* spawn failure to the in-window banner instead of the
         # fatal startup dialog. ``_auto_reconnecting`` dedupes overlapping
-        # triggers (e.g. several panels reporting connection loss at once);
-        # ``_reconnect_attempts`` bounds the retry loop.
+        # triggers; ``_reconnect_attempts`` bounds the retry loop.
         self._had_first_ready = False
         self._auto_reconnecting = False
         self._reconnect_attempts = 0
-        # Flap detection (REQ-297): monotonic time of the last successful
-        # recovery and the count of connection losses that landed right after
-        # one, so a healthy-API / slow-data fault backs off instead of looping.
+        # Flap detection (REQ-297).
         self._last_ready_at: float | None = None
         self._flap_count = 0
         self._base_url = get_settings().api_base_url
         self._log_path = api_log_path()
 
-        # Heartbeat (PI-111). Started once the API is first ready, paused
-        # during a reconnect cycle, restarted on the next ready. A single
-        # probe is in flight at a time (``_heartbeat_in_flight``).
+        # Heartbeat (PI-111).
         self._heartbeat_in_flight = False
         self._heartbeat_timer = QTimer(self)
         self._heartbeat_timer.setInterval(_HEARTBEAT_INTERVAL_MS)
         self._heartbeat_timer.timeout.connect(self._on_heartbeat_tick)
 
-        # (PI-β slice 4 removed the JSON-snapshot file-watch RefreshService
-        # along with the snapshot machinery it watched; ``snapshot_dir`` is now
-        # an accepted-but-ignored constructor argument. Panels refresh on
-        # selection, on lifecycle-ready, and via the manual Refresh button.)
-
-        # PI-121 / WTK-079: spawns standalone non-modal detail windows on a
-        # grid's "Open <item type>" action. Built through the same
-        # ``build_panel`` factory the sidebar uses, so it covers every entity
-        # type with no per-type window code. Constructed before the panel loop
-        # so the loop can wire each panel's ``open_requested`` to it.
+        # PI-121 / WTK-079: standalone non-modal detail windows, built through
+        # the same registry the phase pages use.
         self._detail_window_manager = DetailWindowManager(
             client=self._client,
             panel_factory=build_panel,
@@ -395,77 +271,350 @@ class MainWindow(QMainWindow):
             parent_window=self,
         )
 
-        for entry in SIDEBAR_ENTRIES:
-            # ``build_panel`` is the single label→class table (PI-121 / WTK-079);
-            # Chat and the not-yet-implemented placeholders are not
-            # ``ListDetailPanel``s, so they are excluded from the
-            # connection_lost / navigate / open wiring and the on-select refresh.
-            page = build_panel(
-                entry, self._client, active_context=self._active_context
-            )
-            if isinstance(page, ListDetailPanel):
-                page.connection_lost.connect(self._on_panel_connection_lost)
-                page.navigate_requested.connect(self._on_navigate_requested)
-                page.open_requested.connect(self._on_open_requested)
-            index = self._stack.addWidget(page)
-            self._pages_by_entry[entry] = index
+        # --- Tabs ---------------------------------------------------------
+        self._tabs = QTabWidget()
+        self._tabs.setObjectName("phase_tabs")
+        self._tabs.setDocumentMode(True)
+        self._tabs.setTabsClosable(True)
+        self._tabs.setMovable(False)
+        self._tabs.tabCloseRequested.connect(self._on_tab_close_requested)
+        self._tabs.currentChanged.connect(self._on_tab_changed)
 
-        content_widget = QWidget()
-        content_layout = QHBoxLayout(content_widget)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(0)
-        # REQ-136 (PI-177): a filter box above the sidebar list narrows its
-        # entries as the user types. Owned here (the sidebar itself is a
-        # QListWidget; the input sits above it in the sidebar column).
-        self._sidebar_search = LinkFilterInput(object_name="sidebar_search_input")
-        self._sidebar_search.setPlaceholderText("Filter navigation…")
-        self._sidebar_search.filterChanged.connect(self._sidebar.filter_entries)
-        # v0.5 slice D: the top-strip is the first child of the sidebar
-        # column when an active_context is provided; the sidebar list
-        # follows below it.
+        # Pinned Chat tab (index 0). One shared surface (DEC-258).
+        self._chat_panel = build_panel(CHAT_LABEL, self._client, active_context=self._active_context)
+        self._tabs.addTab(self._chat_panel, CHAT_LABEL)
+        bar = self._tabs.tabBar()
+        bar.setTabButton(0, bar.ButtonPosition.RightSide, None)
+        bar.setTabButton(0, bar.ButtonPosition.LeftSide, None)
+
+        # "+" — open another phase.
+        self._add_phase_button = QToolButton()
+        self._add_phase_button.setObjectName("add_phase_button")
+        self._add_phase_button.setText("+")
+        self._add_phase_button.setToolTip("Open a phase as a tab")
+        self._add_phase_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._add_phase_menu = QMenu(self._add_phase_button)
+        self._add_phase_menu.aboutToShow.connect(self._rebuild_add_phase_menu)
+        self._add_phase_button.setMenu(self._add_phase_menu)
+        self._tabs.setCornerWidget(self._add_phase_button, Qt.Corner.TopRightCorner)
+
+        # --- Header: engagement strip + quick open -----------------------
+        header = QWidget()
+        header.setObjectName("window_header")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(0, 0, 8, 0)
+        header_layout.setSpacing(8)
         if self._active_context is not None:
             from crmbuilder_v2.ui.widgets.engagement_top_strip import (
                 EngagementTopStrip,
             )
 
-            sidebar_col = QWidget()
-            sidebar_layout = QVBoxLayout(sidebar_col)
-            sidebar_layout.setContentsMargins(0, 0, 0, 0)
-            sidebar_layout.setSpacing(0)
             self._top_strip = EngagementTopStrip(self._active_context)
             self._top_strip.clicked.connect(self._on_top_strip_clicked)
-            sidebar_layout.addWidget(self._top_strip)
-            sidebar_layout.addWidget(self._sidebar_search)
-            sidebar_layout.addWidget(self._sidebar, stretch=1)
-            sidebar_col.setFixedWidth(self._sidebar.width())
-            content_layout.addWidget(sidebar_col)
-        else:
-            sidebar_col = QWidget()
-            sidebar_layout = QVBoxLayout(sidebar_col)
-            sidebar_layout.setContentsMargins(0, 0, 0, 0)
-            sidebar_layout.setSpacing(0)
-            sidebar_layout.addWidget(self._sidebar_search)
-            sidebar_layout.addWidget(self._sidebar, stretch=1)
-            sidebar_col.setFixedWidth(self._sidebar.width())
-            content_layout.addWidget(sidebar_col)
-        content_layout.addWidget(self._stack, stretch=1)
-        self._content_widget = content_widget
+            header_layout.addWidget(self._top_strip)
+        header_layout.addStretch(1)
+        self._quick_open_button = QPushButton("Quick open   Ctrl+K")
+        self._quick_open_button.setObjectName("quick_open_button")
+        self._quick_open_button.setFlat(True)
+        self._quick_open_button.setStyleSheet(
+            f"QPushButton {{ color: {t('color.neutral.500')}; border: 1px solid "
+            f"{t('color.neutral.200')}; border-radius: {t('radius.default')}; "
+            f"padding: 2px 10px; }}"
+        )
+        self._quick_open_button.clicked.connect(self.open_quick_open)
+        header_layout.addWidget(self._quick_open_button)
 
         container = QWidget()
         outer_layout = QVBoxLayout(container)
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)
         outer_layout.addWidget(self._crash_banner)
-        outer_layout.addWidget(content_widget, stretch=1)
+        outer_layout.addWidget(header)
+        outer_layout.addWidget(self._tabs, stretch=1)
         self.setCentralWidget(container)
 
-        self._sidebar.selection_changed.connect(self._on_sidebar_selected)
         self._crash_banner.reconnect_requested.connect(self._on_reconnect_requested)
         self._lifecycle.ready.connect(self._on_lifecycle_ready)
 
         self._build_menu_bar()
 
-        self._sidebar.select_entry(_DEFAULT_ENTRY)
+        # Open the remembered tabs for the engagement (or the default phase).
+        self._restore_tabs_for_engagement()
+
+    # ------------------------------------------------------------------
+    # Compatibility accessors — the "current phase page" view of the window
+    # ------------------------------------------------------------------
+
+    @property
+    def _sidebar(self):
+        return self._current_phase_page().sidebar
+
+    @property
+    def _stack(self):
+        return self._current_phase_page().stack
+
+    @property
+    def _pages_by_entry(self) -> dict[str, int]:
+        return self._current_phase_page().pages_by_entry
+
+    # ------------------------------------------------------------------
+    # Phase tabs
+    # ------------------------------------------------------------------
+
+    def phase_pages(self) -> list[PhasePage]:
+        return [
+            w for i in range(self._tabs.count())
+            if isinstance((w := self._tabs.widget(i)), PhasePage)
+        ]
+
+    def open_phase_keys(self) -> list[str]:
+        return [p.phase.key for p in self.phase_pages()]
+
+    def current_phase_key(self) -> str | None:
+        page = self._tabs.currentWidget()
+        return page.phase.key if isinstance(page, PhasePage) else None
+
+    def page_for_phase(self, key: str) -> PhasePage | None:
+        for page in self.phase_pages():
+            if page.phase.key == key:
+                return page
+        return None
+
+    def _current_phase_page(self) -> PhasePage:
+        """The current phase page, or the last one visited when Chat is current."""
+        current = self._tabs.currentWidget()
+        if isinstance(current, PhasePage):
+            return current
+        last = getattr(self, "_last_phase_page", None)
+        if isinstance(last, PhasePage) and last in self.phase_pages():
+            return last
+        pages = self.phase_pages()
+        if not pages:
+            self.open_phase(DEFAULT_PHASE_KEY, make_current=False)
+            pages = self.phase_pages()
+        return pages[0]
+
+    def open_phase(self, key: str, *, make_current: bool = True) -> PhasePage:
+        """Open ``key``'s tab (in PRD order) and optionally switch to it."""
+        if key not in PHASES_BY_KEY:
+            raise KeyError(key)
+        page = self.page_for_phase(key)
+        if page is None:
+            phase = PHASES_BY_KEY[key]
+            page = PhasePage(phase, self._phase_map, self._build_wired_panel)
+            page.entry_selected.connect(
+                lambda label, pg=page: self._on_entry_selected(pg, label)
+            )
+            page.chat_requested.connect(self.show_chat)
+            order = [p.key for p in PHASES]
+            insert_at = 1  # after the pinned Chat tab
+            for existing in self.phase_pages():
+                if order.index(existing.phase.key) < order.index(key):
+                    insert_at = self._tabs.indexOf(existing) + 1
+            self._tabs.insertTab(insert_at, page, phase.tab_label)
+            if phase.provisional:
+                self._tabs.setTabToolTip(
+                    insert_at,
+                    "Step sequence is provisional until this phase's PRD section is drafted.",
+                )
+            first = page.first_step()
+            if first is not None:
+                page.show_entry(first)
+        if make_current:
+            self._tabs.setCurrentWidget(page)
+        self._persist_tabs()
+        return page
+
+    def close_phase(self, key: str) -> bool:
+        """Close ``key``'s tab; the last open phase tab cannot be closed."""
+        page = self.page_for_phase(key)
+        if page is None:
+            return False
+        if len(self.phase_pages()) <= 1:
+            return False
+        self._retire_page(page)
+        self._persist_tabs()
+        return True
+
+    def _retire_page(self, page: PhasePage) -> None:
+        """Remove a page from the strip and delete it once its workers finish.
+
+        A panel's fetch worker is a QThread parented to the panel; deleting
+        the panel while the thread runs aborts the process. Retired pages are
+        parked hidden and reclaimed by ``_reap_retired_pages`` when every
+        worker has finished.
+        """
+        index = self._tabs.indexOf(page)
+        if index >= 0:
+            self._tabs.removeTab(index)
+        page.hide()
+        page.setParent(self)
+        if getattr(self, "_last_phase_page", None) is page:
+            self._last_phase_page = None
+        self._retired_pages.append(page)
+        self._reap_timer.start()
+
+    def _reap_retired_pages(self) -> None:
+        still: list[PhasePage] = []
+        for page in self._retired_pages:
+            busy = False
+            for _label, panel in page.built_panels():
+                workers = getattr(panel, "_in_flight_workers", [])
+                for worker in list(workers):
+                    try:
+                        if worker.isRunning():
+                            busy = True
+                            break
+                    except RuntimeError:  # already deleted after finishing
+                        continue
+                if busy:
+                    break
+            if busy:
+                still.append(page)
+            else:
+                page.deleteLater()
+        self._retired_pages = still
+        if still:
+            self._reap_timer.start()
+
+    def show_chat(self) -> None:
+        self._tabs.setCurrentIndex(0)
+
+    def _on_tab_close_requested(self, index: int) -> None:
+        widget = self._tabs.widget(index)
+        if isinstance(widget, PhasePage):
+            self.close_phase(widget.phase.key)
+
+    def _on_tab_changed(self, index: int) -> None:
+        widget = self._tabs.widget(index)
+        if not isinstance(widget, PhasePage):
+            return
+        self._last_phase_page = widget
+        self._persist_tabs()
+        if not self._lifecycle_ready:
+            return
+        # Load the step panels' counts for the markers (only those not yet
+        # loaded), and refresh what the tab is showing so it is current.
+        self._load_step_counts(widget)
+        panel = widget.current_panel()
+        if _is_refreshable(panel):
+            panel.refresh()
+
+    def _load_step_counts(self, page: PhasePage) -> None:
+        known = page.record_counts()
+        for label, panel in page.step_panels():
+            if label in known:
+                continue
+            if isinstance(panel, ListDetailPanel):
+                # A refresh makes the panel current, so it is no longer stale.
+                self._stale.discard((id(page), label))
+                page.sidebar.set_stale(label, False)
+                panel.refresh()
+
+    def _rebuild_add_phase_menu(self) -> None:
+        self._add_phase_menu.clear()
+        open_keys = set(self.open_phase_keys())
+        for phase in PHASES:
+            if phase.key == OPERATE_KEY:
+                self._add_phase_menu.addSeparator()
+            text = phase.tab_label
+            if phase.key in open_keys:
+                text += "   (open)"
+            action = self._add_phase_menu.addAction(text)
+            if phase.provisional:
+                action.setToolTip("Provisional step sequence")
+            action.triggered.connect(lambda _c=False, k=phase.key: self.open_phase(k))
+
+    def _engagement_key(self) -> str:
+        if self._active_context is not None:
+            ident = self._active_context.engagement_identifier()
+            if ident:
+                return ident
+        return "_no_engagement"
+
+    def _persist_tabs(self) -> None:
+        if getattr(self, "_restoring_tabs", False):
+            return
+        self._tab_store.save(
+            self._engagement_key(), self.open_phase_keys(), self.current_phase_key()
+        )
+
+    def _restore_tabs_for_engagement(self) -> None:
+        """Reconcile the open phase tabs with the engagement's remembered set.
+
+        Pages already open for a remembered phase are kept (their panels are
+        marked stale by the caller); extras are retired; missing ones opened.
+        """
+        self._restoring_tabs = True
+        try:
+            keys, current = self._tab_store.load(self._engagement_key())
+            if not keys:
+                keys, current = [DEFAULT_PHASE_KEY], DEFAULT_PHASE_KEY
+            for page in self.phase_pages():
+                if page.phase.key not in keys:
+                    self._retire_page(page)
+            for key in keys:
+                self.open_phase(key, make_current=False)
+            self._tabs.setCurrentWidget(self.page_for_phase(current or keys[0]))
+        finally:
+            self._restoring_tabs = False
+        self._persist_tabs()
+
+    # ------------------------------------------------------------------
+    # Panel construction + wiring
+    # ------------------------------------------------------------------
+
+    def _build_wired_panel(self, label: str) -> QWidget:
+        page = build_panel(label, self._client, active_context=self._active_context)
+        if isinstance(page, ListDetailPanel):
+            page.connection_lost.connect(self._on_panel_connection_lost)
+            page.navigate_requested.connect(self._on_navigate_requested)
+            page.open_requested.connect(self._on_open_requested)
+        return page
+
+    def _on_entry_selected(self, page: PhasePage, label: str) -> None:
+        key = (id(page), label)
+        was_stale = key in self._stale
+        if was_stale:
+            self._stale.discard(key)
+            page.sidebar.set_stale(label, False)
+        panel = page.panel_for(label)
+        if not _is_refreshable(panel):
+            return
+        # Refresh on every selection so the panel shows current data; the
+        # initial selection during construction is gated on readiness.
+        if was_stale or self._lifecycle_ready:
+            panel.refresh()
+
+    # ------------------------------------------------------------------
+    # Quick open (Ctrl+K)
+    # ------------------------------------------------------------------
+
+    def open_quick_open(self) -> None:
+        from crmbuilder_v2.ui.quick_open import QuickOpenDialog
+
+        page = self._current_phase_page()
+
+        def _provider(label: str):
+            panel = page.ensure_panel(label)
+            return panel if isinstance(panel, ListDetailPanel) else None
+
+        dialog = QuickOpenDialog(
+            entity_type_to_label=ENTITY_TYPE_TO_SIDEBAR_LABEL,
+            panel_provider=_provider,
+            parent=self,
+        )
+        dialog.open_requested.connect(self._on_quick_open_requested)
+        self._quick_open_dialog = dialog
+        dialog.exec()
+
+    def _on_quick_open_requested(self, label: str, identifier) -> None:
+        origin = self._current_location()
+        if origin is not None:
+            self._nav_back.append(origin)
+            self._nav_forward.clear()
+            self._update_nav_actions()
+        self._go_to(label, identifier if isinstance(identifier, str) else None)
 
     def had_first_ready(self) -> bool:
         """True once the API has been reachable at least once this session.
@@ -594,6 +743,16 @@ class MainWindow(QMainWindow):
             self._heartbeat_timer.stop()
         except Exception:
             _log.exception("Heartbeat timer stop failed during closeEvent")
+        # Panels inside tabs never receive closeEvent themselves; drain their
+        # workers here so no QThread outlives its panel.
+        for page in self.phase_pages() + self._retired_pages:
+            for _label, panel in page.built_panels():
+                if isinstance(panel, ListDetailPanel):
+                    panel.drain_workers()
+        try:
+            pass
+        except Exception:
+            _log.exception("Heartbeat timer stop failed during closeEvent")
         try:
             self._lifecycle.terminate()
         except Exception:
@@ -603,29 +762,6 @@ class MainWindow(QMainWindow):
         except Exception:
             _log.exception("StorageClient close failed during closeEvent")
         super().closeEvent(event)
-
-    def _on_sidebar_selected(self, entry: str) -> None:
-        index = self._pages_by_entry.get(entry)
-        if index is not None:
-            self._stack.setCurrentIndex(index)
-        was_stale = entry in self._stale_entries
-        if was_stale:
-            self._stale_entries.discard(entry)
-            self._sidebar.set_stale(entry, False)
-        if index is None:
-            return
-        page = self._stack.widget(index)
-        if not _is_refreshable(page):
-            return
-        # Refresh the panel on every selection so it shows current data.
-        # Stale-path refreshes always fire, matching prior behavior;
-        # non-stale refreshes are gated on ``_lifecycle_ready`` so the
-        # default-row ``setCurrentRow`` during ``__init__`` does not fire
-        # an HTTP request before the lifecycle's probe completes.
-        # ``_on_lifecycle_ready`` performs the initial refresh of the
-        # current panel itself once the API is up.
-        if was_stale or self._lifecycle_ready:
-            page.refresh()
 
     def _on_reconnect_requested(self) -> None:
         # Manual Reconnect button. Reset any exhausted auto-reconnect
@@ -689,17 +825,14 @@ class MainWindow(QMainWindow):
         self._begin_auto_reconnect("panel connection lost")
 
     def _on_navigate_requested(self, entity_type: str, identifier: str) -> None:
-        """Route a panel-emitted link click to the appropriate sidebar entry."""
+        """Route a panel-emitted link click to the appropriate panel."""
         label = ENTITY_TYPE_TO_SIDEBAR_LABEL.get(entity_type)
-        if label is None or label not in self._pages_by_entry:
+        if label is None or label not in SIDEBAR_ENTRIES:
             _log.warning(
                 "Navigation requested for unknown entity_type=%s identifier=%s",
                 entity_type,
                 identifier,
             )
-            return
-        if label not in SIDEBAR_ENTRIES:
-            _log.warning("Sidebar entry %s missing from SIDEBAR_ENTRIES", label)
             return
         # REQ-138 (PI-179): record where we are so Back can return here, and
         # a new jump invalidates the forward stack.
@@ -711,22 +844,26 @@ class MainWindow(QMainWindow):
         self._go_to(label, identifier)
 
     def _current_location(self) -> tuple[str, str | None] | None:
-        """The current (sidebar entry, selected record identifier), if any."""
-        entry = self._sidebar.current_text()
-        if not entry or entry not in self._pages_by_entry:
+        """The current (panel label, selected record identifier), if any."""
+        page = self._current_phase_page()
+        entry = page.current_entry()
+        if not entry or entry == CHAT_LABEL:
             return None
-        page = self._stack.widget(self._pages_by_entry[entry])
+        panel = page.panel_for(entry)
         identifier: str | None = None
-        if isinstance(page, ListDetailPanel):
-            identifier = page._currently_selected_identifier()
+        if isinstance(panel, ListDetailPanel):
+            identifier = panel._currently_selected_identifier()
         return (entry, identifier)
 
     def _go_to(self, label: str, identifier: str | None) -> None:
-        """Swap to ``label``'s panel and select ``identifier`` (no history)."""
-        if label not in self._pages_by_entry:
+        """Show ``label`` in the current phase tab and select ``identifier``."""
+        if label == CHAT_LABEL:
+            self.show_chat()
             return
-        target = self._stack.widget(self._pages_by_entry[label])
-        self._sidebar.select_entry(label)
+        page = self._current_phase_page()
+        if self._tabs.currentWidget() is not page:
+            self._tabs.setCurrentWidget(page)
+        target = page.show_entry(label)
         if identifier and isinstance(target, ListDetailPanel):
             target.select_record_by_identifier(identifier)
 
@@ -759,24 +896,22 @@ class MainWindow(QMainWindow):
             fwd.setEnabled(bool(self._nav_forward))
 
     def _on_open_requested(self, entity_type: str, identifier: str) -> None:
-        """Spawn a standalone non-modal detail window for a related record.
-
-        The "Open <item type>" counterpart to ``_on_navigate_requested``: where
-        "Go to" replaces the main window's current panel, "Open" pulls the
-        record up beside it in its own window, leaving this view intact
-        (PI-121 / WTK-079). Delegates to the detail-window manager, which
-        no-ops gracefully on an unknown/unopenable type.
-        """
+        """Spawn a standalone non-modal detail window for a related record
+        (PI-121 / WTK-079); the originating view is left intact."""
         self._detail_window_manager.open(entity_type, identifier)
 
     def _refresh_current_panel(self) -> None:
-        widget = self._stack.currentWidget()
-        if _is_refreshable(widget):
-            widget.refresh()
+        current = self._tabs.currentWidget()
+        if isinstance(current, PhasePage):
+            self._load_step_counts(current)
+            widget = current.current_panel()
+            if _is_refreshable(widget):
+                widget.refresh()
 
     def _set_content_enabled(self, enabled: bool) -> None:
-        self._sidebar.setEnabled(enabled)
-        self._stack.setEnabled(enabled)
+        self._tabs.setEnabled(enabled)
+        for page in self.phase_pages():
+            page.set_content_enabled(enabled)
 
     def _build_menu_bar(self) -> None:
         menu_bar = self.menuBar()
@@ -787,9 +922,15 @@ class MainWindow(QMainWindow):
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
 
+        go_menu = menu_bar.addMenu("&Go")
+        quick_open_action = QAction("&Quick open…", self)
+        quick_open_action.setShortcut("Ctrl+K")
+        quick_open_action.triggered.connect(self.open_quick_open)
+        go_menu.addAction(quick_open_action)
+        self._quick_open_action = quick_open_action
+        go_menu.addSeparator()
         # REQ-138 (PI-179): Back/Forward through the cross-record navigation
         # trail (also Alt+Left / Alt+Right).
-        go_menu = menu_bar.addMenu("&Go")
         back_action = QAction("&Back", self)
         back_action.setShortcut("Alt+Left")
         back_action.triggered.connect(self.navigate_back)
@@ -802,6 +943,10 @@ class MainWindow(QMainWindow):
         forward_action.setEnabled(False)
         go_menu.addAction(forward_action)
         self._forward_action = forward_action
+        go_menu.addSeparator()
+        chat_action = QAction("&Chat", self)
+        chat_action.triggered.connect(self.show_chat)
+        go_menu.addAction(chat_action)
 
         help_menu = menu_bar.addMenu("&Help")
         connection_action = QAction("&Connection Info…", self)
@@ -920,18 +1065,23 @@ class MainWindow(QMainWindow):
         return True
 
     def _refresh_after_engagement_switch(self) -> None:
-        """Refresh the visible panel and mark the rest stale after a switch."""
-        current = self._sidebar.current_text()
-        for entry, index in self._pages_by_entry.items():
-            page = self._stack.widget(index)
-            if not _is_refreshable(page):
-                continue
-            if entry == current:
-                page.refresh()
-            else:
-                self._stale_entries.add(entry)
-                self._sidebar.set_stale(entry, True)
+        """Swap to the engagement's remembered tabs; mark built panels stale."""
+        self._stale.clear()
+        self._restore_tabs_for_engagement()
+        current = self._tabs.currentWidget()
+        for page in self.phase_pages():
+            page.reset_record_counts()
+            for label, panel in page.built_panels():
+                if not _is_refreshable(panel):
+                    continue
+                if page is current and label == page.current_entry():
+                    panel.refresh()
+                else:
+                    self._stale.add((id(page), label))
+                    page.sidebar.set_stale(label, True)
+        if isinstance(current, PhasePage) and self._lifecycle_ready:
+            self._load_step_counts(current)
 
     def _on_picker_manage_requested(self) -> None:
-        """Picker footer clicked: navigate to the Engagements panel."""
-        self._sidebar.select_entry("Engagements")
+        """Picker footer clicked: show the Engagements panel."""
+        self._go_to("Engagements", None)

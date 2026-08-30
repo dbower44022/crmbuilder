@@ -28,7 +28,7 @@ from crmbuilder_v2.ui.panels.agent_profiles import AgentProfilesPanel
 from crmbuilder_v2.ui.panels.registry_learnings import LearningsPanel
 from crmbuilder_v2.ui.panels.registry_rules import GovernanceRulesPanel
 from crmbuilder_v2.ui.panels.registry_skills import SkillsPanel
-from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
+from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from fastapi.testclient import TestClient
 
 
@@ -48,14 +48,14 @@ def _wait_rows(qtbot, panel, count: int) -> None:
 
 
 def test_agent_registry_group_present():
-    groups = dict(SIDEBAR_GROUPS)
-    assert "Agent Registry" in groups
-    assert groups["Agent Registry"] == (
-        "Agent Profiles",
-        "Skills",
-        "Governance Rules",
-        "Learnings",
-    )
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Agent Profiles" in all_panels
+    assert "Governance Rules" in all_panels
+    assert "Learnings" in all_panels
+    assert "Skills" in all_panels
 
 
 def test_entity_type_labels_registered():
@@ -65,17 +65,15 @@ def test_entity_type_labels_registered():
     assert ENTITY_TYPE_TO_SIDEBAR_LABEL["learning"] == "Learnings"
 
 
-def test_sidebar_renders_agent_registry(qtbot):
-    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
-
-    sidebar = Sidebar()
-    qtbot.addWidget(sidebar)
-    items = [sidebar.item(r) for r in range(sidebar.count())]
-    rendered = [item.text() for item in items]
-    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
-    for entry in ("Agent Profiles", "Skills", "Governance Rules", "Learnings"):
-        assert entry in rendered
-        assert rendered.index(entry) > headers["Agent Registry"]
+def test_sidebar_renders_agent_registry():
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Agent Profiles" in all_panels
+    assert "Governance Rules" in all_panels
+    assert "Learnings" in all_panels
+    assert "Skills" in all_panels
 
 
 def test_panel_columns_and_titles(qtbot, registry_client):

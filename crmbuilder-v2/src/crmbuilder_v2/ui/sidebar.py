@@ -1,40 +1,32 @@
 """Left-hand navigation sidebar.
 
-Per DEC-021, the UI uses a left-hand sidebar with one entry per entity
-type. Selecting a sidebar entry swaps the right-hand content area to
-that entity's panel.
+Per DEC-021, the content area swaps to the panel of the selected sidebar
+entry. REQ-526 / PI-432 (DEC-953) made the sidebar **phase-scoped**: each
+phase tab owns one ``Sidebar`` built from three groups — the fixed
+"Every session" group, the phase's numbered *step checklist*, and a
+collapsed alphabetical "All panels" index. Groups are passed in at
+construction (see :mod:`crmbuilder_v2.ui.navigation`); the module-level
+``SIDEBAR_GROUPS`` is the fallback a bare ``Sidebar()`` renders — the
+alphabetical index alone — and ``SIDEBAR_ENTRIES`` is the flat tuple of
+every registered panel label, the smoke-test constant.
 
-Slice F adds a staleness-indicator API: ``set_stale(label, bool)``
-toggles a small accent-filled circle icon on a sidebar entry to signal
-that its underlying data has changed in the storage system since the
-user last viewed it.
+Step entries carry a number in a left gutter and an advisory marker:
+``done`` (✓) when the step's panel has records, ``next`` (▶) for the first
+step that has none. Markers never lock anything (PRF-006).
 
-UI v0.4 slice A groups the sidebar into sections. ``SIDEBAR_GROUPS``
-declares each section's title and ordered entries; a non-selectable
-header item renders above each section. The "Governance" group holds
-the eight v0.3 entity panels; the "Methodology" group is introduced
-empty in slice A and is populated by slices B–E. ``SIDEBAR_ENTRIES``
-remains the flat tuple of selectable entry labels in display order.
-
-Slice B adds the first Methodology entry, "Domains", at position #1.
-Slice C adds the second, "Entities", at position #2. Slice D adds the
-third, "Processes", at position #3.
-
-UI v0.5 slice A adds an empty "Engagements" group above Governance.
-The single entry is populated by v0.5 slice C.
-
-UI v0.6 slice B applies design pass §2.1 + DEC-093: 220px container
-with neutral.100 background and a right-edge hairline, group headers
-in semibold caption-size sentence-case (not uppercased) with
-letter-spacing, 32px entries, and the selected-state vocabulary —
-3px left accent bar + accent.subtle background + neutral.900
-medium-weight text — drawn by ``SidebarItemDelegate``. The stale dot
-recolored from the legacy navy to ``color.accent.default``.
+Design pass §2.1 / DEC-093 chrome: 220px container with neutral.100
+background and a right-edge hairline, semibold caption-size sentence-case
+group headers, 32px entries, and the selected-state vocabulary — 3px left
+accent bar + accent.subtle background + neutral.900 medium-weight text —
+drawn by ``SidebarItemDelegate``. REQ-136 (PI-177): a filter box above the
+list narrows entries; headers click to collapse their group.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt, Signal
+from collections.abc import Iterable
+
+from PySide6.QtCore import QRect, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QListWidget,
@@ -44,138 +36,32 @@ from PySide6.QtWidgets import (
     QStyleOptionViewItem,
 )
 
+from crmbuilder_v2.ui.panel_registry import ALL_PANEL_LABELS
 from crmbuilder_v2.ui.styling import t
 
-# Ordered sidebar sections: (group title, ordered entry labels). The
-# Methodology group gained "Domains" in v0.4 slice B, "Entities" in
-# slice C, "Processes" in slice D, and "CRM Candidates" in slice E.
-# v0.5+ adds "Personas" (PI-003), "Fields" (PI-004 first slice),
-# "Requirements" (PI-004 cohort), "Manual Configs" (PI-004 cohort), and
-# "Test Specs" (PI-004 cohort closer — resolves PI-004).
-SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    # PI-052 Slice B (WT-055): AI group at the top of the sidebar with
-    # the single "Chat" entry — chat is the front-and-center surface, so
-    # it's the first thing in the list. Re-sortable in a later slice.
-    ("AI", ("Chat",)),
-    # v0.5 slice A: empty Engagements group container above Governance.
-    # Slice C populates with the single "Engagements" entry.
-    ("Engagements", ("Engagements",)),
-    (
-        "Governance",
-        (
-            "Charter",
-            "Status",
-            "Decisions",
-            "Sessions",
-            "Risks",
-            "Planning Items",
-            "Topics",
-            "References",
-            # v0.7 governance entity release (DEC-163): six new entries
-            # appended in workstream order, no sub-grouping in this release.
-            "Projects",
-            "Conversations",
-            "Reference Books",
-            "Work Tickets",
-            "Close-Out Payloads",
-            "Deposit Events",
-            # PI-031: code change lifecycle browse surface, appended after
-            # Deposit Events per the DEC-163 governance-group convention.
-            "Commits",
-            # WTK-004: ADO delivery-model monitoring panels (PI-114 Dev
-            # phase). Workstream (delivery phase) + Work Task (unit of
-            # execution), appended after Commits in the Governance group.
-            "Workstreams",
-            "Work Tasks",
-            # PI-186 (PRJ-027): CRM-connection instances (audit/pull source +
-            # publish/push target). Appended in the Governance group.
-            "Instances",
-            # PI-266 (PRJ-042 / REQ-293): read-only history of publishes to a
-            # target instance (scope, outcome, backup). Sits next to Instances.
-            "Publish History",
-            # PI-419 (REQ-522): every provisioning run — status, phase, what it
-            # created, log; reopen progress / retry. Sits next to Publish History.
-            "Deploy History",
-            # PI-319 (REL-024): three-way design/instance reconciliation —
-            # compare two instances against the design and reconcile each
-            # difference. Sits next to Instances/Publish History.
-            "Reconcile",
-            # PI-256 (PRJ-027 / REQ-341): the human review surface for the
-            # source-mapping candidates the reconciler surfaces — accept /
-            # reject / revise each into a mapping. Next to the PRJ-027 surfaces.
-            "Candidate Review",
-            # requirements-provenance Phase 6b: the topic-first review
-            # surface (requirement tree + read-back document + queues +
-            # sign-off). A read-only review/monitoring panel, so it lives
-            # in Governance.
-            "Requirements Review",
-        ),
-    ),
-    # PI-224: the multi-agent release-pipeline operability surface. A
-    # Releases hub panel that browses releases and drives the lifecycle
-    # (freeze via transition, qa/test passes, lane order, corrections,
-    # reopens, conflict resolution). Its own group between Governance and
-    # Methodology.
-    (
-        "Release Pipeline",
-        ("Releases", "Resource Locks", "Cost"),
-    ),
-    # PI-330 (REL-026 / REQ-367): the Agent Profile Registry configuration
-    # surface. The agent roster (area x tier), the skills and governance rules
-    # bound to each agent, and the learnings — all fully editable, with system
-    # defaults and per-engagement overlays/overrides. Its own group between
-    # Release Pipeline and Methodology.
-    (
-        "Agent Registry",
-        ("Agent Profiles", "Skills", "Governance Rules", "Learnings"),
-    ),
-    (
-        "Methodology",
-        (
-            "Domains",
-            "Entities",
-            "Processes",
-            "Requirements",
-            # Test Specs inserted per test_spec.md §3.6.1 (after
-            # Requirements, before Manual Configs). The PI-004 build-
-            # planning conversation never finalized the full intra-group
-            # ordering; this is the position the spec proposes and the
-            # build prompt elects to honor. A future ordering pass may
-            # reorganise the whole Methodology group.
-            "Test Specs",
-            "CRM Candidates",
-            "Personas",
-            # REL-069 / PI-391: engagement participants that back personas.
-            "Participants",
-            "Fields",
-            "Manual Configs",
-            # PI-061: the glossary — term definitions as records, migrated
-            # out of specifications/glossary.md.
-            "Glossary",
-            # REL-016 / PI-067: cross-engagement reference libraries
-            # (Domain Knowledge / Organization Structure / Inventory Items).
-            "Reference Entries",
-        ),
-    ),
-)
+Groups = tuple[tuple[str, tuple[str, ...]], ...]
 
-# Flat tuple of selectable entry labels in display order, derived from
-# SIDEBAR_GROUPS. Group headers are not entries.
-SIDEBAR_ENTRIES: tuple[str, ...] = tuple(
-    entry for _title, entries in SIDEBAR_GROUPS for entry in entries
-)
+# Fallback grouping for a bare ``Sidebar()``: the alphabetical index of every
+# registered panel. Phase tabs pass their own groups.
+SIDEBAR_GROUPS: Groups = (("All panels", ALL_PANEL_LABELS),)
 
-# Item-data role marking a row as a non-selectable group header.
-_HEADER_ROLE = Qt.ItemDataRole.UserRole + 1
+# Flat tuple of every selectable panel label (alphabetical). Group headers are
+# not entries. This is the "one page per label" smoke constant.
+SIDEBAR_ENTRIES: tuple[str, ...] = ALL_PANEL_LABELS
+
+# Item-data roles.
+_HEADER_ROLE = Qt.ItemDataRole.UserRole + 1  # bool: non-selectable group header
+_STEP_ROLE = Qt.ItemDataRole.UserRole + 2  # int: 1-based step number, or None
+_MARKER_ROLE = Qt.ItemDataRole.UserRole + 3  # "done" | "next" | None
 
 _STALE_DOT_SIZE = 8
-
 _STALE_PIXMAP: QPixmap | None = None
 
 # Geometry tokens resolved from the design system.
 _SIDEBAR_WIDTH = 220
 _ENTRY_HEIGHT = 32
 _ACCENT_BAR_WIDTH = 3
+_STEP_GUTTER = 26
 
 
 def _px(token_key: str) -> int:
@@ -205,13 +91,12 @@ def _stale_pixmap() -> QPixmap:
 
 
 class SidebarItemDelegate(QStyledItemDelegate):
-    """Per-DEC-093 selected-state custom rendering for sidebar entries.
+    """DEC-093 selected-state rendering plus the step gutter.
 
-    Group headers (non-selectable; ``_HEADER_ROLE == True``) fall
-    through to the default paint so their per-item font / foreground
-    color render through Qt's standard pipeline. Entries render the
-    3px left accent bar + ``color.accent.subtle`` background +
-    ``color.neutral.900`` medium-weight text on selection.
+    Group headers (``_HEADER_ROLE``) fall through to the default paint.
+    Entries render the 3px accent bar + accent.subtle background +
+    neutral.900 medium text on selection. Step entries additionally draw
+    their number — or ✓ / ▶ per the marker role — in a left gutter.
     """
 
     def __init__(self, parent=None) -> None:
@@ -219,20 +104,23 @@ class SidebarItemDelegate(QStyledItemDelegate):
         self._accent_default = QColor(t("color.accent.default"))
         self._accent_subtle = QColor(t("color.accent.subtle"))
         self._neutral_200 = QColor(t("color.neutral.200"))
+        self._neutral_500 = QColor(t("color.neutral.500"))
         self._neutral_800 = QColor(t("color.neutral.800"))
         self._neutral_900 = QColor(t("color.neutral.900"))
+        self._success = QColor(t("color.success.default"))
+        self._warning = QColor(t("color.warning.default"))
 
     def paint(self, painter, option, index):  # noqa: D401
-        is_header = bool(index.data(_HEADER_ROLE))
-        if is_header:
+        if bool(index.data(_HEADER_ROLE)):
             super().paint(painter, option, index)
             return
 
         state = option.state
         is_selected = bool(state & QStyle.StateFlag.State_Selected)
         is_hover = bool(state & QStyle.StateFlag.State_MouseOver)
+        step = index.data(_STEP_ROLE)
+        marker = index.data(_MARKER_ROLE)
 
-        # Background fills.
         rect = option.rect
         painter.save()
         try:
@@ -243,15 +131,12 @@ class SidebarItemDelegate(QStyledItemDelegate):
             elif is_hover:
                 painter.fillRect(rect, self._neutral_200)
 
-            # Strip Qt's default selection highlight so it doesn't
-            # repaint over our custom fill.
             opt = QStyleOptionViewItem(option)
             opt.state &= ~QStyle.StateFlag.State_Selected
             opt.state &= ~QStyle.StateFlag.State_HasFocus
             opt.state &= ~QStyle.StateFlag.State_MouseOver
 
-            # Text + icon recolor for selected state.
-            if is_selected:
+            if is_selected or marker == "next":
                 opt.palette.setColor(opt.palette.ColorRole.Text, self._neutral_900)
                 opt.palette.setColor(opt.palette.ColorRole.WindowText, self._neutral_900)
                 font = QFont(opt.font)
@@ -260,6 +145,21 @@ class SidebarItemDelegate(QStyledItemDelegate):
             else:
                 opt.palette.setColor(opt.palette.ColorRole.Text, self._neutral_800)
                 opt.palette.setColor(opt.palette.ColorRole.WindowText, self._neutral_800)
+
+            if step is not None:
+                gutter = QRect(rect.left() + _ACCENT_BAR_WIDTH, rect.top(), _STEP_GUTTER, rect.height())
+                if marker == "done":
+                    glyph, color = "✓", self._success
+                elif marker == "next":
+                    glyph, color = "▶", self._warning
+                else:
+                    glyph, color = str(step), self._neutral_500
+                gutter_font = QFont(opt.font)
+                gutter_font.setPixelSize(max(_px("font.size.caption"), 10))
+                painter.setFont(gutter_font)
+                painter.setPen(color)
+                painter.drawText(gutter, Qt.AlignmentFlag.AlignCenter, glyph)
+                opt.rect = rect.adjusted(_STEP_GUTTER, 0, 0, 0)
 
             super().paint(painter, opt, index)
         finally:
@@ -272,25 +172,29 @@ class SidebarItemDelegate(QStyledItemDelegate):
 
 
 class Sidebar(QListWidget):
-    """Grouped single-selection list of entity-type entries.
+    """Grouped single-selection list of panel entries.
 
-    The list is divided into sections per :data:`SIDEBAR_GROUPS`. Each
-    section is preceded by a non-selectable header item; only entry
-    rows can be selected.
+    :param groups: ``((title, (label, …)), …)`` in display order. Defaults to
+        :data:`SIDEBAR_GROUPS` (the alphabetical index).
+    :param numbered_groups: titles of groups whose entries are numbered steps.
+    :param collapsed_groups: titles of groups that start collapsed.
 
-    Emits ``selection_changed(str)`` carrying the selected entry's text
-    whenever the active row changes.
+    Emits ``selection_changed(str)`` with the selected entry's label.
     """
 
     selection_changed = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        groups: Groups | None = None,
+        parent=None,
+        *,
+        numbered_groups: Iterable[str] = (),
+        collapsed_groups: Iterable[str] = (),
+    ):
         super().__init__(parent)
         self.setFixedWidth(_SIDEBAR_WIDTH)
         self.setObjectName("sidebar")
-        # Container chrome per design pass §2.1: neutral.100 background,
-        # right-edge hairline, top/bottom padding via QSS so the first
-        # group header doesn't sit flush against the top edge.
         self.setStyleSheet(
             f"#sidebar {{"
             f"  background: {t('color.neutral.100')};"
@@ -300,23 +204,25 @@ class Sidebar(QListWidget):
             f"  padding-bottom: {t('space.4')};"
             f"}}"
         )
-        # REQ-136 (PI-177): filter text + collapsed-group state. Headers are
-        # clickable to toggle their group; the filter hides non-matching
-        # entries (and headers whose entries all hide).
+        self._groups: Groups = tuple(groups) if groups is not None else SIDEBAR_GROUPS
+        self._numbered_groups = set(numbered_groups)
         self._filter_text: str = ""
-        self._collapsed_groups: set[str] = set()
+        self._collapsed_groups: set[str] = set(collapsed_groups)
         self.setItemDelegate(SidebarItemDelegate(self))
         self._build_items()
+        self._apply_visibility()
         self.currentTextChanged.connect(self._on_current_text_changed)
         self.itemClicked.connect(self._on_item_clicked)
 
+    @property
+    def groups(self) -> Groups:
+        return self._groups
+
     def _build_items(self) -> None:
         """Populate the list with group headers and entry rows."""
-        for group_index, (title, entries) in enumerate(SIDEBAR_GROUPS):
+        for group_index, (title, entries) in enumerate(self._groups):
             header = QListWidgetItem(title)
             header.setData(_HEADER_ROLE, True)
-            # REQ-136 (PI-177): headers are enabled (so a click toggles the
-            # group) but not selectable (selection never lands on a header).
             header.setFlags(Qt.ItemFlag.ItemIsEnabled)
             header_font = QFont(self.font())
             header_font.setFamily(t("font.family.default"))
@@ -327,40 +233,59 @@ class Sidebar(QListWidget):
             )
             header.setFont(header_font)
             header.setForeground(QColor(t("color.neutral.500")))
-            # Top padding for headers beyond the first.
             if group_index > 0:
                 header.setSizeHint(
                     QSize(0, _px("space.4") + _px("font.size.body"))
                 )
             self.addItem(header)
-            for entry in entries:
+            numbered = title in self._numbered_groups
+            for position, entry in enumerate(entries, start=1):
                 item = QListWidgetItem(entry)
                 entry_font = QFont(self.font())
                 entry_font.setFamily(t("font.family.default"))
                 entry_font.setPixelSize(_px("font.size.body"))
                 item.setFont(entry_font)
+                if numbered:
+                    item.setData(_STEP_ROLE, position)
                 self.addItem(item)
 
     def _on_current_text_changed(self, text: str) -> None:
-        # The current item is what dispatches the signal. Header items
-        # are flag-marked non-selectable, so currentItem() is always an
-        # entry when this fires from a user interaction — but check the
-        # role anyway in case programmatic selection somehow lands on
-        # a header.
         current = self.currentItem()
-        if (
-            text
-            and current is not None
-            and not current.data(_HEADER_ROLE)
-        ):
+        if text and current is not None and not current.data(_HEADER_ROLE):
             self.selection_changed.emit(text)
+
+    # ------------------------------------------------------------------
+    # Step markers (REQ-526 / PI-432)
+    # ------------------------------------------------------------------
+
+    def step_labels(self) -> tuple[str, ...]:
+        """The numbered step entries, in order."""
+        return tuple(
+            self.item(r).text()
+            for r in range(self.count())
+            if self.item(r).data(_STEP_ROLE) is not None
+        )
+
+    def set_step_marker(self, label: str, marker: str | None) -> None:
+        """Set a step entry's advisory marker: ``"done"``, ``"next"`` or ``None``."""
+        for row in range(self.count()):
+            item = self.item(row)
+            if item.text() == label and item.data(_STEP_ROLE) is not None:
+                item.setData(_MARKER_ROLE, marker)
+                return
+
+    def step_marker(self, label: str) -> str | None:
+        for row in range(self.count()):
+            item = self.item(row)
+            if item.text() == label and item.data(_STEP_ROLE) is not None:
+                return item.data(_MARKER_ROLE)
+        return None
 
     # ------------------------------------------------------------------
     # Filter + collapse (REQ-136 / PI-177)
     # ------------------------------------------------------------------
 
     def _iter_groups(self) -> list[tuple[QListWidgetItem, list[QListWidgetItem]]]:
-        """Return ``[(header_item, [entry_items, ...]), ...]`` in display order."""
         groups: list[tuple[QListWidgetItem, list[QListWidgetItem]]] = []
         current_header: QListWidgetItem | None = None
         current_entries: list[QListWidgetItem] = []
@@ -382,15 +307,13 @@ class Sidebar(QListWidget):
     def filter_entries(self, text: str) -> None:
         """Narrow the sidebar to entries matching ``text`` (case-insensitive).
 
-        An active (non-empty) query overrides collapse state so every match
-        shows regardless of which group it's in, and a header hides when none
-        of its entries match. Clearing the query restores the collapse state.
+        An active query overrides collapse state so every match shows; a
+        header hides when none of its entries match.
         """
         self._filter_text = text or ""
         self._apply_visibility()
 
     def set_group_collapsed(self, title: str, collapsed: bool) -> None:
-        """Collapse or expand a group by its header title."""
         if collapsed:
             self._collapsed_groups.add(title)
         else:
@@ -403,7 +326,8 @@ class Sidebar(QListWidget):
     def _apply_visibility(self) -> None:
         query = self._filter_text.strip().lower()
         for header_item, entries in self._iter_groups():
-            collapsed = header_item.text() in self._collapsed_groups
+            title = self._header_text(header_item.text(), False)
+            collapsed = title in self._collapsed_groups
             any_visible = False
             for entry in entries:
                 if query:
@@ -412,18 +336,20 @@ class Sidebar(QListWidget):
                     visible = not collapsed
                 entry.setHidden(not visible)
                 any_visible = any_visible or visible
-            # Hide a header only when filtering and nothing in it matches.
             header_item.setHidden(bool(query) and not any_visible)
+            if not query:
+                header_item.setText(self._header_text(title, collapsed))
+
+    @staticmethod
+    def _header_text(text: str, collapsed: bool) -> str:
+        base = text.rstrip(" ▸▾").rstrip()
+        return f"{base} ▸" if collapsed else base
 
     def _on_item_clicked(self, item: QListWidgetItem) -> None:
         if item is None or not item.data(_HEADER_ROLE):
             return
-        title = item.text()
+        title = self._header_text(item.text(), False)
         self.set_group_collapsed(title, title not in self._collapsed_groups)
-
-    def _is_header_text(self, text: str) -> bool:
-        item = self._item_for_label(text)
-        return item is not None and bool(item.data(_HEADER_ROLE))
 
     def current_text(self) -> str:
         """Return the text of the currently selected entry, or ``""``."""
@@ -431,65 +357,48 @@ class Sidebar(QListWidget):
         return item.text() if item is not None else ""
 
     def select_entry(self, label: str) -> None:
-        """Select the entry row whose text matches ``label``.
+        """Select the entry row whose text matches ``label`` (headers skipped).
 
-        Unknown labels are silently ignored. Used in place of
-        ``setCurrentRow`` by callers that address entries by label,
-        since group headers offset the flat row index. Header items
-        sharing a label with an entry (e.g., the "Engagements" group
-        header and the "Engagements" entry) are skipped explicitly.
+        A label present in two groups (a step that is also in the All-panels
+        index) selects the first — the step row — and expands its group if
+        it is collapsed so the selection is visible.
         """
         item = self._entry_for_label(label)
         if item is None:
             return
+        if item.isHidden() and not self._filter_text.strip():
+            for header_item, entries in self._iter_groups():
+                if item in entries:
+                    self.set_group_collapsed(
+                        self._header_text(header_item.text(), False), False
+                    )
+                    break
         self.setCurrentItem(item)
 
     def set_stale(self, label: str, stale: bool) -> None:
-        """Show or hide the staleness indicator for a sidebar entry.
-
-        Unknown labels are silently ignored.
-        """
-        item = self._entry_for_label(label)
-        if item is None:
-            return
-        if stale:
-            item.setIcon(QIcon(_stale_pixmap()))
-        else:
-            item.setIcon(QIcon())
+        """Show or hide the staleness indicator on every row for ``label``."""
+        for item in self._entries_for_label(label):
+            item.setIcon(QIcon(_stale_pixmap()) if stale else QIcon())
 
     def is_stale(self, label: str) -> bool:
-        """Whether the entry currently shows the staleness indicator."""
         item = self._entry_for_label(label)
-        if item is None:
-            return False
-        return not item.icon().isNull()
+        return item is not None and not item.icon().isNull()
+
+    def _entries_for_label(self, label: str) -> list[QListWidgetItem]:
+        return [
+            self.item(r)
+            for r in range(self.count())
+            if self.item(r) is not None
+            and self.item(r).text() == label
+            and not self.item(r).data(_HEADER_ROLE)
+        ]
 
     def _entry_for_label(self, label: str):
-        """Return the selectable entry with this label, ignoring headers.
-
-        v0.6 slice B retired uppercased header text, so an entry can
-        share a label with its containing group header (e.g.,
-        "Engagements"). Header items always have the ``_HEADER_ROLE``
-        flag set; this lookup filters them out so callers addressing
-        entries by label aren't confused by a same-named header.
-        """
-        for row in range(self.count()):
-            item = self.item(row)
-            if (
-                item is not None
-                and item.text() == label
-                and not item.data(_HEADER_ROLE)
-            ):
-                return item
-        return None
+        """Return the first selectable entry with this label, ignoring headers."""
+        entries = self._entries_for_label(label)
+        return entries[0] if entries else None
 
     def _item_for_label(self, label: str):
-        """Return the first item (header or entry) with this label.
-
-        Preserved for internal callers that don't need to distinguish
-        headers from entries (e.g., the ``_is_header_text`` lookup in
-        the selection-change slot).
-        """
         for row in range(self.count()):
             item = self.item(row)
             if item is not None and item.text() == label:

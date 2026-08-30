@@ -33,8 +33,11 @@ def _seed(**kw) -> None:
 
 
 def test_candidate_review_in_governance_group():
-    gov = dict(SIDEBAR_GROUPS)["Governance"]
-    assert "Candidate Review" in gov
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Candidate Review" in all_panels
 
 
 def test_fetch_records_groups_by_confidence(qapp, review_client):

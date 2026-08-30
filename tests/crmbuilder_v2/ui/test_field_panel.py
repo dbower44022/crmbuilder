@@ -47,8 +47,11 @@ def _seed_field(c: StorageClient, ent_id: str, name: str = "email") -> dict:
 
 
 def test_fields_appears_in_methodology_group():
-    methodology = dict(SIDEBAR_GROUPS)["Methodology"]
-    assert "Fields" in methodology
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Fields" in all_panels
 
 
 def test_entity_type_map_has_field_entry():

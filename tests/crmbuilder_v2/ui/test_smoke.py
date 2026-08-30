@@ -42,16 +42,14 @@ def test_main_window_constructs(qapp, qtbot, lifecycle_stub, client_stub):
     window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
     qtbot.addWidget(window)
 
+    # REQ-526 / PI-432: the window opens on the default phase tab; its sidebar
+    # carries the fixed Every-session group, the phase's numbered steps, and
+    # the collapsed All-panels index holding every registered panel.
     sidebar = window._sidebar
-    # The sidebar is grouped (UI v0.4 slice A): every selectable entry
-    # plus a non-selectable header per group. v0.6 slice B retired the
-    # legacy uppercased header text per design pass §2.1, so headers
-    # are sentence-cased and distinguished from same-named entries via
-    # the per-item header role (Qt.UserRole + 1).
     from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
 
     headers = {
-        sidebar.item(r).text()
+        sidebar.item(r).text().rstrip(" ▸")
         for r in range(sidebar.count())
         if sidebar.item(r).data(_HEADER_ROLE)
     }
@@ -62,12 +60,14 @@ def test_main_window_constructs(qapp, qtbot, lifecycle_stub, client_stub):
     }
     for expected in EXPECTED_ENTRIES:
         assert expected in entries
-    assert "Engagements" in headers
-    assert "Governance" in headers
-    assert "Methodology" in headers
+    assert "Every session" in headers
+    assert "Phase 1 steps" in headers
+    assert "All panels" in headers
 
-    assert window._stack.count() == len(EXPECTED_ENTRIES)
-    assert sidebar.currentItem().text() == "Decisions"
+    # Panels are built on first visit, not eagerly: only the default step.
+    assert window._stack.count() == 1
+    assert sidebar.currentItem().text() == "Charter"
+    assert window.open_phase_keys() == ["1"]
 
 
 def test_main_window_crash_banner_hidden_by_default(

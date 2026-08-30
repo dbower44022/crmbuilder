@@ -177,6 +177,10 @@ class ListDetailPanel(QWidget):
     connection_lost = Signal(str)
     navigate_requested = Signal(str, str)
     open_requested = Signal(str, str)
+    # REQ-526 / PI-432: fires with the full (unfiltered) record count after
+    # every successful refresh, so a phase tab can derive its step markers
+    # from data the panel already fetched — no extra requests.
+    records_loaded = Signal(int)
 
     # Subclasses can set ``False`` to render list-only with no detail
     # pane (no splitter, no detail-extras flow). The toolbar and master
@@ -756,6 +760,7 @@ class ListDetailPanel(QWidget):
                     col_idx, QHeaderView.ResizeMode.Stretch
                 )
         self._update_count_status()
+        self.records_loaded.emit(len(self._all_records))
         # Decide which row to select after the refresh:
         #   1. An explicit pending identifier (from cross-panel navigation
         #      that arrived after the refresh started).

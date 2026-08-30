@@ -33,7 +33,7 @@ from crmbuilder_v2.ui.main_window import (
     MainWindow,
 )
 from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
-from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
+from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from fastapi.testclient import TestClient
 from PySide6.QtWidgets import (
@@ -105,37 +105,25 @@ def _wait_rows(qtbot, panel: CrmCandidatesPanel, count: int) -> None:
 
 
 def test_crm_candidates_is_present_in_methodology_group():
-    methodology = dict(SIDEBAR_GROUPS)["Methodology"]
-    # v0.5+ PI-003 added "Personas"; PI-004 first slice added "Fields";
-    # PI-004 cohort added "Requirements" at position #4 (1-indexed),
-    # pushing CRM Candidates to position #5. Domains/Entities/Processes
-    # remain the foundational three.
-    assert methodology[:3] == ("Domains", "Entities", "Processes")
-    assert "CRM Candidates" in methodology
-    # Requirements now precedes CRM Candidates in the cohort ordering
-    # per PI-004 cohort build prompt.
-    assert methodology.index("Requirements") < methodology.index(
-        "CRM Candidates"
-    )
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "CRM Candidates" in all_panels
+    assert "Domains" in all_panels
+    assert "Entities" in all_panels
+    assert "Fields" in all_panels
+    assert "Personas" in all_panels
+    assert "Processes" in all_panels
+    assert "Requirements" in all_panels
 
 
-def test_sidebar_renders_crm_candidates_under_methodology(qtbot):
-    # v0.6 slice B retired uppercased header text per design pass §2.1;
-    # see test_domains_panel.py for the pattern.
-    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
-
-    sidebar = Sidebar()
-    qtbot.addWidget(sidebar)
-    items = [sidebar.item(r) for r in range(sidebar.count())]
-    rendered = [item.text() for item in items]
-    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
-    assert "Methodology" in headers
-    assert "CRM Candidates" in rendered
-    # CRM Candidates appears somewhere under the Methodology header
-    # (exact offset shifts as cohort siblings land).
-    methodology_idx = headers["Methodology"]
-    cc_idx = rendered.index("CRM Candidates")
-    assert cc_idx > methodology_idx
+def test_sidebar_renders_crm_candidates_under_methodology():
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "CRM Candidates" in all_panels
 
 
 def test_main_window_crm_candidates_page_is_panel(

@@ -50,14 +50,13 @@ def _node(**over) -> dict:
 
 
 def test_review_entry_registered_in_governance_group():
+    # REQ-526 / PI-432: fixed groups retired; Requirements Review is registered
+    # and is a design-phase step.
+    from crmbuilder_v2.ui.navigation import PhaseMap  # noqa: PLC0415
+
     assert "Requirements Review" in SIDEBAR_ENTRIES
-    for label, entries in SIDEBAR_GROUPS:
-        if label == "Governance":
-            assert "Requirements Review" in entries
-            # It sits after the ADO monitoring panels.
-            assert entries.index("Requirements Review") > entries.index("Work Tasks")
-            return
-    raise AssertionError("Governance group not found")
+    assert "Requirements Review" in dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Requirements Review" in PhaseMap().steps_for("4")
 
 
 def test_build_panel_returns_review_panel(review_client, qtbot):

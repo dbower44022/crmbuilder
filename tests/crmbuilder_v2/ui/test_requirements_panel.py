@@ -42,8 +42,11 @@ def _seed_requirement(c: StorageClient, name: str = "Capture mentor slots") -> d
 
 
 def test_requirements_appears_in_methodology_group():
-    methodology = dict(SIDEBAR_GROUPS)["Methodology"]
-    assert "Requirements" in methodology
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Requirements" in all_panels
 
 
 def test_entity_type_map_has_requirement_entry():

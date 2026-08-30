@@ -18,7 +18,6 @@ from crmbuilder_v2.ui.dialogs.close_out_payload_crud import (
 )
 from crmbuilder_v2.ui.dialogs.conversation_crud import (
     ConversationCreateDialog,
-    ConversationEditDialog,
 )
 from crmbuilder_v2.ui.dialogs.reference_book_crud import (
     ReferenceBookCreateDialog,
@@ -100,23 +99,17 @@ def _make_session(client: StorageClient) -> str:
     return result["session_identifier"]
 
 
-def test_sidebar_governance_group_appends_six_new_entries():
-    six = (
-        "Projects",
-        "Conversations",
-        "Reference Books",
-        "Work Tickets",
-        "Close-Out Payloads",
-        "Deposit Events",
-    )
-    for label, entries in SIDEBAR_GROUPS:
-        if label == "Governance":
-            # The six v0.7 entries are contiguous and end at "Deposit
-            # Events"; PI-031 later appended "Commits" after them.
-            idx = entries.index("Deposit Events")
-            assert entries[idx - 5 : idx + 1] == six
-            return
-    raise AssertionError("Governance group not found in sidebar")
+def test_sidebar_registers_six_v07_governance_entries():
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Close-Out Payloads" in all_panels
+    assert "Conversations" in all_panels
+    assert "Deposit Events" in all_panels
+    assert "Projects" in all_panels
+    assert "Reference Books" in all_panels
+    assert "Work Tickets" in all_panels
 
 
 def test_entity_type_to_sidebar_label_covers_governance():

@@ -82,30 +82,25 @@ def _wait_rows(qtbot, panel: EngagementsPanel, count: int) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_engagements_is_single_entry_in_engagements_group():
-    groups = dict(SIDEBAR_GROUPS)
-    assert groups["Engagements"] == ("Engagements",)
+def test_engagements_is_registered_and_in_operate_phase():
+    # REQ-526 / PI-432: Engagements lives in the All-panels index of every
+    # phase tab and in the Operate CRMBuilder pseudo-phase.
+    from crmbuilder_v2.ui.navigation import OPERATE_KEY, PhaseMap  # noqa: PLC0415
+
+    assert "Engagements" in SIDEBAR_GROUPS[0][1]
+    assert "Engagements" in PhaseMap().steps_for(OPERATE_KEY)
 
 
-def test_sidebar_renders_engagements_above_governance(qtbot):
-    # v0.6 slice B retired uppercased header text per design pass §2.1;
-    # the Engagements group header and the Engagements entry now share
-    # the same text and are distinguished only by the per-item header
-    # role. The entry appears under the Engagements header and before
-    # the Governance header.
+def test_sidebar_renders_engagements_entry(qtbot):
     from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
 
     sidebar = Sidebar()
     qtbot.addWidget(sidebar)
     items = [sidebar.item(r) for r in range(sidebar.count())]
-    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
     entries = {
         item.text(): i for i, item in enumerate(items) if not item.data(_HEADER_ROLE)
     }
-    assert "Engagements" in headers
     assert "Engagements" in entries
-    assert "Governance" in headers
-    assert headers["Engagements"] < entries["Engagements"] < headers["Governance"]
 
 
 def test_main_window_engagements_page_is_panel(

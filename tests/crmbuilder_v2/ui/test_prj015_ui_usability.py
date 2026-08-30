@@ -113,10 +113,10 @@ def test_sidebar_group_collapse(qtbot):
 
     sb = Sidebar()
     qtbot.addWidget(sb)
-    sb.set_group_collapsed("Governance", True)
-    assert sb.is_group_collapsed("Governance")
+    sb.set_group_collapsed("All panels", True)
+    assert sb.is_group_collapsed("All panels")
     assert sb._entry_for_label("Decisions").isHidden()
-    sb.set_group_collapsed("Governance", False)
+    sb.set_group_collapsed("All panels", False)
     assert not sb._entry_for_label("Decisions").isHidden()
 
 
@@ -125,7 +125,7 @@ def test_sidebar_filter_overrides_collapse(qtbot):
 
     sb = Sidebar()
     qtbot.addWidget(sb)
-    sb.set_group_collapsed("Governance", True)
+    sb.set_group_collapsed("All panels", True)
     assert sb._entry_for_label("Decisions").isHidden()
     sb.filter_entries("Decisions")
     assert not sb._entry_for_label("Decisions").isHidden()
@@ -141,12 +141,12 @@ def test_sidebar_header_click_toggles_collapse(qtbot):
     header = next(
         sb.item(r)
         for r in range(sb.count())
-        if sb.item(r).data(_HEADER_ROLE) and sb.item(r).text() == "Governance"
+        if sb.item(r).data(_HEADER_ROLE) and sb.item(r).text().startswith("All panels")
     )
     sb._on_item_clicked(header)
-    assert sb.is_group_collapsed("Governance")
+    assert sb.is_group_collapsed("All panels")
     sb._on_item_clicked(header)
-    assert not sb.is_group_collapsed("Governance")
+    assert not sb.is_group_collapsed("All panels")
 
 
 # ----------------------------------------------------------------------
@@ -227,6 +227,9 @@ def test_nav_back_forward_trail(qtbot, client_stub, lifecycle_stub):
 
     window = MainWindow(lifecycle=lifecycle_stub, client=client_stub)
     qtbot.addWidget(window)
+    # REQ-526 / PI-432: the window opens on the first step of the default
+    # phase (Charter); the trail works the same across any panels.
+    window._go_to("Decisions", None)
     assert window._sidebar.current_text() == "Decisions"
     assert window._back_action.isEnabled() is False
 

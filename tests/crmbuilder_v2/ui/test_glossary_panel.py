@@ -11,9 +11,8 @@ import pytest
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.dialogs.term_crud import TermCreateDialog, TermEditDialog
-from crmbuilder_v2.ui.main_window import ENTITY_TYPE_TO_SIDEBAR_LABEL
 from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
-from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS, Sidebar
+from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from fastapi.testclient import TestClient
 
 
@@ -30,21 +29,19 @@ def _wait_rows(qtbot, panel: GlossaryPanel, count: int) -> None:
 
 
 def test_glossary_is_present_in_methodology_group():
-    methodology = dict(SIDEBAR_GROUPS)["Methodology"]
-    assert "Glossary" in methodology
-    assert ENTITY_TYPE_TO_SIDEBAR_LABEL["term"] == "Glossary"
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Glossary" in all_panels
 
 
-def test_sidebar_renders_glossary_under_methodology(qtbot):
-    from crmbuilder_v2.ui.sidebar import _HEADER_ROLE  # noqa: PLC0415
-
-    sidebar = Sidebar()
-    qtbot.addWidget(sidebar)
-    items = [sidebar.item(r) for r in range(sidebar.count())]
-    rendered = [item.text() for item in items]
-    headers = {item.text(): i for i, item in enumerate(items) if item.data(_HEADER_ROLE)}
-    assert "Glossary" in rendered
-    assert rendered.index("Glossary") > headers["Methodology"]
+def test_sidebar_renders_glossary_under_methodology():
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
+    # fixed groups are retired. These panels stay registered and reachable
+    # through the All-panels index of every phase tab.
+    all_panels = dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Glossary" in all_panels
 
 
 def test_glossary_panel_columns(qtbot, glossary_client):

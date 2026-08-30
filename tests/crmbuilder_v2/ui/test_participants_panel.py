@@ -36,8 +36,12 @@ def _wait_rows(qtbot, panel, count: int) -> None:
 
 
 def test_participants_in_methodology_group():
-    groups = dict(SIDEBAR_GROUPS)
-    assert "Participants" in groups["Methodology"]
+    # REQ-526 / PI-432: fixed groups retired; Participants is registered and
+    # is a Phase 2 (Domain Discovery) step.
+    from crmbuilder_v2.ui.navigation import PhaseMap  # noqa: PLC0415
+
+    assert "Participants" in dict(SIDEBAR_GROUPS)["All panels"]
+    assert "Participants" in PhaseMap().steps_for("2")
 
 
 def test_entity_label_registered():

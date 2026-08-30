@@ -273,8 +273,12 @@ Desktop / Claude Code via the config block shown in the README.
 ```
 ui/
 ├── app.py                 # QApplication boot; main_window construction
-├── main_window.py         # Top-level QMainWindow; sidebar + content stack
-├── sidebar.py             # Entity-type navigation
+├── main_window.py         # Top-level QMainWindow; phase tabs (REQ-526 / PI-432)
+├── navigation.py          # Phase list (PRD §4), phase→steps map, identifier prefixes
+├── panel_registry.py      # The one label→panel table; ALL_PANEL_LABELS; build_panel
+├── phase_page.py          # One phase tab: phase-scoped sidebar + lazy panel stack
+├── quick_open.py          # Ctrl+K finder (panels by name, records by identifier prefix)
+├── sidebar.py             # Grouped sidebar with numbered step gutter + markers
 ├── server_lifecycle.py    # Detect-then-launch storage API subprocess
 ├── client.py              # StorageClient — typed httpx wrapper
 ├── exceptions.py          # Typed exception hierarchy
@@ -535,7 +539,13 @@ section):
    `api/schemas.py`. Register the router in `api/main.py`.
 6. **MCP tools** — add wrappers in `mcp_server/tools.py`.
 7. **UI** — panel under `ui/panels/`, dialogs under `ui/dialogs/`,
-   sidebar entry in `ui/sidebar.py`.
+   one entry in `PANEL_REGISTRY` (`ui/panel_registry.py`) — that puts it
+   in the alphabetical All-panels index of every phase tab — plus its
+   `entity_type` in `ENTITY_TYPE_TO_SIDEBAR_LABEL` (`ui/main_window.py`)
+   and, if quick open should find it by identifier, its prefix in
+   `IDENTIFIER_PREFIX_TO_ENTITY_TYPE` (`ui/navigation.py`). Add it to a
+   phase's step list in `DEFAULT_PHASE_STEPS` only if the PRD says that
+   phase produces it.
 8. **Migration** — `alembic revision --autogenerate -m "add <entity>"`,
    review, rename to `00NN_<topic>.py`, `alembic upgrade head`.
 
