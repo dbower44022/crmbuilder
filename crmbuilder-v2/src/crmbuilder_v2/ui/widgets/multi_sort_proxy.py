@@ -25,6 +25,39 @@ from __future__ import annotations
 from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt, Signal
 
 
+def compare_values(lval, rval, *, case_insensitive: bool = True) -> int:
+    """Return -1/0/1 for ``lval`` vs ``rval`` with a total order.
+
+    ``None`` sorts last (greater) so missing values trail in ascending
+    order, mirroring the sentinel the PI-116 grid model already emits.
+    Strings compare case-insensitively unless ``case_insensitive`` is
+    ``False``. Mixed, non-orderable types fall back to a string compare.
+
+    Promoted from ``MultiSortProxyModel._compare`` (REQ-528 / PI-434) so
+    the ``ListDetailPanel`` header-click sort and the proxy share one
+    comparator.
+    """
+    if lval is None and rval is None:
+        return 0
+    if lval is None:
+        return 1
+    if rval is None:
+        return -1
+    if isinstance(lval, str) and isinstance(rval, str) and case_insensitive:
+        lval = lval.lower()
+        rval = rval.lower()
+    if lval == rval:
+        return 0
+    try:
+        return -1 if lval < rval else 1
+    except TypeError:
+        # Mixed, non-orderable types: fall back to string compare.
+        ls, rs = str(lval), str(rval)
+        if ls == rs:
+            return 0
+        return -1 if ls < rs else 1
+
+
 class MultiSortProxyModel(QSortFilterProxyModel):
     """A filter/sort proxy with an ordered list of sort keys.
 
@@ -149,37 +182,14 @@ class MultiSortProxyModel(QSortFilterProxyModel):
     # ------------------------------------------------------------------
 
     def _compare(self, lval, rval) -> int:
-        """Return -1/0/1 for ``lval`` vs ``rval`` with a total order.
-
-        ``None`` sorts last (greater) so missing values trail in ascending
-        order, mirroring the ``"￿"`` sentinel the PI-116 grid model
-        already emits. Strings compare case-insensitively when the proxy's
-        ``sortCaseSensitivity`` is insensitive.
-        """
-        if lval is None and rval is None:
-            return 0
-        if lval is None:
-            return 1
-        if rval is None:
-            return -1
-        if (
-            isinstance(lval, str)
-            and isinstance(rval, str)
-            and self.sortCaseSensitivity()
-            == Qt.CaseSensitivity.CaseInsensitive
-        ):
-            lval = lval.lower()
-            rval = rval.lower()
-        if lval == rval:
-            return 0
-        try:
-            return -1 if lval < rval else 1
-        except TypeError:
-            # Mixed, non-orderable types: fall back to string compare.
-            ls, rs = str(lval), str(rval)
-            if ls == rs:
-                return 0
-            return -1 if ls < rs else 1
+        """Delegate to :func:`compare_values`, honouring the proxy's
+        ``sortCaseSensitivity`` for strings."""
+        return compare_values(
+            lval,
+            rval,
+            case_insensitive=self.sortCaseSensitivity()
+            == Qt.CaseSensitivity.CaseInsensitive,
+        )
 
     def _apply_sort(self) -> None:
         """Re-run the sort and notify the header.
