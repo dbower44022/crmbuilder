@@ -48,6 +48,7 @@ from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import mapping_candidate as candidate_repo
 from crmbuilder_v2.access.repositories import message_template as message_template_repo
 from crmbuilder_v2.access.repositories import roles as role_repo
+from crmbuilder_v2.access.repositories import rule as rule_repo
 from crmbuilder_v2.access.repositories import source_mapping as source_mapping_repo
 from crmbuilder_v2.access.repositories import (
     source_mapping_targets as source_mapping_targets_repo,
@@ -1988,6 +1989,206 @@ def reconcile_layouts(
                     state, override = "present", None
             writer.upsert(member_id, state, override)
             summary[state] += 1
+
+    summary["absent"] = writer.sweep_absent()
+    return summary
+
+
+# EspoCRM dynamic-logic condition type -> neutral operator (the inverse of
+# ``adapters.espocrm.conditions.NEUTRAL_TO_ESPO_OP``). ``isTrue`` / ``isFalse``
+# become ``eq`` with a boolean value; ``and`` / ``or`` become groups. Any other
+# type (``notIn``, ``isToday``, ...) has no neutral form and poisons the whole
+# field's logic with a warning, as the V1 audit does.
+_ESPO_LOGIC_TO_NEUTRAL_OP: dict[str, str] = {
+    "equals": "eq",
+    "notEquals": "ne",
+    "greaterThan": "gt",
+    "lessThan": "lt",
+    "greaterThanOrEquals": "gte",
+    "lessThanOrEquals": "lte",
+    "in": "in",
+    "contains": "contains",
+    "isEmpty": "is_empty",
+    "isNotEmpty": "is_not_empty",
+}
+_LOGIC_KIND_TO_EFFECT: dict[str, str] = {
+    "required": "required_when",
+    "visible": "visible_when",
+}
+
+
+class _UnsupportedLogic(ValueError):
+    """A dynamic-logic item uses a condition type with no neutral form."""
+
+
+def _reverse_logic_item(item: Any, field_name: Callable[[str], str]) -> dict:
+    if not isinstance(item, dict):
+        raise _UnsupportedLogic("condition item is not an object")
+    kind = item.get("type")
+    if kind in ("and", "or"):
+        children = item.get("value")
+        if not isinstance(children, list) or not children:
+            raise _UnsupportedLogic(f"empty {kind} group")
+        return {
+            "all" if kind == "and" else "any": [
+                _reverse_logic_item(c, field_name) for c in children
+            ]
+        }
+    attribute = item.get("attribute")
+    if not isinstance(attribute, str) or not attribute:
+        raise _UnsupportedLogic("condition item has no attribute")
+    ref = field_name(attribute)
+    if kind == "isTrue":
+        return {"field": ref, "op": "eq", "value": True}
+    if kind == "isFalse":
+        return {"field": ref, "op": "eq", "value": False}
+    op = _ESPO_LOGIC_TO_NEUTRAL_OP.get(kind)
+    if op is None:
+        raise _UnsupportedLogic(f"unsupported condition type {kind!r}")
+    if op in ("is_empty", "is_not_empty"):
+        return {"field": ref, "op": op}
+    return {"field": ref, "op": op, "value": item.get("value")}
+
+
+def _reverse_logic_group(
+    condition_group: Any, field_name: Callable[[str], str]
+) -> dict | None:
+    """Reverse a ``conditionGroup`` to a neutral condition, ``None`` if empty.
+
+    Multiple top-level items are EspoCRM's implicit ``and`` and wrap in an
+    ``all`` group; a single item unwraps. Raises :class:`_UnsupportedLogic`
+    when any item has no neutral form (the caller omits the field's logic and
+    warns — never a mistranslation).
+    """
+    if not isinstance(condition_group, list) or not condition_group:
+        return None
+    items = [_reverse_logic_item(i, field_name) for i in condition_group]
+    return items[0] if len(items) == 1 else {"all": items}
+
+
+class _FieldRulesClient(_ScopesClient, Protocol):
+    """Adds the clientDefs read (dynamic logic lives there) the rule reconcile uses."""
+
+    def get_client_defs(self, entity: str) -> tuple[int, dict | None]: ...
+
+
+def reconcile_field_rules(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _FieldRulesClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Reconcile field-level dynamic logic into ``rule`` records (PI-421).
+
+    For each canonical entity, reads ``clientDefs.<E>.dynamicLogic.fields`` and
+    reverses each captured field's ``required`` / ``visible`` condition group
+    into a neutral condition on a ``rule`` (effect ``required_when`` /
+    ``visible_when``), matched by (subject field, effect); a changed condition
+    is a sparse override. The ``readOnly`` kind is skipped (no neutral effect),
+    logic on fields the design does not hold is ignored, and a condition using
+    an operator with no neutral form is omitted with a warning rather than
+    mistranslated — all as the V1 audit does. Entities and fields must already
+    be canonical (run after :func:`reconcile_fields`). ``rule`` membership +
+    absent sweep (DEC-851).
+
+    :returns: A summary ``{seen, created, present, drifted, absent, skipped}``.
+    :raises ReconcileError: If the scopes call fails or returns a non-dict body.
+    """
+    status, scopes = client.get_all_scopes()
+    if status != 200 or not isinstance(scopes, dict):
+        raise ReconcileError(
+            f"get_all_scopes returned status={status}; expected 200 + dict body"
+        )
+    ent_by_name = {
+        _ci(row["entity_name"]): row["entity_identifier"]
+        for row in entity_repo.list_entities(session)
+    }
+    stamp = datetime.now(UTC)
+    summary = {
+        "seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0, "skipped": 0,
+    }
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="rule",
+        last_audited_at=stamp,
+    )
+
+    for scope_name, scope_meta in scopes.items():
+        if not isinstance(scope_meta, dict):
+            continue
+        entity_id = ent_by_name.get(_ci(strip_entity_c_prefix(scope_name)))
+        if entity_id is None:
+            continue
+        c_status, cdefs = client.get_client_defs(scope_name)
+        if c_status != 200 or not isinstance(cdefs, dict):
+            continue
+        logic = cdefs.get("dynamicLogic")
+        fields_logic = logic.get("fields") if isinstance(logic, dict) else None
+        if not isinstance(fields_logic, dict) or not fields_logic:
+            continue
+        is_native = classify_entity(scope_name, scope_meta) is EntityClass.NATIVE
+
+        def neutral_name(api_name: str, _native: bool = is_native) -> str:
+            return strip_field_c_prefix(api_name, entity_is_native=_native)
+
+        fields_by_name = {
+            _ci(row["field_name"]): row
+            for row in field_repo.list_fields(session, entity_identifier=entity_id)
+        }
+        existing_rules = {
+            (r["rule_subject_identifier"], r["rule_effect"]): r
+            for r in rule_repo.list_rules(session, subject_type="field")
+        }
+        for api_name, kinds in fields_logic.items():
+            field_row = fields_by_name.get(_ci(neutral_name(api_name)))
+            if field_row is None or not isinstance(kinds, dict):
+                continue
+            for kind, effect in _LOGIC_KIND_TO_EFFECT.items():
+                spec = kinds.get(kind)
+                if not isinstance(spec, dict):
+                    continue
+                context = f"{scope_name}.{api_name}.{kind}"
+                try:
+                    condition = _reverse_logic_group(spec.get("conditionGroup"), neutral_name)
+                except _UnsupportedLogic as exc:
+                    _note(
+                        progress,
+                        f"{context}: dynamic logic {exc}; field logic omitted",
+                        "warning",
+                    )
+                    summary["skipped"] += 1
+                    continue
+                if condition is None:
+                    continue
+                summary["seen"] += 1
+                key = (field_row["field_identifier"], effect)
+                match = existing_rules.get(key)
+                if match is None:
+                    created = rule_repo.create_rule(
+                        session,
+                        name=f"{field_row['field_name']} {kind} when",
+                        subject_type="field",
+                        subject_identifier=field_row["field_identifier"],
+                        effect=effect,
+                        condition=condition,
+                        description=(
+                            f"Discovered by auditing instance {instance_identifier}."
+                        ),
+                    )
+                    existing_rules[key] = created
+                    member_id = created["rule_identifier"]
+                    summary["created"] += 1
+                    state, override = "present", None
+                else:
+                    member_id = match["rule_identifier"]
+                    if match.get("rule_condition") != condition:
+                        state, override = "drifted", {"rule_condition": condition}
+                    else:
+                        state, override = "present", None
+                writer.upsert(member_id, state, override)
+                summary[state] += 1
 
     summary["absent"] = writer.sweep_absent()
     return summary

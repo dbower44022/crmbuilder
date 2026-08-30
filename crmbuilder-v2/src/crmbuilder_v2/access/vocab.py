@@ -922,6 +922,8 @@ INSTANCE_MEMBERSHIP_MEMBER_TYPES: frozenset[str] = frozenset(
         "filtered_tab",
         # PI-420 / REQ-124 — email templates audited per entity.
         "message_template",
+        # PI-421 / REQ-123 — field-level dynamic logic audited as rules.
+        "rule",
     }
 )
 

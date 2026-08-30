@@ -24,6 +24,7 @@ from crmbuilder_v2.access.repositories import instance_membership as membership_
 from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import message_template as message_template_repo
 from crmbuilder_v2.access.repositories import roles as role_repo
+from crmbuilder_v2.access.repositories import rule as rule_repo
 from crmbuilder_v2.access.repositories import teams as team_repo
 
 # (member_type, canonical-list callable, identifier key, display-name key).
@@ -51,6 +52,7 @@ _MEMBER_SOURCES = (
         "message_template_identifier",
         "message_template_name",
     ),
+    ("rule", rule_repo.list_rules, "rule_identifier", "rule_name"),
 )
 
 

@@ -230,7 +230,7 @@ def test_audit_areas_list(client):
     assert [a["area"] for a in areas] == [
         "entities", "fields", "associations", "layouts",
         "roles", "field-permissions", "teams", "filtered-tabs",
-        "email-templates",
+        "email-templates", "field-rules",
     ]
     assert areas[0]["label"] == "Entities"
     assert areas[2]["label"] == "Relationships"
@@ -276,7 +276,7 @@ def test_both_audit_runs_full_drift_no_candidates(client, monkeypatch):
     assert set(summary) == {
         "entities", "fields", "associations", "layouts",
         "roles", "field_permissions", "teams", "filtered_tabs",
-        "email_templates",
+        "email_templates", "field_rules",
         "completion",
     }
     # Drift path: live custom entities are discovered + marked present, never
