@@ -42,7 +42,7 @@ V1's `utilization-profile.json` versus V2's `utilization_evidence` rows for the 
 | Measure | Result |
 |---|---|
 | Entities profiled | V1 29 / V2 21 — the 8 V1-only are G1 |
-| Entity record counts | 20 of 21 shared entities equal; `Email` differed (V1 wrote `-2`, V2 first wrote `0`) — root cause below, fixed |
+| Entity record counts | 20 of 21 shared entities equal; `Email` is count-disabled and holds no records — V1 echoes the platform's non-count (`-2`) verbatim, V2 counts by scanning and reports 0, which the empty recency query confirms |
 | Field populated counts | 300 shared targets; 290 equal; 10 differ, all multi-value pick-lists — G2 |
 
 **Defects found and fixed by this run (PI-426).** EspoCRM answers `total: -1` for an entity whose counting is disabled (`countDisabled`, a setting the audit now captures). V1 wrote that through unchecked; V2's evidence repository rightly refuses a negative count, which failed the first run on `Email`. The profiler now recognises the answer, skips the per-field count queries (each would answer -1), takes the record count from the newest-first scan — exact when the scan completes, a flagged lower bound at the cap — and derives every field metric from the scan; and it still counts by an id-only scan when the entity has no inspectable design field.
