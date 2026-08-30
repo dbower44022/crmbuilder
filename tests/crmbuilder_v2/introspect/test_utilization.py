@@ -693,3 +693,10 @@ def test_profiler_count_disabled_entity_hitting_the_cap_is_a_lower_bound():
     ent = run.entities["CEngagement"]
     assert ent["record_count"] == 2
     assert ent["detail"]["count_lower_bound"] is True and ent["detail"]["sampled"] is True
+
+
+def test_profiler_count_disabled_entity_without_scannable_fields_still_counts():
+    fake = _RecordsFake({"CEngagement": _engagement_records(3)})
+    fake.count_disabled = {"CEngagement"}
+    run = Profiler(fake, ProfileOptions()).run([_item(targets=[])])
+    assert run.entities["CEngagement"]["record_count"] == 3

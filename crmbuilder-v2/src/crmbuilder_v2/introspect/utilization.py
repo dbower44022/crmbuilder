@@ -930,8 +930,10 @@ class Profiler:
         espo = item.espo_name
         scannable = [t for t in item.targets if select_attributes_for(t.api_name, t.field_type)]
         if not count_known:
+            # Even with nothing to inspect, the scan is the only way to count
+            # (ids only) when the platform will not.
             record_count = opts.scan_cap
-        if not scannable or record_count == 0:
+        elif not scannable or record_count == 0:
             return {"sampled": False, "scanned": 0}
 
         select = ["id", "createdAt"]
