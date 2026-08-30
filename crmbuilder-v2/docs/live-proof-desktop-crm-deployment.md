@@ -103,6 +103,70 @@ for *Active* (minutes to a few hours). Do this before the day of the proof.
 Note the zone name exactly (e.g. `dougbower.com`); the wizard lists zones the
 token can see and you will pick it from that list.
 
+### 0.3a Adding an already-registered domain to Cloudflare
+
+Do this only if the domain you want to use is not yet on Cloudflare. The
+domain stays registered where it is; Cloudflare only takes over DNS. Nothing
+on the domain changes until the final step, and even then any existing DNS
+records are carried across first.
+
+**Part 1 — add the zone in Cloudflare**
+
+1. Sign in at <https://dash.cloudflare.com>. On the home page click
+   **+ Add a domain** (top right; older layouts say *Add a site*).
+2. Type the bare domain, e.g. `dougbower.com` (no `www`, no `https://`).
+   Leave *Quick scan for DNS records* selected → **Continue**.
+3. Choose the **Free** plan → **Continue**.
+4. Cloudflare shows the DNS records it found (*Review your DNS records*).
+   Check that anything the domain already does — a website (`A` or `CNAME`
+   for `@` and `www`), email (`MX` records) — is listed. If a record you know
+   about is missing, add it now with **+ Add record** so the switch does not
+   break it. → **Continue to activation**.
+5. Cloudflare now shows **two nameservers**, e.g. `ada.ns.cloudflare.com` and
+   `rick.ns.cloudflare.com` (yours will differ). Keep this page open; copy
+   both names exactly.
+
+**Part 2 — point the registrar at Cloudflare**
+
+The steps below are for Porkbun, the registrar in use for this project. Other
+registrars have the same setting under *Nameservers* / *DNS management*; see
+the note after the steps.
+
+6. In a new tab sign in at <https://porkbun.com> → **Account → Domain
+   Management** (or the domain list on the home page).
+7. Click the domain. In its details panel find **Nameservers** (Porkbun shows
+   the current ones, usually four `*.porkbun.com` entries) → click **Edit**
+   (pencil icon).
+8. Delete every existing nameserver line. Enter the two Cloudflare
+   nameservers from step 5, one per line, exactly as shown. → **Submit**.
+   Porkbun confirms *Nameservers updated*.
+9. If Porkbun shows a **DNSSEC** section with records present, delete them
+   (Cloudflare will re-establish DNSSEC later if you want it). Leaving old
+   DNSSEC records in place makes the domain fail to resolve after the switch.
+
+*Other registrars:* Namecheap — Domain List → **Manage** → *Nameservers* →
+choose **Custom DNS** → enter the two names. GoDaddy — My Products → domain →
+**DNS** → *Nameservers* → **Change** → *I'll use my own nameservers*.
+
+**Part 3 — wait for activation**
+
+10. Back in the Cloudflare tab click **Continue** / **Check nameservers**. The
+    zone shows *Pending nameserver update*. Cloudflare re-checks
+    automatically and emails you when the zone is **Active**; usually within
+    an hour, occasionally up to 24. You can click *Check nameservers* again at
+    any time.
+11. When the dashboard home lists the domain with a green **Active** badge,
+    the zone is ready for the proof. Confirm with:
+    ```bash
+    dig +short NS dougbower.com
+    ```
+    (use your domain). You should see the two Cloudflare nameservers. If the
+    old registrar nameservers still appear, wait longer — nothing is wrong yet.
+
+If the domain hosts a live website or email, check both still work after
+activation; a missing record from step 4 is the only thing that could have
+changed.
+
 ### 0.4 Cloudflare token A — full (Zone Read + DNS Edit)
 
 1. Cloudflare dashboard → click the profile icon (top right) → **My Profile**
