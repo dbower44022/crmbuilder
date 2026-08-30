@@ -12,10 +12,10 @@ Every difference between the two audits is either **fixed in this stack**, **sup
 
 | Area | V1 | V2 | Verdict |
 |---|---|---|---|
-| Entities | 29 YAMLs | 21 records | 21 shared; 8 V1-only — see gap G1 |
+| Entities | 29 YAMLs | 29 records | equal after PI-429 (first run: 21, the 8 layout-only built-in entities missing — G1) |
 | Fields | 315 | 300 custom + 147 built-in | 15 V1-only are link-typed — superseded (DEC-932 / REQ-505: links are relationships); 147 built-in fields are V2-only by design (REQ-523) |
-| Relationships | 134 | 70 associations (87 seen) | links whose other end is not a canonical entity are not recorded — gap G1 |
-| Layouts | 257 blocks | 179 records | per-entity type sets identical for shared entities after the fix below; the total gap is the 8 G1 entities |
+| Relationships | 134 | 93 associations (162 seen) after PI-429 (first run: 70) | the remainder are links whose other end is a scope that is not an entity in the design at all (User, Team, Email account scopes) — V2 records relationships between design entities only, by construction |
+| Layouts | 257 blocks | 257 records after PI-429 | per-entity type sets identical for every entity |
 | Roles | 12 | 12 | equal |
 | Teams | 9 | 9 | equal |
 | Filtered tabs | 0 | 1 | V2 records the entity's report filter (`Engagement / Pending Clients`); V1 only emits a tab when a navigation tab scope points at it — superseded (DEC-437 defines the V2 record as the report filter) |
@@ -31,8 +31,8 @@ Every difference between the two audits is either **fixed in this stack**, **sup
 
 ## Remaining gaps (tracked)
 
-- **G1 — uncustomised built-in entities.** V1 writes an entity YAML for any built-in entity that has layouts (Call, Campaign, Case, Lead, Meeting, Opportunity, TargetList, Task here); V2 creates an entity record only when a built-in entity has a custom field (PI-192), so those entities' layouts and the relationships that end on them are not inventoried. A customised *layout* on a built-in entity with no custom field is therefore invisible. Recommendation: treat a built-in entity with any stored layout as canonical. Recorded as Draft planning item PI-429.
-- **G2 — qualifying properties dropped at field creation.** The field audit derives holds/display/values/supplied-by from the live field but the create path writes only type, required, format and numeric scale, so a discovered multi-value pick-list is stored (and would publish) as a single enum. Surfaced by the utilization comparison as ten populated-count mismatches, all on multiEnum/array fields. Recorded as Draft planning item PI-430 (REQ-501).
+- **G1 — uncustomised built-in entities — CLOSED by PI-429 (verified live: 29/29 entities, 257/257 layouts).** V1 writes an entity YAML for any built-in entity that has layouts (Call, Campaign, Case, Lead, Meeting, Opportunity, TargetList, Task here); V2 creates an entity record only when a built-in entity has a custom field (PI-192), so those entities' layouts and the relationships that end on them are not inventoried. A customised *layout* on a built-in entity with no custom field is therefore invisible. Recommendation: treat a built-in entity with any stored layout as canonical. Recorded as Draft planning item PI-429.
+- **G2 — qualifying properties dropped at field creation — CLOSED by PI-430 (creation now carries holds/display/values/supplied-by, read-only and the option set).** The field audit derives holds/display/values/supplied-by from the live field but the create path writes only type, required, format and numeric scale, so a discovered multi-value pick-list is stored (and would publish) as a single enum. Surfaced by the utilization comparison as ten populated-count mismatches, all on multiEnum/array fields. Recorded as Draft planning item PI-430 (REQ-501).
 - **Relationship sides in utilization** (PI-426): V1 profiles link-shaped relationship sides; V2 profiles only design fields that describe a link, because an association is not an admitted evidence subject. 175 V1-only field targets in the comparison are these. Noted in the PI-426 commit.
 
 ## Utilization (PI-426)
