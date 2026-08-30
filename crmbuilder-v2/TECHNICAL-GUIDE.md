@@ -192,6 +192,54 @@ You don't need to catch exceptions in routers; let them propagate.
 
 ---
 
+## Deploy runs and the deploy worker
+
+`crmbuilder_v2/deploy/` (PI-419, REQ-522) is the service-side provisioning
+path — the first background job in v2.
+
+* **Data.** `deploy_runs` (`DEP-NNN`; `access/repositories/deploy_runs.py`)
+  is a non-governed operational table like `publish_runs`, but with a
+  non-terminal lifecycle: `queued → running → succeeded |
+  succeeded_with_issues | failed | cancelled`. `deploy_run_state` is the
+  resume checkpoint (droplet id/IP, DNS record, SSH key, per-phase status,
+  verification, cancel flag); `deploy_run_log` a capped, pre-masked list of
+  `[ts, level, message]`. `provider_credentials` holds one opaque secret ref
+  per provider per engagement. Both alembic heads carry the delta
+  (`0116` / pg `0073`).
+* **Claim.** `claim_next_run` is a single conditional `UPDATE` keyed on the
+  row id *and* "queued, or running with a heartbeat older than
+  `deploy_worker_stale_seconds`", so two workers cannot hold one run. The
+  worker claims with engagement enforcement off and no active engagement,
+  then executes inside `active_engagement(run.engagement_id)`.
+* **Runner.** `deploy/runner.py::run_deploy` walks
+  `DEPLOY_RUN_PHASE_ORDER`, checkpointing after each phase; completed phases
+  are skipped on resume, `create_droplet` also recovers a server by the run's
+  tag. The SSH phases are the unchanged v1 functions in
+  `automation/core/deployment/ssh_deploy.py`; the run's generated ed25519 key
+  (`deploy/keys.py`) is materialised to a 0600 temp file only for the length
+  of an SSH session because `connect_ssh` takes a path. Everything external
+  is injected through `RunnerDeps` — the tests fake providers, SSH, secrets
+  and the clock (`tests/crmbuilder_v2/deploy/test_runner.py`).
+* **Worker.** `deploy/worker.py::DeployWorker` is one class in two homes: a
+  daemon thread started by the API lifespan when
+  `CRMBUILDER_V2_DEPLOY_WORKER_INPROCESS` is true (the default), or the
+  standalone `crmbuilder-v2-deploy-worker` console script (set the flag false
+  on the API then). A heartbeat thread keeps the claim fresh through long,
+  quiet SSH phases. Under test the flag is forced off by `conftest.py`;
+  worker tests drive `run_once()`.
+* **API.** `/provider-credentials` and `/deploy-runs` are admin-gated
+  (`require_permission("admin")`). Secret plaintext crosses only in request
+  bodies through `api/secret_boundary.py` (shared with the instances router);
+  responses never carry refs. `GET /deploy-runs/{id}?log_after=N` is the
+  polling contract the progress dialog uses.
+* **Boundary.** Provisioning a *customer* server is product behaviour; the
+  CRMBuilder production host is refused by `deploy/spec.py::is_protected_host`
+  at request time and again in the runner (GVR-240 / DEC-946). Nothing is ever
+  destroyed on failure (DEC-945) — the history panel flags what still exists.
+* **Providers.** `deploy/providers/` are thin `requests` wrappers (no SDKs:
+  the production venv cannot install packages). Cloudflare records are always
+  `proxied: false` (GVR-182).
+
 ## MCP server
 
 `mcp_server/server.py` boots an `mcp.server.fastmcp.FastMCP` instance

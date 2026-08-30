@@ -93,6 +93,9 @@ SIDEBAR_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             # PI-266 (PRJ-042 / REQ-293): read-only history of publishes to a
             # target instance (scope, outcome, backup). Sits next to Instances.
             "Publish History",
+            # PI-419 (REQ-522): every provisioning run — status, phase, what it
+            # created, log; reopen progress / retry. Sits next to Publish History.
+            "Deploy History",
             # PI-319 (REL-024): three-way design/instance reconciliation —
             # compare two instances against the design and reconcile each
             # difference. Sits next to Instances/Publish History.

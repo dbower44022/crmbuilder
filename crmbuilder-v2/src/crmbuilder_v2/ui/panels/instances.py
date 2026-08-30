@@ -366,6 +366,17 @@ class InstancesPanel(ListDetailPanel):
         _row("Cert expiry", cfg.get("cert_expiry_date"))
         _row("Backups enabled", cfg.get("backups_enabled"))
         _row("Droplet id", cfg.get("droplet_id"))
+        # PI-419 (REQ-522): what a deploy run recorded when it provisioned this
+        # instance. Secrets stay "set"/"—".
+        _row("Droplet IP", cfg.get("droplet_ip"))
+        _row("Droplet region / size", " / ".join(
+            str(v) for v in (cfg.get("droplet_region"), cfg.get("droplet_size")) if v
+        ))
+        _row("DNS provider", cfg.get("dns_provider"))
+        _row("CRM admin username", cfg.get("admin_username"))
+        _row("CRM admin password", "set" if cfg.get("admin_password_ref") else "—")
+        _row("DB password", "set" if cfg.get("db_password_ref") else "—")
+        _row("Last deploy run", cfg.get("last_deploy_run_identifier"))
         lay.addLayout(form)
         return box
 

@@ -48,6 +48,7 @@ from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
 from crmbuilder_v2.ui.panels.cost import CostPanel
 from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
+from crmbuilder_v2.ui.panels.deploy_history import DeployHistoryPanel
 from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
 from crmbuilder_v2.ui.panels.domains import DomainsPanel
 from crmbuilder_v2.ui.panels.engagements import EngagementsPanel
@@ -290,6 +291,9 @@ def build_panel(
     # PI-266 (PRJ-042 / REQ-293): read-only publish history.
     if label == "Publish History":
         return PublishHistoryPanel(client)
+    # PI-419 (REQ-522): deploy runs — provisioning history + progress/retry.
+    if label == "Deploy History":
+        return DeployHistoryPanel(client)
     # PI-319 (REL-024): three-way design/instance reconciliation surface.
     if label == "Candidate Review":
         return CandidateReviewPanel(client)
