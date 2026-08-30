@@ -185,8 +185,13 @@ def phase_server_prep(
     :returns: ``(success, error_message)``.
     """
     commands = [
-        "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y",
-        "apt-get install -y curl ca-certificates gnupg",
+        # -o DPkg::Lock::Timeout=600: a fresh droplet's first-boot unattended
+        # upgrade holds the apt lock for its first minutes; wait for it rather
+        # than fail (PI-419 live proof, DEP-003 — "Could not get lock").
+        "apt-get -o DPkg::Lock::Timeout=600 update && "
+        "DEBIAN_FRONTEND=noninteractive "
+        "apt-get -o DPkg::Lock::Timeout=600 upgrade -y",
+        "apt-get -o DPkg::Lock::Timeout=600 install -y curl ca-certificates gnupg",
         "install -m 0755 -d /etc/apt/keyrings && "
         "curl -fsSL https://download.docker.com/linux/ubuntu/gpg "
         "-o /etc/apt/keyrings/docker.asc && "
@@ -196,8 +201,9 @@ def phase_server_prep(
         "https://download.docker.com/linux/ubuntu "
         '$(. /etc/os-release && echo "$VERSION_CODENAME") stable" '
         "| tee /etc/apt/sources.list.d/docker.list > /dev/null",
-        "apt-get update && "
-        "apt-get install -y docker-ce docker-ce-cli containerd.io "
+        "apt-get -o DPkg::Lock::Timeout=600 update && "
+        "apt-get -o DPkg::Lock::Timeout=600 install -y "
+        "docker-ce docker-ce-cli containerd.io "
         "docker-buildx-plugin docker-compose-plugin",
         "if [ ! -f /swapfile ]; then "
         "fallocate -l 2G /swapfile && chmod 600 /swapfile && "
