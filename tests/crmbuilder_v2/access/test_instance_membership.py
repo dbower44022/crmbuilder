@@ -84,6 +84,12 @@ class _FakeClient:
     def get_teams(self):
         return (200, {"list": self._teams})
 
+    def list_email_templates(self, entity_type):
+        templates = getattr(self, "_email_templates", {})
+        if entity_type in templates:
+            return (200, {"total": len(templates[entity_type]), "list": templates[entity_type]})
+        return (404, None)
+
     def list_report_filters(self, entity_type):
         if entity_type in self._report_filters:
             return (200, {"list": self._report_filters[entity_type]})

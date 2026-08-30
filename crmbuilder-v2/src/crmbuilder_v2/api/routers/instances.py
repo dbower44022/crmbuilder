@@ -49,6 +49,7 @@ from crmbuilder_v2.introspect.reconcile import (
     ReconcileError,
     classify_audit_completion,
     reconcile_associations,
+    reconcile_email_templates,
     reconcile_entities,
     reconcile_field_permissions,
     reconcile_fields,
@@ -304,6 +305,8 @@ _AUDIT_AREAS: dict[str, tuple[str, object]] = {
     "field-permissions": ("Field permissions", reconcile_field_permissions),
     "teams": ("Teams", reconcile_teams),
     "filtered-tabs": ("Filtered tabs", reconcile_filtered_tabs),
+    # PI-420 / REQ-124 — email templates, after the entity-bound areas.
+    "email-templates": ("Email templates", reconcile_email_templates),
 }
 
 #: The area slugs in run order — the order the desktop issues per-area calls.

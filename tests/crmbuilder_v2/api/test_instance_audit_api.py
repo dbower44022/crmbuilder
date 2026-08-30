@@ -82,6 +82,9 @@ class _FakeClient:
     def get_formula(self, entity):
         return (200, getattr(self, "_formulas", {}).get(entity, {}))
 
+    def list_email_templates(self, entity_type):
+        return (404, None)
+
     def get_layout(self, entity, layout_type):
         if entity == "CEngagement" and layout_type == "detail":
             return (200, {"rows": [["name"]]})
@@ -227,6 +230,7 @@ def test_audit_areas_list(client):
     assert [a["area"] for a in areas] == [
         "entities", "fields", "associations", "layouts",
         "roles", "field-permissions", "teams", "filtered-tabs",
+        "email-templates",
     ]
     assert areas[0]["label"] == "Entities"
     assert areas[2]["label"] == "Relationships"
@@ -272,6 +276,7 @@ def test_both_audit_runs_full_drift_no_candidates(client, monkeypatch):
     assert set(summary) == {
         "entities", "fields", "associations", "layouts",
         "roles", "field_permissions", "teams", "filtered_tabs",
+        "email_templates",
         "completion",
     }
     # Drift path: live custom entities are discovered + marked present, never

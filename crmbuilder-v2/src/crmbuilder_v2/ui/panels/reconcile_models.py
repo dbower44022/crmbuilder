@@ -77,6 +77,7 @@ OBJECT_GROUP_LABELS = {
     "role": "Roles",
     "team": "Teams",
     "filtered_tab": "Filtered tabs",
+    "message_template": "Email templates",
 }
 
 #: Role carrying the raw presence/state token for cell colouring/inspection.

@@ -500,6 +500,28 @@ class EspoIntrospectionClient:
 
     # --- Team management (read) ---
 
+    def list_email_templates(
+        self, entity_type: str
+    ) -> tuple[int, dict[str, Any] | None]:
+        """List the EmailTemplate records bound to one entity (PI-420 / REQ-124).
+
+        Mirrors the V1 audit read: ``GET /EmailTemplate`` filtered on
+        ``entityType`` with the 200-row page the V1 audit also uses. A 404
+        means the feature is unavailable on the source and the caller skips
+        that entity.
+
+        :param entity_type: EspoCRM entity name (e.g. "Contact", "CEngagement").
+        :returns: Tuple of ``(status_code, {"total": N, "list": [...]} or None)``.
+        """
+        url = (
+            f"{self.api_url}/EmailTemplate"
+            f"?where[0][type]=equals"
+            f"&where[0][attribute]=entityType"
+            f"&where[0][value]={entity_type}"
+            f"&maxSize=200"
+        )
+        return self._request("GET", url)
+
     def get_teams(self) -> tuple[int, dict[str, Any] | None]:
         """List all Team records on the target instance.
 

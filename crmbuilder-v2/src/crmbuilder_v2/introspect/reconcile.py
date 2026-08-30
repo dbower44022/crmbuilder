@@ -21,6 +21,7 @@ is testable with a fake and engine-agnostic at the call boundary.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any, Protocol
@@ -45,6 +46,7 @@ from crmbuilder_v2.access.repositories import instance_membership as membership_
 from crmbuilder_v2.access.repositories import instances as instances_repo
 from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import mapping_candidate as candidate_repo
+from crmbuilder_v2.access.repositories import message_template as message_template_repo
 from crmbuilder_v2.access.repositories import roles as role_repo
 from crmbuilder_v2.access.repositories import source_mapping as source_mapping_repo
 from crmbuilder_v2.access.repositories import (
@@ -1984,6 +1986,138 @@ def reconcile_layouts(
                     state, override = "drifted", {"layout_content": content}
                 else:
                     state, override = "present", None
+            writer.upsert(member_id, state, override)
+            summary[state] += 1
+
+    summary["absent"] = writer.sweep_absent()
+    return summary
+
+
+_MERGE_FIELD_RE = re.compile(r"\{\{(\w+)\}\}")
+
+
+def _merge_fields_of(subject: str, body: str) -> list[str]:
+    """Recover ``{{fieldName}}`` merge placeholders from a template's text.
+
+    Same grammar as the V1 audit and the deploy-side validator: simple
+    single-word placeholders only; dotted or spaced ones are ignored. Sorted
+    unique names, so the stored list is stable across audits.
+    """
+    found: set[str] = set()
+    for text in (subject, body):
+        found.update(_MERGE_FIELD_RE.findall(text or ""))
+    return sorted(found)
+
+
+class _EmailTemplatesClient(_ScopesClient, Protocol):
+    """Adds the per-entity EmailTemplate listing the email-template reconcile uses."""
+
+    def list_email_templates(self, entity_type: str) -> tuple[int, dict | None]: ...
+
+
+_MESSAGE_TEMPLATE_COMPARED = ("subject", "body", "merge_fields")
+
+
+def reconcile_email_templates(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _EmailTemplatesClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Reconcile an instance's email templates into the inventory (PI-420).
+
+    For each canonical entity, lists the EmailTemplate records bound to it and
+    matches by (entity, name); subject / body / merge-field differences are
+    recorded as a sparse override. A 404 from the listing means the feature is
+    unavailable on the source — that entity is skipped, not fatal. Templates
+    without a name are ignored (as in V1). Entities must already be canonical
+    (run after :func:`reconcile_entities`). ``message_template`` membership +
+    absent sweep (DEC-851: a successful-but-empty read drives present->absent).
+
+    :returns: A summary ``{seen, created, present, drifted, absent}``.
+    :raises ReconcileError: If the scopes call fails or returns a non-dict body.
+    """
+    status, scopes = client.get_all_scopes()
+    if status != 200 or not isinstance(scopes, dict):
+        raise ReconcileError(
+            f"get_all_scopes returned status={status}; expected 200 + dict body"
+        )
+    ent_by_name = {
+        _ci(row["entity_name"]): row["entity_identifier"]
+        for row in entity_repo.list_entities(session)
+    }
+    stamp = datetime.now(UTC)
+    summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="message_template",
+        last_audited_at=stamp,
+    )
+
+    for scope_name, scope_meta in scopes.items():
+        if not isinstance(scope_meta, dict):
+            continue
+        entity_id = ent_by_name.get(_ci(strip_entity_c_prefix(scope_name)))
+        if entity_id is None:
+            continue
+        t_status, body = client.list_email_templates(scope_name)
+        if t_status == 404:
+            _note(progress, f"{scope_name}: EmailTemplate unavailable on source; skipped")
+            continue
+        if t_status != 200 or not isinstance(body, dict):
+            _note(
+                progress,
+                f"{scope_name}: could not list email templates (HTTP {t_status}); skipped",
+                "warning",
+            )
+            continue
+        existing = message_template_repo.list_message_templates(
+            session, entity=entity_id
+        )
+        by_name = {_ci(row["message_template_name"]): row for row in existing}
+        for rec in _rows_of(body):
+            name = str(rec.get("name") or "").strip()
+            if not name:
+                continue
+            summary["seen"] += 1
+            audited = {
+                "subject": str(rec.get("subject") or ""),
+                "body": str(rec.get("body") or ""),
+            }
+            audited["merge_fields"] = _merge_fields_of(audited["subject"], audited["body"])
+            match = by_name.get(_ci(name))
+            if match is None:
+                created = message_template_repo.create_message_template(
+                    session,
+                    name=name,
+                    body=audited["body"] or " ",
+                    entity=entity_id,
+                    channel="email",
+                    subject=audited["subject"] or None,
+                    merge_fields=audited["merge_fields"] or None,
+                    description=(
+                        f"Discovered by auditing instance {instance_identifier}."
+                    ),
+                )
+                by_name[_ci(name)] = created
+                member_id = created["message_template_identifier"]
+                summary["created"] += 1
+                state, override = "present", None
+            else:
+                member_id = match["message_template_identifier"]
+                diff: dict[str, Any] = {}
+                for key in _MESSAGE_TEMPLATE_COMPARED:
+                    stored = match.get(f"message_template_{key}")
+                    live = audited[key]
+                    if key == "merge_fields":
+                        if sorted(stored or []) != live:
+                            diff[f"message_template_{key}"] = live
+                    elif (stored or "") != live:
+                        diff[f"message_template_{key}"] = live
+                state = "drifted" if diff else "present"
+                override = diff or None
             writer.upsert(member_id, state, override)
             summary[state] += 1
 

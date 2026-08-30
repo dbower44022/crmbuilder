@@ -912,7 +912,17 @@ INSTANCE_MEMBERSHIP_STATES: frozenset[str] = frozenset(
 # The canonical design-object kinds a membership row can describe (DEC-433).
 # Extended by PI-193 (layout), PI-194 (role, team), PI-195 (filtered_tab).
 INSTANCE_MEMBERSHIP_MEMBER_TYPES: frozenset[str] = frozenset(
-    {"entity", "field", "association", "layout", "role", "team", "filtered_tab"}
+    {
+        "entity",
+        "field",
+        "association",
+        "layout",
+        "role",
+        "team",
+        "filtered_tab",
+        # PI-420 / REQ-124 — email templates audited per entity.
+        "message_template",
+    }
 )
 
 # ---------------------------------------------------------------------------

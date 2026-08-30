@@ -28,6 +28,7 @@ from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import filtered_tabs as filtered_tab_repo
 from crmbuilder_v2.access.repositories import instance_membership as membership_repo
 from crmbuilder_v2.access.repositories import layouts as layout_repo
+from crmbuilder_v2.access.repositories import message_template as message_template_repo
 from crmbuilder_v2.access.repositories import roles as role_repo
 from crmbuilder_v2.access.repositories import teams as team_repo
 
@@ -597,6 +598,12 @@ _MEMBER_SOURCES = (
         filtered_tab_repo.list_filtered_tabs,
         "filtered_tab_identifier",
         "filtered_tab_label",
+    ),
+    (
+        "message_template",
+        message_template_repo.list_message_templates,
+        "message_template_identifier",
+        "message_template_name",
     ),
 )
 
