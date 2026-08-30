@@ -12,6 +12,7 @@ from fastapi import APIRouter
 
 from crmbuilder_v2.access import skill_scan
 from crmbuilder_v2.access.engagement_scope import get_active_engagement
+from crmbuilder_v2.access.exceptions import FieldError, UnprocessableError
 from crmbuilder_v2.access.repositories import (
     agent_profile_bindings,
     agent_profiles,
@@ -265,11 +266,37 @@ def delete_skill(identifier: str):
 governance_rules_router = APIRouter(prefix="/governance-rules", tags=["governance_rules"])
 
 
+_RULE_RESOLUTIONS = ("raw", "effective")
+
+
 @governance_rules_router.get("")
 def list_governance_rules(
-    enforcement: str | None = None, status: str | None = None, scope: str | None = None
+    enforcement: str | None = None,
+    status: str | None = None,
+    scope: str | None = None,
+    resolution: str | None = None,
+    engagement: str | None = None,
 ):
+    """List governance rules.
+
+    ``resolution=raw`` (the default) lists stored rows, optionally filtered by
+    ``scope``. ``resolution=effective`` (REQ-530 / PI-435) returns the *effective*
+    active ruleset for an engagement — system defaults plus that engagement's
+    overlay, an engagement rule shadowing the system rule of the same
+    ``rule_type`` — for ``engagement`` when given, else the request's active
+    engagement (``X-Engagement``). ``status``/``scope`` do not apply to the
+    effective view (it is active-only by definition).
+    """
+    if resolution is not None and resolution not in _RULE_RESOLUTIONS:
+        raise UnprocessableError(
+            [FieldError("resolution", "invalid", f"resolution must be one of {list(_RULE_RESOLUTIONS)}")]
+        )
     with readonly_session() as s:
+        if resolution == "effective":
+            engagement_id = engagement or get_active_engagement()
+            return ok(governance_rules.list_effective(
+                s, engagement_id=engagement_id, enforcement=enforcement
+            ))
         return ok(governance_rules.list_all(s, enforcement=enforcement, status=status, scope=scope))
 
 

@@ -35,7 +35,7 @@ The V2 database is the **single source of truth** for governance rules, preferen
 
 **At session start (any V2 work), read from the DB:**
 1. Governance recording rules — topic **TOP-013** and its children (`GET /topics/TOP-013`, then the child topics).
-2. Active **governance_rules** (`GET /governance-rules?status=active`) — the binding operating rules migrated from this file.
+2. Active **governance_rules** (`GET /governance-rules?resolution=effective`) — the binding operating rules migrated from this file, resolved for the active engagement: system defaults plus that engagement's overrides, an engagement rule shadowing the system rule of the same `rule_type` (REQ-529..533 / DEC-955). `?status=active` alone lists stored rows without the override resolution.
 3. Active **preferences** (`GET /preferences?status=active`) — interaction/UI working style.
 4. The **reference_pointer** index (`GET /reference-pointers?status=active`) — servers, dashboards, docs, credential locations (CBM pointers are `scope=ENG-002`).
 5. **lessons** on demand (`GET /lessons`, filter by `category`/`signal`) when a task touches a known gotcha area.
@@ -95,7 +95,7 @@ v1 work continues normally — the deployment engine, methodology guides, and ex
 
 The binding operating rules and their procedural HOW-TO now live in the **database** (REL-039 SSoT), not here:
 
-- **Governance rules** (requirement-first / *governance is a precondition*, the `Governed-By` trailer gate, real-time recording, project-complete terminality, terminology governance, commit-with-pathspec, commit-under-parallel-orchestrators, approval-request structure, retain-not-delete): `GET /governance-rules?status=active`, and the canonical governance-recording corpus under topic **TOP-013** (`GET /topics/TOP-013` + its children TOP-076..086). The irreducible core is inlined in the **"Session bootstrap"** section above for cold-start degradation.
+- **Governance rules** (requirement-first / *governance is a precondition*, the `Governed-By` trailer gate, real-time recording, project-complete terminality, terminology governance, commit-with-pathspec, commit-under-parallel-orchestrators, approval-request structure, retain-not-delete): `GET /governance-rules?resolution=effective`, and the canonical governance-recording corpus under topic **TOP-013** (`GET /topics/TOP-013` + its children TOP-076..086). The irreducible core is inlined in the **"Session bootstrap"** section above for cold-start degradation.
 - **Procedural mechanics** (Model A branch-work protocol, the requirement-vs-bookkeeping two-whens, session open / scheduled-handoff / triple-artifact close-out, resolves-vs-addresses PI resolution, install-the-governance-gate, push convention): `GET /lessons?category=process`.
 
 Read those at session start (per the bootstrap protocol) before authoring governance records or starting a build.

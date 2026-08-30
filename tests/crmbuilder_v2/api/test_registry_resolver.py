@@ -157,7 +157,12 @@ def test_engagement_disable_suppresses_named_system_rule(client):
         json={"area": "access", "tier": "developer", "description": "Access dev."},
     ).json()["data"]["identifier"]
 
-    by_id = _rule(client, body="System rule, disabled by id.", scope="system")
+    # REQ-532 (PI-435): a default must be keyed before an override may target it
+    # by identifier, so the by-id target carries a rule_type of its own.
+    by_id = _rule(
+        client, body="System rule, disabled by id.",
+        rule_type="by_id_target", scope="system",
+    )
     by_type = _rule(
         client, body="System rule, disabled by type.",
         rule_type="long_sessions", scope="system",
