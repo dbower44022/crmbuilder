@@ -144,3 +144,45 @@ def test_an_unreadable_field_list_is_undescribed_rather_than_assumed():
     class _Broken:
         def get_entity_field_list(self, entity): return 403, None
     assert _parent_link_kinds(_Broken(), "Call", "parent", {}) is None
+
+
+# --- skipping must not read as absence (PI-414 — REQ-505 follow-up) ---------
+
+class _Writer:
+    """The sweep-relevant half of the membership writer."""
+
+    def __init__(self):
+        self.seen = set()
+        self.verdicts = {}
+
+    def upsert(self, mid, state, override=None):
+        self.verdicts[mid] = state
+        self.seen.add(mid)
+
+    def mark_seen(self, mid):
+        self.seen.add(mid)
+
+    def swept_absent(self, design_ids):
+        return {i for i in design_ids if i not in self.seen}
+
+
+def test_a_skipped_link_does_not_sweep_its_design_record_to_absent():
+    """The defect this guards: skipping a link-typed field means it never
+    reaches upsert, so a design record still describing that link as a field
+    falls out of the seen set and the sweep marks it absent — reporting the
+    instance as missing a field it actually has. Absence must only ever be a
+    positive observation; the design record is the wrong shape, which is a
+    different statement."""
+    w = _Writer()
+    w.mark_seen("FLD-223")                      # the link the reader skipped
+    w.upsert("FLD-100", "present")              # an ordinary field
+    assert w.swept_absent({"FLD-223", "FLD-100"}) == set()
+
+
+def test_mark_seen_records_no_verdict_of_its_own():
+    """It suppresses a false absent without inventing a fresh claim: the prior
+    verdict and its timestamp stand, which reads as an old reading rather than
+    as a new assertion about a field the design should not hold."""
+    w = _Writer()
+    w.mark_seen("FLD-223")
+    assert "FLD-223" not in w.verdicts

@@ -309,6 +309,20 @@ class _AreaMembershipWriter:
         )
         self._seen.add(member_identifier)
 
+    def mark_seen(self, member_identifier: str) -> None:
+        """Record a member as observed without writing a verdict for it.
+
+        For a design record the instance carries but this pass does not describe
+        — a link the design still holds as a field (DEC-932 / REQ-505). Absence
+        must only ever be a positive observation, and the instance does have the
+        thing; it is the design record that is the wrong shape. Sweeping it to
+        ``absent`` would report the instance as missing a field it has, which is
+        the confident wrong answer this work removes. Leaving the prior verdict
+        in place with its prior timestamp says "this reading is old" instead,
+        which is true.
+        """
+        self._seen.add(member_identifier)
+
     def sweep_absent(self) -> int:
         """Flag this area's rows not seen in this pass as ``absent``; return the count.
 
@@ -1060,15 +1074,22 @@ def _reconcile_fields_drift(
                     if espo_type in ESPO_LINK_TYPES_READ_AS_RELATIONSHIPS
                     else "links_not_yet_described"
                 )
+                skipped_name = strip_field_c_prefix(
+                    field_name, entity_is_native=is_native
+                )
                 summary.setdefault(bucket, []).append(
                     {
-                        "field": strip_field_c_prefix(
-                            field_name, entity_is_native=is_native
-                        ),
+                        "field": skipped_name,
                         "entity": scope_name,
                         "source_type": espo_type,
                     }
                 )
+                # A design record may still describe this link as a field. The
+                # instance carries it, so it must not be swept to absent — see
+                # ``mark_seen``.
+                stale = canon.get(_ci(skipped_name))
+                if stale is not None:
+                    writer.mark_seen(stale["field_identifier"])
                 continue
             summary["seen"] += 1
             neutral_field = strip_field_c_prefix(
@@ -1270,15 +1291,22 @@ def _reconcile_fields_candidate_gated(
                     if espo_type in ESPO_LINK_TYPES_READ_AS_RELATIONSHIPS
                     else "links_not_yet_described"
                 )
+                skipped_name = strip_field_c_prefix(
+                    field_name, entity_is_native=is_native
+                )
                 summary.setdefault(bucket, []).append(
                     {
-                        "field": strip_field_c_prefix(
-                            field_name, entity_is_native=is_native
-                        ),
+                        "field": skipped_name,
                         "entity": scope_name,
                         "source_type": espo_type,
                     }
                 )
+                # A design record may still describe this link as a field. The
+                # instance carries it, so it must not be swept to absent — see
+                # ``mark_seen``.
+                stale = canon_fields.get(_ci(skipped_name))
+                if stale is not None:
+                    writer.mark_seen(stale["field_identifier"])
                 continue
             summary["seen"] += 1
             seen_source_fields.add(field_name)
