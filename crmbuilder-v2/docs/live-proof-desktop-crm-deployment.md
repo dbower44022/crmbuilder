@@ -209,8 +209,10 @@ server) but cannot create the A record — exactly the failure run 2 needs.
 
 **Part 2 — decide the email address**
 
-Later, the deploy wizard has two boxes that ask for an email address. Decide
-now what you will type; nothing is set up, sent, or encrypted at this stage.
+Nothing to do here except decide. In section 3 (run 1) you will click
+**Instances → Deploy new…** in the CRMBuilder desktop app; the screens that
+open ask for an email address twice — on the *Domain* screen and on the
+*Accounts* screen. This is the address you will type there:
 
 - Box labelled **Let's Encrypt email** → type `doug@dougbower.com`.
   *(Let's Encrypt is the name of the free service that issues the website's
