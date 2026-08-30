@@ -161,10 +161,11 @@ def _deps(do=None, cf=None, ssh=None, **kw) -> RunnerDeps:
         holder["cf"] = cf or FakeCF(token)
         return holder["cf"]
 
+    resolve = kw.pop("resolve_a", lambda _d: {"203.0.113.7"})
     deps = RunnerDeps(
         do_client=do_factory, cf_client=cf_factory, ssh=ssh or FakeSSHModule(),
         sleep=lambda _s: None, keypair=lambda c: ("PRIVATE-PEM", f"ssh-ed25519 AAAA {c}"),
-        **kw,
+        resolve_a=resolve, **kw,
     )
     deps.holder = holder  # type: ignore[attr-defined]
     return deps
@@ -205,7 +206,7 @@ def test_happy_path_registers_instance_and_config(v2_env):
     assert run["instance_identifier"] == st["instance_identifier"]
 
     ssh = deps.ssh
-    assert ssh.calls == ["wait_for_dns", "connect", "server_prep", "connect", "install",
+    assert ssh.calls == ["connect", "server_prep", "connect", "install",
                          "connect", "post_install", "connect", "verify"]
     cfg = ssh.configs[0]
     assert cfg["ssh_host"] == "203.0.113.7" and cfg["ssh_auth_type"] == "key"
@@ -268,7 +269,7 @@ def test_retry_resumes_without_a_second_server(v2_env):
     assert do.created == 1  # no second server
     assert len(do.keys) == 1  # key registered once
     assert "server_prep" not in ssh.calls  # already done before the failure
-    assert ssh.calls[:2] == ["wait_for_dns", "connect"] and "install" in ssh.calls
+    assert ssh.calls[0] == "connect" and "install" in ssh.calls
     run = _run(ident)
     log_text = "\n".join(e[2] for e in run["deploy_run_log"])
     assert "Resuming deploy run" in log_text and "already complete, skipping" in log_text
@@ -321,3 +322,30 @@ def test_missing_provider_credential_fails_validate(v2_env):
     status = run_deploy(row["deploy_run_identifier"], engagement_id="ENG-001", worker_id="w1", deps=_deps())
     assert status == "failed"
     assert "no digitalocean credential" in _run(row["deploy_run_identifier"])["deploy_run_error"]
+
+
+def test_wait_dns_uses_public_resolvers_and_times_out_with_detail(v2_env):
+    """DEP-001 finding: the host resolver cached NXDOMAIN for 30 minutes while
+    public resolvers already had the record. The phase polls the injected
+    resolver until the IP appears, and names what it saw when it gives up."""
+    ident = _queue()
+    answers = iter([set(), {"198.51.100.9"}, {"198.51.100.9", "203.0.113.7"}])
+    seen = []
+
+    def resolve(domain):
+        seen.append(domain)
+        return next(answers)
+
+    status = run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=_deps(resolve_a=resolve))
+    assert status == "succeeded"
+    assert seen == ["crm.example.org"] * 3
+    log_text = "\n".join(e[2] for e in _run(ident)["deploy_run_log"])
+    assert "does not resolve yet" in log_text and "resolves to ['198.51.100.9']" in log_text
+    assert "resolves to 203.0.113.7 on public resolvers" in log_text
+
+    ident2 = _queue({**SPEC, "subdomain": "crm2", "domain": "crm2.example.org"})
+    clock = iter(range(0, 10_000, 200))
+    deps = _deps(resolve_a=lambda _d: set(), clock=lambda: next(clock))
+    assert run_deploy(ident2, engagement_id="ENG-001", worker_id="w1", deps=deps) == "failed"
+    err = _run(ident2)["deploy_run_error"]
+    assert "did not resolve to 203.0.113.7" in err and "returned nothing" in err

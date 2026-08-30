@@ -62,6 +62,39 @@ class CancelledRun(Exception):
     """Raised between phases when the operator asked the run to stop."""
 
 
+#: Resolvers asked when waiting for a new record. The host's own resolver is
+#: deliberately *not* used: the run's first check usually lands before the
+#: record has propagated, and a negative answer ("no such name") is then
+#: cached locally for the zone's negative TTL — Cloudflare's is 30 minutes —
+#: so every later check keeps failing long after the record is live
+#: (PI-419 live-proof finding, DEP-001). Public resolvers see the record
+#: within seconds of Cloudflare publishing it.
+PUBLIC_RESOLVERS: tuple[str, ...] = ("1.1.1.1", "8.8.8.8", "9.9.9.9")
+
+
+def resolve_a_public(name: str) -> set[str]:
+    """Return the A addresses for ``name`` as seen by the public resolvers.
+
+    Each resolver is asked independently with a short timeout; the union of
+    their answers is returned, so one lagging resolver cannot hold the run
+    back and one that has cached a negative answer cannot mask the others.
+    """
+    import dns.exception
+    import dns.resolver
+
+    found: set[str] = set()
+    for server in PUBLIC_RESOLVERS:
+        resolver = dns.resolver.Resolver(configure=False)
+        resolver.nameservers = [server]
+        resolver.lifetime = 5
+        try:
+            answer = resolver.resolve(name, "A")
+        except (dns.exception.DNSException, OSError):
+            continue
+        found.update(r.address for r in answer)
+    return found
+
+
 @dataclass
 class RunnerDeps:
     """Injectable collaborators (defaults are the real ones)."""
@@ -73,6 +106,8 @@ class RunnerDeps:
     resolve_secret: Callable[[str], str] = secrets.get_secret
     store_secret: Callable[[str], str] = secrets.put_secret
     keypair: Callable[[str], tuple[str, str]] = generate_keypair
+    #: Resolve a name to its A records — see :func:`resolve_a_public`.
+    resolve_a: Callable[[str], set[str]] = None  # type: ignore[assignment]
     sleep: Callable[[float], None] = time.sleep
     clock: Callable[[], float] = time.monotonic
     droplet_wait_seconds: int = 600
@@ -85,6 +120,8 @@ class RunnerDeps:
             from automation.core.deployment import ssh_deploy
 
             self.ssh = ssh_deploy
+        if self.resolve_a is None:
+            self.resolve_a = resolve_a_public
 
 
 @dataclass
@@ -366,18 +403,28 @@ def _phase_create_dns(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
 
 
 def _phase_wait_dns(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
-    ok = deps.ssh.wait_for_dns(
-        run.spec.domain,
-        run.state["droplet_ip"],
-        log,
-        timeout=deps.dns_wait_seconds,
-        interval=deps.dns_poll_seconds,
-    )
-    if not ok:
-        raise DeployPhaseError(
-            "wait_dns", f"{run.spec.domain} did not resolve to {run.state['droplet_ip']}"
-        )
-    return {}
+    """Wait until public resolvers return the server's IP for the domain.
+
+    Replaces the v1 ``wait_for_dns`` (which used the host resolver) for the
+    reason given at :data:`PUBLIC_RESOLVERS`.
+    """
+    domain, ip = run.spec.domain, run.state["droplet_ip"]
+    deadline = deps.clock() + deps.dns_wait_seconds
+    while True:
+        seen = deps.resolve_a(domain)
+        if ip in seen:
+            log(f"{domain} resolves to {ip} on public resolvers", "success")
+            return {}
+        remaining = int(deadline - deps.clock())
+        if remaining <= 0:
+            raise DeployPhaseError(
+                "wait_dns",
+                f"{domain} did not resolve to {ip} within {deps.dns_wait_seconds}s "
+                f"(public resolvers returned {sorted(seen) or 'nothing'})",
+            )
+        what = f"resolves to {sorted(seen)}" if seen else "does not resolve yet"
+        log(f"DNS not ready: {domain} {what}. Retrying in {deps.dns_poll_seconds}s ({remaining}s remaining)…", "info")
+        deps.sleep(deps.dns_poll_seconds)
 
 
 def _ssh_config(run: _Run, key_path: str):
