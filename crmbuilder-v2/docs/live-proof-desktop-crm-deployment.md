@@ -264,15 +264,39 @@ instances.
 
 ## 2. Store the provider credentials
 
-1. Sidebar **Instances → Deploy new…**. Step 1 shows both providers as *Not set*.
-2. **Set credentials…** — paste the DigitalOcean token (label `CRMBuilder DO`)
-   → **Save token**; paste Cloudflare **token A** (label `Zone A – full`) →
-   **Save token**. Both rows turn green *✓ Configured*. **Close**.
-3. Back in the wizard, both providers now read *✓ Configured* and the server
-   catalog loads (Step 2's region list fills in).
+You do this once, in the CRMBuilder desktop window that section 1 opened.
+Have the password manager open with the two tokens from 0.2 and 0.4.
 
-**Check:** the token fields are empty again and nothing on screen shows the
-token — only "configured".
+1. In the desktop's left sidebar, under **Governance**, click **Instances**.
+2. At the top of the Instances panel click the **Deploy new…** button. A
+   window titled *Deploy a new CRM instance* opens on *Step 1 of 5 —
+   Providers*. Both lines read **Not set**.
+3. Click **Set credentials…**. A second window, *Provider credentials*,
+   opens with two boxes: **DigitalOcean** on top, **Cloudflare** below. Each
+   box has a *Token* field, a *Label* field, a **Remove** button and a
+   **Save token** button.
+4. In the **DigitalOcean** box:
+   - click in *Token* and paste the DigitalOcean token (`dop_v1_…`);
+   - click in *Label* and type `CRMBuilder DO`;
+   - click **Save token**.
+   The line above the fields changes to green **✓ Configured — CRMBuilder
+   DO** and the *Token* field empties itself. If an error window appears
+   instead, read its message and tell me.
+5. In the **Cloudflare** box:
+   - click in *Token* and paste Cloudflare **token A** (the full one);
+   - click in *Label* and type `Zone A – full`;
+   - click **Save token**.
+   The line changes to green **✓ Configured — Zone A – full**.
+6. Click **Close**. You are back on *Step 1 of 5 — Providers*; both lines
+   now read **✓ Configured**. A moment later the wizard fetches the
+   DigitalOcean catalog in the background — nothing visible happens on this
+   step, but Step 2's region list will already be filled when you get there.
+
+Leave the wizard open; section 3 continues in it.
+
+**What you have proved:** the desktop can save a token without ever showing
+it again — the fields are blank, the lines only say *Configured*, and the
+token is stored encrypted by the service.
 
 ---
 
