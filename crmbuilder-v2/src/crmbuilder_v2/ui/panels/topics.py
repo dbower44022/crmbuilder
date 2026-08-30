@@ -136,6 +136,10 @@ class TopicsPanel(ListDetailPanel):
     # toolbar search — which re-filters _RecordTableModel rows — does not
     # apply here. Topic filtering would need a tree-aware pass; out of scope.
     _search_enabled = False
+    # REQ-528 (PI-434): the topics tree is a single-column hierarchy, not
+    # a flat grid — the generic column-value filter selector and header
+    # sort do not apply.
+    _column_filter_enabled = False
 
     # v0.6 slice B (DEC-093): use the tree-aware master-pane delegate
     # so chevron painting (drawBranches override on the tree view)

@@ -8,6 +8,9 @@ the navigation router to jump to a row). Slice E adds the
 ``_has_detail_pane`` class flag (for list-only panels like References),
 the ``_filter_strip_widget`` hook (for filter dropdowns above the
 table), and the ``_post_process_records`` hook (for synthetic columns).
+REQ-528 (PI-434) adds header-click column sorting and a generic
+column-value filter selector rendered by the default
+``_filter_strip_widget``.
 
 Per PRD §4.5 every entity panel uses a master/detail layout — list of
 records on the left, detail of the selected record on the right. This
@@ -31,12 +34,14 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cmp_to_key
 from typing import Any, ClassVar
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QPoint, Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -57,6 +62,7 @@ from crmbuilder_v2.ui.exceptions import (
 from crmbuilder_v2.ui.widgets.form_helpers import icon_button
 from crmbuilder_v2.ui.widgets.link_filter_input import LinkFilterInput
 from crmbuilder_v2.ui.widgets.master_pane_delegate import MasterPaneDelegate
+from crmbuilder_v2.ui.widgets.multi_sort_proxy import compare_values
 from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.list_detail_panel")
@@ -71,6 +77,8 @@ _INITIAL_DETAIL_WIDTH = 550
 _SPLITTER_HANDLE_WIDTH = 12
 # Outer panel padding per design pass §2.2 (space.4 = 16px).
 _PANEL_OUTER_PADDING = 16
+# REQ-528 (PI-434): sentinel first entry of the filter-value dropdown.
+_FILTER_ALL = "All"
 
 
 @dataclass(frozen=True)
@@ -196,6 +204,14 @@ class ListDetailPanel(QWidget):
     # that already carry their own filter strip (ReferencesPanel) set ``False``.
     _search_enabled: ClassVar[bool] = True
 
+    # REQ-528 (PI-434): the generic filter selector (column picker +
+    # distinct-value dropdown) rendered by the default
+    # ``_filter_strip_widget``. On by default for every table-backed panel;
+    # the tree-backed TopicsPanel opts out (a single-column hierarchy has no
+    # flat rows to filter). Panels that override ``_filter_strip_widget``
+    # (References, Commits) replace the generic strip with their own.
+    _column_filter_enabled: ClassVar[bool] = True
+
     # v0.6 slice B: master-pane delegate (DEC-093). Default is the
     # shared :class:`MasterPaneDelegate`; the Topics panel overrides
     # to :class:`MasterPaneTreeDelegate`. Centralized registration in
@@ -216,6 +232,14 @@ class ListDetailPanel(QWidget):
         self._all_records: list[dict[str, Any]] = []
         self._search_text: str = ""
         self._search_input: LinkFilterInput | None = None
+        # REQ-528 (PI-434): generic column-value filter + header-click sort
+        # state. The combos are created in ``_filter_strip_widget`` (which
+        # runs during ``_build_ui``), so initialize first.
+        self._filter_column_combo: QComboBox | None = None
+        self._filter_value_combo: QComboBox | None = None
+        self._column_filter_value: str | None = None
+        self._sort_column: int | None = None
+        self._sort_order: Qt.SortOrder = Qt.SortOrder.AscendingOrder
         self._refresh_counter = 0
         self._detail_counter = 0
         self._in_flight_workers: list[Any] = []
@@ -267,12 +291,46 @@ class ListDetailPanel(QWidget):
     def _filter_strip_widget(self) -> QWidget | None:
         """Return an optional widget shown between the toolbar and the table.
 
-        Default ``None`` (no filter strip). Subclasses with a list-only
-        layout (``_has_detail_pane = False``) can override this to add
-        filter dropdowns above the table. The hook is also available for
-        master/detail layouts but the typical usage is list-only panels.
+        Default (REQ-528 / PI-434): a generic filter selector — a column
+        picker plus a distinct-value dropdown — left-aligned above the
+        grid header. Choosing a value narrows the list to rows matching it
+        in the chosen column; ``All`` restores every row. Composes with
+        the REQ-135 toolbar search by AND (see ``_filtered_records``).
+        Subclasses may override to provide bespoke strips (References,
+        Commits) or return ``None``; panels with no flat row set opt out
+        via ``_column_filter_enabled``.
         """
-        return None
+        if not self._column_filter_enabled:
+            return None
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+
+        layout.addWidget(QLabel("Filter:"))
+        self._filter_column_combo = QComboBox()
+        self._filter_column_combo.setObjectName("grid_filter_column_combo")
+        for spec in self.list_columns():
+            self._filter_column_combo.addItem(spec.title, spec.field)
+        layout.addWidget(self._filter_column_combo)
+
+        self._filter_value_combo = QComboBox()
+        self._filter_value_combo.setObjectName("grid_filter_value_combo")
+        self._filter_value_combo.addItem(_FILTER_ALL)
+        layout.addWidget(self._filter_value_combo)
+
+        # Connect AFTER populating: the first ``addItem`` on an empty combo
+        # emits ``currentIndexChanged`` (-1 → 0), which must not fire the
+        # apply path while ``_build_ui`` is still mid-construction.
+        self._filter_column_combo.currentIndexChanged.connect(
+            self._on_filter_column_changed
+        )
+        self._filter_value_combo.currentIndexChanged.connect(
+            self._on_filter_value_changed
+        )
+
+        layout.addStretch(1)
+        return container
 
     def _strikethrough_for_record(self, record: dict[str, Any]) -> bool:
         """Return True if this record should render with strikethrough.
@@ -329,12 +387,23 @@ class ListDetailPanel(QWidget):
         concatenated visible-column values. An empty query returns the
         full set.
         """
+        records = list(self._all_records)
+        # REQ-528 (PI-434): the column-value filter selector narrows first.
+        if self._filter_column_combo is not None:
+            field = self._filter_column_combo.currentData()
+            value = self._column_filter_value
+            if field and value is not None:
+                records = [
+                    r
+                    for r in records
+                    if r.get(field) is not None and str(r.get(field)) == value
+                ]
         query = self._search_text.strip().lower()
         if not query:
-            return list(self._all_records)
+            return records
         fields = [spec.field for spec in self.list_columns()]
         matched: list[dict[str, Any]] = []
-        for record in self._all_records:
+        for record in records:
             haystack = " ".join(
                 str(record.get(field) or "") for field in fields
             ).lower()
@@ -345,22 +414,14 @@ class ListDetailPanel(QWidget):
     def _update_count_status(self) -> None:
         total = len(self._all_records)
         shown = len(self._records)
-        if self._search_text.strip() and shown != total:
+        if shown != total:
             self._status_label.setText(f"{shown} of {total} records")
         else:
             self._status_label.setText(f"{total} records")
 
     def _on_search_changed(self, text: str) -> None:
         self._search_text = text
-        prior_selected_id = self._currently_selected_identifier()
-        self._records = self._filtered_records()
-        self._model.set_records(self._records)
-        self._update_count_status()
-        if prior_selected_id is not None and self._select_by_identifier(
-            prior_selected_id
-        ):
-            return
-        self._show_empty_detail()
+        self._reapply_view()
 
     def _clear_search(self) -> None:
         """Reset the search box and restore the full list (no debounce)."""
@@ -369,10 +430,127 @@ class ListDetailPanel(QWidget):
             self._search_input.blockSignals(True)
             self._search_input.clear()
             self._search_input.blockSignals(False)
-        self._records = self._filtered_records()
+        self._records = self._display_records()
         if hasattr(self._model, "set_records"):
             self._model.set_records(self._records)
         self._update_count_status()
+
+    # ------------------------------------------------------------------
+    # Column-value filter + header-click sort (REQ-528 / PI-434)
+    # ------------------------------------------------------------------
+
+    def _on_filter_column_changed(self, _index: int) -> None:
+        """A new filter column resets the value to ``All`` and repopulates
+        the value dropdown with that column's distinct values."""
+        self._column_filter_value = None
+        self._refresh_filter_value_options()
+        self._reapply_view()
+
+    def _on_filter_value_changed(self, _index: int) -> None:
+        combo = self._filter_value_combo
+        if combo is None:
+            return
+        text = combo.currentText()
+        self._column_filter_value = None if text == _FILTER_ALL else text
+        self._reapply_view()
+
+    def _refresh_filter_value_options(self) -> None:
+        """Repopulate the value dropdown with the distinct display values
+        of the selected filter column, preserving the current selection
+        when it survives (the Commits combo-preservation pattern). No-op
+        for panels without the generic strip.
+        """
+        combo = self._filter_value_combo
+        column_combo = self._filter_column_combo
+        if combo is None or column_combo is None:
+            return
+        field = column_combo.currentData()
+        values: list[str] = []
+        if field:
+            values = sorted(
+                {
+                    str(r.get(field))
+                    for r in self._all_records
+                    if r.get(field) not in (None, "")
+                },
+                key=str.lower,
+            )
+        previous = (
+            self._column_filter_value
+            if self._column_filter_value is not None
+            else _FILTER_ALL
+        )
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem(_FILTER_ALL)
+        for value in values:
+            combo.addItem(value)
+        index = combo.findText(previous)
+        combo.setCurrentIndex(index if index >= 0 else 0)
+        combo.blockSignals(False)
+        if index < 0:
+            self._column_filter_value = None
+
+    def _on_header_section_clicked(self, column: int) -> None:
+        """Sort by ``column`` ascending; a second click on the same column
+        toggles descending. The Qt sort indicator tracks the active key."""
+        if self._sort_column == column:
+            self._sort_order = (
+                Qt.SortOrder.DescendingOrder
+                if self._sort_order == Qt.SortOrder.AscendingOrder
+                else Qt.SortOrder.AscendingOrder
+            )
+        else:
+            self._sort_column = column
+            self._sort_order = Qt.SortOrder.AscendingOrder
+        header = self._master_view.horizontalHeader()
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(column, self._sort_order)
+        self._reapply_view()
+
+    def _sorted_records(
+        self, records: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Apply the active header sort; no active sort keeps source order.
+
+        The sort happens on the panel's record list *before* the model
+        reset — never via ``setSortingEnabled``/``model.sort`` — so the
+        row→record mapping (``record_at``, selection preservation,
+        ``_select_by_identifier``) stays intact. Comparison reuses the
+        shared :func:`compare_values` (``None`` last, case-insensitive).
+        """
+        column = self._sort_column
+        columns = self.list_columns()
+        if column is None or not 0 <= column < len(columns):
+            return records
+        field = columns[column].field
+        ordered = sorted(
+            records,
+            key=cmp_to_key(
+                lambda a, b: compare_values(a.get(field), b.get(field))
+            ),
+        )
+        if self._sort_order == Qt.SortOrder.DescendingOrder:
+            ordered.reverse()
+        return ordered
+
+    def _display_records(self) -> list[dict[str, Any]]:
+        """The displayed row set: filters (column value + search), then sort."""
+        return self._sorted_records(self._filtered_records())
+
+    def _reapply_view(self) -> None:
+        """Re-derive the displayed rows from ``_all_records``, preserving
+        the selection when its row survives the filter/sort change."""
+        prior_selected_id = self._currently_selected_identifier()
+        self._records = self._display_records()
+        if hasattr(self._model, "set_records"):
+            self._model.set_records(self._records)
+        self._update_count_status()
+        if prior_selected_id is not None and self._select_by_identifier(
+            prior_selected_id
+        ):
+            return
+        self._show_empty_detail()
 
     def set_enabled_state(self, enabled: bool) -> None:
         """Enable/disable the entire panel surface.
@@ -616,6 +794,15 @@ class ListDetailPanel(QWidget):
             for col_idx, spec in enumerate(columns):
                 if spec.width is not None:
                     self._master_view.setColumnWidth(col_idx, spec.width)
+            # REQ-528 (PI-434): header-click sorting. Clicks route through
+            # the panel — not ``setSortingEnabled``, which would ask the
+            # model itself to sort and break the row→record mapping — and
+            # the sort is applied to ``self._records`` before each model
+            # reset. Panels that pre-install their own model (Topics tree)
+            # or replace the header (References) are unaffected.
+            header = self._master_view.horizontalHeader()
+            header.setSectionsClickable(True)
+            header.sectionClicked.connect(self._on_header_section_clicked)
         else:
             self._model = self._master_view.model()
         # Wire selection AFTER model is set so currentChanged fires.
@@ -749,7 +936,10 @@ class ListDetailPanel(QWidget):
         raw = list(result) if isinstance(result, list) else []
         # REQ-135 (PI-176): keep the full set; display the search-filtered view.
         self._all_records = self._post_process_records(raw)
-        self._records = self._filtered_records()
+        # REQ-528 (PI-434): sync the filter-value dropdown with the fresh
+        # rows before deriving the displayed (filtered + sorted) view.
+        self._refresh_filter_value_options()
+        self._records = self._display_records()
         self._model.set_records(self._records)
         # Header sizing: stretch the last column; the rest use the spec width
         # or resize to contents.

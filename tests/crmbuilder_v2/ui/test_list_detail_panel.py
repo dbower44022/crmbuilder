@@ -330,3 +330,129 @@ def test_select_record_by_identifier_pre_refresh_triggers_fetch_and_selects(
     assert panel._pending_select_identifier is None
     # Drain the detail-extras worker triggered by the selection.
     qtbot.waitUntil(lambda: len(panel.rendered_calls) >= 1, timeout=2000)
+
+
+# ----------------------------------------------------------------------
+# REQ-528 (PI-434): header-click sorting + generic filter selector
+# ----------------------------------------------------------------------
+
+_GRID_RECORDS = [
+    {"identifier": "DEC-002", "title": "banana", "status": "draft"},
+    {"identifier": "DEC-001", "title": "Apple", "status": "active"},
+    {"identifier": "DEC-003", "title": "cherry", "status": "active"},
+]
+
+_GRID_COLUMNS = [
+    ColumnSpec(field="identifier", title="ID", width=80),
+    ColumnSpec(field="title", title="Title"),
+    ColumnSpec(field="status", title="Status", width=80),
+]
+
+
+def _loaded_panel(qtbot, records=None):
+    rows = records if records is not None else _GRID_RECORDS
+    panel = _FakePanel(
+        fetch_impl=lambda: list(rows), columns=list(_GRID_COLUMNS)
+    )
+    qtbot.addWidget(panel)
+    panel.refresh()
+    qtbot.waitUntil(
+        lambda: panel._model.rowCount() == len(rows), timeout=2000
+    )
+    return panel
+
+
+def _column_values(panel, col):
+    return [
+        panel._model.data(panel._model.index(row, col))
+        for row in range(panel._model.rowCount())
+    ]
+
+
+def test_header_sections_are_clickable(qapp, qtbot):
+    panel = _loaded_panel(qtbot)
+    assert panel._table.horizontalHeader().sectionsClickable()
+
+
+def test_header_click_sorts_ascending_then_descending(qapp, qtbot):
+    panel = _loaded_panel(qtbot)
+    panel._on_header_section_clicked(1)
+    # Case-insensitive, per the shared compare_values comparator.
+    assert _column_values(panel, 1) == ["Apple", "banana", "cherry"]
+    header = panel._table.horizontalHeader()
+    assert header.isSortIndicatorShown()
+    assert header.sortIndicatorSection() == 1
+    panel._on_header_section_clicked(1)
+    assert _column_values(panel, 1) == ["cherry", "banana", "Apple"]
+
+
+def test_sort_preserves_selection_and_survives_refresh(qapp, qtbot):
+    panel = _loaded_panel(qtbot)
+    assert panel._select_by_identifier("DEC-001")
+    panel._on_header_section_clicked(0)
+    # Selection follows the record to its new row.
+    assert panel._currently_selected_identifier() == "DEC-001"
+    assert _column_values(panel, 0) == ["DEC-001", "DEC-002", "DEC-003"]
+    panel.refresh()
+    qtbot.waitUntil(
+        lambda: _column_values(panel, 0)
+        == ["DEC-001", "DEC-002", "DEC-003"],
+        timeout=2000,
+    )
+
+
+def test_filter_strip_lists_columns(qapp, qtbot):
+    panel = _loaded_panel(qtbot)
+    combo = panel._filter_column_combo
+    assert combo is not None
+    titles = [combo.itemText(i) for i in range(combo.count())]
+    assert titles == ["ID", "Title", "Status"]
+
+
+def test_filter_selector_narrows_and_restores(qapp, qtbot):
+    panel = _loaded_panel(qtbot)
+    panel._filter_column_combo.setCurrentIndex(2)  # Status
+    values = [
+        panel._filter_value_combo.itemText(i)
+        for i in range(panel._filter_value_combo.count())
+    ]
+    assert values == ["All", "active", "draft"]
+    panel._filter_value_combo.setCurrentText("active")
+    assert panel._model.rowCount() == 2
+    assert panel._status_label.text() == "2 of 3 records"
+    panel._filter_value_combo.setCurrentText("All")
+    assert panel._model.rowCount() == 3
+    assert panel._status_label.text() == "3 records"
+
+
+def test_filter_composes_with_search_and_sort(qapp, qtbot):
+    panel = _loaded_panel(qtbot)
+    panel._filter_column_combo.setCurrentIndex(2)
+    panel._filter_value_combo.setCurrentText("active")
+    panel._on_header_section_clicked(1)
+    assert _column_values(panel, 1) == ["Apple", "cherry"]
+    panel._on_search_changed("cherry")
+    assert _column_values(panel, 1) == ["cherry"]
+    assert panel._status_label.text() == "1 of 3 records"
+    panel._on_search_changed("")
+    assert panel._model.rowCount() == 2
+
+
+def test_filter_selection_preserved_across_refresh(qapp, qtbot):
+    panel = _loaded_panel(qtbot)
+    panel._filter_column_combo.setCurrentIndex(2)
+    panel._filter_value_combo.setCurrentText("active")
+    assert panel._model.rowCount() == 2
+    panel.refresh()
+    qtbot.waitUntil(
+        lambda: panel._status_label.text() == "2 of 3 records",
+        timeout=2000,
+    )
+    assert panel._filter_value_combo.currentText() == "active"
+    assert panel._model.rowCount() == 2
+
+
+def test_topics_tree_opts_out_of_column_filter():
+    from crmbuilder_v2.ui.panels.topics import TopicsPanel
+
+    assert TopicsPanel._column_filter_enabled is False
