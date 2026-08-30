@@ -653,3 +653,29 @@ production rollout (`scripts/deploy-production.sh`, your step) follows.
 | *Waiting for DNS* runs the full 10 minutes and fails | The record exists but your resolver has not caught up; **Retry** — nothing is recreated. |
 | Fails at *Installing CRM* | Read the installer's last lines in the log; retry re-runs the installer on the same server. |
 | A run refuses `…crmbuilder.ai` | Intended: the production host is protected (DEC-946). Use your own zone. |
+
+---
+
+## 8. Results — proof executed 2026-08-30
+
+| Run | What it proved | Outcome |
+|---|---|---|
+| DEP-001 · `proof-1` | Clean end-to-end deploy | **Pass.** Server + DNS-only record + certificate (to 2026-11-28) + install + all 7 verifications; INST-001 registered; browser login and a full audit (13 entities, 274 fields, 71 relationships, 130 layouts) succeeded with the stored credential. |
+| DEP-002 · `proof-2` | Failure keeps everything; Retry resumes | **Pass.** Failed after the server existed; server and state kept; Retry resumed and completed with no second server. |
+| DEP-003 · `proof-3` | — | Abandoned: the proof encryption key was lost with a closed terminal. Its server was cleaned up; the lesson (key lives in a file) is baked into section 1. |
+| DEP-004 · `proof-4` | A restarted service resumes an interrupted install | **Pass.** App killed during *Installing CRM*; the relaunched service reclaimed the run within minutes and completed it on the same server; INST-003 registered; login confirmed; exactly four droplets existed at the end. |
+
+**Defects found by the proof and fixed with regression tests during it** —
+SQLite secret-store deadlock on save (`dcc1fb3f`) and on read/audit
+(`4c4132cc`); DNS wait trusted the host resolver and stalled on a 30-minute
+negative cache (`fe69df22`); apt collided with a fresh droplet's first-boot
+upgrade lock (`fc51acab`).
+
+**Open follow-ups, minor** — the run log's 2,000-line cap is exhausted by
+installer output and drops early evidence; certificate expiry is not recorded
+on the instance; a progress window keeps the desktop app alive on close; a
+fresh checkout installs a breaking `mcp` 2.x (`pyproject` needs `mcp<2`; the
+lock file is untracked); the provider-credential status can read *Configured*
+for a secret that no longer decrypts until it is used.
+
+Ratified by DEC-956. All proof infrastructure destroyed per section 6.
