@@ -1276,6 +1276,21 @@ def _reconcile_fields_drift(
                     extra["format"] = audited["field_format"]
                 if audited["field_numeric_scale"] is not None:
                     extra["numeric_scale"] = audited["field_numeric_scale"]
+                # PI-430 / REQ-501: the remaining qualifying properties — how
+                # many values a field holds, how it is shown, whether its values
+                # are open or fixed, who supplies them — and read-only. Without
+                # ``holds`` a discovered multi-value pick-list was stored, and
+                # would publish, as a single enum (PI-428 live parity finding G2).
+                for prop in ("display", "values", "holds", "supplied_by"):
+                    if audited.get(f"field_{prop}") is not None:
+                        extra[prop] = audited[f"field_{prop}"]
+                if audited["field_read_only"]:
+                    extra["read_only"] = True
+                # ... and a choice field's discovered option set (REQ-442): a
+                # choice created with no values would drift against its own
+                # instance on the very next audit.
+                if audited.get("field_options"):
+                    extra["options"] = audited["field_options"]
                 if built_in:
                     extra["built_in"] = True
                 origin = "Built-in field" if built_in else "Discovered"

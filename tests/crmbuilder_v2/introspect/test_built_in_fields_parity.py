@@ -135,3 +135,23 @@ def test_layout_only_native_entity_becomes_canonical(v2_env):
         assert reconcile_layouts(s, instance_identifier=iid, client=client)["created"] == 1
         assert layout_repo.list_layouts(s)[0]["layout_type"] == "detail"
 
+
+def test_discovered_field_keeps_its_qualifying_properties(v2_env):
+    """PI-430 / REQ-501: a multi-value pick-list reads back as one."""
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {"CEngagement": {"entity": True, "customizable": True, "isCustom": True}},
+            fields={"CEngagement": {
+                "focusAreas": {"type": "multiEnum", "options": ["a", "b"], "isCustom": True},
+                "stage": {"type": "enum", "options": ["x"], "readOnly": True, "isCustom": True},
+                "site": {"type": "url", "isCustom": True},
+            }},
+        )
+        reconcile_fields(s, instance_identifier=iid, client=client)
+        by = {f["field_name"]: f for f in field_repo.list_fields(s)}
+        assert by["focusAreas"]["field_type"] == "enum" and by["focusAreas"]["field_holds"] == "several"
+        assert by["stage"]["field_holds"] == "one" and by["stage"]["field_read_only"] is True
+        assert by["site"]["field_format"] == "url"
+        # A re-audit of the unchanged instance is not drift.
+        assert reconcile_fields(s, instance_identifier=iid, client=client)["drifted"] == 0
