@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.exceptions import StorageClientError, StorageConnectionError
 from crmbuilder_v2.ui.widgets.form_helpers import destructive_button, primary_button
-from crmbuilder_v2.ui.workers import run_in_thread
+from crmbuilder_v2.ui.workers import drain_workers, run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.dialogs.provider_credentials_dialog")
 
@@ -199,6 +199,11 @@ class ProviderCredentialsDialog(QDialog):
         row.label.clear()
         row.show_status(None)
         self.changed.emit()
+
+    def done(self, result: int) -> None:  # noqa: D401 - Qt override
+        """Finish the in-flight workers before the dialog is torn down."""
+        drain_workers(self._in_flight)
+        super().done(result)
 
     # -- errors -----------------------------------------------------------
 

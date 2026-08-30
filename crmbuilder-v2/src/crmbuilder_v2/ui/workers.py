@@ -101,3 +101,21 @@ def run_in_thread(
     worker.finished.connect(worker.deleteLater)
     worker.start()
     return worker
+
+
+def drain_workers(workers: list, timeout_ms: int = 5000) -> None:
+    """Block until every worker in ``workers`` has finished, then clear the list.
+
+    A dialog that owns in-flight :class:`Worker` threads must not be destroyed
+    while one is still running (Qt aborts the process on a QThread destroyed
+    mid-run), so dialogs call this from ``done()`` before they close. Workers
+    that already finished have been ``deleteLater``'d and raise ``RuntimeError``
+    on access; those are simply skipped.
+    """
+    for worker in list(workers):
+        try:
+            if worker.isRunning():
+                worker.wait(timeout_ms)
+        except RuntimeError:  # C++ object already deleted after finishing
+            continue
+    workers.clear()

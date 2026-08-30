@@ -36,6 +36,10 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
 from crmbuilder_v2.ui.dialogs.audit_progress_dialog import AuditProgressDialog
+from crmbuilder_v2.ui.dialogs.deploy_progress_dialog import (
+    DeployProgressDialog,
+)
+from crmbuilder_v2.ui.dialogs.deploy_wizard_dialog import DeployWizardDialog
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
 from crmbuilder_v2.ui.dialogs.instance_crud import (
     InstanceCreateDialog,
@@ -114,6 +118,13 @@ class InstancesPanel(ListDetailPanel):
         self._new_button.setObjectName("new_instance_button")
         self._new_button.clicked.connect(self._on_new_clicked)
         self._action_layout.addWidget(self._new_button)
+        # PI-419 (REQ-522): provision a brand-new instance through the service.
+        # Shown to everyone (the no-hidden-buttons rule); a non-administrator gets
+        # the server's 403 explained on click rather than a missing button.
+        self._deploy_button = QPushButton("Deploy new…")
+        self._deploy_button.setObjectName("deploy_new_instance_button")
+        self._deploy_button.clicked.connect(self._on_deploy_new_clicked)
+        self._action_layout.addWidget(self._deploy_button)
 
     # ------------------------------------------------------------------
     # ListDetailPanel hooks
@@ -418,6 +429,33 @@ class InstancesPanel(ListDetailPanel):
     # ------------------------------------------------------------------
     # Write-surface click handlers
     # ------------------------------------------------------------------
+
+    def _on_deploy_new_clicked(self) -> None:
+        """Run the deploy wizard; on queue, follow the run in the progress dialog."""
+        wizard = DeployWizardDialog(self._client, parent=self)
+        wizard.connection_lost.connect(self.connection_lost)
+        queued: list[str] = []
+        wizard.run_queued.connect(queued.append)
+        try:
+            wizard.exec()
+        finally:
+            wizard.deleteLater()
+        if queued:
+            self.open_deploy_progress(queued[0])
+
+    def open_deploy_progress(self, identifier: str) -> None:
+        """Follow deploy run ``identifier``; select the instance it registers."""
+        dialog = DeployProgressDialog(self._client, identifier, parent=self)
+        dialog.connection_lost.connect(self.connection_lost)
+        created: list[str] = []
+        dialog.instance_created.connect(created.append)
+        try:
+            dialog.exec()
+        finally:
+            dialog.deleteLater()
+        self.refresh()
+        if created:
+            self.select_record_by_identifier(created[0])
 
     def _on_new_clicked(self) -> None:
         dialog = InstanceCreateDialog(self._client, self)
