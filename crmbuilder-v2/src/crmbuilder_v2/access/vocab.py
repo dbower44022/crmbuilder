@@ -586,6 +586,13 @@ SERVICE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 # Engine-neutral cardinality of one ``association`` (PI-189). Maps to the
 # EspoCRM relationship ``type`` (``oneToOne`` / ``oneToMany`` /
 # ``manyToMany``) and a HubSpot association cardinality.
+#: PI-406 (REQ-485 / DEC-918). The standard four-status propose-verify
+#: lifecycle, as ``entity`` and ``association`` carry — a governed setting is
+#: proposed, confirmed, deferred or rejected like any other design record.
+SYSTEM_SETTING_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
 ASSOCIATION_CARDINALITIES: frozenset[str] = frozenset(
     {"one_to_one", "one_to_many", "many_to_many", "many_to_one"}
 )
@@ -2040,6 +2047,8 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "team",
         # PI-195 (PRJ-027) net-new filtered-tab design family (FTB-).
         "filtered_tab",
+        # PI-406 (REQ-485 / DEC-918) net-new governed-setting family (SET-).
+        "system_setting",
         # PI-051 (REQ-128 / REQ-129) the two security design families: one
         # unconditional (role × target_field) permission-level declaration
         # (FPR-) and one atomic (role, field) -> visible? decision (FVR-).

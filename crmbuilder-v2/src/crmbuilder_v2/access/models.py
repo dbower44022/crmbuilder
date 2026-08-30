@@ -161,6 +161,7 @@ from crmbuilder_v2.access.vocab import (
     SOURCE_MAPPING_STALE_REASONS,
     SOURCE_MAPPING_STALE_SEVERITIES,
     SOURCE_MAPPING_STATUSES,
+    SYSTEM_SETTING_STATUSES,
     TARGET_ENGINES,
     TASK_TRANSITION_OUTCOMES,
     TASK_TRANSITION_STATUSES,
@@ -2027,6 +2028,127 @@ class Association(EngagementScopedPKMixin, Base):
         ),
         Index(
             "ix_associations_association_deleted_at", "association_deleted_at"
+        ),
+    )
+
+
+class SystemSetting(EngagementScopedPKMixin, Base):
+    """One CRM system setting the design governs (``SET-NNN``) — REQ-485 / DEC-918.
+
+    The single construct whose value is per instance. Every other design record
+    describes something every instance must hold identically; a system setting
+    describes something every instance must *have*, while what it holds is that
+    instance's own — an outbound email address is not drift, it is Cleveland's.
+
+    This row is the governed declaration: which setting, what shape its value
+    takes, and whether the design has confirmed it. The values live in
+    :class:`SystemSettingValue`, one per instance. A setting the design does not
+    name is not reported at all (REQ-485), so this table is also the definition
+    of what reconcile looks at.
+
+    ``system_setting_key`` is the name the CRM itself uses, so the applier and
+    the reader can find it without a mapping table.
+    ``system_setting_value_type`` reuses ``FIELD_TYPES`` rather than inventing a
+    parallel vocabulary: PI-414 made that vocabulary able to describe any value
+    a CRM can hold, and a setting's value is such a value.
+    """
+
+    __tablename__ = "system_settings"
+
+    system_setting_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    system_setting_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    system_setting_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    system_setting_value_type: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    system_setting_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    system_setting_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    system_setting_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    system_setting_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    system_setting_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+    system_setting_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("system_setting_identifier", ["SET"]),
+            name="ck_system_setting_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("system_setting_value_type", FIELD_TYPES),
+            name="ck_system_setting_value_type",
+        ),
+        CheckConstraint(
+            _check_in("system_setting_status", SYSTEM_SETTING_STATUSES),
+            name="ck_system_setting_status",
+        ),
+        UniqueConstraint(
+            "engagement_id", "system_setting_key", name="uq_system_setting_key"
+        ),
+        Index("ix_system_settings_system_setting_status", "system_setting_status"),
+        Index(
+            "ix_system_settings_system_setting_deleted_at",
+            "system_setting_deleted_at",
+        ),
+    )
+
+
+class SystemSettingValue(EngagementScopedMixin, Base):
+    """The value one instance is declared to hold for one governed setting.
+
+    Declared intent, not observation: this is what the instance *should* hold,
+    against which an audit's reading is compared. Keeping the two apart is what
+    lets reconcile tell "holds the wrong value" from "nobody has said what this
+    instance should hold" — the second is REQ-485's third outcome, and it must
+    never read as conformant.
+
+    Absence of a row is therefore meaningful and is the normal starting state.
+    A row is never created empty to stand in for one that has not been decided.
+    """
+
+    __tablename__ = "system_setting_values"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    system_setting_identifier: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )
+    instance_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    value: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "instance_identifier"],
+            ["instances.engagement_id", "instances.instance_identifier"],
+            ondelete="CASCADE",
+            name="fk_system_setting_values_instance",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "system_setting_identifier",
+            "instance_identifier",
+            name="uq_system_setting_value",
+        ),
+        Index(
+            "ix_system_setting_values_setting", "system_setting_identifier"
         ),
     )
 

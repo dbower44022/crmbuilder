@@ -103,6 +103,10 @@ _SPECS: dict[str, _Spec] = {
     "role": _Spec(models.Role, "role_identifier", "role_name", "role_status", "role_created_at", "role_updated_at"),
     "team": _Spec(models.Team, "team_identifier", "team_name", "team_status", "team_created_at", "team_updated_at"),
     "filtered_tab": _Spec(models.FilteredTab, "filtered_tab_identifier", "filtered_tab_label", "filtered_tab_status", "filtered_tab_created_at", "filtered_tab_updated_at"),
+    # PI-406 (REQ-485 / DEC-918). The one construct valued per instance; the
+    # summary titles it by the key the CRM itself uses, which is what an
+    # operator recognises.
+    "system_setting": _Spec(models.SystemSetting, "system_setting_identifier", "system_setting_key", "system_setting_status", "system_setting_created_at", "system_setting_updated_at"),
     # Security design records (PI-051 / DEC-698). (role x target_field) -> level / visible?.
     "field_permission_rule": _Spec(models.FieldPermissionRule, "field_permission_rule_identifier", "field_permission_rule_name", "field_permission_rule_status", "field_permission_rule_created_at", "field_permission_rule_updated_at"),
     "field_visibility_rule": _Spec(models.FieldVisibilityRule, "field_visibility_rule_identifier", "field_visibility_rule_name", "field_visibility_rule_status", "field_visibility_rule_created_at", "field_visibility_rule_updated_at"),
