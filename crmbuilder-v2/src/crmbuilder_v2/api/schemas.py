@@ -2467,6 +2467,14 @@ class InstanceDeployConfigIn(_Base):
     droplet_id: str | None = None
 
 
+# --- Provider credentials (PI-419 / REQ-522) --------------------------------
+# PUT body for /provider-credentials/{provider}: the write-only plaintext token
+# crosses the secret boundary and only its opaque reference is stored.
+class ProviderCredentialIn(_Base):
+    token: str
+    label: str | None = None
+
+
 # --- Record-data export (PI-234 / REQ-130) ---------------------------------
 # POST body for /instances/{id}/export-records: the operator-selected seed /
 # reference entities to export, with an optional per-entity fetch cap.

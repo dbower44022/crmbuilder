@@ -43,6 +43,10 @@ from crmbuilder_v2.api.schemas import (
     InstanceReplaceIn,
     RecordExportIn,
 )
+from crmbuilder_v2.api.secret_boundary import (
+    resolve_secret_or_none,
+    store_secret,
+)
 from crmbuilder_v2.introspect.entity_audit import reconcile_entity_slice
 from crmbuilder_v2.introspect.espo_client import EspoIntrospectionClient
 from crmbuilder_v2.introspect.reconcile import (
@@ -72,24 +76,12 @@ def _edges(body) -> list[dict] | None:
 
 
 def _store(value: str | None) -> str | None:
-    """Store a plaintext secret, returning its opaque reference.
+    """Store a plaintext secret, returning its opaque reference (REQ-157).
 
-    The value goes to the encrypted store when the service has an encryption key
-    and to the OS keyring otherwise. A host with neither cannot save credentials
-    at all — that must say so at save time (422) rather than escaping as a 500,
-    which is how it surfaced before this path had a backend it could use.
-
-    :param value: A plaintext secret, or ``None``/empty for no secret.
-    :returns: The opaque reference, or ``None`` when no secret was supplied.
+    Delegates to the shared :mod:`crmbuilder_v2.api.secret_boundary` so every
+    router that takes a secret turns a missing backend into the same 422.
     """
-    if not value:
-        return None
-    try:
-        return secrets.put_secret(value)
-    except secrets.SecretBackendError as exc:
-        raise UnprocessableError(
-            [FieldError("secret", "secret_backend_unavailable", str(exc))]
-        ) from exc
+    return store_secret(value)
 
 
 @router.get("")
@@ -667,23 +659,11 @@ def _record_publish_run(
 def _resolve_secret_or_none(ref: str | None) -> str | None:
     """Resolve one secret reference, mapping "not stored here" to ``None``.
 
-    A reference with no value anywhere reachable (``KeyError``) is a missing
-    credential, which the caller reports as a 422. A backend that cannot answer
-    at all (``SecretBackendError`` — no keyring *and* no encryption key, or a key
-    that does not match the stored ciphertext) is a misconfigured host, and is
-    re-raised as its own 422 naming the real cause. Neither may escape as an
-    unhandled 500, which is how a bare ``NoKeyringError`` used to surface here.
+    A missing value is a missing credential (the caller's 422); a backend that
+    cannot answer at all is its own 422 naming the cause — never a 500. Shared
+    with the other secret-taking routers via :mod:`api.secret_boundary`.
     """
-    if not ref:
-        return None
-    try:
-        return secrets.get_secret(ref)
-    except KeyError:
-        return None
-    except secrets.SecretBackendError as exc:
-        raise UnprocessableError(
-            [FieldError("secret", "secret_backend_unavailable", str(exc))]
-        ) from exc
+    return resolve_secret_or_none(ref)
 
 
 def _resolve_publish_target(identifier: str) -> tuple[dict, str, str | None]:

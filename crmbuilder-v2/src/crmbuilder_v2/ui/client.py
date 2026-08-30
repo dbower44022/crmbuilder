@@ -2655,6 +2655,50 @@ class StorageClient:
             )
         return result
 
+    # --- provider credentials (PI-419 / REQ-522) ------------------------------
+
+    def list_provider_credentials(self) -> list[dict[str, Any]]:
+        """GET /provider-credentials — configured flags per provider, never tokens."""
+        result = self._request("GET", "/provider-credentials")
+        return result if isinstance(result, list) else []
+
+    def put_provider_credential(
+        self, provider: str, token: str, label: str | None = None
+    ) -> dict[str, Any]:
+        """PUT /provider-credentials/{provider}. The plaintext token crosses the
+        secret boundary once and is stored as an opaque reference."""
+        body: dict[str, Any] = {"token": token}
+        if label:
+            body["label"] = label
+        result = self._request(
+            "PUT", f"/provider-credentials/{provider}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for put_provider_credential",
+            )
+        return result
+
+    def delete_provider_credential(self, provider: str) -> None:
+        """DELETE /provider-credentials/{provider}."""
+        self._request("DELETE", f"/provider-credentials/{provider}")
+
+    def get_digitalocean_options(self) -> dict[str, Any]:
+        """GET /provider-credentials/digitalocean/options — live catalog."""
+        result = self._request("GET", "/provider-credentials/digitalocean/options")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for get_digitalocean_options",
+            )
+        return result
+
+    def list_cloudflare_zones(self) -> list[dict[str, Any]]:
+        """GET /provider-credentials/cloudflare/zones."""
+        result = self._request("GET", "/provider-credentials/cloudflare/zones")
+        return result if isinstance(result, list) else []
+
     def _publish_request(
         self,
         path: str,
