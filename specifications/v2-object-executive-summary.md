@@ -8,7 +8,7 @@ Generated 2026-08-30 from `crmbuilder-v2/src/crmbuilder_v2/access/models.py` and
 | Object | Prefix | Executive summary |
 |---|---|---|
 | Charter | — | Singleton, versioned document stating the engagement's purpose and scope. `is_current=True` marks the live row; prior versions are retained. |
-| Status | — | Singleton, versioned "where we are" document; same shape as Charter. |
+| Status | — | Versioned narrative snapshot of the engagement's overall state — current phase, direction, what recently shipped, notable open work. Since DEC-954 (PI-433) each version is generated from stored records (in-flight projects and releases, resolved and open planning items, recent sessions, code version) with an optional human narrative; read for orientation, not by code. Same versioning shape as Charter. |
 | Decision | DEC | A dated, statused record of one choice made — context + the decision itself + an executive summary. The audit trail for *why* the design/process looks the way it does. |
 | Planning Item | PI | The unit of governed work. Typed (feature, fix, process, …), statused (Open → Resolved/Deferred/Cancelled), carries area labels for parallel-agent partitioning and a `resolution_reference`. Every code commit traces to one. |
 | Requirement | REQ | One testable statement of what the CRM (or CRMBuilder) must do. Statused, prioritized, with origin (`human_defined` / `ai_derived`) and a review state. Requirement-first: no PI/code without one. |
