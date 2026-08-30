@@ -16,13 +16,59 @@ under a dollar for the exercise). Everything created is deleted at the end.
 
 ### 0.1 Repository
 
-```bash
-cd ~/Dropbox/Projects/crmbuilder
-git checkout main && git pull --ff-only
-git log --oneline -1          # 573709b4 or later
-git status --short            # must print nothing
-uv sync
-```
+You will do the whole proof from one terminal window; keep it open until the
+end.
+
+1. Open a terminal (Ubuntu: **Ctrl + Alt + T**).
+2. Go to the repository. Type the line below and press Enter:
+
+   ```bash
+   cd ~/Dropbox/Projects/crmbuilder
+   ```
+   The prompt now ends in `crmbuilder`. If it says *No such file or
+   directory*, the clone is somewhere else — find it and use that path.
+3. Make sure you are on the `main` branch:
+
+   ```bash
+   git checkout main
+   ```
+   You should see either `Already on 'main'` or `Switched to branch 'main'`.
+   If instead it says local changes would be overwritten, stop and tell me
+   before doing anything else — some work is uncommitted on another branch.
+4. Fetch the latest commits:
+
+   ```bash
+   git pull --ff-only
+   ```
+   You should see `Already up to date.` or a short list of updated files
+   ending in `Fast-forward`. If it says *fatal: Not possible to fast-forward*,
+   stop and tell me.
+5. Confirm you have the runbook commit or later:
+
+   ```bash
+   git log --oneline -1
+   ```
+   You should see one line beginning with a code such as `552d6e05` followed
+   by a message like *v2: live-proof runbook …* (or a newer commit). If the
+   message is about something older than the runbook, the pull in step 4 did
+   not bring the work in — tell me.
+6. Confirm nothing is half-edited:
+
+   ```bash
+   git status --short
+   ```
+   You should see **nothing at all** — an empty line and the prompt. If any
+   file names are listed, do not continue; tell me what it lists.
+7. Install the exact dependencies:
+
+   ```bash
+   uv sync
+   ```
+   You should see lines like `Resolved 210 packages` and `Audited …`, and the
+   prompt returns without the word *error*. This can take a minute the first
+   time.
+
+Leave this terminal open — section 1 continues in it.
 
 ### 0.2 DigitalOcean token (CRMBuilder's account)
 
