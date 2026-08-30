@@ -51,6 +51,8 @@ Builder, ready for the configuration phase.
 
 ## 4. Path A — Provision a New Instance
 
+> **Superseded (DEC-946, 2026-08-29).** The hosted-provider-API shape described in this section (EspoCloud as the first provider) is superseded by the DigitalOcean-droplet + Cloudflare-DNS + SSH-install shape delivered under REQ-522 / PI-419 (see `PRDs/product/crmbuilder-v2/kickoff-desktop-crm-deployment.md`). Retained for history; do not build from it.
+
 ### 4.1 Overview
 
 CRM Builder provisions a new CRM instance on a hosting provider via
