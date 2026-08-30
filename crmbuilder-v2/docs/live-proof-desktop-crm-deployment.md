@@ -340,34 +340,123 @@ If verification lands *succeeded (issues)* instead, note which check failed (it 
 
 ---
 
-## 4. Run 2 — failure keeps everything, retry resumes
+## 4. Run 2 — a failure keeps everything, Retry resumes
 
-1. **Instances → Deploy new… → Set credentials…**: replace the Cloudflare
-   token with **token B** (read-only), label `Zone B – read only`. **Close**.
-2. Wizard as in run 1 but instance name `Proof 2`, subdomain `proof-2`.
-   **Deploy** → `DEP-002`.
+### 4a. In the desktop app — prove the stored login works (last check of run 1)
 
-Expected: credentials check passes (the zone is readable), the server is
-created and becomes active, then **Setting DNS fails** with a Cloudflare
-authentication/permission error. Status: **failed**. The log ends with
-`Kept (not destroyed): server <id> at <ip>. Retry the run to resume…` and the
-progress window shows **Retry**.
+This check proves the admin password the run stored is usable as the
+instance's login without you ever typing it.
 
-**Checks**
-- Deploy History → DEP-002 is orange: *Still exists (not destroyed): server <id> at <ip>* with **Copy server id**; phases show `create_droplet done`, `create_dns failed`.
-- DigitalOcean console: the `proof-2` droplet exists (one, not two).
-- Cloudflare: **no** `proof-2` record.
+1. In the CRMBuilder desktop window, left sidebar under **Governance**, click
+   **Instances**. You should see *Proof 1* in the list. If the list is empty,
+   stop and tell me exactly what the panel shows.
+2. Click the row **Proof 1**. The right-hand pane shows its details with a row
+   of buttons at the top: *Edit*, *Audit now*, *Publish…*, *Delete*.
+3. Click **Audit now**. A window titled *Audit progress — Proof 1* opens with a
+   progress bar and a running log; it finishes within about a minute with the
+   status line **Audit complete.** If instead a red ✗ line appears, stop and
+   tell me exactly what the log's last lines say.
+4. Click **Close**.
 
-3. Fix the cause: **Set credentials…** → Cloudflare back to **token A**.
-4. In the progress window (or Deploy History), **Retry**.
+### 4b. In the desktop app — switch Cloudflare to token B
 
-Expected: log says `Resuming deploy run DEP-002`, `create_droplet: already
-complete, skipping`, then DNS is set and the run continues to *succeeded*,
-registering `INST-002`.
+Saving the read-only token is what makes run 2 fail after the server exists —
+that failure is the point of run 2.
 
-**Checks**
-- DigitalOcean still shows exactly **one** `proof-2` droplet, and one SSH key `crmbuilder-DEP-002`.
-- `https://proof-2.<zone>` serves the CRM login.
+1. In the Instances panel (top of the list), click **Deploy new…**. The window
+   *Deploy a new CRM instance* opens on *Step 1 of 5 — Providers*; both
+   provider lines read **✓ Configured**.
+2. Click **Set credentials…**. The *Provider credentials* window opens with a
+   **DigitalOcean** box on top and a **Cloudflare** box below.
+3. In the **Cloudflare** box, click in the *Token* field and paste **token B**
+   (the read-only Cloudflare token, saved in the password manager as
+   `Cloudflare — proof B (read-only)`).
+4. In the same **Cloudflare** box, click in the *Label* field, clear it, and
+   type `Zone B – read only`.
+5. In the same **Cloudflare** box, click **Save token**. The line above the
+   fields turns green: **✓ Configured — Zone B – read only**, and the *Token*
+   field empties itself. If an error window appears, stop and tell me exactly
+   what it says.
+6. Click **Close** at the bottom of the *Provider credentials* window. You are
+   back on *Step 1 of 5 — Providers*.
+
+### 4c. In the deploy wizard — request Proof 2
+
+Same request as run 1 except the name and subdomain, so the failure is
+attributable to the token alone.
+
+1. On *Step 1 of 5 — Providers*, click **Next**. You should land on *Step 2 of
+   5 — Server* with the Region list already filled. If the Region list is
+   empty, stop and tell me what the yellow notice line says.
+2. On *Step 2 of 5 — Server*: click in *Instance name* and type `Proof 2`;
+   Region **New York 3 (nyc3)**; Size **s-2vcpu-4gb**; Image **Ubuntu 24.04
+   LTS**. Click **Next**.
+3. On *Step 3 of 5 — Domain*: Zone **acmeconstruction.us**; click in
+   *Subdomain* and type `proof-2` — the *Instance address* line shows
+   `proof-2.acmeconstruction.us`; click in *Let's Encrypt email* and type
+   `doug@dougbower.com`. Click **Next**.
+4. On *Step 4 of 5 — Accounts*: *Administrator username* stays `admin`; click
+   in *Administrator email* and type `doug@dougbower.com`; click **Generate**
+   next to *Administrator password* and record the shown value in the password
+   manager as `Proof 2 admin` — it is never shown again; leave *Generate
+   database passwords automatically* ticked. Click **Next**.
+5. On *Step 5 of 5 — Review*: the summary should read address
+   `https://proof-2.acmeconstruction.us`, server `s-2vcpu-4gb in nyc3`.
+   Click **Deploy**. The wizard closes and the progress window *Deploy run
+   DEP-002* opens.
+
+### 4d. In the progress window — watch it fail as designed
+
+The run should create the server, then stop at DNS because token B cannot
+write records.
+
+1. Watch the log in the *Deploy run DEP-002* window. Within about three
+   minutes you should see, in order: `Created server <a number>`,
+   `Server active at <an address>`, then a red line
+   `✗ create_dns: cloudflare (HTTP 403) … Authentication error [10000]`
+   (verified: this is the exact error token B produced on DEP-001), and an
+   orange line `Kept (not destroyed): server <number> at <address>. Retry the
+   run to resume…`. The status line reads **Deployment failed — everything
+   built was kept.** and a **Retry** button appears.
+   If the run instead reaches *Preparing server*, stop and tell me — that
+   would mean token B can edit DNS and the token is wrong.
+2. Leave the *Deploy run DEP-002* window open.
+3. In the web browser, open <https://cloud.digitalocean.com> → **Droplets**.
+   You should see exactly one droplet named `proof-2.acmeconstruction.us`.
+   If you see two, stop and tell me.
+4. In the web browser, open <https://dash.cloudflare.com> →
+   **acmeconstruction.us** → **DNS** → **Records**, type `proof-2` in the
+   *Search DNS Records* box and press Enter. You should see **no matching
+   records**. If a `proof-2` record exists, stop and tell me.
+
+### 4e. In the desktop app — fix the token and Retry
+
+Retry must resume at the failed step without creating a second server.
+
+1. In the Instances panel, click **Deploy new…**, then **Set credentials…**.
+2. In the **Cloudflare** box, click in the *Token* field and paste **token A**
+   (the full Cloudflare token, saved as `Cloudflare — proof A (full)`).
+3. In the same box, click in the *Label* field, clear it, and type
+   `Zone A – full`; click **Save token**. The line turns green:
+   **✓ Configured — Zone A – full**.
+4. Click **Close**, then click **Cancel** at the bottom of the deploy wizard —
+   do not start a new run.
+5. In the *Deploy run DEP-002* window, click **Retry**. The log should show
+   `Resuming deploy run DEP-002`, then `↷ create_droplet: already complete,
+   skipping`, then `DNS A record proof-2.acmeconstruction.us → <address>
+   (DNS-only)`, then `resolves to <address> on public resolvers` within about
+   a minute, and continue through *Preparing server* and *Installing CRM* to
+   **Deployment complete.** with `Registered instance INST-002`. Total: about
+   10–15 minutes. If any red ✗ line appears, stop and paste the last 20 log
+   lines.
+6. In the web browser, reload the DigitalOcean **Droplets** page. You should
+   still see exactly **one** droplet named `proof-2.acmeconstruction.us`.
+7. In the web browser, open `https://proof-2.acmeconstruction.us`. You should
+   see the EspoCRM login page with no certificate warning.
+
+Then tell me the outcome of 4d step 1, 4e step 5, 4e step 6 and 4e step 7, and
+we move to section 5 (optional restart check) or straight to section 6
+(clean-up).
 
 ---
 
