@@ -1,6 +1,6 @@
 """PI-419 (REQ-522 / DEC-945, SQLite chain) — deploy runs and provider credentials.
 
-Companion to the PG-chain ``0073``. Adds the two tables behind admin-driven
+Companion to the PG-chain ``0080``. Adds the two tables behind admin-driven
 CRM deployment and widens ``instance_deploy_configs`` with the facts a deploy
 run writes when it provisions the server itself:
 
@@ -20,8 +20,8 @@ change_log / refs CHECK rebuild. Bootstrap-safe — table creates use
 + stamp-behind path runs this migration against a database that already has
 the head schema.
 
-SQLite chain head 0115 -> 0116. Companion PG-chain delta:
-``migrations/pg/versions/0073_pi_419_deploy_runs.py``.
+SQLite chain head 0122 -> 0123. Companion PG-chain delta:
+``migrations/pg/versions/0080_pi_419_deploy_runs.py``.
 """
 
 from collections.abc import Sequence
@@ -30,8 +30,8 @@ import sqlalchemy as sa
 from alembic import op
 from crmbuilder_v2.access.models import DeployRun, ProviderCredential
 
-revision: str = "0116_pi_419_deploy_runs"
-down_revision: str | None = "0115_pi_414_membership_vocabulary_version"
+revision: str = "0123_pi_419_deploy_runs"
+down_revision: str | None = "0122_pi_425_field_built_in"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

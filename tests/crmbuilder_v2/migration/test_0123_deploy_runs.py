@@ -1,4 +1,4 @@
-"""PI-419 — migration 0116 creates deploy_runs + provider_credentials and widens instance_deploy_configs.
+"""PI-419 — migration 0123 creates deploy_runs + provider_credentials and widens instance_deploy_configs.
 
 Mirrors the 0054 pattern but simpler: instance_memberships is a lightweight
 child table (no entity-type / relationship CHECK rebuilds), so the test asserts
@@ -17,8 +17,8 @@ from sqlalchemy import create_engine, inspect, text
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ALEMBIC_DIR = _REPO_ROOT / "crmbuilder-v2"
-_MIGRATION_DOWN = "0115_pi_414_membership_vocabulary_version"
-_MIGRATION = "0116_pi_419_deploy_runs"
+_MIGRATION_DOWN = "0122_pi_425_field_built_in"
+_MIGRATION = "0123_pi_419_deploy_runs"
 _TABLE = "deploy_runs"
 
 
@@ -56,7 +56,7 @@ def _fresh_db_one_behind(db: Path) -> None:
     assert stamp.returncode == 0, f"stamp failed:\n{stamp.stdout}\n{stamp.stderr}"
 
 
-def test_0116_creates_tables_and_columns_then_downgrades(tmp_path: Path) -> None:
+def test_0123_creates_tables_and_columns_then_downgrades(tmp_path: Path) -> None:
     db = tmp_path / "v2.db"
     _fresh_db_one_behind(db)
     up = _alembic(["upgrade", _MIGRATION], db)
@@ -88,7 +88,7 @@ def test_0116_creates_tables_and_columns_then_downgrades(tmp_path: Path) -> None
     assert not (_NEW_CONFIG_COLUMNS & cfg_cols)
 
 
-def test_0116_is_a_no_op_on_a_head_schema(tmp_path: Path) -> None:
+def test_0123_is_a_no_op_on_a_head_schema(tmp_path: Path) -> None:
     """The bootstrap path (create_all, stamp one behind, upgrade) must not fail."""
     db = tmp_path / "v2.db"
     engine = create_engine(f"sqlite:///{db}")

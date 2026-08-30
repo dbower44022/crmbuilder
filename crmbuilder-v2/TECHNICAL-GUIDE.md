@@ -205,7 +205,7 @@ path — the first background job in v2.
   verification, cancel flag); `deploy_run_log` a capped, pre-masked list of
   `[ts, level, message]`. `provider_credentials` holds one opaque secret ref
   per provider per engagement. Both alembic heads carry the delta
-  (`0116` / pg `0073`).
+  (`0123` / pg `0080`).
 * **Claim.** `claim_next_run` is a single conditional `UPDATE` keyed on the
   row id *and* "queued, or running with a heartbeat older than
   `deploy_worker_stale_seconds`", so two workers cannot hold one run. The
