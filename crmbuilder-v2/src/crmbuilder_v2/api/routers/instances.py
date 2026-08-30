@@ -117,6 +117,11 @@ def get(identifier: str, include_deleted: bool = False):
 
 @router.post("", status_code=201)
 def create(body: InstanceCreateIn):
+    # Secrets are stored before the row transaction opens: on SQLite the
+    # store's own connection cannot begin while this request holds the write
+    # lock (PI-419 live-proof finding — "database is locked").
+    secret_ref = _store(body.secret)
+    secret_key_ref = _store(body.secret_key)
     with writable_session() as s:
         return ok(
             instances.create_instance(
@@ -126,8 +131,8 @@ def create(body: InstanceCreateIn):
                 vendor=body.instance_vendor or "espocrm",
                 role=body.instance_role or "both",
                 auth_method=body.instance_auth_method or "api_key",
-                secret_ref=_store(body.secret),
-                secret_key_ref=_store(body.secret_key),
+                secret_ref=secret_ref,
+                secret_key_ref=secret_key_ref,
                 status=body.instance_status or "active",
                 notes=body.instance_notes,
                 identifier=body.instance_identifier,
@@ -139,21 +144,24 @@ def create(body: InstanceCreateIn):
 
 @router.put("/{identifier}")
 def replace(identifier: str, body: InstanceReplaceIn):
-    with writable_session() as s:
+    # Read → store secrets → write; never store inside the transaction
+    # (SQLite deadlock — PI-419 live-proof finding).
+    with readonly_session() as s:
         current = instances.get_instance(s, identifier, include_deleted=True)
-        if current is None:
-            raise NotFoundError("instance", identifier)
-        # PUT preserves the existing secret unless a new plaintext is supplied.
-        if body.secret is not None:
-            secret_ref = _store(body.secret)
-            secrets.delete_secret(current.get("instance_secret_ref"))
-        else:
-            secret_ref = current.get("instance_secret_ref")
-        if body.secret_key is not None:
-            secret_key_ref = _store(body.secret_key)
-            secrets.delete_secret(current.get("instance_secret_key_ref"))
-        else:
-            secret_key_ref = current.get("instance_secret_key_ref")
+    if current is None:
+        raise NotFoundError("instance", identifier)
+    # PUT preserves the existing secret unless a new plaintext is supplied.
+    if body.secret is not None:
+        secret_ref = _store(body.secret)
+        secrets.delete_secret(current.get("instance_secret_ref"))
+    else:
+        secret_ref = current.get("instance_secret_ref")
+    if body.secret_key is not None:
+        secret_key_ref = _store(body.secret_key)
+        secrets.delete_secret(current.get("instance_secret_key_ref"))
+    else:
+        secret_key_ref = current.get("instance_secret_key_ref")
+    with writable_session() as s:
         return ok(
             instances.update_instance(
                 s,
@@ -182,16 +190,18 @@ def patch(identifier: str, body: InstancePatchIn):
     secret = provided.pop("secret", None)
     secret_key = provided.pop("secret_key", None)
     fields = {key[len(_FIELD_PREFIX):]: value for key, value in provided.items()}
-    with writable_session() as s:
+    with readonly_session() as s:
         current = instances.get_instance(s, identifier, include_deleted=True)
-        if current is None:
-            raise NotFoundError("instance", identifier)
-        if has_secret:
-            secrets.delete_secret(current.get("instance_secret_ref"))
-            fields["secret_ref"] = _store(secret)
-        if has_secret_key:
-            secrets.delete_secret(current.get("instance_secret_key_ref"))
-            fields["secret_key_ref"] = _store(secret_key)
+    if current is None:
+        raise NotFoundError("instance", identifier)
+    # Secrets cross the boundary outside the row transaction (PI-419 finding).
+    if has_secret:
+        secrets.delete_secret(current.get("instance_secret_ref"))
+        fields["secret_ref"] = _store(secret)
+    if has_secret_key:
+        secrets.delete_secret(current.get("instance_secret_key_ref"))
+        fields["secret_key_ref"] = _store(secret_key)
+    with writable_session() as s:
         return ok(
             instances.patch_instance(s, identifier, references=references, **fields)
         )
@@ -249,11 +259,17 @@ def publish_plan(identifier: str):
         return ok(inventory.publish_plan(s, instance_identifier=identifier))
 
 
-def _audit_introspection_client(s, identifier: str) -> EspoIntrospectionClient:
-    """Resolve an auditable instance + its keyring creds into an introspection
+def _audit_introspection_client(identifier: str) -> EspoIntrospectionClient:
+    """Resolve an auditable instance + its stored creds into an introspection
     client, or raise the same 404 / not_auditable / missing_credentials errors
-    the audit endpoints share."""
-    rec = instances.get_instance(s, identifier)
+    the audit endpoints share.
+
+    Opens (and closes) its own read session before touching the secret store:
+    resolving a store-backed secret inside a caller's transaction deadlocks on
+    SQLite (PI-419 live-proof finding — the audit's "database is locked" 500).
+    """
+    with readonly_session() as s:
+        rec = instances.get_instance(s, identifier)
     if rec is None:
         raise NotFoundError("instance", identifier)
     if rec.get("instance_role") == "target":
@@ -366,8 +382,8 @@ def audit(identifier: str):
     Opt-in areas (``_OPT_IN_AUDIT_AREAS`` — utilization, REQ-524) never run
     here; they are reached only by name through the per-area endpoint.
     """
+    client = _audit_introspection_client(identifier)
     with writable_session() as s:
-        client = _audit_introspection_client(s, identifier)
         keys = [a for a in AUDIT_AREA_ORDER if a not in _OPT_IN_AUDIT_AREAS]
         if _is_source_audit(s, identifier):
             keys = [a for a in keys if a in _SOURCE_AUDIT_AREAS]
@@ -406,8 +422,8 @@ def audit_area(identifier: str, area: str):
         raise NotFoundError("audit area", area)
     label, fn = spec
     log: list[list[str]] = []
+    client = _audit_introspection_client(identifier)
     with writable_session() as s:
-        client = _audit_introspection_client(s, identifier)
         if _is_source_audit(s, identifier) and area not in _SOURCE_AUDIT_AREAS:
             return ok({
                 "area": area,
@@ -447,8 +463,8 @@ def audit_entity(identifier: str, entity_identifier: str):
     full-instance audit. Returns the per-section ``summary`` plus a ``log``.
     """
     log: list[list[str]] = []
+    client = _audit_introspection_client(identifier)
     with writable_session() as s:
-        client = _audit_introspection_client(s, identifier)
         try:
             summary = reconcile_entity_slice(
                 s,
@@ -545,15 +561,15 @@ def export_records_endpoint(identifier: str, body: RecordExportIn):
     instance cannot be read) and returns an import-ready artifact plus a ``log``
     of any per-entity read warnings. Seed/reference data only (DEC-693).
     """
+    client = _audit_introspection_client(identifier)
     log: list[list[str]] = []
-    with writable_session() as s:
-        client = _audit_introspection_client(s, identifier)
-        artifact = export_records(
-            client,
-            entity_names=body.entities,
-            max_size=body.max_size or 200,
-            progress=lambda m, lvl: log.append([m, lvl]),
-        )
+    # Reads only the live instance; no store transaction is needed here.
+    artifact = export_records(
+        client,
+        entity_names=body.entities,
+        max_size=body.max_size or 200,
+        progress=lambda m, lvl: log.append([m, lvl]),
+    )
     return ok({"artifact": artifact, "log": log})
 
 
@@ -691,32 +707,33 @@ def _resolve_publish_target(identifier: str) -> tuple[dict, str, str | None]:
     """
     with readonly_session() as s:
         rec = instances.get_instance(s, identifier)
-        if rec is None:
-            raise NotFoundError("instance", identifier)
-        if rec.get("instance_role") == "source":
-            raise UnprocessableError(
-                [
-                    FieldError(
-                        "instance_role",
-                        "not_publishable",
-                        "a source-only instance cannot be a publish target; "
-                        "set its role to target or both",
-                    )
-                ]
-            )
-        api_key = _resolve_secret_or_none(rec.get("instance_secret_ref"))
-        if not api_key:
-            raise UnprocessableError(
-                [
-                    FieldError(
-                        "secret",
-                        "missing_credentials",
-                        "instance has no stored credentials to authenticate "
-                        "the publish",
-                    )
-                ]
-            )
-        secret_key = _resolve_secret_or_none(rec.get("instance_secret_key_ref"))
+    if rec is None:
+        raise NotFoundError("instance", identifier)
+    if rec.get("instance_role") == "source":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "instance_role",
+                    "not_publishable",
+                    "a source-only instance cannot be a publish target; "
+                    "set its role to target or both",
+                )
+            ]
+        )
+    # Secrets resolve outside the session (SQLite deadlock — PI-419 finding).
+    api_key = _resolve_secret_or_none(rec.get("instance_secret_ref"))
+    if not api_key:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "secret",
+                    "missing_credentials",
+                    "instance has no stored credentials to authenticate "
+                    "the publish",
+                )
+            ]
+        )
+    secret_key = _resolve_secret_or_none(rec.get("instance_secret_key_ref"))
     return rec, api_key, secret_key
 
 

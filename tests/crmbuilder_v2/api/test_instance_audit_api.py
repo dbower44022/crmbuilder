@@ -502,3 +502,28 @@ def test_both_audit_empty_instance_reports_empty_not_success(client, monkeypatch
     completion = r.json()["data"]["completion"]
     assert completion["status"] == "empty"
     assert "no inventory" in completion["message"].lower()
+
+
+def test_audit_area_with_the_encrypted_store_on_sqlite(client, monkeypatch):
+    """PI-419 live-proof finding: resolving a store-backed credential inside the
+    audit's transaction deadlocked SQLite ('database is locked' 500). The
+    credential must resolve before the reconcile transaction opens."""
+    from crmbuilder_v2.config import reset_settings_cache
+    from cryptography.fernet import Fernet
+
+    monkeypatch.setattr(instances_router, "EspoIntrospectionClient", _FakeClient)
+    monkeypatch.delenv(secrets.DISABLE_ENV_VAR, raising=False)
+    monkeypatch.setenv("CRMBUILDER_V2_SECRET_KEY", Fernet.generate_key().decode())
+    reset_settings_cache()
+    try:
+        assert secrets.store_available()
+        iid = _create(client)["instance_identifier"]
+        r = client.post(f"/instances/{iid}/audit/entities")
+        assert r.status_code == 200, r.text
+        r = client.post(f"/instances/{iid}/audit")
+        assert r.status_code == 200, r.text
+        # Rotating the credential via PATCH also stays deadlock-free.
+        r = client.patch(f"/instances/{iid}", json={"secret": "rotated"})
+        assert r.status_code == 200, r.text
+    finally:
+        reset_settings_cache()
