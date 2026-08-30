@@ -61,3 +61,23 @@ def test_status_make_version_current(client):
     assert r.status_code == 200
     r = client.get("/status")
     assert r.json()["data"]["version"] == 1
+
+
+def test_status_preview_and_generate(client):
+    # PI-433 / REQ-527: preview does not write; generate does.
+    r = client.get("/status/preview", params={"narrative": "hello"})
+    assert r.status_code == 200, r.text
+    body = r.json()["data"]
+    assert body["active_work"] == "hello"
+    assert "generated" in body
+    assert client.get("/status").status_code == 404
+
+    r = client.post("/status/generate", json={"narrative": "hello"})
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["version"] == 1
+    assert r.json()["data"]["payload"]["active_work"] == "hello"
+
+    r = client.post("/status/generate", json={})
+    assert r.json()["data"]["version"] == 2
+    assert r.json()["data"]["payload"]["active_work"] == ""
+    assert r.json()["data"]["payload"]["metadata"]["Previous Version"] == 1

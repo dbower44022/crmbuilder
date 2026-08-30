@@ -99,6 +99,21 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """Replace the status, creating a new version."""
         return await _unwrap(await http.put("/status", json={"payload": payload}))
 
+    async def preview_generated_status(narrative: str | None = None) -> Any:
+        """Return the status payload a generate would write — assembled from
+        in-flight projects and releases, planning items resolved since the
+        previous version, open planning items and recent sessions — without
+        creating a version (PI-433)."""
+        params = {"narrative": narrative} if narrative else None
+        return await _unwrap(await http.get("/status/preview", params=params))
+
+    async def create_generated_status(narrative: str | None = None) -> Any:
+        """Create a new status version generated from stored records, with an
+        optional narrative paragraph carried in active_work (PI-433)."""
+        return await _unwrap(
+            await http.post("/status/generate", json={"narrative": narrative})
+        )
+
     # ---------- Decisions ----------
 
     async def get_decision(identifier: str) -> Any:
@@ -2063,6 +2078,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         get_status_version,
         list_status_versions,
         replace_status,
+        preview_generated_status,
+        create_generated_status,
         get_decision,
         list_decisions,
         create_decision,
