@@ -4,9 +4,9 @@
 
 | Field | Value |
 |-------|-------|
-| Version | 0.4 (draft) |
-| Last Updated | 06-12-26 |
-| Status | Phase 1 drafted, executed against the CRMBuilder dogfood, refined (v0.3). Phase 1.5 drafted (v0.2), built, and validated against the CBM test instance. Phase 2 drafted (v0.3). Phase 3 fully drafted (v0.4: interview reconciliation + the v0.2 baseline triage as two streams of one phase). Remaining phases placeholder. |
+| Version | 0.5 (draft) |
+| Last Updated | 08-29-26 |
+| Status | Phase 1 drafted, executed against the CRMBuilder dogfood, refined (v0.3). Phase 1.5 drafted (v0.2), built, and validated against the CBM test instance. Phase 2 drafted (v0.3). Phase 3 fully drafted (v0.4: interview reconciliation + the v0.2 baseline triage as two streams of one phase). Cross-phase mechanics added (v0.5: requirement capture and approval; engagement setup and the session lifecycle). Phases 4–8 placeholder with candidate requirements drafted; Phases 9–13 placeholder. |
 | Audience | Anyone running the CRMBuilder process for a client engagement (consultant, AI session, or future maintainer) |
 | Governs | The entire process for using the V2 storage system to capture the complete definition of a product, from initial requirements through deployed functional application |
 | Does not govern | Detailed V2 internals beyond what Phase 1 needs (schema, API, MCP, UI surfaces have their own component PRDs referenced here as they're consolidated in) |
@@ -19,6 +19,7 @@
 | 0.2 | 06-11-26 | Added Phase 1.5 (Existing System Baseline) — the Audit function repurposed as a requirements input: existing systems are audited and data-profiled into *candidate* methodology records with provenance and utilization evidence. Added the Phase 3 baseline-triage section (keep / transform / drop dispositions, migration mapping capture, baseline-vs-interview conflict reconciliation); the remainder of Phase 3 stays placeholder. |
 | 0.3 | 06-12-26 | Phase 1 refined from its first dogfood execution (SES-166 against CRMBuilder, PI-160): tier respecced to process level, store-assigned identifiers replace legacy code schemes, cross-domain services carried transitionally in charter scope (service entity type is PI-161), new Capture Mechanics subsection (lifecycle status at capture, charter occupancy, product-venture interview variant). Phase 2 (Domain Discovery) drafted to runnable: per-domain SME discovery into candidate records, with the Phase 1.5 Baseline Report integrated as the post-unprompted-account probe queue and a no-confirmation rule (reconciliation is Phase 3's job). Phase 1.5 validated against the CBM test instance on 06-12-26 (first live run). |
 | 0.4 | 06-12-26 | Phase 3 completed as a two-stream phase: new Stream A (interview reconciliation — cross-domain dedup, cross-stream matching against baseline candidates before any disposition, persona reconciliation, conflict resolution, evidence-led confirmation session) joins the v0.2 baseline triage as Stream B, under whole-phase completion criteria (every candidate terminal, no duplicate confirmed records, no silent conflict absorption). Stream B's two stale v0.2 notes updated: the `rejected` lifecycle state and the migration-mapping record type now exist (built by the Existing System Baseline project), and methodology-layer conflicts reuse the live `finding` record. |
+| 0.5 | 08-29-26 | Requirements-phase consolidation pass (SES-362, PI-069). New Part III — Cross-Phase Mechanics: §10 *Requirement Capture and Approval* (the provenance-and-review model from `requirements-provenance-and-review-anchor.md`, live in the store as the REQ-108 family, previously absent from this PRD) and §11 *Engagement Setup and the Session Lifecycle* (from the V2 user process guide §4–8, rewritten against the current store). Phase 2 gains the multi-session saturation rule from the domain-discovery guide. New Part IV placeholder for the design phases (4–8) pointing at the candidate requirement set in `PRDs/product/crmbuilder-v2/design-phase-candidate-requirements.md`; that document also carries the document-by-document consolidation ledger for the requirements phase. Former Part III (Iterative Drafting) renumbered Part V. |
 
 ---
 
@@ -75,11 +76,11 @@ The process is sequenced across phases. Each phase has a defined purpose, input,
 | 1.5 | Existing System Baseline | **Drafted** (v0.2), **validated live** against the CBM test instance 06-12-26 — conditional; runs only when the client has one or more existing systems |
 | 2 | Domain Discovery | **Drafted** (v0.3) |
 | 3 | Inventory Reconciliation | **Drafted** (v0.4) — Stream A interview reconciliation + Stream B baseline triage (v0.2) as one phase |
-| 4 | Domain Overview and Process Definition | Placeholder |
-| 5 | Entity PRDs | Placeholder |
-| 6 | Cross-Domain Service Definition | Placeholder |
-| 7 | Domain Reconciliation | Placeholder |
-| 8 | Stakeholder Review | Placeholder |
+| 4 | Domain Overview and Process Definition | Placeholder — **design phase**; candidate requirements drafted (Part IV) |
+| 5 | Entity PRDs | Placeholder — design phase (Part IV) |
+| 6 | Cross-Domain Service Definition | Placeholder — design phase (Part IV) |
+| 7 | Domain Reconciliation | Placeholder — design phase (Part IV) |
+| 8 | Stakeholder Review | Placeholder — design phase (Part IV) |
 | 9 | YAML Generation | Placeholder |
 | 10 | CRM Selection | Placeholder |
 | 11 | CRM Deployment | Placeholder |
@@ -371,6 +372,7 @@ When Phase 1.5 ran, Phase 2 is also where the **baseline meets the stakeholder f
 - **Entities are nouns the SME actually said.** A candidate entity requires the SME having named the thing (or confirmed a probe about it). Per conduct charter §11.6.b, "organizations like this usually track X" is not a basis for a candidate.
 - **No field-level detail.** When an SME volunteers fields ("we track their email and renewal date"), capture the volunteered items in the entity's notes verbatim and move on — do not elicit more. Field definition is Phase 5.
 - **Process handoffs are discovery gold.** When a process leaves the domain ("then accounting takes over"), record the handoff (`process_hands_off_to_process` once both ends exist; notes until then) — these become the cross-domain seams Phase 3 reconciles.
+- **Saturation ends the domain, not a session count** (v0.5, from the domain-discovery guide). A domain typically takes one to three sessions. A session is a *saturation session* when it surfaces no new candidate entity, persona, or process for the domain; the first session cannot be one. After each session, ask the administrator whether any vantage point (leadership, operations, support, external-facing roles) is still uncovered — if yes, the next session targets it; if no, the domain is complete. A later stakeholder is never shown the earlier candidates before their own account (the anchoring rule applies between stakeholders as it does to the baseline); the AI reads them, so it can tell a genuinely new candidate from a renaming, and records differing language as a separate candidate for Phase 3 to disambiguate.
 
 ### Activity
 
@@ -410,7 +412,98 @@ Per in-scope domain, one session:
 
 ---
 
-# Part III — Iterative Drafting
+# Part III — Cross-Phase Mechanics
+
+The two mechanics below run in every phase. They were carried by separate documents until v0.5; this Part is now their process home. The store enforces both — they are not conventions to remember.
+
+## 10. Requirement Capture and Approval
+
+*Source consolidated:* `PRDs/product/crmbuilder-v2/requirements-provenance-and-review-anchor.md` (founding design record, 06-13-26) — live in the store as REQ-108 and its family under topic TOP-087.
+
+### Principle
+
+The human project manager defines what is to be built. Everything that exists traces to something a human defined or an AI interpretation a human approved. The conversation and the decision are the truth; requirements, plans, and code are projections of it that can be re-checked against it at any time.
+
+### The model
+
+- **A requirement is one declarative, testable statement with an acceptance criterion.** It says what the system must do, not how, and never carries build history.
+- **Requirements form a tree.** The top is one broad statement a human can read; each level adds detail. A leaf is validated by *where it hangs*, not by reading it.
+- **Every requirement has provenance.** A top-level requirement carries its own — the conversation, session, and decision that defined it. A child inherits through its parent. The only forbidden state is a requirement with no parent and no provenance.
+- **Every requirement records its origin:** human-defined, or AI-derived-and-human-approved. Approval is a recorded event — a person, a time, the exact text.
+- **A requirement lives in two structures.** Its parent requirement carries derivation; its topic carries navigation. Topics are the table of contents of the system's capabilities; one conversation addresses exactly one topic.
+- **The spine** is traceable both ways: `defined → decided → specified → planned → developed → verified` — conversation, decision, requirement, planning item, commit, test.
+
+### Lifecycle in the store
+
+| State | Meaning | How it is reached |
+|---|---|---|
+| `candidate` | A human stated it, or an AI derived it; on the record, not yet a commitment | Created with its conversation and topic edges |
+| `confirmed` | A commitment to deliver | **Only** by an approving decision (`requirement_approved_by_decision`) — never by editing the status field (REQ-243) |
+| `deferred` / `rejected` | Deliberately not now / not ever, with the deciding decision recorded | By decision; never deleted |
+| `needs_review` (flag) | Living drift — a parent, governing decision, or downstream artifact changed | Raised automatically; cleared only by a recorded review (REQ-249, REQ-345) |
+
+A decision resolves a requirement one of three ways: **deliver** (it goes active), **decline** (recorded, not dropped — nothing a human said silently dies), or **change** (the current text is superseded and the revision re-enters approval). An AI-derived requirement is approved with its source conversation shown beside it, so approval is against intent, not against the paraphrase.
+
+### Readability gate
+
+Approval is only as strong as the clarity of what is approved; an unreadable statement gets rubber-stamped. The store therefore rejects, at confirm time, a description over 75 words or 4 sentences, one that embeds identifiers, or one lacking an acceptance criterion (LSN-036). Identifiers and history go in the requirement's notes.
+
+### Review
+
+Review is by topic, never by flat list: pick the topic, read its requirement tree top-down, trace anything doubtful to its conversation, read across the spine, and sign off — a recorded attestation that the topic's set matches intent. Three cross-topic queues support it: the approval queue (candidates awaiting a decision), the drift queue (everything flagged), and the coverage-gaps report (stated intents that became nothing, confirmed requirements built by nothing, capabilities no requirement asked for). A requirement must resolve to a topic before it can be activated, because an item unreachable under a topic could never have been reviewed.
+
+### How the phases use it
+
+Phase 1 and Phase 2 conversations produce methodology records first (personas, domains, processes, entities); requirements appear when a stakeholder states what the system must do, and are captured at that moment under the domain's topic with the conversation as root. Phase 3 confirms or declines them alongside the inventory. The design phases (Part IV) consume confirmed requirements and link each to what realizes it. Nothing is built — no planning item, no commit — without a confirmed requirement above it (GVR-230).
+
+### Open
+
+Cross-cutting requirements (a concern that touches every topic without being duplicated) and the governance of decomposition depth remain undecided; the working rule is that a human approves the *shape* — a node's immediate children — at each level, and decomposition stops when a leaf is testable.
+
+## 11. Engagement Setup and the Session Lifecycle
+
+*Source consolidated:* `PRDs/process/v2-user-process-guide.md` §4–8, rewritten against the current store. The engagement-setup records themselves are unbuilt (REQ-407 / PI-072; client inputs REQ-406 / PI-071) — this section describes the process those records will hold.
+
+### Before the engagement exists
+
+Gather four things: a **stakeholder map** (who owns which decisions, who holds which domain knowledge, who can speak for the mission, and which of them sits for which phase); **prior artifacts** (org charts, mission statements, process documents, existing systems — these become Phase 1.5 sources and Phase 2 hypotheses to be set aside during discovery); **organizational context**; and **constraints** (timeline, budget, integrations, compliance) that will land in the charter as scope or out-of-scope items. Re-read the conduct documents. No records are created yet.
+
+### Kickoff — the engagement comes to exist
+
+1. Create the **engagement** record (the workspace; every record below belongs to it).
+2. Write the **charter** at version 0.1: scope, in scope (domains, deliverables, phases that will run), out of scope, architectural foundations (engagement-specific principles and any methodology deviation), current state, open items. It is expected to be honest, not complete.
+3. Record the **participants** — the real people and roles from the stakeholder map — so later personas can be backed by them.
+4. Log each consequential kickoff **decision** with context, decision, rationale, alternatives, consequences.
+5. Record the kickoff **session** (append-only) and any open questions as **planning items**.
+
+For CRMBuilder dogfood the engagement already exists; for a client the mechanics above are Phase 0 and precede Phase 1.
+
+### Every session, the same lifecycle
+
+**Open.** Orient from the store, not from files: the charter, the active governance rules and preferences, the last few sessions, and any decision the upcoming work names (the session-bootstrap protocol in `CLAUDE.md`). A stakeholder-facing session also re-reads the conduct documents and picks its kickoff variant: administrator-as-proxy, first session with an SME, follow-up with a known SME, or multi-stakeholder. Open the session record at the start — anchored on the planning item it advances and belonging to its project — not after the fact.
+
+**Conduct.** The conduct charter governs how; the phase section governs what. The rule that does the most work is §11.6.b — *inferences require positive support*: summarize what was said, never what was implied. Capture records as they emerge (candidate status for methodology records; decisions and planning items as they are made), because the store, not the transcript, is the deliverable.
+
+**Close.** Before the next session begins:
+
+- One **conversation** record per topic touched, each with its summary and its `addresses` (or, for the final delivering conversation, `resolves`) edge to the planning item.
+- Every consequential **decision** logged with rationale — if the rationale cannot be written in three sentences, a preference was stated, not a decision made.
+- **Planning items** resolved or raised; **references** created at the moment the relationship was established (a decision that touches an entity, a process that consumes a service) — never reconstructed later.
+- The **charter** versioned only if scope, principles, or current state genuinely shifted; most sessions leave it alone.
+- Renders generated where the phase calls for one, or noted as pending.
+- The session record transitioned to `complete` with its executive summary.
+
+After close, the store is the source of truth for what happened; the conversation can be forgotten. In Claude Code these writes happen in real time against the live API (GVR-231); the close-out-payload path is the sandbox fallback (LSN-042).
+
+# Part IV — The Design Phases (Phases 4–8) — Placeholder
+
+The design phases take a domain from its **confirmed inventory** (the exit of Phase 3) to an **approved, engine-checked design version** ready for publish (the entry of Phase 9 and the publish/reconcile capabilities already governed under TOP-101 / TOP-109 / TOP-091). In the legacy process these are Phases 4–8: process definition and domain overview, entity PRDs, cross-domain service definition, domain reconciliation, and stakeholder review. Under V2 the documents those phases produced become renders of design records, and the reconciliation and review steps become checks and sign-offs on those records.
+
+The phases are not yet drafted. The first candidate requirement set for the capability they need — twenty candidates covering derivation from the inventory, coherence and completeness gates, renders and recorded approval, change propagation, and the conduct of design sessions — is at `PRDs/product/crmbuilder-v2/design-phase-candidate-requirements.md` (Part B), together with the decisions that gate writing them to the store (Part C). Once those decisions are made and the candidates are confirmed, each phase here is drafted to runnable and executed against the dogfood per Part V.
+
+The store's design model itself (entities, fields, relationships, layouts, roles, teams, filtered tabs, dynamic-logic rules, views, automations, engine overrides, versions) is already built and governed under TOP-089; Part IV specifies how it is populated and approved, not what it is.
+
+# Part V — Iterative Drafting
 
 This PRD is authored iteratively. Each phase is drafted to a runnable state *before* it is executed against CRMBuilder dogfood. Execution surfaces gaps. Gaps refine the phase spec back into this PRD. Once the phase produces reproducible, satisfactory results against CRMBuilder, the next phase is drafted.
 
@@ -418,9 +511,9 @@ The CBM (Cleveland Business Mentors) engagement begins only after the process is
 
 ### Sections to Be Drafted in Subsequent Versions
 
-- Engagement setup mechanics (how to initialize V2 for a new client)
-- The session lifecycle as a recurring pattern (open → conduct → close-out → apply)
-- Phases 2 through 13 specifications, each drafted before its phase runs (Phase 3's interview-derived reconciliation half; Phase 1.5 and the Phase 3 triage section are drafted as of v0.2)
+- ~~Engagement setup mechanics~~ — process drafted at §11 (v0.5); the records are PI-071/PI-072
+- ~~The session lifecycle as a recurring pattern~~ — §11 (v0.5)
+- Phases 4 through 13 specifications, each drafted before its phase runs (Phases 4–8 have candidate requirements and a Part IV placeholder as of v0.5)
 - The migration-mapping record type and the triage → migration-plan pipeline
 - The baseline machinery's second pointing: drift detection against the *generated* system during post-deployment refinement (same audit engine, diffed against the confirmed graph instead of an empty one)
 - V2 storage mechanics in depth (schema, API, MCP tool surface, desktop UI surfaces)
@@ -435,7 +528,7 @@ The CBM (Cleveland Business Mentors) engagement begins only after the process is
 
 ## Notes on This Draft
 
-This is v0.3. Phase 1 has now been through one full Part III loop: drafted (v0.1), executed against the CRMBuilder dogfood (SES-166, 06-12-26), and refined from the run's six findings (PI-160). Phase 1.5's specified components were built (PRJ-022) and the phase ran live against the CBM test instance the same day — its Baseline Report is the concrete input Phase 2's draft is designed against. Phase 2 is drafted and awaits its own dogfood execution.
+This is v0.5 (the notes below accumulate from v0.3). Phase 1 has now been through one full Part V loop: drafted (v0.1), executed against the CRMBuilder dogfood (SES-166, 06-12-26), and refined from the run's six findings (PI-160). Phase 1.5's specified components were built (PRJ-022) and the phase ran live against the CBM test instance the same day — its Baseline Report is the concrete input Phase 2's draft is designed against. Phase 2 is drafted and awaits its own dogfood execution.
 
 Source materials drawn upon, all retained as reference material with transitional status headers until subsumed:
 
@@ -474,5 +567,12 @@ Gaps and questions added at v0.4:
 - **Stream A's cross-stream matching is manual judgment.** Matching interview candidates to baseline candidates by "name and meaning" has no tooling support yet — a candidate-matching assist (even name-similarity ordering in the confirmation walk) is a quality-of-life build item once Phase 3 runs for real.
 - **The inventory render** (confirmed entities/personas per domain as a reviewable document) waits on the rendering pipeline, like the other renders.
 - **Phases 1.5 + 2 + 3 are now a complete discovery front-half on paper.** The next dogfood milestone is running 2 → 3 end to end; the next CBM milestone is the same sequence with the already-deposited baseline. Phase 4+ (process definition onward) remains the placeholder frontier.
+
+Gaps and questions added at v0.5:
+
+- **The conduct documents decision (v0.1) still blocks retiring `interview-master-prd.md`**, whose topic-by-topic question set is only otherwise held in the question library. See the consolidation ledger, Part A of `design-phase-candidate-requirements.md`.
+- **§11's records are unbuilt.** Engagement setup (PI-072) and client-input storage (PI-071) are Draft; §11 describes the process ahead of the records.
+- **The V2 user process guide's §22–24** (versioning, cross-references, rendering) and the legacy process document's Phases 9–13 remain unconsolidated pending the storage-mechanics and deployment sections.
+- **The design phase's boundary and the term "V3"** are open decisions (D-1, D-2 in the candidate-requirements document); Part IV assumes Phases 4–8 and coins no new term.
 
 These gaps are expected and will be closed by running the phases against CRMBuilder and CBM, observing what's missing, and refining.
