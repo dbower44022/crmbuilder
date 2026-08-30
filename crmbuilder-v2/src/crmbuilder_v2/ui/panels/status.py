@@ -4,6 +4,8 @@ Mirror of :class:`CharterPanel`. Adds:
 
 * "New Version" button in the toolbar (opens
   :class:`StatusReplaceDialog`).
+* "Generate Version" button in the toolbar (opens
+  :class:`StatusGenerateDialog`; PI-433).
 * "Make Current" button in the detail pane for non-current versions.
 * :class:`ReferencesSection` widget in the detail pane.
 """
@@ -28,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.ui.base.versioned_panel import VersionedPanel
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
+from crmbuilder_v2.ui.dialogs.status_generate import StatusGenerateDialog
 from crmbuilder_v2.ui.dialogs.status_replace import StatusReplaceDialog
 from crmbuilder_v2.ui.exceptions import (
     StorageClientError,
@@ -57,6 +60,11 @@ class StatusPanel(VersionedPanel):
         self._new_version_btn.setObjectName("new_status_version_button")
         self._new_version_btn.clicked.connect(self._on_new_version_clicked)
         self._action_layout.addWidget(self._new_version_btn)
+        # PI-433 / REQ-527: a version assembled from stored records.
+        self._generate_btn = QPushButton("Generate Version")
+        self._generate_btn.setObjectName("generate_status_version_button")
+        self._generate_btn.clicked.connect(self._on_generate_clicked)
+        self._action_layout.addWidget(self._generate_btn)
 
     def entity_title(self) -> str:
         return "Status"
@@ -145,6 +153,12 @@ class StatusPanel(VersionedPanel):
             self._client, current.get("payload") or {}, self
         )
         if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.refresh()
+
+    def _on_generate_clicked(self) -> None:
+        dialog = StatusGenerateDialog(self._client, self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._initial_select_done = False
             self.refresh()
 
     def _on_make_current(self, version: int) -> None:

@@ -142,3 +142,19 @@ def upsert_seed(
         after=after,
     )
     return after
+
+
+def generate(session: Session, *, narrative: str | None = None) -> dict:
+    """Write a new status version assembled from stored records (PI-433).
+
+    The payload comes from
+    :func:`crmbuilder_v2.access.status_snapshot.build_status_payload`;
+    ``narrative`` is the optional human paragraph carried in
+    ``active_work``. Versioning and change-log emission are exactly
+    :func:`replace`'s.
+    """
+    # Local import: status_snapshot reads through this module's models and
+    # sibling repositories; importing at module top would be circular.
+    from crmbuilder_v2.access.status_snapshot import build_status_payload
+
+    return replace(session, payload=build_status_payload(session, narrative=narrative))

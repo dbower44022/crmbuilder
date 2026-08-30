@@ -23,6 +23,12 @@ class StatusReplaceIn(_Base):
     payload: dict
 
 
+class StatusGenerateIn(_Base):
+    """PI-433 — optional narrative for a generated status version."""
+
+    narrative: str | None = None
+
+
 # ---------- Decisions ----------
 
 

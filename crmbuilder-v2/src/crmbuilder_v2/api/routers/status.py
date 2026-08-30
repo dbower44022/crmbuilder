@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from crmbuilder_v2.access.repositories import status as status_repo
+from crmbuilder_v2.access.status_snapshot import build_status_payload
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
-from crmbuilder_v2.api.schemas import StatusReplaceIn
+from crmbuilder_v2.api.schemas import StatusGenerateIn, StatusReplaceIn
 
 router = APIRouter(prefix="/status", tags=["status"])
 
@@ -36,6 +37,13 @@ def next_identifier():
         return ok({"next": status_repo.compute_next_version(s)})
 
 
+@router.get("/preview")
+def preview(narrative: str | None = Query(default=None)):
+    """Return the payload ``POST /status/generate`` would write, without writing it (PI-433)."""
+    with readonly_session() as s:
+        return ok(build_status_payload(s, narrative=narrative))
+
+
 @router.get("/versions/{version}")
 def get_version(version: int):
     with readonly_session() as s:
@@ -46,6 +54,13 @@ def get_version(version: int):
 def replace(body: StatusReplaceIn):
     with writable_session() as s:
         return ok(status_repo.replace(s, payload=body.payload))
+
+
+@router.post("/generate")
+def generate(body: StatusGenerateIn):
+    """Write a new status version assembled from stored records (PI-433, REQ-527)."""
+    with writable_session() as s:
+        return ok(status_repo.generate(s, narrative=body.narrative))
 
 
 @router.patch("/versions/{version}/make-current")

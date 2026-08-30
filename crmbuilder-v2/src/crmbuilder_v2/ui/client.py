@@ -21,6 +21,7 @@ import json
 import logging
 from types import TracebackType
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -486,6 +487,35 @@ class StorageClient:
                 status_code=200,
                 errors=[],
                 message="Expected dict body for replace_status",
+            )
+        return result
+
+    def preview_status(self, narrative: str | None = None) -> dict[str, Any]:
+        """GET /status/preview. Returns the payload a generate would write
+        (PI-433) without creating a version."""
+        path = "/status/preview"
+        if narrative:
+            path += "?narrative=" + quote(narrative, safe="")
+        result = self._request("GET", path)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for preview_status",
+            )
+        return result
+
+    def generate_status(self, narrative: str | None = None) -> dict[str, Any]:
+        """POST /status/generate. Creates a new status version assembled
+        from stored records (PI-433). Returns the new version record."""
+        result = self._request(
+            "POST", "/status/generate", json_body={"narrative": narrative}
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for generate_status",
             )
         return result
 
