@@ -113,3 +113,25 @@ def test_publish_never_creates_a_built_in_field_but_rules_still_resolve():
     assert names == ["mentorStatus"]
     assert block["fields"][0]["requiredWhen"] == {"field": "firstName", "op": "isNotNull"}
     assert not [d for d in model.deferrals if d.identifier == "FLD-002"]
+
+
+def test_layout_only_native_entity_becomes_canonical(v2_env):
+    """PI-429: a built-in entity whose only customisation is a stored layout is
+    inventoried (with its built-in fields), while one with neither custom field
+    nor stored layout still is not."""
+    from crmbuilder_v2.access.repositories import layouts as layout_repo
+    from crmbuilder_v2.introspect.reconcile import reconcile_entities, reconcile_layouts
+    with session_scope() as s:
+        iid = _make_instance(s)
+        client = _FakeClient(
+            {"Lead": _native(), "Task": _native()},
+            fields={"Lead": {"website": {"type": "url"}}, "Task": {"name": {"type": "varchar"}}},
+            layouts={"Lead": {"detail": {"rows": [["website"]]}, "edit": False}},
+        )
+        assert reconcile_entities(s, instance_identifier=iid, client=client)["created"] == 1
+        assert [e["entity_name"] for e in entity_repo.list_entities(s)] == ["Lead"]
+        assert reconcile_fields(s, instance_identifier=iid, client=client)["created"] == 1
+        assert field_repo.list_fields(s)[0]["field_built_in"] is True
+        assert reconcile_layouts(s, instance_identifier=iid, client=client)["created"] == 1
+        assert layout_repo.list_layouts(s)[0]["layout_type"] == "detail"
+

@@ -532,6 +532,25 @@ def _has_custom_field(
     )
 
 
+def _has_stored_layout(client: Any, scope_name: str) -> bool:
+    """Whether a built-in entity has any stored (non-empty) layout (PI-429).
+
+    V1 writes an entity for any built-in entity with layouts; V2 created a
+    record only for one with a custom field, so a built-in entity whose only
+    customisation is a screen layout — and every relationship ending on it —
+    was invisible (PI-428 live parity finding G1). Probes each audited layout
+    type and stops at the first real body; a client without ``get_layout``
+    (a source-audit fake, say) reads as having none.
+    """
+    get_layout = getattr(client, "get_layout", None)
+    if get_layout is None:
+        return False
+    return any(
+        _layout_body_present(*get_layout(scope_name, espo_type))
+        for espo_type in _LAYOUT_TYPE_TO_ESPO.values()
+    )
+
+
 #: Instance roles whose audit is candidate-gated. Only a purely external
 #: ``source`` migrating in from a separate system is candidate-gated (DEC-648,
 #: narrowed by REQ-393 / WTK-256): no design object yet corresponds to its live
@@ -663,8 +682,9 @@ def _reconcile_entities_drift(
         entity_class = classify_entity(scope_name, scope_meta)
         if entity_class is EntityClass.CUSTOM:
             is_native = False
-        elif entity_class is EntityClass.NATIVE and _has_custom_field(
-            client, scope_name, get_base_type(scope_name)
+        elif entity_class is EntityClass.NATIVE and (
+            _has_custom_field(client, scope_name, get_base_type(scope_name))
+            or _has_stored_layout(client, scope_name)  # PI-429
         ):
             is_native = True
         else:
