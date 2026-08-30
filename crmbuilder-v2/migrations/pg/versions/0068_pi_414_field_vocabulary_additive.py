@@ -45,8 +45,14 @@ depends_on: str | Sequence[str] | None = None
 _NEW_TYPES: frozenset[str] = frozenset(
     {"postal_address", "person_name", "place", "file", "time", "structured_data"}
 )
-_FIELD_TYPES_NEW = FIELD_TYPES
-_FIELD_TYPES_OLD = FIELD_TYPES - _NEW_TYPES
+# The vocabulary AS IT STOOD AT THIS REVISION, not the live one: the next
+# migration retires ``multi_enum`` (converting its rows), so the live
+# ``FIELD_TYPES`` no longer admits it — but the rows still hold it when this
+# CHECK is rebuilt. Deriving the CHECK from the live vocabulary made the
+# "strict superset" promise above false and aborted the production upgrade
+# on 39 rows (found by rehearsing the chain on a clone of the live store).
+_FIELD_TYPES_NEW = FIELD_TYPES | {"multi_enum"}
+_FIELD_TYPES_OLD = _FIELD_TYPES_NEW - _NEW_TYPES
 
 _NEW_COLUMNS: tuple[str, ...] = (
     "field_display",
