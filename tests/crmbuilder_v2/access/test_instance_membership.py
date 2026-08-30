@@ -22,6 +22,7 @@ from crmbuilder_v2.access.repositories import instances as inst_repo
 from crmbuilder_v2.access.repositories import mapping_candidate as candidate_repo
 from crmbuilder_v2.access.repositories import source_mapping as source_mapping_repo
 from crmbuilder_v2.access.repositories import source_mapping_targets as smt_repo
+from crmbuilder_v2.access.vocab import FIELD_VOCABULARY_VERSION
 from crmbuilder_v2.introspect.reconcile import (
     ReconcileError,
     reconcile_associations,
@@ -1096,3 +1097,45 @@ def test_source_side_association_staleness(v2_env):
         )
         m = association_mapping_repo.get_association_mapping(s, amid)
         assert m["status"] == "stale" and m["stale_reason"] == "source_changed"
+
+
+# --- a stored verdict names its vocabulary (PI-414 — REQ-504 / DEC-930) -----
+
+def test_a_stored_verdict_records_the_vocabulary_that_produced_it(v2_env):
+    """REQ-504: a comparison result states the vocabulary version that computed
+    it, so re-reading an old row cannot silently claim agreement with a
+    vocabulary the row never saw."""
+    with session_scope() as s:
+        iid = _make_instance(s)
+        row = mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field",
+            member_identifier="FLD-001", state="present",
+        )
+        assert row["vocabulary_version"] == FIELD_VOCABULARY_VERSION
+
+
+def test_the_stamp_is_refreshed_when_the_verdict_is(v2_env):
+    """An update restamps: the row states the vocabulary that produced its
+    current verdict, not the one that produced the first one it ever held."""
+    with session_scope() as s:
+        iid = _make_instance(s)
+        mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field",
+            member_identifier="FLD-001", state="present",
+        )
+        again = mb.upsert_membership(
+            s, instance_identifier=iid, member_type="field",
+            member_identifier="FLD-001", state="drifted",
+            override={"field_max_length": 100},
+        )
+        assert again["vocabulary_version"] == FIELD_VOCABULARY_VERSION
+
+
+def test_the_caller_cannot_forget_the_stamp(v2_env):
+    """The stamp is applied in the repository, not at each call site. A verdict
+    that forgot its version would be indistinguishable from a pre-versioning
+    row, which is the distinction the column exists to make — so no caller is
+    given the chance to omit it."""
+    import inspect
+    sig = inspect.signature(mb.upsert_membership)
+    assert "vocabulary_version" not in sig.parameters

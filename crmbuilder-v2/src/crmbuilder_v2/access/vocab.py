@@ -237,6 +237,23 @@ FIELD_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 # `field_type` enum (v0.5+, PI-004 first slice). 11-value vocabulary
 # per ``field.md`` §3.2.3. Richer types (`formula`, `link`, `address`,
 # `phone`, `url`) deferred to v0.6+ per PI-054.
+#: Version of the design's field vocabulary (REQ-504 / DEC-930). Any stored
+#: result computed from the vocabulary records the version in force when it was
+#: computed, so a verdict produced before a vocabulary change stays
+#: distinguishable from one produced after — otherwise a re-read of an old row
+#: silently claims agreement with a vocabulary it never saw.
+#:
+#: **Bump this whenever FIELD_TYPES, FIELD_FORMATS, FIELD_DISPLAYS,
+#: FIELD_VALUES, FIELD_HOLDS or FIELD_SUPPLIED_BY changes**, in the same commit
+#: as the change. A stamp that lags its vocabulary is worse than none: it
+#: asserts a provenance that is false.
+#:
+#: 1 — the PI-414 vocabulary: the additive half (DEC-932..940), the retirement
+#:     of the multi-choice kind (DEC-937), and the link properties moved onto
+#:     relationships (DEC-932). Rows written before versioning carry NULL, which
+#:     reads as "produced before the vocabulary was versioned".
+FIELD_VOCABULARY_VERSION: int = 1
+
 FIELD_TYPES: frozenset[str] = frozenset(
     {
         "text",

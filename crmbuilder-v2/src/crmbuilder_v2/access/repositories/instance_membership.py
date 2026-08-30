@@ -21,6 +21,7 @@ from crmbuilder_v2.access._helpers import to_dict
 from crmbuilder_v2.access.models import InstanceMembership
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.vocab import (
+    FIELD_VOCABULARY_VERSION,
     INSTANCE_MEMBERSHIP_MEMBER_TYPES,
     INSTANCE_MEMBERSHIP_STATES,
 )
@@ -65,6 +66,11 @@ def upsert_membership(
     Keyed on (instance, member_type, member_identifier) within the active
     engagement. ``override`` is the sparse per-attribute deviation (DEC-432);
     it is replaced wholesale on each call (and cleared when ``None``).
+
+    Every write is stamped with :data:`FIELD_VOCABULARY_VERSION` (REQ-504).
+    Stamping here rather than at each call site is deliberate: a verdict that
+    forgot its version is indistinguishable from one produced before versioning
+    existed, so the stamp cannot be left to a caller to remember.
     """
     member_type = _require_member_type(member_type)
     state = _require_state(state)
@@ -84,12 +90,14 @@ def upsert_membership(
             member_identifier=member_identifier,
             state=state,
             override=override,
+            vocabulary_version=FIELD_VOCABULARY_VERSION,
             last_audited_at=stamp,
         )
         session.add(row)
     else:
         row.state = state
         row.override = override
+        row.vocabulary_version = FIELD_VOCABULARY_VERSION
         row.last_audited_at = stamp
     session.flush()
     return to_dict(row)

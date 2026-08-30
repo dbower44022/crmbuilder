@@ -2828,6 +2828,12 @@ class InstanceMembership(EngagementScopedMixin, Base):
     override: Mapped[dict | None] = mapped_column(
         JSONColumnNoneAsNull, nullable=True
     )
+    # REQ-504: the field-vocabulary version in force when this verdict was
+    # computed. NULL on rows written before versioning existed, which is itself
+    # the honest reading — such a row cannot say which vocabulary produced it.
+    vocabulary_version: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )
     last_audited_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
