@@ -401,3 +401,96 @@ def test_format_error_detail_variants() -> None:
     assert "list" in format_error_detail(["a", "b"]) or format_error_detail(
         ["a", "b"]
     ).startswith("[")
+
+
+# --- record utilization reads (PI-426 / REQ-524) ------------------------------
+
+
+def test_list_records_builds_v1_url_shape(client_and_recorder) -> None:
+    client, rec = client_and_recorder
+    rec.response = FakeResponse(200, {"total": 2, "list": [{"id": "a"}, {"id": "b"}]})
+    status, body = client.list_records(
+        "CEngagement",
+        select=["id", "createdAt"],
+        where=[{"type": "isNotNull", "attribute": "cStage"}],
+        order_by="createdAt",
+        order="desc",
+        offset=200,
+        max_size=200,
+    )
+    assert status == 200 and body["total"] == 2
+    assert rec.last["method"] == "GET"
+    assert rec.last["url"] == (
+        f"{API}/CEngagement?maxSize=200&offset=200&select=id%2CcreatedAt"
+        "&orderBy=createdAt&order=desc"
+        "&where%5B0%5D%5Btype%5D=isNotNull&where%5B0%5D%5Battribute%5D=cStage"
+    )
+    # The query string is in the URL, never passed as ``params`` (HMAC covers it).
+    assert "params" not in rec.last["kwargs"]
+
+
+def test_list_records_encodes_list_where_values(client_and_recorder) -> None:
+    client, rec = client_and_recorder
+    rec.response = FakeResponse(200, {"total": 0, "list": []})
+    client.list_records(
+        "Contact",
+        where=[{"type": "arrayAnyOf", "attribute": "cTags", "value": ["a", "b"]}],
+    )
+    url = rec.last["url"]
+    assert url.startswith(f"{API}/Contact?maxSize=200&offset=0&")
+    assert url.count("where%5B0%5D%5Bvalue%5D%5B%5D=") == 2
+
+
+def test_count_records_uses_max_size_zero_and_reads_total(client_and_recorder) -> None:
+    client, rec = client_and_recorder
+    rec.response = FakeResponse(200, {"total": 412, "list": []})
+    assert client.count_records("CDues") == (200, 412)
+    assert rec.last["url"] == f"{API}/CDues?maxSize=0&offset=0"
+    assert client._count_max_size_zero_ok is True
+
+
+def test_count_records_falls_back_when_max_size_zero_rejected(
+    client_and_recorder, monkeypatch
+) -> None:
+    client, rec = client_and_recorder
+    responses = iter([
+        FakeResponse(400, {"message": "bad maxSize"}),
+        FakeResponse(200, {"total": 7, "list": [{"id": "x"}]}),
+        FakeResponse(200, {"total": 3, "list": [{"id": "y"}]}),
+    ])
+
+    def _next(_self, method, url, **kwargs):
+        rec.calls.append({"method": method, "url": url, "kwargs": kwargs})
+        return next(responses)
+
+    monkeypatch.setattr(requests.Session, "request", _next)
+    assert client.count_records("CDues") == (200, 7)
+    assert rec.calls[-1]["url"] == f"{API}/CDues?maxSize=1&offset=0&select=id"
+    assert client._count_max_size_zero_ok is False
+    # Remembered: the next count goes straight to the fallback shape.
+    assert client.count_records("Contact") == (200, 3)
+    assert rec.calls[-1]["url"] == f"{API}/Contact?maxSize=1&offset=0&select=id"
+
+
+def test_count_records_400_from_where_keeps_max_size_zero(
+    client_and_recorder, monkeypatch
+) -> None:
+    client, rec = client_and_recorder
+    responses = iter([
+        FakeResponse(400, {"message": "bad where"}),
+        FakeResponse(400, {"message": "bad where"}),
+    ])
+    monkeypatch.setattr(
+        requests.Session, "request", lambda _s, m, u, **kw: next(responses)
+    )
+    where = [{"type": "isLinked", "attribute": "nope"}]
+    assert client.count_records("Contact", where=where) == (400, None)
+    assert client._count_max_size_zero_ok is True
+
+
+def test_count_records_non_int_total_is_none(client_and_recorder) -> None:
+    client, rec = client_and_recorder
+    rec.response = FakeResponse(200, {"total": "many", "list": []})
+    assert client.count_records("Contact") == (200, None)
+    rec.response = FakeResponse(503, {"message": "down"})
+    assert client.count_records("Contact") == (503, None)

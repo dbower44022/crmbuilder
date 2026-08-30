@@ -230,10 +230,12 @@ def test_audit_areas_list(client):
     assert [a["area"] for a in areas] == [
         "entities", "fields", "associations", "layouts",
         "roles", "field-permissions", "teams", "filtered-tabs",
-        "email-templates", "field-rules",
+        "email-templates", "field-rules", "utilization",
     ]
     assert areas[0]["label"] == "Entities"
     assert areas[2]["label"] == "Relationships"
+    # PI-426 / REQ-524: utilization is offered as a separate, opt-in choice.
+    assert {a["area"] for a in areas if a["opt_in"]} == {"utilization"}
 
 
 def test_audit_single_area_candidate_gates(client, monkeypatch):

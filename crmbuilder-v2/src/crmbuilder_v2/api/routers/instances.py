@@ -60,6 +60,7 @@ from crmbuilder_v2.introspect.reconcile import (
     reconcile_teams,
 )
 from crmbuilder_v2.introspect.record_export import export_records
+from crmbuilder_v2.introspect.utilization import reconcile_utilization
 from crmbuilder_v2.publish import service as publish_service
 
 router = APIRouter(prefix="/instances", tags=["instances"])
@@ -310,10 +311,19 @@ _AUDIT_AREAS: dict[str, tuple[str, object]] = {
     "email-templates": ("Email templates", reconcile_email_templates),
     # PI-421 / REQ-123 — field dynamic logic, after fields exist.
     "field-rules": ("Field rules", reconcile_field_rules),
+    # PI-426 / REQ-524 — record utilization profiled into evidence. Last, and
+    # opt-in (see ``_OPT_IN_AUDIT_AREAS``): it reads every record on the instance.
+    "utilization": ("Utilization", reconcile_utilization),
 }
 
 #: The area slugs in run order — the order the desktop issues per-area calls.
 AUDIT_AREA_ORDER: list[str] = list(_AUDIT_AREAS)
+
+#: Areas the all-in-one audit does **not** run (REQ-524). A structural audit
+#: stays fast; an opt-in area is run only when asked for by name through the
+#: per-area endpoint, and is flagged ``opt_in`` in the area list so the desktop
+#: offers it as a separate choice rather than as a step of "Audit now".
+_OPT_IN_AUDIT_AREAS: frozenset[str] = frozenset({"utilization"})
 
 #: Areas reconciled on a ``source`` audit (DEC-653). A source audit is the
 #: candidate-gated design-input pass over entities / fields / associations only;
@@ -340,7 +350,14 @@ def _is_source_audit(s, identifier: str) -> bool:
 def audit_areas():
     """The ordered audit areas the desktop drives, for the progress view."""
     return ok(
-        [{"area": a, "label": _AUDIT_AREAS[a][0]} for a in AUDIT_AREA_ORDER]
+        [
+            {
+                "area": a,
+                "label": _AUDIT_AREAS[a][0],
+                "opt_in": a in _OPT_IN_AUDIT_AREAS,
+            }
+            for a in AUDIT_AREA_ORDER
+        ]
     )
 
 
@@ -354,14 +371,14 @@ def audit(identifier: str):
     audit runs the full drift set (REQ-393 / WTK-256). This all-in-one form is
     retained for non-interactive callers;
     the desktop drives the per-area endpoint below for live progress (PI-274).
+    Opt-in areas (``_OPT_IN_AUDIT_AREAS`` — utilization, REQ-524) never run
+    here; they are reached only by name through the per-area endpoint.
     """
     with writable_session() as s:
         client = _audit_introspection_client(s, identifier)
-        keys = (
-            [a for a in AUDIT_AREA_ORDER if a in _SOURCE_AUDIT_AREAS]
-            if _is_source_audit(s, identifier)
-            else list(AUDIT_AREA_ORDER)
-        )
+        keys = [a for a in AUDIT_AREA_ORDER if a not in _OPT_IN_AUDIT_AREAS]
+        if _is_source_audit(s, identifier):
+            keys = [a for a in keys if a in _SOURCE_AUDIT_AREAS]
         try:
             result: dict[str, object] = {
                 key.replace("-", "_"): _AUDIT_AREAS[key][1](

@@ -122,7 +122,9 @@ class AuditProgressDialog(QDialog):
         )
 
     def _areas_loaded(self, areas: list[dict[str, Any]]) -> None:
-        self._areas = areas or []
+        # PI-426 / REQ-524: an opt-in area (utilization — it reads every record)
+        # is not a step of "Audit now"; it is run only when asked for by name.
+        self._areas = [a for a in areas or [] if not a.get("opt_in")]
         self._progress.setRange(0, len(self._areas) or 1)
         self._progress.setValue(0)
         self._run_next()
