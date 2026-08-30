@@ -1095,13 +1095,28 @@ def _reconcile_fields_drift(
             neutral_field = strip_field_c_prefix(
                 field_name, entity_is_native=is_native
             )
-            audited = _audited_field_attrs(field_meta)
-            # REQ-437: a source field kind the engine cannot map falls back to
-            # ``text`` but is surfaced for review, not silently misrepresented.
-            if is_unmapped_field_type(field_meta.get("type")):
-                summary.setdefault("unmapped_field_types", []).append(
-                    {"field": neutral_field, "source_type": str(field_meta.get("type"))}
+            # REQ-503: a kind the design's vocabulary does not cover is
+            # reported as unrecognized and named, never stored as the nearest
+            # match. It used to be recorded as text and flagged for review, but
+            # a flag alongside a stored falsehood is still a stored falsehood —
+            # every consumer that reads the record and not the flag believes it.
+            # DEC-930 settles the shape: expressiveness is added as qualifying
+            # attributes on a small base-type set, not as new type tokens, so
+            # there is no ``unrecognized`` kind to store and the honest move is
+            # to describe nothing and say so.
+            if is_unmapped_field_type(espo_type):
+                summary.setdefault("unrecognized_field_types", []).append(
+                    {
+                        "field": neutral_field,
+                        "entity": scope_name,
+                        "source_type": espo_type,
+                    }
                 )
+                stale = canon.get(_ci(neutral_field))
+                if stale is not None:
+                    writer.mark_seen(stale["field_identifier"])
+                continue
+            audited = _audited_field_attrs(field_meta)
 
             match = canon.get(_ci(neutral_field))
             if match is None:
@@ -1122,11 +1137,6 @@ def _reconcile_fields_drift(
                 if audited["field_numeric_scale"] is not None:
                     extra["numeric_scale"] = audited["field_numeric_scale"]
                 description = f"Discovered by auditing instance {instance_identifier}."
-                if is_unmapped_field_type(field_meta.get("type")):
-                    description += (
-                        f" Source field kind {field_meta.get('type')!r} is not "
-                        f"recognised by the engine and was recorded as text — review."
-                    )
                 created = field_repo.create_field(
                     session,
                     field_belongs_to_entity_identifier=parent_id,
@@ -1313,6 +1323,27 @@ def _reconcile_fields_candidate_gated(
             neutral_field = strip_field_c_prefix(
                 field_name, entity_is_native=is_native
             )
+            # REQ-503: a kind the design's vocabulary does not cover is
+            # reported as unrecognized and named, never stored as the nearest
+            # match. It used to be recorded as text and flagged for review, but
+            # a flag alongside a stored falsehood is still a stored falsehood —
+            # every consumer that reads the record and not the flag believes it.
+            # DEC-930 settles the shape: expressiveness is added as qualifying
+            # attributes on a small base-type set, not as new type tokens, so
+            # there is no ``unrecognized`` kind to store and the honest move is
+            # to describe nothing and say so.
+            if is_unmapped_field_type(espo_type):
+                summary.setdefault("unrecognized_field_types", []).append(
+                    {
+                        "field": neutral_field,
+                        "entity": scope_name,
+                        "source_type": espo_type,
+                    }
+                )
+                stale = canon_fields.get(_ci(neutral_field))
+                if stale is not None:
+                    writer.mark_seen(stale["field_identifier"])
+                continue
             match = canon_fields.get(_ci(neutral_field))
             if match is not None:
                 member_id = match["field_identifier"]

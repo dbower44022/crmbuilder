@@ -30,8 +30,11 @@ def test_formula_still_maps_to_derived():
 
 
 def test_unrecognised_type_falls_back_to_text_but_is_flagged():
-    """REQ-437: an unmapped source kind still records (as text) but is reported
-    via is_unmapped_field_type so it can be surfaced for review."""
+    """The mapper's own behaviour, which REQ-503 has since made unreachable from
+    the reader: an unmapped kind still resolves to text here, but the readers now
+    detect it with is_unmapped_field_type and skip before _audited_field_attrs is
+    ever called, so nothing is stored from this fallback. Kept because the
+    fallback is what makes the detection necessary."""
     assert _map_field_type("someNewEspoType") == "text"
     assert is_unmapped_field_type("someNewEspoType") is True
     # A recognised kind is not flagged.
@@ -186,3 +189,30 @@ def test_mark_seen_records_no_verdict_of_its_own():
     w = _Writer()
     w.mark_seen("FLD-223")
     assert "FLD-223" not in w.verdicts
+
+
+# --- unrecognized, not approximated (PI-414 — REQ-503 / DEC-930) ------------
+
+def test_the_reader_detects_before_it_translates():
+    """REQ-503 turns on order: is_unmapped_field_type is a check on the raw CRM
+    type, so the reader can decide not to describe a field before
+    _audited_field_attrs manufactures a kind for it."""
+    assert is_unmapped_field_type("someNewEspoType") is True
+    # ...and the translation it precedes would have produced a nearest match.
+    assert _audited_field_attrs({"type": "someNewEspoType"})["field_type"] == "text"
+
+
+def test_a_recognised_kind_is_not_diverted():
+    """The skip must be narrow: every kind the vocabulary covers still
+    translates and is still stored."""
+    for espo_type in ("varchar", "foreign", "formula", "enum"):
+        assert is_unmapped_field_type(espo_type) is False
+
+
+def test_no_unrecognized_token_was_added_to_the_vocabulary():
+    """DEC-930: expressiveness is added as qualifying attributes on a small
+    base-type set, not as new type tokens. REQ-503 is satisfied by describing
+    nothing and saying so, not by storing a kind that means 'no kind'."""
+    from crmbuilder_v2.access.vocab import FIELD_TYPES
+    assert "unrecognized" not in FIELD_TYPES
+    assert "unknown" not in FIELD_TYPES
