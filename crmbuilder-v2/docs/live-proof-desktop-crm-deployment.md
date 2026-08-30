@@ -195,14 +195,32 @@ Save it as `Cloudflare — proof B (read-only)`. With this token the run can
 verify the zone (so it gets past *Checking credentials* and creates the
 server) but cannot create the A record — exactly the failure run 2 needs.
 
-### 0.6 Names and emails
+### 0.6 Check two names are free, and decide one email address
 
-- Confirm neither `proof-1` nor `proof-2` exists yet in the zone's DNS
-  (Cloudflare → your zone → **DNS → Records**; search for `proof`). If either
-  exists, delete it or pick other labels.
-- Choose the **Let's Encrypt contact email** (receives certificate expiry
-  notices; your own address is fine) and the **CRM administrator email**
-  (goes on the admin user inside EspoCRM; can be the same address).
+**Part 1 — check the names `proof-1` and `proof-2` are not already in use**
+
+1. Open <https://dash.cloudflare.com> and click **acmeconstruction.us** in the
+   list.
+2. In the left menu click **DNS**, then **Records**.
+3. In the *Search DNS Records* box type `proof` and press Enter.
+4. You should see **no matching records**. That means the names are free —
+   move on to Part 2. If a record named `proof-1` or `proof-2` is listed,
+   click its **Delete** link on the right, confirm, and it is free.
+
+**Part 2 — decide the email address**
+
+Nothing to do here except decide. In section 3 (run 1) you will click
+**Instances → Deploy new…** in the CRMBuilder desktop app; the screens that
+open ask for an email address twice — on the *Domain* screen and on the
+*Accounts* screen. This is the address you will type there:
+
+- Box labelled **Let's Encrypt email** → type `doug@dougbower.com`.
+  *(Let's Encrypt is the name of the free service that issues the website's
+  HTTPS certificate; it emails this address before the certificate expires.)*
+- Box labelled **Administrator email** → type `doug@dougbower.com` again.
+  *(This becomes the email on the admin user inside the new CRM.)*
+
+That is all for 0.6.
 
 ### 0.7 Keep to hand
 
@@ -213,7 +231,7 @@ server) but cannot create the A record — exactly the failure run 2 needs.
 | CF token B | password manager — pasted in section 4 step 1 |
 | Zone name | e.g. `dougbower.com` |
 | Two labels | `proof-1`, `proof-2` |
-| Two emails | Let's Encrypt contact; CRM admin |
+| One email address | `doug@dougbower.com` — typed into both email boxes of the wizard |
 | A place to write the generated admin passwords | password manager entries `Proof 1 admin`, `Proof 2 admin` |
 
 Nothing here touches the cloud service, the production droplet, or the CBM

@@ -73,6 +73,7 @@ class StatusPanel(VersionedPanel):
             "references": self._client.list_references_touching(
                 _REFERENCES_ENTITY_TYPE, _REFERENCES_ENTITY_ID
             ),
+            **self.fetch_engagement_extra(record),
         }
 
     def render_detail(
@@ -89,6 +90,8 @@ class StatusPanel(VersionedPanel):
         version = record.get("version")
         is_current = bool(record.get("is_current"))
         outer.addWidget(_version_heading(version, is_current))
+        # PI-431 / REQ-525: which engagement this document belongs to.
+        outer.addWidget(self.engagement_section(record, extras))
 
         if not is_current and version is not None:
             button_strip = QWidget()
