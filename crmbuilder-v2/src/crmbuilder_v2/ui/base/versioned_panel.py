@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
+from crmbuilder_v2.ui.panels._governance_helpers import READ_ONLY_STYLE
 
 _CURRENT_MARK = "✓"
 _LONG_STRING_THRESHOLD = 80
@@ -142,6 +143,51 @@ class VersionedPanel(ListDetailPanel):
         self, record: dict[str, Any], extras: dict[str, Any]
     ) -> QWidget:
         return self._render_payload(record.get("payload") or {})
+
+    # ------------------------------------------------------------------
+    # Engagement row (PI-431 / REQ-525)
+    # ------------------------------------------------------------------
+
+    def fetch_engagement_extra(self, record: dict[str, Any]) -> dict[str, Any]:
+        """Resolve the record's ``engagement_id`` to its engagement record.
+
+        Runs inside ``fetch_detail_extras`` (background thread). Returns
+        ``{"engagement": <record or None>}``; a failed lookup yields
+        ``None`` so the row falls back to the bare identifier.
+        """
+        engagement_id = record.get("engagement_id")
+        if not engagement_id or self._client is None:
+            return {"engagement": None}
+        try:
+            return {"engagement": self._client.get_engagement(engagement_id)}
+        except Exception:  # noqa: BLE001 — display fallback, never fatal
+            return {"engagement": None}
+
+    @staticmethod
+    def engagement_section(
+        record: dict[str, Any], extras: dict[str, Any]
+    ) -> QWidget:
+        """Read-only ``Engagement`` row: ``ENG-NNN — name`` (or the bare
+        identifier / em dash when the name is unavailable)."""
+        engagement_id = record.get("engagement_id")
+        engagement = extras.get("engagement") or {}
+        name = engagement.get("engagement_name")
+        if engagement_id and name:
+            text = f"{engagement_id} — {name}"
+        elif engagement_id:
+            text = str(engagement_id)
+        else:
+            text = "—"
+        container = QWidget()
+        layout = QFormLayout(container)
+        layout.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        layout.setContentsMargins(0, 0, 0, 0)
+        label = QLabel(text)
+        label.setObjectName("engagement_value_label")
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        label.setStyleSheet(READ_ONLY_STYLE)
+        layout.addRow("Engagement", label)
+        return container
 
     def _post_process_records(
         self, records: list[dict[str, Any]]

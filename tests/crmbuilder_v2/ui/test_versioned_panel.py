@@ -106,3 +106,88 @@ def test_empty_payload_renders_placeholder(qapp, qtbot):
     rendered = panel._render_payload({})
     labels = rendered.findChildren(QLabel)
     assert any("(empty payload)" in label.text() for label in labels)
+
+
+# ----------------------------------------------------------------------
+# Engagement row (PI-431 / REQ-525)
+# ----------------------------------------------------------------------
+
+
+class _FakeClient:
+    def __init__(self, *, fail: bool = False):
+        self.fail = fail
+        self.calls: list[str] = []
+
+    def get_engagement(self, identifier: str) -> dict[str, Any]:
+        self.calls.append(identifier)
+        if self.fail:
+            raise RuntimeError("boom")
+        return {
+            "engagement_identifier": identifier,
+            "engagement_name": "CRMBuilder v2",
+        }
+
+
+def _engagement_text(widget) -> str:
+    labels = [
+        w for w in widget.findChildren(QLabel)
+        if w.objectName() == "engagement_value_label"
+    ]
+    assert len(labels) == 1
+    return labels[0].text()
+
+
+def test_fetch_engagement_extra_resolves_name(qapp):
+    panel = _FakeVersionedPanel(fetch_impl=_records)
+    client = _FakeClient()
+    panel._client = client
+    extras = panel.fetch_engagement_extra({"engagement_id": "ENG-001"})
+    assert client.calls == ["ENG-001"]
+    assert extras["engagement"]["engagement_name"] == "CRMBuilder v2"
+
+
+def test_fetch_engagement_extra_swallows_lookup_failure(qapp):
+    panel = _FakeVersionedPanel(fetch_impl=_records)
+    panel._client = _FakeClient(fail=True)
+    assert panel.fetch_engagement_extra({"engagement_id": "ENG-001"}) == {
+        "engagement": None
+    }
+
+
+def test_engagement_section_shows_identifier_and_name(qapp, qtbot):
+    record = {"version": 1, "engagement_id": "ENG-001"}
+    extras = {"engagement": {"engagement_name": "CRMBuilder v2"}}
+    widget = VersionedPanel.engagement_section(record, extras)
+    qtbot.addWidget(widget)
+    assert _engagement_text(widget) == "ENG-001 — CRMBuilder v2"
+
+
+def test_engagement_section_falls_back_to_identifier(qapp, qtbot):
+    widget = VersionedPanel.engagement_section(
+        {"version": 1, "engagement_id": "ENG-001"}, {"engagement": None}
+    )
+    qtbot.addWidget(widget)
+    assert _engagement_text(widget) == "ENG-001"
+
+
+def test_charter_and_status_detail_render_engagement_row(qapp, qtbot):
+    from crmbuilder_v2.ui.panels.charter import CharterPanel
+    from crmbuilder_v2.ui.panels.status import StatusPanel
+
+    record = {
+        "version": 3,
+        "is_current": True,
+        "created_at": "2026-06-12T23:08:58",
+        "payload": {"title": "CRMBuilder Charter"},
+        "engagement_id": "ENG-001",
+    }
+    extras = {
+        "references": {},
+        "engagement": {"engagement_name": "CRMBuilder v2"},
+    }
+    for cls in (CharterPanel, StatusPanel):
+        panel = cls(client=_FakeClient())
+        qtbot.addWidget(panel)
+        detail = panel.render_detail(record, extras)
+        qtbot.addWidget(detail)
+        assert _engagement_text(detail) == "ENG-001 — CRMBuilder v2"
