@@ -49,3 +49,20 @@ def test_reconcile_layouts_fetches_every_type(v2_env):
         assert set(stored) == LAYOUT_TYPES
         assert stored["edit"] == {"marker": "edit"}
         assert stored["side_panels_detail"] == {"marker": "sidePanelsDetail"}
+
+
+def test_empty_layout_bodies_are_not_layouts(v2_env):
+    """EspoCRM answers ``false`` / ``[]`` for a type with no stored layout; V1
+    skips those (audit_manager._extract_layout) and so must V2 (PI-428 live
+    parity finding: 200 of 378 stored bodies on the test instance were empty)."""
+    with session_scope() as s:
+        iid = _make_instance(s)
+        entity_repo.create_entity(s, name="Engagement", description="x")
+        client = _FakeClient(
+            {"CEngagement": _custom()},
+            layouts={"CEngagement": {"detail": {"rows": [["name"]]}, "edit": False,
+                                     "filters": [], "sidePanelsDetail": {}}},
+        )
+        summary = reconcile_layouts(s, instance_identifier=iid, client=client)
+        assert summary["created"] == 1
+        assert [row["layout_type"] for row in layout_repo.list_layouts(s)] == ["detail"]

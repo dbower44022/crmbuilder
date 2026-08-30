@@ -1910,6 +1910,18 @@ _LAYOUT_TYPE_TO_ESPO: dict[str, str] = {
 }
 
 
+def _layout_body_present(status: int, content: Any) -> bool:
+    """Whether a layout read returned a real layout.
+
+    EspoCRM answers ``false`` (or an empty list/object) for a type the entity
+    has no stored layout for — "use the default", not a layout. V1 skips those
+    (``audit_manager._extract_layout``); recording them would inventory an
+    empty body as a design layout and then compare against it (PI-428 live
+    parity finding: 200 of 378 records on the CBM test instance were empty).
+    """
+    return status == 200 and content not in (None, False, [], {}, "")
+
+
 class _LayoutsClient(_ScopesClient, Protocol):
     """Adds per-(entity, type) layout fetch the layout reconcile needs."""
 
@@ -1980,7 +1992,7 @@ def reconcile_layouts(
             l_status, content = client.get_layout(
                 scope_name, _LAYOUT_TYPE_TO_ESPO[neutral_type]
             )
-            if l_status != 200 or content is None:
+            if not _layout_body_present(l_status, content):
                 continue
             summary["seen"] += 1
             existing = layout_repo.list_layouts(

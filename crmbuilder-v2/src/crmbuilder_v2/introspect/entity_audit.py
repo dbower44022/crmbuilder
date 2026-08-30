@@ -50,6 +50,7 @@ from crmbuilder_v2.introspect.reconcile import (
     _ci,
     _entity_override,
     _field_override,
+    _layout_body_present,
     _learn_entity_base_type,
     _note,
     _read_entity_options,
@@ -161,7 +162,7 @@ def reconcile_entity_slice(
         content = None
         if present_here and ltype in _LAYOUT_TYPE_TO_ESPO:
             l_status, body = client.get_layout(scope_name, _LAYOUT_TYPE_TO_ESPO[ltype])
-            if l_status == 200 and body is not None:
+            if _layout_body_present(l_status, body):
                 content = body
         if content is None:
             state, override = "absent", None
