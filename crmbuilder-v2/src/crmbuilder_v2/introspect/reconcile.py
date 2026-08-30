@@ -102,6 +102,8 @@ class _FieldsClient(_ScopesClient, Protocol):
 
     def get_client_defs(self, entity: str) -> tuple[int, dict | None]: ...
 
+    def get_formula(self, entity: str) -> tuple[int, dict | None]: ...
+
     def get_i18n(self, language: str = ...) -> tuple[int, dict]: ...
 
     # PI-378 — resolving a foreign field's mirrored result type needs the parent
@@ -375,18 +377,38 @@ _ENTITY_BOOL_ATTRS = frozenset(
 
 def _read_entity_options(
     client: Any, scope_name: str
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-    """Fetch the three per-entity metadata blocks the entity audit reads.
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Fetch the four per-entity metadata blocks the entity audit reads.
 
-    Returns ``(collection, entity_defs, client_defs)``; a non-200 or non-dict
-    response for any block is treated as empty, which the attribute derivation
-    reads as "platform defaults".
+    Returns ``(collection, entity_defs, client_defs, formula)``; a non-200 or
+    non-dict response for any block is treated as empty, which the attribute
+    derivation reads as "platform defaults" / "no formula".
     """
     out: list[dict[str, Any]] = []
-    for reader in (client.get_collection, client.get_entity_defs, client.get_client_defs):
+    for reader in (
+        client.get_collection,
+        client.get_entity_defs,
+        client.get_client_defs,
+        client.get_formula,
+    ):
         status, body = reader(scope_name)
         out.append(body if (status == 200 and isinstance(body, dict)) else {})
-    return out[0], out[1], out[2]
+    return out[0], out[1], out[2], out[3]
+
+
+def _formula_scripts(formula: dict[str, Any] | None) -> dict[str, str] | None:
+    """Keep every non-empty script keyed by hook; ``None`` when there are none.
+
+    Mirrors V1 ``AuditManager._apply_formula_scripts``: sentinel keys (leading
+    underscore, e.g. ``_parse_failed``) and blank bodies are dropped.
+    """
+    src = formula if isinstance(formula, dict) else {}
+    scripts = {
+        key: value
+        for key, value in src.items()
+        if isinstance(value, str) and value.strip() and not key.startswith("_")
+    }
+    return scripts or None
 
 
 def _opt_str(value: Any) -> str | None:
@@ -398,6 +420,7 @@ def _audited_entity_attrs(
     collection: dict[str, Any] | None = None,
     entity_defs: dict[str, Any] | None = None,
     client_defs: dict[str, Any] | None = None,
+    formula: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Derive the neutral entity attributes the inventory compares on.
 
@@ -450,6 +473,8 @@ def _audited_entity_attrs(
         "entity_multiple_assigned_users": (
             "assignedUsers" in fields_meta or "collaborators" in links_meta
         ),
+        # PI-422 / REQ-122 / DEC-947 — formula scripts, verbatim, capture-only.
+        "entity_formula_scripts": _formula_scripts(formula),
     }
 
 
@@ -647,8 +672,12 @@ def _reconcile_entities_drift(
         # The collection-search settings (REQ-340 / PI-300) live in the
         # ``entityDefs.{Entity}.collection`` block, not in ``scope_meta`` — fetch
         # them per entity. A non-200 or non-dict response is treated as empty.
-        collection, entity_defs, client_defs = _read_entity_options(client, scope_name)
-        audited = _audited_entity_attrs(scope_meta, collection, entity_defs, client_defs)
+        collection, entity_defs, client_defs, formula = _read_entity_options(
+            client, scope_name
+        )
+        audited = _audited_entity_attrs(
+            scope_meta, collection, entity_defs, client_defs, formula
+        )
 
         match = canonical.get(_ci(neutral))
         if match is None:
@@ -677,6 +706,7 @@ def _reconcile_entities_drift(
                 count_disabled=audited["entity_count_disabled"],
                 optimistic_concurrency=audited["entity_optimistic_concurrency"],
                 multiple_assigned_users=audited["entity_multiple_assigned_users"],
+                formula_scripts=audited["entity_formula_scripts"],
             )
             canonical[neutral] = created
             member_id = created["entity_identifier"]
@@ -795,11 +825,11 @@ def _reconcile_entities_candidate_gated(
             # writes membership nor re-surfaces a candidate.
             continue
         if kind == "resolved":
-            collection, entity_defs, client_defs = _read_entity_options(
+            collection, entity_defs, client_defs, formula = _read_entity_options(
                 client, scope_name
             )
             audited = _audited_entity_attrs(
-                scope_meta, collection, entity_defs, client_defs
+                scope_meta, collection, entity_defs, client_defs, formula
             )
             for tgt in source_mapping_targets_repo.list_targets(
                 session,

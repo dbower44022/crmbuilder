@@ -111,6 +111,7 @@ def create(body: EntityCreateIn):
                 count_disabled=body.entity_count_disabled,
                 optimistic_concurrency=body.entity_optimistic_concurrency,
                 multiple_assigned_users=body.entity_multiple_assigned_users,
+                formula_scripts=body.entity_formula_scripts,
             )
         )
 
@@ -143,6 +144,7 @@ def replace(identifier: str, body: EntityReplaceIn):
                 count_disabled=body.entity_count_disabled,
                 optimistic_concurrency=body.entity_optimistic_concurrency,
                 multiple_assigned_users=body.entity_multiple_assigned_users,
+                formula_scripts=body.entity_formula_scripts,
             )
         )
 

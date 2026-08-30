@@ -918,6 +918,13 @@ class Entity(EngagementScopedPKMixin, Base):
     entity_multiple_assigned_users: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    # PI-422 / REQ-122 / DEC-947 — the entity's formula scripts keyed by hook
+    # (``beforeSaveCustomScript`` ...), captured verbatim by the audit.
+    # Capture-only (DEC-420): the platform has no write path, so publish never
+    # emits them and re-apply is manual. NULL = no formula.
+    entity_formula_scripts: Mapped[dict[str, str] | None] = mapped_column(
+        JSONColumn, nullable=True
+    )
     entity_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )

@@ -103,6 +103,8 @@ _PATCHABLE_FIELDS = frozenset(
         "count_disabled",
         "optimistic_concurrency",
         "multiple_assigned_users",
+        # PI-422 / REQ-122 — formula scripts (capture-only).
+        "formula_scripts",
     }
 )
 
@@ -115,10 +117,25 @@ _OPTION_BOOL_FIELDS = (
 )
 
 
+_OPTION_JSON_FIELDS = ("formula_scripts",)
+
+
+def _coerce_formula_scripts(value: object) -> dict[str, str] | None:
+    """Keep ``{hook: non-empty script}`` entries only; ``None`` when nothing remains."""
+    if not isinstance(value, dict):
+        return None
+    kept = {
+        str(k): v for k, v in value.items() if isinstance(v, str) and v.strip()
+    }
+    return kept or None
+
+
 def _coerce_options(options: dict | None) -> dict:
     """Normalise the PI-424 entity options: blank strings -> None, toggles -> bool."""
     src = options or {}
     out: dict = {}
+    for k in _OPTION_JSON_FIELDS:
+        out[f"entity_{k}"] = _coerce_formula_scripts(src.get(k))
     for k in _OPTION_STR_FIELDS:
         v = src.get(k)
         out[f"entity_{k}"] = v.strip() if isinstance(v, str) and v.strip() else None
@@ -509,6 +526,7 @@ def create_entity(
     count_disabled: bool | None = None,
     optimistic_concurrency: bool | None = None,
     multiple_assigned_users: bool | None = None,
+    formula_scripts: dict | None = None,
 ) -> dict:
     """Create an entity.
 
@@ -539,7 +557,7 @@ def create_entity(
     full_text_search = bool(full_text_search)
     full_text_search_min_length = _coerce_fts_min_length(full_text_search_min_length)
     _reject_duplicate_name(session, name)
-    options = {k: v for k, v in locals().items() if k in _OPTION_STR_FIELDS + _OPTION_BOOL_FIELDS}
+    options = {k: v for k, v in locals().items() if k in _OPTION_STR_FIELDS + _OPTION_BOOL_FIELDS + _OPTION_JSON_FIELDS}
 
     if identifier is None:
         row = _insert_with_autoassign(
@@ -608,6 +626,7 @@ def update_entity(
     count_disabled: bool | None = None,
     optimistic_concurrency: bool | None = None,
     multiple_assigned_users: bool | None = None,
+    formula_scripts: dict | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -680,7 +699,7 @@ def update_entity(
         full_text_search_min_length
     )
     for col, val in _coerce_options(
-        {k: v for k, v in locals().items() if k in _OPTION_STR_FIELDS + _OPTION_BOOL_FIELDS}
+        {k: v for k, v in locals().items() if k in _OPTION_STR_FIELDS + _OPTION_BOOL_FIELDS + _OPTION_JSON_FIELDS}
     ).items():
         setattr(row, col, val)
     session.flush()
@@ -793,7 +812,7 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
         v = fields["label_plural"]
         row.entity_label_plural = v.strip() if isinstance(v, str) and v.strip() else None
     # PI-424 / REQ-346 — entity options: only the supplied keys are touched.
-    supplied = {k: fields[k] for k in _OPTION_STR_FIELDS + _OPTION_BOOL_FIELDS if k in fields}
+    supplied = {k: fields[k] for k in _OPTION_STR_FIELDS + _OPTION_BOOL_FIELDS + _OPTION_JSON_FIELDS if k in fields}
     if supplied:
         coerced = _coerce_options(supplied)
         for k in supplied:

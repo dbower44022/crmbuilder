@@ -106,8 +106,12 @@ def reconcile_entity_slice(
 
     # 1. Entity presence + collection settings (REQ-375 settings drift).
     if present_here:
-        collection, entity_defs, client_defs = _read_entity_options(client, scope_name)
-        audited = _audited_entity_attrs(scope_meta, collection, entity_defs, client_defs)
+        collection, entity_defs, client_defs, formula = _read_entity_options(
+            client, scope_name
+        )
+        audited = _audited_entity_attrs(
+            scope_meta, collection, entity_defs, client_defs, formula
+        )
         _learn_entity_base_type(session, ent, audited)
         diff = _entity_override(ent, audited)
         entity_state = "drifted" if diff else "present"

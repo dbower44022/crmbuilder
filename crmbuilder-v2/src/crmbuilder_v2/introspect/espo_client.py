@@ -383,6 +383,23 @@ class EspoIntrospectionClient:
         url = f"{self.api_url}/Metadata?key=entityDefs.{entity}"
         return self._request("GET", url)
 
+    def get_formula(
+        self, entity: str
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Fetch an entity's formula scripts (PI-422 / REQ-122, capture-only).
+
+        ``formula.{Entity}`` holds free-text scripts keyed by hook
+        (``beforeSaveCustomScript``, ``beforeSaveApiScript``, ...). Entities
+        without a formula return an empty or parse-failure body, which the
+        audit treats as "no formula". EspoCRM exposes no REST write path for
+        these, so they are captured verbatim and re-applied manually (DEC-420).
+
+        :param entity: EspoCRM entity name (e.g. "CMentorProfile").
+        :returns: Tuple of ``(status_code, {hook: script} or None)``.
+        """
+        url = f"{self.api_url}/Metadata?key=formula.{entity}"
+        return self._request("GET", url)
+
     def get_all_links(
         self, entity: str
     ) -> tuple[int, dict[str, dict] | None]:

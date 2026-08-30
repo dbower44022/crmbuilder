@@ -614,6 +614,7 @@ class EntityCreateIn(_Base):
     entity_count_disabled: bool | None = None
     entity_optimistic_concurrency: bool | None = None
     entity_multiple_assigned_users: bool | None = None
+    entity_formula_scripts: dict | None = None
 
 
 class EntityReplaceIn(_Base):
@@ -648,6 +649,7 @@ class EntityReplaceIn(_Base):
     entity_count_disabled: bool | None = None
     entity_optimistic_concurrency: bool | None = None
     entity_multiple_assigned_users: bool | None = None
+    entity_formula_scripts: dict | None = None
 
 
 class EntityPatchIn(_Base):
@@ -680,6 +682,7 @@ class EntityPatchIn(_Base):
     entity_count_disabled: bool | None = None
     entity_optimistic_concurrency: bool | None = None
     entity_multiple_assigned_users: bool | None = None
+    entity_formula_scripts: dict | None = None
 
 
 # ---------- Personas (methodology entity, v0.5+) ----------

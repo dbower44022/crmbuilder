@@ -68,6 +68,9 @@ class _FakeClient:
     def get_client_defs(self, entity):
         return (200, getattr(self, "_client_defs", {}).get(entity, {}))
 
+    def get_formula(self, entity):
+        return (200, getattr(self, "_formulas", {}).get(entity, {}))
+
     def get_all_links(self, entity):
         return (200, self._links.get(entity, {}))
 

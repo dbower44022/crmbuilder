@@ -60,6 +60,7 @@ _EXPECTED_COLUMNS = {
     "entity_count_disabled": "BOOLEAN",
     "entity_optimistic_concurrency": "BOOLEAN",
     "entity_multiple_assigned_users": "BOOLEAN",
+    "entity_formula_scripts": "JSON",
     "entity_created_at": "DATETIME",
     "entity_updated_at": "DATETIME",
     "entity_deleted_at": "DATETIME",

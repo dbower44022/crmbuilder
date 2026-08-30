@@ -79,6 +79,9 @@ class _FakeClient:
     def get_client_defs(self, entity):
         return (200, getattr(self, "_client_defs", {}).get(entity, {}))
 
+    def get_formula(self, entity):
+        return (200, getattr(self, "_formulas", {}).get(entity, {}))
+
     def get_layout(self, entity, layout_type):
         if entity == "CEngagement" and layout_type == "detail":
             return (200, {"rows": [["name"]]})
