@@ -605,6 +605,15 @@ class EntityCreateIn(_Base):
     entity_text_filter_fields: list[str] | None = None
     entity_full_text_search: bool | None = None
     entity_full_text_search_min_length: int | None = None
+    # PI-424 / REQ-346 — entity display + behaviour options.
+    entity_base_type: str | None = None
+    entity_icon: str | None = None
+    entity_color: str | None = None
+    entity_status_field: str | None = None
+    entity_kanban_view: bool | None = None
+    entity_count_disabled: bool | None = None
+    entity_optimistic_concurrency: bool | None = None
+    entity_multiple_assigned_users: bool | None = None
 
 
 class EntityReplaceIn(_Base):
@@ -630,6 +639,15 @@ class EntityReplaceIn(_Base):
     entity_text_filter_fields: list[str] | None = None
     entity_full_text_search: bool | None = None
     entity_full_text_search_min_length: int | None = None
+    # PI-424 / REQ-346 — entity display + behaviour options.
+    entity_base_type: str | None = None
+    entity_icon: str | None = None
+    entity_color: str | None = None
+    entity_status_field: str | None = None
+    entity_kanban_view: bool | None = None
+    entity_count_disabled: bool | None = None
+    entity_optimistic_concurrency: bool | None = None
+    entity_multiple_assigned_users: bool | None = None
 
 
 class EntityPatchIn(_Base):
@@ -653,6 +671,15 @@ class EntityPatchIn(_Base):
     entity_text_filter_fields: list[str] | None = None
     entity_full_text_search: bool | None = None
     entity_full_text_search_min_length: int | None = None
+    # PI-424 / REQ-346 — entity display + behaviour options.
+    entity_base_type: str | None = None
+    entity_icon: str | None = None
+    entity_color: str | None = None
+    entity_status_field: str | None = None
+    entity_kanban_view: bool | None = None
+    entity_count_disabled: bool | None = None
+    entity_optimistic_concurrency: bool | None = None
+    entity_multiple_assigned_users: bool | None = None
 
 
 # ---------- Personas (methodology entity, v0.5+) ----------

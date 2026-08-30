@@ -94,8 +94,37 @@ _PATCHABLE_FIELDS = frozenset(
         "full_text_search_min_length",
         "label",
         "label_plural",
+        # PI-424 / REQ-346 — entity display + behaviour options.
+        "base_type",
+        "icon",
+        "color",
+        "status_field",
+        "kanban_view",
+        "count_disabled",
+        "optimistic_concurrency",
+        "multiple_assigned_users",
     }
 )
+
+_OPTION_STR_FIELDS = ("base_type", "icon", "color", "status_field")
+_OPTION_BOOL_FIELDS = (
+    "kanban_view",
+    "count_disabled",
+    "optimistic_concurrency",
+    "multiple_assigned_users",
+)
+
+
+def _coerce_options(options: dict | None) -> dict:
+    """Normalise the PI-424 entity options: blank strings -> None, toggles -> bool."""
+    src = options or {}
+    out: dict = {}
+    for k in _OPTION_STR_FIELDS:
+        v = src.get(k)
+        out[f"entity_{k}"] = v.strip() if isinstance(v, str) and v.strip() else None
+    for k in _OPTION_BOOL_FIELDS:
+        out[f"entity_{k}"] = bool(src.get(k))
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -369,6 +398,7 @@ def _new_entity_row(
     text_filter_fields: list[str] | None = None,
     full_text_search: bool = False,
     full_text_search_min_length: int | None = None,
+    options: dict | None = None,
 ) -> Entity:
     return Entity(
         entity_identifier=identifier,
@@ -384,6 +414,7 @@ def _new_entity_row(
         entity_text_filter_fields=text_filter_fields,
         entity_full_text_search=full_text_search,
         entity_full_text_search_min_length=full_text_search_min_length,
+        **_coerce_options(options),
     )
 
 
@@ -401,6 +432,7 @@ def _insert_with_autoassign(
     text_filter_fields: list[str] | None = None,
     full_text_search: bool = False,
     full_text_search_min_length: int | None = None,
+    options: dict | None = None,
 ) -> Entity:
     """Insert an entity with a server-assigned identifier, collision-safe.
 
@@ -432,6 +464,7 @@ def _insert_with_autoassign(
             text_filter_fields,
             full_text_search,
             full_text_search_min_length,
+            options,
         )
         session.add(row)
         try:
@@ -468,6 +501,14 @@ def create_entity(
     text_filter_fields: list[str] | None = None,
     full_text_search: bool | None = None,
     full_text_search_min_length: int | None = None,
+    base_type: str | None = None,
+    icon: str | None = None,
+    color: str | None = None,
+    status_field: str | None = None,
+    kanban_view: bool | None = None,
+    count_disabled: bool | None = None,
+    optimistic_concurrency: bool | None = None,
+    multiple_assigned_users: bool | None = None,
 ) -> dict:
     """Create an entity.
 
@@ -498,13 +539,14 @@ def create_entity(
     full_text_search = bool(full_text_search)
     full_text_search_min_length = _coerce_fts_min_length(full_text_search_min_length)
     _reject_duplicate_name(session, name)
+    options = {k: v for k, v in locals().items() if k in _OPTION_STR_FIELDS + _OPTION_BOOL_FIELDS}
 
     if identifier is None:
         row = _insert_with_autoassign(
             session, name, description, notes, status, kind,
             default_sort_field, default_sort_direction, track_activity,
             tracks_activities, text_filter_fields, full_text_search,
-            full_text_search_min_length,
+            full_text_search_min_length, options,
         )
     else:
         _require_identifier_format(identifier)
@@ -514,7 +556,7 @@ def create_entity(
             identifier, name, description, notes, status, kind,
             default_sort_field, default_sort_direction, track_activity,
             tracks_activities, text_filter_fields, full_text_search,
-            full_text_search_min_length,
+            full_text_search_min_length, options,
         )
         session.add(row)
         session.flush()
@@ -558,6 +600,14 @@ def update_entity(
     text_filter_fields: list[str] | None = None,
     full_text_search: bool | None = None,
     full_text_search_min_length: int | None = None,
+    base_type: str | None = None,
+    icon: str | None = None,
+    color: str | None = None,
+    status_field: str | None = None,
+    kanban_view: bool | None = None,
+    count_disabled: bool | None = None,
+    optimistic_concurrency: bool | None = None,
+    multiple_assigned_users: bool | None = None,
 ) -> dict:
     """Full-replace update (PUT).
 
@@ -629,6 +679,10 @@ def update_entity(
     row.entity_full_text_search_min_length = _coerce_fts_min_length(
         full_text_search_min_length
     )
+    for col, val in _coerce_options(
+        {k: v for k, v in locals().items() if k in _OPTION_STR_FIELDS + _OPTION_BOOL_FIELDS}
+    ).items():
+        setattr(row, col, val)
     session.flush()
 
     after = to_dict(row)
@@ -738,6 +792,12 @@ def patch_entity(session: Session, identifier: str, **fields) -> dict:
     if "label_plural" in fields:
         v = fields["label_plural"]
         row.entity_label_plural = v.strip() if isinstance(v, str) and v.strip() else None
+    # PI-424 / REQ-346 — entity options: only the supplied keys are touched.
+    supplied = {k: fields[k] for k in _OPTION_STR_FIELDS + _OPTION_BOOL_FIELDS if k in fields}
+    if supplied:
+        coerced = _coerce_options(supplied)
+        for k in supplied:
+            setattr(row, f"entity_{k}", coerced[f"entity_{k}"])
 
     session.flush()
     after = to_dict(row)

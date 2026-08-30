@@ -62,6 +62,12 @@ class _FakeClient:
             return (200, self._collections[entity])
         return (404, None)
 
+    def get_entity_defs(self, entity):
+        return (200, getattr(self, "_entity_defs", {}).get(entity, {}))
+
+    def get_client_defs(self, entity):
+        return (200, getattr(self, "_client_defs", {}).get(entity, {}))
+
     def get_all_links(self, entity):
         return (200, self._links.get(entity, {}))
 

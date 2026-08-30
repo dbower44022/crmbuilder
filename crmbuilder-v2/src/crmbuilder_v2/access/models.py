@@ -897,6 +897,27 @@ class Entity(EngagementScopedPKMixin, Base):
     entity_full_text_search_min_length: Mapped[int | None] = mapped_column(
         Integer, nullable=True
     )
+    # PI-424 / REQ-346 — entity display + behaviour options captured by the
+    # audit (V1's ``settings:`` block beyond the collection settings), plus the
+    # base type the platform scope declares. Strings are NULL when the instance
+    # carries no value; toggles are NOT NULL False so an absent option equals
+    # the platform default and never reads as drift.
+    entity_base_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entity_icon: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entity_color: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entity_status_field: Mapped[str | None] = mapped_column(Text, nullable=True)
+    entity_kanban_view: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    entity_count_disabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    entity_optimistic_concurrency: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    entity_multiple_assigned_users: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     entity_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -942,6 +963,23 @@ class Entity(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _BooleanDomainCheck("entity_full_text_search"),
             name="ck_entity_full_text_search_boolean",
+        ),
+        # PI-424 / REQ-346 — entity option toggle domain CHECKs.
+        CheckConstraint(
+            _BooleanDomainCheck("entity_kanban_view"),
+            name="ck_entity_kanban_view_boolean",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("entity_count_disabled"),
+            name="ck_entity_count_disabled_boolean",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("entity_optimistic_concurrency"),
+            name="ck_entity_optimistic_concurrency_boolean",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("entity_multiple_assigned_users"),
+            name="ck_entity_multiple_assigned_users_boolean",
         ),
         Index("ix_entities_entity_status", "entity_status"),
         Index("ix_entities_entity_deleted_at", "entity_deleted_at"),

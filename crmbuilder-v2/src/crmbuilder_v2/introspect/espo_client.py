@@ -366,6 +366,23 @@ class EspoIntrospectionClient:
         url = f"{self.api_url}/Metadata?key=entityDefs.{entity}.collection"
         return self._request("GET", url)
 
+    def get_entity_defs(
+        self, entity: str
+    ) -> tuple[int, dict[str, Any] | None]:
+        """Fetch the whole ``entityDefs.{Entity}`` block (PI-424 / REQ-346).
+
+        Carries the entity-level behaviour options the audit captures beyond
+        the collection block: ``optimisticConcurrencyControl`` at the top
+        level, ``collection.countDisabled``, and the ``fields`` / ``links``
+        maps from which multiple-assignment is derived (``assignedUsers``
+        field or ``collaborators`` link).
+
+        :param entity: EspoCRM entity name (e.g. "Contact").
+        :returns: Tuple of ``(status_code, entityDefs dict or None)``.
+        """
+        url = f"{self.api_url}/Metadata?key=entityDefs.{entity}"
+        return self._request("GET", url)
+
     def get_all_links(
         self, entity: str
     ) -> tuple[int, dict[str, dict] | None]:

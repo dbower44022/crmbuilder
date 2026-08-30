@@ -103,6 +103,14 @@ def create(body: EntityCreateIn):
                 text_filter_fields=body.entity_text_filter_fields,
                 full_text_search=body.entity_full_text_search,
                 full_text_search_min_length=body.entity_full_text_search_min_length,
+                base_type=body.entity_base_type,
+                icon=body.entity_icon,
+                color=body.entity_color,
+                status_field=body.entity_status_field,
+                kanban_view=body.entity_kanban_view,
+                count_disabled=body.entity_count_disabled,
+                optimistic_concurrency=body.entity_optimistic_concurrency,
+                multiple_assigned_users=body.entity_multiple_assigned_users,
             )
         )
 
@@ -127,6 +135,14 @@ def replace(identifier: str, body: EntityReplaceIn):
                 text_filter_fields=body.entity_text_filter_fields,
                 full_text_search=body.entity_full_text_search,
                 full_text_search_min_length=body.entity_full_text_search_min_length,
+                base_type=body.entity_base_type,
+                icon=body.entity_icon,
+                color=body.entity_color,
+                status_field=body.entity_status_field,
+                kanban_view=body.entity_kanban_view,
+                count_disabled=body.entity_count_disabled,
+                optimistic_concurrency=body.entity_optimistic_concurrency,
+                multiple_assigned_users=body.entity_multiple_assigned_users,
             )
         )
 

@@ -98,6 +98,10 @@ class _FieldsClient(_ScopesClient, Protocol):
 
     def get_collection(self, entity: str) -> tuple[int, dict | None]: ...
 
+    def get_entity_defs(self, entity: str) -> tuple[int, dict | None]: ...
+
+    def get_client_defs(self, entity: str) -> tuple[int, dict | None]: ...
+
     def get_i18n(self, language: str = ...) -> tuple[int, dict]: ...
 
     # PI-378 — resolving a foreign field's mirrored result type needs the parent
@@ -358,13 +362,42 @@ _ENTITY_BOOL_ATTRS = frozenset(
         "entity_track_activity",
         "entity_tracks_activities",
         "entity_full_text_search",
+        # PI-424 / REQ-346 — entity behaviour toggles. Absent on the instance
+        # equals the platform default (False), so absent-vs-explicit-false is
+        # never drift (PI-312 rule).
+        "entity_kanban_view",
+        "entity_count_disabled",
+        "entity_optimistic_concurrency",
+        "entity_multiple_assigned_users",
     }
 )
+
+
+def _read_entity_options(
+    client: Any, scope_name: str
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Fetch the three per-entity metadata blocks the entity audit reads.
+
+    Returns ``(collection, entity_defs, client_defs)``; a non-200 or non-dict
+    response for any block is treated as empty, which the attribute derivation
+    reads as "platform defaults".
+    """
+    out: list[dict[str, Any]] = []
+    for reader in (client.get_collection, client.get_entity_defs, client.get_client_defs):
+        status, body = reader(scope_name)
+        out.append(body if (status == 200 and isinstance(body, dict)) else {})
+    return out[0], out[1], out[2]
+
+
+def _opt_str(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
 
 
 def _audited_entity_attrs(
     scope_meta: dict[str, Any],
     collection: dict[str, Any] | None = None,
+    entity_defs: dict[str, Any] | None = None,
+    client_defs: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Derive the neutral entity attributes the inventory compares on.
 
@@ -377,6 +410,10 @@ def _audited_entity_attrs(
     collection block is not part of ``scope_meta``.
     """
     coll = collection if isinstance(collection, dict) else {}
+    edefs = entity_defs if isinstance(entity_defs, dict) else {}
+    cdefs = client_defs if isinstance(client_defs, dict) else {}
+    fields_meta = edefs.get("fields") if isinstance(edefs.get("fields"), dict) else {}
+    links_meta = edefs.get("links") if isinstance(edefs.get("links"), dict) else {}
     order_by = coll.get("orderBy")
     order = coll.get("order")
     text_filter_fields = coll.get("textFilterFields")
@@ -398,6 +435,21 @@ def _audited_entity_attrs(
             fts_min if isinstance(fts_min, int) and not isinstance(fts_min, bool)
             else None
         ),
+        # PI-424 / REQ-346 — the entity options V1 captures into ``settings:``
+        # (audit_manager._extract_entity_settings), plus the base type the
+        # scope declares (Base / BasePlus / Person / Company / Event).
+        "entity_base_type": _opt_str(scope_meta.get("type")),
+        "entity_icon": _opt_str(cdefs.get("iconClass")),
+        "entity_color": _opt_str(cdefs.get("color")),
+        "entity_status_field": _opt_str(cdefs.get("statusField")),
+        "entity_kanban_view": bool(cdefs.get("kanbanViewMode", False)),
+        "entity_count_disabled": bool(coll.get("countDisabled", False)),
+        "entity_optimistic_concurrency": bool(
+            edefs.get("optimisticConcurrencyControl", False)
+        ),
+        "entity_multiple_assigned_users": (
+            "assignedUsers" in fields_meta or "collaborators" in links_meta
+        ),
     }
 
 
@@ -410,12 +462,27 @@ def _entity_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict
     """
     override: dict[str, Any] = {}
     for key, audited_value in audited.items():
+        if key == "entity_base_type" and canonical.get(key) is None:
+            # PI-424: the base type is intrinsic and a hand-authored design may
+            # not have declared it yet — learned on first audit (see
+            # ``_learn_entity_base_type``), never reported as drift.
+            continue
         if key in _ENTITY_BOOL_ATTRS:
             if bool(canonical.get(key)) != bool(audited_value):
                 override[key] = audited_value
         elif canonical.get(key) != audited_value:
             override[key] = audited_value
     return override
+
+
+def _learn_entity_base_type(
+    session: Session, canonical: dict[str, Any], audited: dict[str, Any]
+) -> None:
+    """Fill in a design entity's base type from the instance when it has none."""
+    live = audited.get("entity_base_type")
+    if live and canonical.get("entity_base_type") is None:
+        entity_repo.patch_entity(session, canonical["entity_identifier"], base_type=live)
+        canonical["entity_base_type"] = live
 
 
 def _has_custom_field(
@@ -580,10 +647,8 @@ def _reconcile_entities_drift(
         # The collection-search settings (REQ-340 / PI-300) live in the
         # ``entityDefs.{Entity}.collection`` block, not in ``scope_meta`` — fetch
         # them per entity. A non-200 or non-dict response is treated as empty.
-        c_status, collection = client.get_collection(scope_name)
-        if c_status != 200 or not isinstance(collection, dict):
-            collection = {}
-        audited = _audited_entity_attrs(scope_meta, collection)
+        collection, entity_defs, client_defs = _read_entity_options(client, scope_name)
+        audited = _audited_entity_attrs(scope_meta, collection, entity_defs, client_defs)
 
         match = canonical.get(_ci(neutral))
         if match is None:
@@ -604,6 +669,14 @@ def _reconcile_entities_drift(
                 full_text_search_min_length=(
                     audited["entity_full_text_search_min_length"]
                 ),
+                base_type=audited["entity_base_type"],
+                icon=audited["entity_icon"],
+                color=audited["entity_color"],
+                status_field=audited["entity_status_field"],
+                kanban_view=audited["entity_kanban_view"],
+                count_disabled=audited["entity_count_disabled"],
+                optimistic_concurrency=audited["entity_optimistic_concurrency"],
+                multiple_assigned_users=audited["entity_multiple_assigned_users"],
             )
             canonical[neutral] = created
             member_id = created["entity_identifier"]
@@ -611,6 +684,7 @@ def _reconcile_entities_drift(
             state, override = "present", None
         else:
             member_id = match["entity_identifier"]
+            _learn_entity_base_type(session, match, audited)
             diff = _entity_override(match, audited)
             state = "drifted" if diff else "present"
             override = diff or None
@@ -721,10 +795,12 @@ def _reconcile_entities_candidate_gated(
             # writes membership nor re-surfaces a candidate.
             continue
         if kind == "resolved":
-            c_status, collection = client.get_collection(scope_name)
-            if c_status != 200 or not isinstance(collection, dict):
-                collection = {}
-            audited = _audited_entity_attrs(scope_meta, collection)
+            collection, entity_defs, client_defs = _read_entity_options(
+                client, scope_name
+            )
+            audited = _audited_entity_attrs(
+                scope_meta, collection, entity_defs, client_defs
+            )
             for tgt in source_mapping_targets_repo.list_targets(
                 session,
                 source_mapping_identifier=mapping["source_mapping_identifier"],

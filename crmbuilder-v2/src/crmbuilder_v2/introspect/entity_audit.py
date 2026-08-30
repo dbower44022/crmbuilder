@@ -50,7 +50,9 @@ from crmbuilder_v2.introspect.reconcile import (
     _ci,
     _entity_override,
     _field_override,
+    _learn_entity_base_type,
     _note,
+    _read_entity_options,
 )
 
 
@@ -104,9 +106,9 @@ def reconcile_entity_slice(
 
     # 1. Entity presence + collection settings (REQ-375 settings drift).
     if present_here:
-        c_status, collection = client.get_collection(scope_name)
-        collection = collection if (c_status == 200 and isinstance(collection, dict)) else {}
-        audited = _audited_entity_attrs(scope_meta, collection)
+        collection, entity_defs, client_defs = _read_entity_options(client, scope_name)
+        audited = _audited_entity_attrs(scope_meta, collection, entity_defs, client_defs)
+        _learn_entity_base_type(session, ent, audited)
         diff = _entity_override(ent, audited)
         entity_state = "drifted" if diff else "present"
         entity_override = diff or None

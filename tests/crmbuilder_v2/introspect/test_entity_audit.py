@@ -27,6 +27,12 @@ class _FakeClient:
     def get_collection(self, entity):
         return (200, {})
 
+    def get_entity_defs(self, entity):
+        return (200, getattr(self, "_entity_defs", {}).get(entity, {}))
+
+    def get_client_defs(self, entity):
+        return (200, getattr(self, "_client_defs", {}).get(entity, {}))
+
     def get_entity_field_list(self, entity):
         if entity == "CWidget":
             return (200, {"status": {"type": "enum", "isCustom": True}})
