@@ -19,6 +19,8 @@ _EXPECTED_COLUMNS = {
     "publish_run_status",
     "publish_run_scope",
     "publish_run_backup",
+    # PI-411 (REQ-496): the identity of the plan this run applied.
+    "publish_run_plan_fingerprint",
     "publish_run_summary",
     "publish_run_started_at",
     "publish_run_ended_at",

@@ -3252,6 +3252,14 @@ class PublishRun(EngagementScopedMixin, Base):
     publish_run_backup: Mapped[dict | None] = mapped_column(
         JSONColumnNoneAsNull, nullable=True
     )
+    # PI-411 (REQ-496 / DEC-924). The identity of the plan actually applied, so
+    # "which plan produced this instance's state" is answerable afterwards.
+    # Recorded here rather than in a new record because this row already carries
+    # the run's backup and outcome — a second record would let the two disagree
+    # about what one run did.
+    publish_run_plan_fingerprint: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
     publish_run_summary: Mapped[dict | None] = mapped_column(
         JSONColumnNoneAsNull, nullable=True
     )
