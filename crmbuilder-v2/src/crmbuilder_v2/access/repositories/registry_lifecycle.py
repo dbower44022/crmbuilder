@@ -74,6 +74,7 @@ def promote_to_rule(
     severity: str | None = None,
     rule_type: str | None = None,
     human_approved: bool = False,
+    source_decision: str | None = None,
 ) -> dict:
     """Promote a learning to a governance_rule.
 
@@ -103,6 +104,10 @@ def promote_to_rule(
         # REQ-541: a learning is agent experience, so the rule it becomes is an
         # agent rule — bound into contracts, not loaded into a session.
         applies_to="ado_agent",
+        # REQ-543: the promotion's own provenance is the learning_promoted_to
+        # edge; a ruling decision is recorded when one is given.
+        source_decision=source_decision,
+        require_source_decision=False,
     )
     references.create(
         session,

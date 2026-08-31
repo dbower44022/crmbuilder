@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 
 def _ref(client, source_id, relationship, target_type, target_id):
     return client.post(
@@ -34,12 +36,12 @@ def test_bindings_and_contract_resolution(client):
     ).json()["data"]["identifier"]
     advisory = client.post(
         "/governance-rules",
-        json={"body": "Prefer additive replanning.", "enforcement": "advisory"},
+        json={"source_decision": "DEC-001", "body": "Prefer additive replanning.", "enforcement": "advisory"},
     ).json()["data"]["identifier"]
     enforced = client.post(
         "/governance-rules",
-        json={"body": "Cannot mark a Workstream Ready without Work Tasks.",
-              "enforcement": "enforced", "severity": "high"},
+        json={"source_decision": "DEC-001", "body": "Cannot mark a Workstream Ready without Work Tasks.",
+              "enforcement": "enforced", "applies_to": "ado_agent", "severity": "high"},
     ).json()["data"]["identifier"]
 
     assert _ref(client, prof, "agent_profile_has_skill", "skill", instr).status_code == 201
@@ -100,14 +102,19 @@ def _enforced_ids(contract) -> list[str]:
 
 
 def _rule(client, *, body, enforcement="enforced", rule_type=None, scope=None, severity=None):
-    payload = {"body": body, "enforcement": enforcement}
+    payload = {"source_decision": "DEC-001", "body": body, "enforcement": enforcement}
+    if enforcement != "advisory":
+        # REQ-542 / DEC-972: a profile-bound agent rule may be enforced without a check
+        payload["applies_to"] = "ado_agent"
     if rule_type is not None:
         payload["rule_type"] = rule_type
     if scope is not None:
         payload["scope"] = scope
     if severity is not None:
         payload["severity"] = severity
-    return client.post("/governance-rules", json=payload).json()["data"]["identifier"]
+    resp = client.post("/governance-rules", json=payload)
+    assert resp.status_code == 201, resp.text
+    return resp.json()["data"]["identifier"]
 
 
 def test_engagement_rule_overrides_system_rule_of_same_type(client):
@@ -321,3 +328,16 @@ def test_engagement_repo_context_scope_isolation_and_stamp(client):
     mine = client.get(f"/agent-profiles/{prof}/contract?engagement=ENG-001").json()["data"]
     assert "ENG-001 repo facts." in mine["system_prompt"]
     assert mine["version_stamp"] != before["version_stamp"]
+
+# REQ-543 / PI-440: a rule names the decision that ruled it.
+@pytest.fixture(autouse=True)
+def _source_decision(client):
+    r = client.post("/decisions", json={
+        "identifier": "DEC-001", "title": "Test ruling", "decision_date": "2026-01-01",
+        "status": "Active",
+        "executive_summary": "A decision that exists so tests can create governance rules that "
+                             "name their source decision, as REQ-543 requires of every new rule; "
+                             "it carries no other content and stands in for whichever real ruling "
+                             "would have made the rule under test.",
+    })
+    assert r.status_code in (201, 409), r.text

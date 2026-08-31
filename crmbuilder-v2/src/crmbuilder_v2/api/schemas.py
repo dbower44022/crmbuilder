@@ -384,6 +384,7 @@ class GovernanceRuleCreateIn(_Base):
     scope: str | None = None
     applies_to: str = "all"  # REQ-541 audience (TERM-042)
     applies_when: str = "always"  # REQ-541 moment (TERM-043)
+    source_decision: str  # REQ-543: the decision (DEC-NNN) that ruled this rule
 
 
 class GovernanceRuleUpdateIn(_Base):
@@ -397,6 +398,8 @@ class GovernanceRuleUpdateIn(_Base):
     scope: str | None = None
     applies_to: str | None = None
     applies_when: str | None = None
+    change: str | None = None  # REQ-543: 'wording' | 'meaning' when body changes
+    source_decision: str | None = None  # required for a 'meaning' change
 
 
 class RuleEnforcementOverrideIn(_Base):
@@ -464,6 +467,7 @@ class LearningPromoteRuleIn(_Base):
     severity: str | None = None
     rule_type: str | None = None
     human_approved: bool = False
+    source_decision: str | None = None  # REQ-543, when a decision ruled the promotion
 
 
 class CurateAreaIn(_Base):

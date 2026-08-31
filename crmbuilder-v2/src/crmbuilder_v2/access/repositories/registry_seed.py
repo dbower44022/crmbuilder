@@ -44,6 +44,12 @@ from crmbuilder_v2.access.repositories.registry_seed_content import (
     area_profile_content,
 )
 
+#: The decision that ruled the seeded catalog (REQ-386 / PI-346) — every seeded
+#: rule names it as its source (REQ-543).
+_SEED_DECISION = "DEC-780"
+#: Legacy seed severities on the one approved scale (REQ-543).
+_SEVERITY = {"error": "high", "warning": "medium", "info": "low"}
+
 # --- Development-area Architect (proven "Development Phase Specialist") --------
 
 _ARCHITECT_DESCRIPTION = """\
@@ -627,6 +633,18 @@ def _catalog_profiles() -> tuple:
 _SEED_PROFILES = _catalog_profiles()
 
 
+def _seed_decision(session: Session) -> str | None:
+    """The seed's ruling decision when the store holds it (a fresh test DB does not)."""
+    from crmbuilder_v2.access.exceptions import NotFoundError
+    from crmbuilder_v2.access.repositories import decisions
+
+    try:
+        decisions.get(session, _SEED_DECISION)
+    except NotFoundError:
+        return None
+    return _SEED_DECISION
+
+
 def _bind(session: Session, profile_id: str, target_type: str, target_id: str, relationship: str) -> None:
     references.create(
         session,
@@ -669,11 +687,19 @@ def seed_system_profiles(session: Session) -> list[dict]:
             )
             _bind(session, pid, "skill", skill["identifier"], "agent_profile_has_skill")
         for enforcement, body, rule_type, severity in rule_specs:
-            rule = governance_rules.create(
-                session, body=body, enforcement=enforcement, scope="system",
-                rule_type=rule_type, severity=severity,
-                applies_to="ado_agent",  # REQ-541: a profile-bound rule is an agent rule
-            )
-            _bind(session, pid, "governance_rule", rule["identifier"], "agent_profile_governed_by_rule")
+            # REQ-543: one rule, many bindings — a profile shares the rule that
+            # already carries this text instead of receiving a copy.
+            existing = governance_rules.find_duplicate(session, body, None)
+            if existing is not None:
+                rule_id = existing.identifier
+            else:
+                rule = governance_rules.create(
+                    session, body=body, enforcement=enforcement, scope="system",
+                    rule_type=rule_type, severity=_SEVERITY.get(severity, severity),
+                    applies_to="ado_agent",  # REQ-541: a profile-bound rule is an agent rule
+                    source_decision=_seed_decision(session),
+                )
+                rule_id = rule["identifier"]
+            _bind(session, pid, "governance_rule", rule_id, "agent_profile_governed_by_rule")
         created.append(profile)
     return created

@@ -44,7 +44,7 @@ async def _call(server, name, args):
 async def _rule(http, *, body, rule_type, scope):
     resp = await http.post(
         "/governance-rules",
-        json={"body": body, "enforcement": "advisory", "rule_type": rule_type, "scope": scope},
+        json={"source_decision": "DEC-001", "body": body, "enforcement": "advisory", "rule_type": rule_type, "scope": scope},
     )
     assert resp.status_code == 201, resp.text
     return resp.json()["data"]["identifier"]
@@ -79,3 +79,17 @@ async def test_effective_resolution_matches_rest(env):
     raw_ids = {r["identifier"] for r in raw}
     assert {react, angular, other} <= raw_ids
     assert all("shadows" not in r for r in raw)
+
+# REQ-543 / PI-440: a rule names the decision that ruled it.
+@pytest.fixture(autouse=True)
+async def _source_decision(env):
+    _server, http = env
+    r = await http.post("/decisions", json={
+        "identifier": "DEC-001", "title": "Test ruling", "decision_date": "2026-01-01",
+        "status": "Active",
+        "executive_summary": "A decision that exists so tests can create governance rules that "
+                             "name their source decision, as REQ-543 requires of every new rule; "
+                             "it carries no other content and stands in for whichever real ruling "
+                             "would have made the rule under test.",
+    })
+    assert r.status_code in (201, 409), r.text
