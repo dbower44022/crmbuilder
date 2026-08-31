@@ -679,3 +679,6 @@ lock file is untracked); the provider-credential status can read *Configured*
 for a secret that no longer decrypts until it is used.
 
 Ratified by DEC-956. All proof infrastructure destroyed per section 6.
+
+**Rolled out to production 2026-08-31T01:12Z** — `DEPLOY OK: commit b36b0d6a | v0.7.0 | alembic 0081_pi_406_system_settings (head)`; deploy worker confirmed running on the production service.
+
