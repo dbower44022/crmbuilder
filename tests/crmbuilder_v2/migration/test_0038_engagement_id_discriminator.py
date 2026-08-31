@@ -118,6 +118,10 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "cost_events",
         # PRJ-042 publish history — the per-publish run record (landed on main).
         "publish_runs",
+        # PI-406 (REQ-485) the governed system setting and its per-instance
+        # declared values (migration 0124).
+        "system_settings",
+        "system_setting_values",
         # PI-255 (PRJ-027) the source instance mapping model (migration 0081).
         "source_mappings",
         "source_mapping_targets",
