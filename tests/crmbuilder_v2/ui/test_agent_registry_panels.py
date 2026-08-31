@@ -133,6 +133,12 @@ def test_create_governance_rule_via_dialog(qtbot, registry_client):
     qtbot.addWidget(dialog)
     dialog._widgets["body"].setPlainText("Never force-push to main.")
     dialog._widgets["enforcement"].setCurrentText("advisory")
+    # REQ-543 / PI-440: a new rule names the decision that ruled it.
+    registry_client.create_decision({
+        "identifier": "DEC-001", "title": "Test ruling", "decision_date": "2026-01-01",
+        "status": "Active", "executive_summary": "A decision that exists so tests can create governance rules that name their source decision, as REQ-543 requires of every new rule; it carries no other content and stands in for whichever real ruling would have made the rule under test.",
+    })
+    dialog._widgets["source_decision"].setText("DEC-001")
     with qtbot.waitSignal(dialog.accepted, timeout=3000):
         dialog._on_save_clicked()
     rid = dialog.created_identifier()

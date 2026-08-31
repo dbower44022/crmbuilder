@@ -24,11 +24,21 @@ from PySide6.QtWidgets import QLabel
 def registry_client(v2_env) -> StorageClient:
     sc = StorageClient(base_url="http://testserver", client=TestClient(create_app()))
     sc.set_active_engagement("ENG-001")
+    _decision(sc)
     return sc
 
 
+def _decision(client) -> str:
+    """REQ-543 / PI-440: a rule names the decision that ruled it."""
+    return client.create_decision({
+        "identifier": "DEC-001", "title": "Test ruling", "decision_date": "2026-01-01",
+        "status": "Active", "executive_summary": "A decision that exists so tests can create governance rules that name their source decision, as REQ-543 requires of every new rule; it carries no other content and stands in for whichever real ruling would have made the rule under test.",
+    })["identifier"]
+
+
 def _rule(client, *, body, rule_type=None, scope="system"):
-    payload = {"body": body, "enforcement": "advisory", "scope": scope}
+    payload = {"body": body, "enforcement": "advisory", "scope": scope,
+               "source_decision": "DEC-001"}
     if rule_type is not None:
         payload["rule_type"] = rule_type
     return client.create_governance_rule(payload)["identifier"]
