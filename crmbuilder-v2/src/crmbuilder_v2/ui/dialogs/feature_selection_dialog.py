@@ -26,7 +26,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
-    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -35,6 +34,7 @@ from PySide6.QtWidgets import (
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.exceptions import StorageClientError
 from crmbuilder_v2.ui.widgets.form_helpers import primary_button
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _IDENTIFIER_ROLE = Qt.ItemDataRole.UserRole
 
@@ -160,7 +160,7 @@ class FeatureSelectionDialog(QDialog):
     def _on_save_clicked(self) -> None:
         checked = self._checked_identifiers()
         if not checked:
-            QMessageBox.information(
+            CopyableMessageBox.information(
                 self,
                 "Nothing selected",
                 "No entities are checked. To publish the full design, use "
@@ -179,7 +179,7 @@ class FeatureSelectionDialog(QDialog):
                 {"instance_feature_selection": selection},
             )
         except StorageClientError as exc:
-            QMessageBox.warning(
+            CopyableMessageBox.warning(
                 self, "Save failed", f"Could not save the selection: {exc}"
             )
             return
