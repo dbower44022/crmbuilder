@@ -20,6 +20,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from crmbuilder_v2 import secrets
+from crmbuilder_v2.access import reconcile_apply
 from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.exceptions import (
     FieldError,
@@ -135,6 +136,7 @@ def create(body: InstanceCreateIn):
                 secret_key_ref=secret_key_ref,
                 status=body.instance_status or "active",
                 notes=body.instance_notes,
+                feature_selection=body.instance_feature_selection,
                 identifier=body.instance_identifier,
                 references=_edges(body),
                 timestamps=body.timestamps,
@@ -176,6 +178,7 @@ def replace(identifier: str, body: InstanceReplaceIn):
                 secret_key_ref=secret_key_ref,
                 status=body.instance_status or "active",
                 notes=body.instance_notes,
+                feature_selection=body.instance_feature_selection,
                 references=_edges(body),
             )
         )
@@ -662,12 +665,21 @@ def _record_publish_run(
     scope: list[str] | None,
     started_at: datetime,
     ended_at: datetime,
+    scope_source: str | None = None,
+    feature_selection: list[str] | None = None,
 ) -> str | None:
     """Persist a publish_run row for a completed real publish (best-effort).
 
     Recording failure never breaks the publish response — the live CRM was
     already written; a lost log entry is surfaced as a warning, not an error.
+    ``scope_source`` / ``feature_selection`` stamp how the run's scope came to
+    be (REQ-546 / PI-444) so the history shows which selection applied.
     """
+    summary = _publish_run_summary(result)
+    if scope_source is not None:
+        summary["scope_source"] = scope_source
+    if feature_selection:
+        summary["feature_selection"] = feature_selection
     try:
         with writable_session() as s:
             row = publish_runs.create_publish_run(
@@ -676,7 +688,7 @@ def _record_publish_run(
                 status=_publish_run_status(result),
                 scope=scope,
                 backup=result.backup,
-                summary=_publish_run_summary(result),
+                summary=summary,
                 started_at=started_at,
                 ended_at=ended_at,
             )
@@ -753,6 +765,37 @@ def _run_publish(
     """
     rec, api_key, secret_key = _resolve_publish_target(identifier)
     engagement = get_active_engagement()
+    # Stored feature selection (REQ-546 / PI-444): an explicit per-run scope
+    # wins for that run only; otherwise a non-empty stored selection on the
+    # instance record resolves to the effective scope; no selection publishes
+    # the full design (unchanged behaviour). A validate-only run stays
+    # full-design — it is the dialog's discovery surface — but the resolution
+    # is reported so the UI can pre-check the operator's scope list.
+    stored = rec.get("instance_feature_selection") or None
+    selection_info = None
+    if stored:
+        with readonly_session() as s:
+            selection_info = reconcile_apply.feature_selection_scope(
+                s, stored
+            )
+    effective_scope = scope
+    scope_source = "explicit_scope" if scope else "full_design"
+    if scope is None and stored and not validate_only:
+        if not selection_info["filenames"]:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "instance_feature_selection",
+                        "selection_matches_nothing",
+                        "the stored feature selection names no current "
+                        "design entity; publishing would silently fall back "
+                        "to the full design — fix or clear the selection "
+                        "first",
+                    )
+                ]
+            )
+        effective_scope = selection_info["filenames"]
+        scope_source = "stored_selection"
     # In-process: read the design straight from the store rather than having the
     # service authenticate to its own API, which it cannot do on a host with
     # PRINCIPAL_AUTH_ENABLED and no credential of its own (REQ-482).
@@ -767,18 +810,25 @@ def _run_publish(
         engagement=engagement,
         validate_only=validate_only,
         preview=preview,
-        scope=set(scope) if scope else None,
+        scope=set(effective_scope) if effective_scope else None,
         allow_no_backup=allow_no_backup,
     )
     payload = _serialize_publish_result(result)
+    payload["scope_source"] = scope_source
+    if selection_info is not None:
+        payload["feature_selection"] = selection_info
     # Record the run for a real publish only (preview/validate write nothing).
     if not validate_only and not preview:
         payload["publish_run"] = _record_publish_run(
             identifier,
             result,
-            scope=scope,
+            scope=effective_scope,
             started_at=started_at,
             ended_at=datetime.now(UTC),
+            scope_source=scope_source,
+            feature_selection=(
+                stored if scope_source == "stored_selection" else None
+            ),
         )
     return ok(payload)
 

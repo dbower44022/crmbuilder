@@ -2473,6 +2473,9 @@ class InstanceCreateIn(_Base):
     secret_key: str | None = None
     instance_status: str | None = None
     instance_notes: str | None = None
+    # PI-444 (REQ-546): the stored feature selection — design-entity
+    # identifiers (ENT-NNN) active for this instance; null = full design.
+    instance_feature_selection: list[str] | None = None
     instance_identifier: str | None = None
     references: list[GovernanceEdgeIn] | None = None
     timestamps: dict[str, Any] | None = None
@@ -2489,6 +2492,7 @@ class InstanceReplaceIn(_Base):
     secret_key: str | None = None
     instance_status: str | None = None
     instance_notes: str | None = None
+    instance_feature_selection: list[str] | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -2502,6 +2506,7 @@ class InstancePatchIn(_Base):
     secret_key: str | None = None
     instance_status: str | None = None
     instance_notes: str | None = None
+    instance_feature_selection: list[str] | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 

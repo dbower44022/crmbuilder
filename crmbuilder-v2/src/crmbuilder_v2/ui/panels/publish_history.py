@@ -42,10 +42,15 @@ _STATUS_BADGE = {
 }
 
 
-def _scope_display(scope: list | None) -> str:
+def _scope_display(scope: list | None, summary: dict | None = None) -> str:
     if not scope:
         return "whole design"
-    return f"{len(scope)} program(s)"
+    base = f"{len(scope)} program(s)"
+    # PI-444 (REQ-546): a run whose scope came from the instance's stored
+    # feature selection says so, so the history shows which selection applied.
+    if (summary or {}).get("scope_source") == "stored_selection":
+        return f"{base} — stored feature selection"
+    return base
 
 
 def _verification_line(summary: dict | None) -> str:
@@ -87,7 +92,9 @@ class PublishHistoryPanel(ListDetailPanel):
         for r in records:
             status = r.get("publish_run_status") or ""
             r["status_display"] = _STATUS_BADGE.get(status, status)
-            r["scope_display"] = _scope_display(r.get("publish_run_scope"))
+            r["scope_display"] = _scope_display(
+                r.get("publish_run_scope"), r.get("publish_run_summary")
+            )
             r["ended_display"] = format_timestamp(
                 r.get("publish_run_ended_at")
             )
@@ -121,7 +128,7 @@ class PublishHistoryPanel(ListDetailPanel):
             _STATUS_BADGE.get(status, status)
         ))
         form.addRow("Scope", read_only_line(
-            _scope_display(record.get("publish_run_scope"))
+            _scope_display(record.get("publish_run_scope"), summary)
         ))
         form.addRow("Started", read_only_line(
             format_timestamp(record.get("publish_run_started_at")) or "—"

@@ -41,6 +41,9 @@ from crmbuilder_v2.ui.dialogs.deploy_progress_dialog import (
 )
 from crmbuilder_v2.ui.dialogs.deploy_wizard_dialog import DeployWizardDialog
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
+from crmbuilder_v2.ui.dialogs.feature_selection_dialog import (
+    FeatureSelectionDialog,
+)
 from crmbuilder_v2.ui.dialogs.instance_crud import (
     InstanceCreateDialog,
     InstanceDeleteDialog,
@@ -238,6 +241,16 @@ class InstancesPanel(ListDetailPanel):
                 lambda _checked=False, r=record: self._on_publish_clicked(r)
             )
             strip_layout.addWidget(publish_btn)
+            # Feature selection (PI-444 / REQ-546): which design entities a
+            # bare publish sends to this instance. Same gate as Publish.
+            selection_btn = QPushButton("Feature selection…")
+            selection_btn.setObjectName("feature_selection_button")
+            selection_btn.clicked.connect(
+                lambda _checked=False, r=record: (
+                    self._on_feature_selection_clicked(r)
+                )
+            )
+            strip_layout.addWidget(selection_btn)
         if not is_deleted:
             delete_btn = destructive_button("Delete")
             delete_btn.setObjectName("delete_instance_button")
@@ -291,6 +304,17 @@ class InstancesPanel(ListDetailPanel):
         status_value = _read_only_line(record.get("instance_status") or "")
         status_value.setObjectName("instance_status_value")
         form.addRow(required_label("Status"), status_value)
+
+        # PI-444 (REQ-546): the stored feature selection driving bare publishes.
+        selection = record.get("instance_feature_selection") or []
+        selection_value = _read_only_line(
+            f"{len(selection)} design entit"
+            f"{'y' if len(selection) == 1 else 'ies'} selected"
+            if selection
+            else "full design (no selection)"
+        )
+        selection_value.setObjectName("instance_feature_selection_value")
+        form.addRow("Feature selection", selection_value)
         outer.addLayout(form)
 
         notes_value = _read_only_text(record.get("instance_notes") or "")
@@ -556,6 +580,18 @@ class InstancesPanel(ListDetailPanel):
         finally:
             dialog.deleteLater()
         self.refresh()
+
+    def _on_feature_selection_clicked(self, record: dict[str, Any]) -> None:
+        """Edit the instance's stored feature selection (PI-444 / REQ-546)."""
+        if not record.get("instance_identifier"):
+            return
+        dialog = FeatureSelectionDialog(self._client, record, parent=self)
+        try:
+            accepted = bool(dialog.exec())
+        finally:
+            dialog.deleteLater()
+        if accepted:
+            self.refresh()
 
     def _on_edit_clicked(self, record: dict[str, Any]) -> None:
         identifier = record.get("instance_identifier")
