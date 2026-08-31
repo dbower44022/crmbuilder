@@ -456,3 +456,155 @@ def test_topics_tree_opts_out_of_column_filter():
     from crmbuilder_v2.ui.panels.topics import TopicsPanel
 
     assert TopicsPanel._column_filter_enabled is False
+
+
+# ----------------------------------------------------------------------
+# REQ-534 (PI-436): control line — filter | search | ranked actions
+# ----------------------------------------------------------------------
+
+from PySide6.QtWidgets import QMenu, QPushButton  # noqa: E402
+
+
+class _ActionPanel(_FakePanel):
+    """Fake panel with a toolbar ``New Fake`` button and a row context menu
+    carrying Edit / Delete, mirroring the real entity panels."""
+
+    def __init__(self, *args, **kwargs):
+        self.edited: list[dict] = []
+        self.deleted: list[dict] = []
+        self.created = 0
+        super().__init__(*args, **kwargs)
+        self._new_button = QPushButton("New Fake")
+        self._new_button.clicked.connect(self._on_new)
+        self._action_layout.addWidget(self._new_button)
+
+    def _on_new(self):
+        self.created += 1
+
+    def _build_context_menu(self, index):
+        menu = QMenu(self)
+        record = self._record_at_index(index)
+        if record is None:
+            menu.addAction("New fake").triggered.connect(self._on_new)
+            return menu
+        menu.addAction("Edit").triggered.connect(
+            lambda _c=False, r=record: self.edited.append(r)
+        )
+        menu.addAction("Delete").triggered.connect(
+            lambda _c=False, r=record: self.deleted.append(r)
+        )
+        return menu
+
+
+class _PriorityPanel(_ActionPanel):
+    _action_priority = ("View", "Edit")
+
+
+def _action_panel(qtbot, cls=_ActionPanel):
+    panel = cls(fetch_impl=lambda: list(_GRID_RECORDS), columns=list(_GRID_COLUMNS))
+    qtbot.addWidget(panel)
+    panel.refresh()
+    qtbot.waitUntil(lambda: panel._model.rowCount() == 3, timeout=2000)
+    return panel
+
+
+def _menu_labels(menu):
+    return [a.text() for a in menu.actions() if not a.isSeparator()]
+
+
+def test_control_line_order_filter_search_actions(qapp, qtbot):
+    panel = _action_panel(qtbot)
+    layout = panel._control_row_layout
+    widgets = [layout.itemAt(i).widget() for i in range(layout.count())]
+    # filter strip | stretch | search | stretch | action cluster
+    assert widgets[0] is panel._filter_strip
+    assert widgets[1] is None and widgets[3] is None
+    assert widgets[2] is panel._search_input
+    assert widgets[-1].objectName() == "grid_action_cluster"
+    # Header row still carries title/refresh/count above the control line.
+    assert panel._status_label.text() == "3 records"
+
+
+def test_default_ranking_is_toolbar_then_edit_then_view(qapp, qtbot):
+    panel = _action_panel(qtbot)
+    ranked = panel._arrange_control_actions()
+    assert [label for label, _ in ranked] == ["New Fake", "Edit", "View"]
+    assert not panel._new_button.isHidden()
+    assert not panel._edit_button.isHidden()
+    assert panel._view_button.isHidden()  # rank 3 lives in the dropdown
+    assert not panel._actions_button.isHidden()
+
+
+def test_action_priority_reranks(qapp, qtbot):
+    panel = _action_panel(qtbot, cls=_PriorityPanel)
+    ranked = panel._arrange_control_actions()
+    assert [label for label, _ in ranked] == ["View", "Edit", "New Fake"]
+    assert panel._new_button.isHidden()
+
+
+def test_actions_dropdown_leads_with_top_two_then_all_actions(qapp, qtbot):
+    panel = _action_panel(qtbot)
+    panel._select_by_identifier("DEC-001")
+    panel._rebuild_actions_menu()
+    labels = _menu_labels(panel._actions_menu)
+    assert labels[:2] == ["New Fake", "Edit"]
+    assert "View" in labels
+    assert "Delete" in labels
+    assert labels.count("Edit") == 1  # context-menu Edit deduplicated
+
+
+def test_dropdown_entry_triggers_hidden_action(qapp, qtbot):
+    panel = _action_panel(qtbot, cls=_PriorityPanel)
+    panel._rebuild_actions_menu()
+    new_action = next(
+        a for a in panel._actions_menu.actions() if a.text() == "New Fake"
+    )
+    new_action.trigger()
+    assert panel.created == 1
+
+
+def test_edit_button_runs_context_menu_edit(qapp, qtbot):
+    panel = _action_panel(qtbot)
+    panel._select_by_identifier("DEC-002")
+    panel._edit_button.click()
+    assert [r["identifier"] for r in panel.edited] == ["DEC-002"]
+
+
+def test_edit_without_selection_writes_guard_message(qapp, qtbot):
+    panel = _action_panel(qtbot)
+    panel._edit_button.click()
+    assert panel._status_label.text() == "Select a record to edit."
+    assert panel.edited == []
+
+
+def test_edit_on_read_only_list_explains(qapp, qtbot):
+    panel = _loaded_panel(qtbot)  # plain _FakePanel: empty context menu
+    panel._select_by_identifier("DEC-001")
+    panel._edit_button.click()
+    assert "cannot be edited" in panel._status_label.text()
+
+
+def test_view_emits_open_requested_with_entity_type(qapp, qtbot):
+    panel = _action_panel(qtbot)
+    panel.view_entity_type = "decision"
+    panel._select_by_identifier("DEC-003")
+    with qtbot.waitSignal(panel.open_requested, timeout=1000) as blocker:
+        panel._view_button.click()
+    assert blocker.args == ["decision", "DEC-003"]
+
+
+def test_view_without_entity_type_or_selection_explains(qapp, qtbot):
+    panel = _action_panel(qtbot)
+    panel._view_button.click()
+    assert panel._status_label.text() == "Select a record to view."
+    panel._select_by_identifier("DEC-001")
+    panel._view_button.click()
+    assert panel._status_label.text() == "No detail window is available for this list."
+
+
+def test_registry_stamps_view_entity_type(qapp, qtbot):
+    from crmbuilder_v2.ui.panel_registry import build_panel
+
+    panel = build_panel("Decisions", None)
+    qtbot.addWidget(panel)
+    assert panel.view_entity_type == "decision"
