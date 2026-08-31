@@ -28,6 +28,7 @@ _EXPECTED_COLUMNS = {
     "deploy_run_state",
     "deploy_run_log",
     "deploy_run_error",
+    "deploy_run_provider",
     "deploy_run_requested_by",
     "deploy_run_worker_id",
     "deploy_run_heartbeat_at",
@@ -52,7 +53,8 @@ def test_table_shape(v2_env):
 
 def test_create_is_queued_and_increments(v2_env):
     with session_scope() as s:
-        a = _queue(s, secret_refs={"admin_password": "crmbuilder:abc"}, requested_by="PRN-001")
+        a = _queue(s, secret_refs={"admin_password": "crmbuilder:abc"},
+                   requested_by="PRN-001", provider="digitalocean")
         b = _queue(s)
     assert a["deploy_run_identifier"] == "DEP-001"
     assert b["deploy_run_identifier"] == "DEP-002"
@@ -62,6 +64,9 @@ def test_create_is_queued_and_increments(v2_env):
     assert a["deploy_run_state"] == {"phases": {}}
     assert a["deploy_run_log"] == []
     assert a["deploy_run_requested_by"] == "PRN-001"
+    # PI-442 (REQ-544): the history row names its hosting provider.
+    assert a["deploy_run_provider"] == "digitalocean"
+    assert b["deploy_run_provider"] is None
     assert a["instance_identifier"] is None
 
 

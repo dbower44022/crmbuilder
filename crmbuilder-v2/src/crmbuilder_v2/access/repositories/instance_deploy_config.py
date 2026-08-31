@@ -29,6 +29,14 @@ _FIELDS: frozenset[str] = frozenset({
     "db_password_ref", "admin_username", "admin_password_ref", "droplet_ip",
     "droplet_region", "droplet_size", "dns_record_id",
     "last_deploy_run_identifier",
+    # PI-442 (REQ-544): server-management facts — provider identity and
+    # consoles, SSH-key identity, image, provisioning/verification times,
+    # backup policy, cost and notes.
+    "hosting_provider", "hosting_account", "hosting_console_url",
+    "dns_console_url", "ssh_key_public", "ssh_key_fingerprint",
+    "ssh_key_name", "ssh_key_provider_id", "server_image", "provisioned_at",
+    "last_verified_at", "backup_schedule", "backup_retention",
+    "backup_destination", "monthly_cost_usd", "billing_note", "notes",
 })
 
 

@@ -59,6 +59,8 @@ def test_create_queues_run_with_refs_and_generated_db_passwords(client):
     data = r.json()["data"]
     assert data["deploy_run_identifier"] == "DEP-001"
     assert data["deploy_run_status"] == "queued"
+    # PI-442 (REQ-544): the history row names its hosting provider.
+    assert data["deploy_run_provider"] == "digitalocean"
     assert data["deploy_run_spec"]["domain"] == "crm.example.org"
     assert data["deploy_run_spec"]["admin_username"] == "admin"
     assert "deploy_run_secret_refs" not in data

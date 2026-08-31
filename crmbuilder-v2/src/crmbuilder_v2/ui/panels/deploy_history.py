@@ -190,6 +190,8 @@ class DeployHistoryPanel(ListDetailPanel):
         form.addRow("Server id / IP", read_only_line(
             " / ".join(str(v) for v in (state.get("droplet_id"), state.get("droplet_ip")) if v) or "—"
         ))
+        # PI-442 (REQ-544): the history row names its hosting provider.
+        form.addRow("Provider", read_only_line(full.get("deploy_run_provider") or "—"))
         form.addRow("Certificate expires", read_only_line(state.get("cert_expiry") or "—"))
         form.addRow("Requested by", read_only_line(full.get("deploy_run_requested_by") or "—"))
         form.addRow("Worker", read_only_line(full.get("deploy_run_worker_id") or "—"))

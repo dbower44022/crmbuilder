@@ -9,6 +9,8 @@ key *path*, so :func:`private_key_file` materializes the stored key into a
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import os
 import tempfile
 from collections.abc import Iterator
@@ -31,6 +33,19 @@ def generate_keypair(comment: str = "crmbuilder") -> tuple[str, str]:
         format=serialization.PublicFormat.OpenSSH,
     ).decode()
     return private_pem, f"{public_line} {comment}"
+
+
+def public_key_fingerprint(public_line: str) -> str:
+    """OpenSSH-style ``SHA256:`` fingerprint of an ``authorized_keys`` line.
+
+    PI-442 (REQ-544): recorded on the instance's deploy config so an admin or
+    agent can match the stored key against the provider console or a server's
+    ``authorized_keys`` without touching the private half.
+    """
+    blob = base64.b64decode(public_line.split()[1])
+    return "SHA256:" + base64.b64encode(
+        hashlib.sha256(blob).digest()
+    ).decode().rstrip("=")
 
 
 @contextmanager

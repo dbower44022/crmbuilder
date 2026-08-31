@@ -48,12 +48,25 @@ def test_put_get_roundtrip_and_secret_boundary(client):
         "ssh_credential": "sshpass", "domain": "crm.example.org",
         "letsencrypt_email": "ops@example.org", "db_root_password": "dbpass",
         "current_espocrm_version": "9.3.4",
+        # PI-442 (REQ-544): server-management facts pass through unchanged.
+        "hosting_provider": "digitalocean",
+        "hosting_console_url": "https://cloud.digitalocean.com/droplets/1",
+        "ssh_key_fingerprint": "SHA256:abc", "server_image": "ubuntu-24-04-x64",
+        "provisioned_at": "2026-08-30T00:00:00+00:00",
+        "monthly_cost_usd": 24.0, "notes": "validation droplet",
     })
     assert r.status_code == 200, r.text
     cfg = r.json()["data"]
     assert cfg["ssh_host"] == "147.182.135.50"
     assert cfg["domain"] == "crm.example.org"
     assert cfg["current_espocrm_version"] == "9.3.4"
+    assert cfg["hosting_provider"] == "digitalocean"
+    assert cfg["hosting_console_url"].endswith("/droplets/1")
+    assert cfg["ssh_key_fingerprint"] == "SHA256:abc"
+    assert cfg["server_image"] == "ubuntu-24-04-x64"
+    assert cfg["provisioned_at"].startswith("2026-08-30")
+    assert cfg["monthly_cost_usd"] == 24.0
+    assert cfg["notes"] == "validation droplet"
     # Secrets are keyring refs, never the plaintext, and the write-only inputs
     # are not echoed back.
     assert cfg["ssh_credential_ref"].startswith(secrets.REF_PREFIX)
