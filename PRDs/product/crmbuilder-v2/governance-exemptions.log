@@ -1,2 +1,4 @@
 2026-08-10T05:07:36+00:00	trivial	'v2: record participants in the post-0038 scoped-table registry'	test-only registry entry recording an existing, verified
 2026-08-28T16:44:43+00:00	trivial	'v2: name what the instance credential fields actually hold'	UI label and docstring text only; no behaviour, schema key or control flow change
+2026-08-31T21:18:14+00:00	trivial	"v2: the feature-selection dialog's popups are selectable (PI-124 acceptance)"	two-line popup-class swap restoring an existing acceptance invariant; the governing PI-444 is already Resolved
+2026-08-31T21:18:20+00:00	trivial	'v2: the agent-contract exemplar rules carry the ado_agent audience'	test-only fixture update aligning a stale exemplar with the PI-439 rule shape already on main
