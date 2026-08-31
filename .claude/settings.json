@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/crmbuilder-v2/src/crmbuilder_v2/session_context.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
