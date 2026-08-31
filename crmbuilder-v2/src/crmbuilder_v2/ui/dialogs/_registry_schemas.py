@@ -27,7 +27,9 @@ from crmbuilder_v2.access.vocab import (
     LEARNING_STATUSES,
     LEARNING_TIERS,
     REGISTRY_STATUSES,
+    RULE_AUDIENCES,
     RULE_ENFORCEMENT_MODES,
+    RULE_MOMENTS,
     SKILL_KINDS,
     SYSTEM_AREAS,
 )
@@ -200,6 +202,24 @@ def governance_rule_fields(
                 label="Severity",
                 widget="line",
                 placeholder="Optional, e.g. error / warning.",
+            ),
+            # REQ-541 / PI-438: who the rule is for (TERM-042 Audience) and when
+            # it applies (TERM-043 Moment).
+            FieldSchema(
+                key="applies_to",
+                label="Audience",
+                widget="combo",
+                required=True,
+                vocab=RULE_AUDIENCES,
+                default="all",
+            ),
+            FieldSchema(
+                key="applies_when",
+                label="Moment",
+                widget="combo",
+                required=True,
+                vocab=RULE_MOMENTS,
+                default="always",
             ),
             FieldSchema(
                 key="status",

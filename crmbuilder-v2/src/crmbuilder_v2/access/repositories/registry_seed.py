@@ -672,6 +672,7 @@ def seed_system_profiles(session: Session) -> list[dict]:
             rule = governance_rules.create(
                 session, body=body, enforcement=enforcement, scope="system",
                 rule_type=rule_type, severity=severity,
+                applies_to="ado_agent",  # REQ-541: a profile-bound rule is an agent rule
             )
             _bind(session, pid, "governance_rule", rule["identifier"], "agent_profile_governed_by_rule")
         created.append(profile)

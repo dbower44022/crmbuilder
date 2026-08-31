@@ -276,8 +276,13 @@ def list_governance_rules(
     scope: str | None = None,
     resolution: str | None = None,
     engagement: str | None = None,
+    applies_to: str | None = None,
+    applies_when: str | None = None,
 ):
     """List governance rules.
+
+    ``applies_to`` (audience) and ``applies_when`` (moment) filter both the raw
+    and the effective views (REQ-541 / PI-438).
 
     ``resolution=raw`` (the default) lists stored rows, optionally filtered by
     ``scope``. ``resolution=effective`` (REQ-530 / PI-435) returns the *effective*
@@ -295,9 +300,13 @@ def list_governance_rules(
         if resolution == "effective":
             engagement_id = engagement or get_active_engagement()
             return ok(governance_rules.list_effective(
-                s, engagement_id=engagement_id, enforcement=enforcement
+                s, engagement_id=engagement_id, enforcement=enforcement,
+                applies_to=applies_to, applies_when=applies_when,
             ))
-        return ok(governance_rules.list_all(s, enforcement=enforcement, status=status, scope=scope))
+        return ok(governance_rules.list_all(
+            s, enforcement=enforcement, status=status, scope=scope,
+            applies_to=applies_to, applies_when=applies_when,
+        ))
 
 
 @governance_rules_router.get("/next-identifier")

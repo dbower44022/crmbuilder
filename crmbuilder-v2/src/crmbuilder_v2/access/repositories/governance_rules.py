@@ -50,14 +50,22 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.models import GovernanceRuleRow
 from crmbuilder_v2.access.repositories import references
 from crmbuilder_v2.access.repositories._registry import resolve_scope, with_scope
-from crmbuilder_v2.access.vocab import REGISTRY_STATUSES, RULE_ENFORCEMENT_MODES
+from crmbuilder_v2.access.vocab import (
+    REGISTRY_STATUSES,
+    RULE_AUDIENCES,
+    RULE_ENFORCEMENT_MODES,
+    RULE_MOMENTS,
+)
 
 _ENTITY_TYPE = "governance_rule"
 _IDENTIFIER_PREFIX = "GVR"
 _IDENTIFIER_RE = re.compile(r"^GVR-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 _UPDATABLE_FIELDS = frozenset(
-    {"rule_type", "enforcement", "severity", "body", "predicate", "version", "status"}
+    {
+        "rule_type", "enforcement", "severity", "body", "predicate", "version",
+        "status", "applies_to", "applies_when",
+    }
 )
 # Engagement-overlay vocabulary (WTK-001 / REQ-530..532).
 DISABLE_PREFIX = "disable:"
@@ -107,12 +115,18 @@ def list_all(
     enforcement: str | None = None,
     status: str | None = None,
     scope: str | None = None,
+    applies_to: str | None = None,
+    applies_when: str | None = None,
 ) -> list[dict]:
     stmt = select(GovernanceRuleRow).order_by(GovernanceRuleRow.identifier)
     if enforcement is not None:
         stmt = stmt.where(GovernanceRuleRow.enforcement == enforcement)
     if status is not None:
         stmt = stmt.where(GovernanceRuleRow.status == status)
+    if applies_to is not None:
+        stmt = stmt.where(GovernanceRuleRow.applies_to == applies_to)
+    if applies_when is not None:
+        stmt = stmt.where(GovernanceRuleRow.applies_when == applies_when)
     if scope is not None:
         stmt = stmt.where(GovernanceRuleRow.engagement_id == resolve_scope(session, scope))
     return [_enrich(r) for r in session.scalars(stmt).all()]
@@ -203,6 +217,8 @@ def list_effective(
     *,
     engagement_id: str | None,
     enforcement: str | None = None,
+    applies_to: str | None = None,
+    applies_when: str | None = None,
 ) -> list[dict]:
     """The effective active ruleset for ``engagement_id`` (REQ-530).
 
@@ -218,6 +234,10 @@ def list_effective(
     )
     if enforcement is not None:
         stmt = stmt.where(GovernanceRuleRow.enforcement == enforcement)
+    if applies_to is not None:
+        stmt = stmt.where(GovernanceRuleRow.applies_to == applies_to)
+    if applies_when is not None:
+        stmt = stmt.where(GovernanceRuleRow.applies_when == applies_when)
     visible = [
         _enrich(r)
         for r in session.scalars(stmt).all()
@@ -281,7 +301,7 @@ def _record_supersedes(session: Session, override_id: str, targets) -> list[str]
 
 
 def _new_row(identifier, *, rule_type, enforcement, severity, body, predicate,
-             version, status, engagement_id) -> GovernanceRuleRow:
+             version, status, engagement_id, applies_to, applies_when) -> GovernanceRuleRow:
     return GovernanceRuleRow(
         identifier=identifier,
         engagement_id=engagement_id,
@@ -292,6 +312,8 @@ def _new_row(identifier, *, rule_type, enforcement, severity, body, predicate,
         predicate=predicate,
         version=version,
         status=status,
+        applies_to=applies_to,
+        applies_when=applies_when,
     )
 
 
@@ -332,10 +354,14 @@ def create(
     version: int = 1,
     status: str = "active",
     scope: str | None = None,
+    applies_to: str = "all",
+    applies_when: str = "always",
 ) -> dict:
     require_string(body, field="body")
     _require_vocab("enforcement", enforcement, RULE_ENFORCEMENT_MODES)
     _require_vocab("status", status, REGISTRY_STATUSES)
+    _require_vocab("applies_to", applies_to, RULE_AUDIENCES)
+    _require_vocab("applies_when", applies_when, RULE_MOMENTS)
     engagement_id = resolve_scope(session, scope)
     # An engagement override must name a keyed default (REQ-532) — resolve its
     # targets before the insert so a rejected override leaves no row behind.
@@ -349,6 +375,8 @@ def create(
         "version": version,
         "status": status,
         "engagement_id": engagement_id,
+        "applies_to": applies_to,
+        "applies_when": applies_when,
     }
     if identifier is None:
         row = _insert_with_autoassign(session, **fields)
@@ -381,6 +409,10 @@ def update(session: Session, identifier: str, *, scope: str | None = None, **fie
         _require_vocab("enforcement", fields["enforcement"], RULE_ENFORCEMENT_MODES)
     if "status" in fields:
         _require_vocab("status", fields["status"], REGISTRY_STATUSES)
+    if "applies_to" in fields:
+        _require_vocab("applies_to", fields["applies_to"], RULE_AUDIENCES)
+    if "applies_when" in fields:
+        _require_vocab("applies_when", fields["applies_when"], RULE_MOMENTS)
     before = _enrich(row)
     for k, v in fields.items():
         setattr(row, k, v)
