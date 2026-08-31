@@ -843,10 +843,30 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         return await _unwrap(await http.get("/skills", params=params or None))
 
     async def list_governance_rules(
-        enforcement: str | None = None, scope: str | None = None
+        enforcement: str | None = None,
+        scope: str | None = None,
+        resolution: str | None = None,
+        engagement: str | None = None,
     ) -> Any:
-        """List governance rules, optionally filtered by enforcement / scope."""
-        params = {k: v for k, v in {"enforcement": enforcement, "scope": scope}.items() if v}
+        """List governance rules, optionally filtered by enforcement / scope.
+
+        ``resolution="effective"`` (REQ-536 / PI-441) returns the override-
+        resolved ruleset for the active engagement — system defaults plus that
+        engagement's overrides, an engagement rule shadowing the system rule of
+        the same ``rule_type`` (PI-435); overrides carry ``shadows``. Pass
+        ``engagement="ENG-NNN"`` to resolve for another engagement. Omitting
+        both keeps the raw stored listing.
+        """
+        params = {
+            k: v
+            for k, v in {
+                "enforcement": enforcement,
+                "scope": scope,
+                "resolution": resolution,
+                "engagement": engagement,
+            }.items()
+            if v
+        }
         return await _unwrap(await http.get("/governance-rules", params=params or None))
 
     async def list_learnings(
