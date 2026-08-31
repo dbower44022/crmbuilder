@@ -3570,10 +3570,25 @@ class StorageClient:
         enforcement: str | None = None,
         status: str | None = None,
         scope: str | None = None,
+        resolution: str | None = None,
+        engagement: str | None = None,
     ) -> list[dict[str, Any]]:
-        """GET /governance-rules (optionally filtered)."""
+        """GET /governance-rules (optionally filtered).
+
+        ``resolution="effective"`` (REQ-537 / PI-441) asks for the
+        override-resolved ruleset — system defaults plus the engagement's
+        overrides, an engagement rule shadowing the system rule of the same
+        ``rule_type`` — for ``engagement`` when given, else the client's active
+        engagement. Overrides in that view carry ``shadows``.
+        """
         path = "/governance-rules" + self._query(
-            {"enforcement": enforcement, "status": status, "scope": scope}
+            {
+                "enforcement": enforcement,
+                "status": status,
+                "scope": scope,
+                "resolution": resolution,
+                "engagement": engagement,
+            }
         )
         result = self._request("GET", path)
         return result if isinstance(result, list) else []
