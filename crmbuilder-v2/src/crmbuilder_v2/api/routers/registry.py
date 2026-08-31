@@ -332,8 +332,12 @@ def create_governance_rule(body: GovernanceRuleCreateIn):
 def update_governance_rule(identifier: str, body: GovernanceRuleUpdateIn):
     provided = body.model_dump(exclude_unset=True)
     scope = provided.pop("scope", None)
+    change = provided.pop("change", None)
+    source_decision = provided.pop("source_decision", None)
     with writable_session() as s:
-        return ok(governance_rules.update(s, identifier, scope=scope, **provided))
+        return ok(governance_rules.update(
+            s, identifier, scope=scope, change=change, source_decision=source_decision, **provided
+        ))
 
 
 @governance_rules_router.get("/{identifier}/enforcement-overrides")

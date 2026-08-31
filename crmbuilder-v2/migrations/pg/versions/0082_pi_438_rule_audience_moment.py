@@ -53,6 +53,8 @@ def _check_names(table: str) -> set[str]:
 
 def _backfill() -> None:
     bind = op.get_bind()
+    if "refs" not in sa.inspect(bind).get_table_names():
+        return  # chain entered mid-stream: nothing to backfill yet
     bound = (
         "SELECT target_id FROM refs WHERE source_type = 'agent_profile' "
         "AND target_type = 'governance_rule' "

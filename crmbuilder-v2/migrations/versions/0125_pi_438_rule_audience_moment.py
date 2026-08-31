@@ -72,6 +72,8 @@ def _check_names(table: str) -> set[str]:
 
 def _backfill() -> None:
     bind = op.get_bind()
+    if "refs" not in sa.inspect(bind).get_table_names():
+        return  # chain entered mid-stream (a from-base walk): nothing to backfill yet
     bind.execute(
         sa.text(
             f"UPDATE {_TABLE} SET applies_to = 'ado_agent' WHERE identifier IN ("

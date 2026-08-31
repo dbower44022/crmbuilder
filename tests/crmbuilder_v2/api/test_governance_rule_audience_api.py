@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 # Uses the shared ``client`` fixture (TestClient with X-Engagement: ENG-001).
 
 
 def _create(client, body, **extra):
-    r = client.post("/governance-rules", json={"body": body, "enforcement": "advisory", **extra})
+    r = client.post("/governance-rules", json={"source_decision": "DEC-001", "body": body, "enforcement": "advisory", **extra})
     assert r.status_code == 201, r.text
     return r.json()["data"]
 
@@ -21,7 +23,7 @@ def test_create_defaults_and_explicit_values(client):
 def test_bad_vocab_is_422(client):
     r = client.post(
         "/governance-rules",
-        json={"body": "x", "enforcement": "advisory", "applies_to": "robot"},
+        json={"source_decision": "DEC-001", "body": "x", "enforcement": "advisory", "applies_to": "robot"},
     )
     assert r.status_code == 422
     assert r.json()["errors"][0]["field"] == "applies_to"
@@ -51,3 +53,16 @@ def test_patch_audience_and_moment(client):
     )
     assert r.status_code == 200, r.text
     assert (r.json()["data"]["applies_to"], r.json()["data"]["applies_when"]) == ("ui", "release")
+
+# REQ-543 / PI-440: a rule names the decision that ruled it.
+@pytest.fixture(autouse=True)
+def _source_decision(client):
+    r = client.post("/decisions", json={
+        "identifier": "DEC-001", "title": "Test ruling", "decision_date": "2026-01-01",
+        "status": "Active",
+        "executive_summary": "A decision that exists so tests can create governance rules that "
+                             "name their source decision, as REQ-543 requires of every new rule; "
+                             "it carries no other content and stands in for whichever real ruling "
+                             "would have made the rule under test.",
+    })
+    assert r.status_code in (201, 409), r.text

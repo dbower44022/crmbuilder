@@ -58,6 +58,10 @@ def test_required_trailer_only_judges_inline_commit_messages():
     assert _ids(rc.evaluate(bad, [TRAILER])) == ["GVR-229"]
     assert rc.evaluate("git commit -F /tmp/msg.txt -- a.py", [TRAILER]) == []  # commit-msg gate's job
     assert rc.evaluate("ls -la", [TRAILER]) == []
+    # a commit quoted inside a heredoc or a string is data, not a command
+    quoted = "python3 - <<'EOF'\ncases = [('git commit -m \"x\"', True)]\nEOF"
+    assert rc.evaluate(quoted, [TRAILER]) == []
+    assert _ids(rc.evaluate('ls; git commit -m "x" -- a.py', [TRAILER])) == ["GVR-229"]
 
 
 def test_protected_path_and_deploy_are_blocked():

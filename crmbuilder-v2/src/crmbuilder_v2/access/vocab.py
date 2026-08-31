@@ -2733,6 +2733,10 @@ RULE_ENFORCED_MODES: frozenset[str] = frozenset({"enforced", "enforced_with_over
 RULE_CHECK_KINDS: frozenset[str] = frozenset(
     {"forbidden_command", "required_trailer", "protected_path"}
 )
+# One severity scale for every rule (REQ-543 / PI-440 / DEC-965); the legacy
+# error / warning / info values map to high / medium / low.
+RULE_SEVERITIES: frozenset[str] = frozenset({"high", "medium", "low"})
+RULE_CHANGE_KINDS: frozenset[str] = frozenset({"wording", "meaning"})
 
 # lesson (LSN-) — one operational gotcha / how-to. ``signal`` distinguishes a
 # don't-do-X hazard from generic guidance and a how-to.

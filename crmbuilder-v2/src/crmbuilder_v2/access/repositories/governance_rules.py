@@ -53,10 +53,12 @@ from crmbuilder_v2.access.repositories._registry import resolve_scope, with_scop
 from crmbuilder_v2.access.vocab import (
     REGISTRY_STATUSES,
     RULE_AUDIENCES,
+    RULE_CHANGE_KINDS,
     RULE_CHECK_KINDS,
     RULE_ENFORCED_MODES,
     RULE_ENFORCEMENT_MODES,
     RULE_MOMENTS,
+    RULE_SEVERITIES,
 )
 
 _ENTITY_TYPE = "governance_rule"
@@ -113,12 +115,12 @@ def validate_predicate(
     ``required_trailer`` also names the ``trailer``. A rule labelled enforced
     without a check is the false promise DEC-964 retires, so it is rejected.
 
-    PROVISIONAL SCOPE (pending Doug's ruling, SES-372): the obligation applies to
-    the audiences the pre-action hook serves. An ``ado_agent`` rule's enforcement
-    is the agent contract's hard-gates section verified by the Tester tier, not a
-    machine check by this hook, so it may stay ``enforced`` without a predicate —
-    the seeded self-verify gates depend on this. A supplied predicate is always
-    validated whatever the audience.
+    Scope (DEC-972): the obligation applies to the audiences the pre-action hook
+    serves. An ``ado_agent`` rule's enforcement is the agent contract's hard-gates
+    section verified by the Tester tier, not a machine check by this hook, so it
+    may stay ``enforced`` without a predicate — the seeded self-verify gates
+    depend on this. A supplied predicate is always validated whatever the
+    audience.
     """
     if enforcement not in RULE_ENFORCED_MODES:
         return
@@ -150,6 +152,137 @@ def validate_predicate(
                                  "a required_trailer check must name the trailer"))
     if errors:
         raise UnprocessableError(errors)
+
+
+# --- lifecycle (REQ-543 / PI-440 / DEC-965) -----------------------------------
+
+_DECISION_RE = re.compile(r"^DEC-\d{3,}$")
+SOURCE_DECISION_RELATIONSHIP = "references"
+
+
+def normalise_body(body: str) -> str:
+    """The identity of a rule text: whitespace-collapsed, case-folded."""
+    return " ".join((body or "").split()).casefold()
+
+
+def find_duplicate(
+    session: Session, body: str, engagement_id: str | None, *, exclude: str | None = None
+) -> GovernanceRuleRow | None:
+    """An active rule in the same scope whose text is the same rule (one rule per text)."""
+    target = normalise_body(body)
+    stmt = select(GovernanceRuleRow).where(
+        GovernanceRuleRow.status == "active",
+        GovernanceRuleRow.engagement_id.is_(None)
+        if engagement_id is None
+        else GovernanceRuleRow.engagement_id == engagement_id,
+    )
+    for row in session.scalars(stmt).all():
+        if row.identifier != exclude and normalise_body(row.body) == target:
+            return row
+    return None
+
+
+def _reject_duplicate(session: Session, body: str, engagement_id: str | None, *, exclude=None) -> None:
+    dup = find_duplicate(session, body, engagement_id, exclude=exclude)
+    if dup is not None:
+        raise UnprocessableError(
+            [FieldError("body", "duplicate_rule_text",
+                        f"an active rule with this text already exists in scope: {dup.identifier} — "
+                        "bind to it, or change its wording/meaning instead of adding a copy")]
+        )
+
+
+def _require_source_decision(session: Session, source_decision: str | None) -> str:
+    """REQ-543: a new rule names the decision that made it, and that decision exists."""
+    if not source_decision:
+        raise UnprocessableError(
+            [FieldError("source_decision", "source_decision_required",
+                        "a governance rule names the decision (DEC-NNN) that ruled it")]
+        )
+    if not _DECISION_RE.match(source_decision):
+        raise UnprocessableError(
+            [FieldError("source_decision", "invalid_format", "must match ^DEC-\\d{3,}$")]
+        )
+    from crmbuilder_v2.access.repositories import decisions as _decisions
+
+    _decisions.get(session, source_decision)  # NotFoundError if it does not exist
+    return source_decision
+
+
+def _link_source_decision(session: Session, rule_identifier: str, source_decision: str) -> None:
+    from crmbuilder_v2.access.repositories import references as _references
+
+    _references.upsert(
+        session, source_type=_ENTITY_TYPE, source_id=rule_identifier,
+        target_type="decision", target_id=source_decision,
+        relationship=SOURCE_DECISION_RELATIONSHIP,
+    )
+
+
+def _profile_bindings(session: Session, rule_identifier: str) -> list[dict]:
+    from crmbuilder_v2.access.repositories import references as _references
+
+    return _references.list_references(
+        session, target_type=_ENTITY_TYPE, target_id=rule_identifier,
+        relationship_kind="agent_profile_governed_by_rule",
+    )
+
+
+def supersede(
+    session: Session,
+    identifier: str,
+    *,
+    body: str,
+    source_decision: str,
+    **fields,
+) -> dict:
+    """A change of meaning: a successor rule replaces ``identifier`` (REQ-543).
+
+    The successor is a new rule (version 1) carrying the new text plus any other
+    patched fields, linked ``successor --supersedes--> original``; every agent
+    profile bound to the original is rebound to the successor; the original is
+    retired, never deleted, so identifiers cited in decisions and lessons keep
+    pointing at what they meant.
+    """
+    row = session.scalar(select(GovernanceRuleRow).where(GovernanceRuleRow.identifier == identifier))
+    if row is None:
+        raise NotFoundError(_ENTITY_TYPE, identifier)
+    if row.status != "active":
+        raise UnprocessableError(
+            [FieldError("identifier", "not_active", f"{identifier} is {row.status!r}; only an active rule can be superseded")]
+        )
+    from crmbuilder_v2.access.repositories import references as _references
+
+    successor = create(
+        session,
+        body=body,
+        enforcement=fields.get("enforcement", row.enforcement),
+        rule_type=fields.get("rule_type", row.rule_type),
+        severity=fields.get("severity", row.severity),
+        predicate=fields["predicate"] if "predicate" in fields else row.predicate,
+        applies_to=fields.get("applies_to", row.applies_to),
+        applies_when=fields.get("applies_when", row.applies_when),
+        scope=fields.get("scope", "system" if row.engagement_id is None else row.engagement_id),
+        source_decision=source_decision,
+    )
+    _references.create(
+        session, source_type=_ENTITY_TYPE, source_id=successor["identifier"],
+        target_type=_ENTITY_TYPE, target_id=identifier, relationship="supersedes",
+    )
+    for edge in _profile_bindings(session, identifier):
+        _references.upsert(
+            session, source_type="agent_profile", source_id=edge["source_id"],
+            target_type=_ENTITY_TYPE, target_id=successor["identifier"],
+            relationship="agent_profile_governed_by_rule",
+        )
+        _references.delete_by_id(session, edge["id"])
+    before = _enrich(row)
+    row.status = "retired"
+    session.flush()
+    emit(session, entity_type=_ENTITY_TYPE, entity_identifier=identifier,
+         operation="update", before=before, after=_enrich(row))
+    successor["supersedes"] = [identifier]
+    return successor
 
 
 def record_enforcement_override(
@@ -446,14 +579,22 @@ def create(
     scope: str | None = None,
     applies_to: str = "all",
     applies_when: str = "always",
+    source_decision: str | None = None,
+    require_source_decision: bool = False,
 ) -> dict:
     require_string(body, field="body")
     _require_vocab("enforcement", enforcement, RULE_ENFORCEMENT_MODES)
     _require_vocab("status", status, REGISTRY_STATUSES)
     _require_vocab("applies_to", applies_to, RULE_AUDIENCES)
     _require_vocab("applies_when", applies_when, RULE_MOMENTS)
+    if severity is not None:
+        _require_vocab("severity", severity, RULE_SEVERITIES)
     validate_predicate(enforcement, predicate, applies_to)
+    if require_source_decision or source_decision:
+        source_decision = _require_source_decision(session, source_decision)
     engagement_id = resolve_scope(session, scope)
+    if status == "active":
+        _reject_duplicate(session, body, engagement_id)
     # An engagement override must name a keyed default (REQ-532) — resolve its
     # targets before the insert so a rejected override leaves no row behind.
     targets = _override_targets(session, rule_type) if engagement_id is not None else []
@@ -482,15 +623,48 @@ def create(
     after = _enrich(row)
     emit(session, entity_type=_ENTITY_TYPE, entity_identifier=row.identifier,
          operation="insert", before=None, after=after)
+    if source_decision:
+        _link_source_decision(session, row.identifier, source_decision)
+        after["source_decision"] = source_decision
     if supersedes:
         after["supersedes"] = supersedes
     return after
 
 
-def update(session: Session, identifier: str, *, scope: str | None = None, **fields) -> dict:
+def update(
+    session: Session,
+    identifier: str,
+    *,
+    scope: str | None = None,
+    change: str | None = None,
+    source_decision: str | None = None,
+    **fields,
+) -> dict:
+    """Patch a rule. A ``body`` change must say what kind it is (REQ-543):
+    ``wording`` bumps the version in place; ``meaning`` creates a successor
+    via :func:`supersede` and needs the ``source_decision`` that ruled it."""
     row = session.scalar(select(GovernanceRuleRow).where(GovernanceRuleRow.identifier == identifier))
     if row is None:
         raise NotFoundError(_ENTITY_TYPE, identifier)
+    if change is not None:
+        _require_vocab("change", change, RULE_CHANGE_KINDS)
+    body_changes = "body" in fields and normalise_body(fields["body"]) != normalise_body(row.body)
+    if body_changes and change is None:
+        raise UnprocessableError(
+            [FieldError("change", "change_kind_required",
+                        "a change to the rule text must say whether it is 'wording' "
+                        "(version bumps in place) or 'meaning' (a successor supersedes this rule)")]
+        )
+    if body_changes and change == "meaning":
+        new_body = fields.pop("body")
+        return supersede(
+            session, identifier, body=new_body,
+            source_decision=_require_source_decision(session, source_decision),
+            **({"scope": scope} if scope is not None else {}), **fields,
+        )
+    if body_changes:
+        _reject_duplicate(session, fields["body"], row.engagement_id, exclude=identifier)
+        fields["version"] = int(fields.get("version") or row.version or 1) + 1
     unknown = set(fields) - _UPDATABLE_FIELDS
     if unknown:
         raise ValidationError(
@@ -504,6 +678,8 @@ def update(session: Session, identifier: str, *, scope: str | None = None, **fie
         _require_vocab("applies_to", fields["applies_to"], RULE_AUDIENCES)
     if "applies_when" in fields:
         _require_vocab("applies_when", fields["applies_when"], RULE_MOMENTS)
+    if fields.get("severity") is not None:
+        _require_vocab("severity", fields["severity"], RULE_SEVERITIES)
     if "enforcement" in fields or "predicate" in fields or "applies_to" in fields:
         validate_predicate(
             fields.get("enforcement", row.enforcement),

@@ -50,7 +50,14 @@ SNAPSHOT_FILE = Path("crmbuilder-v2/data/rule-checks.snapshot.json")
 EXEMPTION_LOG = Path("PRDs/product/crmbuilder-v2/governance-exemptions.log")
 SNAPSHOT_TTL_SECONDS = 600
 OVERRIDE_RE = re.compile(r"""GVR_OVERRIDE=(['"])(?P<rule>GVR-\d{3}):\s*(?P<reason>.+?)\1""")
-_GIT_COMMIT_RE = re.compile(r"\bgit\b(?:\s+-\S+)*\s+commit\b")
+# Command position only (start of text/line or after && ; |, with optional
+# VAR=value prefixes) — a git invocation quoted inside a heredoc or a string is
+# data, not a commit.
+_GIT_COMMIT_RE = re.compile(
+    r"(?:^|[;&|]\s*|\n\s*)(?:\w+=(?:'[^']*'|\"[^\"]*\"|\S+)\s+)*"
+    r"git\b(?:\s+-\S+)*\s+commit\b",
+    re.M,
+)
 _INLINE_MESSAGE_RE = re.compile(r"(?:\s-m\b|\s--message\b|<<|-F\s*/dev/stdin|--file[= ]/dev/stdin)")
 
 
@@ -121,7 +128,8 @@ def _violates(rule: dict, command: str) -> bool:
     if kind in ("forbidden_command", "protected_path"):
         return rx.search(command) is not None
     if kind == "required_trailer":
-        if not _GIT_COMMIT_RE.search(command) or not _INLINE_MESSAGE_RE.search(command):
+        m = _GIT_COMMIT_RE.search(command)
+        if not m or not _INLINE_MESSAGE_RE.search(command[m.start():]):
             return False
         trailer = re.escape(check.get("trailer") or "")
         return re.search(rf"^\s*{trailer}:\s*(?:{pattern})\s*$", command, re.M) is None

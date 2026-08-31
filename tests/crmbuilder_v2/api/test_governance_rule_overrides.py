@@ -12,9 +12,11 @@ the "other engagement" that must keep seeing the system default.
 
 from __future__ import annotations
 
+import pytest
+
 
 def _rule(client, *, body, rule_type=None, scope=None, enforcement="advisory"):
-    payload = {"body": body, "enforcement": enforcement}
+    payload = {"body": body, "enforcement": enforcement, "source_decision": "DEC-001"}
     if rule_type is not None:
         payload["rule_type"] = rule_type
     if scope is not None:
@@ -198,3 +200,16 @@ def test_contract_assembly_substitutes_engagement_override(client):
 
     # The contract and the effective read agree on the substitution.
     assert set(eng_ids) <= set(_effective(client))
+
+# REQ-543 / PI-440: a rule names the decision that ruled it.
+@pytest.fixture(autouse=True)
+def _source_decision(client):
+    r = client.post("/decisions", json={
+        "identifier": "DEC-001", "title": "Test ruling", "decision_date": "2026-01-01",
+        "status": "Active",
+        "executive_summary": "A decision that exists so tests can create governance rules that "
+                             "name their source decision, as REQ-543 requires of every new rule; "
+                             "it carries no other content and stands in for whichever real ruling "
+                             "would have made the rule under test.",
+    })
+    assert r.status_code in (201, 409), r.text

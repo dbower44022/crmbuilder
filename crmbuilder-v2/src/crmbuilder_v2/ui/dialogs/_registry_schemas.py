@@ -19,6 +19,7 @@ engagement, and the access layer maps the new scope onto ``engagement_id``.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from crmbuilder_v2.access.vocab import (
@@ -28,8 +29,10 @@ from crmbuilder_v2.access.vocab import (
     LEARNING_TIERS,
     REGISTRY_STATUSES,
     RULE_AUDIENCES,
+    RULE_CHANGE_KINDS,
     RULE_ENFORCEMENT_MODES,
     RULE_MOMENTS,
+    RULE_SEVERITIES,
     SKILL_KINDS,
     SYSTEM_AREAS,
 )
@@ -200,8 +203,9 @@ def governance_rule_fields(
             FieldSchema(
                 key="severity",
                 label="Severity",
-                widget="line",
-                placeholder="Optional, e.g. error / warning.",
+                widget="combo",
+                vocab=RULE_SEVERITIES,
+                default="medium",
             ),
             # REQ-541 / PI-438: who the rule is for (TERM-042 Audience) and when
             # it applies (TERM-043 Moment).
@@ -231,6 +235,32 @@ def governance_rule_fields(
             ),
             _scope_field(client),
         ]
+    )
+    # REQ-543 / PI-440: a new rule names the decision that ruled it; an edit to
+    # the text says whether it is a wording change (version bumps in place) or
+    # a meaning change (a successor supersedes this rule, and needs its decision).
+    if include_identifier:  # edit
+        fields.append(
+            FieldSchema(
+                key="change",
+                label="Text change is",
+                widget="combo",
+                vocab=RULE_CHANGE_KINDS,
+                default="wording",
+                omit_when_empty_in_create=True,
+            )
+        )
+    fields.append(
+        FieldSchema(
+            key="source_decision",
+            label="Source decision",
+            widget="line",
+            required=not include_identifier,
+            placeholder="DEC-NNN — the decision that ruled this rule (required for a meaning change)",
+            regex=re.compile(r"^(DEC-\d{3,})?$"),
+            regex_hint="Enter a decision identifier like DEC-972.",
+            omit_when_empty_in_create=True,
+        )
     )
     return fields
 
