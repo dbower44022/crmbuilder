@@ -252,7 +252,10 @@ FIELD_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 #:     of the multi-choice kind (DEC-937), and the link properties moved onto
 #:     relationships (DEC-932). Rows written before versioning carry NULL, which
 #:     reads as "produced before the vocabulary was versioned".
-FIELD_VOCABULARY_VERSION: int = 1
+#: 2 — the PI-414 subtractive half: ``multiline`` left FIELD_FORMATS (it lives
+#:     in FIELD_DISPLAYS, DEC-933) and the ``field_externally_populated`` flag
+#:     was retired in favour of ``field_supplied_by`` (DEC-939).
+FIELD_VOCABULARY_VERSION: int = 2
 
 FIELD_TYPES: frozenset[str] = frozenset(
     {
@@ -310,10 +313,10 @@ FIELD_FORMATS: frozenset[str] = frozenset(
         "date",
         "datetime",
         "time",
-        # ``multiline`` moves to FIELD_DISPLAYS under DEC-933 — it says how a
-        # field is shown, not what sort of value it holds. It stays here until
-        # the subtractive half of the schema work, so nothing breaks meanwhile.
-        "multiline",
+        # ``multiline`` moved to FIELD_DISPLAYS under DEC-933 — it says how a
+        # field is shown, not what sort of value it holds. Removed here by the
+        # PI-414 subtractive half (vocabulary version 2); migration 0130
+        # converts rows that carried it as a format.
         # PI-414 additions (DEC-936, DEC-939). Each says what sort of value a
         # field holds beyond its kind: an image is a ``file`` in this format, a
         # length of time is a ``number`` in this one, and a secret is text that
@@ -360,9 +363,10 @@ FIELD_VALUES: frozenset[str] = frozenset({"fixed", "open", "suggested"})
 # multi-select is ``enum`` that holds several.
 FIELD_HOLDS: frozenset[str] = frozenset({"one", "several"})
 
-# PI-414 (REQ-514 / DEC-939) — who provides a field's value. Replaces the
-# unused ``field_externally_populated`` flag, which could say only that some
-# outside system filled a field and never that the CRM numbered it itself.
+# PI-414 (REQ-514 / DEC-939) — who provides a field's value. Replaced the
+# ``field_externally_populated`` flag (retired by migration 0130), which could
+# say only that some outside system filled a field and never that the CRM
+# numbered it itself.
 FIELD_SUPPLIED_BY: frozenset[str] = frozenset(
     {"person", "this_crm", "another_system"}
 )

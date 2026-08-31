@@ -42,7 +42,7 @@ def test_create_field_round_trips_intrinsics(v2_env):
             max="1000000",
             read_only=True,
             unique=True,
-            externally_populated=True,
+            supplied_by="another_system",
         )
         fid = row["field_identifier"]
     with session_scope() as s:
@@ -57,7 +57,7 @@ def test_create_field_round_trips_intrinsics(v2_env):
     assert got["field_max"] == "1000000"
     assert got["field_read_only"] is True
     assert got["field_unique"] is True
-    assert got["field_externally_populated"] is True
+    assert got["field_supplied_by"] == "another_system"
 
 
 def test_field_intrinsic_defaults(v2_env):
@@ -75,7 +75,7 @@ def test_field_intrinsic_defaults(v2_env):
     assert row["field_max_length"] is None
     assert row["field_read_only"] is False
     assert row["field_unique"] is False
-    assert row["field_externally_populated"] is False
+    assert row["field_supplied_by"] is None
     assert row["field_options"] == []
 
 

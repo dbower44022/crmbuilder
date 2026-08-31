@@ -51,7 +51,7 @@ def _field(identifier: str, parent: str, name: str, ftype: str, **kw) -> dict:
         "field_description": kw.get("description", ""),
         "field_read_only": kw.get("read_only", False),
         "field_unique": kw.get("unique", False),
-        "field_externally_populated": kw.get("externally_populated", False),
+        "field_supplied_by": kw.get("supplied_by"),
         "field_tooltip": kw.get("tooltip"),
         "field_usage_summary": kw.get("usage_summary"),
         "field_options": kw.get("options", []),
