@@ -84,6 +84,8 @@ class GovernanceRulesPanel(RegistryCrudPanel):
             ColumnSpec(field="identifier", title="Identifier", width=100),
             ColumnSpec(field="rule_type", title="Rule type", width=160),
             ColumnSpec(field="enforcement", title="Enforcement", width=150),
+            ColumnSpec(field="applies_to", title="Audience", width=110),
+            ColumnSpec(field="applies_when", title="Moment", width=120),
             ColumnSpec(field="scope", title="Scope", width=110),
             ColumnSpec(field="status", title="Status", width=90),
             ColumnSpec(field="shadows_display", title="Shadows", width=140),
@@ -200,6 +202,8 @@ class GovernanceRulesPanel(RegistryCrudPanel):
         form.addRow("Rule type", field_label(record.get("rule_type") or "—"))
         form.addRow("Enforcement", field_label(record.get("enforcement") or ""))
         form.addRow("Severity", field_label(record.get("severity") or "—"))
+        form.addRow("Audience", field_label(record.get("applies_to") or "all"))
+        form.addRow("Moment", field_label(record.get("applies_when") or "always"))
         form.addRow("Scope", field_label(record.get("scope") or "system"))
         form.addRow("Status", field_label(record.get("status") or ""))
         form.addRow("Version", field_label(str(record.get("version") or "")))

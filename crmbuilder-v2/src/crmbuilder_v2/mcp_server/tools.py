@@ -847,8 +847,14 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         scope: str | None = None,
         resolution: str | None = None,
         engagement: str | None = None,
+        applies_to: str | None = None,
+        applies_when: str | None = None,
     ) -> Any:
         """List governance rules, optionally filtered by enforcement / scope.
+
+        ``applies_to`` (audience: all / claude_code / sandbox / ui / ado_agent) and
+        ``applies_when`` (moment: always / commit / deploy / governance_record /
+        release) narrow either view (REQ-541 / PI-438).
 
         ``resolution="effective"`` (REQ-536 / PI-441) returns the override-
         resolved ruleset for the active engagement — system defaults plus that
@@ -864,6 +870,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 "scope": scope,
                 "resolution": resolution,
                 "engagement": engagement,
+                "applies_to": applies_to,
+                "applies_when": applies_when,
             }.items()
             if v
         }

@@ -149,8 +149,10 @@ from crmbuilder_v2.access.vocab import (
     RISK_PROBABILITIES,
     RISK_STATUSES,
     ROLE_STATUSES,
+    RULE_AUDIENCES,
     RULE_EFFECTS,
     RULE_ENFORCEMENT_MODES,
+    RULE_MOMENTS,
     RULE_STATUSES,
     RULE_SUBJECT_TYPES,
     SERVICE_STATUSES,
@@ -6722,6 +6724,13 @@ class GovernanceRuleRow(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     # Structured predicate for enforced rules (the access layer largely enforces).
     predicate: Mapped[dict | None] = mapped_column(JSONColumn, nullable=True)
+    # REQ-541 / PI-438: who the rule is for and when it applies.
+    applies_to: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="all", server_default="all"
+    )
+    applies_when: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="always", server_default="always"
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="active"
@@ -6743,6 +6752,14 @@ class GovernanceRuleRow(Base):
             name="ck_governance_rule_enforcement",
         ),
         CheckConstraint(_check_in("status", REGISTRY_STATUSES), name="ck_governance_rule_status"),
+        CheckConstraint(
+            _check_in("applies_to", RULE_AUDIENCES),
+            name="ck_governance_rule_applies_to",
+        ),
+        CheckConstraint(
+            _check_in("applies_when", RULE_MOMENTS),
+            name="ck_governance_rule_applies_when",
+        ),
         Index("ix_governance_rules_engagement", "engagement_id"),
     )
 

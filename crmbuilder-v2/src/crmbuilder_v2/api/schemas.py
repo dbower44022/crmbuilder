@@ -382,6 +382,8 @@ class GovernanceRuleCreateIn(_Base):
     version: int = 1
     status: str = "active"
     scope: str | None = None
+    applies_to: str = "all"  # REQ-541 audience (TERM-042)
+    applies_when: str = "always"  # REQ-541 moment (TERM-043)
 
 
 class GovernanceRuleUpdateIn(_Base):
@@ -393,6 +395,8 @@ class GovernanceRuleUpdateIn(_Base):
     version: int | None = None
     status: str | None = None
     scope: str | None = None
+    applies_to: str | None = None
+    applies_when: str | None = None
 
 
 class LearningCreateIn(_Base):

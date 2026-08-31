@@ -2714,6 +2714,18 @@ PREFERENCE_APPLIES_TO: frozenset[str] = frozenset(
 )
 PREFERENCE_STATUSES: frozenset[str] = frozenset({"active", "retired"})
 
+# governance_rule audience + moment (REQ-541 / PI-438 / DEC-963).
+# ``applies_to`` (TERM-042 Audience) — WHO a rule is for: the preference surfaces
+# plus ``ado_agent`` (an automated build agent). ``applies_when`` (TERM-043
+# Moment) — WHEN it applies: ``always`` rules load at session start; the others
+# are what a pre-action check evaluates at that point (REQ-542).
+RULE_AUDIENCES: frozenset[str] = frozenset(
+    {"all", "claude_code", "sandbox", "ui", "ado_agent"}
+)
+RULE_MOMENTS: frozenset[str] = frozenset(
+    {"always", "commit", "deploy", "governance_record", "release"}
+)
+
 # lesson (LSN-) — one operational gotcha / how-to. ``signal`` distinguishes a
 # don't-do-X hazard from generic guidance and a how-to.
 LESSON_CATEGORIES: frozenset[str] = frozenset(
