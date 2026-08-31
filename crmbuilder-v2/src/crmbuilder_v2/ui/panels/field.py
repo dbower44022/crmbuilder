@@ -133,6 +133,11 @@ _INTRINSIC_DISPLAY_ROWS: tuple[tuple[str, str], ...] = (
     ("Default value", "field_default_value"),
     ("Format", "field_format"),
     ("Numeric scale", "field_numeric_scale"),
+    # PI-414 — the four qualifying properties (REQ-508/510/512/514).
+    ("Display", "field_display"),
+    ("Values", "field_values"),
+    ("Holds", "field_holds"),
+    ("Supplied by", "field_supplied_by"),
     ("Max length", "field_max_length"),
     ("Min", "field_min"),
     ("Max", "field_max"),
@@ -140,7 +145,6 @@ _INTRINSIC_DISPLAY_ROWS: tuple[tuple[str, str], ...] = (
 _INTRINSIC_BOOL_ROWS: tuple[tuple[str, str], ...] = (
     ("Read-only", "field_read_only"),
     ("Unique", "field_unique"),
-    ("Externally populated", "field_externally_populated"),
 )
 
 

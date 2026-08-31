@@ -237,7 +237,7 @@ async def test_create_field_with_intrinsics_and_options(mcp_server):
             "description": "pipeline stage",
             "type": "enum",
             "tooltip": "pick a stage",
-            "format": "multiline",
+            "format": "url",
             "read_only": True,
             "unique": True,
             "max_length": 64,
@@ -248,7 +248,7 @@ async def test_create_field_with_intrinsics_and_options(mcp_server):
         },
     )
     assert field["field_tooltip"] == "pick a stage"
-    assert field["field_format"] == "multiline"
+    assert field["field_format"] == "url"
     assert field["field_read_only"] is True
     assert field["field_unique"] is True
     assert field["field_max_length"] == 64

@@ -853,12 +853,17 @@ class FieldCreateIn(_Base):
     field_default_value: str | None = None
     field_format: str | None = None
     field_numeric_scale: str | None = None
+    # PI-414 — the four qualifying properties (REQ-508/510/512/514), each
+    # vocabulary-validated by the access layer.
+    field_display: str | None = None
+    field_values: str | None = None
+    field_holds: str | None = None
+    field_supplied_by: str | None = None
     field_max_length: int | None = None
     field_min: str | None = None
     field_max: str | None = None
     field_read_only: bool | None = None
     field_unique: bool | None = None
-    field_externally_populated: bool | None = None
     field_built_in: bool | None = None
     # PRJ-025 PI-197 — derived/formula intent (DEC-438).
     field_derived_result_type: str | None = None
@@ -888,12 +893,16 @@ class FieldReplaceIn(_Base):
     field_default_value: str | None = None
     field_format: str | None = None
     field_numeric_scale: str | None = None
+    # PI-414 — the four qualifying properties (REQ-508/510/512/514).
+    field_display: str | None = None
+    field_values: str | None = None
+    field_holds: str | None = None
+    field_supplied_by: str | None = None
     field_max_length: int | None = None
     field_min: str | None = None
     field_max: str | None = None
     field_read_only: bool | None = None
     field_unique: bool | None = None
-    field_externally_populated: bool | None = None
     field_built_in: bool | None = None
     # PRJ-025 PI-197 — derived/formula intent (DEC-438).
     field_derived_result_type: str | None = None
@@ -923,12 +932,16 @@ class FieldPatchIn(_Base):
     field_default_value: str | None = None
     field_format: str | None = None
     field_numeric_scale: str | None = None
+    # PI-414 — the four qualifying properties (REQ-508/510/512/514).
+    field_display: str | None = None
+    field_values: str | None = None
+    field_holds: str | None = None
+    field_supplied_by: str | None = None
     field_max_length: int | None = None
     field_min: str | None = None
     field_max: str | None = None
     field_read_only: bool | None = None
     field_unique: bool | None = None
-    field_externally_populated: bool | None = None
     field_built_in: bool | None = None
     # PRJ-025 PI-197 — derived/formula intent (DEC-438).
     field_derived_result_type: str | None = None

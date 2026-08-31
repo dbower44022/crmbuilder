@@ -145,7 +145,6 @@ def test_field_create_dialog_has_intrinsic_inputs(qtbot, client):
         "field_max",
         "field_read_only",
         "field_unique",
-        "field_externally_populated",
     ):
         assert key in dialog._intrinsic_widgets
     assert dialog._options_editor is not None
@@ -192,7 +191,7 @@ def test_field_create_dialog_forwards_intrinsics_and_options(qtbot, client):
     assert stored["field_max_length"] == 64
     assert stored["field_read_only"] is True
     assert stored["field_unique"] is True
-    assert stored["field_externally_populated"] is False
+    assert "field_externally_populated" not in stored
     opts = stored["field_options"]
     assert [o["option_value"] for o in opts] == ["open", "closed"]
     assert opts[0]["option_label"] == "Open"

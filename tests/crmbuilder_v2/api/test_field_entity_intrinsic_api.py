@@ -87,6 +87,51 @@ def test_patch_field_intrinsic(client):
     assert resp.json()["data"]["field_numeric_scale"] == "integer"
 
 
+def test_post_field_with_qualifying_properties(client):
+    """PI-414: the four qualifying properties (REQ-508/510/512/514) are
+    settable by an author over HTTP, not only by the capture path."""
+    ent = _seed_entity(client)
+    record = _make_field(
+        client,
+        ent,
+        field_name="services",
+        field_display="tick_list",
+        field_values="fixed",
+        field_holds="several",
+        field_supplied_by="person",
+        field_options=[{"option_value": "coaching"}],
+    )
+    assert record["field_display"] == "tick_list"
+    assert record["field_values"] == "fixed"
+    assert record["field_holds"] == "several"
+    assert record["field_supplied_by"] == "person"
+
+
+def test_patch_field_qualifying_property(client):
+    ent = _seed_entity(client)
+    fid = _make_field(client, ent, field_type="number")["field_identifier"]
+    resp = client.patch(
+        f"/fields/{fid}", json={"field_supplied_by": "this_crm"}
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["field_supplied_by"] == "this_crm"
+
+
+def test_post_field_rejects_bad_qualifying_property(client):
+    ent = _seed_entity(client)
+    resp = client.post(
+        "/fields",
+        json={
+            "field_name": "f",
+            "field_description": "d",
+            "field_type": "text",
+            "field_belongs_to_entity_identifier": ent,
+            "field_values": "nope",
+        },
+    )
+    assert resp.status_code == 422, resp.text
+
+
 def test_post_field_rejects_bad_format(client):
     ent = _seed_entity(client)
     resp = client.post(
