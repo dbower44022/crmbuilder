@@ -57,7 +57,7 @@ def _field(identifier="FLD-001", name="mentor_status", type="text", parent="ENT-
         "field_max_length": None,
         "field_min": None,
         "field_max": None,
-        "field_externally_populated": False,
+        "field_supplied_by": None,
         "field_tooltip": None,
         "field_unique": False,
         "field_usage_summary": None,
@@ -205,9 +205,10 @@ def test_field_type_mapping(semantic, extra, expected):
 
 
 def test_text_with_unsupported_format_keeps_base_type():
-    # percent/multiline have no first-class EspoCRM type → stay varchar.
+    # percent has no first-class EspoCRM type → stays varchar. (multiline is
+    # a display, not a format, since the PI-414 subtractive half.)
     model = build_program_model(
-        [_entity()], [_field(type="text", field_format="multiline")], [],
+        [_entity()], [_field(type="text", field_format="percent")], [],
         rendered_at=RENDERED_AT,
     )
     assert _only_entity_block(model)["fields"][0]["type"] == "varchar"
@@ -296,7 +297,7 @@ def test_field_required_default_readonly_maxlength_external():
                 field_default_value="N/A",
                 field_read_only=True,
                 field_max_length=20,
-                field_externally_populated=True,
+                field_supplied_by="another_system",
             )
         ],
         [],
@@ -341,6 +342,73 @@ def test_enum_options_ordered_and_deferred():
     assert fields["status"]["options"] == ["open", "closed"]
     assert fields["tier"]["optionsDeferred"] is True
     assert "options" not in fields["tier"]
+
+
+def test_checklist_carries_its_declared_options():
+    """A fixed tick-list builds a ``checklist`` — and the declared option set
+    must ride along exactly as it does on enum/multiEnum. Omitting it would
+    silently drop a design's declared values at publish (REQ-502)."""
+    field = _field(
+        identifier="FLD-001",
+        name="services",
+        type="enum",
+        field_values="fixed",
+        field_holds="several",
+        field_display="tick_list",
+        field_options=[
+            {"option_value": "coaching", "option_order": 1},
+            {"option_value": "review", "option_order": 2},
+        ],
+    )
+    model = build_program_model([_entity()], [field], [], rendered_at=RENDERED_AT)
+    block = {f["name"]: f for f in _only_entity_block(model)["fields"]}["services"]
+    assert block["type"] == "checklist"
+    assert block["options"] == ["coaching", "review"]
+
+
+def test_numeric_choice_options_emit_as_numbers():
+    """``enumInt``/``enumFloat`` store number options in EspoCRM; the declared
+    values are emitted as numbers where they parse."""
+    int_field = _field(
+        identifier="FLD-001", name="priority", type="number",
+        field_values="fixed",
+        field_options=[
+            {"option_value": "1", "option_order": 1},
+            {"option_value": "2", "option_order": 2},
+        ],
+    )
+    float_field = _field(
+        identifier="FLD-002", name="rate", type="number",
+        field_values="fixed", field_numeric_scale="decimal",
+        field_options=[{"option_value": "0.5", "option_order": 1}],
+    )
+    model = build_program_model(
+        [_entity()], [int_field, float_field], [], rendered_at=RENDERED_AT
+    )
+    fields = {f["name"]: f for f in _only_entity_block(model)["fields"]}
+    assert fields["priority"]["type"] == "enumInt"
+    assert fields["priority"]["options"] == [1, 2]
+    assert fields["rate"]["type"] == "enumFloat"
+    assert fields["rate"]["options"] == [0.5]
+
+
+def test_a_fixed_option_type_with_no_options_defers_not_drops():
+    """A checklist listing no values still says so — ``optionsDeferred`` rather
+    than a payload with neither key, which would read as complete."""
+    field = _field(
+        identifier="FLD-001",
+        name="services",
+        type="enum",
+        field_values="fixed",
+        field_holds="several",
+        field_display="tick_list",
+        field_options=[],
+    )
+    model = build_program_model([_entity()], [field], [], rendered_at=RENDERED_AT)
+    block = {f["name"]: f for f in _only_entity_block(model)["fields"]}["services"]
+    assert block["type"] == "checklist"
+    assert block["optionsDeferred"] is True
+    assert "options" not in block
 
 
 # ---------------------------------------------------------------------------
