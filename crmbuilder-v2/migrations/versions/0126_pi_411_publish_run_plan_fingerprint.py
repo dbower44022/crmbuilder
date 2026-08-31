@@ -15,6 +15,12 @@ did not have one, and inventing a fingerprint for it would assert that some
 specific plan was applied when nobody recorded which — the same failure the
 column exists to prevent.
 
+Guarded against a schema materialised from the current ORM models, which already
+carries the column — the same shape as the PI-414 migrations, and the same
+oversight: this one was written before that fix and was not swept for it
+afterwards. The guard makes the migration a clean no-op on that path while
+leaving it a real delta on a database that predates the column.
+
 Additive and nullable, so no existing row is invalidated. No CHECK: the value is
 a hex digest the access layer computes, not a vocabulary an operator picks.
 
@@ -38,12 +44,21 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _has_column(table: str, column: str) -> bool:
+    inspector = sa.inspect(op.get_bind())
+    if table not in set(inspector.get_table_names()):
+        return False
+    return column in {c["name"] for c in inspector.get_columns(table)}
+
+
 def upgrade() -> None:
-    op.add_column(
-        "publish_runs",
-        sa.Column("publish_run_plan_fingerprint", sa.String(64), nullable=True),
-    )
+    if not _has_column("publish_runs", "publish_run_plan_fingerprint"):
+        op.add_column(
+            "publish_runs",
+            sa.Column("publish_run_plan_fingerprint", sa.String(64), nullable=True),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("publish_runs", "publish_run_plan_fingerprint")
+    if _has_column("publish_runs", "publish_run_plan_fingerprint"):
+        op.drop_column("publish_runs", "publish_run_plan_fingerprint")
