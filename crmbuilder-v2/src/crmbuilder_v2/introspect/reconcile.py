@@ -1036,6 +1036,10 @@ def _field_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict:
     # canonical sets differ by value or effective-label, order-insensitively. The
     # override stores the audited set in canonical shape so it both renders the
     # difference and captures back through the generic ``patch_field(options=)`` path.
+    # A fixed-values field listing no options on BOTH sides stores no override —
+    # the invalidity lives in the design, not the instance, and the comparison
+    # (``reconcile_compare._is_empty_fixed_option_set``) is the single verdict
+    # authority that reports it as drift (REQ-516 / DEC-940).
     if "field_options" in audited and not option_sets_equal(
         canonical.get("field_options"), audited["field_options"]
     ):

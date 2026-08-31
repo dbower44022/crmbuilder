@@ -954,6 +954,49 @@ def test_fixed_values_field_listing_no_options_is_drift_not_unknown():
     assert row["outcome"] == "drift"
 
 
+def test_fixed_values_listing_none_is_drift_even_when_the_instance_agrees():
+    """REQ-516: the field is unusable on either side, so agreement on emptiness
+    is not conformance. The row must be emitted in differences-only mode, not
+    swallowed by the everything-agrees short-circuit."""
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="stage",
+        design_obj={"field_values": "fixed", "field_options": []},
+        attributes=["field_options"],
+        membership_a=_mem(), membership_b=_mem(),
+    )
+    row = next(r for r in rows if r["kind"] == "attribute")
+    assert row["outcome"] == "drift"
+    assert row["differs"] is True
+
+
+def test_the_both_sides_empty_fixed_set_offers_no_action():
+    """Nothing exists to capture or publish — the remedy is finishing the
+    design's option list, so batch apply must not be offered a no-op."""
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="stage",
+        design_obj={"field_values": "fixed", "field_options": []},
+        attributes=["field_options"],
+        membership_a=_mem(), membership_b=_mem(),
+    )
+    row = next(r for r in rows if r["kind"] == "attribute")
+    assert row["capturable"] is False
+    assert row["publishable"] is False
+    assert row["actionable"] is False
+
+
+def test_an_open_values_field_listing_none_is_not_drift():
+    """The empty-fixed rule keys on ``fixed`` — an open field with no listed
+    options is a perfectly usable free-value field and stays a match."""
+    rows = compute_member_rows(
+        member_type="field", member_identifier="FLD-1", member_name="tags",
+        design_obj={"field_values": "open", "field_options": []},
+        attributes=["field_options"],
+        membership_a=_mem(), membership_b=_mem(), include_unchanged=True,
+    )
+    row = next(r for r in rows if r["kind"] == "attribute")
+    assert row["outcome"] == "match"
+
+
 def test_a_declared_false_is_a_declaration_not_an_absence():
     """``False``, ``0`` and ``""`` are things the design says. Testing
     truthiness rather than ``is None`` would sweep them into unknown and hide
