@@ -42,12 +42,24 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _has_column(table: str, column: str) -> bool:
+    inspector = sa.inspect(op.get_bind())
+    if table not in set(inspector.get_table_names()):
+        return False
+    return column in {c["name"] for c in inspector.get_columns(table)}
+
+
 def upgrade() -> None:
-    op.add_column(
-        "instance_memberships",
-        sa.Column("vocabulary_version", sa.Integer(), nullable=True),
-    )
+    # A schema materialised from the current ORM models already carries this
+    # column, so the add is guarded — a clean no-op there, a real delta on a
+    # database that predates it.
+    if not _has_column("instance_memberships", "vocabulary_version"):
+        op.add_column(
+            "instance_memberships",
+            sa.Column("vocabulary_version", sa.Integer(), nullable=True),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("instance_memberships", "vocabulary_version")
+    if _has_column("instance_memberships", "vocabulary_version"):
+        op.drop_column("instance_memberships", "vocabulary_version")

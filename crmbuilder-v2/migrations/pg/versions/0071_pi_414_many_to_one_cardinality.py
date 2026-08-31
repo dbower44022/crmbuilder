@@ -46,13 +46,23 @@ _NEW = ASSOCIATION_CARDINALITIES
 _OLD = ASSOCIATION_CARDINALITIES - {_ADDED}
 
 
+def _has_table(table: str) -> bool:
+    return table in set(sa.inspect(op.get_bind()).get_table_names())
+
+
 def _rebuild_check(values: frozenset[str] | set[str]) -> None:
-    op.drop_constraint("ck_association_cardinality", "associations", type_="check")
-    op.create_check_constraint(
-        "ck_association_cardinality",
-        "associations",
-        _check_in("association_cardinality", frozenset(values)),
-    )
+    # Batch mode, because SQLite cannot ALTER a constraint in place and needs
+    # the copy-and-move strategy; on Postgres this issues a plain ALTER. Guarded
+    # so the migration is a clean no-op when the chain is entered mid-stream and
+    # the table does not exist yet.
+    if not _has_table("associations"):
+        return
+    with op.batch_alter_table("associations") as batch:
+        batch.drop_constraint("ck_association_cardinality", type_="check")
+        batch.create_check_constraint(
+            "ck_association_cardinality",
+            _check_in("association_cardinality", frozenset(values)),
+        )
 
 
 def upgrade() -> None:
