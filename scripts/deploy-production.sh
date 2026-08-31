@@ -176,7 +176,11 @@ esac
 say "7/7 Publish check (validate-only, writes nothing)"
 LOCAL_PY="$(git rev-parse --show-toplevel)/.venv/bin/python"
 [ -x "$LOCAL_PY" ] || LOCAL_PY="python3"
-if "$LOCAL_PY" -m crmbuilder_v2.publish.check; then
+# --base-url pins the check to the public service (REQ-545 / PI-443): the
+# check resolves flag > environment > env file, so an operator shell that
+# exports a local dev URL would otherwise send it to a service that isn't
+# running (observed 2026-08-31: "via http://127.0.0.1:8765 ... CANNOT RUN").
+if "$LOCAL_PY" -m crmbuilder_v2.publish.check --base-url "$PUBLIC_URL"; then
     echo "    publish path: healthy"
 else
     rc=$?
