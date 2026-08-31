@@ -27,6 +27,13 @@ and ``association_status`` only, and these five follow ``field_format``'s
 intrinsic-attribute precedent from PI-182: validated at the access layer against
 their vocabulary, not by the database.
 
+Guarded against a schema materialised from the current ORM models. The
+associations table is created by 0056 via ``Association.__table__.create``,
+which reads the live model — so on a walk entering the chain mid-stream the
+table is born already carrying these columns and an unguarded ``add_column``
+fails with a duplicate. The guard makes this migration a clean no-op there while
+leaving it a real delta on a database that predates the columns.
+
 Additive only. Retiring the ``reference`` field type and folding the 19 existing
 reference field records is a separate migration, so the half that adds somewhere
 to put the content can be read and rolled back without the half that moves it.
@@ -61,11 +68,25 @@ _COLUMNS: list[tuple[str, object]] = [
 ]
 
 
+def _has_table(table: str) -> bool:
+    return table in set(sa.inspect(op.get_bind()).get_table_names())
+
+
+def _has_column(table: str, column: str) -> bool:
+    if not _has_table(table):
+        return False
+    return column in {
+        c["name"] for c in sa.inspect(op.get_bind()).get_columns(table)
+    }
+
+
 def upgrade() -> None:
     for name, type_ in _COLUMNS:
-        op.add_column("associations", sa.Column(name, type_, nullable=True))
+        if not _has_column("associations", name):
+            op.add_column("associations", sa.Column(name, type_, nullable=True))
 
 
 def downgrade() -> None:
     for name, _type in reversed(_COLUMNS):
-        op.drop_column("associations", name)
+        if _has_column("associations", name):
+            op.drop_column("associations", name)
