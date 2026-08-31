@@ -136,6 +136,7 @@ def touches_code(changed_files: list[str]) -> bool:
 
 def parse_governance_trailers(
     commit_msg: str,
+    trailer: str = GOVERNED_BY,
 ) -> tuple[list[str], str | None, list[str]]:
     """Return ``(planning_items, exemption_reason, malformed)`` from the message.
 
@@ -160,7 +161,7 @@ def parse_governance_trailers(
         key, _, value = line.partition(":")
         key = key.strip().lower()
         value = value.strip()
-        if key == GOVERNED_BY.lower():
+        if key == trailer.lower():
             if value.lower() == TRIVIAL:
                 is_trivial = True
             elif value:
@@ -233,6 +234,24 @@ def validate_planning_item(pi: str, get_json) -> tuple[bool, str]:
 # --- evaluation (pure) ------------------------------------------------------
 
 
+def trailer_spec(get_json) -> tuple[str, str | None]:
+    """``(trailer, value_pattern)`` from the store's ``required_trailer`` check.
+
+    REQ-542 / PI-439: the commit-trailer rule (GVR-229) carries its check as data
+    — ``{"kind": "required_trailer", "trailer": "Governed-By", "pattern": ...}`` —
+    and the gate reads it rather than hard-coding the trailer. Falls back to the
+    built-in ``Governed-By`` with no extra pattern when the store holds no such
+    check; a transport failure propagates to ``guarded_evaluate`` like any other.
+    """
+    for mode in ("enforced_with_override", "enforced"):
+        rules = get_json(f"/governance-rules?enforcement={mode}&status=active") or []
+        for rule in rules:
+            check = rule.get("predicate") or {}
+            if check.get("kind") == "required_trailer" and check.get("trailer"):
+                return str(check["trailer"]), check.get("pattern") or None
+    return GOVERNED_BY, None
+
+
 def evaluate(commit_msg: str, changed_files: list[str], *, get_json) -> GateDecision:
     """The verdict for one commit. Pure given ``get_json``."""
     if not touches_code(changed_files):
@@ -240,6 +259,19 @@ def evaluate(commit_msg: str, changed_files: list[str], *, get_json) -> GateDeci
                             warnings=["no code paths touched — gate not applicable"])
 
     pis, exemption, malformed = parse_governance_trailers(commit_msg)
+    # REQ-449: a malformed-only trailer blocks without any lookup — the store is
+    # consulted for the trailer check only once the message parses cleanly.
+    if pis or not malformed:
+        trailer, value_pattern = trailer_spec(get_json)
+        if trailer.lower() != GOVERNED_BY.lower():
+            pis, exemption, malformed = parse_governance_trailers(commit_msg, trailer=trailer)
+        if value_pattern:
+            try:
+                rx = re.compile(value_pattern)
+                malformed += [pi for pi in pis if not rx.fullmatch(pi)]
+                pis = [pi for pi in pis if rx.fullmatch(pi)]
+            except re.error:
+                pass
     malformed_reasons = [
         f"malformed 'Governed-By' trailer value {v!r} — expected an identifier "
         f"like 'PI-123'"

@@ -88,6 +88,8 @@ def test_governance_rule_enforcement_modes(v2_env):
                  "sets Needs Attention.",
             enforcement="enforced_with_override",
             severity="high",
+            # REQ-542: an enforced rule carries its check
+            predicate={"kind": "forbidden_command", "pattern": r"alembic downgrade"},
         )
         assert rule["identifier"] == "GVR-001"
         assert rule["enforcement"] == "enforced_with_override"

@@ -79,6 +79,7 @@ crmbuilder-v2/data/oauth_secrets.env
 crmbuilder-v2/data/mcp.env
 crmbuilder-v2/data/crmbuilder.env
 crmbuilder-v2/data/session-context.snapshot.md
+crmbuilder-v2/data/rule-checks.snapshot.json
 
 # LibreOffice lock files — transient, created while a document is open.
 # `*.lock` does not match these: the name ends in `#` (.~lock.Foo.odt#).

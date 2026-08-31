@@ -100,6 +100,9 @@ def promote_to_rule(
         severity=severity,
         rule_type=rule_type,
         scope=lrn["scope"],
+        # REQ-541: a learning is agent experience, so the rule it becomes is an
+        # agent rule — bound into contracts, not loaded into a session.
+        applies_to="ado_agent",
     )
     references.create(
         session,

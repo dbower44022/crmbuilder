@@ -38,6 +38,7 @@ from crmbuilder_v2.api.schemas import (
     LearningPromoteRuleIn,
     LearningPromoteSkillIn,
     LearningUpdateIn,
+    RuleEnforcementOverrideIn,
     SkillCreateIn,
     SkillScanIn,
     SkillUpdateIn,
@@ -333,6 +334,22 @@ def update_governance_rule(identifier: str, body: GovernanceRuleUpdateIn):
     scope = provided.pop("scope", None)
     with writable_session() as s:
         return ok(governance_rules.update(s, identifier, scope=scope, **provided))
+
+
+@governance_rules_router.get("/{identifier}/enforcement-overrides")
+def list_rule_enforcement_overrides(identifier: str):
+    """The logged waivers of an enforced_with_override rule (REQ-542)."""
+    with readonly_session() as s:
+        return ok(governance_rules.list_enforcement_overrides(s, identifier))
+
+
+@governance_rules_router.post("/{identifier}/enforcement-overrides", status_code=201)
+def create_rule_enforcement_override(identifier: str, body: RuleEnforcementOverrideIn):
+    """Record that a session waved a failing check through, and why (REQ-542)."""
+    with writable_session() as s:
+        return ok(governance_rules.record_enforcement_override(
+            s, identifier, engagement_id=get_active_engagement(), **body.model_dump()
+        ))
 
 
 @governance_rules_router.delete("/{identifier}")
