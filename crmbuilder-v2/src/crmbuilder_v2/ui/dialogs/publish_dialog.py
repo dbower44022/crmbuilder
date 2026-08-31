@@ -459,9 +459,19 @@ class PublishDialog(QDialog):
 
     # -- scope selection (REQ-290) ---------------------------------------
 
-    def _populate_scope(self, programs: list[dict]) -> None:
+    def _populate_scope(
+        self,
+        programs: list[dict],
+        default_checked: set[str] | None = None,
+    ) -> None:
         """Fill the scope list from the validate result, preserving any prior
-        unchecked selections (a re-validate keeps the operator's choices)."""
+        unchecked selections (a re-validate keeps the operator's choices).
+
+        On the first populate, ``default_checked`` (the instance's stored
+        feature selection resolved to filenames, REQ-546 / PI-444) pre-checks
+        only those programs; ``None`` keeps the check-everything default.
+        """
+        fresh = self._scope_list.count() == 0
         prev_unchecked = {
             self._scope_list.item(i).text()
             for i in range(self._scope_list.count())
@@ -473,10 +483,12 @@ class PublishDialog(QDialog):
             fn = p.get("filename", "?")
             item = QListWidgetItem(fn)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            if fresh and default_checked is not None:
+                checked = fn in default_checked
+            else:
+                checked = fn not in prev_unchecked
             item.setCheckState(
-                Qt.CheckState.Unchecked
-                if fn in prev_unchecked
-                else Qt.CheckState.Checked
+                Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
             )
             self._scope_list.addItem(item)
         self._scope_list.blockSignals(False)
@@ -523,8 +535,30 @@ class PublishDialog(QDialog):
     def _on_validated(self, result: dict[str, Any]) -> None:
         self._results.setHtml(render_validate_html(result))
         # The full program list drives the scope selector (validate is always
-        # run full-scope so every program is selectable).
-        self._populate_scope(result.get("programs", []))
+        # run full-scope so every program is selectable). The instance's stored
+        # feature selection, when present, pre-checks the list (REQ-546 /
+        # PI-444) — the operator sees and can override what a bare publish
+        # would send.
+        selection = result.get("feature_selection") or None
+        default_checked = (
+            set(selection.get("filenames") or []) if selection else None
+        )
+        self._populate_scope(
+            result.get("programs", []), default_checked=default_checked
+        )
+        if selection:
+            note = (
+                "Publish scope — pre-checked from this instance's stored "
+                "feature selection:"
+            )
+            unresolved = selection.get("unresolved") or []
+            if unresolved:
+                note = note[:-1] + (
+                    f" ({len(unresolved)} stored entr"
+                    f"{'y' if len(unresolved) == 1 else 'ies'} no longer in "
+                    "the design):"
+                )
+            self._scope_label.setText(note)
         ok = not result.get("validation_failed", True)
         self._status.setText(
             "Validation passed — ready to publish."

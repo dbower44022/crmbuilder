@@ -60,8 +60,54 @@ _PATCHABLE_FIELDS = frozenset(
         "secret_key_ref",
         "status",
         "notes",
+        "feature_selection",
     }
 )
+
+# PI-444 (REQ-546): a stored feature selection names design entities.
+_ENTITY_IDENTIFIER_RE = re.compile(r"^ENT-\d{3}$")
+
+
+def _require_feature_selection(value: object) -> list[str] | None:
+    """Normalize and validate a stored feature selection (REQ-546 / PI-444).
+
+    ``None`` or an empty list means "no selection" (publish the full design)
+    and is stored as NULL. Otherwise the value must be a list of design-entity
+    identifiers (``ENT-NNN``); duplicates are dropped, order preserved. The
+    selection stores entity identifiers, not generated program filenames, so a
+    design-entity rename cannot silently detach it.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, list) or any(
+        not isinstance(v, str) for v in value
+    ):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "instance_feature_selection",
+                    "invalid_type",
+                    "must be a list of design-entity identifiers "
+                    "(ENT-NNN) or null",
+                )
+            ]
+        )
+    seen: list[str] = []
+    for v in value:
+        if not _ENTITY_IDENTIFIER_RE.match(v):
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "instance_feature_selection",
+                        "invalid_entity_identifier",
+                        f"{v!r} is not a design-entity identifier "
+                        "(expected ENT-NNN)",
+                    )
+                ]
+            )
+        if v not in seen:
+            seen.append(v)
+    return seen or None
 
 
 def _require_vendor(value: object) -> str:
@@ -146,6 +192,7 @@ def _new_row(
     secret_key_ref,
     status,
     notes,
+    feature_selection,
 ) -> Instance:
     return Instance(
         instance_identifier=identifier,
@@ -158,6 +205,7 @@ def _new_row(
         instance_secret_key_ref=secret_key_ref,
         instance_status=status,
         instance_notes=notes,
+        instance_feature_selection=feature_selection,
     )
 
 
@@ -198,6 +246,7 @@ def create_instance(
     secret_key_ref: str | None = None,
     status: str = "active",
     notes: str | None = None,
+    feature_selection: list[str] | None = None,
     identifier: str | None = None,
     references: list[dict] | None = None,
     timestamps: dict | None = None,
@@ -212,6 +261,7 @@ def create_instance(
     role = _require_role(role or "both")
     auth_method = _require_auth_method(auth_method or "api_key")
     status = _require_status(status or "active")
+    feature_selection = _require_feature_selection(feature_selection)
 
     kw = {
         "name": name,
@@ -223,6 +273,7 @@ def create_instance(
         "secret_key_ref": secret_key_ref,
         "status": status,
         "notes": notes,
+        "feature_selection": feature_selection,
     }
     if identifier is None:
         row = _insert_with_autoassign(session, **kw)
@@ -275,6 +326,7 @@ def update_instance(
     secret_key_ref: str | None = None,
     status: str = "active",
     notes: str | None = None,
+    feature_selection: list[str] | None = None,
     references: list[dict] | None = None,
 ) -> dict:
     row = _get_row(session, identifier)
@@ -299,6 +351,9 @@ def update_instance(
     row.instance_secret_ref = secret_ref
     row.instance_secret_key_ref = secret_key_ref
     row.instance_notes = notes
+    row.instance_feature_selection = _require_feature_selection(
+        feature_selection
+    )
 
     gov.apply_reference_list(session, references)
     session.flush()
@@ -358,6 +413,10 @@ def patch_instance(
         row.instance_secret_key_ref = fields["secret_key_ref"]
     if "notes" in fields:
         row.instance_notes = fields["notes"]
+    if "feature_selection" in fields:
+        row.instance_feature_selection = _require_feature_selection(
+            fields["feature_selection"]
+        )
 
     session.flush()
 

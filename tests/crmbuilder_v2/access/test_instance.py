@@ -29,6 +29,7 @@ _EXPECTED_COLUMNS = {
     "instance_secret_key_ref",
     "instance_status",
     "instance_notes",
+    "instance_feature_selection",
     "instance_created_at",
     "instance_updated_at",
     "instance_deleted_at",

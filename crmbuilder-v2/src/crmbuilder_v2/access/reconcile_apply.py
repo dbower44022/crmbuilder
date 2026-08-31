@@ -561,6 +561,43 @@ def publish_scope_for_member(
     }
 
 
+def feature_selection_scope(
+    session: Session, selection: list[str]
+) -> dict[str, Any]:
+    """Resolve a stored per-instance feature selection to a publish scope
+    (REQ-546 / PI-444).
+
+    The selection is a list of design-entity identifiers (``ENT-NNN``). Each
+    one that still names a live design entity resolves to its generated
+    program filename; identifiers that no longer resolve (the entity was
+    deleted) are reported in ``unresolved`` rather than silently dropped, so
+    the caller can refuse to widen a selection into a full publish.
+
+    :returns: ``{filenames, resolved: [{entity_identifier, entity_name,
+        filename}], unresolved: [identifiers]}``.
+    """
+    resolved: list[dict[str, str]] = []
+    unresolved: list[str] = []
+    for identifier in selection:
+        ent = entity_repo.get_entity(session, identifier)
+        if ent is None:
+            unresolved.append(identifier)
+            continue
+        name = ent.get("entity_name") or identifier
+        resolved.append(
+            {
+                "entity_identifier": identifier,
+                "entity_name": name,
+                "filename": _filename_slug(name, identifier),
+            }
+        )
+    return {
+        "filenames": [r["filename"] for r in resolved],
+        "resolved": resolved,
+        "unresolved": unresolved,
+    }
+
+
 def record_publish(
     session: Session,
     *,

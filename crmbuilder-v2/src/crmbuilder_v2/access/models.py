@@ -2931,6 +2931,15 @@ class Instance(EngagementScopedPKMixin, Base):
         String(16), nullable=False, default="active"
     )
     instance_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # PI-444 (REQ-546 / DEC-977) — the chapter's stored feature selection: the
+    # entity identifiers (``ENT-NNN``) of the canonical design that are active
+    # for this instance. NULL means no selection (publish the full design —
+    # today's behaviour). Entity identifiers, not generated program filenames,
+    # so a design-entity rename cannot silently detach the selection; publish
+    # resolves identifiers to filenames at run time.
+    instance_feature_selection: Mapped[list | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
     instance_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
