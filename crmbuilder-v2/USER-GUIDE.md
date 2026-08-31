@@ -197,6 +197,17 @@ requirements) and press Enter to open the highlighted result in the
 current tab. Back/Forward (Alt+Left / Alt+Right, Go menu) still step
 through the cross-record trail.
 
+**Governance Rules panel (Operate CRMBuilder).** Rules are system
+defaults that a client engagement can override: an engagement-scoped rule
+with the same *Rule type* replaces the system rule for that engagement only.
+The **View** selector above the grid switches between **All stored rules**
+and **Effective for <engagement>** — the resolved ruleset, where each
+override's **Shadows** column names the default it displaces. The detail
+pane shows **Supersedes** on an override and **Superseded by** on a default.
+To override a default that has no Rule type yet, give it one first (Edit),
+then create the engagement rule with the same key; the provenance edge is
+recorded for you. Walkthrough: lesson `LSN-063`.
+
 ### Live refresh
 
 When MCP, an external script, or another v2 instance writes the

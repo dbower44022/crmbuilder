@@ -466,6 +466,22 @@ natural-language prompt. Full source: `crmbuilder-v2/src/crmbuilder_v2/mcp_serve
 Each tool wraps a single REST call. To add a tool, add a wrapper in
 `tools.py` and a corresponding REST endpoint if one doesn't already exist.
 
+> **Governance rules — per-engagement overrides (08-31-26, REQ-529..538,
+> DEC-955 / DEC-969, delivered on `main` `d766eee6`, `68903d7a`, `5239af7a`):**
+> a system rule is the default; an engagement-scoped rule with the same
+> `rule_type` shadows it for that engagement only (most specific scope wins),
+> every override records a `supersedes` edge to the default it displaces, and
+> an override that names an untyped default by identifier is rejected until
+> the default is keyed. Read the resolved ruleset with
+> `GET /governance-rules?resolution=effective[&engagement=ENG-NNN]` — the
+> session-bootstrap read in `CLAUDE.md` — or through the MCP tool
+> `list_governance_rules(resolution="effective", engagement=...)`; agent
+> contracts resolve the same way. The desktop **Governance Rules** panel's
+> **View** selector switches to *Effective for <engagement>* with a Shadows
+> column and Supersedes / Superseded-by rows in the detail pane. The rule
+> itself is `GVR-241`; the authoring walkthrough is lesson `LSN-063`
+> (`GET /lessons`).
+
 ---
 
 ## User interface
