@@ -117,7 +117,17 @@ _FORMAT_REFINEMENT: dict[str, str] = {
     "colour": "colorpicker",
 }
 
-_ENUM_TYPES = frozenset({"enum", "multiEnum"})
+# EspoCRM types that carry a fixed option set. The PI-414 emitter branches can
+# produce ``checklist``, ``enumInt`` and ``enumFloat`` alongside the two
+# originals; all five must emit their declared options (or ``optionsDeferred``)
+# — omitting them would silently drop a design's declared value set, the exact
+# loss REQ-502 exists to prevent.
+_FIXED_OPTION_TYPES = frozenset({"enum", "multiEnum", "checklist", "enumInt", "enumFloat"})
+
+# The numeric choice types store number options; their declared values are
+# emitted as numbers where they parse, and carried verbatim where they do not
+# so deploy-time validation reports the invalid value instead of losing it.
+_NUMERIC_OPTION_TYPES = frozenset({"enumInt", "enumFloat"})
 
 # Neutral kinds that never reach EspoCRM, for two different reasons.
 #
@@ -466,8 +476,14 @@ def _has_formula_source(
     return override is not None
 
 
-def _field_options(field_row: dict) -> list[str]:
-    """Ordered option *values* for an enum/multiEnum field."""
+def _field_options(field_row: dict, espo_type: str | None = None) -> list:
+    """Ordered option *values* for a fixed-option field.
+
+    ``enumInt``/``enumFloat`` options are numbers in EspoCRM; a declared value
+    that parses is emitted as one. A value that does not parse is carried
+    verbatim — deploy validation then names the invalid value, rather than the
+    emitter silently dropping it (REQ-502's principle).
+    """
     opts = list(field_row.get("field_options") or [])
     opts.sort(
         key=lambda o: (
@@ -475,7 +491,16 @@ def _field_options(field_row: dict) -> list[str]:
             str(o.get("option_value") or ""),
         )
     )
-    return [str(o.get("option_value")) for o in opts if o.get("option_value")]
+    values: list = [str(o.get("option_value")) for o in opts if o.get("option_value")]
+    if espo_type in _NUMERIC_OPTION_TYPES:
+        caster = float if espo_type == "enumFloat" else int
+        def _num(raw: str) -> object:
+            try:
+                return caster(raw)
+            except ValueError:
+                return raw
+        values = [_num(v) for v in values]
+    return values
 
 
 def _build_derived_field(
@@ -547,9 +572,9 @@ def _build_derived_field(
     description = field_row.get("field_description")
     if description:
         payload["description"] = str(description)
-    # An enum/multiEnum-typed derived field still carries its option set.
-    if espo_type in _ENUM_TYPES:
-        options = _field_options(field_row)
+    # A fixed-option-typed derived field still carries its option set.
+    if espo_type in _FIXED_OPTION_TYPES:
+        options = _field_options(field_row, espo_type)
         if options:
             payload["options"] = options
         else:
@@ -709,11 +734,13 @@ def _build_field(
         if high is not None:
             payload["max"] = high
 
-    if field_row.get("field_externally_populated"):
+    # DEC-939: ``supplied_by = another_system`` is the design's way of saying a
+    # field is externally populated (the flag it replaced emitted this key).
+    if field_row.get("field_supplied_by") == "another_system":
         payload["externallyPopulated"] = True
 
-    if espo_type in _ENUM_TYPES:
-        options = _field_options(field_row)
+    if espo_type in _FIXED_OPTION_TYPES:
+        options = _field_options(field_row, espo_type)
         if options:
             payload["options"] = options
         else:

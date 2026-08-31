@@ -253,8 +253,12 @@ def _field_row(field_row: dict) -> dict:
         notes.append("read-only")
     if field_row.get("field_unique"):
         notes.append("unique")
-    if field_row.get("field_externally_populated"):
-        notes.append("externally populated")
+    # REQ-514: who supplies the value, when the design says it is not a person.
+    supplied_by = field_row.get("field_supplied_by")
+    if supplied_by == "another_system":
+        notes.append("supplied by another system")
+    elif supplied_by == "this_crm":
+        notes.append("supplied by the CRM")
     if field_row.get("field_tooltip"):
         notes.append(f"tooltip: {field_row['field_tooltip']}")
     if field_row.get("field_usage_summary"):

@@ -189,6 +189,13 @@ def _is_empty_fixed_option_set(design_obj: dict[str, Any], attribute: str) -> bo
     state, on both sides, so it reports as drift. An ``unknown`` would say nobody
     can tell; drift says something is wrong and names it. DEC-940 amends DEC-938
     for this case only.
+
+    The state is drift even when every instance also lists no options (REQ-516):
+    the field is unusable everywhere, and agreement on emptiness must not read
+    as conformance. This comparison is the single verdict authority for the
+    case — the audit-side deviation computer deliberately stores no override
+    when both sides are empty, because an empty audited set is not an instance
+    deviation; the invalidity lives in the design.
     """
     return (
         attribute == FIELD_OPTIONS_ATTR
@@ -353,15 +360,22 @@ def compute_member_rows(
             present_values.append(a_value)
         if b_carries:
             present_values.append(b_value)
-        agrees = all(_attr_equal(attr, v, present_values[0]) for v in present_values)
+        values_agree = all(_attr_equal(attr, v, present_values[0]) for v in present_values)
+        # REQ-516: a fixed-values field listing no options is drift even when
+        # every instance also lists none — the field is unusable on either
+        # side, so agreement on emptiness is not conformance (DEC-940).
+        empty_fixed = _is_empty_fixed_option_set(design_obj, attr)
+        agrees = values_agree and not empty_fixed
         if agrees and not include_unchanged:
             continue  # design and every carrying instance agree: no drift
 
         # An agreeing property is shown for verification only — never offered an
         # apply action in either direction, so batch apply can't act on a
-        # non-difference.
+        # non-difference. The both-sides-empty fixed set is likewise offered no
+        # action: there is nothing to capture or publish, the remedy is to
+        # finish the design's option list.
         cap, pub = (
-            (False, False) if agrees
+            (False, False) if values_agree
             else _attribute_capabilities(member_type, attr, design_obj)
         )
         # Why this row is not a match, not merely that it isn't (REQ-513). An
@@ -370,7 +384,7 @@ def compute_member_rows(
         # the CRM. It still counts against conformance — undeclared is not clean.
         if agrees:
             outcome, reason = MATCH, None
-        elif _declares(design_obj, attr) or _is_empty_fixed_option_set(design_obj, attr):
+        elif _declares(design_obj, attr) or empty_fixed:
             outcome, reason = DRIFT, None
         else:
             outcome, reason = UNKNOWN, UNDECLARED_IN_DESIGN

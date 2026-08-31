@@ -22,8 +22,12 @@ def _profile_with_rule(s, *, area, technology, description, rule_body):
         s, area=area, tier="developer", description=description,
         technology=technology, scope="system",
     )
+    # An agent-contract hard constraint is verified by the Tester tier, not a
+    # shell-command check, so it carries the ado_agent audience — the one
+    # enforced mode PI-439's predicate requirement exempts.
     rule = governance_rules.create(
         s, body=rule_body, enforcement="enforced", scope="system",
+        applies_to="ado_agent",
     )
     references.create(
         s, source_type="agent_profile", source_id=prof["identifier"],

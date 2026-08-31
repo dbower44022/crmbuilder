@@ -44,7 +44,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from crmbuilder_v2.access.vocab import FIELD_FORMATS, FIELD_NUMERIC_SCALES
+from crmbuilder_v2.access.vocab import (
+    FIELD_DISPLAYS,
+    FIELD_FORMATS,
+    FIELD_HOLDS,
+    FIELD_NUMERIC_SCALES,
+    FIELD_SUPPLIED_BY,
+    FIELD_VALUES,
+)
 from crmbuilder_v2.ui.base.crud_dialog import (
     EntityCrudDeleteDialog,
     EntityCrudDialog,
@@ -64,8 +71,17 @@ _LINE_INTRINSICS = ("field_default_value", "field_min", "field_max")
 _BOOL_INTRINSICS = (
     "field_read_only",
     "field_unique",
-    "field_externally_populated",
 )
+# The vocabulary-backed combo intrinsics, in dialog-render order. The last
+# four are the PI-414 qualifying properties (REQ-508/510/512/514).
+_COMBO_INTRINSICS: dict[str, tuple[str, frozenset]] = {
+    "field_format": ("Format", FIELD_FORMATS),
+    "field_numeric_scale": ("Numeric scale", FIELD_NUMERIC_SCALES),
+    "field_display": ("Display", FIELD_DISPLAYS),
+    "field_values": ("Values", FIELD_VALUES),
+    "field_holds": ("Holds", FIELD_HOLDS),
+    "field_supplied_by": ("Supplied by", FIELD_SUPPLIED_BY),
+}
 
 
 def _coerce_required_value(body: dict[str, Any]) -> dict[str, Any]:
@@ -148,13 +164,10 @@ class _FieldIntrinsicsMixin:
         self._intrinsic_widgets["field_default_value"] = default_value
         form.addRow("Default value", default_value)
 
-        fmt = _blank_combo(FIELD_FORMATS)
-        self._intrinsic_widgets["field_format"] = fmt
-        form.addRow("Format", fmt)
-
-        scale = _blank_combo(FIELD_NUMERIC_SCALES)
-        self._intrinsic_widgets["field_numeric_scale"] = scale
-        form.addRow("Numeric scale", scale)
+        for key, (label, vocab) in _COMBO_INTRINSICS.items():
+            combo = _blank_combo(vocab)
+            self._intrinsic_widgets[key] = combo
+            form.addRow(label, combo)
 
         max_length = QLineEdit()
         max_length.setValidator(QIntValidator(0, 1_000_000, max_length))
@@ -176,12 +189,6 @@ class _FieldIntrinsicsMixin:
         unique = QCheckBox("Unique")
         self._intrinsic_widgets["field_unique"] = unique
         form.addRow("", unique)
-
-        externally_populated = QCheckBox("Externally populated")
-        self._intrinsic_widgets["field_externally_populated"] = (
-            externally_populated
-        )
-        form.addRow("", externally_populated)
 
         inner = QWidget()
         inner_layout = QVBoxLayout(inner)
@@ -216,10 +223,8 @@ class _FieldIntrinsicsMixin:
             values[key] = w[key].toPlainText().strip() or None
         for key in _LINE_INTRINSICS:
             values[key] = w[key].text().strip() or None
-        values["field_format"] = w["field_format"].currentText().strip() or None
-        values["field_numeric_scale"] = (
-            w["field_numeric_scale"].currentText().strip() or None
-        )
+        for key in _COMBO_INTRINSICS:
+            values[key] = w[key].currentText().strip() or None
         ml_text = w["field_max_length"].text().strip()
         values["field_max_length"] = int(ml_text) if ml_text else None
         for key in _BOOL_INTRINSICS:
@@ -233,8 +238,8 @@ class _FieldIntrinsicsMixin:
             w[key].setPlainText(str(r.get(key) or ""))
         for key in _LINE_INTRINSICS:
             w[key].setText(str(r.get(key) or ""))
-        self._set_combo(w["field_format"], r.get("field_format"))
-        self._set_combo(w["field_numeric_scale"], r.get("field_numeric_scale"))
+        for key in _COMBO_INTRINSICS:
+            self._set_combo(w[key], r.get(key))
         ml = r.get("field_max_length")
         w["field_max_length"].setText("" if ml is None else str(ml))
         for key in _BOOL_INTRINSICS:

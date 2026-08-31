@@ -115,16 +115,15 @@ _INTRINSIC_COLUMN_BY_KWARG: dict[str, str] = {
     "max": "field_max",
     "read_only": "field_read_only",
     "unique": "field_unique",
-    "externally_populated": "field_externally_populated",
+    # ``externally_populated`` retired by the PI-414 subtractive migration
+    # (0130) — ``supplied_by = "another_system"`` replaced it (DEC-939).
     # PI-425 / REQ-523 — platform-shipped field; compared, never created.
     "built_in": "field_built_in",
     # PI-374 — a ``foreign`` field's mirror coordinates (link + target field).
     "foreign_link": "field_foreign_link",
     "foreign_target": "field_foreign_target",
 }
-_INTRINSIC_BOOL_KWARGS = frozenset(
-    {"read_only", "unique", "externally_populated", "built_in"}
-)
+_INTRINSIC_BOOL_KWARGS = frozenset({"read_only", "unique", "built_in"})
 
 # PI-414 — the qualifying properties added with the expressive field vocabulary,
 # each validated against its own vocabulary when present. Kept as a map rather
@@ -1036,7 +1035,8 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
     ``notes``, ``status``, ``rejected_by_decision``, the PRJ-025 PI-182
     §7 intrinsics (``tooltip``, ``usage_summary``, ``default_value``,
     ``format``, ``numeric_scale``, ``max_length``, ``min``, ``max``,
-    ``read_only``, ``unique``, ``externally_populated``), the PRJ-025
+    ``read_only``, ``unique``), the PI-414 qualifying properties
+    (``display``, ``values``, ``holds``, ``supplied_by``), the PRJ-025
     PI-197 derived/formula keys (``derived_result_type``, ``formula``),
     and ``options`` (the enum option set — provided replaces it, omitted
     leaves it unchanged). A ``status`` change is transition-validated; a

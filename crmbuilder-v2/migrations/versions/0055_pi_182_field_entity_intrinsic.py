@@ -189,11 +189,18 @@ def _drop_columns_and_checks(
 ) -> None:
     if table not in _tables():
         return
+    # Existence-guarded: a later migration may already have retired one of
+    # these (0130 dropped ``field_externally_populated`` and its CHECK), so a
+    # create_all-materialised DB walking down through here lacks them.
+    have_checks = _checks(table)
+    have_columns = _columns(table)
     with op.batch_alter_table(table) as batch:
         for ck_name, _column in new_checks:
-            batch.drop_constraint(ck_name, type_="check")
+            if ck_name in have_checks:
+                batch.drop_constraint(ck_name, type_="check")
         for name, _kwargs in reversed(new_columns):
-            batch.drop_column(name)
+            if name in have_columns:
+                batch.drop_column(name)
 
 
 def downgrade() -> None:

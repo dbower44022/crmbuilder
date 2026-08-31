@@ -1091,12 +1091,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         default_value: str | None = None,
         format: str | None = None,
         numeric_scale: str | None = None,
+        display: str | None = None,
+        values: str | None = None,
+        holds: str | None = None,
+        supplied_by: str | None = None,
         max_length: int | None = None,
         min: str | None = None,
         max: str | None = None,
         read_only: bool | None = None,
         unique: bool | None = None,
-        externally_populated: bool | None = None,
         derived_result_type: str | None = None,
         formula: dict | None = None,
         options: list | None = None,
@@ -1115,9 +1118,17 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         PRJ-025 PI-182 — engine-neutral design intent (all optional):
         ``tooltip`` (inline help), ``usage_summary`` (doc intent),
         ``default_value``, ``format`` (email/phone/url/percent/currency/
-        date/datetime/time/multiline), ``numeric_scale`` (integer/decimal),
+        date/datetime/time), ``numeric_scale`` (integer/decimal),
         ``max_length``, ``min``, ``max``, and the booleans ``read_only`` /
-        ``unique`` / ``externally_populated``. ``options`` is an ordered
+        ``unique``.
+
+        PI-414 — the four qualifying properties (REQ-508/510/512/514, all
+        optional, each vocabulary-validated): ``display`` (multiline/
+        rich_text/tick_list/radio/barcode/range), ``values`` (fixed/open/
+        suggested), ``holds`` (one/several), ``supplied_by`` (person/
+        this_crm/another_system).
+
+        ``options`` is an ordered
         list of options for a choice field, each
         ``{"option_value": str, "option_label": str|None,
         "option_order": int|None}`` — supplying it populates the field's
@@ -1148,12 +1159,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 "field_default_value": default_value,
                 "field_format": format,
                 "field_numeric_scale": numeric_scale,
+                "field_display": display,
+                "field_values": values,
+                "field_holds": holds,
+                "field_supplied_by": supplied_by,
                 "field_max_length": max_length,
                 "field_min": min,
                 "field_max": max,
                 "field_read_only": read_only,
                 "field_unique": unique,
-                "field_externally_populated": externally_populated,
                 "field_derived_result_type": derived_result_type,
                 "field_formula": formula,
                 "field_options": options,
@@ -1175,12 +1189,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         default_value: str | None = None,
         format: str | None = None,
         numeric_scale: str | None = None,
+        display: str | None = None,
+        values: str | None = None,
+        holds: str | None = None,
+        supplied_by: str | None = None,
         max_length: int | None = None,
         min: str | None = None,
         max: str | None = None,
         read_only: bool | None = None,
         unique: bool | None = None,
-        externally_populated: bool | None = None,
         derived_result_type: str | None = None,
         formula: dict | None = None,
         options: list | None = None,
@@ -1192,7 +1209,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         PRJ-025 PI-182 — the engine-neutral design-intent attributes
         (``tooltip``, ``usage_summary``, ``default_value``, ``format``,
         ``numeric_scale``, ``max_length``, ``min``, ``max``, ``read_only``,
-        ``unique``, ``externally_populated``) are settable here. Supplying
+        ``unique``) are settable here, as are the
+        PI-414 qualifying properties ``display`` / ``values`` / ``holds`` /
+        ``supplied_by`` (REQ-508/510/512/514). Supplying
         ``options`` (a list) replaces the field's enum option set.
 
         PRJ-025 PI-197 — ``derived_result_type`` and ``formula`` (the
@@ -1212,12 +1231,15 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
                 "default_value": default_value,
                 "format": format,
                 "numeric_scale": numeric_scale,
+                "display": display,
+                "values": values,
+                "holds": holds,
+                "supplied_by": supplied_by,
                 "max_length": max_length,
                 "min": min,
                 "max": max,
                 "read_only": read_only,
                 "unique": unique,
-                "externally_populated": externally_populated,
                 "derived_result_type": derived_result_type,
                 "formula": formula,
                 "options": options,

@@ -1069,9 +1069,9 @@ class Field(EngagementScopedPKMixin, Base):
     field_unique: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
-    field_externally_populated: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False
-    )
+    # ``field_externally_populated`` was retired by the PI-414 subtractive
+    # migration (0130): ``field_supplied_by = "another_system"`` says the same
+    # thing and more (REQ-514 / DEC-939).
     # PI-425 / REQ-523 — a field the platform ships with the entity (EspoCRM
     # native field). Audited and compared like any other field, but publish
     # never creates it: it already exists on every target.
@@ -1140,10 +1140,6 @@ class Field(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _BooleanDomainCheck("field_unique"),
             name="ck_field_unique_boolean",
-        ),
-        CheckConstraint(
-            _BooleanDomainCheck("field_externally_populated"),
-            name="ck_field_externally_populated_boolean",
         ),
         CheckConstraint(
             _BooleanDomainCheck("field_built_in"),

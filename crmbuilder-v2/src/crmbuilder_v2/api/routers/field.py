@@ -52,12 +52,17 @@ _INTRINSIC_BODY_TO_KWARG = {
     "field_default_value": "default_value",
     "field_format": "format",
     "field_numeric_scale": "numeric_scale",
+    # PI-414 — the four qualifying properties (REQ-508/510/512/514), each
+    # vocabulary-validated in the repository like ``format``.
+    "field_display": "display",
+    "field_values": "values",
+    "field_holds": "holds",
+    "field_supplied_by": "supplied_by",
     "field_max_length": "max_length",
     "field_min": "min",
     "field_max": "max",
     "field_read_only": "read_only",
     "field_unique": "unique",
-    "field_externally_populated": "externally_populated",
     # PRJ-025 PI-197 — derived/formula intent (DEC-438). The repo separates
     # these from the §7 intrinsics (cross-field validation against the type)
     # but the router forwards them the same way.
