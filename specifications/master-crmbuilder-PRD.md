@@ -4,9 +4,9 @@
 
 | Field | Value |
 |-------|-------|
-| Version | 0.5 (draft) |
-| Last Updated | 08-29-26 |
-| Status | Phase 1 drafted, executed against the CRMBuilder dogfood, refined (v0.3). Phase 1.5 drafted (v0.2), built, and validated against the CBM test instance. Phase 2 drafted (v0.3). Phase 3 fully drafted (v0.4: interview reconciliation + the v0.2 baseline triage as two streams of one phase). Cross-phase mechanics added (v0.5: requirement capture and approval; engagement setup and the session lifecycle). Phases 4–8 placeholder with candidate requirements drafted; Phases 9–13 placeholder. |
+| Version | 0.6 (draft) |
+| Last Updated | 08-31-26 |
+| Status | Phase 1 drafted, executed against the CRMBuilder dogfood, refined (v0.3). Phase 1.5 drafted (v0.2), built, and validated against the CBM test instance. Phase 2 drafted (v0.3). Phase 3 fully drafted (v0.4: interview reconciliation + the v0.2 baseline triage as two streams of one phase). Cross-phase mechanics added (v0.5: requirement capture and approval; engagement setup and the session lifecycle). Phases 4–8 placeholder with candidate requirements drafted. Phase 11 (CRM Deployment) drafted and executed live (v0.6, four deploy runs, DEC-956); Phases 12–13 drafted against the built publish/verification capability; Phase 9 subsumed into Phase 12; Phase 10 placeholder. |
 | Audience | Anyone running the CRMBuilder process for a client engagement (consultant, AI session, or future maintainer) |
 | Governs | The entire process for using the V2 storage system to capture the complete definition of a product, from initial requirements through deployed functional application |
 | Does not govern | Detailed V2 internals beyond what Phase 1 needs (schema, API, MCP, UI surfaces have their own component PRDs referenced here as they're consolidated in) |
@@ -19,6 +19,7 @@
 | 0.2 | 06-11-26 | Added Phase 1.5 (Existing System Baseline) — the Audit function repurposed as a requirements input: existing systems are audited and data-profiled into *candidate* methodology records with provenance and utilization evidence. Added the Phase 3 baseline-triage section (keep / transform / drop dispositions, migration mapping capture, baseline-vs-interview conflict reconciliation); the remainder of Phase 3 stays placeholder. |
 | 0.3 | 06-12-26 | Phase 1 refined from its first dogfood execution (SES-166 against CRMBuilder, PI-160): tier respecced to process level, store-assigned identifiers replace legacy code schemes, cross-domain services carried transitionally in charter scope (service entity type is PI-161), new Capture Mechanics subsection (lifecycle status at capture, charter occupancy, product-venture interview variant). Phase 2 (Domain Discovery) drafted to runnable: per-domain SME discovery into candidate records, with the Phase 1.5 Baseline Report integrated as the post-unprompted-account probe queue and a no-confirmation rule (reconciliation is Phase 3's job). Phase 1.5 validated against the CBM test instance on 06-12-26 (first live run). |
 | 0.4 | 06-12-26 | Phase 3 completed as a two-stream phase: new Stream A (interview reconciliation — cross-domain dedup, cross-stream matching against baseline candidates before any disposition, persona reconciliation, conflict resolution, evidence-led confirmation session) joins the v0.2 baseline triage as Stream B, under whole-phase completion criteria (every candidate terminal, no duplicate confirmed records, no silent conflict absorption). Stream B's two stale v0.2 notes updated: the `rejected` lifecycle state and the migration-mapping record type now exist (built by the Existing System Baseline project), and methodology-layer conflicts reuse the live `finding` record. |
+| 0.6 | 08-31-26 | Delivery phases drafted after being executed for real (SES-363/PRJ-111): new Part V — The Delivery Phases. Phase 11 (CRM Deployment) specified from the shipped admin-driven deployment capability (REQ-522) and its four-run live proof (DEC-956): deploy runs as resumable service-owned background jobs, keep-and-report failure (DEC-945), the production-host boundary (DEC-946). Phase 12 (CRM Configuration) drafted against the built publish/reconcile pipeline; Phase 13 (Verification and Handover) drafted against the three built verification surfaces. Phase 9 (YAML Generation) recorded as subsumed — generation is an internal publish step, not an operator phase. Former Part V (Iterative Drafting) renumbered Part VI. |
 | 0.5 | 08-29-26 | Requirements-phase consolidation pass (SES-362, PI-069). New Part III — Cross-Phase Mechanics: §10 *Requirement Capture and Approval* (the provenance-and-review model from `requirements-provenance-and-review-anchor.md`, live in the store as the REQ-108 family, previously absent from this PRD) and §11 *Engagement Setup and the Session Lifecycle* (from the V2 user process guide §4–8, rewritten against the current store). Phase 2 gains the multi-session saturation rule from the domain-discovery guide. New Part IV placeholder for the design phases (4–8) pointing at the candidate requirement set in `PRDs/product/crmbuilder-v2/design-phase-candidate-requirements.md`; that document also carries the document-by-document consolidation ledger for the requirements phase. Former Part III (Iterative Drafting) renumbered Part V. |
 
 ---
@@ -81,11 +82,11 @@ The process is sequenced across phases. Each phase has a defined purpose, input,
 | 6 | Cross-Domain Service Definition | Placeholder — design phase (Part IV) |
 | 7 | Domain Reconciliation | Placeholder — design phase (Part IV) |
 | 8 | Stakeholder Review | Placeholder — design phase (Part IV) |
-| 9 | YAML Generation | Placeholder |
+| 9 | YAML Generation | **Subsumed into Phase 12** (v0.6) — program generation happens inside publish, not as an operator phase |
 | 10 | CRM Selection | Placeholder |
-| 11 | CRM Deployment | Placeholder |
-| 12 | CRM Configuration | Placeholder |
-| 13 | Verification | Placeholder |
+| 11 | CRM Deployment | **Drafted and executed live** (v0.6) — capability shipped and proven by a four-run live proof (DEC-956) |
+| 12 | CRM Configuration | **Drafted** (v0.6) against the built publish/reconcile capability |
+| 13 | Verification | **Drafted** (v0.6) against the built verification surfaces |
 
 Phase numbering, ordering, and naming may evolve based on gaps discovered during execution. The phase set above mirrors the existing 13-phase Document Production Process as a starting point.
 
@@ -503,7 +504,178 @@ The phases are not yet drafted. The first candidate requirement set for the capa
 
 The store's design model itself (entities, fields, relationships, layouts, roles, teams, filtered tabs, dynamic-logic rules, views, automations, engine overrides, versions) is already built and governed under TOP-089; Part IV specifies how it is populated and approved, not what it is.
 
-# Part V — Iterative Drafting
+# Part V — The Delivery Phases (Phases 9–13)
+
+The delivery phases take an engagement from an **approved design** (the exit of the design phases) to a **running, configured, verified CRM in its users' hands**. Unlike the placeholder design phases, most of this part is specified from capability that exists and has been executed for real: the deployment capability shipped under REQ-522, was proven by a four-run live proof on 2026-08-30 (DEC-956), and was rolled out to the production service the same day.
+
+Two of the five legacy phase numbers change meaning here:
+
+- **Phase 9 (YAML Generation) is subsumed.** Under V2 the engine program files are generated *inside* the publish operation, in memory, from the canonical design (REQ-287) — there is no operator step that produces YAML as an artifact. The number is retained in the phase table for historical alignment with the 13-phase document process; nothing runs at it.
+- **Phase 10 (CRM Selection) remains a placeholder.** The store's `crm_candidate` records and the evaluation-report render carry the current practice; the phase is drafted when an engagement next reaches a genuine engine choice.
+
+## 12. Phase 11 — CRM Deployment
+
+### Purpose
+
+Stand up the client's CRM instance from nothing: create the server at an infrastructure provider, point a DNS name at it, install the target engine with transport security, verify the installation, and register the result as an engagement instance that later phases can configure and audit. The phase is complete when an administrator who started with no infrastructure has a reachable, empty, healthy CRM registered in V2 with a working credential.
+
+Deployment is executed by the **service**, not the operator's desktop: the operator submits a *deploy run* and may close their machine; the run continues, survives service restarts, and its status, phases, and log are shared history for every administrator (Deploy History).
+
+### Inputs
+
+- An engagement with an administrator principal (deploying spends money and changes public DNS; the surfaces are admin-only — DEC-945)
+- The engagement's **provider credentials**: an infrastructure-provider token and a DNS-provider token, stored encrypted behind opaque references (REQ-157). CRMBuilder's own accounts are the usual default; a client may supply its own so the server bills to them
+- A DNS zone under the engagement's DNS-provider account (the client's domain, or a CRMBuilder-held domain for the client)
+- The deployment parameters: server region/size/image, the instance hostname (subdomain + zone), the certificate contact address, and the CRM administrator account (username, email, generated password)
+
+### Phase-Specific Rules
+
+- **A deploy run is a resumable background job.** It is created queued, claimed by a deploy worker with a heartbeat, and driven through an ordered, idempotent phase sequence with a persisted checkpoint. A run abandoned by a restarted service is reclaimed and resumed at the phase that did not complete — proven live by killing the service mid-install (DEC-956).
+- **Failure keeps everything and reports it (DEC-945).** A failed run never destroys what it built; the server, DNS record, and failed phase are recorded and shown, and Retry resumes from the checkpoint without creating a second server. Cleanup of an abandoned run's infrastructure is a deliberate operator act in the provider console.
+- **The production boundary (DEC-946).** Provisioning a *client's* server from the engagement's credential is product behaviour; CRMBuilder's own production host is refused as a target at request time and again in the runner. Deploying CRMBuilder itself remains human-only.
+- **DNS records are created unproxied** (DNS-only), or certificate issuance and shell access to the server break. Readiness is checked against **public resolvers**, never the service host's own resolver, whose negative cache otherwise stalls a fresh name for its negative-TTL (a live-proof finding).
+- **Secrets cross once.** Passwords and tokens enter through request bodies, are stored encrypted behind opaque references, resolve only inside the worker, and are masked in every log line. Each run generates its own shell keypair for the server; nothing personal is baked in.
+- **Verification is part of the run.** The run ends by probing the deployed instance (redirect, transport security, certificate, login surface, scheduler, database) with polling rather than single probes; gaps demote the outcome to succeeded-with-issues rather than passing silently.
+- **Registration closes the loop.** A successful run writes the instance record (role `both`, with the CRM administrator login as its stored credential) and its deploy/provisioning facts (REQ-172) in the same transaction as the terminal status — so a succeeded run and a registered instance cannot disagree.
+
+### Activity
+
+1. Store or confirm the engagement's provider credentials (once per engagement).
+2. Submit the deploy run from the desktop wizard: server choice from the provider's live catalog, hostname from the zone list, certificate contact, CRM admin account.
+3. The service executes the run: validate credentials and refuse protected hosts → create the server (recovering any server already tagged with this run) → await its address → upsert the DNS record → await public resolution → prepare the server → run the engine's installer with transport security → post-install checks → verify → register the instance.
+4. The operator follows progress live or walks away; Deploy History carries every run's status, phases, log, and — for failed runs — what still exists.
+5. On failure: fix the cause (usually a credential), Retry; the run resumes.
+
+### Captured V2 Records
+
+| What is captured | V2 record type | Layer | Status at capture | Notes |
+|---|---|---|---|---|
+| The provisioning job | Deploy run (`DEP-NNN`) | Delivery (operational log) | queued → running → terminal | Spec, checkpoint, capped log, worker claim; not a governance entity |
+| Provider tokens | Provider credential | Delivery (operational) | — | One per provider per engagement; opaque secret references only |
+| The deployed CRM | Instance record (`INST-NNN`) | Delivery | active | Role `both`; CRM admin login as stored credential |
+| Provisioning facts | Instance deploy config | Delivery | — | Server identity/address, DNS record, certificate, key references, the registering run (REQ-172) |
+| The deployment decision trail | Decision / session records | Governance | per lifecycle | When the deployment is itself a governed milestone (as the first one was — DEC-945/946/956) |
+
+### Output
+
+- A running CRM at its HTTPS name, empty of configuration, healthy under the run's verification checks
+- The registered instance with working credentials, immediately auditable and publishable
+- The run's durable record in Deploy History
+
+### Completion Criteria
+
+- The deploy run is `succeeded` (or `succeeded_with_issues` with every gap explicitly accepted)
+- The instance answers over HTTPS at its name with a valid certificate, and the CRM administrator can log in
+- The instance record exists with role `both` and its stored credential works — proven by a clean audit round-trip
+- No orphaned infrastructure: every failed or abandoned run's kept server has been retried to success or deliberately destroyed
+
+### Known Limitations and Engine Notes (v0.6)
+
+- Current engine stack: EspoCRM via its official installer, on DigitalOcean (server) + Cloudflare (DNS) as the single supported provider pair. The phase definition above is provider-agnostic; adding a provider is adapter work.
+- Open minor findings from the live proof (tracked in DEC-956): the run log's line cap can drop early evidence under installer output; certificate expiry is not yet recorded on the instance; a stale provider-credential status reads *Configured* until used.
+- Re-deployment (replacing a live instance's server in place) and in-place upgrade remain the V1 server-management layer's territory; this phase covers first deployment.
+
+## 13. Phase 12 — CRM Configuration
+
+### Purpose
+
+Make the empty instance *the client's* CRM: apply the engagement's approved design — entities, fields, relationships, layouts, and the rest of the design model — to the deployed instance, and complete the items no engine API can write. The design in the store remains canonical; the instance is a target the design is pushed to, never hand-edited into divergence.
+
+### Inputs
+
+- Phase 11 complete (a registered instance with working credentials)
+- The engagement's approved design version (the exit of the design phases / Phase 8)
+- The engagement's manual-config records (`MCF-NNN`) — the accumulated list of items with no API write path
+
+### Phase-Specific Rules
+
+- **Publish, don't configure by hand.** The publish operation generates the engine's program form from the canonical design in memory, validates it against the engine schema *and the live instance*, captures a pre-publish backup of the target's configuration, applies, and verifies — recording the whole run (`PUB-NNN`). Hand configuration of anything the pipeline can write is drift by construction.
+- **Validate against the live target, not just the schema.** Cross-references may resolve against configuration already on the instance; validation reads the live target so a correct design is not rejected for what the file alone cannot see (REQ-288).
+- **Manual configuration is tracked, not remembered.** Every design item the engine cannot accept through its API surfaces as a manual-config instruction; the phase is not complete while any remains open. The operator performs them in the engine's admin surface and marks them done.
+- **Reconcile is the referee.** After publish and manual work, the three-way reconcile (design ↔ instance) must show agreement on everything publishable; differences are dispositioned deliberately (capture, publish, or accept) — never left silent.
+
+### Activity
+
+1. Publish the design to the instance (validate-only first if desired; scoped publishes for iteration).
+2. Work the manual-config list against the instance's admin surface.
+3. Run reconcile; disposition every difference; repeat publish/manual work until agreement.
+4. Load seed and reference data where the engagement calls for it (record export/import surfaces).
+
+### Captured V2 Records
+
+| What is captured | V2 record type | Layer | Status at capture | Notes |
+|---|---|---|---|---|
+| Each publish | Publish run (`PUB-NNN`) | Delivery (operational log) | born terminal | Scope, pre-publish backup (REQ-292), outcome + verification (REQ-293) |
+| Manual work | Manual-config records (`MCF-NNN`) | Methodology | per lifecycle | Completed as the operator performs them |
+| Instance agreement | Membership / reconcile records | Delivery | — | The stored design-vs-instance verdicts |
+
+### Output
+
+- The instance carrying the approved design, with a publish history and pre-publish backups
+- A completed manual-config list
+- A reconcile view showing agreement
+
+### Completion Criteria
+
+- The latest publish run succeeded and its post-publish verification found every published object present
+- No open manual-config item for this instance
+- Reconcile shows no unexplained difference between the approved design and the instance
+
+### Known Limitations (v0.6)
+
+- The publish direction for roles, teams, and filtered tabs waits on emitter work (the capture direction is live); ordinary layouts publish, engine-bound layout variants do not. These arrive as design-model publish coverage grows.
+- Saved views, duplicate-check rules, and workflows have no engine API write path and remain manual-config by design.
+
+## 14. Phase 13 — Verification and Handover
+
+### Purpose
+
+Prove the deployed, configured CRM is the CRM the engagement defined — then put it in its users' hands. Verification under V2 is not a separate test authoring effort bolted on at the end; it is the accumulation of three built checks plus the engagement's own acceptance pass.
+
+### Inputs
+
+- Phases 11 and 12 complete
+- The engagement's test-specification records (`TST-NNN`) where authored, and its stakeholders for acceptance
+- The client's user roster for onboarding
+
+### Phase-Specific Rules
+
+- **Three mechanical layers come first.** (1) The deploy run's infrastructure verification (transport, certificate, scheduler, database) — already recorded in Phase 11. (2) The publish run's object verification — every published object read back from the instance. (3) The full audit/reconcile — the instance's entire configuration read back and compared to the design. A failure at any layer is fixed at its own phase, not papered over here.
+- **Acceptance is human and recorded.** Stakeholders exercise the processes the design claims to support — against test specifications where they exist, as a guided walkthrough where they do not — and the outcome lands as governance records (session, findings, decisions), not as a verbal all-clear.
+- **Handover is an act, not an ebbing away.** The CRM administrator credential is transferred to the client's owner; users are created with their roles; the client is shown where the manual-config items live for future reference; and a decision records that the engagement's deployment is accepted.
+
+### Activity
+
+1. Confirm the three mechanical layers are green (re-run reconcile as the final check).
+2. Run the acceptance pass with stakeholders; capture findings; loop fixes through Phase 12 (design/publish) — never through hand edits.
+3. Create users and roles for the client's roster; transfer the administrator credential; record the acceptance decision.
+
+### Captured V2 Records
+
+| What is captured | V2 record type | Layer | Status at capture | Notes |
+|---|---|---|---|---|
+| Acceptance sessions | Session / conversation records | Governance | complete | With stakeholder participants |
+| Acceptance problems | Finding records | Delivery | per lifecycle | Looped back through Phase 12 |
+| The acceptance itself | Decision record | Governance | Active | The engagement's deployment is accepted |
+
+### Output
+
+- A verified CRM whose configuration provably matches the approved design
+- Users onboarded; administrator credential in the client's hands
+- The recorded acceptance
+
+### Completion Criteria
+
+- Reconcile shows agreement; the latest publish verification found no gaps; the instance's infrastructure checks pass
+- Every acceptance finding is resolved or explicitly deferred by decision
+- The acceptance decision is recorded and the client holds the administrator credential
+
+### Known Limitations (v0.6)
+
+- Test-specification records exist in the store but have no execution pipeline; acceptance runs as guided sessions until one lands.
+- Post-handover drift detection (the audit engine pointed at the *generated* system on a schedule) remains future work, as noted since v0.1.
+
+# Part VI — Iterative Drafting
 
 This PRD is authored iteratively. Each phase is drafted to a runnable state *before* it is executed against CRMBuilder dogfood. Execution surfaces gaps. Gaps refine the phase spec back into this PRD. Once the phase produces reproducible, satisfactory results against CRMBuilder, the next phase is drafted.
 
@@ -513,11 +685,11 @@ The CBM (Cleveland Business Mentors) engagement begins only after the process is
 
 - ~~Engagement setup mechanics~~ — process drafted at §11 (v0.5); the records are PI-071/PI-072
 - ~~The session lifecycle as a recurring pattern~~ — §11 (v0.5)
-- Phases 4 through 13 specifications, each drafted before its phase runs (Phases 4–8 have candidate requirements and a Part IV placeholder as of v0.5)
+- Phases 4 through 8 specifications, each drafted before its phase runs (candidate requirements and a Part IV placeholder as of v0.5); ~~Phases 9–13~~ — delivery phases drafted at Part V (v0.6): Phase 11 executed live, Phases 12–13 drafted against built capability, Phase 9 subsumed, Phase 10 still placeholder
 - The migration-mapping record type and the triage → migration-plan pipeline
 - The baseline machinery's second pointing: drift detection against the *generated* system during post-deployment refinement (same audit engine, diffed against the confirmed graph instead of an empty one)
 - V2 storage mechanics in depth (schema, API, MCP tool surface, desktop UI surfaces)
-- The deployment engine specification (V1 EspoCRM today, future engines)
+- The deployment engine specification (V1 EspoCRM today, future engines) — Phase 11's engine notes (v0.6) carry the current stack; the engine-adapter contract remains to be specified
 - YAML generation specifics
 - Versioning, supersession, and cross-reference impact analysis
 - Rendering of artifacts from V2 records
