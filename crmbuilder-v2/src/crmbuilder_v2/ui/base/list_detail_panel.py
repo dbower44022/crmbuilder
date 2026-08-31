@@ -10,7 +10,12 @@ the ``_filter_strip_widget`` hook (for filter dropdowns above the
 table), and the ``_post_process_records`` hook (for synthetic columns).
 REQ-528 (PI-434) adds header-click column sorting and a generic
 column-value filter selector rendered by the default
-``_filter_strip_widget``.
+``_filter_strip_widget``. REQ-534 (PI-436) reshapes the toolbar into a
+header row (title, refresh, count) and a control line directly above
+the grid — filter strip on the left, search in the middle, and three
+ranked action buttons on the right (most used, second most used, and an
+``Actions`` dropdown listing every action, led by those two), with
+``Edit`` and ``View`` guaranteed on every panel.
 
 Per PRD §4.5 every entity panel uses a master/detail layout — list of
 records on the left, detail of the selected record on the right. This
@@ -46,6 +51,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QMenu,
+    QPushButton,
     QSplitter,
     QStackedWidget,
     QStyledItemDelegate,
@@ -212,6 +218,22 @@ class ListDetailPanel(QWidget):
     # (References, Commits) replace the generic strip with their own.
     _column_filter_enabled: ClassVar[bool] = True
 
+    # REQ-534 (PI-436): optional per-panel ranking of the control-line
+    # actions by label, most used first. Labels named here float to the
+    # top of the ranked list (buttons one and two, then the dropdown) in
+    # this order; unnamed actions keep their declared order behind them.
+    # Default ranking without it: the panel's own toolbar actions (its
+    # ``New X`` button and any siblings, in the order they were added),
+    # then ``Edit``, then ``View``.
+    _action_priority: ClassVar[tuple[str, ...]] = ()
+
+    # REQ-534 (PI-436): the reference ``entity_type`` the ``View`` action
+    # passes to ``open_requested`` so the main window opens the selected
+    # record in a standalone detail window (PI-121). Stamped per instance by
+    # ``panel_registry.build_panel`` from the entity-type → label map;
+    # ``None`` makes ``View`` explain that no detail window is available.
+    view_entity_type: str | None = None
+
     # v0.6 slice B: master-pane delegate (DEC-093). Default is the
     # shared :class:`MasterPaneDelegate`; the Topics panel overrides
     # to :class:`MasterPaneTreeDelegate`. Centralized registration in
@@ -240,6 +262,14 @@ class ListDetailPanel(QWidget):
         self._column_filter_value: str | None = None
         self._sort_column: int | None = None
         self._sort_order: Qt.SortOrder = Qt.SortOrder.AscendingOrder
+        # REQ-534 (PI-436): control-line action cluster. ``_ranked_actions``
+        # is (label, button) in rank order, recomputed by
+        # ``_arrange_control_actions``; ``_dropdown_source_menu`` keeps the
+        # row context menu alive while its actions are borrowed by the
+        # ``Actions`` dropdown or triggered by the ``Edit`` button.
+        self._ranked_actions: list[tuple[str, QPushButton]] = []
+        self._dropdown_source_menu: QMenu | None = None
+        self._filter_strip: QWidget | None = None
         self._refresh_counter = 0
         self._detail_counter = 0
         self._in_flight_workers: list[Any] = []
@@ -289,11 +319,11 @@ class ListDetailPanel(QWidget):
         raise NotImplementedError
 
     def _filter_strip_widget(self) -> QWidget | None:
-        """Return an optional widget shown between the toolbar and the table.
+        """Return the optional filter strip for the left of the control line.
 
         Default (REQ-528 / PI-434): a generic filter selector — a column
-        picker plus a distinct-value dropdown — left-aligned above the
-        grid header. Choosing a value narrows the list to rows matching it
+        picker plus a distinct-value dropdown. REQ-534 places it at the
+        left of the control line directly above the grid header. Choosing a value narrows the list to rows matching it
         in the chosen column; ``All`` restores every row. Composes with
         the REQ-135 toolbar search by AND (see ``_filtered_records``).
         Subclasses may override to provide bespoke strips (References,
@@ -760,14 +790,11 @@ class ListDetailPanel(QWidget):
         )
         outer.setSpacing(6)
 
+        # REQ-534 (PI-436): the toolbar carries the header row and the
+        # control line (filter | search | ranked actions); the filter strip
+        # now lives inside it rather than as a third row.
         self._toolbar_widget = self._build_toolbar()
         outer.addWidget(self._toolbar_widget)
-
-        # Optional filter strip between the toolbar and the table; used
-        # by list-only panels (e.g. ReferencesPanel).
-        filter_strip = self._filter_strip_widget()
-        if filter_strip is not None:
-            outer.addWidget(filter_strip)
 
         self._master_view = self._create_master_widget()
         # Backwards-compat alias: subclasses (and tests) reference the
@@ -879,38 +906,93 @@ class ListDetailPanel(QWidget):
             menu.exec(self._master_view.viewport().mapToGlobal(position))
 
     def _build_toolbar(self) -> QWidget:
+        """Build the two-row toolbar (REQ-534 / PI-436).
+
+        Row one is the header — title, icon-only refresh, record count.
+        Row two is the control line directly above the grid: the filter
+        strip on the left, the search box in the middle, and the ranked
+        action cluster (button one, button two, ``Actions`` dropdown) on
+        the right.
+        """
         toolbar = QWidget()
-        layout = QHBoxLayout(toolbar)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        rows = QVBoxLayout(toolbar)
+        rows.setContentsMargins(0, 0, 0, 0)
+        rows.setSpacing(6)
+
+        # --- Header row -------------------------------------------------
+        header = QWidget()
+        header.setObjectName("grid_header_row")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(8)
 
         title_label = QLabel(self.entity_title())
         title_font = QFont(title_label.font())
         title_font.setBold(True)
         title_font.setPointSize(title_font.pointSize() + 2)
         title_label.setFont(title_font)
-        layout.addWidget(title_label)
+        header_layout.addWidget(title_label)
 
         # v0.6 slice D: panel toolbar refresh is icon-only per design
         # pass §2.5. The Lucide rotate-ccw glyph carries the meaning;
         # tooltip surfaces the label on hover.
         self._refresh_button = icon_button("rotate-ccw", tooltip="Refresh")
         self._refresh_button.clicked.connect(self.refresh)
-        layout.addWidget(self._refresh_button)
+        header_layout.addWidget(self._refresh_button)
 
-        # REQ-135 (PI-176): debounced client-side search over the loaded rows.
+        self._status_label = QLabel("")
+        header_layout.addWidget(self._status_label)
+        header_layout.addStretch(1)
+        rows.addWidget(header)
+
+        # --- Control line -----------------------------------------------
+        control = QWidget()
+        control.setObjectName("grid_control_row")
+        self._control_row_layout = QHBoxLayout(control)
+        self._control_row_layout.setContentsMargins(0, 0, 0, 0)
+        self._control_row_layout.setSpacing(8)
+
+        # Left: the filter strip (generic selector, or a subclass's own).
+        self._filter_strip = self._filter_strip_widget()
+        if self._filter_strip is not None:
+            self._control_row_layout.addWidget(self._filter_strip)
+        self._control_row_layout.addStretch(1)
+
+        # Middle: REQ-135 (PI-176) debounced client-side search.
         if self._search_enabled:
             self._search_input = LinkFilterInput(
                 object_name="master_search_input", max_width=240
             )
             self._search_input.setPlaceholderText("Search…")
             self._search_input.filterChanged.connect(self._on_search_changed)
-            layout.addWidget(self._search_input)
+            self._control_row_layout.addWidget(self._search_input)
+        self._control_row_layout.addStretch(1)
 
-        self._status_label = QLabel("")
-        layout.addWidget(self._status_label)
+        # Right: the ranked action cluster.
+        self._control_row_layout.addWidget(self._build_action_cluster())
+        rows.addWidget(control)
 
-        layout.addStretch(1)
+        return toolbar
+
+    # ------------------------------------------------------------------
+    # Control-line action cluster (REQ-534 / PI-436)
+    # ------------------------------------------------------------------
+
+    def _build_action_cluster(self) -> QWidget:
+        """Build the right-hand cluster: subclass action slot, ``Edit``,
+        ``View`` and the ``Actions`` dropdown.
+
+        Subclasses keep adding their own buttons to ``_action_layout``
+        (the long-standing "New X" contract); ``_arrange_control_actions``
+        later decides which two of all the actions stay visible as
+        buttons one and two. The dropdown's menu is rebuilt on every open
+        so it always reflects the current selection.
+        """
+        cluster = QWidget()
+        cluster.setObjectName("grid_action_cluster")
+        layout = QHBoxLayout(cluster)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
 
         # Slot for subclass action buttons (e.g., "New Decision" in slice G).
         self._action_layout = QHBoxLayout()
@@ -920,7 +1002,135 @@ class ListDetailPanel(QWidget):
         action_container.setLayout(self._action_layout)
         layout.addWidget(action_container)
 
-        return toolbar
+        self._edit_button = QPushButton("Edit")
+        self._edit_button.setObjectName("grid_edit_button")
+        self._edit_button.clicked.connect(self._on_edit_action)
+        layout.addWidget(self._edit_button)
+
+        self._view_button = QPushButton("View")
+        self._view_button.setObjectName("grid_view_button")
+        self._view_button.clicked.connect(self._on_view_action)
+        layout.addWidget(self._view_button)
+
+        self._actions_button = QPushButton("Actions")
+        self._actions_button.setObjectName("grid_actions_button")
+        self._actions_menu = QMenu(self._actions_button)
+        self._actions_menu.aboutToShow.connect(self._rebuild_actions_menu)
+        self._actions_button.setMenu(self._actions_menu)
+        layout.addWidget(self._actions_button)
+        return cluster
+
+    def _subclass_action_buttons(self) -> list[QPushButton]:
+        """The buttons a subclass placed in ``_action_layout``, in order."""
+        buttons: list[QPushButton] = []
+        for i in range(self._action_layout.count()):
+            item = self._action_layout.itemAt(i)
+            widget = item.widget() if item is not None else None
+            if isinstance(widget, QPushButton):
+                buttons.append(widget)
+        return buttons
+
+    def _arrange_control_actions(self) -> list[tuple[str, QPushButton]]:
+        """Rank every control-line action and show the top two as buttons.
+
+        Rank order: the subclass's toolbar buttons in declared order, then
+        ``Edit``, then ``View`` — re-ordered by ``_action_priority`` when a
+        panel names its most-used actions. Ranks one and two stay visible
+        as buttons; the rest are hidden (never disabled) and remain
+        reachable through the ``Actions`` dropdown. Returns the ranked
+        ``(label, button)`` list. Idempotent; runs on show and before every
+        dropdown open so late-added buttons are picked up.
+        """
+        entries: list[tuple[str, QPushButton]] = [
+            (button.text(), button) for button in self._subclass_action_buttons()
+        ]
+        entries.append(("Edit", self._edit_button))
+        entries.append(("View", self._view_button))
+        priority = [label.strip().lower() for label in self._action_priority]
+
+        def _rank(entry: tuple[str, QPushButton]) -> int:
+            label = entry[0].strip().lower()
+            return priority.index(label) if label in priority else len(priority)
+
+        entries.sort(key=_rank)  # stable: declared order survives ties
+        for position, (_label, button) in enumerate(entries):
+            button.setVisible(position < 2)
+        self._ranked_actions = entries
+        return entries
+
+    def showEvent(self, event):  # noqa: N802 (Qt naming)
+        """Arrange the control-line actions once the subclass has added its
+        toolbar buttons (they arrive after the base ``__init__``)."""
+        self._arrange_control_actions()
+        super().showEvent(event)
+
+    def _current_master_index(self) -> QModelIndex:
+        sel_model = self._master_view.selectionModel()
+        if sel_model is None:
+            return QModelIndex()
+        return sel_model.currentIndex()
+
+    def _rebuild_actions_menu(self) -> None:
+        """Populate the ``Actions`` dropdown for the current selection.
+
+        The first entries are the ranked actions (so the top two mirror
+        buttons one and two); after a separator come the remaining
+        row-context-menu actions for the selected record, deduplicated by
+        label. The context menu is kept alive on the panel so its borrowed
+        actions stay valid while the dropdown is open.
+        """
+        ranked = self._arrange_control_actions()
+        menu = self._actions_menu
+        menu.clear()
+        seen: set[str] = set()
+        for label, button in ranked:
+            action = menu.addAction(label)
+            action.triggered.connect(lambda _checked=False, b=button: b.click())
+            seen.add(label.strip().lower())
+        source = self._build_context_menu(self._current_master_index())
+        self._dropdown_source_menu = source
+        extras = [
+            action
+            for action in source.actions()
+            if not action.isSeparator()
+            and action.text().strip().lower() not in seen
+        ]
+        if extras:
+            menu.addSeparator()
+            menu.addActions(extras)
+
+    def _on_edit_action(self) -> None:
+        """``Edit``: trigger the row context menu's Edit action for the
+        selected record, or explain why nothing opened (PRF-006 — the
+        button is never disabled)."""
+        index = self._current_master_index()
+        if not index.isValid() or self._record_at_index(index) is None:
+            self._status_label.setText("Select a record to edit.")
+            return
+        source = self._build_context_menu(index)
+        self._dropdown_source_menu = source
+        for action in source.actions():
+            if action.text().strip().lower().startswith("edit"):
+                action.trigger()
+                return
+        self._status_label.setText(
+            f"{self.entity_title()} records cannot be edited from this list."
+        )
+
+    def _on_view_action(self) -> None:
+        """``View``: open the selected record in a standalone detail window
+        via ``open_requested`` (PI-121), or explain why it cannot."""
+        record = self._record_at_index(self._current_master_index())
+        if record is None:
+            self._status_label.setText("Select a record to view.")
+            return
+        identifier = record.get("identifier")
+        if self.view_entity_type and identifier:
+            self.open_requested.emit(self.view_entity_type, str(identifier))
+            return
+        self._status_label.setText(
+            "No detail window is available for this list."
+        )
 
     def _on_fetch_success(self, result: list[dict[str, Any]]) -> None:
         if not self._sender_is_current_refresh():

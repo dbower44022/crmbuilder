@@ -15,6 +15,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QWidget
 
 from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.panels.agent_profiles import AgentProfilesPanel
 from crmbuilder_v2.ui.panels.candidate_review import CandidateReviewPanel
@@ -135,8 +136,29 @@ def build_panel(
     """
     factory = PANEL_REGISTRY.get(label)
     if factory is not None:
-        return factory(client, active_context)
+        panel = factory(client, active_context)
+        _stamp_view_entity_type(panel, label)
+        return panel
     placeholder = QLabel(f"Panel for {label} — not yet implemented.")
     placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
     placeholder.setObjectName(f"placeholder_{label.lower().replace(' ', '_')}")
     return placeholder
+
+
+def _stamp_view_entity_type(panel: QWidget, label: str) -> None:
+    """Give a list panel the entity type its ``View`` action opens (REQ-534).
+
+    Reverse-looks-up ``label`` in the main window's entity-type → label
+    map so ``View`` can hand ``open_requested`` the same ``entity_type`` the
+    detail-window manager resolves. Panels whose label has no entity type
+    (or that are not ``ListDetailPanel``s) are left at ``None``.
+    """
+    if not isinstance(panel, ListDetailPanel):
+        return
+    # Lazy import: main_window imports this module at load time.
+    from crmbuilder_v2.ui.main_window import ENTITY_TYPE_TO_SIDEBAR_LABEL
+
+    for entity_type, panel_label in ENTITY_TYPE_TO_SIDEBAR_LABEL.items():
+        if panel_label == label:
+            panel.view_entity_type = entity_type
+            return
