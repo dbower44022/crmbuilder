@@ -130,6 +130,7 @@ def create_deploy_run(
     secret_refs: dict | None = None,
     requested_by: str | None = None,
     instance_identifier: str | None = None,
+    provider: str | None = None,
 ) -> dict:
     """Queue one deploy run, auto-assigning the next ``DEP-NNN`` identifier.
 
@@ -138,6 +139,8 @@ def create_deploy_run(
     :param secret_refs: ``{name: secret_ref}`` for the run's secrets.
     :param requested_by: the principal that queued the run.
     :param instance_identifier: set only when re-provisioning a known instance.
+    :param provider: the hosting provider this run provisions against
+        (PI-442 / REQ-544), stamped so the history row is self-describing.
     """
     if not isinstance(spec, dict) or not spec:
         raise UnprocessableError(
@@ -156,6 +159,7 @@ def create_deploy_run(
             deploy_run_secret_refs=secret_refs or {},
             deploy_run_state={"phases": {}},
             deploy_run_log=[],
+            deploy_run_provider=provider,
             deploy_run_requested_by=requested_by,
         )
         session.add(row)

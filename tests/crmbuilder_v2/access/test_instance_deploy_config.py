@@ -87,3 +87,37 @@ def test_deploy_run_written_fields_round_trip(v2_env):
     assert cfg["admin_password_ref"] == "crmbuilder:p"
     assert cfg["droplet_ip"] == "203.0.113.7"
     assert cfg["last_deploy_run_identifier"] == "DEP-001"
+
+
+def test_server_management_fields_round_trip(v2_env):
+    """PI-442 (REQ-544): provider identity, SSH-key identity and ops facts."""
+    from datetime import UTC, datetime
+
+    with session_scope() as s:
+        cfg = idc.upsert_deploy_config(
+            s, _instance(s),
+            hosting_provider="digitalocean", hosting_account="ops@example.org",
+            hosting_console_url="https://cloud.digitalocean.com/droplets/4242",
+            dns_console_url="https://dash.cloudflare.com/",
+            ssh_key_public="ssh-ed25519 AAAA crmbuilder",
+            ssh_key_fingerprint="SHA256:abc",
+            ssh_key_name="crmbuilder-DEP-001", ssh_key_provider_id="77",
+            server_image="ubuntu-24-04-x64",
+            provisioned_at=datetime(2026, 8, 30, tzinfo=UTC),
+            last_verified_at=datetime(2026, 8, 30, 1, tzinfo=UTC),
+            backup_schedule="daily 02:00 UTC", backup_retention="3",
+            backup_destination="/var/backups/espocrm",
+            monthly_cost_usd=24.0, billing_note="business account",
+            notes="validation droplet",
+        )
+    assert cfg["hosting_provider"] == "digitalocean"
+    assert cfg["hosting_account"] == "ops@example.org"
+    assert cfg["hosting_console_url"].endswith("/4242")
+    assert cfg["ssh_key_fingerprint"] == "SHA256:abc"
+    assert cfg["ssh_key_provider_id"] == "77"
+    assert cfg["server_image"] == "ubuntu-24-04-x64"
+    assert cfg["provisioned_at"].startswith("2026-08-30")
+    assert cfg["last_verified_at"].startswith("2026-08-30")
+    assert cfg["backup_retention"] == "3"
+    assert cfg["monthly_cost_usd"] == 24.0
+    assert cfg["notes"] == "validation droplet"

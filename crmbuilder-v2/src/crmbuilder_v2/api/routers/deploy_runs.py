@@ -139,6 +139,9 @@ def create(body: DeployRunCreateIn):
             spec=spec.to_dict(),
             secret_refs=secret_refs,
             requested_by=getattr(principal, "principal_id", None),
+            # PI-442 (REQ-544): the service provisions on DigitalOcean today;
+            # the history row names the provider rather than implying it.
+            provider="digitalocean",
         )
         return ok(_public(row))
 

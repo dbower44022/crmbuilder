@@ -32,6 +32,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from crmbuilder_v2 import secrets
@@ -45,7 +46,11 @@ from crmbuilder_v2.access.repositories import (
 )
 from crmbuilder_v2.access.vocab import DEPLOY_RUN_PHASE_ORDER
 from crmbuilder_v2.deploy.errors import DeployPhaseError, ProviderError
-from crmbuilder_v2.deploy.keys import generate_keypair, private_key_file
+from crmbuilder_v2.deploy.keys import (
+    generate_keypair,
+    private_key_file,
+    public_key_fingerprint,
+)
 from crmbuilder_v2.deploy.providers.cloudflare import CloudflareClient
 from crmbuilder_v2.deploy.providers.digitalocean import DigitalOceanClient
 from crmbuilder_v2.deploy.spec import DeploySpec, is_protected_host
@@ -303,6 +308,26 @@ def _report_kept(run: _Run, log: _Log) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _parse_iso(value: str | None) -> datetime | None:
+    """A checkpointed ISO timestamp back to a datetime (PI-442)."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _key_fingerprint(public_line: str | None) -> str | None:
+    """Fingerprint of the run's public key, or None if it cannot be read."""
+    if not public_line:
+        return None
+    try:
+        return public_key_fingerprint(public_line)
+    except (ValueError, IndexError):
+        return None
+
+
 def _phase_validate(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
     if is_protected_host(run.spec.domain):
         raise DeployPhaseError(
@@ -334,7 +359,9 @@ def _phase_validate(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
         )
     log(f"Cloudflare token ok (zone {run.spec.zone_name})", "success")
 
-    updates: dict[str, Any] = {}
+    # PI-442 (REQ-544): keep the provider account identity for the
+    # deploy-config write-back at instance registration.
+    updates: dict[str, Any] = {"provider_account": account.get("email")}
     key_ref = run.secret_refs.get("ssh_private_key")
     if key_ref:
         run.secrets["ssh_private_key"] = deps.resolve_secret(key_ref)
@@ -362,7 +389,8 @@ def _phase_create_droplet(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
     if existing:
         d = existing[0]
         log(f"Found server {d['id']} already tagged {run.identifier}; reusing it", "warning")
-        return {"droplet_id": str(d["id"]), "droplet_ip": d.get("ip")}
+        return {"droplet_id": str(d["id"]), "droplet_ip": d.get("ip"),
+                "droplet_created_at": datetime.now(UTC).isoformat()}
     key_ids: list[Any] = list(run.spec.ssh_key_ids)
     if run.state.get("ssh_key_id") is not None:
         key_ids.append(run.state["ssh_key_id"])
@@ -375,7 +403,9 @@ def _phase_create_droplet(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
         tags=[run.identifier, run.engagement_id],
     )
     log(f"Created server {d['id']} ({run.spec.size} in {run.spec.region})", "success")
-    return {"droplet_id": str(d["id"]), "droplet_region": run.spec.region, "droplet_size": run.spec.size}
+    return {"droplet_id": str(d["id"]), "droplet_region": run.spec.region,
+            "droplet_size": run.spec.size,
+            "droplet_created_at": datetime.now(UTC).isoformat()}
 
 
 def _phase_wait_droplet(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
@@ -494,7 +524,8 @@ def _phase_verify(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
         failed = [c["check"] for c in checks if not c.get("passed")]
         if failed:
             log(f"Verification found gaps: {', '.join(failed)}", "warning")
-        return {"verify_checks": checks, "verify_failed": bool(failed)}
+        return {"verify_checks": checks, "verify_failed": bool(failed),
+                "verified_at": datetime.now(UTC).isoformat()}
 
     return _with_ssh(run, deps, go)
 
@@ -540,6 +571,32 @@ def _phase_create_instance(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
             droplet_size=run.state.get("droplet_size") or run.spec.size,
             dns_record_id=run.state.get("dns_record_id"),
             last_deploy_run_identifier=run.identifier,
+            # PI-442 (REQ-544): the server-management facts known at
+            # registration — provider identity, console, SSH-key identity,
+            # image and timestamps. Operator-editable afterwards.
+            hosting_provider="digitalocean",
+            hosting_account=run.state.get("provider_account"),
+            hosting_console_url=(
+                "https://cloud.digitalocean.com/droplets/"
+                + str(run.state["droplet_id"])
+                if run.state.get("droplet_id")
+                else None
+            ),
+            ssh_key_public=run.state.get("ssh_public_key"),
+            ssh_key_fingerprint=_key_fingerprint(run.state.get("ssh_public_key")),
+            ssh_key_name=(
+                f"crmbuilder-{run.identifier}"
+                if run.state.get("ssh_key_id") is not None
+                else None
+            ),
+            ssh_key_provider_id=(
+                str(run.state["ssh_key_id"])
+                if run.state.get("ssh_key_id") is not None
+                else None
+            ),
+            server_image=run.spec.image,
+            provisioned_at=_parse_iso(run.state.get("droplet_created_at")),
+            last_verified_at=_parse_iso(run.state.get("verified_at")),
         )
     log(f"Registered instance {ident} at https://{run.spec.domain}", "success")
     return {"instance_identifier": ident}

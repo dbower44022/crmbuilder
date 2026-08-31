@@ -377,6 +377,27 @@ class InstancesPanel(ListDetailPanel):
         _row("CRM admin password", "set" if cfg.get("admin_password_ref") else "—")
         _row("DB password", "set" if cfg.get("db_password_ref") else "—")
         _row("Last deploy run", cfg.get("last_deploy_run_identifier"))
+        # PI-442 (REQ-544): server-management facts — provider identity and
+        # consoles, SSH-key identity, image, timestamps, backups, cost, notes.
+        _row("Hosting provider", " — ".join(
+            str(v) for v in (cfg.get("hosting_provider"),
+                             cfg.get("hosting_account")) if v))
+        _row("Provider console", cfg.get("hosting_console_url"))
+        _row("DNS console", cfg.get("dns_console_url"))
+        _row("SSH key fingerprint", cfg.get("ssh_key_fingerprint"))
+        _row("SSH key name / id", " / ".join(
+            str(v) for v in (cfg.get("ssh_key_name"),
+                             cfg.get("ssh_key_provider_id")) if v))
+        _row("Server image", cfg.get("server_image"))
+        _row("Provisioned", cfg.get("provisioned_at"))
+        _row("Last verified", cfg.get("last_verified_at"))
+        _row("Backup schedule / retention / destination", " / ".join(
+            str(v) for v in (cfg.get("backup_schedule"),
+                             cfg.get("backup_retention"),
+                             cfg.get("backup_destination")) if v))
+        _row("Monthly cost (USD)", cfg.get("monthly_cost_usd"))
+        _row("Billing note", cfg.get("billing_note"))
+        _row("Notes", cfg.get("notes"))
         lay.addLayout(form)
         return box
 

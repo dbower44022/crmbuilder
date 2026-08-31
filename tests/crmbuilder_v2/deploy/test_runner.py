@@ -230,6 +230,16 @@ def test_happy_path_registers_instance_and_config(v2_env):
     assert cfg_row["ssh_auth_type"] == "key" and secrets.get_secret(cfg_row["ssh_credential_ref"]) == "PRIVATE-PEM"
     assert cfg_row["dns_provider"] == "cloudflare" and cfg_row["last_deploy_run_identifier"] == ident
     assert cfg_row["cert_expiry_date"] == "2026-11-28"
+    # PI-442 (REQ-544): server-management facts recorded at registration.
+    assert cfg_row["hosting_provider"] == "digitalocean"
+    assert cfg_row["hosting_account"] == "ops@example.org"
+    assert cfg_row["hosting_console_url"] == "https://cloud.digitalocean.com/droplets/4242"
+    assert cfg_row["ssh_key_public"].startswith("ssh-ed25519")
+    assert cfg_row["ssh_key_fingerprint"].startswith("SHA256:")
+    assert cfg_row["ssh_key_name"] == f"crmbuilder-{ident}"
+    assert cfg_row["ssh_key_provider_id"] == "77"
+    assert cfg_row["server_image"] == "ubuntu-24-04-x64"
+    assert cfg_row["provisioned_at"] and cfg_row["last_verified_at"]
 
     # Secrets are masked in the log.
     log_text = "\n".join(e[2] for e in run["deploy_run_log"])
