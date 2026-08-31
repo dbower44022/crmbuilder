@@ -28,6 +28,9 @@ and lifecycle timestamps (``server_image``, ``provisioned_at``,
 All columns nullable, NULL on every existing row and not backfilled: facts
 nobody recorded are not invented (the DEC-924 principle DEC-971 follows).
 
+Bootstrap-safe (LSN-050): the create_all + stamp-behind path already holds
+these columns, so every add and drop is existence-guarded.
+
 PG chain head 0084 -> 0085. Companion SQLite-chain delta:
 ``migrations/versions/0128_pi_442_deploy_server_management_fields.py``.
 
@@ -69,16 +72,29 @@ _CONFIG_COLUMNS: tuple[sa.Column, ...] = (
 )
 
 
+def _cols(table: str) -> set[str]:
+    insp = sa.inspect(op.get_bind())
+    if table not in insp.get_table_names():
+        return set()
+    return {c["name"] for c in insp.get_columns(table)}
+
+
 def upgrade() -> None:
-    op.add_column(
-        "deploy_runs",
-        sa.Column("deploy_run_provider", sa.String(24), nullable=True),
-    )
+    if "deploy_run_provider" not in _cols("deploy_runs"):
+        op.add_column(
+            "deploy_runs",
+            sa.Column("deploy_run_provider", sa.String(24), nullable=True),
+        )
+    have = _cols("instance_deploy_configs")
     for column in _CONFIG_COLUMNS:
-        op.add_column("instance_deploy_configs", column)
+        if column.name not in have:
+            op.add_column("instance_deploy_configs", column)
 
 
 def downgrade() -> None:
+    have = _cols("instance_deploy_configs")
     for column in reversed(_CONFIG_COLUMNS):
-        op.drop_column("instance_deploy_configs", column.name)
-    op.drop_column("deploy_runs", "deploy_run_provider")
+        if column.name in have:
+            op.drop_column("instance_deploy_configs", column.name)
+    if "deploy_run_provider" in _cols("deploy_runs"):
+        op.drop_column("deploy_runs", "deploy_run_provider")
