@@ -399,6 +399,14 @@ class GovernanceRuleUpdateIn(_Base):
     applies_when: str | None = None
 
 
+class RuleEnforcementOverrideIn(_Base):
+    """A logged waiver of an enforced_with_override rule (REQ-542 / PI-439)."""
+
+    reason: str
+    command: str | None = None
+    session_ref: str | None = None
+
+
 class LearningCreateIn(_Base):
     identifier: str | None = None
     area: str
@@ -2531,6 +2539,25 @@ class InstanceDeployConfigIn(_Base):
     droplet_size: str | None = None
     dns_record_id: str | None = None
     last_deploy_run_identifier: str | None = None
+    # PI-442 (REQ-544): server-management facts — non-secret, operator-editable
+    # (the runner writes what it knows at instance registration).
+    hosting_provider: str | None = None
+    hosting_account: str | None = None
+    hosting_console_url: str | None = None
+    dns_console_url: str | None = None
+    ssh_key_public: str | None = None
+    ssh_key_fingerprint: str | None = None
+    ssh_key_name: str | None = None
+    ssh_key_provider_id: str | None = None
+    server_image: str | None = None
+    provisioned_at: datetime | None = None
+    last_verified_at: datetime | None = None
+    backup_schedule: str | None = None
+    backup_retention: str | None = None
+    backup_destination: str | None = None
+    monthly_cost_usd: float | None = None
+    billing_note: str | None = None
+    notes: str | None = None
 
 
 # --- Deploy runs (PI-419 / REQ-522) ------------------------------------------

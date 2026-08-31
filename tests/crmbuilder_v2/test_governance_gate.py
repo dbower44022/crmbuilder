@@ -261,3 +261,37 @@ def test_http_get_json_no_auth_header_without_token(monkeypatch):
     monkeypatch.setattr(governance_gate.urllib.request, "urlopen", fake_urlopen)
     _http_get_json("/planning-items/PI-1")
     assert seen["auth"] is None
+
+
+# --- REQ-542 / PI-439: the trailer check is read from the store -------------
+
+
+def _api_with_trailer_check(trailer="Governed-By", pattern=r"PI-\d{3}|trivial"):
+    inner = _good_api()
+
+    def get_json(path: str):
+        if path.startswith("/governance-rules?enforcement=enforced_with_override"):
+            return [{"identifier": "GVR-229", "predicate": {
+                "kind": "required_trailer", "trailer": trailer, "pattern": pattern}}]
+        if path.startswith("/governance-rules?"):
+            return []
+        return inner(path)
+    return get_json
+
+
+def test_trailer_spec_reads_the_store_and_falls_back():
+    assert governance_gate.trailer_spec(_api_with_trailer_check()) == ("Governed-By", r"PI-\d{3}|trivial")
+    assert governance_gate.trailer_spec(_good_api()) == ("Governed-By", None)
+
+
+def test_gate_honours_a_renamed_trailer_from_the_store():
+    api = _api_with_trailer_check(trailer="Authorized-By")
+    d = evaluate("feat\n\nAuthorized-By: PI-286", CODE, get_json=api)
+    assert d.allow and d.governed_pis == ["PI-286"]
+    d = evaluate("feat\n\nGoverned-By: PI-286", CODE, get_json=api)
+    assert not d.allow  # the old trailer name is no longer the one the store names
+
+
+def test_gate_applies_the_store_value_pattern():
+    d = evaluate("feat\n\nGoverned-By: WTK-286", CODE, get_json=_api_with_trailer_check())
+    assert not d.allow and "malformed" in d.reasons[0]

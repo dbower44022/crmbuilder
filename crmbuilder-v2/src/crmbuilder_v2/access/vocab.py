@@ -2725,6 +2725,14 @@ RULE_AUDIENCES: frozenset[str] = frozenset(
 RULE_MOMENTS: frozenset[str] = frozenset(
     {"always", "commit", "deploy", "governance_record", "release"}
 )
+# The enforcement modes that promise a check (REQ-542 / PI-439 / DEC-964).
+RULE_ENFORCED_MODES: frozenset[str] = frozenset({"enforced", "enforced_with_override"})
+# The whole check vocabulary (TERM-044 Check) — an enforced rule's ``predicate``
+# is ``{"kind": <one of these>, "pattern": <regex>, ...}``. Adding a kind is a
+# governed change.
+RULE_CHECK_KINDS: frozenset[str] = frozenset(
+    {"forbidden_command", "required_trailer", "protected_path"}
+)
 
 # lesson (LSN-) — one operational gotcha / how-to. ``signal`` distinguishes a
 # don't-do-X hazard from generic guidance and a how-to.

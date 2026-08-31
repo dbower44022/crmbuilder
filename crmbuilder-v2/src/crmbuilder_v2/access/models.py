@@ -3126,6 +3126,40 @@ class InstanceDeployConfig(EngagementScopedMixin, Base):
     last_deploy_run_identifier: Mapped[str | None] = mapped_column(
         String(32), nullable=True
     )
+    # PI-442 (REQ-544) — the server-management facts a human admin or an AI
+    # agent needs without hunting through provider consoles: who hosts the
+    # server and under which account, where its consoles are, the identity of
+    # the SSH key that grants access (the private half stays a secret ref in
+    # ``ssh_credential_ref``), the OS image, and when it was provisioned and
+    # last verified reachable. The runner writes what it knows at instance
+    # registration; the rest — backup policy, cost, billing and free-form
+    # notes — are operator-editable via the deploy-config endpoint. All
+    # nullable, never backfilled (DEC-971).
+    hosting_provider: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hosting_account: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hosting_console_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dns_console_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ssh_key_public: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ssh_key_fingerprint: Mapped[str | None] = mapped_column(
+        String(128), nullable=True
+    )
+    ssh_key_name: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ssh_key_provider_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    server_image: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    provisioned_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    backup_schedule: Mapped[str | None] = mapped_column(Text, nullable=True)
+    backup_retention: Mapped[str | None] = mapped_column(Text, nullable=True)
+    backup_destination: Mapped[str | None] = mapped_column(Text, nullable=True)
+    monthly_cost_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    billing_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -3338,6 +3372,14 @@ class DeployRun(EngagementScopedMixin, Base):
         JSONColumnNoneAsNull, nullable=True
     )
     deploy_run_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # PI-442 (REQ-544) — which hosting provider this run provisioned against,
+    # stamped at creation so the history row is self-describing. Free text
+    # (no CHECK): the run's provider is the service's choice today
+    # (``digitalocean``) but the history must be able to name any provider a
+    # future runner uses. NULL on rows that predate the column.
+    deploy_run_provider: Mapped[str | None] = mapped_column(
+        String(24), nullable=True
+    )
     deploy_run_requested_by: Mapped[str | None] = mapped_column(
         String(128), nullable=True
     )
@@ -6769,6 +6811,37 @@ class GovernanceRuleRow(Base):
             name="ck_governance_rule_applies_when",
         ),
         Index("ix_governance_rules_engagement", "engagement_id"),
+    )
+
+
+class RuleEnforcementOverrideRow(Base):
+    """One logged waiver of an ``enforced_with_override`` rule (REQ-542 / PI-439).
+
+    Written by the pre-action check hook when a session waves a failing check
+    through with a stated reason: which rule, why, the command it applied to,
+    and the hook session it happened in. An audit row, not a governance entity —
+    it takes part in no reference edge and has no lifecycle.
+    """
+
+    __tablename__ = "rule_enforcement_overrides"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    engagement_id: Mapped[str | None] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
+    rule_identifier: Mapped[str] = mapped_column(
+        ForeignKey("governance_rules.identifier", ondelete="CASCADE"), nullable=False
+    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    command: Mapped[str | None] = mapped_column(Text, nullable=True)
+    session_ref: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_rule_enforcement_overrides_rule", "rule_identifier"),
     )
 
 

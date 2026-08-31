@@ -47,12 +47,14 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
     ValidationError,
 )
-from crmbuilder_v2.access.models import GovernanceRuleRow
+from crmbuilder_v2.access.models import GovernanceRuleRow, RuleEnforcementOverrideRow
 from crmbuilder_v2.access.repositories import references
 from crmbuilder_v2.access.repositories._registry import resolve_scope, with_scope
 from crmbuilder_v2.access.vocab import (
     REGISTRY_STATUSES,
     RULE_AUDIENCES,
+    RULE_CHECK_KINDS,
+    RULE_ENFORCED_MODES,
     RULE_ENFORCEMENT_MODES,
     RULE_MOMENTS,
 )
@@ -100,6 +102,94 @@ def _require_vocab(field: str, value: str, allowed) -> str:
 
 def _enrich(row: GovernanceRuleRow) -> dict:
     return with_scope(to_dict(row), row.engagement_id)
+
+
+def validate_predicate(
+    enforcement: str, predicate: dict | None, applies_to: str = "all"
+) -> None:
+    """REQ-542: an enforced rule must carry a well-formed check.
+
+    ``predicate`` is ``{"kind": <RULE_CHECK_KINDS>, "pattern": <regex>, ...}``;
+    ``required_trailer`` also names the ``trailer``. A rule labelled enforced
+    without a check is the false promise DEC-964 retires, so it is rejected.
+
+    PROVISIONAL SCOPE (pending Doug's ruling, SES-372): the obligation applies to
+    the audiences the pre-action hook serves. An ``ado_agent`` rule's enforcement
+    is the agent contract's hard-gates section verified by the Tester tier, not a
+    machine check by this hook, so it may stay ``enforced`` without a predicate —
+    the seeded self-verify gates depend on this. A supplied predicate is always
+    validated whatever the audience.
+    """
+    if enforcement not in RULE_ENFORCED_MODES:
+        return
+    if predicate is None and applies_to == "ado_agent":
+        return
+    errors: list[FieldError] = []
+    if not isinstance(predicate, dict) or not predicate:
+        raise UnprocessableError(
+            [FieldError("predicate", "enforced_requires_check",
+                        f"a rule with enforcement {enforcement!r} must carry a check "
+                        f"predicate {{kind, pattern}} — kinds: {sorted(RULE_CHECK_KINDS)}")]
+        )
+    kind = predicate.get("kind")
+    if kind not in RULE_CHECK_KINDS:
+        errors.append(FieldError("predicate", "invalid_check_kind",
+                                 f"predicate.kind must be one of {sorted(RULE_CHECK_KINDS)}"))
+    pattern = predicate.get("pattern")
+    if not isinstance(pattern, str) or not pattern:
+        errors.append(FieldError("predicate", "missing_pattern",
+                                 "predicate.pattern must be a non-empty regular expression"))
+    else:
+        try:
+            re.compile(pattern)
+        except re.error as exc:
+            errors.append(FieldError("predicate", "invalid_pattern",
+                                     f"predicate.pattern does not compile: {exc}"))
+    if kind == "required_trailer" and not predicate.get("trailer"):
+        errors.append(FieldError("predicate", "missing_trailer",
+                                 "a required_trailer check must name the trailer"))
+    if errors:
+        raise UnprocessableError(errors)
+
+
+def record_enforcement_override(
+    session: Session,
+    rule_identifier: str,
+    *,
+    reason: str,
+    command: str | None = None,
+    session_ref: str | None = None,
+    engagement_id: str | None = None,
+) -> dict:
+    """Log a waiver of an ``enforced_with_override`` rule (REQ-542 acceptance)."""
+    rule = session.get(GovernanceRuleRow, rule_identifier)
+    if rule is None:
+        raise NotFoundError(_ENTITY_TYPE, rule_identifier)
+    require_string(reason, field="reason")
+    if rule.enforcement != "enforced_with_override":
+        raise UnprocessableError(
+            [FieldError("rule_identifier", "not_overridable",
+                        f"{rule_identifier} is {rule.enforcement!r}; only an "
+                        "enforced_with_override rule can be waved through")]
+        )
+    row = RuleEnforcementOverrideRow(
+        engagement_id=engagement_id, rule_identifier=rule_identifier,
+        reason=reason, command=command, session_ref=session_ref,
+    )
+    session.add(row)
+    session.flush()
+    return to_dict(row)
+
+
+def list_enforcement_overrides(session: Session, rule_identifier: str) -> list[dict]:
+    if session.get(GovernanceRuleRow, rule_identifier) is None:
+        raise NotFoundError(_ENTITY_TYPE, rule_identifier)
+    stmt = (
+        select(RuleEnforcementOverrideRow)
+        .where(RuleEnforcementOverrideRow.rule_identifier == rule_identifier)
+        .order_by(RuleEnforcementOverrideRow.id)
+    )
+    return [to_dict(r) for r in session.scalars(stmt).all()]
 
 
 def get(session: Session, identifier: str) -> dict:
@@ -362,6 +452,7 @@ def create(
     _require_vocab("status", status, REGISTRY_STATUSES)
     _require_vocab("applies_to", applies_to, RULE_AUDIENCES)
     _require_vocab("applies_when", applies_when, RULE_MOMENTS)
+    validate_predicate(enforcement, predicate, applies_to)
     engagement_id = resolve_scope(session, scope)
     # An engagement override must name a keyed default (REQ-532) — resolve its
     # targets before the insert so a rejected override leaves no row behind.
@@ -413,6 +504,12 @@ def update(session: Session, identifier: str, *, scope: str | None = None, **fie
         _require_vocab("applies_to", fields["applies_to"], RULE_AUDIENCES)
     if "applies_when" in fields:
         _require_vocab("applies_when", fields["applies_when"], RULE_MOMENTS)
+    if "enforcement" in fields or "predicate" in fields or "applies_to" in fields:
+        validate_predicate(
+            fields.get("enforcement", row.enforcement),
+            fields["predicate"] if "predicate" in fields else row.predicate,
+            fields.get("applies_to", row.applies_to),
+        )
     before = _enrich(row)
     for k, v in fields.items():
         setattr(row, k, v)
