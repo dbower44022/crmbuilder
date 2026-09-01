@@ -22,6 +22,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from crmbuilder_v2.access import compared_set
 from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
@@ -250,15 +251,40 @@ def summarize_option_diff(design: Any, instance: Any) -> dict[str, list]:
     return {"added": added, "removed": removed, "relabeled": relabeled}
 
 
-def _attr_equal(attribute: str | None, a: Any, b: Any) -> bool:
-    """Value equality for one attribute — option-aware for ``field_options``.
+def _attr_equal(
+    attribute: str | None, a: Any, b: Any, member_type: str | None = None
+) -> bool:
+    """Value equality for one attribute, by its DECLARED rule (REQ-490 / PI-409).
 
-    Every attribute compares by ``==`` except the enum option set, which compares
-    by its order-insensitive ``(value, effective-label)`` set (REQ-442).
+    The compared set (``access.compared_set``, DEC-928 / DEC-989) declares the
+    rule per attribute; this applies it mechanically. ``field_options`` keeps
+    its concrete order-insensitive ``(value, effective-label)`` comparison —
+    that IS the declared ``set`` rule's implementation for options (REQ-442).
+    An attribute with no declaration compares exact, as a backstop.
     """
     if attribute == FIELD_OPTIONS_ATTR:
         return option_sets_equal(a, b)
+    if member_type is not None and attribute is not None:
+        return compared_set.attr_equal(member_type, attribute, a, b)
     return a == b
+
+
+def _examined_attributes(member_type: str, attributes: list[str]) -> list[str]:
+    """Drop attributes the declaration says are never examined (REQ-490).
+
+    An ``excluded`` or ``identity`` attribute can never produce drift, however
+    it got into the candidate list (an old audit override, a show-all property
+    sweep). An attribute with no declaration is kept — swallowing something
+    the audit recorded would hide it; extending the declaration is where new
+    attributes get ruled.
+    """
+    out = []
+    for attribute in attributes:
+        declaration = compared_set.declaration_for(member_type, attribute)
+        if declaration is not None and declaration.disposition != compared_set.COMPARED:
+            continue
+        out.append(attribute)
+    return out
 
 
 def _effective_value(
@@ -349,7 +375,7 @@ def compute_member_rows(
     # that actually carry the member. An instance that does not carry it shows its
     # presence token in the cell but does not drive the difference (the presence
     # row already covers that).
-    for attr in attributes:
+    for attr in _examined_attributes(member_type, list(attributes)):
         design_value = design_obj.get(attr)
         a_carries = pres_a == PRESENT
         b_carries = pres_b == PRESENT
@@ -361,7 +387,10 @@ def compute_member_rows(
             present_values.append(a_value)
         if b_carries:
             present_values.append(b_value)
-        values_agree = all(_attr_equal(attr, v, present_values[0]) for v in present_values)
+        values_agree = all(
+            _attr_equal(attr, v, present_values[0], member_type)
+            for v in present_values
+        )
         # REQ-516: a fixed-values field listing no options is drift even when
         # every instance also lists none — the field is unusable on either
         # side, so agreement on emptiness is not conformance (DEC-940).
@@ -534,9 +563,18 @@ def compute_member_properties(
             carrying_values.append(a_eff)
         if b_carries:
             carrying_values.append(b_eff)
-        differs = not all(
-            _attr_equal(attr, v, carrying_values[0]) for v in carrying_values
-        )
+        # REQ-490: only a compared attribute is examined; the drill still
+        # SHOWS every property side by side, but a non-compared one never
+        # differs and never reads as drift.
+        if compared_set.is_compared(member_type, attr) or (
+            compared_set.declaration_for(member_type, attr) is None
+        ):
+            differs = not all(
+                _attr_equal(attr, v, carrying_values[0], member_type)
+                for v in carrying_values
+            )
+        else:
+            differs = False
         cap, pub = _attribute_capabilities(member_type, attr, design_obj)
         rows.append({
             "member_type": member_type,
