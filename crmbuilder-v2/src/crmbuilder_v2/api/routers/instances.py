@@ -62,11 +62,13 @@ from crmbuilder_v2.introspect.reconcile import (
     reconcile_filtered_tabs,
     reconcile_layouts,
     reconcile_roles,
+    reconcile_system_settings,
     reconcile_teams,
 )
 from crmbuilder_v2.introspect.record_export import export_records
 from crmbuilder_v2.introspect.utilization import reconcile_utilization
 from crmbuilder_v2.publish import service as publish_service
+from espo_impl.core.models import SettingsStatus
 
 router = APIRouter(prefix="/instances", tags=["instances"])
 _FIELD_PREFIX = "instance_"
@@ -322,6 +324,9 @@ _AUDIT_AREAS: dict[str, tuple[str, object]] = {
     "email-templates": ("Email templates", reconcile_email_templates),
     # PI-421 / REQ-123 — field dynamic logic, after fields exist.
     "field-rules": ("Field rules", reconcile_field_rules),
+    # PI-406 / REQ-485 — governed setting values, read with the instance's
+    # ordinary credential so a missing role grant surfaces as its own outcome.
+    "system-settings": ("System settings", reconcile_system_settings),
     # PI-426 / REQ-524 — record utilization profiled into evidence. Last, and
     # opt-in (see ``_OPT_IN_AUDIT_AREAS``): it reads every record on the instance.
     "utilization": ("Utilization", reconcile_utilization),
@@ -607,6 +612,19 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         "aborted": result.aborted,
         "abort_reason": result.abort_reason,
         "backup_captured": result.backup is not None,
+        # PI-406 / REQ-485: the governed-settings apply outcome, when the
+        # instance has declared per-instance values.
+        "settings": (
+            {
+                "entity": result.settings.entity,
+                "status": result.settings.status.value,
+                "changes": result.settings.changes,
+                "error": result.settings.error,
+                "log": [list(line) for line in result.settings_log],
+            }
+            if result.settings is not None
+            else None
+        ),
         "programs": [
             {
                 "filename": p.filename,
@@ -632,6 +650,14 @@ def _publish_run_status(result: publish_service.PublishResult) -> str:
         return "aborted"
     if result.validation_failed or any(
         not p.deployed for p in result.programs
+    ):
+        return "failed"
+    # A governed-settings write failure is a publish failure (PI-406 /
+    # REQ-485); a NOT_SUPPORTED carrier (absent on the instance) stays a
+    # manual-config outcome, matching the engine's conventions.
+    if (
+        result.settings is not None
+        and result.settings.status is SettingsStatus.ERROR
     ):
         return "failed"
     verify = result.verification

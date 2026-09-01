@@ -53,6 +53,7 @@ from crmbuilder_v2.access.repositories import source_mapping as source_mapping_r
 from crmbuilder_v2.access.repositories import (
     source_mapping_targets as source_mapping_targets_repo,
 )
+from crmbuilder_v2.access.repositories import system_settings as system_settings_repo
 from crmbuilder_v2.access.repositories import teams as team_repo
 from crmbuilder_v2.access.vocab import (
     DERIVED_RESULT_TYPES,
@@ -2832,6 +2833,104 @@ def reconcile_filtered_tabs(
                     state, override = "present", None
             writer.upsert(member_id, state, override)
             summary[state] += 1
+
+    summary["absent"] = writer.sweep_absent()
+    return summary
+
+
+class _SettingsClient(Protocol):
+    """The one call the governed-settings audit needs (REQ-488).
+
+    The read deliberately uses the instance's ordinary API credential — the
+    same one a consuming application holds — so a missing role grant surfaces
+    here as ``forbidden`` instead of hiding behind an admin account.
+    """
+
+    def get_records(self, entity: str, **kwargs: Any) -> tuple[int, dict | None]: ...
+
+
+def reconcile_system_settings(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _SettingsClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Audit an instance's governed setting values into the inventory (PI-406).
+
+    Reads the carrier record (``settings_read.read_setting_values``) and, for
+    each active governed ``system_setting``, records what the instance holds:
+    ``present`` when the carried value equals this instance's *declared* value,
+    ``drifted`` (with the observed value as a sparse ``{"value": ...}``
+    override) when it differs, ``present`` with the override when the design
+    declares nothing — the observation is kept, the not-captured verdict is the
+    comparison's to report (REQ-485). A key the carrier does not hold sweeps to
+    ``absent``.
+
+    A failed read (unreachable, credential rejected, missing grant) marks the
+    pass read-failed so the sweep is a no-op — an unread instance must never
+    infer absence. An *absent carrier* (404) is a positive observation: the
+    instance holds no governed values, and every governed setting sweeps to
+    ``absent``.
+
+    :returns: A summary ``{seen, created, present, drifted, absent}`` plus
+        ``outcome`` (the read outcome) and, on a failed read, ``reason``.
+    """
+    from crmbuilder_v2.introspect import settings_read
+
+    stamp = datetime.now(UTC)
+    summary: dict = {
+        "seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0,
+    }
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="system_setting",
+        last_audited_at=stamp,
+    )
+    settings = system_settings_repo.list_system_settings(
+        session, status="active"
+    )
+
+    read = settings_read.read_setting_values(client)
+    summary["outcome"] = read.outcome
+    if read.outcome in (
+        settings_read.FORBIDDEN,
+        settings_read.UNAUTHENTICATED,
+        settings_read.UNREACHABLE,
+    ):
+        writer.mark_read_failed()
+        summary["reason"] = read.reason
+        _note(progress, f"governed settings not read: {read.reason}", "warning")
+        summary["absent"] = writer.sweep_absent()
+        return summary
+
+    # ``ok`` (values, possibly none) or ``absent`` (no carrier — a positive
+    # observation that the instance holds no governed values).
+    if read.outcome == settings_read.ABSENT:
+        _note(progress, f"governed settings: {read.reason}", "info")
+    for setting in settings:
+        key = setting["system_setting_key"]
+        member_id = setting["system_setting_identifier"]
+        if key not in read.values:
+            continue  # not carried: the sweep records the absence
+        summary["seen"] += 1
+        observed = read.values[key]
+        declared_row = system_settings_repo.get_value(
+            session,
+            system_setting_identifier=member_id,
+            instance_identifier=instance_identifier,
+        )
+        if declared_row is not None and declared_row["value"] == observed:
+            state, override = "present", None
+        elif declared_row is None:
+            # Observation kept; the design says nothing, and the comparison
+            # reports that as not captured — never as conformant (REQ-485).
+            state, override = "present", {"value": observed}
+        else:
+            state, override = "drifted", {"value": observed}
+        writer.upsert(member_id, state, override)
+        summary[state] += 1
 
     summary["absent"] = writer.sweep_absent()
     return summary

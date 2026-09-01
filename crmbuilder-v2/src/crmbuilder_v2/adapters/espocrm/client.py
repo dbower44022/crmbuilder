@@ -80,6 +80,18 @@ class DesignClient:
         for the emitted security blocks (PI-051)."""
         raise NotImplementedError
 
+    def list_system_settings(self) -> list[dict]:
+        """Active governed system-setting records (PI-406 / REQ-485)."""
+        raise NotImplementedError
+
+    def list_system_setting_values(self, instance_identifier: str) -> list[dict]:
+        """The per-instance declared values for ``instance_identifier``.
+
+        Only declared rows — an undeclared setting has no row, which is the
+        not-captured state and must stay distinguishable from a declared
+        empty value."""
+        raise NotImplementedError
+
 
 class RestDesignClient(DesignClient):
     """REST client of the live V2 API — GET requests only.
@@ -162,6 +174,20 @@ class RestDesignClient(DesignClient):
 
     def list_roles(self) -> list[dict]:
         return self._get("/roles")
+
+    def list_system_settings(self) -> list[dict]:
+        return self._get("/system-settings?status=active")
+
+    def list_system_setting_values(self, instance_identifier: str) -> list[dict]:
+        # There is no all-values-for-one-instance endpoint; each setting lists
+        # its declared values and the instance's rows are filtered out here.
+        values: list[dict] = []
+        for setting in self.list_system_settings():
+            identifier = setting["system_setting_identifier"]
+            for row in self._get(f"/system-settings/{identifier}/values"):
+                if row.get("instance_identifier") == instance_identifier:
+                    values.append(row)
+        return values
 
 
 class AccessDesignClient(DesignClient):
@@ -287,3 +313,16 @@ class AccessDesignClient(DesignClient):
         from crmbuilder_v2.access.repositories import roles
 
         return self._rows(roles.list_roles)
+
+    def list_system_settings(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import system_settings
+
+        return self._rows(system_settings.list_system_settings, status="active")
+
+    def list_system_setting_values(self, instance_identifier: str) -> list[dict]:
+        from crmbuilder_v2.access.repositories import system_settings
+
+        return self._rows(
+            system_settings.list_values,
+            instance_identifier=instance_identifier,
+        )

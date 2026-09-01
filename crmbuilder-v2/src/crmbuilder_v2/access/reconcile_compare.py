@@ -31,6 +31,7 @@ from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import message_template as message_template_repo
 from crmbuilder_v2.access.repositories import roles as role_repo
 from crmbuilder_v2.access.repositories import rule as rule_repo
+from crmbuilder_v2.access.repositories import system_settings as system_settings_repo
 from crmbuilder_v2.access.repositories import teams as team_repo
 
 #: A source carries the member on the instance (its value participates in diffs).
@@ -599,6 +600,8 @@ def object_type_for(member_type: str, attribute: str | None) -> str:
         return "layouts"
     if member_type == "entity":
         return "settings"
+    if member_type == "system_setting":
+        return "settings"
     return "other"
 
 # (member_type, canonical-list callable, identifier key, display-name key) —
@@ -729,6 +732,138 @@ def _existence_rollup(
     return out
 
 
+def _system_setting_value_row(
+    session: Session,
+    setting: dict[str, Any],
+    membership_a: dict[str, Any] | None,
+    membership_b: dict[str, Any] | None,
+    *,
+    instance_a: str,
+    instance_b: str,
+    include_unchanged: bool = False,
+) -> dict[str, Any] | None:
+    """The value row for one governed setting (PI-406 / REQ-485).
+
+    A governed setting's canonical value is *per instance*
+    (``system_setting_values``), so the generic design-vs-override comparison
+    cannot express it: each side compares against its own declared value.
+    Verdicts: any side holding something other than its declared value is
+    drift; a side the design declares nothing for is unknown /
+    undeclared_in_design — the not-captured state, which counts against
+    conformance and is never a match (REQ-485). A side never audited does not
+    drive the verdict (its presence row already says unknown).
+
+    View-only: values are declared through the settings routes and written by
+    the publish applier, so the grid offers no capture or publish action here.
+
+    :returns: the attribute row, or ``None`` when there is nothing to say
+        (no side audited, or everything matches outside ``include_unchanged``).
+    """
+    member_id = setting["system_setting_identifier"]
+
+    def _declared(instance: str) -> tuple[bool, Any]:
+        row = system_settings_repo.get_value(
+            session,
+            system_setting_identifier=member_id,
+            instance_identifier=instance,
+        )
+        return (row is not None, row["value"] if row is not None else None)
+
+    def _side(membership, instance: str) -> tuple[str | None, Any]:
+        """(verdict, cell) for one instance; verdict None = not audited."""
+        if membership is None:
+            return None, UNKNOWN
+        has_declared, declared = _declared(instance)
+        state = membership.get("state")
+        override = membership.get("override") or {}
+        if state == "absent":
+            observed_cell: Any = ABSENT
+            if not has_declared:
+                return UNDECLARED_IN_DESIGN, observed_cell
+            return DRIFT, observed_cell
+        observed = override["value"] if "value" in override else declared
+        if not has_declared:
+            return UNDECLARED_IN_DESIGN, observed
+        if observed != declared:
+            return DRIFT, observed
+        return MATCH, observed
+
+    verdict_a, cell_a = _side(membership_a, instance_a)
+    verdict_b, cell_b = _side(membership_b, instance_b)
+    verdicts = [v for v in (verdict_a, verdict_b) if v is not None]
+    if not verdicts:
+        return None  # neither side audited: the presence row carries unknown
+    if DRIFT in verdicts:
+        outcome, reason = DRIFT, None
+    elif UNDECLARED_IN_DESIGN in verdicts:
+        outcome, reason = UNKNOWN, UNDECLARED_IN_DESIGN
+    else:
+        outcome, reason = MATCH, None
+    if outcome == MATCH and not include_unchanged:
+        return None
+
+    has_a, declared_a = _declared(instance_a)
+    has_b, declared_b = _declared(instance_b)
+    if has_a and has_b and declared_a == declared_b:
+        design_cell: Any = declared_a
+    else:
+        design_cell = {
+            instance_a: declared_a if has_a else UNKNOWN,
+            instance_b: declared_b if has_b else UNKNOWN,
+        }
+    return {
+        "member_type": "system_setting",
+        "member_identifier": member_id,
+        "member_name": setting.get("system_setting_name"),
+        "kind": "attribute",
+        "attribute": "value",
+        "design": design_cell,
+        "instance_a": cell_a,
+        "instance_b": cell_b,
+        "differs": outcome != MATCH,
+        "outcome": outcome,
+        "reason": reason,
+        "capturable": False,
+        "publishable": False,
+        "actionable": False,
+    }
+
+
+def _system_setting_rows(
+    session: Session,
+    setting: dict[str, Any],
+    membership_a: dict[str, Any] | None,
+    membership_b: dict[str, Any] | None,
+    *,
+    instance_a: str,
+    instance_b: str,
+    include_unchanged: bool = False,
+) -> list[dict[str, Any]]:
+    """Presence + value rows for one governed setting in the compare surface."""
+    rows = compute_member_rows(
+        member_type="system_setting",
+        member_identifier=setting["system_setting_identifier"],
+        member_name=setting.get("system_setting_name"),
+        design_obj=setting,
+        attributes=[],
+        membership_a=membership_a,
+        membership_b=membership_b,
+        include_unchanged=include_unchanged,
+    )
+    value_row = _system_setting_value_row(
+        session,
+        setting,
+        membership_a,
+        membership_b,
+        instance_a=instance_a,
+        instance_b=instance_b,
+        include_unchanged=include_unchanged,
+    )
+    if value_row is not None:
+        rows.append(value_row)
+    return rows
+
+
 def three_way_compare(
     session: Session,
     *,
@@ -796,6 +931,26 @@ def three_way_compare(
             for gid in group_ids:
                 grouped.setdefault(gid, []).extend(rows)
 
+    # PI-406 / REQ-485: governed settings compare per instance against their
+    # declared values, which the generic design-vs-override path cannot
+    # express, so they get their own row builder. Global — no entity scope.
+    if entity_identifier is None:
+        for setting in system_settings_repo.list_system_settings(
+            session, status="active"
+        ):
+            mid = setting["system_setting_identifier"]
+            rows = _system_setting_rows(
+                session,
+                setting,
+                idx_a.get(("system_setting", mid)),
+                idx_b.get(("system_setting", mid)),
+                instance_a=instance_a,
+                instance_b=instance_b,
+                include_unchanged=include_unchanged,
+            )
+            if rows:
+                grouped.setdefault(GLOBAL_GROUP, []).extend(rows)
+
     def _order(gid: str) -> tuple[bool, str]:
         # Entities first (alphabetical by name), the global group last.
         return (gid == GLOBAL_GROUP, str(entity_name.get(gid, gid) or gid))
@@ -841,6 +996,44 @@ def member_property_compare(
     unknown or no canonical member with that identifier exists, so the endpoint can
     answer 404.
     """
+    # PI-406 / REQ-485: a governed setting's drill compares each instance
+    # against its own declared value, which the generic path cannot express.
+    if member_type == "system_setting":
+        setting = next(
+            (
+                s
+                for s in system_settings_repo.list_system_settings(session)
+                if s["system_setting_identifier"] == member_identifier
+            ),
+            None,
+        )
+        if setting is None:
+            return None
+        idx_a = _membership_index(session, instance_a)
+        idx_b = _membership_index(session, instance_b)
+        ma = idx_a.get((member_type, member_identifier))
+        mb = idx_b.get((member_type, member_identifier))
+        value_row = _system_setting_value_row(
+            session,
+            setting,
+            ma,
+            mb,
+            instance_a=instance_a,
+            instance_b=instance_b,
+            include_unchanged=True,
+        )
+        return {
+            "member_type": member_type,
+            "member_identifier": member_identifier,
+            "member_name": setting.get("system_setting_name"),
+            "presence": {
+                "design": PRESENT,
+                "instance_a": _presence(ma),
+                "instance_b": _presence(mb),
+            },
+            "rows": [value_row] if value_row is not None else [],
+        }
+
     source = next((s for s in _MEMBER_SOURCES if s[0] == member_type), None)
     if source is None:
         return None

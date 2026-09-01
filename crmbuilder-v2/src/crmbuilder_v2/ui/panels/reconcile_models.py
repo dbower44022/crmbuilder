@@ -79,6 +79,8 @@ OBJECT_GROUP_LABELS = {
     "filtered_tab": "Filtered tabs",
     "message_template": "Email templates",
     "rule": "Field rules",
+    # PI-406 / REQ-485 — governed per-instance setting values.
+    "system_setting": "System settings",
 }
 
 #: Role carrying the raw presence/state token for cell colouring/inspection.

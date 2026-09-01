@@ -898,6 +898,7 @@ class ReconcileGridPanel(QWidget):
         "filtered_tab": "filtered tab",
         "message_template": "email template",
         "rule": "field rule",
+        "system_setting": "system setting",
     }
 
     def _row_label(self, row: dict[str, Any]) -> str:
