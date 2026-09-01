@@ -145,8 +145,17 @@ def _stub_live(monkeypatch):
     """Stub the live-target touchpoints: client construction, field discovery,
     and the pre-publish backup capture. Returns a setter for the server-field
     map (``server_fields``) and the backup behaviour (``backup``)."""
-    monkeypatch.setattr(service, "EspoAdminClient", lambda profile: object())
-    state = {"server_fields": {}, "backup": {"entities": {}}}
+    state = {"server_fields": {}, "backup": {"entities": {}}, "entity_defs": {}}
+
+    class _StubTarget:
+        """The live-target client: entity defs served from the state dict
+        (absent by default, so every plan reads as additive)."""
+
+        def get_entity_field_list(self, entity):
+            defs = state["entity_defs"].get(entity)
+            return (200, defs) if defs is not None else (404, None)
+
+    monkeypatch.setattr(service, "EspoAdminClient", lambda profile: _StubTarget())
 
     def _gather(_client, _names):
         return state["server_fields"], []
@@ -835,3 +844,142 @@ def test_a_failed_settings_apply_leaves_the_previous_stamp(
     assert service.publish_run_status(res) == "failed"
     assert "standard_version" not in seen
     assert res.stamp is None
+
+
+# -- additive-only automatic apply (PI-411 / REQ-497, DEC-982) ----------------
+
+_NARROWING_YAML = """\
+version: "1.1"
+description: "drops an option the live field permits"
+entities:
+  Contact:
+    fields:
+      - name: stage
+        type: enum
+        label: Stage
+        options:
+          - open
+"""
+
+
+def _live_contact_defs(_stub_live, defs):
+    _stub_live["entity_defs"]["Contact"] = defs
+
+
+def test_an_automatic_apply_refuses_a_narrowing_by_name(
+    monkeypatch, _stub_live
+):
+    """DEC-982: a publish without an approved plan fingerprint is automatic,
+    and dropping a value the live field permits is a narrowing."""
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _NARROWING_YAML)))
+    deployed = []
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: deployed.append(1) or DeployOutcome(report=object()),
+    )
+    _live_contact_defs(_stub_live, {
+        "cStage": {"type": "enum", "options": ["open", "closed"]},
+    })
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert res.aborted is True
+    assert deployed == []
+    assert len(res.declined_changes) == 1
+    declined = res.declined_changes[0]
+    assert declined["kind"] == "narrowing"
+    assert "Contact.stage" in declined["construct"]
+    assert declined["construct"] in res.abort_reason
+    assert "REQ-497" in res.abort_reason
+
+
+def test_the_approved_plan_fingerprint_is_the_reviewed_run(
+    monkeypatch, _stub_live
+):
+    """The same narrowing plan proceeds when the operator was shown it — the
+    preview-then-approve flow is the separately triggered reviewed run."""
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _NARROWING_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    _live_contact_defs(_stub_live, {
+        "cStage": {"type": "enum", "options": ["open", "closed"]},
+    })
+    common = {"api_key": "K", "rendered_at": "2026-08-31T00:00:00"}
+    preview = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(), preview=True, **common,
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        expected_plan_fingerprint=preview.plan_fingerprint,
+        **common,
+    )
+    assert res.aborted is False
+    assert res.declined_changes == []
+    assert all(p.deployed for p in res.programs)
+
+
+def test_an_automatic_apply_refuses_a_type_change(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    _live_contact_defs(_stub_live, {"cNickName": {"type": "enum"}})
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert res.aborted is True
+    assert [d["kind"] for d in res.declined_changes] == ["type_change"]
+
+
+def test_an_automatic_apply_refuses_an_entity_deletion(
+    monkeypatch, _stub_live
+):
+    yaml = """\
+version: "1.1"
+description: "deletes"
+entities:
+  Widget:
+    action: delete
+"""
+    _stub_generate(monkeypatch, _result(("Widget.yaml", yaml)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert res.aborted is True
+    assert [d["kind"] for d in res.declined_changes] == ["removal"]
+
+
+def test_a_purely_additive_automatic_apply_proceeds(monkeypatch, _stub_live):
+    """A brand-new field on a live entity, and widened options, both pass."""
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    _live_contact_defs(_stub_live, {"other": {"type": "varchar"}})
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert res.aborted is False
+    assert all(p.deployed for p in res.programs)

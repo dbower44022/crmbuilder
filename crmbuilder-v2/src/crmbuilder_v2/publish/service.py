@@ -29,7 +29,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from crmbuilder_v2.access.apply_plan import fingerprint_plan
+from crmbuilder_v2.access.apply_plan import fingerprint_plan, screen_automatic
 from crmbuilder_v2.adapters.base import GenerationResult
 from crmbuilder_v2.adapters.espocrm.adapter import EspoCrmAdapter
 from crmbuilder_v2.adapters.espocrm.client import DesignClient
@@ -40,6 +40,7 @@ from espo_impl.core.config_loader import ConfigLoader
 from espo_impl.core.deploy_pipeline import deploy_pipeline
 from espo_impl.core.field_manager import FieldManager
 from espo_impl.core.models import (
+    EntityAction,
     InstanceProfile,
     InstanceRole,
     ProgramContext,
@@ -53,6 +54,7 @@ from espo_impl.core.system_settings_manager import (
     SystemSettingsManager,
     SystemSettingsManagerError,
 )
+from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
 
 OutputFn = Callable[[str, str], None]
 
@@ -196,6 +198,9 @@ class PublishResult:
     #: any outcome short of full success).
     stamp: SettingsResult | None = None
     stamp_log: list = field(default_factory=list)
+    #: REQ-497 / DEC-982 — the changes an automatic apply declined, each
+    #: carrying its kind and reason. Non-empty only on a refused run.
+    declined_changes: list = field(default_factory=list)
     abort_reason: str | None = None
 
 
@@ -388,6 +393,68 @@ def declared_setting_values(
         if key is not None:
             declared[key] = row.get("value")
     return declared
+
+
+def automatic_apply_declines(
+    programs: list[tuple[str, ProgramFile]], client: EspoAdminClient
+) -> list[dict]:
+    """The changes an automatic apply of these programs must decline (REQ-497).
+
+    A publish without an approved plan fingerprint is an automatic apply
+    (DEC-982), and may only add or widen. This derives the plan's
+    attribute-level changes against the live target — declared entity
+    deletions, a declared type differing from the live one, and a declared
+    option set missing values the live field permits — and screens them with
+    the tested :func:`screen_automatic` fence. A field or entity the target
+    does not carry is an addition and passes. A live read that fails is
+    treated as the engine treats it: the objects deploy as new, which is
+    additive.
+
+    :returns: the declined changes, each carrying ``kind`` and ``reason``.
+    """
+    changes: list[dict] = []
+    for filename, program in programs:
+        for entity in program.entities:
+            if entity.action in (
+                EntityAction.DELETE, EntityAction.DELETE_AND_CREATE
+            ):
+                changes.append({
+                    "construct": f"entity {entity.name} ({filename})",
+                    "attribute": "entity",
+                    "design": None,
+                    "instance": entity.name,
+                })
+            status, defs = client.get_entity_field_list(
+                get_espo_entity_name(entity.name)
+            )
+            if status != 200 or not isinstance(defs, dict):
+                continue  # absent or unreadable: deploys as new — additive
+            for fld in entity.fields:
+                live = defs.get(fld.name) or defs.get(
+                    "c" + fld.name[:1].upper() + fld.name[1:]
+                )
+                if not isinstance(live, dict):
+                    continue  # new field: additive
+                construct = f"field {entity.name}.{fld.name} ({filename})"
+                live_type = live.get("type")
+                if live_type and fld.type and live_type != fld.type:
+                    changes.append({
+                        "construct": construct,
+                        "attribute": "field_type",
+                        "design": fld.type,
+                        "instance": live_type,
+                    })
+                declared_options = list(getattr(fld, "options", None) or [])
+                live_options = live.get("options")
+                if declared_options and isinstance(live_options, list):
+                    changes.append({
+                        "construct": construct,
+                        "attribute": "field_options",
+                        "design": declared_options,
+                        "instance": live_options,
+                    })
+    _, declined = screen_automatic(changes)
+    return declined
 
 
 def plan_fingerprint_for(artifacts: list[tuple[str, str]]) -> str:
@@ -601,6 +668,33 @@ def publish(
                 ProgramOutcome.for_program(filename, program, deployed=False)
             )
         return pub
+
+    # Additive-only fence (REQ-497 / DEC-982): a publish without an approved
+    # plan fingerprint is an automatic apply and may only add or widen. A
+    # removal, narrowing, or type change is refused by name; the reviewed run
+    # that may carry them is the preview-then-approve flow above.
+    if not preview and expected_plan_fingerprint is None:
+        declined = automatic_apply_declines(programs, client)
+        if declined:
+            pub.aborted = True
+            pub.declined_changes = declined
+            named = "; ".join(
+                f"{d.get('construct')}: {d['kind']} — {d['reason']}"
+                for d in declined
+            )
+            pub.abort_reason = (
+                "an automatic apply may only add or widen (REQ-497); "
+                f"declined {len(declined)} change(s): {named}. Nothing was "
+                "applied. Run a publish preview, review these changes, and "
+                "resubmit with the approved plan fingerprint."
+            )
+            for filename, program in programs:
+                pub.programs.append(
+                    ProgramOutcome.for_program(
+                        filename, program, deployed=False
+                    )
+                )
+            return pub
 
     # Backup gate (REQ-292): for a real publish, capture a pre-publish snapshot
     # of the target before writing anything. A total capture failure aborts the
