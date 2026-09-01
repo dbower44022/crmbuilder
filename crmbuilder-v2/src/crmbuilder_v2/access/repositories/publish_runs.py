@@ -76,6 +76,7 @@ def create_publish_run(
     summary: dict | None = None,
     started_at: datetime | None = None,
     ended_at: datetime | None = None,
+    plan_fingerprint: str | None = None,
 ) -> dict:
     """Record one publish run, auto-assigning the next ``PUB-NNN`` identifier.
 
@@ -87,6 +88,8 @@ def create_publish_run(
     :param summary: the outcome summary — deploy counts + verification.
     :param started_at: when the publish began.
     :param ended_at: when the publish finished.
+    :param plan_fingerprint: the identity of the plan actually applied
+        (REQ-496 / PI-411), so what ran can be answered for afterwards.
     :returns: the persisted row as a dict.
     """
     instance_identifier = gov.require_nonempty(
@@ -112,6 +115,7 @@ def create_publish_run(
             publish_run_summary=summary,
             publish_run_started_at=started_at,
             publish_run_ended_at=ended_at,
+            publish_run_plan_fingerprint=plan_fingerprint,
         )
         session.add(row)
         try:

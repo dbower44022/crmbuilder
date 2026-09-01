@@ -27,12 +27,14 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     UnprocessableError,
 )
+from crmbuilder_v2.access.freeze import band_for_status
 from crmbuilder_v2.access.repositories import (
     instance_deploy_config,
     instance_membership,
     instances,
     inventory,
     publish_runs,
+    releases,
 )
 from crmbuilder_v2.adapters.espocrm.client import AccessDesignClient
 from crmbuilder_v2.api.deps import readonly_session, writable_session
@@ -68,7 +70,6 @@ from crmbuilder_v2.introspect.reconcile import (
 from crmbuilder_v2.introspect.record_export import export_records
 from crmbuilder_v2.introspect.utilization import reconcile_utilization
 from crmbuilder_v2.publish import service as publish_service
-from espo_impl.core.models import SettingsStatus
 
 router = APIRouter(prefix="/instances", tags=["instances"])
 _FIELD_PREFIX = "instance_"
@@ -612,6 +613,10 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         "aborted": result.aborted,
         "abort_reason": result.abort_reason,
         "backup_captured": result.backup is not None,
+        # REQ-496 / PI-411: the run's derived plan identity, and whether the
+        # apply refused because it no longer matched the approved plan.
+        "plan_fingerprint": result.plan_fingerprint,
+        "plan_moved": result.plan_moved,
         # PI-406 / REQ-485: the governed-settings apply outcome, when the
         # instance has declared per-instance values.
         "settings": (
@@ -623,6 +628,19 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
                 "log": [list(line) for line in result.settings_log],
             }
             if result.settings is not None
+            else None
+        ),
+        # REQ-495: the design-version stamp write outcome, when the run
+        # qualified to write one.
+        "stamp": (
+            {
+                "entity": result.stamp.entity,
+                "status": result.stamp.status.value,
+                "changes": result.stamp.changes,
+                "error": result.stamp.error,
+                "log": [list(line) for line in result.stamp_log],
+            }
+            if result.stamp is not None
             else None
         ),
         "programs": [
@@ -645,27 +663,12 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
 
 
 def _publish_run_status(result: publish_service.PublishResult) -> str:
-    """Map a publish result to a terminal ``publish_run`` status (REQ-293)."""
-    if result.aborted:
-        return "aborted"
-    if result.validation_failed or any(
-        not p.deployed for p in result.programs
-    ):
-        return "failed"
-    # A governed-settings write failure is a publish failure (PI-406 /
-    # REQ-485); a NOT_SUPPORTED carrier (absent on the instance) stays a
-    # manual-config outcome, matching the engine's conventions.
-    if (
-        result.settings is not None
-        and result.settings.status is SettingsStatus.ERROR
-    ):
-        return "failed"
-    verify = result.verification
-    if verify is not None and verify.ran and verify.conclusive and not (
-        verify.all_present
-    ):
-        return "succeeded_with_issues"
-    return "succeeded"
+    """Map a publish result to a terminal ``publish_run`` status (REQ-293).
+
+    Delegates to the service so the stamp gate (DEC-981) and the recorded
+    run agree on what "succeeded" means.
+    """
+    return publish_service.publish_run_status(result)
 
 
 def _publish_run_summary(result: publish_service.PublishResult) -> dict:
@@ -717,6 +720,7 @@ def _record_publish_run(
                 summary=summary,
                 started_at=started_at,
                 ended_at=ended_at,
+                plan_fingerprint=result.plan_fingerprint,
             )
         return row["publish_run_identifier"]
     except Exception:  # pragma: no cover - defensive; logged, never fatal
@@ -782,6 +786,8 @@ def _run_publish(
     preview: bool = False,
     scope: list[str] | None = None,
     allow_no_backup: bool = False,
+    expected_plan_fingerprint: str | None = None,
+    release_identifier: str | None = None,
 ):
     """Resolve the target + active-engagement design source, then publish.
 
@@ -790,6 +796,28 @@ def _run_publish(
     (REQ-293); the run identifier is returned in the response.
     """
     rec, api_key, secret_key = _resolve_publish_target(identifier)
+    # REQ-495 / DEC-980: the stamp's version only means something the release
+    # train pinned, so a named release must exist and be frozen (its status in
+    # the amend_window or locked band) before the run may claim it.
+    if release_identifier is not None:
+        with readonly_session() as s:
+            release = releases.get_release(s, release_identifier)
+        if release is None:
+            raise NotFoundError("release", release_identifier)
+        band = band_for_status(release["release_status"])
+        if band not in ("amend_window", "locked"):
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "release_identifier",
+                        "release_not_frozen",
+                        f"{release_identifier} has status "
+                        f"{release['release_status']!r}, which is not a "
+                        "frozen state; a publish outside a frozen release "
+                        "does not write the design-version stamp (DEC-980)",
+                    )
+                ]
+            )
     engagement = get_active_engagement()
     # Stored feature selection (REQ-546 / PI-444): an explicit per-run scope
     # wins for that run only; otherwise a non-empty stored selection on the
@@ -838,6 +866,8 @@ def _run_publish(
         preview=preview,
         scope=set(effective_scope) if effective_scope else None,
         allow_no_backup=allow_no_backup,
+        expected_plan_fingerprint=expected_plan_fingerprint,
+        release_identifier=release_identifier,
     )
     payload = _serialize_publish_result(result)
     payload["scope_source"] = scope_source
@@ -871,6 +901,13 @@ class PublishScopeIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     scope: list[str] | None = None
     allow_no_backup: bool = False
+    # REQ-496 / PI-411: the plan identity the operator approved (from a
+    # preview). A real publish re-derives the plan and refuses on mismatch.
+    expected_plan_fingerprint: str | None = None
+    # REQ-495 / PI-411: the frozen release this publish runs under. A fully
+    # successful run then writes the design-version stamp to the instance; a
+    # publish outside a frozen release never writes it (DEC-980).
+    release_identifier: str | None = None
 
 
 @router.post("/{identifier}/publish")
@@ -883,6 +920,10 @@ def publish_instance(identifier: str, body: PublishScopeIn | None = None):
         identifier,
         scope=body.scope if body else None,
         allow_no_backup=body.allow_no_backup if body else False,
+        expected_plan_fingerprint=(
+            body.expected_plan_fingerprint if body else None
+        ),
+        release_identifier=body.release_identifier if body else None,
     )
 
 

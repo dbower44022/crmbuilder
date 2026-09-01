@@ -29,6 +29,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from crmbuilder_v2.access.apply_plan import fingerprint_plan, screen_automatic
 from crmbuilder_v2.adapters.base import GenerationResult
 from crmbuilder_v2.adapters.espocrm.adapter import EspoCrmAdapter
 from crmbuilder_v2.adapters.espocrm.client import DesignClient
@@ -39,6 +40,7 @@ from espo_impl.core.config_loader import ConfigLoader
 from espo_impl.core.deploy_pipeline import deploy_pipeline
 from espo_impl.core.field_manager import FieldManager
 from espo_impl.core.models import (
+    EntityAction,
     InstanceProfile,
     InstanceRole,
     ProgramContext,
@@ -52,6 +54,7 @@ from espo_impl.core.system_settings_manager import (
     SystemSettingsManager,
     SystemSettingsManagerError,
 )
+from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
 
 OutputFn = Callable[[str, str], None]
 
@@ -184,6 +187,20 @@ class PublishResult:
     aborted: bool = False
     settings: SettingsResult | None = None
     settings_log: list = field(default_factory=list)
+    #: REQ-496 / PI-411 — the identity of this run's derived plan; a preview
+    #: hands it to the operator, the apply proves it against a re-derivation.
+    plan_fingerprint: str | None = None
+    #: True when the apply refused because the re-derived plan no longer
+    #: matched the one the operator was shown.
+    plan_moved: bool = False
+    #: REQ-495 — the design-version stamp write outcome, or ``None`` when the
+    #: run did not qualify to write one (no frozen release named, preview, or
+    #: any outcome short of full success).
+    stamp: SettingsResult | None = None
+    stamp_log: list = field(default_factory=list)
+    #: REQ-497 / DEC-982 — the changes an automatic apply declined, each
+    #: carrying its kind and reason. Non-empty only on a refused run.
+    declined_changes: list = field(default_factory=list)
     abort_reason: str | None = None
 
 
@@ -378,6 +395,86 @@ def declared_setting_values(
     return declared
 
 
+def automatic_apply_declines(
+    programs: list[tuple[str, ProgramFile]], client: EspoAdminClient
+) -> list[dict]:
+    """The changes an automatic apply of these programs must decline (REQ-497).
+
+    A publish without an approved plan fingerprint is an automatic apply
+    (DEC-982), and may only add or widen. This derives the plan's
+    attribute-level changes against the live target — declared entity
+    deletions, a declared type differing from the live one, and a declared
+    option set missing values the live field permits — and screens them with
+    the tested :func:`screen_automatic` fence. A field or entity the target
+    does not carry is an addition and passes. A live read that fails is
+    treated as the engine treats it: the objects deploy as new, which is
+    additive.
+
+    :returns: the declined changes, each carrying ``kind`` and ``reason``.
+    """
+    changes: list[dict] = []
+    for filename, program in programs:
+        for entity in program.entities:
+            if entity.action in (
+                EntityAction.DELETE, EntityAction.DELETE_AND_CREATE
+            ):
+                changes.append({
+                    "construct": f"entity {entity.name} ({filename})",
+                    "attribute": "entity",
+                    "design": None,
+                    "instance": entity.name,
+                })
+            status, defs = client.get_entity_field_list(
+                get_espo_entity_name(entity.name)
+            )
+            if status != 200 or not isinstance(defs, dict):
+                continue  # absent or unreadable: deploys as new — additive
+            for fld in entity.fields:
+                live = defs.get(fld.name) or defs.get(
+                    "c" + fld.name[:1].upper() + fld.name[1:]
+                )
+                if not isinstance(live, dict):
+                    continue  # new field: additive
+                construct = f"field {entity.name}.{fld.name} ({filename})"
+                live_type = live.get("type")
+                if live_type and fld.type and live_type != fld.type:
+                    changes.append({
+                        "construct": construct,
+                        "attribute": "field_type",
+                        "design": fld.type,
+                        "instance": live_type,
+                    })
+                declared_options = list(getattr(fld, "options", None) or [])
+                live_options = live.get("options")
+                if declared_options and isinstance(live_options, list):
+                    changes.append({
+                        "construct": construct,
+                        "attribute": "field_options",
+                        "design": declared_options,
+                        "instance": live_options,
+                    })
+    _, declined = screen_automatic(changes)
+    return declined
+
+
+def plan_fingerprint_for(artifacts: list[tuple[str, str]]) -> str:
+    """The identity of the plan a publish would apply (REQ-496 / PI-411).
+
+    Keyed by generated filename over the scoped program contents, with the
+    provenance comment header excluded — it carries ``rendered_at``, so two
+    derivations of the same design at different moments must still fingerprint
+    identically, while any change to what would be written changes the result.
+    """
+    def _body(content: str) -> str:
+        lines = content.split("\n")
+        i = 0
+        while i < len(lines) and lines[i].startswith("#"):
+            i += 1
+        return "\n".join(lines[i:])
+
+    return fingerprint_plan({fn: _body(c) for fn, c in artifacts})
+
+
 def verify_publish(
     programs: list[tuple[str, ProgramFile]],
     server_fields: dict[str, frozenset[str]],
@@ -458,6 +555,8 @@ def publish(
     preview: bool = False,
     scope: set[str] | None = None,
     allow_no_backup: bool = False,
+    expected_plan_fingerprint: str | None = None,
+    release_identifier: str | None = None,
     output_fn: OutputFn | None = None,
 ) -> PublishResult:
     """Generate, validate, and (unless ``validate_only``) deploy the design.
@@ -479,6 +578,15 @@ def publish(
     :param allow_no_backup: If True, proceed with the publish even when the
         pre-publish backup cannot be captured (REQ-292 gate override). Default
         False: a failed backup aborts the publish before any write.
+    :param expected_plan_fingerprint: The plan identity the operator was shown
+        (from a preview). On a real publish, the plan is re-derived and a
+        mismatch refuses the apply, reporting the newly derived plan
+        (REQ-496 / PI-411). ``None`` skips the gate.
+    :param release_identifier: The frozen release this publish runs under.
+        When given, a run whose terminal status is ``succeeded`` writes the
+        design-version stamp into the instance (REQ-495 / DEC-980, DEC-981);
+        a publish outside a frozen release never writes it. The caller
+        validates the release's freeze state.
     :param output_fn: Optional deploy log callback; when omitted, each
         program's log is captured into its :class:`ProgramOutcome`.
     :returns: A :class:`PublishResult`.
@@ -499,6 +607,11 @@ def publish(
     # scope publishes everything.
     if scope:
         programs = [(f, p) for f, p in programs if f in scope]
+    scoped_artifacts = [
+        (a.filename, a.content)
+        for a in result.programs
+        if not scope or a.filename in scope
+    ]
 
     server_fields, _warnings = gather_server_fields(
         client, _entity_names(programs)
@@ -512,6 +625,7 @@ def publish(
         validate_only=validate_only,
         preview=preview,
         validation_failed=validation_failed,
+        plan_fingerprint=plan_fingerprint_for(scoped_artifacts),
         deferrals=list(result.deferrals),
         manual_config=(
             result.manual_config.content if result.manual_config else None
@@ -531,6 +645,56 @@ def publish(
                 )
             )
         return pub
+
+    # Plan-identity gate (REQ-496 / PI-411): the plan was re-derived by the
+    # generation above; if the operator approved a different plan, refuse and
+    # report the newly derived one rather than proceeding. A preview writes
+    # nothing and is how the fingerprint is obtained, so it is never gated.
+    if (
+        not preview
+        and expected_plan_fingerprint is not None
+        and expected_plan_fingerprint != pub.plan_fingerprint
+    ):
+        pub.aborted = True
+        pub.plan_moved = True
+        pub.abort_reason = (
+            "the plan has moved since it was shown: the design now derives "
+            f"plan {pub.plan_fingerprint}, not the approved "
+            f"{expected_plan_fingerprint}. Nothing was applied; review the "
+            "newly derived plan and approve it."
+        )
+        for filename, program in programs:
+            pub.programs.append(
+                ProgramOutcome.for_program(filename, program, deployed=False)
+            )
+        return pub
+
+    # Additive-only fence (REQ-497 / DEC-982): a publish without an approved
+    # plan fingerprint is an automatic apply and may only add or widen. A
+    # removal, narrowing, or type change is refused by name; the reviewed run
+    # that may carry them is the preview-then-approve flow above.
+    if not preview and expected_plan_fingerprint is None:
+        declined = automatic_apply_declines(programs, client)
+        if declined:
+            pub.aborted = True
+            pub.declined_changes = declined
+            named = "; ".join(
+                f"{d.get('construct')}: {d['kind']} — {d['reason']}"
+                for d in declined
+            )
+            pub.abort_reason = (
+                "an automatic apply may only add or widen (REQ-497); "
+                f"declined {len(declined)} change(s): {named}. Nothing was "
+                "applied. Run a publish preview, review these changes, and "
+                "resubmit with the approved plan fingerprint."
+            )
+            for filename, program in programs:
+                pub.programs.append(
+                    ProgramOutcome.for_program(
+                        filename, program, deployed=False
+                    )
+                )
+            return pub
 
     # Backup gate (REQ-292): for a real publish, capture a pre-publish snapshot
     # of the target before writing anything. A total capture failure aborts the
@@ -602,4 +766,58 @@ def publish(
         )
         pub.verification = verify_publish(programs, post_fields, post_warnings)
 
+    # Design-version stamp (REQ-495 / DEC-980, DEC-981): written only by a
+    # run under a frozen release whose terminal status is succeeded — a
+    # partial failure, an unverified result (succeeded_with_issues), or an
+    # ordinary publish outside a release leaves the previous stamp untouched.
+    if (
+        release_identifier is not None
+        and not preview
+        and publish_run_status(pub) == "succeeded"
+    ):
+        stamp_log: list[tuple[str, str]] = []
+        stamp_ofn: OutputFn = output_fn or (
+            lambda m, c, _log=stamp_log: _log.append((m, c))
+        )
+        stamp_mgr = SystemSettingsManager(client, stamp_ofn)
+        try:
+            pub.stamp = stamp_mgr.write_stamp(
+                standard_version=release_identifier,
+                plan_fingerprint=pub.plan_fingerprint or "",
+            )
+        except SystemSettingsManagerError as exc:
+            pub.stamp = SettingsResult(
+                entity="CNetworkStandard",
+                status=SettingsStatus.ERROR,
+                error=str(exc),
+            )
+        pub.stamp_log = stamp_log
+
     return pub
+
+
+def publish_run_status(result: PublishResult) -> str:
+    """Map a publish result to a terminal ``publish_run`` status (REQ-293).
+
+    Shared with the API router (which records the run) and the stamp gate
+    in :func:`publish` (DEC-981: only ``succeeded`` writes the stamp).
+    """
+    if result.aborted:
+        return "aborted"
+    if result.validation_failed or any(
+        not p.deployed for p in result.programs
+    ):
+        return "failed"
+    # A governed-settings write failure is a publish failure (PI-406 /
+    # REQ-485); a NOT_SUPPORTED carrier stays a manual-config outcome.
+    if (
+        result.settings is not None
+        and result.settings.status is SettingsStatus.ERROR
+    ):
+        return "failed"
+    verify = result.verification
+    if verify is not None and verify.ran and verify.conclusive and not (
+        verify.all_present
+    ):
+        return "succeeded_with_issues"
+    return "succeeded"

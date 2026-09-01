@@ -131,3 +131,73 @@ def test_uninterpretable_carrier_field_is_treated_as_empty_for_the_merge():
     client.patch_record.assert_called_once_with(
         SETTINGS_ENTITY, "rec1", {SETTINGS_FIELD: {"orgName": "Cleveland"}}
     )
+
+
+# -- design-version stamp (REQ-495 / DEC-974, DEC-980, DEC-981) ---------------
+
+
+def test_stamp_write_creates_the_record_when_none_exists():
+    client = _client()
+    result = _manager(client).write_stamp(
+        standard_version="REL-045", plan_fingerprint="f" * 64
+    )
+    assert result.status is SettingsStatus.UPDATED
+    client.create_record.assert_called_once_with(
+        SETTINGS_ENTITY,
+        {"standardVersion": "REL-045", "planFingerprint": "f" * 64},
+    )
+
+
+def test_stamp_write_patches_only_the_stamp_fields():
+    client = _client(
+        list_body={
+            "total": 1,
+            "list": [
+                {
+                    "id": "rec1",
+                    SETTINGS_FIELD: {"orgName": "kept"},
+                    "standardVersion": "REL-044",
+                    "planFingerprint": "old",
+                }
+            ],
+        }
+    )
+    result = _manager(client).write_stamp(
+        standard_version="REL-045", plan_fingerprint="new"
+    )
+    assert result.status is SettingsStatus.UPDATED
+    assert result.changes == ["planFingerprint", "standardVersion"]
+    client.patch_record.assert_called_once_with(
+        SETTINGS_ENTITY,
+        "rec1",
+        {"standardVersion": "REL-045", "planFingerprint": "new"},
+    )
+
+
+def test_an_unchanged_stamp_is_skipped_without_a_write():
+    client = _client(
+        list_body={
+            "total": 1,
+            "list": [
+                {
+                    "id": "rec1",
+                    "standardVersion": "REL-045",
+                    "planFingerprint": "same",
+                }
+            ],
+        }
+    )
+    result = _manager(client).write_stamp(
+        standard_version="REL-045", plan_fingerprint="same"
+    )
+    assert result.status is SettingsStatus.SKIPPED
+    client.patch_record.assert_not_called()
+
+
+def test_stamp_write_on_an_absent_carrier_is_manual_config():
+    client = _client(list_status=404, list_body=None)
+    result = _manager(client).write_stamp(
+        standard_version="REL-045", plan_fingerprint="f"
+    )
+    assert result.status is SettingsStatus.NOT_SUPPORTED
+    client.create_record.assert_not_called()

@@ -145,8 +145,17 @@ def _stub_live(monkeypatch):
     """Stub the live-target touchpoints: client construction, field discovery,
     and the pre-publish backup capture. Returns a setter for the server-field
     map (``server_fields``) and the backup behaviour (``backup``)."""
-    monkeypatch.setattr(service, "EspoAdminClient", lambda profile: object())
-    state = {"server_fields": {}, "backup": {"entities": {}}}
+    state = {"server_fields": {}, "backup": {"entities": {}}, "entity_defs": {}}
+
+    class _StubTarget:
+        """The live-target client: entity defs served from the state dict
+        (absent by default, so every plan reads as additive)."""
+
+        def get_entity_field_list(self, entity):
+            defs = state["entity_defs"].get(entity)
+            return (200, defs) if defs is not None else (404, None)
+
+    monkeypatch.setattr(service, "EspoAdminClient", lambda profile: _StubTarget())
 
     def _gather(_client, _names):
         return state["server_fields"], []
@@ -623,3 +632,354 @@ def test_publish_with_nothing_declared_reports_no_settings(monkeypatch, _stub_li
     )
     assert res.settings is None
     assert res.settings_log == []
+
+
+# -- plan identity (PI-411 / REQ-496) -----------------------------------------
+
+
+def test_plan_fingerprint_ignores_the_provenance_header():
+    """Two derivations of the same design at different moments are the same
+    plan; the rendered-at header must not move the fingerprint."""
+    body = "entities:\n  Contact:\n    fields: []\n"
+    fp1 = service.plan_fingerprint_for(
+        [("Contact.yaml", "# header\n# Rendered at T1.\n" + body)]
+    )
+    fp2 = service.plan_fingerprint_for(
+        [("Contact.yaml", "# header\n# Rendered at T2.\n" + body)]
+    )
+    assert fp1 == fp2
+    fp3 = service.plan_fingerprint_for(
+        [("Contact.yaml", "# header\n" + body + "  extra: 1\n")]
+    )
+    assert fp3 != fp1
+
+
+def test_preview_hands_the_operator_a_plan_fingerprint(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+        preview=True,
+    )
+    assert res.plan_fingerprint
+    assert res.plan_moved is False
+
+
+def test_a_moved_plan_refuses_and_reports_the_new_plan(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    deployed = []
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: deployed.append(1) or DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+        expected_plan_fingerprint="stale-fingerprint",
+    )
+    assert res.aborted is True
+    assert res.plan_moved is True
+    assert res.plan_fingerprint in res.abort_reason
+    assert deployed == []
+    assert res.backup is None
+    assert all(not p.deployed for p in res.programs)
+
+
+def test_a_matching_plan_fingerprint_lets_the_apply_proceed(
+    monkeypatch, _stub_live
+):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    preview = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+        preview=True,
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T01:00:00",
+        expected_plan_fingerprint=preview.plan_fingerprint,
+    )
+    assert res.aborted is False
+    assert res.plan_moved is False
+    assert all(p.deployed for p in res.programs)
+
+
+# -- design-version stamp (PI-411 / REQ-495, DEC-980, DEC-981) ----------------
+
+
+def _stamp_capturing_manager(monkeypatch, *, fail_settings=False):
+    """Replace the manager class; returns the dict recording stamp writes."""
+    from espo_impl.core.models import SettingsResult, SettingsStatus
+
+    seen = {}
+
+    class _FakeManager:
+        def __init__(self, client, output_fn):
+            self._ofn = output_fn
+
+        def apply_values(self, declared, dry_run=False):
+            return SettingsResult(
+                entity="CNetworkStandard",
+                status=(
+                    SettingsStatus.ERROR if fail_settings
+                    else SettingsStatus.UPDATED
+                ),
+                error="HTTP 500" if fail_settings else None,
+            )
+
+        def write_stamp(self, *, standard_version, plan_fingerprint,
+                        dry_run=False):
+            seen["standard_version"] = standard_version
+            seen["plan_fingerprint"] = plan_fingerprint
+            self._ofn("[UPDATE]  stamp ... OK", "green")
+            return SettingsResult(
+                entity="CNetworkStandard",
+                status=SettingsStatus.UPDATED,
+                changes=["planFingerprint", "standardVersion"],
+            )
+
+    monkeypatch.setattr(service, "SystemSettingsManager", _FakeManager)
+    return seen
+
+
+def _publish_under_release(
+    monkeypatch, _stub_live, *, design_client=None, verified=True, **kwargs
+):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    if verified:
+        monkeypatch.setattr(
+            service, "verify_publish",
+            lambda *a, **k: service.VerificationResult(
+                ran=True, conclusive=True, all_present=True
+            ),
+        )
+    return service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        design_client or _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+        release_identifier="REL-045",
+        **kwargs,
+    )
+
+
+def test_a_fully_successful_release_publish_writes_the_stamp(
+    monkeypatch, _stub_live
+):
+    seen = _stamp_capturing_manager(monkeypatch)
+    res = _publish_under_release(monkeypatch, _stub_live)
+    assert seen["standard_version"] == "REL-045"
+    assert seen["plan_fingerprint"] == res.plan_fingerprint
+    assert res.stamp is not None
+    assert res.stamp_log
+
+
+def test_a_publish_outside_a_release_never_writes_the_stamp(
+    monkeypatch, _stub_live
+):
+    seen = _stamp_capturing_manager(monkeypatch)
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert "standard_version" not in seen
+    assert res.stamp is None
+
+
+def test_a_preview_never_writes_the_stamp(monkeypatch, _stub_live):
+    seen = _stamp_capturing_manager(monkeypatch)
+    res = _publish_under_release(monkeypatch, _stub_live, preview=True)
+    assert "standard_version" not in seen
+    assert res.stamp is None
+
+
+def test_an_unverified_result_leaves_the_previous_stamp(
+    monkeypatch, _stub_live
+):
+    """DEC-981: succeeded_with_issues must not advance the stamp — the
+    verification explicitly could not confirm the result."""
+    seen = _stamp_capturing_manager(monkeypatch)
+    # verified=False leaves the real verify running against an empty target,
+    # which is exactly the could-not-confirm outcome DEC-981 names.
+    res = _publish_under_release(monkeypatch, _stub_live, verified=False)
+    assert service.publish_run_status(res) == "succeeded_with_issues"
+    assert "standard_version" not in seen
+    assert res.stamp is None
+
+
+def test_a_failed_settings_apply_leaves_the_previous_stamp(
+    monkeypatch, _stub_live
+):
+    seen = _stamp_capturing_manager(monkeypatch, fail_settings=True)
+    res = _publish_under_release(
+        monkeypatch, _stub_live, design_client=_SettingsDesignClient()
+    )
+    assert service.publish_run_status(res) == "failed"
+    assert "standard_version" not in seen
+    assert res.stamp is None
+
+
+# -- additive-only automatic apply (PI-411 / REQ-497, DEC-982) ----------------
+
+_NARROWING_YAML = """\
+version: "1.1"
+description: "drops an option the live field permits"
+entities:
+  Contact:
+    fields:
+      - name: stage
+        type: enum
+        label: Stage
+        options:
+          - open
+"""
+
+
+def _live_contact_defs(_stub_live, defs):
+    _stub_live["entity_defs"]["Contact"] = defs
+
+
+def test_an_automatic_apply_refuses_a_narrowing_by_name(
+    monkeypatch, _stub_live
+):
+    """DEC-982: a publish without an approved plan fingerprint is automatic,
+    and dropping a value the live field permits is a narrowing."""
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _NARROWING_YAML)))
+    deployed = []
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: deployed.append(1) or DeployOutcome(report=object()),
+    )
+    _live_contact_defs(_stub_live, {
+        "cStage": {"type": "enum", "options": ["open", "closed"]},
+    })
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert res.aborted is True
+    assert deployed == []
+    assert len(res.declined_changes) == 1
+    declined = res.declined_changes[0]
+    assert declined["kind"] == "narrowing"
+    assert "Contact.stage" in declined["construct"]
+    assert declined["construct"] in res.abort_reason
+    assert "REQ-497" in res.abort_reason
+
+
+def test_the_approved_plan_fingerprint_is_the_reviewed_run(
+    monkeypatch, _stub_live
+):
+    """The same narrowing plan proceeds when the operator was shown it — the
+    preview-then-approve flow is the separately triggered reviewed run."""
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _NARROWING_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    _live_contact_defs(_stub_live, {
+        "cStage": {"type": "enum", "options": ["open", "closed"]},
+    })
+    common = {"api_key": "K", "rendered_at": "2026-08-31T00:00:00"}
+    preview = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(), preview=True, **common,
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        expected_plan_fingerprint=preview.plan_fingerprint,
+        **common,
+    )
+    assert res.aborted is False
+    assert res.declined_changes == []
+    assert all(p.deployed for p in res.programs)
+
+
+def test_an_automatic_apply_refuses_a_type_change(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    _live_contact_defs(_stub_live, {"cNickName": {"type": "enum"}})
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert res.aborted is True
+    assert [d["kind"] for d in res.declined_changes] == ["type_change"]
+
+
+def test_an_automatic_apply_refuses_an_entity_deletion(
+    monkeypatch, _stub_live
+):
+    yaml = """\
+version: "1.1"
+description: "deletes"
+entities:
+  Widget:
+    action: delete
+"""
+    _stub_generate(monkeypatch, _result(("Widget.yaml", yaml)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert res.aborted is True
+    assert [d["kind"] for d in res.declined_changes] == ["removal"]
+
+
+def test_a_purely_additive_automatic_apply_proceeds(monkeypatch, _stub_live):
+    """A brand-new field on a live entity, and widened options, both pass."""
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    _live_contact_defs(_stub_live, {"other": {"type": "varchar"}})
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert res.aborted is False
+    assert all(p.deployed for p in res.programs)
