@@ -53,6 +53,23 @@ class SystemSettingsManagerError(Exception):
     """Raised when the API returns 401 Unauthorized."""
 
 
+def _silently_dropped(desired: dict[str, Any], written: dict | None) -> list[str]:
+    """The keys of ``desired`` the instance did not actually accept.
+
+    EspoCRM answers 200 while discarding an attribute it will not write —
+    an unknown field, or one marked readOnly (the live proof: the carrier's
+    hand-built ``planFingerprint`` was readOnly and every write to it was
+    silently ignored). A write this module reports OK must therefore be
+    proven against the response record, not trusted from the status code.
+    """
+    if not isinstance(written, dict):
+        return []  # nothing to prove against; the status code already ruled
+    return sorted(
+        key for key, value in desired.items() if written.get(key) != value
+    )
+
+
+
 class SystemSettingsManager:
     """Orchestrates the governed-settings CHECK->ACT write.
 
@@ -182,6 +199,21 @@ class SystemSettingsManager:
                 error=error_detail,
             )
 
+        dropped = _silently_dropped(payload, act_body)
+        if dropped:
+            detail = (
+                "the instance accepted the write but silently dropped "
+                f"{', '.join(dropped)} — the field is missing or read-only "
+                "on the carrier entity"
+            )
+            self.output_fn(f"[ERROR]   {prefix} ... {detail}", "red")
+            return SettingsResult(
+                entity=SETTINGS_ENTITY,
+                status=SettingsStatus.ERROR,
+                changes=changes,
+                error=detail,
+            )
+
         self.output_fn(f"[UPDATE]  {prefix} ... OK", "green")
         return SettingsResult(
             entity=SETTINGS_ENTITY,
@@ -291,6 +323,21 @@ class SystemSettingsManager:
                 status=SettingsStatus.ERROR,
                 changes=changes,
                 error=error_detail,
+            )
+
+        dropped = _silently_dropped(desired, act_body)
+        if dropped:
+            detail = (
+                "the instance accepted the write but silently dropped "
+                f"{', '.join(dropped)} — the field is missing or read-only "
+                "on the carrier entity"
+            )
+            self.output_fn(f"[ERROR]   {prefix} ... {detail}", "red")
+            return SettingsResult(
+                entity=SETTINGS_ENTITY,
+                status=SettingsStatus.ERROR,
+                changes=changes,
+                error=detail,
             )
 
         self.output_fn(f"[UPDATE]  {prefix} ... OK", "green")

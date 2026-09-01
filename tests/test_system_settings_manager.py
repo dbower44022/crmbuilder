@@ -23,8 +23,14 @@ def _client(list_status=200, list_body=None):
         list_status,
         list_body if list_body is not None else {"total": 0, "list": []},
     )
-    client.create_record.return_value = (200, {"id": "rec1"})
-    client.patch_record.return_value = (200, {"id": "rec1"})
+    # A real EspoCRM create/patch echoes the written record; the writer proves
+    # its write against that echo, so the fake echoes too.
+    client.create_record.side_effect = lambda entity, payload: (
+        200, {"id": "rec1", **payload}
+    )
+    client.patch_record.side_effect = lambda entity, rid, payload: (
+        200, {"id": rid, **payload}
+    )
     return client
 
 
@@ -112,7 +118,9 @@ def test_dry_run_reports_the_change_and_writes_nothing():
 
 def test_write_failure_is_an_error_result():
     client = _client()
-    client.create_record.return_value = (500, {"message": "boom"})
+    client.create_record.side_effect = lambda entity, payload: (
+        500, {"message": "boom"}
+    )
     result = _manager(client).apply_values({"orgName": "Cleveland"})
     assert result.status is SettingsStatus.ERROR
     assert result.error == "HTTP 500"
@@ -206,3 +214,28 @@ def test_stamp_write_on_an_absent_carrier_is_manual_config():
     )
     assert result.status is SettingsStatus.NOT_SUPPORTED
     client.create_record.assert_not_called()
+
+
+def test_a_silently_dropped_attribute_is_an_error_not_ok():
+    """EspoCRM answers 200 while discarding a write to a missing or read-only
+    field; the writer proves the write against the response record."""
+    client = _client()
+    client.create_record.side_effect = lambda entity, payload: (
+        200,
+        {"id": "rec1", "name": "Network Standard", "standardVersion": "REL-045"},
+    )
+    result = _manager(client).write_stamp(
+        standard_version="REL-045", plan_fingerprint="f" * 64
+    )
+    assert result.status is SettingsStatus.ERROR
+    assert "planFingerprint" in (result.error or "")
+
+
+def test_a_dropped_settings_value_is_an_error_not_ok():
+    client = _client()
+    client.create_record.side_effect = lambda entity, payload: (
+        200, {"id": "rec1", "settings": {}}
+    )
+    result = _manager(client).apply_values({"orgName": "Cleveland"})
+    assert result.status is SettingsStatus.ERROR
+    assert "settings" in (result.error or "")
