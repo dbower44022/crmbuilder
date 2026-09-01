@@ -28,6 +28,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 
 # --- conventions ------------------------------------------------------------
 
@@ -72,36 +73,108 @@ EXEMPT_GLOBS: tuple[str, ...] = (
 #: The auditable, git-tracked exemption log (design §6).
 EXEMPTION_LOG = "PRDs/product/crmbuilder-v2/governance-exemptions.log"
 
-_DEFAULT_API_BASE = "http://127.0.0.1:8765"
+#: Where the store configuration (``CRMBUILDER_V2_API_BASE_URL`` / ``_API_TOKEN``)
+#: lives inside a checkout. Gitignored, so a linked worktree never has its own.
+_ENV_FILE_REL = Path("crmbuilder-v2") / "data" / "crmbuilder.env"
+#: A per-user location that serves every checkout on the machine.
+_USER_ENV_FILE = Path("~/.config/crmbuilder/crmbuilder.env")
+
+
+class StoreConfigurationNotFound(RuntimeError):
+    """No governance-store configuration could be found for this checkout.
+
+    REQ-555: the gate must say so — and apply the configured mode — rather than
+    fall back to a local development address and report real items missing.
+    """
+
+
+def _this_checkout_root() -> Path | None:
+    try:
+        return Path(_git("rev-parse", "--show-toplevel").strip())
+    except (subprocess.CalledProcessError, OSError):
+        return None
+
+
+def _main_worktree_root() -> Path | None:
+    """Root of the main worktree when this checkout is a linked ``git worktree``.
+
+    ``--git-common-dir`` is the shared ``.git`` directory; its parent is the main
+    worktree. In the main worktree itself it is just ``.git`` (relative), which
+    resolves to this checkout — harmless, deduplicated by the caller.
+    """
+    try:
+        common = _git("rev-parse", "--git-common-dir").strip()
+    except (subprocess.CalledProcessError, OSError):
+        return None
+    if not common:
+        return None
+    path = Path(common)
+    if not path.is_absolute():
+        top = _this_checkout_root()
+        if top is None:
+            return None
+        path = top / path
+    return path.resolve().parent
+
+
+def _env_file_candidates() -> list[Path]:
+    """Ordered places to look for the store configuration (REQ-555).
+
+    1. this checkout's own data file (the maintained checkout has one);
+    2. the main worktree's data file, when this is a linked worktree;
+    3. the per-user file, for machines that keep it outside any checkout.
+    """
+    candidates: list[Path] = []
+    for root in (_this_checkout_root(), _main_worktree_root()):
+        if root is not None:
+            candidates.append(root / _ENV_FILE_REL)
+    candidates.append(_USER_ENV_FILE.expanduser())
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for c in candidates:
+        if c not in seen:
+            seen.add(c)
+            unique.append(c)
+    return unique
 
 
 def _api_config() -> tuple[str, str, str]:
-    """Resolve ``(base_url, token, engagement)`` for gate lookups (REQ-451).
+    """Resolve ``(base_url, token, engagement)`` for gate lookups (REQ-451/REQ-555).
 
-    Prefer explicit env vars; otherwise fall back to the standard application
-    settings (which read ``crmbuilder-v2/data/crmbuilder.env``), so the gate
-    validates against the same store — and with the same bearer token — the
-    project actually uses (e.g. the authenticated cloud API), instead of a
-    hardcoded unauthenticated localhost default. Any failure to load settings
-    degrades to the localhost default with no token.
+    Explicit env vars win. Otherwise the application settings are loaded from
+    the first configuration file that exists — this checkout's, the main
+    worktree's, or the per-user file — so a linked worktree validates against
+    the same store, with the same bearer token, as the maintained checkout.
+
+    Raises :class:`StoreConfigurationNotFound` when no base URL can be found.
+    There is deliberately no local-development default: a gate that silently
+    checks the wrong store reports real planning items as missing.
     """
     base = os.environ.get("CRMBUILDER_V2_API_BASE")
     token = os.environ.get("CRMBUILDER_V2_GATE_TOKEN")
     engagement = os.environ.get("CRMBUILDER_V2_GATE_ENGAGEMENT")
     if base is None or token is None or engagement is None:
-        try:  # lazy — avoid importing settings (and its deps) unless needed
-            from crmbuilder_v2.config import get_settings
+        env_file = next((c for c in _env_file_candidates() if c.is_file()), None)
+        if env_file is not None:
+            try:  # lazy — avoid importing settings (and its deps) unless needed
+                from crmbuilder_v2.config import Settings
 
-            s = get_settings()
-            if base is None:
-                base = s.api_base_url
-            if token is None:
-                token = s.api_token
-            if engagement is None:
-                engagement = s.mcp_engagement or None
-        except Exception:  # noqa: BLE001 — config must never break the gate
-            pass
-    return (base or _DEFAULT_API_BASE), (token or ""), (engagement or "CRMBUILDER")
+                s = Settings(_env_file=str(env_file))
+                if base is None:
+                    base = s.api_base_url
+                if token is None:
+                    token = s.api_token
+                if engagement is None:
+                    engagement = s.mcp_engagement or None
+            except Exception:  # noqa: BLE001 — config must never break the gate
+                pass
+    if not base:
+        looked = ", ".join(str(c) for c in _env_file_candidates())
+        raise StoreConfigurationNotFound(
+            "no CRMBUILDER_V2_API_BASE in the environment and no crmbuilder.env "
+            f"found (looked in: {looked})"
+        )
+    return base, (token or ""), (engagement or "CRMBUILDER")
 
 
 # --- result -----------------------------------------------------------------
@@ -374,6 +447,11 @@ def _emit(decision: GateDecision, mode: str, *, context: str) -> int:
                   f"{decision.exemption_reason}")
         return 0
     if decision.allow:
+        # REQ-555: an allowed-but-unvalidated verdict (store configuration not
+        # found, store unreachable) is said out loud, never passed silently.
+        print(f"[governance-gate] NOTE ({context}):", file=sys.stderr)
+        for w in decision.warnings:
+            print(f"  - {w}", file=sys.stderr)
         return 0
     head = "[governance-gate] BLOCKED" if mode == "enforce" else "[governance-gate] WARNING"
     print(f"{head} ({context}):", file=sys.stderr)
@@ -402,6 +480,19 @@ def guarded_evaluate(
     """
     try:
         return evaluate(commit_msg, changed_files, get_json=get_json)
+    except StoreConfigurationNotFound as exc:
+        # REQ-555: say what is missing; never substitute a development store.
+        d = GateDecision(
+            allow=(mode != "enforce"),
+            warnings=[f"governance store configuration not found ({exc}) — "
+                      "cannot validate"],
+        )
+        if mode == "enforce":
+            d.reasons = ["governance store configuration not found; add "
+                         "crmbuilder-v2/data/crmbuilder.env to the main worktree "
+                         "(or ~/.config/crmbuilder/crmbuilder.env), or set "
+                         "CRMBUILDER_V2_API_BASE"]
+        return d
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         d = GateDecision(
             allow=(mode != "enforce"),
