@@ -30,7 +30,10 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.4",
     "httpx>=0.27",
-    "mcp>=1.0",
+    # REQ-554: the MCP server is written against the 1.x API (mcp.server.fastmcp.
+    # FastMCP); 2.x renames it to MCPServer and changes other APIs. Pin below the
+    # major so a re-resolve can never pick up the incompatible line.
+    "mcp>=1.0,<2",
 ]
 
 [project.scripts]

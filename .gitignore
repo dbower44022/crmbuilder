@@ -76,6 +76,10 @@ crmbuilder-v2/data/oauth_jwt_secret
 crmbuilder-v2/data/oauth_secrets.env
 
 *.lock
+# REQ-554: the dependency lockfile IS tracked — every checkout (clone, worktree,
+# CI) must install the same versions as the maintained checkout. `*.lock` above
+# would swallow it, so re-include it explicitly.
+!uv.lock
 crmbuilder-v2/data/mcp.env
 crmbuilder-v2/data/crmbuilder.env
 crmbuilder-v2/data/session-context.snapshot.md
