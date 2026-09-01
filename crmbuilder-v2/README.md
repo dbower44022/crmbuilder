@@ -482,6 +482,33 @@ Each tool wraps a single REST call. To add a tool, add a wrapper in
 > itself is `GVR-241`; the authoring walkthrough is lesson `LSN-063`
 > (`GET /lessons`).
 
+> **Governance rules — audience, checks, and lifecycle (09-01-26,
+> REQ-539..543, DEC-962..965 / DEC-972, REL-080):** every rule now declares
+> its **audience** (`applies_to`: `all` / `claude_code` / `sandbox` / `ui` /
+> `ado_agent`, TERM-042) and its **moment** (`applies_when`: `always` /
+> `commit` / `deploy` / `governance_record` / `release`, TERM-043); both are
+> list filters on the raw and effective views and on the MCP tool. A rule
+> saved as `enforced` / `enforced_with_override` must carry a machine
+> **check** in `predicate` — `forbidden_command`, `required_trailer`, or
+> `protected_path` (TERM-044) — except an `ado_agent` rule, whose gate is the
+> agent contract's hard-gates section verified by the Tester tier (DEC-972).
+> In Claude Code the repo's `.claude/settings.json` wires the mechanism: a
+> `SessionStart` hook (`session_context.py`) injects the effective
+> session-audience rules and active preferences into every session, and a
+> `PreToolUse` hook (`rule_check.py`) evaluates the enforced checks before
+> each Bash command, denying with the rule named; an `enforced_with_override`
+> failure can be waved through with `GVR_OVERRIDE='GVR-NNN: <reason>'`, the
+> waiver recorded via `POST /governance-rules/{id}/enforcement-overrides`.
+> Lifecycle (REQ-543): one rule per text per scope (`duplicate_rule_text`
+> otherwise); a new rule names the decision that ruled it (`source_decision`,
+> verified and linked); a text PATCH declares `change: "wording"` (version
+> bumps in place) or `"meaning"` (a successor supersedes the original, agent
+> bindings move, the original is retired — never deleted); severity is
+> `high` / `medium` / `low`. The 08-31 clean-up applied all of this to the
+> stored rulebook: 241 active rows became 81 distinct, keyed, decision-traced
+> rules with all 38 agent contracts verified unchanged. Multi-session working
+> agreement for this shared clone: lesson `LSN-065`.
+
 ---
 
 ## User interface
