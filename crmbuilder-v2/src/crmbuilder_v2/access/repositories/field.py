@@ -82,6 +82,7 @@ from crmbuilder_v2.access.vocab import (
     FIELD_SUPPLIED_BY,
     FIELD_TYPES,
     FIELD_VALUES,
+    RETIRED_FIELD_TYPES,
 )
 
 _ENTITY_TYPE = "field"
@@ -199,7 +200,19 @@ def _require_status(status: object) -> str:
     return status  # type: ignore[return-value]
 
 
-def _require_type(field_type: object) -> str:
+def _require_type(field_type: object, *, status: object = None) -> str:
+    """Validate a field kind, refusing a retired one on a live record (DEC-988).
+
+    A retired kind stays in :data:`FIELD_TYPES` so records kept for history
+    remain valid — the CHECK constrains every row whatever its status. What it
+    may not do is describe anything new, so it is refused here for every status
+    but ``rejected``.
+
+    ``status`` is optional because the caller does not always have one to hand;
+    when it is absent the kind is treated as destined for a live record, which
+    is the safe reading — a retired kind arriving with no stated status is far
+    more likely a new record than a retention.
+    """
     if field_type not in FIELD_TYPES:
         raise UnprocessableError(
             [
@@ -207,6 +220,19 @@ def _require_type(field_type: object) -> str:
                     "field_type",
                     "invalid_value",
                     f"must be one of {sorted(FIELD_TYPES)}",
+                )
+            ]
+        )
+    if field_type in RETIRED_FIELD_TYPES and status != "rejected":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "field_type",
+                    "retired_kind",
+                    f"{field_type!r} is retired and may not describe a field; "
+                    "a link between records is described once, as a "
+                    "relationship (DEC-932 / DEC-988). Existing records "
+                    "carrying it are retained as rejected history.",
                 )
             ]
         )
@@ -845,7 +871,7 @@ def create_field(
     }
     name = _require_nonempty(name, field="field_name")
     description = _require_nonempty(description, field="field_description")
-    field_type = _require_type(type)
+    field_type = _require_type(type, status=status)
     if status is None:
         status = "candidate"
     status = _require_status(status)
@@ -974,7 +1000,7 @@ def update_field(
 
     name = _require_nonempty(name, field="field_name")
     description = _require_nonempty(description, field="field_description")
-    field_type = _require_type(type)
+    field_type = _require_type(type, status=status)
     status_v = _require_status(status)
     if status_v != row.field_status:
         _check_transition(row.field_status, status_v)
@@ -1083,7 +1109,9 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
             fields["description"], field="field_description"
         )
     if "type" in fields:
-        row.field_type = _require_type(fields["type"])
+        row.field_type = _require_type(
+            fields["type"], status=fields.get("status", row.field_status)
+        )
     if "required" in fields:
         row.field_required = bool(fields["required"])
     if "notes" in fields:

@@ -255,6 +255,26 @@ FIELD_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 #: 2 — the PI-414 subtractive half: ``multiline`` left FIELD_FORMATS (it lives
 #:     in FIELD_DISPLAYS, DEC-933) and the ``field_externally_populated`` flag
 #:     was retired in favour of ``field_supplied_by`` (DEC-939).
+#: Kinds retired from use but kept in :data:`FIELD_TYPES` (DEC-988).
+#:
+#: A retired kind leaves use, not the vocabulary. The token stays so records
+#: retained for history remain valid — a database CHECK constrains every row
+#: whatever its status, so removing the token would invalidate the very rows
+#: DEC-016 chose to keep — while the access layer refuses it on create and on
+#: any transition into a live status.
+#:
+#: ``reference`` is retired by DEC-932 / REQ-505: a link between records is
+#: described once, as a relationship, never as a field. The harm that ruling
+#: names is two *live* descriptions of one link, and a rejected record describes
+#: nothing, so the guarantee is enforced over records that describe something.
+RETIRED_FIELD_TYPES: frozenset[str] = frozenset({"reference"})
+
+#: Field statuses in which a record describes something the design asserts.
+#: Everything but ``rejected``, which is retained history.
+LIVE_FIELD_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred"}
+)
+
 FIELD_VOCABULARY_VERSION: int = 2
 
 FIELD_TYPES: frozenset[str] = frozenset(
