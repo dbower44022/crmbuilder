@@ -111,3 +111,44 @@ def test_every_failure_outcome_carries_a_reason_and_no_values():
         assert r.outcome != OK, status
         assert r.values == {}, status
         assert r.reason, status
+
+
+def test_the_stamp_rides_along_with_a_successful_read():
+    """REQ-495: the stamp lives in the instance and is readable with the same
+    ordinary credential as the governed values."""
+    from crmbuilder_v2.introspect.settings_read import OK, read_setting_values
+
+    class _Client:
+        def get_records(self, entity, **kwargs):
+            return 200, {
+                "total": 1,
+                "list": [
+                    {
+                        "id": "r1",
+                        "settings": {"orgName": "Cleveland"},
+                        "standardVersion": "REL-045",
+                        "planFingerprint": "f" * 64,
+                    }
+                ],
+            }
+
+    read = read_setting_values(_Client())
+    assert read.outcome == OK
+    assert read.standard_version == "REL-045"
+    assert read.plan_fingerprint == "f" * 64
+
+
+def test_a_never_stamped_instance_reads_as_unstamped_not_empty_string():
+    from crmbuilder_v2.introspect.settings_read import OK, read_setting_values
+
+    class _Client:
+        def get_records(self, entity, **kwargs):
+            return 200, {
+                "total": 1,
+                "list": [{"id": "r1", "settings": {}, "standardVersion": ""}],
+            }
+
+    read = read_setting_values(_Client())
+    assert read.outcome == OK
+    assert read.standard_version is None
+    assert read.plan_fingerprint is None

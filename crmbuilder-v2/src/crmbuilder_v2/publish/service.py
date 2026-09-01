@@ -191,6 +191,11 @@ class PublishResult:
     #: True when the apply refused because the re-derived plan no longer
     #: matched the one the operator was shown.
     plan_moved: bool = False
+    #: REQ-495 — the design-version stamp write outcome, or ``None`` when the
+    #: run did not qualify to write one (no frozen release named, preview, or
+    #: any outcome short of full success).
+    stamp: SettingsResult | None = None
+    stamp_log: list = field(default_factory=list)
     abort_reason: str | None = None
 
 
@@ -484,6 +489,7 @@ def publish(
     scope: set[str] | None = None,
     allow_no_backup: bool = False,
     expected_plan_fingerprint: str | None = None,
+    release_identifier: str | None = None,
     output_fn: OutputFn | None = None,
 ) -> PublishResult:
     """Generate, validate, and (unless ``validate_only``) deploy the design.
@@ -509,6 +515,11 @@ def publish(
         (from a preview). On a real publish, the plan is re-derived and a
         mismatch refuses the apply, reporting the newly derived plan
         (REQ-496 / PI-411). ``None`` skips the gate.
+    :param release_identifier: The frozen release this publish runs under.
+        When given, a run whose terminal status is ``succeeded`` writes the
+        design-version stamp into the instance (REQ-495 / DEC-980, DEC-981);
+        a publish outside a frozen release never writes it. The caller
+        validates the release's freeze state.
     :param output_fn: Optional deploy log callback; when omitted, each
         program's log is captured into its :class:`ProgramOutcome`.
     :returns: A :class:`PublishResult`.
@@ -661,4 +672,58 @@ def publish(
         )
         pub.verification = verify_publish(programs, post_fields, post_warnings)
 
+    # Design-version stamp (REQ-495 / DEC-980, DEC-981): written only by a
+    # run under a frozen release whose terminal status is succeeded — a
+    # partial failure, an unverified result (succeeded_with_issues), or an
+    # ordinary publish outside a release leaves the previous stamp untouched.
+    if (
+        release_identifier is not None
+        and not preview
+        and publish_run_status(pub) == "succeeded"
+    ):
+        stamp_log: list[tuple[str, str]] = []
+        stamp_ofn: OutputFn = output_fn or (
+            lambda m, c, _log=stamp_log: _log.append((m, c))
+        )
+        stamp_mgr = SystemSettingsManager(client, stamp_ofn)
+        try:
+            pub.stamp = stamp_mgr.write_stamp(
+                standard_version=release_identifier,
+                plan_fingerprint=pub.plan_fingerprint or "",
+            )
+        except SystemSettingsManagerError as exc:
+            pub.stamp = SettingsResult(
+                entity="CNetworkStandard",
+                status=SettingsStatus.ERROR,
+                error=str(exc),
+            )
+        pub.stamp_log = stamp_log
+
     return pub
+
+
+def publish_run_status(result: PublishResult) -> str:
+    """Map a publish result to a terminal ``publish_run`` status (REQ-293).
+
+    Shared with the API router (which records the run) and the stamp gate
+    in :func:`publish` (DEC-981: only ``succeeded`` writes the stamp).
+    """
+    if result.aborted:
+        return "aborted"
+    if result.validation_failed or any(
+        not p.deployed for p in result.programs
+    ):
+        return "failed"
+    # A governed-settings write failure is a publish failure (PI-406 /
+    # REQ-485); a NOT_SUPPORTED carrier stays a manual-config outcome.
+    if (
+        result.settings is not None
+        and result.settings.status is SettingsStatus.ERROR
+    ):
+        return "failed"
+    verify = result.verification
+    if verify is not None and verify.ran and verify.conclusive and not (
+        verify.all_present
+    ):
+        return "succeeded_with_issues"
+    return "succeeded"

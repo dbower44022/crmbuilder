@@ -43,6 +43,14 @@ SETTINGS_ENTITY = "CNetworkStandard"
 #: grow without touching any instance's schema.
 SETTINGS_FIELD = "settings"
 
+#: The design-version stamp fields on the same record (REQ-495 / DEC-974,
+#: DEC-980): the frozen release the design was published under, and the
+#: identity of the exact plan applied. Read here with the same ordinary
+#: credential — the stamp lives in the instance, not in any consuming
+#: application's environment.
+STANDARD_VERSION_FIELD = "standardVersion"
+PLAN_FINGERPRINT_FIELD = "planFingerprint"
+
 #: The read succeeded. ``values`` may still be empty — that is a real answer.
 OK = "ok"
 #: The scope exists but this credential has no grant on it. Not "no values".
@@ -82,6 +90,11 @@ class SettingsRead:
     values: dict[str, Any] = field(default_factory=dict)
     reason: str | None = None
     status_code: int | None = None
+    #: The design-version stamp the instance carries (REQ-495), meaningful only
+    #: when ``outcome`` is :data:`OK`; ``None`` when the instance was never
+    #: stamped (an apply that fails partway leaves the previous values).
+    standard_version: str | None = None
+    plan_fingerprint: str | None = None
 
     @property
     def configured(self) -> bool:
@@ -148,9 +161,14 @@ def read_setting_values(
         # state of an instance built to report but never applied to.
         return SettingsRead(OK, values={}, status_code=status)
 
-    carried = records[0].get(SETTINGS_FIELD)
+    record = records[0]
+    stamp = {
+        "standard_version": record.get(STANDARD_VERSION_FIELD) or None,
+        "plan_fingerprint": record.get(PLAN_FINGERPRINT_FIELD) or None,
+    }
+    carried = record.get(SETTINGS_FIELD)
     if carried is None:
-        return SettingsRead(OK, values={}, status_code=status)
+        return SettingsRead(OK, values={}, status_code=status, **stamp)
     if not isinstance(carried, dict):
         return SettingsRead(
             UNREACHABLE,
@@ -161,4 +179,4 @@ def read_setting_values(
             ),
             status_code=status,
         )
-    return SettingsRead(OK, values=dict(carried), status_code=status)
+    return SettingsRead(OK, values=dict(carried), status_code=status, **stamp)

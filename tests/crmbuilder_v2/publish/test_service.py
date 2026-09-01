@@ -709,3 +709,129 @@ def test_a_matching_plan_fingerprint_lets_the_apply_proceed(
     assert res.aborted is False
     assert res.plan_moved is False
     assert all(p.deployed for p in res.programs)
+
+
+# -- design-version stamp (PI-411 / REQ-495, DEC-980, DEC-981) ----------------
+
+
+def _stamp_capturing_manager(monkeypatch, *, fail_settings=False):
+    """Replace the manager class; returns the dict recording stamp writes."""
+    from espo_impl.core.models import SettingsResult, SettingsStatus
+
+    seen = {}
+
+    class _FakeManager:
+        def __init__(self, client, output_fn):
+            self._ofn = output_fn
+
+        def apply_values(self, declared, dry_run=False):
+            return SettingsResult(
+                entity="CNetworkStandard",
+                status=(
+                    SettingsStatus.ERROR if fail_settings
+                    else SettingsStatus.UPDATED
+                ),
+                error="HTTP 500" if fail_settings else None,
+            )
+
+        def write_stamp(self, *, standard_version, plan_fingerprint,
+                        dry_run=False):
+            seen["standard_version"] = standard_version
+            seen["plan_fingerprint"] = plan_fingerprint
+            self._ofn("[UPDATE]  stamp ... OK", "green")
+            return SettingsResult(
+                entity="CNetworkStandard",
+                status=SettingsStatus.UPDATED,
+                changes=["planFingerprint", "standardVersion"],
+            )
+
+    monkeypatch.setattr(service, "SystemSettingsManager", _FakeManager)
+    return seen
+
+
+def _publish_under_release(
+    monkeypatch, _stub_live, *, design_client=None, verified=True, **kwargs
+):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    if verified:
+        monkeypatch.setattr(
+            service, "verify_publish",
+            lambda *a, **k: service.VerificationResult(
+                ran=True, conclusive=True, all_present=True
+            ),
+        )
+    return service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        design_client or _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+        release_identifier="REL-045",
+        **kwargs,
+    )
+
+
+def test_a_fully_successful_release_publish_writes_the_stamp(
+    monkeypatch, _stub_live
+):
+    seen = _stamp_capturing_manager(monkeypatch)
+    res = _publish_under_release(monkeypatch, _stub_live)
+    assert seen["standard_version"] == "REL-045"
+    assert seen["plan_fingerprint"] == res.plan_fingerprint
+    assert res.stamp is not None
+    assert res.stamp_log
+
+
+def test_a_publish_outside_a_release_never_writes_the_stamp(
+    monkeypatch, _stub_live
+):
+    seen = _stamp_capturing_manager(monkeypatch)
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert "standard_version" not in seen
+    assert res.stamp is None
+
+
+def test_a_preview_never_writes_the_stamp(monkeypatch, _stub_live):
+    seen = _stamp_capturing_manager(monkeypatch)
+    res = _publish_under_release(monkeypatch, _stub_live, preview=True)
+    assert "standard_version" not in seen
+    assert res.stamp is None
+
+
+def test_an_unverified_result_leaves_the_previous_stamp(
+    monkeypatch, _stub_live
+):
+    """DEC-981: succeeded_with_issues must not advance the stamp — the
+    verification explicitly could not confirm the result."""
+    seen = _stamp_capturing_manager(monkeypatch)
+    # verified=False leaves the real verify running against an empty target,
+    # which is exactly the could-not-confirm outcome DEC-981 names.
+    res = _publish_under_release(monkeypatch, _stub_live, verified=False)
+    assert service.publish_run_status(res) == "succeeded_with_issues"
+    assert "standard_version" not in seen
+    assert res.stamp is None
+
+
+def test_a_failed_settings_apply_leaves_the_previous_stamp(
+    monkeypatch, _stub_live
+):
+    seen = _stamp_capturing_manager(monkeypatch, fail_settings=True)
+    res = _publish_under_release(
+        monkeypatch, _stub_live, design_client=_SettingsDesignClient()
+    )
+    assert service.publish_run_status(res) == "failed"
+    assert "standard_version" not in seen
+    assert res.stamp is None
