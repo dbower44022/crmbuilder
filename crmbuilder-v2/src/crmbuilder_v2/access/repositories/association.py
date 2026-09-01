@@ -606,6 +606,31 @@ def patch_association(session: Session, identifier: str, **fields) -> dict:
         row.association_target_role = _optional_text(
             fields["target_role"], field="association_target_role"
         )
+    # PI-414 (REQ-506 / REQ-507). These were admitted to _PATCHABLE_FIELDS when
+    # the columns were added but never assigned here, so a patch carrying them
+    # validated, reported success and discarded the values — a write path that
+    # silently drops input is worse than one that refuses it, because the caller
+    # is told it worked.
+    if "target_kinds" in fields:
+        row.association_target_kinds = _optional_target_kinds(
+            fields["target_kinds"], field="association_target_kinds", session=session
+        )
+    if "source_label" in fields:
+        row.association_source_label = _optional_text(
+            fields["source_label"], field="association_source_label"
+        )
+    if "target_label" in fields:
+        row.association_target_label = _optional_text(
+            fields["target_label"], field="association_target_label"
+        )
+    if "source_required" in fields:
+        row.association_source_required = _optional_flag(
+            fields["source_required"], field="association_source_required"
+        )
+    if "target_required" in fields:
+        row.association_target_required = _optional_flag(
+            fields["target_required"], field="association_target_required"
+        )
     if "description" in fields:
         row.association_description = _optional_text(
             fields["description"], field="association_description"

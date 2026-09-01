@@ -355,3 +355,71 @@ def test_an_unstated_required_flag_stays_unstated(v2_env):
         )
         assert out["association_source_required"] is None
         assert out["association_target_kinds"] is None
+
+
+def test_patch_persists_every_patchable_link_property(v2_env):
+    """The defect this guards: the five link properties were admitted to
+    _PATCHABLE_FIELDS when their columns were added but never assigned, so a
+    patch carrying them validated, reported success and discarded the values.
+
+    A write path that silently drops input is worse than one that refuses it —
+    the caller is told it worked, and in this case six field records were
+    retired on the strength of a fold that had written nothing. So the assertion
+    is deliberately over the whole patchable set rather than one property: the
+    failure was a gap between what was accepted and what was applied, and only
+    checking every member closes it."""
+    with session_scope() as s:
+        acct = _seed_entity(s, "Account")
+        cont = _seed_entity(s, "Contact")
+        other = _seed_entity(s, "Lead")
+        aid = association.create_association(
+            s, name="primaryContact", source_entity=acct, target_entity=cont,
+            cardinality="one_to_many",
+        )["association_identifier"]
+        out = association.patch_association(
+            s, aid,
+            target_kinds=[cont, other],
+            source_label="Account",
+            target_label="Primary Contact",
+            source_required=False,
+            target_required=True,
+        )
+        assert out["association_target_kinds"] == [cont, other]
+        assert out["association_source_label"] == "Account"
+        assert out["association_target_label"] == "Primary Contact"
+        assert out["association_source_required"] is False
+        assert out["association_target_required"] is True
+        # ...and it is persisted, not merely echoed back by the patch call.
+        again = association.get_association(s, aid)
+        assert again["association_target_label"] == "Primary Contact"
+        assert again["association_target_required"] is True
+
+
+def test_every_patchable_field_has_an_assignment(v2_env):
+    """Structural guard: each name admitted by _PATCHABLE_FIELDS must actually
+    change the record. Catches the next property added to the whitelist without
+    a corresponding assignment, which is exactly how this one slipped in."""
+    with session_scope() as s:
+        acct = _seed_entity(s, "Account")
+        cont = _seed_entity(s, "Contact")
+        aid = association.create_association(
+            s, name="link", source_entity=acct, target_entity=cont,
+            cardinality="one_to_many",
+        )["association_identifier"]
+        probes = {
+            "name": "renamed", "source_entity": cont, "target_entity": acct,
+            "cardinality": "many_to_many", "source_role": "a", "target_role": "b",
+            "target_kinds": [acct, cont], "source_label": "L", "target_label": "R",
+            "source_required": True, "target_required": True,
+            "description": "d", "notes": "n", "status": "confirmed",
+        }
+        missing = sorted(association._PATCHABLE_FIELDS - set(probes))
+        assert not missing, f"no probe for patchable field(s): {missing}"
+        before = association.get_association(s, aid)
+        after = association.patch_association(s, aid, **probes)
+        unchanged = [
+            k for k in probes
+            if after.get(f"association_{k}") == before.get(f"association_{k}")
+            and after.get(f"association_{k}") != probes[k]
+        ]
+        assert not unchanged, f"patchable but not applied: {unchanged}"
