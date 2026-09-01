@@ -1,5 +1,7 @@
 # CRM Builder — CRM Audit
 
+> **Transitional status (2026-08-30):** the V2 native audit (`crmbuilder-v2/src/crmbuilder_v2/introspect/`) now covers everything this feature captures — verified by a live V1-versus-V2 diff (`PRDs/product/crmbuilder-v2/v1-audit-parity-live-diff.md`, PRJ-112). This V1 feature remains functional and is the reference for its own code until V1 retirement, but new audit capability lands in V2.
+
 **Version:** 1.2
 **Status:** Implemented
 **Last Updated:** 05-25-26 01:38

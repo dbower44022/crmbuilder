@@ -1,6 +1,6 @@
 # V1 → V2 audit parity — gap matrix
 
-**Status:** Phase 1 deliverable (learn, read-only) of `prompts/CLAUDE-CODE-PROMPT-v1-audit-parity.md`. Awaiting Doug's review before Phase 2 (governance). No code was changed.
+**Status:** COMPLETE (2026-08-30). Every gap this matrix identified was built (PI-420..426, PI-429, PI-430 under PRJ-112), verified live, and deployed; see `v1-audit-parity-live-diff.md` for the closing evidence. Retained as the learn-phase inventory that scoped the work. Publish-side layouts remain tracked as PI-427.
 **Date:** 2026-08-29
 **Evidence basis:** full read of `espo_impl/core/audit_manager.py` (2,646 lines), `audit_db.py`, `audit_utils.py`, `data_profiler.py`, `espo_impl/workers/audit_worker.py`, `automation/ui/deployment/audit_entry.py`, the ten `tests/test_audit_*.py` files; and of `crmbuilder-v2/src/crmbuilder_v2/introspect/*`, `api/routers/instances.py`, `ui/dialogs/audit_progress_dialog.py`, `access/repositories/instance_membership.py`, `transform/audit_deposit.py`, `adapters/espocrm/{adapter,model}.py`, the V2 audit design docs and `tests/crmbuilder_v2/{introspect,transform}/`.
 
