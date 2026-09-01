@@ -537,6 +537,19 @@ existing instance instead of spawning a duplicate.
 > remain as release history. See the USER-GUIDE's "Tour of the desktop
 > UI" and `PRDs/product/crmbuilder-v2/kickoff-phase-tab-navigation.md`.
 
+> **Current grid chrome (08-30-26, REQ-528 / PI-434 + REQ-534 / PI-436):**
+> every table-backed panel renders a two-row toolbar — a header row
+> (title, Refresh, record count) and a **control line** directly above the
+> grid: a **filter selector** (column picker + distinct-value dropdown) on
+> the left, **search** in the middle, and three action buttons on the
+> right — the panel's two most-used actions plus an **Actions** dropdown
+> of every action for the selected row, led by the same two. **Edit** and
+> **View** are always available (Edit opens the row's editor; View opens
+> the record in a standalone detail window); neither is ever disabled —
+> guard cases explain themselves in the count label. Every column sorts on
+> header click. Toolbar descriptions in the version notes below predate
+> this layout and remain as release history.
+
 ### v0.1 (read-only foundation + decisions write surface)
 
 - Sidebar navigation across all eight v2 entity types: Charter,

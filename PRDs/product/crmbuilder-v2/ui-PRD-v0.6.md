@@ -11,6 +11,21 @@
 > `styling-design-pass.md` remains current. Screenshots:
 > `styling-screenshots/pi-432-phase-tabs/`.
 
+> **Grid chrome addendum (08-30-26):** every table-backed panel's list
+> chrome was upgraded on `main` (REQ-528 / PI-434, merge `69342d06`;
+> REQ-534 / PI-436, merge `fd6155b8`). The single toolbar row this PRD's
+> master/detail sections describe is now two rows: a **header row** (title,
+> icon-only Refresh, record count) and a **control line** directly above
+> the grid — a **filter selector** (column picker + distinct-value
+> dropdown) on the left, the **search box** in the middle, and on the
+> right the panel's two top-ranked action buttons plus an **Actions ▾**
+> dropdown listing every action for the selected row, led by those same
+> two, with **Edit** and **View** guaranteed on every grid. All columns
+> sort on header click (second click reverses); filter, search and sort
+> compose. Base implementation:
+> `crmbuilder_v2/ui/base/list_detail_panel.py`; per-panel ranking via the
+> `_action_priority` class tuple.
+
 **Version:** 0.6
 **Last Updated:** 05-16-26 19:15
 **Status:** Approved

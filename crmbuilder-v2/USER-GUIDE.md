@@ -197,6 +197,29 @@ requirements) and press Enter to open the highlighted result in the
 current tab. Back/Forward (Alt+Left / Alt+Right, Go menu) still step
 through the cross-record trail.
 
+**The grid control line (every list panel).** Above every grid sit two
+rows. The header row carries the panel title, the icon-only **Refresh**
+button and the record count. The control line below it reads, left to
+right:
+
+- **Filter** — pick a column, then a value; the list narrows to matching
+  rows and the count reads "N of M records". Pick **All** to restore the
+  full list. Composes with the search box.
+- **Search…** — the debounced free-text search across the visible
+  columns of the loaded rows.
+- **Three action buttons** — the panel's most-used action (usually
+  **New X**), its second most-used (usually **Edit**), and **Actions ▾**:
+  a dropdown of every action for the selected row, led by those same two,
+  then **View** and the row's other actions (**Delete** / **Restore**,
+  **Copy Identifier**, panel-specific entries). **Edit** opens the
+  selected record's editor; **View** opens the record in its own
+  detail window. Neither is ever disabled — with no row selected, or on
+  a read-only list, the count label explains instead. Panel extras such
+  as the **Show deleted** checkbox keep their place beside the buttons.
+
+Click any column header to **sort** by that column; click it again to
+reverse. Sorting, the filter and the search compose.
+
 **Governance Rules panel (Operate CRMBuilder).** Rules are system
 defaults that a client engagement can override: an engagement-scoped rule
 with the same *Rule type* replaces the system rule for that engagement only.
@@ -259,10 +282,13 @@ Selecting a row shows:
 ### Toolbar actions
 
 - **Refresh** — manual reload (file watcher should make this
-  unnecessary).
+  unnecessary). Lives on the header row.
 - **Show deleted** — toggle. When checked, the list includes
   soft-deleted decisions, rendered with strikethrough text.
 - **New Decision** — opens the create dialog.
+- Plus the standard control-line actions on every panel: **Edit**,
+  **View**, and the **Actions ▾** dropdown (see "The grid control
+  line" above).
 
 ### Creating a decision
 
@@ -391,7 +417,8 @@ identifier ascending.
 
 ### Toolbar actions
 
-**Refresh**, **New Risk**.
+**Refresh**, **New Risk**, plus the standard control-line actions
+(**Edit**, **View**, **Actions ▾** — see "The grid control line" above).
 
 ### Create / Edit / Delete
 
