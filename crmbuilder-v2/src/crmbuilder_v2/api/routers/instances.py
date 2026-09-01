@@ -617,6 +617,9 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         # apply refused because it no longer matched the approved plan.
         "plan_fingerprint": result.plan_fingerprint,
         "plan_moved": result.plan_moved,
+        # REQ-497 / DEC-982: the changes an automatic apply declined, each
+        # carrying its kind and reason.
+        "declined_changes": result.declined_changes,
         # PI-406 / REQ-485: the governed-settings apply outcome, when the
         # instance has declared per-instance values.
         "settings": (
