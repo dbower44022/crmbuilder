@@ -981,6 +981,11 @@ INSTANCE_MEMBERSHIP_MEMBER_TYPES: frozenset[str] = frozenset(
         "message_template",
         # PI-421 / REQ-123 — field-level dynamic logic audited as rules.
         "rule",
+        # PI-406 / REQ-485 — governed system settings audited per instance.
+        # Added together with the reader wiring: the type was deliberately
+        # deferred until something audits a setting (commit 2358362a), and
+        # admitting a state no writer produces is what the deferral avoided.
+        "system_setting",
     }
 )
 

@@ -1018,3 +1018,169 @@ def test_agreeing_attribute_is_a_match_when_shown():
     row = next(r for r in rows if r["kind"] == "attribute")
     assert row["outcome"] == "match"
     assert row["differs"] is False
+
+
+# --- Governed system settings (PI-406 / REQ-485) -----------------------------
+
+from crmbuilder_v2.access.reconcile_compare import (  # noqa: E402
+    member_property_compare,
+)
+from crmbuilder_v2.access.repositories import (  # noqa: E402
+    system_settings as settings_repo,
+)
+
+
+def _setting(s, *, key="orgName", name="Organization name"):
+    return settings_repo.create_system_setting(
+        s, key=key, name=name, value_type="text", status="confirmed"
+    )["system_setting_identifier"]
+
+
+def _declare(s, sid, iid, value):
+    settings_repo.set_value(
+        s, system_setting_identifier=sid, instance_identifier=iid, value=value
+    )
+
+
+def _setting_rows(result):
+    grp = next(
+        (g for g in result["groups"] if g["entity_identifier"] is None), None
+    )
+    if grp is None:
+        return []
+    return [r for r in grp["rows"] if r["member_type"] == "system_setting"]
+
+
+def test_a_setting_drifting_from_its_own_declared_value_is_drift(v2_env):
+    """Each instance compares against ITS declared value: A holds its value,
+    B holds something else — the row is drift even though A matches."""
+    with session_scope() as s:
+        a = _inst(s, "alpha2", "both")
+        b = _inst(s, "beta2", "both")
+        sid = _setting(s)
+        _declare(s, sid, a, "Cleveland")
+        _declare(s, sid, b, "Akron")
+        mb.upsert_membership(
+            s, instance_identifier=a, member_type="system_setting",
+            member_identifier=sid, state="present",
+        )
+        mb.upsert_membership(
+            s, instance_identifier=b, member_type="system_setting",
+            member_identifier=sid, state="drifted",
+            override={"value": "Canton"},
+        )
+        rows = _setting_rows(three_way_compare(s, instance_a=a, instance_b=b))
+        row = next(r for r in rows if r["kind"] == "attribute")
+        assert row["outcome"] == "drift"
+        assert row["differs"] is True
+        assert row["instance_a"] == "Cleveland"
+        assert row["instance_b"] == "Canton"
+        # Per-instance declared values render keyed by instance.
+        assert row["design"] == {a: "Cleveland", b: "Akron"}
+        assert row["actionable"] is False
+
+
+def test_an_undeclared_value_is_not_captured_never_conformant(v2_env):
+    """REQ-485: the design declares nothing for this instance, and whatever the
+    instance holds must not read as conformant."""
+    with session_scope() as s:
+        a = _inst(s, "alpha3", "both")
+        b = _inst(s, "beta3", "both")
+        sid = _setting(s)
+        mb.upsert_membership(
+            s, instance_identifier=a, member_type="system_setting",
+            member_identifier=sid, state="present",
+            override={"value": "Cleveland"},
+        )
+        rows = _setting_rows(three_way_compare(s, instance_a=a, instance_b=b))
+        row = next(r for r in rows if r["kind"] == "attribute")
+        assert row["outcome"] == "unknown"
+        assert row["reason"] == "undeclared_in_design"
+        assert row["differs"] is True
+
+
+def test_a_setting_held_at_its_declared_value_everywhere_is_quiet(v2_env):
+    with session_scope() as s:
+        a = _inst(s, "alpha4", "both")
+        b = _inst(s, "beta4", "both")
+        sid = _setting(s)
+        _declare(s, sid, a, "Cleveland")
+        _declare(s, sid, b, "Akron")
+        for iid in (a, b):
+            mb.upsert_membership(
+                s, instance_identifier=iid, member_type="system_setting",
+                member_identifier=sid, state="present",
+            )
+        rows = _setting_rows(three_way_compare(s, instance_a=a, instance_b=b))
+        assert rows == []
+
+
+def test_a_declared_value_the_instance_lacks_is_drift(v2_env):
+    with session_scope() as s:
+        a = _inst(s, "alpha5", "both")
+        b = _inst(s, "beta5", "both")
+        sid = _setting(s)
+        _declare(s, sid, a, "Cleveland")
+        mb.upsert_membership(
+            s, instance_identifier=a, member_type="system_setting",
+            member_identifier=sid, state="absent",
+        )
+        rows = _setting_rows(three_way_compare(s, instance_a=a, instance_b=b))
+        row = next(r for r in rows if r["kind"] == "attribute")
+        assert row["outcome"] == "drift"
+
+
+def test_setting_rows_bucket_under_settings_in_the_global_group(v2_env):
+    with session_scope() as s:
+        a = _inst(s, "alpha6", "both")
+        b = _inst(s, "beta6", "both")
+        sid = _setting(s)
+        _declare(s, sid, a, "Cleveland")
+        mb.upsert_membership(
+            s, instance_identifier=a, member_type="system_setting",
+            member_identifier=sid, state="drifted", override={"value": "X"},
+        )
+        result = three_way_compare(s, instance_a=a, instance_b=b)
+        grp = next(g for g in result["groups"] if g["entity_identifier"] is None)
+        og = next(o for o in grp["object_groups"] if o["object_type"] == "settings")
+        assert any(r["member_type"] == "system_setting" for r in og["rows"])
+
+
+def test_setting_member_drill_compares_per_instance(v2_env):
+    with session_scope() as s:
+        a = _inst(s, "alpha7", "both")
+        b = _inst(s, "beta7", "both")
+        sid = _setting(s)
+        _declare(s, sid, a, "Cleveland")
+        mb.upsert_membership(
+            s, instance_identifier=a, member_type="system_setting",
+            member_identifier=sid, state="present",
+        )
+        drill = member_property_compare(
+            s, instance_a=a, instance_b=b,
+            member_type="system_setting", member_identifier=sid,
+        )
+        assert drill is not None
+        assert drill["presence"]["design"] == "present"
+        assert drill["presence"]["instance_a"] == "present"
+        assert drill["presence"]["instance_b"] == "unknown"
+        assert [r["attribute"] for r in drill["rows"]] == ["value"]
+
+
+def test_settings_stay_out_of_an_entity_drill(v2_env):
+    with session_scope() as s:
+        a = _inst(s, "alpha8", "both")
+        b = _inst(s, "beta8", "both")
+        eid = entity_repo.create_entity(s, name="Widget", description="x")[
+            "entity_identifier"
+        ]
+        sid = _setting(s)
+        _declare(s, sid, a, "Cleveland")
+        mb.upsert_membership(
+            s, instance_identifier=a, member_type="system_setting",
+            member_identifier=sid, state="drifted", override={"value": "X"},
+        )
+        drill = three_way_compare(
+            s, instance_a=a, instance_b=b, entity_identifier=eid
+        )
+        assert _setting_rows(drill) == []

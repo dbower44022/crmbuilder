@@ -44,8 +44,14 @@ from espo_impl.core.models import (
     ProgramContext,
     ProgramFile,
     RunReport,
+    SettingsResult,
+    SettingsStatus,
 )
 from espo_impl.core.reconcile.live_state import gather_server_fields
+from espo_impl.core.system_settings_manager import (
+    SystemSettingsManager,
+    SystemSettingsManagerError,
+)
 
 OutputFn = Callable[[str, str], None]
 
@@ -160,6 +166,9 @@ class PublishResult:
     :ivar aborted: True when the publish was abandoned before deploying because
         the pre-publish backup could not be captured and was not overridden.
     :ivar abort_reason: Why the publish aborted, when ``aborted``.
+    :ivar settings: The governed-settings apply outcome (PI-406 / REQ-485), or
+        ``None`` when the instance has no declared per-instance values.
+    :ivar settings_log: The governed-settings apply log lines, when captured.
     """
 
     engine: str
@@ -173,6 +182,8 @@ class PublishResult:
     verification: VerificationResult | None = None
     backup: dict | None = None
     aborted: bool = False
+    settings: SettingsResult | None = None
+    settings_log: list = field(default_factory=list)
     abort_reason: str | None = None
 
 
@@ -342,6 +353,29 @@ def _declared_fields(
 #: gather_server_fields emits this when the target's scopes can't be read,
 #: which makes a presence check inconclusive rather than "everything missing".
 _SCOPES_UNREADABLE = "Could not read live instance scopes"
+
+
+def declared_setting_values(
+    design_client: DesignClient, instance_identifier: str
+) -> dict:
+    """The governed key -> declared value mapping for one instance (REQ-485).
+
+    Only *declared* rows contribute — a governed setting with no declared value
+    for this instance is not captured, and the applier must not invent one.
+    The mapping is keyed by ``system_setting_key`` (the name the CRM itself
+    uses), so the applier and the ordinary-credential reader agree on names.
+    """
+    key_by_id = {
+        s["system_setting_identifier"]: s["system_setting_key"]
+        for s in design_client.list_system_settings()
+        if s.get("system_setting_status") == "confirmed"
+    }
+    declared: dict = {}
+    for row in design_client.list_system_setting_values(instance_identifier):
+        key = key_by_id.get(row.get("system_setting_identifier"))
+        if key is not None:
+            declared[key] = row.get("value")
+    return declared
 
 
 def verify_publish(
@@ -538,6 +572,26 @@ def publish(
                 log=log,
             )
         )
+
+    # Governed per-instance setting values (PI-406 / REQ-485): instance-level,
+    # not per-program, and independent of the entity feature selection. A
+    # preview dry-runs the write exactly as the deploy engine above does.
+    declared = declared_setting_values(design_client, target_identifier)
+    if declared:
+        settings_log: list[tuple[str, str]] = []
+        settings_ofn: OutputFn = output_fn or (
+            lambda m, c, _log=settings_log: _log.append((m, c))
+        )
+        settings_mgr = SystemSettingsManager(client, settings_ofn)
+        try:
+            pub.settings = settings_mgr.apply_values(declared, dry_run=preview)
+        except SystemSettingsManagerError as exc:
+            pub.settings = SettingsResult(
+                entity="CNetworkStandard",
+                status=SettingsStatus.ERROR,
+                error=str(exc),
+            )
+        pub.settings_log = settings_log
 
     # Post-publish verify (REQ-291): re-read the live target and confirm the
     # declared entities + fields landed. Only for a real publish — a preview

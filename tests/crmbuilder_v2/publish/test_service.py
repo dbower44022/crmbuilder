@@ -132,11 +132,12 @@ def test_validate_programs_resolves_with_server_field():
 
 
 class _FakeDesignClient:
-    """A design client whose nine list_* methods return empty design lists;
-    generation is stubbed, so the contents don't matter."""
+    """A design client whose list_* methods return empty design lists;
+    generation is stubbed, so the contents don't matter. The lambda takes
+    any arguments so per-instance reads (list_system_setting_values) work."""
 
     def __getattr__(self, _name):
-        return lambda: []
+        return lambda *args, **kwargs: []
 
 
 @pytest.fixture
@@ -499,3 +500,126 @@ def test_publish_preview_dry_runs(monkeypatch, _stub_live):
     assert captured["dry_run"] is True
     assert res.preview is True
     assert all(not p.deployed for p in res.programs)
+
+
+# -- governed per-instance settings (PI-406 / REQ-485) ------------------------
+
+
+class _SettingsDesignClient(_FakeDesignClient):
+    """Empty design except one confirmed governed setting with a declared
+    value for INST-001 and a value row for some other instance."""
+
+    def list_system_settings(self):
+        return [
+            {
+                "system_setting_identifier": "SET-001",
+                "system_setting_key": "orgName",
+                "system_setting_status": "confirmed",
+            },
+            {
+                "system_setting_identifier": "SET-002",
+                "system_setting_key": "oldKey",
+                "system_setting_status": "candidate",
+            },
+        ]
+
+    def list_system_setting_values(self, instance_identifier):
+        assert instance_identifier == "INST-001"
+        return [
+            {"system_setting_identifier": "SET-001", "value": "Cleveland"},
+            # A value row for a non-confirmed setting must not be applied.
+            {"system_setting_identifier": "SET-002", "value": "X"},
+        ]
+
+
+def test_declared_setting_values_maps_confirmed_keys_only():
+    declared = service.declared_setting_values(
+        _SettingsDesignClient(), "INST-001"
+    )
+    assert declared == {"orgName": "Cleveland"}
+
+
+def test_publish_applies_declared_settings_and_reports(monkeypatch, _stub_live):
+    from espo_impl.core.models import SettingsResult, SettingsStatus
+
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    seen = {}
+
+    class _FakeManager:
+        def __init__(self, client, output_fn):
+            self._ofn = output_fn
+
+        def apply_values(self, declared, dry_run=False):
+            seen["declared"] = declared
+            seen["dry_run"] = dry_run
+            self._ofn("[UPDATE]  applied", "green")
+            return SettingsResult(
+                entity="CNetworkStandard",
+                status=SettingsStatus.UPDATED,
+                changes=sorted(declared),
+            )
+
+    monkeypatch.setattr(service, "SystemSettingsManager", _FakeManager)
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _SettingsDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert seen["declared"] == {"orgName": "Cleveland"}
+    assert seen["dry_run"] is False
+    assert res.settings is not None
+    assert res.settings.status is SettingsStatus.UPDATED
+    assert res.settings.changes == ["orgName"]
+    assert res.settings_log == [("[UPDATE]  applied", "green")]
+
+
+def test_publish_preview_dry_runs_the_settings_apply(monkeypatch, _stub_live):
+    from espo_impl.core.models import SettingsResult, SettingsStatus
+
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    seen = {}
+
+    class _FakeManager:
+        def __init__(self, client, output_fn):
+            pass
+
+        def apply_values(self, declared, dry_run=False):
+            seen["dry_run"] = dry_run
+            return SettingsResult(
+                entity="CNetworkStandard", status=SettingsStatus.UPDATED
+            )
+
+    monkeypatch.setattr(service, "SystemSettingsManager", _FakeManager)
+    service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _SettingsDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+        preview=True,
+    )
+    assert seen["dry_run"] is True
+
+
+def test_publish_with_nothing_declared_reports_no_settings(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+    )
+    assert res.settings is None
+    assert res.settings_log == []

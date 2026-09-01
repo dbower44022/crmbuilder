@@ -122,6 +122,15 @@ class _RecordsFake:
         page = rows[offset: offset + max_size] if max_size else []
         return 200, {"total": len(rows), "list": page}
 
+    def get_records(self, entity, **kwargs):
+        """The settings reader's one call (PI-406) — records API semantics:
+        an unknown scope is 404, matching the absent-carrier outcome."""
+        self.calls.append(("get", entity, dict(kwargs)))
+        if entity not in self.records:
+            return 404, None
+        rows = list(self.records[entity])
+        return 200, {"total": len(rows), "list": rows}
+
     def count_records(self, entity, where=None):
         self.calls.append(("count", entity, {"where": where}))
         if entity in getattr(self, "count_disabled", ()):
