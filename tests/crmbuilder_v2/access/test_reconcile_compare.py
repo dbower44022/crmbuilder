@@ -87,21 +87,25 @@ def test_include_unchanged_covers_properties_no_instance_overrides():
 
 
 def test_include_unchanged_keeps_properties_empty_in_every_location():
-    """A property unset in the design and both instances still gets a row: show-all
-    must not quietly exclude a property just because nothing has set it."""
+    """A COMPARED property unset in the design and both instances still gets a
+    row: show-all must not quietly drop a property just because nothing has set
+    it. An EXCLUDED property (field_tooltip, DEC-928) is dropped by ruling —
+    never examined, never shown as a comparison row (REQ-490 / PI-409)."""
     rows = compute_member_rows(
         member_type="field",
         member_identifier="FLD-1",
         member_name="phone",
-        design_obj={"field_type": "varchar", "field_tooltip": None},
+        design_obj={"field_type": "varchar", "field_format": None,
+                    "field_tooltip": None},
         attributes=[],
         membership_a=_mem(),
         membership_b=_mem(),
         include_unchanged=True,
     )
-    tip = next(r for r in rows if r["attribute"] == "field_tooltip")
-    assert tip["design"] is None
-    assert tip["differs"] is False
+    fmt = next(r for r in rows if r["attribute"] == "field_format")
+    assert fmt["design"] is None
+    assert fmt["differs"] is False
+    assert not any(r.get("attribute") == "field_tooltip" for r in rows)
 
 
 def test_include_unchanged_keeps_a_differing_member_actionable():
@@ -738,14 +742,22 @@ def test_show_all_settings_section_carries_entity_setting_values(v2_env):
             og for og in grp["object_groups"] if og["object_type"] == "settings"
         )
         attrs = {r["attribute"] for r in settings["rows"] if r["kind"] == "attribute"}
-        assert "entity_name" in attrs and "entity_description" in attrs
+        # Compared attributes carry through with their values; identity and
+        # excluded attributes are ruled out of the comparison surface
+        # (REQ-490 / PI-409 — DEC-928 rows govern).
+        assert "entity_track_activity" in attrs
+        assert "entity_default_sort_field" in attrs
+        assert "entity_name" not in attrs and "entity_description" not in attrs
         assert settings["differing_count"] == 0
         # values, not presence tokens
-        name_row = next(r for r in settings["rows"] if r["attribute"] == "entity_name")
-        assert name_row["design"] == "Account"
-        assert name_row["instance_a"] == "Account"
-        assert name_row["instance_b"] == "Account"
-        assert name_row["differs"] is False and name_row["actionable"] is False
+        flag_row = next(
+            r for r in settings["rows"]
+            if r["attribute"] == "entity_track_activity"
+        )
+        assert flag_row["design"] is False
+        assert flag_row["instance_a"] is False
+        assert flag_row["instance_b"] is False
+        assert flag_row["differs"] is False
 
 
 def test_show_all_fields_section_carries_field_values(v2_env):
@@ -804,17 +816,17 @@ def test_activity_tracking_entity_settings_are_reconcilable():
         assert row["actionable"] is True, attr
 
 
-def test_unreconcilable_entity_setting_is_neither_direction():
-    """An entity attribute outside the reconcilable set stays view-only both ways."""
+def test_an_excluded_entity_attribute_yields_no_row_at_all():
+    """PI-409 / REQ-490: an attribute the declaration excludes (entity_notes is
+    authoring prose, DEC-928) is never examined — however it got into the
+    candidate list, it produces no comparison row and can never be drift."""
     a = _mem(state="drifted", override={"entity_notes": "x"})
     rows = compute_member_rows(
         member_type="entity", member_identifier="ENT-1", member_name="PartnerProfile",
         design_obj={"entity_notes": "y"}, attributes=["entity_notes"],
         membership_a=a, membership_b=_mem(),
     )
-    row = rows[0]
-    assert row["capturable"] is False and row["publishable"] is False
-    assert row["actionable"] is False
+    assert [r for r in rows if r["kind"] == "attribute"] == []
 
 
 def test_association_cardinality_is_capture_only():
@@ -864,7 +876,8 @@ def test_agreeing_property_is_actionable_in_neither_direction():
     [
         ("role", "role_system_permissions", {"exportPermission": "no"},
          {"exportPermission": "not-set"}),
-        ("team", "team_description", "after", "before"),
+        # team_description left this list when DEC-928 excluded it from the
+        # compared set (PI-409): prose, not definition.
         ("filtered_tab", "filtered_tab_label", "My Clients", "Clients"),
     ],
 )
@@ -1184,3 +1197,72 @@ def test_settings_stay_out_of_an_entity_drill(v2_env):
             s, instance_a=a, instance_b=b, entity_identifier=eid
         )
         assert _setting_rows(drill) == []
+
+
+# --- Declared compared set through the surface (PI-409 / REQ-490) ------------
+
+
+def test_an_excluded_attribute_never_produces_drift(v2_env):
+    """DEC-928 excludes team_description; an old audit override on it must
+    stop reading as drift — never examined, never drift."""
+    with session_scope() as s:
+        from crmbuilder_v2.access.repositories import teams as team_repo
+        a = _inst(s, "alpha9", "both")
+        b = _inst(s, "beta9", "both")
+        tid = team_repo.create_team(
+            s, name="Mentors", description="The mentors."
+        )["team_identifier"]
+        mb.upsert_membership(
+            s, instance_identifier=a, member_type="team", member_identifier=tid,
+            state="drifted", override={"team_description": "Something else."},
+        )
+        mb.upsert_membership(
+            s, instance_identifier=b, member_type="team", member_identifier=tid,
+            state="present",
+        )
+        result = three_way_compare(s, instance_a=a, instance_b=b)
+        team_rows = [
+            r for g in result["groups"] for r in g["rows"]
+            if r["member_type"] == "team" and r["kind"] == "attribute"
+        ]
+        assert team_rows == []
+
+
+def test_a_label_differing_only_by_edge_whitespace_is_not_drift():
+    """DEC-928: labels compare str-trim."""
+    row_present = compute_member_rows(
+        member_type="entity", member_identifier="ENT-1", member_name="Mentor",
+        design_obj={"entity_label": "Mentor"},
+        attributes=["entity_label"],
+        membership_a=_mem(state="drifted", override={"entity_label": " Mentor "}),
+        membership_b=_mem(),
+    )
+    assert [r for r in row_present if r["kind"] == "attribute"] == []
+
+
+def test_text_filter_fields_compare_as_an_unordered_set():
+    rows = compute_member_rows(
+        member_type="entity", member_identifier="ENT-1", member_name="Mentor",
+        design_obj={"entity_text_filter_fields": ["name", "email"]},
+        attributes=["entity_text_filter_fields"],
+        membership_a=_mem(
+            state="drifted",
+            override={"entity_text_filter_fields": ["email", "name"]},
+        ),
+        membership_b=_mem(),
+    )
+    assert [r for r in rows if r["kind"] == "attribute"] == []
+
+
+def test_layout_content_order_is_drift():
+    rows = compute_member_rows(
+        member_type="layout", member_identifier="LAY-1", member_name="list",
+        design_obj={"layout_content": ["name", "email"]},
+        attributes=["layout_content"],
+        membership_a=_mem(
+            state="drifted", override={"layout_content": ["email", "name"]}
+        ),
+        membership_b=_mem(),
+    )
+    row = next(r for r in rows if r["kind"] == "attribute")
+    assert row["outcome"] == "drift"

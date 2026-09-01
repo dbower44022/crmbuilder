@@ -117,17 +117,36 @@ class FieldDifference:
 class ComparisonResult:
     """Result of comparing a field spec to current API state.
 
-    :param matches: True if the field matches the spec.
+    :param matches: True if the field matches the spec — the deploy engine's
+        CHECK meaning: nothing declared differs, so nothing needs an ACT.
     :param differences: List of property names that differ.
     :param type_conflict: True if field types differ.
     :param detailed: Structured per-property difference records carrying the
         expected vs deployed values and a human-readable message.
+    :param unknowns: Properties this comparison could NOT answer for
+        (PI-409 / REQ-491): the YAML declares no value, or the API did not
+        return the property. Formerly skipped silently; now recorded with a
+        message naming why. ``matches`` deliberately keeps its deploy-time
+        meaning — an unknown is not a difference to act on — but a
+        conformance consumer must treat any unknown as "unable to be
+        checked", never as matching: that is what :attr:`conclusive` is for.
     """
 
     matches: bool
     differences: list[str] = field(default_factory=list)
     type_conflict: bool = False
     detailed: list[FieldDifference] = field(default_factory=list)
+    unknowns: list[FieldDifference] = field(default_factory=list)
+
+    @property
+    def conclusive(self) -> bool:
+        """Whether every compared property could actually be answered.
+
+        REQ-491: an instance may not be reported conformant while any
+        compared attribute is unknown. ``matches and not conclusive`` is
+        "unable to be checked", distinct from both conformant and drifted.
+        """
+        return not self.unknowns
 
     @property
     def detail_text(self) -> str:
@@ -169,6 +188,24 @@ class FieldComparator:
 
         differences: list[str] = []
         detailed: list[FieldDifference] = []
+        unknowns: list[FieldDifference] = []
+
+        def record_unknown(prop: str, expected: Any, why: str) -> None:
+            """Record a property this comparison cannot answer (REQ-491).
+
+            The two retired skip rules land here instead of vanishing: a
+            property the YAML leaves unset, and a property the API did not
+            return. Named, never omitted, never treated as matching by a
+            conformance consumer (see ``ComparisonResult.conclusive``).
+            """
+            unknowns.append(
+                FieldDifference(
+                    property=prop,
+                    expected=expected,
+                    actual=None,
+                    message=f"{prop} could not be compared — {why}",
+                )
+            )
 
         def record(prop: str, expected: Any, actual: Any) -> None:
             """Append a difference, choosing the option-aware describer."""
@@ -189,12 +226,16 @@ class FieldComparator:
         for prop in COMMON_PROPERTIES:
             spec_value = getattr(spec, prop)
             if spec_value is None:
+                record_unknown(prop, None, "the YAML declares no value")
                 continue
             current_value = current.get(prop)
-            # Skip if the API didn't return this property — the Metadata
-            # API omits label, translatedOptions, and some defaults from
-            # the field definition (they're in the translation system).
             if current_value is None and prop not in current:
+                # The Metadata API omits label, translatedOptions, and some
+                # defaults (they live in the translation system) — reported,
+                # not silently passed over (PI-409 / REQ-491).
+                record_unknown(
+                    prop, spec_value, "the API did not return this property"
+                )
                 continue
             if spec_value != current_value:
                 record(prop, spec_value, current_value)
@@ -203,9 +244,14 @@ class FieldComparator:
             for prop in ENUM_PROPERTIES:
                 spec_value = getattr(spec, prop)
                 if spec_value is None:
+                    record_unknown(prop, None, "the YAML declares no value")
                     continue
                 current_value = current.get(prop)
                 if current_value is None and prop not in current:
+                    record_unknown(
+                        prop, spec_value,
+                        "the API did not return this property",
+                    )
                     continue
                 if spec_value != current_value:
                     record(prop, spec_value, current_value)
@@ -214,9 +260,14 @@ class FieldComparator:
             for spec_attr, api_key in FOREIGN_PROPERTY_MAP.items():
                 spec_value = getattr(spec, spec_attr)
                 if spec_value is None:
+                    record_unknown(api_key, None, "the YAML declares no value")
                     continue
                 current_value = current.get(api_key)
                 if current_value is None and api_key not in current:
+                    record_unknown(
+                        api_key, spec_value,
+                        "the API did not return this property",
+                    )
                     continue
                 if spec_value != current_value:
                     record(api_key, spec_value, current_value)
@@ -225,4 +276,5 @@ class FieldComparator:
             matches=len(differences) == 0,
             differences=differences,
             detailed=detailed,
+            unknowns=unknowns,
         )

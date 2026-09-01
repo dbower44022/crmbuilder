@@ -12,6 +12,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from crmbuilder_v2.access import (
+    compared_set,
     reconcile_apply,
     reconcile_compare,
     reconcile_dataloss,
@@ -105,6 +106,17 @@ class RollbackIn(BaseModel):
     """Reverse a prior design change, restoring the previous value."""
 
     actor: str
+
+
+@router.get("/compared-set")
+def get_compared_set():
+    """The compared-set declaration, exactly as the engine enforces it.
+
+    PI-409 / REQ-490, DEC-989: the binding declaration is code; this serves it
+    verbatim so the desktop, the unattended check and the fleet view report
+    against precisely what the comparison applies. Read-only by construction.
+    """
+    return ok(compared_set.serialized())
 
 
 @router.get("/compare")
