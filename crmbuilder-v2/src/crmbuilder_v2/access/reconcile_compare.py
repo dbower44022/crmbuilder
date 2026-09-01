@@ -936,7 +936,7 @@ def three_way_compare(
     # express, so they get their own row builder. Global — no entity scope.
     if entity_identifier is None:
         for setting in system_settings_repo.list_system_settings(
-            session, status="active"
+            session, status="confirmed"
         ):
             mid = setting["system_setting_identifier"]
             rows = _system_setting_rows(

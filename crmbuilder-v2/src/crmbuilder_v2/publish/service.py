@@ -368,7 +368,7 @@ def declared_setting_values(
     key_by_id = {
         s["system_setting_identifier"]: s["system_setting_key"]
         for s in design_client.list_system_settings()
-        if s.get("system_setting_status") == "active"
+        if s.get("system_setting_status") == "confirmed"
     }
     declared: dict = {}
     for row in design_client.list_system_setting_values(instance_identifier):

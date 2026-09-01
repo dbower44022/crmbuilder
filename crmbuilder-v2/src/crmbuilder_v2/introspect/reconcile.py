@@ -2889,7 +2889,7 @@ def reconcile_system_settings(
         last_audited_at=stamp,
     )
     settings = system_settings_repo.list_system_settings(
-        session, status="active"
+        session, status="confirmed"
     )
 
     read = settings_read.read_setting_values(client)
@@ -2913,7 +2913,11 @@ def reconcile_system_settings(
         key = setting["system_setting_key"]
         member_id = setting["system_setting_identifier"]
         if key not in read.values:
-            continue  # not carried: the sweep records the absence
+            # A successful read that does not carry the key is a positive
+            # observation of absence — recorded as a row, not left unknown.
+            writer.upsert(member_id, "absent", None)
+            summary["absent"] += 1
+            continue
         summary["seen"] += 1
         observed = read.values[key]
         declared_row = system_settings_repo.get_value(
@@ -2932,7 +2936,7 @@ def reconcile_system_settings(
         writer.upsert(member_id, state, override)
         summary[state] += 1
 
-    summary["absent"] = writer.sweep_absent()
+    summary["absent"] += writer.sweep_absent()
     return summary
 
 

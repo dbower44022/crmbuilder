@@ -176,7 +176,7 @@ class RestDesignClient(DesignClient):
         return self._get("/roles")
 
     def list_system_settings(self) -> list[dict]:
-        return self._get("/system-settings?status=active")
+        return self._get("/system-settings?status=confirmed")
 
     def list_system_setting_values(self, instance_identifier: str) -> list[dict]:
         # There is no all-values-for-one-instance endpoint; each setting lists
@@ -317,7 +317,7 @@ class AccessDesignClient(DesignClient):
     def list_system_settings(self) -> list[dict]:
         from crmbuilder_v2.access.repositories import system_settings
 
-        return self._rows(system_settings.list_system_settings, status="active")
+        return self._rows(system_settings.list_system_settings, status="confirmed")
 
     def list_system_setting_values(self, instance_identifier: str) -> list[dict]:
         from crmbuilder_v2.access.repositories import system_settings
