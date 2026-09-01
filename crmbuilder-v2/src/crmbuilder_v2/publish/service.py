@@ -457,11 +457,21 @@ def automatic_apply_declines(
     return declined
 
 
-def plan_fingerprint_for(artifacts: list[tuple[str, str]]) -> str:
+def plan_fingerprint_for(
+    artifacts: list[tuple[str, str]],
+    *,
+    target_identifier: str,
+    setting_values: dict,
+) -> str:
     """The identity of the plan a publish would apply (REQ-496 / PI-411).
 
-    Keyed by generated filename over the scoped program contents, with the
-    provenance comment header excluded — it carries ``rendered_at``, so two
+    Covers everything that determines *what gets written, and where*: the
+    scoped program contents keyed by generated filename, the target instance,
+    and the declared per-instance setting values the same run would write
+    (PI-406) — a governed value changed between showing the plan and applying
+    it moves the identity exactly as a program change does, and a fingerprint
+    approved for one instance approves nothing on another. The provenance
+    comment header is excluded — it carries ``rendered_at``, so two
     derivations of the same design at different moments must still fingerprint
     identically, while any change to what would be written changes the result.
     """
@@ -472,7 +482,13 @@ def plan_fingerprint_for(artifacts: list[tuple[str, str]]) -> str:
             i += 1
         return "\n".join(lines[i:])
 
-    return fingerprint_plan({fn: _body(c) for fn, c in artifacts})
+    return fingerprint_plan(
+        {
+            "target_instance": target_identifier,
+            "programs": {fn: _body(c) for fn, c in artifacts},
+            "setting_values": setting_values,
+        }
+    )
 
 
 def verify_publish(
@@ -613,6 +629,11 @@ def publish(
         if not scope or a.filename in scope
     ]
 
+    # Read the declared per-instance values once, before the fingerprint is
+    # derived, so the values the plan identity covers are exactly the values
+    # a successful run would write (REQ-496 / REQ-485).
+    declared = declared_setting_values(design_client, target_identifier)
+
     server_fields, _warnings = gather_server_fields(
         client, _entity_names(programs)
     )
@@ -625,7 +646,11 @@ def publish(
         validate_only=validate_only,
         preview=preview,
         validation_failed=validation_failed,
-        plan_fingerprint=plan_fingerprint_for(scoped_artifacts),
+        plan_fingerprint=plan_fingerprint_for(
+            scoped_artifacts,
+            target_identifier=target_identifier,
+            setting_values=declared,
+        ),
         deferrals=list(result.deferrals),
         manual_config=(
             result.manual_config.content if result.manual_config else None
@@ -740,7 +765,7 @@ def publish(
     # Governed per-instance setting values (PI-406 / REQ-485): instance-level,
     # not per-program, and independent of the entity feature selection. A
     # preview dry-runs the write exactly as the deploy engine above does.
-    declared = declared_setting_values(design_client, target_identifier)
+    # (``declared`` was read once, above, inside the plan fingerprint.)
     if declared:
         settings_log: list[tuple[str, str]] = []
         settings_ofn: OutputFn = output_fn or (

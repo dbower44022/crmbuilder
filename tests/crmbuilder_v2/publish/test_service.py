@@ -637,21 +637,38 @@ def test_publish_with_nothing_declared_reports_no_settings(monkeypatch, _stub_li
 # -- plan identity (PI-411 / REQ-496) -----------------------------------------
 
 
+def _fp(artifacts, *, target="INST-001", values=None):
+    return service.plan_fingerprint_for(
+        artifacts, target_identifier=target, setting_values=values or {}
+    )
+
+
 def test_plan_fingerprint_ignores_the_provenance_header():
     """Two derivations of the same design at different moments are the same
     plan; the rendered-at header must not move the fingerprint."""
     body = "entities:\n  Contact:\n    fields: []\n"
-    fp1 = service.plan_fingerprint_for(
-        [("Contact.yaml", "# header\n# Rendered at T1.\n" + body)]
-    )
-    fp2 = service.plan_fingerprint_for(
-        [("Contact.yaml", "# header\n# Rendered at T2.\n" + body)]
-    )
+    fp1 = _fp([("Contact.yaml", "# header\n# Rendered at T1.\n" + body)])
+    fp2 = _fp([("Contact.yaml", "# header\n# Rendered at T2.\n" + body)])
     assert fp1 == fp2
-    fp3 = service.plan_fingerprint_for(
-        [("Contact.yaml", "# header\n" + body + "  extra: 1\n")]
-    )
+    fp3 = _fp([("Contact.yaml", "# header\n" + body + "  extra: 1\n")])
     assert fp3 != fp1
+
+
+def test_a_changed_setting_value_moves_the_plan():
+    """The run writes declared setting values too (PI-406), so a governed
+    value changed between showing and applying is a moved plan (REQ-496) —
+    without this, an apply writes a value the operator was never shown."""
+    art = [("Contact.yaml", "entities: {}\n")]
+    shown = _fp(art, values={"applicationName": "Lakeside"})
+    changed = _fp(art, values={"applicationName": "Riverside"})
+    assert shown != changed
+    assert shown == _fp(art, values={"applicationName": "Lakeside"})
+
+
+def test_the_target_instance_is_part_of_the_plan():
+    """A fingerprint approved for one instance approves nothing on another."""
+    art = [("Contact.yaml", "entities: {}\n")]
+    assert _fp(art, target="INST-001") != _fp(art, target="INST-003")
 
 
 def test_preview_hands_the_operator_a_plan_fingerprint(monkeypatch, _stub_live):
