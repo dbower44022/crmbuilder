@@ -34,6 +34,12 @@ SETTINGS_ENTITY = "CNetworkStandard"
 #: The field on that record holding the governed mapping.
 SETTINGS_FIELD = "settings"
 
+#: The record name the applier uses when it must create the single carrier
+#: record. EspoCRM requires ``name`` on record creation (the live proof: a
+#: create without it 400s with a name/required validationFailure), and the
+#: carrier is otherwise created by hand — this mirrors the entity's own name.
+SETTINGS_RECORD_NAME = "Network Standard"
+
 #: The design-version stamp fields on the same record (REQ-495 / DEC-974,
 #: DEC-980): the frozen release the design was published under, and the
 #: SHA-256 identity of the exact plan that was applied. The applier writes
@@ -155,7 +161,8 @@ class SystemSettingsManager:
         payload = {SETTINGS_FIELD: {**current, **declared}}
         if current_record is None:
             act_status, act_body = self.client.create_record(
-                SETTINGS_ENTITY, payload
+                SETTINGS_ENTITY,
+                {"name": SETTINGS_RECORD_NAME, **payload},
             )
         else:
             act_status, act_body = self.client.patch_record(
@@ -265,7 +272,8 @@ class SystemSettingsManager:
 
         if current_record is None:
             act_status, act_body = self.client.create_record(
-                SETTINGS_ENTITY, desired
+                SETTINGS_ENTITY,
+                {"name": SETTINGS_RECORD_NAME, **desired},
             )
         else:
             act_status, act_body = self.client.patch_record(

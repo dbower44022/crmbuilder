@@ -58,7 +58,8 @@ def test_no_carrier_record_creates_one_with_the_declared_values():
     assert result.status is SettingsStatus.UPDATED
     assert result.changes == ["orgName"]
     client.create_record.assert_called_once_with(
-        SETTINGS_ENTITY, {SETTINGS_FIELD: {"orgName": "Cleveland"}}
+        SETTINGS_ENTITY,
+        {"name": "Network Standard", SETTINGS_FIELD: {"orgName": "Cleveland"}},
     )
 
 
@@ -144,7 +145,11 @@ def test_stamp_write_creates_the_record_when_none_exists():
     assert result.status is SettingsStatus.UPDATED
     client.create_record.assert_called_once_with(
         SETTINGS_ENTITY,
-        {"standardVersion": "REL-045", "planFingerprint": "f" * 64},
+        {
+            "name": "Network Standard",
+            "standardVersion": "REL-045",
+            "planFingerprint": "f" * 64,
+        },
     )
 
 
