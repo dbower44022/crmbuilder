@@ -232,3 +232,66 @@ def test_foreign_field_drift_on_source_field():
     result = FieldComparator().compare(spec, current)
     assert result.matches is False
     assert "field" in result.differences
+
+
+# --- attribute-level unknown (PI-409 / REQ-491) ------------------------------
+
+
+def _spec(**over):
+    from espo_impl.core.models import FieldDefinition
+
+    base = {"name": "phone", "type": "varchar", "label": "Phone"}
+    base.update(over)
+    return FieldDefinition(**base)
+
+
+def test_an_unset_spec_property_is_recorded_not_skipped():
+    """The first retired skip rule: a property the YAML leaves unset is an
+    unknown naming why — never omitted, never a difference."""
+    from espo_impl.core.comparator import FieldComparator
+
+    result = FieldComparator().compare(
+        _spec(maxLength=None), {"type": "varchar", "maxLength": 100}
+    )
+    unknown = next(u for u in result.unknowns if u.property == "maxLength")
+    assert "declares no value" in unknown.message
+    assert "maxLength" not in result.differences
+    assert result.conclusive is False
+
+
+def test_an_api_unreturned_property_is_recorded_not_skipped():
+    """The second retired skip rule: a compared property the API did not
+    return is unknown naming why — never treated as matching."""
+    from espo_impl.core.comparator import FieldComparator
+
+    result = FieldComparator().compare(
+        _spec(label="Phone"), {"type": "varchar"}
+    )
+    unknown = next(u for u in result.unknowns if u.property == "label")
+    assert "did not return" in unknown.message
+    assert result.conclusive is False
+
+
+def test_matches_keeps_its_deploy_meaning_while_conclusive_says_the_truth():
+    """``matches`` still means "nothing declared differs" (the deploy CHECK);
+    ``conclusive`` is what a conformance consumer must consult (REQ-491)."""
+    from espo_impl.core.comparator import FieldComparator
+
+    result = FieldComparator().compare(
+        _spec(), {"type": "varchar"}
+    )
+    assert result.matches is True
+    assert result.conclusive is False
+
+
+def test_a_fully_answered_comparison_is_conclusive():
+    from espo_impl.core.comparator import FieldComparator
+    from espo_impl.core.comparator import COMMON_PROPERTIES
+
+    spec = _spec(
+        **{p: "x" for p in COMMON_PROPERTIES if p not in ("type",)}
+    )
+    current = {"type": "varchar", **{p: "x" for p in COMMON_PROPERTIES}}
+    result = FieldComparator().compare(spec, current)
+    assert result.conclusive is True
+    assert result.matches is True
