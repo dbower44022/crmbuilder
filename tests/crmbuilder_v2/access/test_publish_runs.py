@@ -99,3 +99,23 @@ def test_invalid_status_rejected(v2_env):
         publish_runs.create_publish_run(
             s, instance_identifier="INST-001", status="bogus"
         )
+
+
+def test_the_applied_plan_identity_is_recorded(v2_env):
+    """REQ-496 / PI-411: the identity of the plan actually applied is stored
+    on the run row so it can be answered for afterwards."""
+    from crmbuilder_v2.access.db import session_scope
+    from crmbuilder_v2.access.repositories import instances as inst_repo
+    from crmbuilder_v2.access.repositories import publish_runs as runs_repo
+
+    with session_scope() as s:
+        iid = inst_repo.create_instance(
+            s, name="target", url="https://t.example.org", role="target"
+        )["instance_identifier"]
+        row = runs_repo.create_publish_run(
+            s,
+            instance_identifier=iid,
+            status="succeeded",
+            plan_fingerprint="a" * 64,
+        )
+        assert row["publish_run_plan_fingerprint"] == "a" * 64

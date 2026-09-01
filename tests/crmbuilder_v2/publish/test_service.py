@@ -623,3 +623,89 @@ def test_publish_with_nothing_declared_reports_no_settings(monkeypatch, _stub_li
     )
     assert res.settings is None
     assert res.settings_log == []
+
+
+# -- plan identity (PI-411 / REQ-496) -----------------------------------------
+
+
+def test_plan_fingerprint_ignores_the_provenance_header():
+    """Two derivations of the same design at different moments are the same
+    plan; the rendered-at header must not move the fingerprint."""
+    body = "entities:\n  Contact:\n    fields: []\n"
+    fp1 = service.plan_fingerprint_for(
+        [("Contact.yaml", "# header\n# Rendered at T1.\n" + body)]
+    )
+    fp2 = service.plan_fingerprint_for(
+        [("Contact.yaml", "# header\n# Rendered at T2.\n" + body)]
+    )
+    assert fp1 == fp2
+    fp3 = service.plan_fingerprint_for(
+        [("Contact.yaml", "# header\n" + body + "  extra: 1\n")]
+    )
+    assert fp3 != fp1
+
+
+def test_preview_hands_the_operator_a_plan_fingerprint(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+        preview=True,
+    )
+    assert res.plan_fingerprint
+    assert res.plan_moved is False
+
+
+def test_a_moved_plan_refuses_and_reports_the_new_plan(monkeypatch, _stub_live):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    deployed = []
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: deployed.append(1) or DeployOutcome(report=object()),
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+        expected_plan_fingerprint="stale-fingerprint",
+    )
+    assert res.aborted is True
+    assert res.plan_moved is True
+    assert res.plan_fingerprint in res.abort_reason
+    assert deployed == []
+    assert res.backup is None
+    assert all(not p.deployed for p in res.programs)
+
+
+def test_a_matching_plan_fingerprint_lets_the_apply_proceed(
+    monkeypatch, _stub_live
+):
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service, "deploy_pipeline",
+        lambda *a, **k: DeployOutcome(report=object()),
+    )
+    preview = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T00:00:00",
+        preview=True,
+    )
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-08-31T01:00:00",
+        expected_plan_fingerprint=preview.plan_fingerprint,
+    )
+    assert res.aborted is False
+    assert res.plan_moved is False
+    assert all(p.deployed for p in res.programs)

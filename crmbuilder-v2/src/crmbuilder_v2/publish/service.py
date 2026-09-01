@@ -29,6 +29,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from crmbuilder_v2.access.apply_plan import fingerprint_plan
 from crmbuilder_v2.adapters.base import GenerationResult
 from crmbuilder_v2.adapters.espocrm.adapter import EspoCrmAdapter
 from crmbuilder_v2.adapters.espocrm.client import DesignClient
@@ -184,6 +185,12 @@ class PublishResult:
     aborted: bool = False
     settings: SettingsResult | None = None
     settings_log: list = field(default_factory=list)
+    #: REQ-496 / PI-411 — the identity of this run's derived plan; a preview
+    #: hands it to the operator, the apply proves it against a re-derivation.
+    plan_fingerprint: str | None = None
+    #: True when the apply refused because the re-derived plan no longer
+    #: matched the one the operator was shown.
+    plan_moved: bool = False
     abort_reason: str | None = None
 
 
@@ -378,6 +385,24 @@ def declared_setting_values(
     return declared
 
 
+def plan_fingerprint_for(artifacts: list[tuple[str, str]]) -> str:
+    """The identity of the plan a publish would apply (REQ-496 / PI-411).
+
+    Keyed by generated filename over the scoped program contents, with the
+    provenance comment header excluded — it carries ``rendered_at``, so two
+    derivations of the same design at different moments must still fingerprint
+    identically, while any change to what would be written changes the result.
+    """
+    def _body(content: str) -> str:
+        lines = content.split("\n")
+        i = 0
+        while i < len(lines) and lines[i].startswith("#"):
+            i += 1
+        return "\n".join(lines[i:])
+
+    return fingerprint_plan({fn: _body(c) for fn, c in artifacts})
+
+
 def verify_publish(
     programs: list[tuple[str, ProgramFile]],
     server_fields: dict[str, frozenset[str]],
@@ -458,6 +483,7 @@ def publish(
     preview: bool = False,
     scope: set[str] | None = None,
     allow_no_backup: bool = False,
+    expected_plan_fingerprint: str | None = None,
     output_fn: OutputFn | None = None,
 ) -> PublishResult:
     """Generate, validate, and (unless ``validate_only``) deploy the design.
@@ -479,6 +505,10 @@ def publish(
     :param allow_no_backup: If True, proceed with the publish even when the
         pre-publish backup cannot be captured (REQ-292 gate override). Default
         False: a failed backup aborts the publish before any write.
+    :param expected_plan_fingerprint: The plan identity the operator was shown
+        (from a preview). On a real publish, the plan is re-derived and a
+        mismatch refuses the apply, reporting the newly derived plan
+        (REQ-496 / PI-411). ``None`` skips the gate.
     :param output_fn: Optional deploy log callback; when omitted, each
         program's log is captured into its :class:`ProgramOutcome`.
     :returns: A :class:`PublishResult`.
@@ -499,6 +529,11 @@ def publish(
     # scope publishes everything.
     if scope:
         programs = [(f, p) for f, p in programs if f in scope]
+    scoped_artifacts = [
+        (a.filename, a.content)
+        for a in result.programs
+        if not scope or a.filename in scope
+    ]
 
     server_fields, _warnings = gather_server_fields(
         client, _entity_names(programs)
@@ -512,6 +547,7 @@ def publish(
         validate_only=validate_only,
         preview=preview,
         validation_failed=validation_failed,
+        plan_fingerprint=plan_fingerprint_for(scoped_artifacts),
         deferrals=list(result.deferrals),
         manual_config=(
             result.manual_config.content if result.manual_config else None
@@ -529,6 +565,29 @@ def publish(
                     validation_errors=failures.get(filename, []),
                     deployed=False,
                 )
+            )
+        return pub
+
+    # Plan-identity gate (REQ-496 / PI-411): the plan was re-derived by the
+    # generation above; if the operator approved a different plan, refuse and
+    # report the newly derived one rather than proceeding. A preview writes
+    # nothing and is how the fingerprint is obtained, so it is never gated.
+    if (
+        not preview
+        and expected_plan_fingerprint is not None
+        and expected_plan_fingerprint != pub.plan_fingerprint
+    ):
+        pub.aborted = True
+        pub.plan_moved = True
+        pub.abort_reason = (
+            "the plan has moved since it was shown: the design now derives "
+            f"plan {pub.plan_fingerprint}, not the approved "
+            f"{expected_plan_fingerprint}. Nothing was applied; review the "
+            "newly derived plan and approve it."
+        )
+        for filename, program in programs:
+            pub.programs.append(
+                ProgramOutcome.for_program(filename, program, deployed=False)
             )
         return pub
 

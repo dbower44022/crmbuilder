@@ -612,6 +612,10 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         "aborted": result.aborted,
         "abort_reason": result.abort_reason,
         "backup_captured": result.backup is not None,
+        # REQ-496 / PI-411: the run's derived plan identity, and whether the
+        # apply refused because it no longer matched the approved plan.
+        "plan_fingerprint": result.plan_fingerprint,
+        "plan_moved": result.plan_moved,
         # PI-406 / REQ-485: the governed-settings apply outcome, when the
         # instance has declared per-instance values.
         "settings": (
@@ -717,6 +721,7 @@ def _record_publish_run(
                 summary=summary,
                 started_at=started_at,
                 ended_at=ended_at,
+                plan_fingerprint=result.plan_fingerprint,
             )
         return row["publish_run_identifier"]
     except Exception:  # pragma: no cover - defensive; logged, never fatal
@@ -782,6 +787,7 @@ def _run_publish(
     preview: bool = False,
     scope: list[str] | None = None,
     allow_no_backup: bool = False,
+    expected_plan_fingerprint: str | None = None,
 ):
     """Resolve the target + active-engagement design source, then publish.
 
@@ -838,6 +844,7 @@ def _run_publish(
         preview=preview,
         scope=set(effective_scope) if effective_scope else None,
         allow_no_backup=allow_no_backup,
+        expected_plan_fingerprint=expected_plan_fingerprint,
     )
     payload = _serialize_publish_result(result)
     payload["scope_source"] = scope_source
@@ -871,6 +878,9 @@ class PublishScopeIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     scope: list[str] | None = None
     allow_no_backup: bool = False
+    # REQ-496 / PI-411: the plan identity the operator approved (from a
+    # preview). A real publish re-derives the plan and refuses on mismatch.
+    expected_plan_fingerprint: str | None = None
 
 
 @router.post("/{identifier}/publish")
@@ -883,6 +893,9 @@ def publish_instance(identifier: str, body: PublishScopeIn | None = None):
         identifier,
         scope=body.scope if body else None,
         allow_no_backup=body.allow_no_backup if body else False,
+        expected_plan_fingerprint=(
+            body.expected_plan_fingerprint if body else None
+        ),
     )
 
 
