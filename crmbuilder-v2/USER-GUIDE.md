@@ -663,6 +663,26 @@ A run whose service restarted mid-way is picked up again automatically
 (*"Resuming deploy run…"* in the log). Verification gaps that do not stop the
 install land as *succeeded (issues)* with the failing checks listed.
 
+## Publishing: approved plans, automatic applies, and the version stamp
+
+Publishing pushes the engagement's confirmed design to a live instance. Three
+behaviours guard it (PI-411):
+
+- **Preview first, then approve.** A publish preview reports the plan and its
+  **fingerprint**. Submitting the publish with that fingerprint holds the run
+  to the plan you saw: if the design (or the instance's declared setting
+  values) changed in between, the run refuses and writes nothing, reporting
+  the newly derived plan for you to review again.
+- **Automatic applies only add.** A publish submitted *without* an approved
+  fingerprint is treated as automatic and may only add or widen. Removals,
+  narrowings and type changes are refused by name; run a preview, review
+  them, and resubmit with the approved fingerprint.
+- **A release writes the version stamp.** Naming a **frozen release** on the
+  publish makes a fully successful run stamp the instance
+  (`CNetworkStandard`): which design version it holds and exactly which plan
+  produced it. Anything short of full success leaves the previous stamp
+  untouched, so the stamp only ever claims a state that was verified.
+
 ## Working with Claude (MCP)
 
 The MCP server exposes ~40 tools that wrap the same REST endpoints

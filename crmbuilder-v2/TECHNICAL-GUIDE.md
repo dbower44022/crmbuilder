@@ -240,6 +240,39 @@ path — the first background job in v2.
   the production venv cannot install packages). Cloudflare records are always
   `proxied: false` (GVR-182).
 
+## Publish gates and the design-version stamp
+
+The publish path (`crmbuilder_v2/publish/service.py`, PI-411 —
+REQ-495/496/497; DEC-973/974/980/981/982) runs three gates around the
+existing generate → validate → backup → deploy → verify flow:
+
+* **Plan identity (REQ-496).** `plan_fingerprint_for` computes a SHA-256
+  identity (`access/apply_plan.fingerprint_plan`) over the scoped program
+  contents with the volatile provenance header stripped, the target
+  instance identifier, and the declared per-instance setting values —
+  everything that determines what gets written, and where. Every run
+  (validate/preview included) reports it; a real publish carrying
+  `expected_plan_fingerprint` re-derives and refuses, writing nothing,
+  when they differ. Refused runs record no `publish_runs` row.
+* **Additive-only automatic applies (REQ-497 / DEC-982).** A real publish
+  *without* an approved fingerprint is an automatic apply:
+  `access/apply_plan.screen_automatic` classifies each change and a
+  removal, narrowing, or type change refuses the whole run, naming each
+  declined change. The reviewed path is preview → approve → resubmit with
+  the fingerprint. No mode flag can defeat the refusal.
+* **Design-version stamp (REQ-495).** A publish may name the frozen
+  release it runs under (`release`; existence + freeze validated before
+  anything touches the target, DEC-980). If — and only if — the run's
+  terminal status is `succeeded`, the stamp is upserted into the
+  instance's single `CNetworkStandard` record: `standardVersion` (the
+  release identifier) and `planFingerprint` in the same write, with
+  `appliedAt`/`appliedBy`/`appliedByTool` (DEC-981). Partial applies,
+  `succeeded_with_issues`, refusals and aborts leave the previous stamp
+  untouched. The record is readable by the instance's ordinary API role
+  (verified live, DEC-973) and writable only by the applier's admin
+  credential. `publish_runs.publish_run_plan_fingerprint` carries the
+  identity; the run summary carries the release and stamp outcome.
+
 ## MCP server
 
 `mcp_server/server.py` boots an `mcp.server.fastmcp.FastMCP` instance

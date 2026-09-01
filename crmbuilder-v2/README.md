@@ -550,6 +550,23 @@ existing instance instead of spawning a duplicate.
 > header click. Toolbar descriptions in the version notes below predate
 > this layout and remain as release history.
 
+> **Current publish gates (09-01-26, REQ-495/496/497 / PI-411):** every
+> publish derives a **plan fingerprint** — a SHA-256 identity over the
+> scoped program contents (provenance header excluded), the target
+> instance, and the declared per-instance setting values. A publish
+> submitted **with** an approved fingerprint refuses, writing nothing,
+> if the re-derived plan differs (the response reports the new
+> identity); a publish **without** one is an *automatic apply* and is
+> screened **additive-only** — a removal, narrowing, or type change is
+> refused by name (DEC-982). A publish may name a **frozen release**
+> (`release` in the request body, validated up front); when such a run
+> ends `succeeded`, the **design-version stamp** is written to the
+> instance's `CNetworkStandard` record — `standardVersion` (the release
+> identifier, DEC-980) + `planFingerprint` together, only on full
+> success (DEC-981). `publish_runs` rows carry the fingerprint, release
+> and stamp outcome. See TECHNICAL-GUIDE "Publish gates and the
+> design-version stamp".
+
 ### v0.1 (read-only foundation + decisions write surface)
 
 - Sidebar navigation across all eight v2 entity types: Charter,
