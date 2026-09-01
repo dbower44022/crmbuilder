@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -315,6 +316,49 @@ class Settings(BaseSettings):
     access_token_ttl: int = 3600  # 1 hour
     refresh_token_ttl: int = 60 * 60 * 24 * 30  # 30 days
     auth_code_ttl: int = 600  # 10 minutes
+
+    # REQ-548: the host names the HTTP transport accepts. The MCP SDK enables
+    # DNS-rebinding protection for a loopback bind and, left to its default,
+    # admits loopback names only — so a request arriving through the tunnel
+    # with ``Host: mcp.crmbuilder.ai`` was rejected 421. The server declares
+    # its own list instead. Comma-separated ``host[:port]`` entries; ``:*``
+    # matches any port. Empty => the public URL's host plus the loopback forms.
+    mcp_allowed_hosts: str = ""
+
+    # --- MCP transport security (REQ-548) ---------------------------------
+    _LOOPBACK_HOSTS: tuple[str, ...] = ("127.0.0.1:*", "localhost:*", "[::1]:*")
+
+    @property
+    def mcp_public_host(self) -> str:
+        """Host (and port, if any) of ``mcp_public_url`` — e.g. ``mcp.crmbuilder.ai``."""
+        return urlparse(self.mcp_public_url).netloc
+
+    @property
+    def mcp_allowed_host_list(self) -> list[str]:
+        """Accepted ``Host`` header values for the HTTP transport.
+
+        The configured list when ``mcp_allowed_hosts`` is set; otherwise the
+        public URL's host followed by the loopback forms, so a local probe and
+        the tunnelled public request are both honoured.
+        """
+        configured = [h.strip() for h in self.mcp_allowed_hosts.split(",") if h.strip()]
+        if configured:
+            return configured
+        hosts = [self.mcp_public_host] if self.mcp_public_host else []
+        return hosts + [h for h in self._LOOPBACK_HOSTS if h not in hosts]
+
+    @property
+    def mcp_allowed_origin_list(self) -> list[str]:
+        """Accepted ``Origin`` header values: each allowed host under the
+        public URL's scheme, plus the plain-http loopback forms."""
+        scheme = urlparse(self.mcp_public_url).scheme or "https"
+        origins: list[str] = []
+        for host in self.mcp_allowed_host_list:
+            is_loopback = host in self._LOOPBACK_HOSTS
+            origin = f"{'http' if is_loopback else scheme}://{host}"
+            if origin not in origins:
+                origins.append(origin)
+        return origins
 
     @property
     def db_url(self) -> str:

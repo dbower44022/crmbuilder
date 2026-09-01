@@ -17,8 +17,9 @@ from __future__ import annotations
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
-from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.config import Settings, get_settings
 from crmbuilder_v2.mcp_server.tools import register_tools
 
 
@@ -60,6 +61,25 @@ def _build_auth():
     return provider, auth_settings
 
 
+def _build_transport_security(settings: Settings) -> TransportSecuritySettings:
+    """Declare the host names the HTTP transport accepts (REQ-548).
+
+    FastMCP enables DNS-rebinding protection for a loopback bind and, when no
+    settings are passed, admits loopback names only. The server binds to
+    ``127.0.0.1`` (DEC-202) but is reached through the Cloudflare Tunnel with
+    ``Host: mcp.crmbuilder.ai``, which that default rejected with
+    ``421 Invalid Host header``. Passing the list explicitly keeps the
+    protection on — an unlisted name is still refused — while honouring the
+    public name and the loopback forms. ``Settings.mcp_allowed_hosts``
+    overrides the derived default.
+    """
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=settings.mcp_allowed_host_list,
+        allowed_origins=settings.mcp_allowed_origin_list,
+    )
+
+
 def build_server(
     http: httpx.AsyncClient | None = None,
     *,
@@ -78,6 +98,10 @@ def build_server(
     ``https://mcp.crmbuilder.ai`` — match the emitted Protected Resource
     Metadata ``resource`` field exactly (Anthropic's connector spec
     requires this).
+
+    ``transport_security`` is always passed explicitly (REQ-548) so the
+    accepted ``Host`` names are the server's own declaration — the public
+    name plus loopback — rather than FastMCP's loopback-only default.
 
     When ``enable_auth`` is true (the HTTP transport path), the server runs
     its own OAuth 2.1 + PKCE authorization server (Google-backed) instead of
@@ -100,6 +124,7 @@ def build_server(
         streamable_http_path="/",
         auth_server_provider=provider,
         auth=auth_settings,
+        transport_security=_build_transport_security(settings),
     )
     if http is not None:
         client = http
