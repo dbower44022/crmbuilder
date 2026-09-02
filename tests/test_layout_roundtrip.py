@@ -22,10 +22,10 @@ from pathlib import Path
 
 import pytest
 
-from espo_impl.core.audit_manager import AuditManager
 from espo_impl.core.config_loader import ConfigLoader
 from espo_impl.core.layout_manager import LayoutManager
 from espo_impl.core.layout_types import LayoutClass, structure_class
+from espo_impl.core.reconcile.capture import AuditManager
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "layouts"
 NO_CUSTOM: set[str] = set()

@@ -20,8 +20,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from espo_impl.core.audit_manager import AuditManager
 from espo_impl.core.layout_types import LayoutClass, structure_class
+from espo_impl.core.reconcile.capture import AuditManager
 
 # One reusable mapper instance; the reverse methods hold no per-call state.
 _MAPPER = AuditManager(client=None)

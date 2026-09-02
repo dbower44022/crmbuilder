@@ -1,9 +1,9 @@
 # CRM Builder — CRM Audit
 
-> **Transitional status (2026-08-30):** the V2 native audit (`crmbuilder-v2/src/crmbuilder_v2/introspect/`) now covers everything this feature captures — verified by a live V1-versus-V2 diff (`PRDs/product/crmbuilder-v2/v1-audit-parity-live-diff.md`, PRJ-112). This V1 feature remains functional and is the reference for its own code until V1 retirement, but new audit capability lands in V2.
+> **RETIRED (2026-09-01, PI-454 / REQ-549):** the V1 Audit feature's code was removed from the repository after the V2 native audit reached verified parity (PRJ-112; evidence in `PRDs/product/crmbuilder-v2/v1-audit-parity-live-diff.md`). The V2 audit (`crmbuilder-v2/src/crmbuilder_v2/introspect/`) is the successor. The discovery/reverse-mapping core the V1 reconcile feature still uses was retained as `espo_impl/core/reconcile/capture.py`. This document is kept as the historical specification of the retired feature.
 
 **Version:** 1.2
-**Status:** Implemented
+**Status:** Retired (code removed 2026-09-01)
 **Last Updated:** 05-25-26 01:38
 **Depends On:** app-yaml-schema.md, feat-fields.md, feat-layouts.md, feat-relationships.md, feat-entities.md
 

@@ -14,7 +14,7 @@ from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.vocab import LAYOUT_TYPES
 from crmbuilder_v2.introspect.reconcile import _LAYOUT_TYPE_TO_ESPO, reconcile_layouts
 
-from espo_impl.core.audit_manager import AuditManager, AuditOptions
+from espo_impl.core.reconcile.capture import AuditManager, AuditOptions
 from tests.crmbuilder_v2.access.test_instance_membership import (
     _custom,
     _FakeClient,

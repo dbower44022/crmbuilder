@@ -214,7 +214,7 @@ class LiveStateCapture:
             reported not hidden.
         """
         # Imported here to avoid a heavy module-level import for the field path.
-        from espo_impl.core.audit_manager import (
+        from espo_impl.core.reconcile.capture import (
             AuditManager,
             AuditReport,
             EntityAuditResult,
@@ -313,7 +313,7 @@ class LiveStateCapture:
 
         :returns: ``(roles_by_name, teams_by_name, warnings)``.
         """
-        from espo_impl.core.audit_manager import AuditManager, AuditReport
+        from espo_impl.core.reconcile.capture import AuditManager, AuditReport
 
         audit = AuditManager(self._client)
         report = AuditReport(

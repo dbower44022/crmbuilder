@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from automation.ui.deployment.audit_entry import AuditEntry
 from automation.ui.deployment.configure_entry import ConfigureEntry
 from automation.ui.deployment.deploy_entry import DeployEntry
 from automation.ui.deployment.deployment_logic import (
@@ -40,7 +39,7 @@ logger = logging.getLogger(__name__)
 # Sidebar entry names
 _ENTRIES = [
     "Instances", "Deploy", "Configure", "Extensions",
-    "Run History", "Audit", "Reconcile", "Output",
+    "Run History", "Reconcile", "Output",
 ]
 
 # Content stack indices
@@ -49,9 +48,8 @@ _IDX_DEPLOY = 1
 _IDX_CONFIGURE = 2
 _IDX_EXTENSIONS = 3
 _IDX_RUN_HISTORY = 4
-_IDX_AUDIT = 5
-_IDX_RECONCILE = 6
-_IDX_OUTPUT = 7
+_IDX_RECONCILE = 5
+_IDX_OUTPUT = 6
 
 # Entries that show the phase status banner (§14.12.2)
 _BANNER_ENTRIES = {"Deploy", "Configure"}
@@ -149,18 +147,14 @@ class DeploymentWindow(QWidget):
         self._run_history_entry = RunHistoryEntry()
         self._stack.addWidget(self._run_history_entry)  # 4
 
-        self._audit_entry = AuditEntry()
-        self._stack.addWidget(self._audit_entry)  # 5
-
         self._reconcile_entry = ReconcileEntry()
-        self._stack.addWidget(self._reconcile_entry)  # 6
+        self._stack.addWidget(self._reconcile_entry)  # 5
 
         self._output_entry = OutputEntry()
-        self._stack.addWidget(self._output_entry)  # 7
+        self._stack.addWidget(self._output_entry)  # 6
 
-        # Give configure, audit, and reconcile entries the output entry
+        # Give configure and reconcile entries the output entry
         self._configure_entry.set_output_entry(self._output_entry)
-        self._audit_entry.set_output_entry(self._output_entry)
         self._reconcile_entry.set_output_entry(self._output_entry)
 
         body.addWidget(self._stack, stretch=1)
@@ -282,10 +276,6 @@ class DeploymentWindow(QWidget):
             )
         elif index == _IDX_RUN_HISTORY:
             self._run_history_entry.refresh(
-                self._conn, instance, self._project_folder, has_instances
-            )
-        elif index == _IDX_AUDIT:
-            self._audit_entry.refresh(
                 self._conn, instance, self._project_folder, has_instances
             )
         elif index == _IDX_RECONCILE:
