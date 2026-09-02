@@ -65,6 +65,9 @@ logger = logging.getLogger(__name__)
 #: Progress sink — ``(message, level)`` as every reconcile area takes it.
 ProgressFn = Callable[[str, str], None]
 
+#: PI-448 — live counters sink: ``(entities_done, entities_total)``.
+CountersFn = Callable[[int, int], None]
+
 
 def _note(progress: ProgressFn | None, message: str, level: str = "info") -> None:
     if progress is not None:
@@ -575,10 +578,12 @@ class Profiler:
         client: _RecordsClient,
         options: ProfileOptions | None = None,
         progress: ProgressFn | None = None,
+        counters: CountersFn | None = None,
     ) -> None:
         self._client = client
         self._options = options or ProfileOptions()
         self._progress = progress
+        self._counters = counters
         self._anomalies: list[dict[str, Any]] = []
         self._entity_request_count = 0
 
@@ -630,6 +635,8 @@ class Profiler:
         aborted = False
 
         for index, item in enumerate(work_list):
+            if self._counters is not None:
+                self._counters(index, len(work_list))
             try:
                 entities_out[item.espo_name] = self._profile_entity(item, profiled_at)
                 consecutive_failures = 0
@@ -681,6 +688,8 @@ class Profiler:
                 aborted = True
                 break
 
+        if self._counters is not None:
+            self._counters(len(entities_out), len(work_list))
         return ProfileRun(
             profiled_at=profiled_at,
             entities=entities_out,
@@ -1195,6 +1204,7 @@ def reconcile_utilization(
     client: _RecordsClient,
     progress: ProgressFn | None = None,
     options: ProfileOptions | None = None,
+    counters: CountersFn | None = None,
 ) -> dict:
     """Profile how the instance's records use the design, as evidence (REQ-524).
 
@@ -1230,7 +1240,14 @@ def reconcile_utilization(
             "deposit_event_identifier": None,
         }
 
-    run = Profiler(client, opts, progress).run(work_list)
+    # PI-448: the work-list phase only read; commit here to release this
+    # connection's transaction before the long record scan, so the job's live
+    # progress and log writes (their own short sessions) are not blocked by an
+    # idle-in-transaction connection — SQLite escalates that to
+    # "database is locked". The completion writes below begin a fresh
+    # transaction, so failure atomicity of the written records is unchanged.
+    session.commit()
+    run = Profiler(client, opts, progress, counters).run(work_list)
     anomalies.extend(run.anomalies)
     thresholds = {
         "dormancy_window_days": opts.dormancy_window_days,

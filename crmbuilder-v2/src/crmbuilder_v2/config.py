@@ -130,6 +130,16 @@ class Settings(BaseSettings):
     deploy_worker_poll_seconds: int = 5
     deploy_worker_heartbeat_seconds: int = 30
     deploy_worker_stale_seconds: int = 180
+
+    # PI-448 (REQ-551 / DEC-994): the audit-run worker that executes queued
+    # background audit runs (today the opt-in utilization area). Same posture
+    # as the deploy worker: an in-process daemon thread by default; the stale
+    # threshold decides when a run whose service restarted mid-scan is
+    # reclaimed (and restarted — evidence lands only at completion).
+    audit_run_worker_inprocess: bool = True
+    audit_run_worker_poll_seconds: int = 5
+    audit_run_worker_heartbeat_seconds: int = 30
+    audit_run_worker_stale_seconds: int = 180
     api_host: str = "127.0.0.1"
     api_port: int = 8765
 

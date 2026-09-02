@@ -905,6 +905,22 @@ PUBLISH_RUN_STATUSES: frozenset[str] = frozenset(
 # succeeded, succeeded_with_issues (verification found gaps), failed (a phase
 # raised; everything built is kept and reported — DEC-945), or cancelled.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Audit runs (PI-448 / REQ-551, DEC-994). An audit run is the background-job
+# record for an audit area that is too long for one HTTP request (today only
+# the opt-in utilization area). Same non-terminal lifecycle as a deploy run,
+# minus succeeded_with_issues: the reconciler reports partial completion
+# inside its own summary (aborted flag + anomalies), so the run status stays
+# a plain succeeded/failed.
+# ---------------------------------------------------------------------------
+AUDIT_RUN_AREAS: frozenset[str] = frozenset({"utilization"})
+AUDIT_RUN_STATUSES: frozenset[str] = frozenset(
+    {"queued", "running", "succeeded", "failed", "cancelled"}
+)
+AUDIT_RUN_TERMINAL_STATUSES: frozenset[str] = frozenset(
+    {"succeeded", "failed", "cancelled"}
+)
+
 DEPLOY_RUN_STATUSES: frozenset[str] = frozenset(
     {
         "queued",

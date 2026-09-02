@@ -68,6 +68,8 @@ from crmbuilder_v2.access.vocab import (
     DEDUP_RULE_STATUSES,
     DEPLOY_CONFIG_SCENARIOS,
     DEPLOY_CONFIG_SSH_AUTH_TYPES,
+    AUDIT_RUN_AREAS,
+    AUDIT_RUN_STATUSES,
     DEPLOY_RUN_PHASES,
     DEPLOY_RUN_STATUSES,
     DEPOSIT_EVENT_KINDS,
@@ -3462,6 +3464,84 @@ class DeployRun(EngagementScopedMixin, Base):
         ),
         Index("ix_deploy_runs_status", "engagement_id", "deploy_run_status"),
         Index("ix_deploy_runs_instance", "engagement_id", "instance_identifier"),
+    )
+
+
+class AuditRun(EngagementScopedMixin, Base):
+    """PI-448 (REQ-551, DEC-994) — one background execution of an audit area.
+
+    The job record behind an audit area too long for one HTTP request (today
+    only the opt-in utilization area, which scans every record on the
+    instance). A lean engagement-scoped operational log in the ``DeployRun``
+    shape (integer PK plus a friendly ``ARN-NNN`` identifier; **not** a
+    prefixed-identifier governance entity — no ``change_log`` / ``refs``
+    participation). Created ``queued``; the audit-run worker claims it
+    (``audit_run_worker_id`` + heartbeat) and runs the area's reconciler off
+    any request thread, so a client disconnect cannot stop the run or cut its
+    completion-time deposit event. ``progress`` carries live counters
+    (entities done / total); ``summary`` the reconciler's final result;
+    ``log`` a capped list of ``[timestamp, level, message]`` lines. A worker
+    that dies mid-run leaves a stale heartbeat and the next worker reclaims
+    the run, which restarts profiling — evidence is written only at
+    completion, so the dead attempt left nothing behind.
+    """
+
+    __tablename__ = "audit_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    audit_run_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    instance_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    audit_run_area: Mapped[str] = mapped_column(String(32), nullable=False)
+    audit_run_status: Mapped[str] = mapped_column(String(24), nullable=False)
+    audit_run_progress: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    audit_run_summary: Mapped[dict | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    audit_run_log: Mapped[list | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
+    audit_run_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    audit_run_worker_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    audit_run_heartbeat_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    audit_run_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    audit_run_ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("audit_run_identifier", ["ARN"]),
+            name="ck_audit_run_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("audit_run_status", AUDIT_RUN_STATUSES),
+            name="ck_audit_run_status",
+        ),
+        CheckConstraint(
+            _check_in("audit_run_area", AUDIT_RUN_AREAS),
+            name="ck_audit_run_area",
+        ),
+        UniqueConstraint(
+            "engagement_id",
+            "audit_run_identifier",
+            name="uq_audit_run_identifier",
+        ),
+        Index("ix_audit_runs_status", "engagement_id", "audit_run_status"),
+        Index("ix_audit_runs_instance", "engagement_id", "instance_identifier"),
     )
 
 

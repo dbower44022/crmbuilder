@@ -35,6 +35,7 @@ from crmbuilder_v2.api.routers import (
     artifact_versions,
     association_mappings,
     associations,
+    audit_runs,
     automations,
     catalog,
     charter,
@@ -125,12 +126,20 @@ async def _lifespan(app: FastAPI):
         worker = DeployWorker()
         worker.start()
         deploy_runs.register_worker(worker)
+    audit_worker = None
+    if get_settings().audit_run_worker_inprocess:
+        from crmbuilder_v2.introspect.audit_run_worker import AuditRunWorker
+
+        audit_worker = AuditRunWorker()
+        audit_worker.start()
     try:
         yield
     finally:
         if worker is not None:
             worker.stop()
             deploy_runs.register_worker(None)
+        if audit_worker is not None:
+            audit_worker.stop()
 
 
 def create_app() -> FastAPI:
@@ -194,6 +203,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(admin.router)
+    app.include_router(audit_runs.router)
     app.include_router(principals.router)
     app.include_router(engagements.router)
     app.include_router(charter.router)

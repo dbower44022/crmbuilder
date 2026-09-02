@@ -652,17 +652,34 @@ def test_all_in_one_audit_does_not_run_utilization(api):
         assert ue.list_utilization_evidence(s) == []
 
 
-def test_per_area_endpoint_runs_utilization(api):
+def test_audit_run_executes_utilization_end_to_end(api):
+    """PI-448 (REQ-551): the utilization pass runs as a background audit run.
+
+    Same end-to-end assertions the synchronous endpoint used to carry, now
+    through the job path: start returns the ARN immediately, the worker
+    executes the real reconciler, and the polled record carries the summary,
+    progress counters and log while the store holds the evidence rows tied to
+    one deposit event. The synchronous per-area endpoint now refuses the
+    area (covered in test_audit_runs_api.py)."""
+    from crmbuilder_v2.introspect.audit_run_worker import AuditRunWorker
+
     iid = _both_instance(api)
     assert api.post(f"/instances/{iid}/audit").status_code == 200
-    r = api.post(f"/instances/{iid}/audit/utilization")
-    assert r.status_code == 200, r.text
-    data = r.json()["data"]
-    assert data["area"] == "utilization" and data["label"] == "Utilization"
-    summary = data["summary"]
+    started = api.post(f"/instances/{iid}/audit-runs")
+    assert started.status_code == 202, started.text
+    arn = started.json()["data"]["audit_run_identifier"]
+
+    assert AuditRunWorker(worker_id="test-worker").run_once() is True
+
+    polled = api.get(f"/audit-runs/{arn}")
+    assert polled.status_code == 200
+    run = polled.json()["data"]
+    assert run["audit_run_status"] == "succeeded"
+    summary = run["audit_run_summary"]
     assert summary["entities"] == 2 and summary["aborted"] is False
     assert summary["evidence_rows"] == 2 + summary["fields"]
-    assert any("CEngagement: 2 records" in msg for msg, _ in data["log"])
+    assert run["audit_run_progress"] == {"entities_done": 2, "entities_total": 2}
+    assert any("CEngagement: 2 records" in line[2] for line in run["audit_run_log"])
     with session_scope() as s:
         rows = ue.list_utilization_evidence(s)
         assert len(rows) == summary["evidence_rows"]

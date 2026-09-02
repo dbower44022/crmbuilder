@@ -29,6 +29,7 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.freeze import band_for_status
+from crmbuilder_v2.access.repositories import audit_runs as audit_runs_repo
 from crmbuilder_v2.access.repositories import (
     conformance_overrides,
     instance_deploy_config,
@@ -431,6 +432,20 @@ def audit_area(identifier: str, area: str):
     spec = _AUDIT_AREAS.get(area)
     if spec is None:
         raise NotFoundError("audit area", area)
+    if area in _OPT_IN_AUDIT_AREAS:
+        # PI-448 (REQ-551): the record-scanning areas run as background jobs,
+        # not inside one long HTTP request a timeout can sever mid-write.
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "area",
+                    "background_job_required",
+                    f"the {area} area runs as a background job: POST "
+                    f"/instances/{identifier}/audit-runs to start one, then "
+                    "poll GET /audit-runs/{ARN-id} for progress and outcome",
+                )
+            ]
+        )
     label, fn = spec
     log: list[list[str]] = []
     client = _audit_introspection_client(identifier)
@@ -461,6 +476,51 @@ def audit_area(identifier: str, area: str):
             ) from exc
         return ok(
             {"area": area, "label": label, "summary": summary, "log": log}
+        )
+
+
+@router.post("/{identifier}/audit-runs", status_code=202)
+def start_audit_run(identifier: str, area: str = "utilization"):
+    """Queue a background audit run and return its identifier at once (PI-448).
+
+    Validation happens here, while the caller is still on the line: the
+    instance must exist, be auditable (not target-only) and hold credentials —
+    the same gate the synchronous audit uses — and only one run per
+    (instance, area) may be queued or running at a time. The in-process
+    audit-run worker claims the queued row; the caller polls
+    ``GET /audit-runs/{ARN-id}``.
+    """
+    if area not in _OPT_IN_AUDIT_AREAS:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "area",
+                    "invalid_value",
+                    "only the opt-in areas run as background jobs: "
+                    + ", ".join(sorted(_OPT_IN_AUDIT_AREAS)),
+                )
+            ]
+        )
+    _audit_introspection_client(identifier)  # 404 / not_auditable / missing creds
+    with writable_session() as s:
+        active = audit_runs_repo.active_run_for(
+            s, instance_identifier=identifier, area=area
+        )
+        if active:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "area",
+                        "run_in_progress",
+                        f"{active['audit_run_identifier']} is already "
+                        f"{active['audit_run_status']} for this instance",
+                    )
+                ]
+            )
+        return ok(
+            audit_runs_repo.create_audit_run(
+                s, instance_identifier=identifier, area=area
+            )
         )
 
 
