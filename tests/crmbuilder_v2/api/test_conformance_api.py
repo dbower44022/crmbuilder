@@ -45,3 +45,14 @@ def test_override_lifecycle_over_http(client):
         .status_code
         == 404
     )
+
+
+def test_the_fleet_is_queryable_and_does_not_shadow_instances(client):
+    iid = _instance(client, name="fleet-one")
+    r = client.get("/instances/fleet")
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert "summary" in data
+    assert any(row["instance"] == iid for row in data["instances"])
+    # The literal segment must not be captured by /{identifier} …
+    assert client.get(f"/instances/{iid}").status_code == 200

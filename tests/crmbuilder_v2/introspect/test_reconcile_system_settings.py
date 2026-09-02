@@ -150,3 +150,44 @@ def test_an_unconfirmed_setting_is_not_audited(v2_env):
             client=_CarrierClient(values={"oldKey": "x", "orgName": "Cleveland"}),
         )
         assert _membership(s, iid, candidate) is None
+
+
+def test_a_successful_read_copies_the_stamp_onto_the_instance(v2_env):
+    """PI-412 / REQ-498: the audit's settings pass records the stamp reading
+    so the fleet view is queryable without reaching the instance."""
+    from crmbuilder_v2.access.repositories import instances as inst_repo
+
+    class _StampedCarrier:
+        def get_records(self, entity, **kwargs):
+            return 200, {"total": 1, "list": [{
+                "id": "r1", "settings": {},
+                "standardVersion": "REL-045", "planFingerprint": "f" * 64,
+            }]}
+
+    with session_scope() as s:
+        iid, _sid = _setup(s)
+        reconcile_system_settings(
+            s, instance_identifier=iid, client=_StampedCarrier(),
+        )
+        row = inst_repo.get_instance(s, iid)
+        assert row["instance_standard_version"] == "REL-045"
+        assert row["instance_plan_fingerprint"] == "f" * 64
+        assert row["instance_stamp_read_at"]
+
+
+def test_a_failed_read_leaves_the_previous_stamp_copy(v2_env):
+    from crmbuilder_v2.access.repositories import instances as inst_repo
+
+    with session_scope() as s:
+        iid, _sid = _setup(s)
+        from datetime import UTC, datetime
+        inst_repo.record_stamp_reading(
+            s, iid, standard_version="REL-044",
+            plan_fingerprint="old", read_at=datetime.now(UTC),
+        )
+        reconcile_system_settings(
+            s, instance_identifier=iid, client=_CarrierClient(status=403),
+        )
+        row = inst_repo.get_instance(s, iid)
+        assert row["instance_standard_version"] == "REL-044"
+        assert row["instance_plan_fingerprint"] == "old"

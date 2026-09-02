@@ -30,6 +30,10 @@ _EXPECTED_COLUMNS = {
     "instance_status",
     "instance_notes",
     "instance_feature_selection",
+    # PI-412 / REQ-498 — the fleet view's queryable copy of the stamp reading.
+    "instance_standard_version",
+    "instance_plan_fingerprint",
+    "instance_stamp_read_at",
     "instance_created_at",
     "instance_updated_at",
     "instance_deleted_at",

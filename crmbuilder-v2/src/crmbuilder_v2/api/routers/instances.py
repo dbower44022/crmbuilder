@@ -105,6 +105,18 @@ def list_all(
         )
 
 
+@router.get("/fleet")
+def fleet():
+    """The fleet view (PI-412 / REQ-498): every instance in the engagement
+    with the design version it holds, the CRM version it runs, when its
+    conformance readings were taken, its status, and what currently differs.
+    Instances whose conformance could not be established are their own
+    outcome, never folded into either count. Declared before /{identifier}
+    so the path segment is never read as an instance id."""
+    with readonly_session() as s:
+        return ok(conformance_eval.fleet_view(s))
+
+
 @router.get("/next-identifier")
 def next_identifier():
     with readonly_session() as s:

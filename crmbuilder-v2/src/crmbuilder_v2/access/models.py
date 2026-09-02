@@ -2973,6 +2973,20 @@ class Instance(EngagementScopedPKMixin, Base):
     instance_feature_selection: Mapped[list | None] = mapped_column(
         JSONColumnNoneAsNull, nullable=True
     )
+    # PI-412 / REQ-498 — the design-version stamp as last READ from the
+    # instance's carrier record by the audit (REQ-495's stamp is what the
+    # instance holds; these columns are the fleet view's queryable copy of
+    # that reading, never a substitute for it). A failed read leaves them
+    # untouched; ``instance_stamp_read_at`` says how old the reading is.
+    instance_standard_version: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    instance_plan_fingerprint: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    instance_stamp_read_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     instance_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )

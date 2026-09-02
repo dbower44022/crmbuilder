@@ -2915,6 +2915,17 @@ def reconcile_system_settings(
     # observation that the instance holds no governed values).
     if read.outcome == settings_read.ABSENT:
         _note(progress, f"governed settings: {read.reason}", "info")
+    # PI-412 / REQ-498: copy the design-version stamp this read carried onto
+    # the instance record — the fleet view's queryable copy of what the
+    # instance holds (the stamp itself stays in the instance, REQ-495). A
+    # failed read never reaches here, so a stale copy keeps its honest age.
+    instances_repo.record_stamp_reading(
+        session,
+        instance_identifier,
+        standard_version=read.standard_version,
+        plan_fingerprint=read.plan_fingerprint,
+        read_at=stamp,
+    )
     for setting in settings:
         key = setting["system_setting_key"]
         member_id = setting["system_setting_identifier"]
