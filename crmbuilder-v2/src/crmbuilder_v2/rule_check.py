@@ -59,6 +59,29 @@ _GIT_COMMIT_RE = re.compile(
     re.M,
 )
 _INLINE_MESSAGE_RE = re.compile(r"(?:\s-m\b|\s--message\b|<<|-F\s*/dev/stdin|--file[= ]/dev/stdin)")
+# REQ-547 (PI-445): where a command can actually execute — the start of the
+# text or a line, after ``;``/``&``/``|``, or inside a command substitution —
+# with optional VAR=value prefixes. A protected name anywhere else (an
+# argument to a read, a payload, a pathspec) is data, not execution.
+_CMD_POSITION_PREFIX = (
+    r"(?:^|[;&|]\s*|\n\s*|\$\(\s*|`\s*)"
+    r"(?:\w+=(?:'[^']*'|\"[^\"]*\"|\S+)\s+)*"
+)
+# A heredoc body is payload, not command text: drop everything between the
+# ``<<DELIM`` line and the closing delimiter line before evaluating the
+# command-shaped checks (the trailer check keeps the full text — commit
+# messages legitimately arrive in heredocs).
+_HEREDOC_RE = re.compile(
+    r"<<-?\s*(['\"]?)(?P<delim>\w+)\1[^\n]*\n(?:.*?\n)??[ \t]*(?P=delim)(?=\n|$)",
+    re.S,
+)
+
+
+def _strip_heredocs(command: str) -> str:
+    """The command with heredoc bodies removed (delimiters kept)."""
+    return _HEREDOC_RE.sub(lambda m: m.group(0).split("\n", 1)[0], command)
+
+
 
 
 # --- rules -------------------------------------------------------------------------
@@ -116,29 +139,51 @@ def load_rules(project_dir: Path, fetch: Fetcher | None = None) -> tuple[list[di
 # --- evaluation --------------------------------------------------------------------
 
 
-def _violates(rule: dict, command: str) -> bool:
+def _violates(rule: dict, command: str) -> str | None:
+    """The matched fragment when ``command`` violates ``rule``, else ``None``.
+
+    REQ-547: ``forbidden_command`` matches only at command-execution positions,
+    and both command-shaped kinds see the command with heredoc payloads
+    removed — a protected name inside an argument to a read, a write payload,
+    or a commit pathspec is data and must not deny the command. The returned
+    fragment goes into the denial message so a false positive is diagnosable
+    at sight.
+    """
     check = rule.get("predicate") or {}
     kind, pattern = check.get("kind"), check.get("pattern")
     if not kind or not pattern:
-        return False
+        return None
     try:
-        rx = re.compile(pattern, re.MULTILINE | re.DOTALL)
+        if kind == "forbidden_command":
+            rx = re.compile(
+                _CMD_POSITION_PREFIX + f"(?P<frag>{pattern})", re.MULTILINE | re.DOTALL
+            )
+            m = rx.search(_strip_heredocs(command))
+            return m.group("frag") if m else None
+        if kind == "protected_path":
+            m = re.search(pattern, _strip_heredocs(command), re.MULTILINE | re.DOTALL)
+            return m.group(0) if m else None
+        if kind == "required_trailer":
+            m = _GIT_COMMIT_RE.search(command)
+            if not m or not _INLINE_MESSAGE_RE.search(command[m.start():]):
+                return None
+            trailer = re.escape(check.get("trailer") or "")
+            if re.search(rf"^\s*{trailer}:\s*(?:{pattern})\s*$", command, re.M) is None:
+                return m.group(0).strip()
+            return None
     except re.error:
-        return False
-    if kind in ("forbidden_command", "protected_path"):
-        return rx.search(command) is not None
-    if kind == "required_trailer":
-        m = _GIT_COMMIT_RE.search(command)
-        if not m or not _INLINE_MESSAGE_RE.search(command[m.start():]):
-            return False
-        trailer = re.escape(check.get("trailer") or "")
-        return re.search(rf"^\s*{trailer}:\s*(?:{pattern})\s*$", command, re.M) is None
-    return False
+        return None
+    return None
 
 
-def evaluate(command: str, rules: list[dict]) -> list[dict]:
-    """The rules ``command`` violates, in identifier order."""
-    return [r for r in rules if _violates(r, command)]
+def evaluate(command: str, rules: list[dict]) -> list[tuple[dict, str]]:
+    """``(rule, matched fragment)`` for the rules ``command`` violates."""
+    hits = []
+    for r in rules:
+        frag = _violates(r, command)
+        if frag is not None:
+            hits.append((r, frag))
+    return hits
 
 
 def parse_override(command: str) -> tuple[str, str] | None:
@@ -146,10 +191,11 @@ def parse_override(command: str) -> tuple[str, str] | None:
     return (m.group("rule"), m.group("reason").strip()) if m else None
 
 
-def describe(rule: dict) -> str:
+def describe(rule: dict, fragment: str = "") -> str:
     check = rule.get("predicate") or {}
     message = check.get("message") or " ".join((rule.get("body") or "").split())[:240]
-    return f"{rule['identifier']} [{rule.get('enforcement')}]: {message}"
+    where = f" (matched: {' '.join(fragment.split())[:80]!r})" if fragment else ""
+    return f"{rule['identifier']} [{rule.get('enforcement')}]: {message}{where}"
 
 
 # --- recording an override ---------------------------------------------------------
@@ -199,17 +245,17 @@ def decide(project_dir: Path, command: str, session_ref: str | None, rules: list
     if not violated:
         return None
     override = parse_override(command)
-    blocking: list[dict] = []
-    for rule in violated:
+    blocking: list[tuple[dict, str]] = []
+    for rule, fragment in violated:
         if rule.get("enforcement") == "enforced_with_override" and override and override[0] == rule["identifier"]:
             where = record_override(project_dir, rule["identifier"], override[1], command, session_ref)
             sys.stderr.write(f"[rule-check] {rule['identifier']} waved through — reason recorded ({where})\n")
             continue
-        blocking.append(rule)
+        blocking.append((rule, fragment))
     if not blocking:
         return None
-    lines = [describe(r) for r in blocking]
-    overridable = [r["identifier"] for r in blocking if r.get("enforcement") == "enforced_with_override"]
+    lines = [describe(r, frag) for r, frag in blocking]
+    overridable = [r["identifier"] for r, _ in blocking if r.get("enforcement") == "enforced_with_override"]
     hint = ""
     if overridable:
         hint = (
