@@ -71,14 +71,16 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
     out.append("")
     out.append(
         "**Deploy NOT_SUPPORTED (schema-valid, manual-config at deploy):** the "
-        "`savedViews:`, `duplicateChecks:`, and `workflows:` blocks generated "
-        "from `view` / `dedup_rule` / `automation` records are emitted into "
-        "the program YAML and pass `validate_program()`, but EspoCRM exposes "
-        "no public REST write path for them — the Configure run reports each "
-        "as `NOT_SUPPORTED` and the operator applies it via the admin UI. The "
-        "`emailTemplates:` block (from `message_template` records) is a real "
-        "deployable block; its `bodyFile` bodies are written under "
-        "`templates/`."
+        "`duplicateChecks:` block generated from `dedup_rule` records is "
+        "emitted into the program YAML and passes `validate_program()`, but "
+        "EspoCRM exposes no public REST write path for it — the Configure run "
+        "reports each item as `NOT_SUPPORTED` and the operator applies it via "
+        "the admin UI. The `emailTemplates:` block (from `message_template` "
+        "records) is a real deployable block; its `bodyFile` bodies are "
+        "written under `templates/`. Saved views and workflows are no longer "
+        "emitted at all (DEC-921 / DEC-997) — they appear in the "
+        "captured-only section at the end of this document, which requires "
+        "no action."
     )
     out.append("")
     out.append(f"- **Engagement:** {model.engagement or '—'}")
@@ -116,6 +118,29 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
         out.append(f"## {_titles.get(kind, kind)}")
         out.append("")
         out.extend(_deferral_table(rows))
+        out.append("")
+
+    # REQ-489: captured-only design facts, deliberately separate from the
+    # action-required groups above so they never dilute the operator's list.
+    if model.captured_only:
+        out.append("## Captured-only design facts (no action required)")
+        out.append("")
+        out.append(
+            "These constructs are recorded in the design and deliberately "
+            "not applied by any deploy (DEC-921). Nothing below asks you to "
+            "configure anything — workflows are additionally compared by the "
+            "audit (DEC-997); saved views are captured only."
+        )
+        out.append("")
+        out.append("| Kind | Identifier | Name | Parent | Disposition |")
+        out.append("|---|---|---|---|---|")
+        for c in sorted(
+            model.captured_only, key=lambda c: (c.kind, c.identifier)
+        ):
+            out.append(
+                f"| {c.kind} | {c.identifier} | {c.name} | "
+                f"{c.parent or '—'} | {c.note} |"
+            )
         out.append("")
 
     return "\n".join(out) + "\n"

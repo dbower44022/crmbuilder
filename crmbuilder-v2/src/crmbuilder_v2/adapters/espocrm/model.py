@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from crmbuilder_v2.adapters.base import Deferral, ProgramArtifact
+from crmbuilder_v2.adapters.base import CapturedOnly, Deferral, ProgramArtifact
 from crmbuilder_v2.adapters.espocrm.conditions import (
     CompileError,
     compile_condition,
@@ -181,6 +181,7 @@ class GenerationModel:
     programs: list[EntityProgram] = field(default_factory=list)
     deferrals: list[Deferral] = field(default_factory=list)
     companions: list[ProgramArtifact] = field(default_factory=list)
+    captured_only: list[CapturedOnly] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -1558,6 +1559,54 @@ def _strip_placeholders(text: str) -> str:
     return _PLACEHOLDER_RE.sub("", text)
 
 
+def _collect_captured_only(
+    views: list[dict],
+    automations: list[dict],
+    entity_name_by_id: dict[str, str],
+) -> list[CapturedOnly]:
+    """Collect the constructs DEC-921 rules out of emission as captured-only
+    design facts (REQ-489).
+
+    Saved views are captured only — recorded in the design, never emitted,
+    applied, or compared. Workflows are captured + compared (DEC-997): the
+    audit reads them (PI-413) but no deploy writes them. Neither is a
+    Deferral, a manual-config item, or a failure — nothing here asks the
+    operator to act.
+    """
+    out: list[CapturedOnly] = []
+    for view in sorted(views, key=lambda v: v["view_identifier"]):
+        if view.get("view_status") != "confirmed":
+            continue
+        out.append(
+            CapturedOnly(
+                kind="view",
+                identifier=view["view_identifier"],
+                name=view.get("view_name", ""),
+                parent=entity_name_by_id.get(view.get("view_entity")),
+                note=(
+                    "saved view — captured only (DEC-921): recorded in the "
+                    "design; not emitted, applied, or compared"
+                ),
+            )
+        )
+    for auto in sorted(automations, key=lambda a: a["automation_identifier"]):
+        if auto.get("automation_status") != "confirmed":
+            continue
+        out.append(
+            CapturedOnly(
+                kind="automation",
+                identifier=auto["automation_identifier"],
+                name=auto.get("automation_name", ""),
+                parent=entity_name_by_id.get(auto.get("automation_entity")),
+                note=(
+                    "workflow — captured and compared (DEC-997): the audit "
+                    "reads it from the instance; no deploy writes it"
+                ),
+            )
+        )
+    return out
+
+
 def _apply_views(
     views: list[dict],
     builds: dict[str, _EntityBuild],
@@ -1566,7 +1615,12 @@ def _apply_views(
     index: dict[tuple[str, str, str], object],
     deferrals: list[Deferral],
 ) -> None:
-    """Attach a ``savedViews:`` block to each owning entity's program.
+    """RETIRED from the generation path (PI-408 / REQ-489, DEC-921): saved
+    views are captured only, so no ``savedViews:`` block is emitted. Retained
+    un-called per retain-not-delete for resurrection if the disposition of
+    saved views changes.
+
+    Attach a ``savedViews:`` block to each owning entity's program.
 
     ``filter`` is required by the schema; a view with no neutral filter, a
     filter touching a non-emitted field, or an owning entity that is not
@@ -1730,7 +1784,12 @@ def _apply_automations(
     index: dict[tuple[str, str, str], object],
     deferrals: list[Deferral],
 ) -> None:
-    """Attach a ``workflows:`` block to each owning entity's program.
+    """RETIRED from the generation path (PI-408 / REQ-489, DEC-997): workflows
+    are captured + compared, so no ``workflows:`` block is emitted. Retained
+    un-called per retain-not-delete for resurrection if a workflow write path
+    (Advanced Pack CRUD) is ever built.
+
+    Attach a ``workflows:`` block to each owning entity's program.
 
     A ``scheduled`` / ``manual`` trigger (no v1.1 event), an automation whose
     actions all defer, or an owning entity that is not emitted routes to a
@@ -2186,13 +2245,15 @@ def build_program_model(
         deferrals,
     )
 
-    # Slice 3: the four remaining composite constructs as entity-level blocks.
+    # Slice 3 under DEC-921's four construct sets (REQ-489). Duplicate checks
+    # stay emitted: they are captured+emitted+applied+compared, and the apply
+    # gap deliberately keeps raising a manual-config item. Message templates
+    # stay emitted. Saved views (captured only) and workflows (captured +
+    # compared, DEC-997) are no longer rendered into program YAML — they are
+    # collected as captured-only design facts requiring no operator action.
     companions: list[ProgramArtifact] = []
     _apply_dedup_rules(
         dedup_rules, builds, confirmed_entity_ids, entity_name_by_id, index, deferrals
-    )
-    _apply_views(
-        views, builds, confirmed_entity_ids, entity_name_by_id, index, deferrals
     )
     _apply_message_templates(
         message_templates,
@@ -2203,8 +2264,8 @@ def build_program_model(
         deferrals,
         companions,
     )
-    _apply_automations(
-        automations, builds, confirmed_entity_ids, entity_name_by_id, index, deferrals
+    captured_only = _collect_captured_only(
+        views, automations, entity_name_by_id
     )
 
     programs = [builds[e["entity_identifier"]].program for e in confirmed_entities]
@@ -2216,4 +2277,5 @@ def build_program_model(
         programs=programs,
         companions=companions,
         deferrals=deferrals,
+        captured_only=captured_only,
     )

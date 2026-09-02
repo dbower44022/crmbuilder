@@ -682,6 +682,11 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         "preview": result.preview,
         "validation_failed": result.validation_failed,
         "deferrals": [dataclasses.asdict(d) for d in result.deferrals],
+        # REQ-489 / DEC-921: design facts captured but deliberately not
+        # applied — informational, never an operator action.
+        "captured_only": [
+            dataclasses.asdict(c) for c in result.captured_only
+        ],
         "manual_config": result.manual_config,
         "verification": (
             dataclasses.asdict(result.verification)

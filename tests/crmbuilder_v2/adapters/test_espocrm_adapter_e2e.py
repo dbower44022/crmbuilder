@@ -535,11 +535,12 @@ def test_adapter_emits_composite_construct_blocks(v2_env, tmp_path):
 
     program = result.programs[0]
     written = (tmp_path / program.filename).read_text(encoding="utf-8")
-    # The savedViews/duplicateChecks/workflows/emailTemplates blocks are all
-    # present in the deployable YAML.
-    assert "savedViews:" in written
+    # PI-408 / REQ-489 (DEC-921, DEC-997): duplicateChecks and emailTemplates
+    # remain emitted; savedViews and workflows are captured-only and never
+    # reach the deployable YAML.
+    assert "savedViews:" not in written
     assert "duplicateChecks:" in written
-    assert "workflows:" in written
+    assert "workflows:" not in written
     assert "emailTemplates:" in written
 
     # Re-validate the WRITTEN file (companion bodyFile present on disk).
@@ -549,15 +550,10 @@ def test_adapter_emits_composite_construct_blocks(v2_env, tmp_path):
     prog = loader.load_program(tmp_path / program.filename)
     ent = prog.entities[0]
     assert loader.validate_program(prog) == []
-    assert len(ent.saved_views) == 1
+    assert len(ent.saved_views) == 0  # captured-only (DEC-921)
     assert len(ent.duplicate_checks) == 1
-    assert len(ent.workflows) == 1
+    assert len(ent.workflows) == 0  # captured + compared (DEC-997)
     assert len(ent.email_templates) == 1
-
-    # savedView: filter compiled, columns + sort resolved to internal names.
-    sv = ent.saved_views[0]
-    assert sv.columns == ["approverName", "applicationStatus"]
-    assert sv.filter is not None
 
     # duplicateCheck: block + normalized email.
     dc = ent.duplicate_checks[0]
@@ -565,11 +561,13 @@ def test_adapter_emits_composite_construct_blocks(v2_env, tmp_path):
     assert dc.onMatch == "block"
     assert dc.normalize == {"contactEmail": "lowercase-trim"}
 
-    # workflow: onUpdate + a setField action.
-    wf = ent.workflows[0]
-    assert wf.trigger.event == "onUpdate"
-    assert wf.actions[0].type == "setField"
-    assert wf.actions[0].field == "approverName"
+    # The view and both automations (on_update AND scheduled — captured-only
+    # has no trigger gate) surface as captured-only facts, not deferrals.
+    captured_kinds = sorted(c.kind for c in result.captured_only)
+    assert captured_kinds == ["automation", "automation", "view"]
+    assert {c.name for c in result.captured_only} == {
+        "Approved applications", "Stamp approver on approval", "Nightly sweep",
+    }
 
     # emailTemplate: bodyFile companion written to disk and uses the merge field.
     et = ent.email_templates[0]
@@ -580,17 +578,19 @@ def test_adapter_emits_composite_construct_blocks(v2_env, tmp_path):
     assert "{{contactEmail}}" in body
     assert et.merge_fields == ["contactEmail"]
 
-    # MANUAL-CONFIG documents the deploy-NOT_SUPPORTED treatment of
-    # savedViews / duplicateChecks / workflows.
+    # MANUAL-CONFIG documents duplicateChecks as deploy-NOT_SUPPORTED and
+    # carries the captured-only section, clearly marked as no-action.
     manual = (tmp_path / "MANUAL-CONFIG.md").read_text(encoding="utf-8")
     assert "NOT_SUPPORTED" in manual
-    assert "savedViews" in manual
     assert "duplicateChecks" in manual
-    assert "workflows" in manual
+    assert "Captured-only design facts (no action required)" in manual
+    assert "Approved applications" in manual
+    assert "Nightly sweep" in manual
 
-    # Deferrals: the scheduled automation and the SMS (non-email) template.
+    # Deferrals: only the SMS (non-email) template — automations no longer
+    # defer (they are captured-only under DEC-997).
     kinds = {d.kind for d in result.deferrals}
-    assert "automation" in kinds  # the scheduled one
+    assert "automation" not in kinds
     assert "message_template" in kinds  # the SMS one
 
     # Determinism: a second run is byte-identical for programs AND companions.

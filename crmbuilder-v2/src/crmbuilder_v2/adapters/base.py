@@ -40,6 +40,24 @@ class Deferral:
 
 
 @dataclass(frozen=True)
+class CapturedOnly:
+    """One design construct captured but deliberately not applied (REQ-489).
+
+    DEC-921's captured-only set: the design records it, and that is the whole
+    story for the target engine — no emission, no apply, no manual-config
+    item, no failure. A design fact requiring no action, kept distinct from
+    :class:`Deferral` precisely so it never dilutes the list an operator must
+    act on.
+    """
+
+    kind: str
+    identifier: str
+    name: str
+    parent: str | None
+    note: str
+
+
+@dataclass(frozen=True)
 class ProgramArtifact:
     """One generated engine program file — its name and serialized body."""
 
@@ -61,6 +79,7 @@ class GenerationResult:
     programs: list[ProgramArtifact] = field(default_factory=list)
     manual_config: ProgramArtifact | None = None
     deferrals: list[Deferral] = field(default_factory=list)
+    captured_only: list[CapturedOnly] = field(default_factory=list)
     companions: list[ProgramArtifact] = field(default_factory=list)
     """Non-program support files the artifact set depends on (slice 3): e.g.
     the ``templates/<id>.html`` bodies an ``emailTemplates:`` block references

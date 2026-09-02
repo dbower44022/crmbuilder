@@ -1316,7 +1316,13 @@ def _build(**kw):
     )
 
 
-def test_view_compiles_filter_columns_and_sort():
+# PI-408 / REQ-489 (DEC-921, DEC-997): saved views are captured only and
+# workflows are captured + compared — neither is emitted into program YAML,
+# and neither produces a deferral (a deferral is an operator action; these
+# require none). They surface as captured-only design facts instead.
+
+
+def test_view_is_captured_only_never_emitted_or_deferred():
     model = _build(
         views=[
             _view(
@@ -1328,34 +1334,30 @@ def test_view_compiles_filter_columns_and_sort():
         ]
     )
     block = _only_entity_block(model)
-    sv = block["savedViews"][0]
-    assert sv["id"] == "vew-001"
-    assert sv["name"] == "Active"
-    assert sv["columns"] == ["mentorStatus"]
-    # neutral op 'eq' compiled to the EspoCRM 'equals'; ref to internal name
-    assert sv["filter"] == {"field": "mentorStatus", "op": "equals", "value": "x"}
-    assert sv["orderBy"] == {"field": "mentorStatus", "direction": "desc"}
+    assert "savedViews" not in block
+    assert not any(d.kind == "view" for d in model.deferrals)
+    (c,) = [c for c in model.captured_only if c.kind == "view"]
+    assert c.identifier == "VEW-001"
+    assert c.name == "Active"
+    assert c.parent == "Mentor Application"
+    assert "captured only" in c.note
 
 
-def test_view_without_filter_defers():
+def test_view_without_filter_is_still_just_captured():
+    # Under emission this deferred; a captured-only fact has no emit
+    # constraints, so it is recorded plainly with no deferral.
     model = _build(views=[_view(view_filter=None)])
-    block = _only_entity_block(model)
-    assert "savedViews" not in block
-    assert any(d.kind == "view" for d in model.deferrals)
+    assert "savedViews" not in _only_entity_block(model)
+    assert not any(d.kind == "view" for d in model.deferrals)
+    assert any(c.kind == "view" for c in model.captured_only)
 
 
-def test_view_filter_on_unemitted_field_defers():
-    # condition references a field that is not emitted → defer (never emit a
-    # field reference validate_program would reject).
-    model = _build(
-        views=[_view(view_filter={"field": "FLD-404", "op": "eq", "value": "x"})]
-    )
-    block = _only_entity_block(model)
-    assert "savedViews" not in block
-    assert any(d.kind == "view" for d in model.deferrals)
+def test_unconfirmed_view_is_not_captured():
+    model = _build(views=[_view(view_status="draft")])
+    assert not any(c.kind == "view" for c in model.captured_only)
 
 
-def test_automation_trigger_and_action_mapping():
+def test_automation_is_captured_only_never_emitted_or_deferred():
     model = _build(
         automations=[
             _automation(
@@ -1367,30 +1369,24 @@ def test_automation_trigger_and_action_mapping():
             )
         ]
     )
-    wf = _only_entity_block(model)["workflows"][0]
-    assert wf["id"] == "aut-001"
-    assert wf["trigger"] == {"event": "onUpdate"}
-    assert wf["where"] == {"field": "mentorStatus", "op": "equals", "value": "x"}
-    assert wf["actions"] == [
-        {"type": "setField", "field": "mentorStatus", "value": "done"}
-    ]
-
-
-def test_automation_scheduled_trigger_defers():
-    model = _build(automations=[_automation(automation_trigger="scheduled")])
     block = _only_entity_block(model)
     assert "workflows" not in block
-    assert any(d.kind == "automation" for d in model.deferrals)
-
-
-def test_automation_unmappable_action_defers_whole_workflow():
-    model = _build(
-        automations=[_automation(automation_actions=[{"type": "webhook"}])]
+    assert not any(
+        d.kind in ("automation", "workflow_action") for d in model.deferrals
     )
-    block = _only_entity_block(model)
-    assert "workflows" not in block
-    assert any(d.kind == "workflow_action" for d in model.deferrals)
-    assert any(d.kind == "automation" for d in model.deferrals)
+    (c,) = [c for c in model.captured_only if c.kind == "automation"]
+    assert c.identifier == "AUT-001"
+    assert c.parent == "Mentor Application"
+    assert "DEC-997" in c.note
+
+
+def test_automation_scheduled_trigger_is_still_just_captured():
+    # scheduled had no v1.1 workflow event and deferred; captured-only has no
+    # trigger constraint — every confirmed automation is recorded.
+    model = _build(automations=[_automation(automation_trigger="scheduled")])
+    assert "workflows" not in _only_entity_block(model)
+    assert not any(d.kind == "automation" for d in model.deferrals)
+    assert any(c.kind == "automation" for c in model.captured_only)
 
 
 def test_dedup_onmatch_and_normalize_mapping():
@@ -1477,23 +1473,29 @@ def test_message_template_no_resolvable_merge_field_defers():
 
 
 def test_composite_block_override_applies():
+    # PI-408 moved this assertion off views (no longer emitted) onto the
+    # message-template block, which still routes names through _override.
     model = _build(
-        views=[_view()],
+        message_templates=[_message()],
         overrides=[
             {
                 "override_target_engine": "espocrm",
-                "override_subject_type": "view",
-                "override_subject_identifier": "VEW-001",
+                "override_subject_type": "message_template",
+                "override_subject_identifier": "MSG-001",
                 "override_attribute": "name",
                 "override_value": "Pinned Name",
             }
         ],
     )
-    sv = _only_entity_block(model)["savedViews"][0]
-    assert sv["name"] == "Pinned Name"
+    et = _only_entity_block(model)["emailTemplates"][0]
+    assert et["name"] == "Pinned Name"
 
 
-def test_record_for_unconfirmed_entity_defers():
-    # entity ENT-002 is not in the confirmed set → its view defers.
+def test_view_on_unconfirmed_entity_is_captured_with_raw_parent():
+    # PI-408: a captured-only fact has no emit gate, so an unconfirmed owning
+    # entity no longer defers — the fact is recorded; the parent falls back
+    # to the raw identifier when no confirmed entity name resolves it.
     model = _build(views=[_view(entity="ENT-002")])
-    assert any(d.kind == "view" for d in model.deferrals)
+    assert not any(d.kind == "view" for d in model.deferrals)
+    (c,) = [c for c in model.captured_only if c.kind == "view"]
+    assert c.parent is None or c.parent == "ENT-002"
