@@ -18,7 +18,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from espo_impl.core.reconcile.live_state import map_entity_specs
+from crmbuilder_v2.publish.live_state import map_entity_specs
 
 
 class BackupCaptureError(RuntimeError):

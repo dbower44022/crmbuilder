@@ -34,6 +34,7 @@ from crmbuilder_v2.adapters.base import GenerationResult
 from crmbuilder_v2.adapters.espocrm.adapter import EspoCrmAdapter
 from crmbuilder_v2.adapters.espocrm.client import DesignClient
 from crmbuilder_v2.publish.backup import BackupCaptureError, capture_target_backup
+from crmbuilder_v2.publish.live_state import gather_server_fields
 from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.comparator import FieldComparator
 from espo_impl.core.config_loader import ConfigLoader
@@ -49,7 +50,6 @@ from espo_impl.core.models import (
     SettingsResult,
     SettingsStatus,
 )
-from espo_impl.core.reconcile.live_state import gather_server_fields
 from espo_impl.core.system_settings_manager import (
     SystemSettingsManager,
     SystemSettingsManagerError,
