@@ -910,7 +910,9 @@ def _reconcile_entities_candidate_gated(
 # Boolean field attributes compare by truthiness (a ``None`` canonical value reads
 # as False). The value-carrying attributes use forward asymmetry — see
 # :func:`_field_override`.
-_FIELD_BOOL_ATTRS: frozenset[str] = frozenset({"field_required", "field_read_only"})
+_FIELD_BOOL_ATTRS: frozenset[str] = frozenset(
+    {"field_required", "field_read_only", "field_unique"}
+)
 
 # Value-carrying field attributes the canonical ``Field`` record can hold and the
 # audit can read from EspoCRM field metadata. Each maps a neutral attribute name
@@ -963,6 +965,10 @@ def _audited_field_attrs(field_meta: dict[str, Any]) -> dict[str, Any]:
         "field_type": _map_field_type(field_meta.get("type")),
         "field_required": bool(field_meta.get("required", False)),
         "field_read_only": bool(field_meta.get("readOnly", False)),
+        # PI-410: uniqueness is compared (DEC-928) and is right there in the
+        # metadata — reading it closes one of the no-reader gaps REQ-491
+        # would otherwise report on every field.
+        "field_unique": bool(field_meta.get("unique", False)),
     }
     # Every qualifying property is set explicitly, to None where the engine type
     # does not carry it, so an absent property reads as genuinely absent rather
