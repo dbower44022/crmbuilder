@@ -150,3 +150,36 @@ def test_attr_equal_applies_the_declared_rule():
 def test_an_undeclared_attribute_falls_back_to_exact():
     assert cs.attr_equal("entity", "entity_never_heard_of", 1, 1)
     assert not cs.attr_equal("entity", "entity_never_heard_of", 1, 2)
+
+
+# -- Construct sets (PI-408 / REQ-489, DEC-921) ------------------------------
+
+
+def test_every_construct_declares_captured_first():
+    """Everything the design records is captured; the other sets vary."""
+    for member_type, decl in cs.CONSTRUCT_SETS.items():
+        assert decl.sets[0] == cs.CAPTURED, member_type
+
+
+def test_the_ruled_dispositions_hold():
+    assert cs.CONSTRUCT_SETS["saved_view"].sets == (cs.CAPTURED,)
+    assert cs.CONSTRUCT_SETS["workflow"].sets == (
+        cs.CAPTURED, cs.COMPARED_CONSTRUCT,
+    )
+    assert cs.CONSTRUCT_SETS["duplicate_check"].sets == (
+        cs.CAPTURED, cs.EMITTED, cs.APPLIED, cs.COMPARED_CONSTRUCT,
+    )
+    assert cs.CONSTRUCT_SETS["system_setting"].sets == (
+        cs.CAPTURED, cs.APPLIED, cs.COMPARED_CONSTRUCT,
+    )
+    # The PI-417 trio: compared today, publishable later.
+    for t in ("role", "team", "filtered_tab"):
+        assert cs.CONSTRUCT_SETS[t].sets == (
+            cs.CAPTURED, cs.COMPARED_CONSTRUCT,
+        )
+
+
+def test_construct_sets_serialize_for_the_api():
+    served = cs.construct_sets_serialized()
+    assert served["workflow"]["sets"] == ["captured", "compared"]
+    assert "DEC-997" in served["workflow"]["note"]

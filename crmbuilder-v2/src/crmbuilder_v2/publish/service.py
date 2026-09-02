@@ -181,6 +181,9 @@ class PublishResult:
     preview: bool = False
     programs: list[ProgramOutcome] = field(default_factory=list)
     deferrals: list = field(default_factory=list)
+    #: REQ-489 / DEC-921 — design facts captured but deliberately not applied
+    #: (saved views; workflows per DEC-997). Informational; never an action.
+    captured_only: list = field(default_factory=list)
     manual_config: str | None = None
     verification: VerificationResult | None = None
     backup: dict | None = None
@@ -652,6 +655,7 @@ def publish(
             setting_values=declared,
         ),
         deferrals=list(result.deferrals),
+        captured_only=list(result.captured_only),
         manual_config=(
             result.manual_config.content if result.manual_config else None
         ),

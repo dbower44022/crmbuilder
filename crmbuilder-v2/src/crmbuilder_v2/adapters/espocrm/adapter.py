@@ -123,6 +123,7 @@ class EspoCrmAdapter(CrmAdapter):
             programs=programs,
             manual_config=manual,
             deferrals=list(model.deferrals),
+            captured_only=list(model.captured_only),
             companions=list(model.companions),
         )
 

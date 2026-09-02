@@ -115,8 +115,16 @@ def get_compared_set():
     PI-409 / REQ-490, DEC-989: the binding declaration is code; this serves it
     verbatim so the desktop, the unattended check and the fleet view report
     against precisely what the comparison applies. Read-only by construction.
+    PI-408 / REQ-489 adds the construct-set declaration (DEC-921's four sets)
+    under ``construct_sets``; the per-attribute map moves under
+    ``attributes``.
     """
-    return ok(compared_set.serialized())
+    return ok(
+        {
+            "attributes": compared_set.serialized(),
+            "construct_sets": compared_set.construct_sets_serialized(),
+        }
+    )
 
 
 @router.get("/compare")

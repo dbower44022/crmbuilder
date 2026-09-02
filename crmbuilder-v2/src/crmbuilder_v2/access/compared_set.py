@@ -273,6 +273,84 @@ COMPARED_SET: dict[str, dict[str, AttributeDeclaration]] = {
 
 
 # ---------------------------------------------------------------------------
+# Construct sets (DEC-921 / REQ-489): which of the four lifecycle sets —
+# captured, emitted, applied, compared — each member type belongs to. This is
+# the binding declaration the deploy output and the API serve; a construct in
+# ``captured`` but not ``applied`` is a design fact, not a missing capability.
+# ---------------------------------------------------------------------------
+
+CAPTURED = "captured"
+EMITTED = "emitted"
+APPLIED = "applied"
+COMPARED_CONSTRUCT = "compared"
+
+
+@dataclass(frozen=True)
+class ConstructDeclaration:
+    """One member type's lifecycle-set membership and the reason for it."""
+
+    sets: tuple[str, ...]
+    note: str | None = None
+
+
+_ALL_FOUR = (CAPTURED, EMITTED, APPLIED, COMPARED_CONSTRUCT)
+
+CONSTRUCT_SETS: dict[str, ConstructDeclaration] = {
+    "entity": ConstructDeclaration(_ALL_FOUR),
+    "field": ConstructDeclaration(_ALL_FOUR),
+    "association": ConstructDeclaration(_ALL_FOUR),
+    "layout": ConstructDeclaration(_ALL_FOUR),
+    "message_template": ConstructDeclaration(_ALL_FOUR),
+    "rule": ConstructDeclaration(
+        _ALL_FOUR, "field rules ride the field payloads they gate"
+    ),
+    "role": ConstructDeclaration(
+        (CAPTURED, COMPARED_CONSTRUCT),
+        "emit/apply is PI-417's scope — until then captured and compared only",
+    ),
+    "team": ConstructDeclaration(
+        (CAPTURED, COMPARED_CONSTRUCT),
+        "emit/apply is PI-417's scope — until then captured and compared only",
+    ),
+    "filtered_tab": ConstructDeclaration(
+        (CAPTURED, COMPARED_CONSTRUCT),
+        "emit/apply is PI-417's scope — until then captured and compared only",
+    ),
+    "saved_view": ConstructDeclaration(
+        (CAPTURED,),
+        "captured only (DEC-921): recorded in the design; never emitted, "
+        "applied, or compared",
+    ),
+    "dashboard": ConstructDeclaration(
+        (CAPTURED,), "captured only (DEC-921): per-user surface, not conformance"
+    ),
+    "duplicate_check": ConstructDeclaration(
+        _ALL_FOUR,
+        "the apply gap is deliberate: no EspoCRM REST write path — emitted "
+        "into YAML, surfaced as NOT_SUPPORTED, compared via read-only "
+        "metadata",
+    ),
+    "workflow": ConstructDeclaration(
+        (CAPTURED, COMPARED_CONSTRUCT),
+        "DEC-997: the audit reads workflows from the instance; no deploy "
+        "writes them",
+    ),
+    "system_setting": ConstructDeclaration(
+        (CAPTURED, APPLIED, COMPARED_CONSTRUCT),
+        "applied per-key by the publish settings step; no YAML emission",
+    ),
+}
+
+
+def construct_sets_serialized() -> dict[str, dict[str, Any]]:
+    """The construct-set declaration in the API's served form (DEC-989)."""
+    return {
+        member_type: {"sets": list(decl.sets), "note": decl.note}
+        for member_type, decl in CONSTRUCT_SETS.items()
+    }
+
+
+# ---------------------------------------------------------------------------
 # Reads
 # ---------------------------------------------------------------------------
 
