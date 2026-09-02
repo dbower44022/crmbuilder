@@ -1,0 +1,208 @@
+"""Conformance evaluation and one-deploy overrides — PI-410 (REQ-492/493/494).
+
+Pins the mechanical evaluation: statuses derive from the declared compared
+set with no discretion, apply-then-check yields conformant, repeatability is
+a property of the store state, unknowns block, unwritable-only differences
+get their own status, and an override is spent once without ever touching a
+verdict.
+"""
+
+from __future__ import annotations
+
+from crmbuilder_v2.access import conformance
+from crmbuilder_v2.access.db import session_scope
+from crmbuilder_v2.access.repositories import (
+    conformance_overrides,
+)
+from crmbuilder_v2.access.repositories import entity as entity_repo
+from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.repositories import (
+    instance_membership as membership_repo,
+)
+from crmbuilder_v2.access.repositories import (
+    instances as instances_repo,
+)
+from crmbuilder_v2.access.repositories import teams as team_repo
+
+
+def _instance(s, name="chapter"):
+    return instances_repo.create_instance(
+        s, name=name, url=f"https://{name}.example.org", role="both"
+    )["instance_identifier"]
+
+
+def _confirmed_entity(s, name="Contact"):
+    return entity_repo.create_entity(
+        s, name=name, description="x", status="confirmed",
+        track_activity=False,
+    )["entity_identifier"]
+
+
+def _present(s, iid, member_type, member_id, override=None, state="present"):
+    membership_repo.upsert_membership(
+        s, instance_identifier=iid, member_type=member_type,
+        member_identifier=member_id, state=state, override=override,
+    )
+
+
+def test_an_audited_matching_design_is_conformant(v2_env):
+    """REQ-492: applying the design and then checking yields conformant."""
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        _present(s, iid, "entity", eid)
+        result = conformance.evaluate_instance(s, iid)
+        assert result["status"] == "conformant"
+        assert result["counts"]["drift"] == 0
+        assert result["counts"]["unknown"] == 0
+
+
+def test_checking_twice_yields_an_identical_verdict(v2_env):
+    """REQ-492's repeatability, as a tested property."""
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        _present(s, iid, "entity", eid,
+                 override={"entity_icon": "different"}, state="drifted")
+        first = conformance.evaluate_instance(s, iid)
+        second = conformance.evaluate_instance(s, iid)
+        assert first == second
+        assert first["status"] == "drifted"
+
+
+def test_a_difference_in_a_compared_attribute_is_drift_with_an_entry(v2_env):
+    """REQ-493: one entry per compared attribute with construct, attribute,
+    outcome and reason."""
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        _present(s, iid, "entity", eid,
+                 override={"entity_icon": "fas fa-star"}, state="drifted")
+        result = conformance.evaluate_instance(s, iid)
+        assert result["status"] == "drifted"
+        entry = next(
+            e for e in result["entries"]
+            if e["attribute"] == "entity_icon" and e["outcome"] == "drift"
+        )
+        assert entry["construct"] == "entity Contact"
+        assert entry["reason"]
+        assert entry["writable"] is True
+
+
+def test_a_never_audited_construct_makes_the_instance_uncheckable(v2_env):
+    """REQ-491: unknown is never omitted and never conformant."""
+    with session_scope() as s:
+        iid = _instance(s)
+        _confirmed_entity(s)  # design defines it; no membership exists
+        result = conformance.evaluate_instance(s, iid)
+        assert result["status"] == "unable_to_be_checked"
+        assert result["counts"]["unknown"] > 0
+        entry = next(e for e in result["entries"] if e["outcome"] == "unknown")
+        assert "never audited" in entry["reason"]
+
+
+def test_a_candidate_design_record_is_not_conformance(v2_env):
+    with session_scope() as s:
+        iid = _instance(s)
+        entity_repo.create_entity(s, name="Draft", description="x")  # candidate
+        result = conformance.evaluate_instance(s, iid)
+        assert result["entries"] == []
+        assert result["status"] == "conformant"
+
+
+def test_unwritable_only_differences_get_their_own_status(v2_env):
+    """DEC-923's narrow refinement: the ONLY differences have no write path."""
+    with session_scope() as s:
+        iid = _instance(s)
+        tid = team_repo.create_team(
+            s, name="Mentors", status="confirmed"
+        )["team_identifier"]
+        _present(s, iid, "team", tid, state="absent")
+        result = conformance.evaluate_instance(s, iid)
+        assert result["status"] == "named_but_unwritable"
+        assert result["counts"]["unwritable_drift"] == 1
+        assert result["counts"]["drift"] == 0
+
+
+def test_writable_drift_outranks_unwritable_and_unknown(v2_env):
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        _present(s, iid, "entity", eid,
+                 override={"entity_icon": "x"}, state="drifted")
+        tid = team_repo.create_team(
+            s, name="Mentors", status="confirmed"
+        )["team_identifier"]
+        _present(s, iid, "team", tid, state="absent")
+        result = conformance.evaluate_instance(s, iid)
+        assert result["status"] == "drifted"
+
+
+def test_a_declared_formula_is_unknown_not_falsely_matched(v2_env):
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        fid = field_repo.create_field(
+            s, field_belongs_to_entity_identifier=eid, name="total",
+            description="x", type="derived", status="confirmed",
+            derived_result_type="number",
+            formula={"kind": "arithmetic", "expression": {
+                "op": "+", "left": {"field": "a"}, "right": {"field": "b"}}},
+        )["field_identifier"]
+        _present(s, iid, "entity", eid)
+        _present(s, iid, "field", fid)
+        result = conformance.evaluate_instance(s, iid)
+        entry = next(
+            e for e in result["entries"] if e["attribute"] == "field_formula"
+        )
+        assert entry["outcome"] == "unknown"
+        assert "formula scripts" in entry["reason"]
+
+
+def test_every_entry_states_when_its_reading_was_taken(v2_env):
+    """REQ-500: the result states when the reading behind it was taken."""
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        _present(s, iid, "entity", eid)
+        result = conformance.evaluate_instance(s, iid)
+        entry = next(e for e in result["entries"] if e["outcome"] == "match")
+        assert entry["read_at"]
+        assert result["oldest_reading_at"]
+        assert result["newest_reading_at"]
+
+
+# --- one-deploy overrides (REQ-494) ------------------------------------------
+
+
+def test_an_override_is_recorded_and_spent_exactly_once(v2_env):
+    with session_scope() as s:
+        iid = _instance(s)
+        row = conformance_overrides.create_override(
+            s, instance_identifier=iid, authorized_by="Doug",
+            reason="known drift accepted for the hotfix deploy",
+        )
+        assert row["consumed_at"] is None
+        spent = conformance_overrides.consume_override(
+            s, instance_identifier=iid
+        )
+        assert spent["id"] == row["id"]
+        assert spent["consumed_at"] is not None
+        assert conformance_overrides.consume_override(
+            s, instance_identifier=iid
+        ) is None
+
+
+def test_an_override_never_changes_the_verdict(v2_env):
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        _present(s, iid, "entity", eid,
+                 override={"entity_icon": "x"}, state="drifted")
+        conformance_overrides.create_override(
+            s, instance_identifier=iid, authorized_by="Doug", reason="hotfix",
+        )
+        before = conformance.evaluate_instance(s, iid)
+        conformance_overrides.consume_override(s, instance_identifier=iid)
+        after = conformance.evaluate_instance(s, iid)
+        assert before["status"] == after["status"] == "drifted"

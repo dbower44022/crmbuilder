@@ -2151,6 +2151,41 @@ class SystemSettingValue(EngagementScopedMixin, Base):
     )
 
 
+class ConformanceOverride(EngagementScopedMixin, Base):
+    """One operator authorization for one deploy to proceed past a blocking
+    conformance result (PI-410 / REQ-494).
+
+    Recorded with who authorized it, when, and why. It applies to a single
+    deploy: the first blocking check that consumes it stamps ``consumed_at``
+    and it never applies again. It never changes the verdict a check produces
+    and never causes an instance to read conformant — the check's result keeps
+    the true status and merely records that this authorization was spent.
+    """
+
+    __tablename__ = "conformance_overrides"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    instance_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
+    authorized_by: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    consumed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["engagement_id", "instance_identifier"],
+            ["instances.engagement_id", "instances.instance_identifier"],
+            ondelete="CASCADE",
+            name="fk_conformance_overrides_instance",
+        ),
+        Index("ix_conformance_overrides_instance", "instance_identifier"),
+    )
+
+
 class EngineOverride(EngagementScopedPKMixin, Base):
     """Composite design record — one sparse per-engine override.
 

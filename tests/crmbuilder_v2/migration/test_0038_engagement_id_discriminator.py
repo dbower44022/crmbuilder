@@ -122,6 +122,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         # declared values (migration 0124).
         "system_settings",
         "system_setting_values",
+        # PI-410 / REQ-494 — one-deploy conformance overrides.
+        "conformance_overrides",
         # PI-255 (PRJ-027) the source instance mapping model (migration 0081).
         "source_mappings",
         "source_mapping_targets",

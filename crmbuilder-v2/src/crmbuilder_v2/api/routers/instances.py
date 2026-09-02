@@ -20,6 +20,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict
 
 from crmbuilder_v2 import secrets
+from crmbuilder_v2.access import conformance as conformance_eval
 from crmbuilder_v2.access import reconcile_apply
 from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.exceptions import (
@@ -29,6 +30,7 @@ from crmbuilder_v2.access.exceptions import (
 )
 from crmbuilder_v2.access.freeze import band_for_status
 from crmbuilder_v2.access.repositories import (
+    conformance_overrides,
     instance_deploy_config,
     instance_membership,
     instances,
@@ -911,6 +913,74 @@ class PublishScopeIn(BaseModel):
     # successful run then writes the design-version stamp to the instance; a
     # publish outside a frozen release never writes it (DEC-980).
     release_identifier: str | None = None
+
+
+@router.get("/{identifier}/conformance")
+def conformance(identifier: str):
+    """Evaluate this instance against the declared design (PI-410 / REQ-493).
+
+    Pure store read over the audit's observations, the compared-set
+    declaration and the per-instance declared setting values — deterministic
+    for a given store state. The unattended check refreshes the audit first
+    (REQ-500: it reads the instance, never a stale verdict) and then calls
+    this.
+    """
+    with readonly_session() as s:
+        if instances.get_instance(s, identifier) is None:
+            raise NotFoundError("instance", identifier)
+        return ok(conformance_eval.evaluate_instance(s, identifier))
+
+
+class ConformanceOverrideIn(BaseModel):
+    """POST /instances/{id}/conformance-overrides body (REQ-494)."""
+
+    model_config = ConfigDict(extra="forbid")
+    authorized_by: str
+    reason: str
+
+
+@router.post("/{identifier}/conformance-overrides", status_code=201)
+def create_conformance_override(identifier: str, body: ConformanceOverrideIn):
+    """Record one operator authorization for one deploy to proceed past a
+    blocking conformance result (REQ-494). Never changes any verdict."""
+    with writable_session() as s:
+        if instances.get_instance(s, identifier) is None:
+            raise NotFoundError("instance", identifier)
+        return ok(conformance_overrides.create_override(
+            s,
+            instance_identifier=identifier,
+            authorized_by=body.authorized_by,
+            reason=body.reason,
+        ))
+
+
+@router.get("/{identifier}/conformance-overrides")
+def list_conformance_overrides(identifier: str):
+    with readonly_session() as s:
+        if instances.get_instance(s, identifier) is None:
+            raise NotFoundError("instance", identifier)
+        return ok(conformance_overrides.list_overrides(
+            s, instance_identifier=identifier
+        ))
+
+
+@router.post("/{identifier}/conformance-overrides/consume")
+def consume_conformance_override(identifier: str):
+    """Spend the oldest unconsumed override, or 404 when none exists.
+
+    Called by the check only when its verdict blocks and the caller asked to
+    use an override; the consumed authorization is returned so the run can
+    record who allowed the deploy and why.
+    """
+    with writable_session() as s:
+        if instances.get_instance(s, identifier) is None:
+            raise NotFoundError("instance", identifier)
+        row = conformance_overrides.consume_override(
+            s, instance_identifier=identifier
+        )
+        if row is None:
+            raise NotFoundError("conformance_override", identifier)
+        return ok(row)
 
 
 @router.post("/{identifier}/publish")
