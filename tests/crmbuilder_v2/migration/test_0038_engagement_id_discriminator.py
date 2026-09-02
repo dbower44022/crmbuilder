@@ -124,6 +124,9 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         "system_setting_values",
         # PI-410 / REQ-494 — one-deploy conformance overrides.
         "conformance_overrides",
+        # PI-448 / REQ-551 — polled background audit runs (registration was
+        # missed when the table landed; caught by this inventory).
+        "audit_runs",
         # PI-255 (PRJ-027) the source instance mapping model (migration 0081).
         "source_mappings",
         "source_mapping_targets",

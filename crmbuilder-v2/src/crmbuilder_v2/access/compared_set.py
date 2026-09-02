@@ -240,6 +240,22 @@ COMPARED_SET: dict[str, dict[str, AttributeDeclaration]] = {
         "rule_message": _x("authoring prose"),
         "rule_status": _x("design lifecycle"),
     },
+    # Post-DEC-928: PI-413 / REQ-499 / DEC-926 — workflows detected on an
+    # instance, compared against the design's automation records. Entity and
+    # trigger are readable today; a workflow's condition and ordered actions
+    # are declared compared but have no reader/translator yet, so they report
+    # unknown rather than falsely matching (REQ-491). Write path deferred.
+    "workflow": {
+        "automation_identifier": _x("PI-413"),
+        "automation_name": _i("PI-413"),
+        "automation_entity": _c(EXACT, "PI-413"),
+        "automation_trigger": _c(MAPPED, "PI-413; engine type mapped to the neutral trigger"),
+        "automation_condition": _c(CANONICAL, "PI-413; no reader yet"),
+        "automation_actions": _c(SEQ, "PI-413; ordered; no reader yet"),
+        "automation_description": _x("design-record prose"),
+        "automation_notes": _x(),
+        "automation_status": _x("design lifecycle"),
+    },
     # PI-406 / REQ-485: a governed setting's canonical value is per instance;
     # each side compares against ITS OWN declared value, and a setting with no
     # declared value for an instance is not captured — never conformant.

@@ -1017,6 +1017,11 @@ INSTANCE_MEMBERSHIP_MEMBER_TYPES: frozenset[str] = frozenset(
         "message_template",
         # PI-421 / REQ-123 — field-level dynamic logic audited as rules.
         "rule",
+        # PI-413 / REQ-499 — workflows detected on an instance, compared
+        # against the design's automation records. Detection only: emitting
+        # and applying workflows stay deferred until the design carries
+        # workflow content (DEC-926).
+        "workflow",
         # PI-406 / REQ-485 — governed system settings audited per instance.
         # Added together with the reader wiring: the type was deliberately
         # deferred until something audits a setting (commit 2358362a), and
