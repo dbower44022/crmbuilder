@@ -42,9 +42,11 @@ from crmbuilder_v2.access.repositories import (
     field,
     field_permission_rule,
     field_visibility_rule,
+    instances,
     message_template,
     roles,
     rule,
+    system_settings,
     view,
 )
 from crmbuilder_v2.adapters.espocrm.client import (
@@ -57,15 +59,32 @@ from fastapi.testclient import TestClient
 
 from tests.crmbuilder_v2.conftest import DEFAULT_ENGAGEMENT_ID
 
+#: The instance the seed declares a governed setting value against.
+SEEDED_INSTANCE = "INST-001"
+
 #: Every method the generator drives; both clients must implement all of them.
 METHODS = [m for m in dir(DesignClient) if m.startswith("list_")]
+
+#: Arguments for the methods that take any. Most read the whole design and need
+#: none; a governed setting's values are per instance (PI-406 / REQ-485), so
+#: that one is asked for a named instance. Kept as data rather than by excluding
+#: the method from the sweeps: this diff exists because the parentless-field
+#: defect lived in a key nobody asserted on, and a method left out of it is a
+#: method back in that position.
+METHOD_ARGS: dict[str, tuple] = {
+    "list_system_setting_values": (SEEDED_INSTANCE,),
+}
+
+
+def _call(client, method):
+    return getattr(client, method)(*METHOD_ARGS.get(method, ()))
 
 
 def test_both_clients_implement_the_whole_protocol():
     for m in METHODS:
         assert callable(getattr(AccessDesignClient, m, None)), m
         assert callable(getattr(RestDesignClient, m, None)), m
-    assert len(METHODS) == 12
+    assert len(METHODS) == 14
 
 
 def test_rest_list_fields_reads_the_serialized_edge_key(monkeypatch):
@@ -119,7 +138,7 @@ def test_access_client_stamps_every_field_with_its_parent(v2_env):
 def test_access_client_returns_a_list_for_every_method(v2_env, method):
     """Each method resolves against a real store rather than raising —
     the promoted class is production code now, not a test fake."""
-    assert isinstance(getattr(AccessDesignClient(), method)(), list)
+    assert isinstance(_call(AccessDesignClient(), method), list)
 
 
 # -- the twelve-method diff, against one seeded store ------------------------
@@ -220,6 +239,22 @@ def _seed_every_surface() -> None:
             target_field=email_fid, visible=False, status="confirmed",
         )
 
+        # PI-406 (REQ-485): a governed setting and one instance's declared
+        # value. Both surfaces need a row or the diff compares empty against
+        # empty, which proves nothing — the reason this seed exists at all.
+        inst = instances.create_instance(
+            s, name="Seed instance", url="https://seed.example.org", role="both",
+        )["instance_identifier"]
+        assert inst == SEEDED_INSTANCE, inst
+        sid = system_settings.create_system_setting(
+            s, key="outboundEmailFromAddress", name="Outbound email address",
+            value_type="text", status="confirmed",
+        )["system_setting_identifier"]
+        system_settings.set_value(
+            s, system_setting_identifier=sid, instance_identifier=inst,
+            value="info@seed.example.org",
+        )
+
 
 def _rest_client_over(app_client: TestClient, monkeypatch) -> RestDesignClient:
     """A ``RestDesignClient`` whose HTTP goes to an in-process app.
@@ -271,8 +306,8 @@ def test_clients_agree_on_every_method(v2_env, monkeypatch, method):
     app_client = TestClient(create_app())
     app_client.headers.update({"X-Engagement": DEFAULT_ENGAGEMENT_ID})
 
-    rest = getattr(_rest_client_over(app_client, monkeypatch), method)()
-    access = getattr(AccessDesignClient(engagement=DEFAULT_ENGAGEMENT_ID), method)()
+    rest = _call(_rest_client_over(app_client, monkeypatch), method)
+    access = _call(AccessDesignClient(engagement=DEFAULT_ENGAGEMENT_ID), method)
 
     assert rest, f"{method} returned nothing — the seed no longer covers it"
     assert access == rest, f"{method} diverges between the two clients"

@@ -111,15 +111,14 @@ def _seed() -> None:
             type="date",
             status="confirmed",
         )
-        # reference → deferred (slice 2 association)
-        field.create_field(
-            s,
-            field_belongs_to_entity_identifier=eid,
-            name="referring_partner",
-            description="who referred the applicant",
-            type="reference",
-            status="confirmed",
-        )
+        # No reference field is seeded. DEC-988 retires that kind from use, so
+        # a confirmed one can no longer exist for the adapter to defer: the
+        # store refuses it on create, and the nineteen records retained under
+        # DEC-016 are rejected, which the emitter's confirmed-only scope filter
+        # excludes anyway. The emitter still refuses the kind defensively and
+        # that is asserted where it remains reachable — KIND_NOT_EMITTED in
+        # tests/crmbuilder_v2/test_field_vocabulary_round_trip.py. Seeding one
+        # here would only test that the repository forbids it.
         # a candidate field — excluded by the scope filter
         field.create_field(
             s,
@@ -180,16 +179,15 @@ def test_adapter_generates_valid_byte_stable_yaml(v2_env, tmp_path):
     assert result2.programs[0].content == program.content
     assert result2.manual_config.content == result.manual_config.content
 
-    # MANUAL-CONFIG lists the deferred reference field. (Slice 3 emits the
-    # composite-construct blocks, so the standing composite-constructs note
-    # from slices 1–2 is gone — no views/automations/dedup/templates seeded
-    # here means no such block and no deferral.)
-    manual = (tmp_path / "MANUAL-CONFIG.md").read_text(encoding="utf-8")
-    assert "referring_partner" in manual or "referringPartner" in manual.lower() \
-        or "Reference fields" in manual
-    assert "Reference fields" in manual
+    # MANUAL-CONFIG is still produced. The reference-field deferral it used to
+    # carry is gone with the kind (DEC-988) rather than broken: no confirmed
+    # reference field can exist to defer. (Slice 3 emits the composite-construct
+    # blocks, so the standing composite-constructs note from slices 1–2 is gone
+    # — no views/automations/dedup/templates seeded here means no such block and
+    # no deferral.)
+    assert (tmp_path / "MANUAL-CONFIG.md").read_text(encoding="utf-8")
     kinds = {d.kind for d in result.deferrals}
-    assert "reference_field" in kinds
+    assert "reference_field" not in kinds
     assert "composite_constructs" not in kinds
 
 
