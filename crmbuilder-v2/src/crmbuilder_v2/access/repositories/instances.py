@@ -370,6 +370,32 @@ def update_instance(
     return after
 
 
+def record_stamp_reading(
+    session: Session,
+    identifier: str,
+    *,
+    standard_version: str | None,
+    plan_fingerprint: str | None,
+    read_at,
+) -> None:
+    """Copy the design-version stamp a successful audit read carried
+    (PI-412 / REQ-498).
+
+    The stamp itself lives in the instance (REQ-495); this is the fleet
+    view's queryable copy of the last reading. Only a successful read calls
+    this — a failed one leaves the previous copy and its age untouched.
+    """
+    row = get_by_identifier(
+        session, Instance, Instance.instance_identifier, identifier
+    )
+    if row is None:
+        return
+    row.instance_standard_version = standard_version
+    row.instance_plan_fingerprint = plan_fingerprint
+    row.instance_stamp_read_at = read_at
+    session.flush()
+
+
 def patch_instance(
     session: Session,
     identifier: str,

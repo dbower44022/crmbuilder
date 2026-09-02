@@ -206,3 +206,58 @@ def test_an_override_never_changes_the_verdict(v2_env):
         conformance_overrides.consume_override(s, instance_identifier=iid)
         after = conformance.evaluate_instance(s, iid)
         assert before["status"] == after["status"] == "drifted"
+
+
+# --- the fleet view (PI-412 / REQ-498) ---------------------------------------
+
+
+def test_the_fleet_view_rolls_up_every_instance_without_folding_unknowns(
+    v2_env,
+):
+    """One row per instance; an instance whose conformance could not be
+    established is its own outcome, never counted with either side."""
+    with session_scope() as s:
+        eid = _confirmed_entity(s)
+        ok_i = _instance(s, "aligned")
+        _present(s, ok_i, "entity", eid)
+        bad_i = _instance(s, "strayed")
+        _present(s, bad_i, "entity", eid,
+                 override={"entity_icon": "x"}, state="drifted")
+        dark_i = _instance(s, "unreached")  # never audited
+
+        from crmbuilder_v2.access.conformance import fleet_view
+
+        fleet = fleet_view(s)
+        by_id = {r["instance"]: r for r in fleet["instances"]}
+        assert by_id[ok_i]["status"] == "conformant"
+        assert by_id[bad_i]["status"] == "drifted"
+        assert by_id[dark_i]["status"] == "unable_to_be_checked"
+        assert fleet["summary"]["conformant"] == 1
+        assert fleet["summary"]["drifted"] == 1
+        assert fleet["summary"]["unable_to_be_checked"] == 1
+        # What currently differs is named, not just counted.
+        assert any(
+            d["attribute"] == "entity_icon" for d in by_id[bad_i]["differing"]
+        )
+        assert by_id[ok_i]["differing"] == []
+
+
+def test_the_fleet_row_carries_the_stamp_reading(v2_env):
+    from datetime import UTC, datetime
+
+    from crmbuilder_v2.access.conformance import fleet_view
+    from crmbuilder_v2.access.repositories import instances as inst_repo2
+
+    with session_scope() as s:
+        iid = _instance(s, "stamped")
+        inst_repo2.record_stamp_reading(
+            s, iid,
+            standard_version="REL-045",
+            plan_fingerprint="f" * 64,
+            read_at=datetime.now(UTC),
+        )
+        fleet = fleet_view(s)
+        row = next(r for r in fleet["instances"] if r["instance"] == iid)
+        assert row["standard_version"] == "REL-045"
+        assert row["plan_fingerprint"] == "f" * 64
+        assert row["stamp_read_at"]

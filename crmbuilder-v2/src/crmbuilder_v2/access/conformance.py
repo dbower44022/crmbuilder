@@ -396,3 +396,69 @@ def evaluate_instance(
         "oldest_reading_at": min(readings) if readings else None,
         "newest_reading_at": max(readings) if readings else None,
     }
+
+
+def fleet_view(session: Session) -> dict[str, Any]:
+    """The fleet view — every instance in the engagement, rolled up (REQ-498).
+
+    Queryable, not only rendered: one row per instance carrying the design
+    version it holds (the audit's last stamp reading), the CRM version it
+    runs (the deploy configuration's detected version), when its conformance
+    readings were taken, its conformance status, and what currently differs.
+    An instance whose conformance could not be established appears under its
+    own outcome — never folded into the conformant or the differing counts,
+    because an unreachable instance must not read as one nobody needs to
+    look at.
+
+    Store-only and deterministic; a fresh verdict comes from running the
+    unattended check, which reads the instance first (REQ-500).
+    """
+    from crmbuilder_v2.access.repositories import instance_deploy_config
+    from crmbuilder_v2.access.repositories import instances as instances_repo
+
+    rows: list[dict[str, Any]] = []
+    summary = {
+        CONFORMANT: 0,
+        DRIFTED: 0,
+        UNABLE_TO_BE_CHECKED: 0,
+        NAMED_BUT_UNWRITABLE: 0,
+    }
+    for inst in instances_repo.list_instances(session):
+        identifier = inst["instance_identifier"]
+        evaluation = evaluate_instance(session, identifier)
+        deploy = instance_deploy_config.get_deploy_config(
+            session, identifier
+        ) or {}
+        differing = [
+            {
+                "construct": e["construct"],
+                "attribute": e["attribute"],
+                "outcome": e["outcome"],
+                "reason": e["reason"],
+                "writable": e["writable"],
+            }
+            for e in evaluation["entries"]
+            if e["outcome"] != MATCH
+        ]
+        summary[evaluation["status"]] += 1
+        rows.append({
+            "instance": identifier,
+            "name": inst.get("instance_name"),
+            "url": inst.get("instance_url"),
+            "role": inst.get("instance_role"),
+            "standard_version": inst.get("instance_standard_version"),
+            "plan_fingerprint": inst.get("instance_plan_fingerprint"),
+            "stamp_read_at": inst.get("instance_stamp_read_at"),
+            "crm_version": deploy.get("current_espocrm_version"),
+            "status": evaluation["status"],
+            "counts": evaluation["counts"],
+            "oldest_reading_at": evaluation["oldest_reading_at"],
+            "newest_reading_at": evaluation["newest_reading_at"],
+            "differing": differing,
+        })
+    return {
+        "design_version": _design_version(session),
+        "vocabulary_version": FIELD_VOCABULARY_VERSION,
+        "summary": summary,
+        "instances": rows,
+    }
