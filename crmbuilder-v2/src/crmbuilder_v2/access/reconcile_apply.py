@@ -20,7 +20,10 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
-from crmbuilder_v2.access.reconcile_compare import option_sets_equal
+from crmbuilder_v2.access.reconcile_compare import (
+    PUBLISHABLE_GLOBAL_MEMBERS,
+    option_sets_equal,
+)
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
@@ -490,6 +493,10 @@ def entity_for_member(
     maps to its parent entity, a layout to its entity, an association to its
     source entity, and an entity to itself. Returns the entity record. Raises
     ``NotFoundError`` when the member or its entity cannot be resolved.
+
+    A role or a team has no parent entity and legitimately raises here; those
+    publish through the security program instead — see
+    :func:`publish_scope_for_member`, which routes them before asking this.
     """
     if member_type == "entity":
         ent = entity_repo.get_entity(session, member_identifier)
@@ -543,14 +550,31 @@ def _filename_slug(entity_name: str, entity_identifier: str) -> str:
     return f"{slug}.yaml"
 
 
+#: The generated program roles and teams are emitted into (DEC-998). Mirrors the
+#: adapter's ``SECURITY_FILENAME``, kept as a literal here for the same reason
+#: ``_filename_slug`` is: the access layer does not import the adapter.
+SECURITY_PROGRAM_FILENAME = "security.yaml"
+
+
 def publish_scope_for_member(
     session: Session, member_type: str, member_identifier: str
 ) -> dict[str, Any]:
-    """The entity + generated-program filename to scope a publish to (REQ-376).
+    """The generated-program filename to scope a publish to (REQ-376 / REQ-519).
+
+    Most members publish with their parent entity, one entity to one program. A
+    role or a team has no parent entity — it spans all of them — so it scopes to
+    the instance-wide security program instead (DEC-998), and the entity fields
+    come back ``None`` rather than being filled with a fiction.
 
     :returns: ``{entity_identifier, entity_name, filename}`` — pass ``filename``
-        as the publish ``scope`` to push just this object's parent entity.
+        as the publish ``scope`` to push just this object.
     """
+    if member_type in PUBLISHABLE_GLOBAL_MEMBERS:
+        return {
+            "entity_identifier": None,
+            "entity_name": None,
+            "filename": SECURITY_PROGRAM_FILENAME,
+        }
     ent = entity_for_member(session, member_type, member_identifier)
     eid = ent["entity_identifier"]
     name = ent.get("entity_name") or eid

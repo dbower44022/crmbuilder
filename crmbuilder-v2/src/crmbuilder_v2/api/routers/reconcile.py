@@ -13,11 +13,12 @@ from pydantic import BaseModel
 
 from crmbuilder_v2.access import (
     compared_set,
+    reconcile_access,
     reconcile_apply,
     reconcile_compare,
     reconcile_dataloss,
 )
-from crmbuilder_v2.access.exceptions import NotFoundError
+from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
 from crmbuilder_v2.access.repositories import instances
 from crmbuilder_v2.access.repositories import reconcile_transactions as txn_repo
 from crmbuilder_v2.api.deps import readonly_session, writable_session
@@ -100,6 +101,12 @@ class PublishObjectIn(BaseModel):
     allow_no_backup: bool = False
     batch_id: str | None = None
     note: str | None = None
+    #: REQ-521 — publishing a role or team changes who can reach what, so the
+    #: operator states they have seen the target and the effect. Two flags, not
+    #: one: agreeing to push a role is not agreeing to revoke access the
+    #: instance currently grants.
+    confirm_access_change: bool = False
+    confirm_access_removal: bool = False
 
 
 class RollbackIn(BaseModel):
@@ -307,6 +314,30 @@ def capture_member(body: CaptureMemberIn):
         )
 
 
+@router.get("/assess-access-publish")
+def assess_access_publish(
+    instance: str = Query(...),
+    member_type: str = Query(...),
+    member_identifier: str = Query(...),
+):
+    """What a role or team publish would do to access on an instance (REQ-521).
+
+    The UI calls this before offering the confirmation, so the operator reads
+    the target and the effect rather than agreeing to a bare "publish". When
+    ``removes_access`` is true the confirmation must be the deliberate second
+    one — ``/publish`` refuses the change otherwise.
+    """
+    with readonly_session() as s:
+        return ok(
+            reconcile_access.assess_access_publish(
+                s,
+                instance=instance,
+                member_type=member_type,
+                member_identifier=member_identifier,
+            )
+        )
+
+
 @router.post("/publish", status_code=201)
 def publish_object(body: PublishObjectIn):
     """Publish an object's parent entity from the design to a live instance (REQ-376).
@@ -327,7 +358,30 @@ def publish_object(body: PublishObjectIn):
     )
     from crmbuilder_v2.publish import service as publish_service
 
-    # Resolve which entity (and generated program) this object publishes with.
+    # REQ-521: a publish that changes access states its effect and is confirmed
+    # first, and one that takes access away needs a second, separate word.
+    if body.member_type in reconcile_access.ACCESS_MEMBER_TYPES:
+        with readonly_session() as s:
+            assessment = reconcile_access.assess_access_publish(
+                s,
+                instance=body.instance,
+                member_type=body.member_type,
+                member_identifier=body.member_identifier,
+            )
+        if not body.confirm_access_change:
+            raise ConflictError(
+                f"{assessment['summary']} Confirm the change "
+                "(confirm_access_change) before it is applied."
+            )
+        if assessment["removes_access"] and not body.confirm_access_removal:
+            raise ConflictError(
+                f"{assessment['summary']} This publish removes access the "
+                "instance currently grants and is never applied automatically; "
+                "confirm the removal separately (confirm_access_removal): "
+                + "; ".join(c["description"] for c in assessment["removals"])
+            )
+
+    # Resolve which generated program this object publishes with.
     with readonly_session() as s:
         scope = reconcile_apply.publish_scope_for_member(
             s, body.member_type, body.member_identifier
@@ -351,6 +405,8 @@ def publish_object(body: PublishObjectIn):
     )
     payload = _serialize_publish_result(result)
     payload["scope"] = scope
+    if body.member_type in reconcile_access.ACCESS_MEMBER_TYPES:
+        payload["access_assessment"] = assessment
 
     # Record + reconcile only when the entity actually deployed.
     deployed = not result.aborted and not result.validation_failed and any(

@@ -115,7 +115,10 @@ def test_the_emitted_program_is_accepted_by_the_deploy_schema():
     prog = _security_program(
         [_role(
             role_description="Mentors",
-            role_scope_access={"Contact": {"read": "all", "edit": "own"}},
+            role_scope_access={
+                "Contact": {"read": "all", "edit": "own",
+                            "create": "yes", "delete": "no"},
+            },
             role_system_permissions={
                 "exportPermission": "no", "portalPermission": "no",
                 "massUpdatePermission": "no", "assignmentPermission": "all",
@@ -134,5 +137,30 @@ def test_the_emitted_program_is_accepted_by_the_deploy_schema():
     assert loaded.roles[0].system_permissions.export is False
     assert loaded.roles[0].system_permissions.assignment_permission == "all"
     assert loaded.roles[0].scope_access["Contact"].read == "all"
+    # ``create`` is a boolean in the v1 schema and the levels are strings, and
+    # the engine reads with PyYAML — YAML 1.1, where a bare ``yes`` is already
+    # ``True``. The loader normalizes both spellings, so what matters here is
+    # that the values survive as the same access, whichever form they took.
+    assert loaded.roles[0].scope_access["Contact"].create is True
+    assert loaded.roles[0].scope_access["Contact"].delete == "no"
     # A security program declares no entities — the point of DEC-998.
     assert not loaded.entities
+
+
+def test_the_security_program_passes_the_pre_publish_validation_gate():
+    """REQ-288 refuses a publish whose programs do not validate, and it validates
+    the whole scoped set — so a security program the gate rejected would block
+    the entities beside it, not just itself."""
+    from crmbuilder_v2.publish.service import validate_programs
+
+    prog = _security_program(
+        [_role(role_scope_access={"Contact": {"read": "all", "create": "yes"}},
+               role_system_permissions={"assignmentPermission": "all"})],
+        [_team()],
+        [],
+    )
+    path = pathlib.Path(tempfile.mkdtemp()) / SECURITY_FILENAME
+    path.write_text(emit_program_yaml(prog, rendered_at="2026-09-02T00:00:00Z"))
+    loaded = ConfigLoader().load_program(path)
+
+    assert validate_programs([(SECURITY_FILENAME, loaded)], {}) == {}

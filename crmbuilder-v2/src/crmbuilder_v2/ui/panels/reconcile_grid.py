@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from crmbuilder_v2.access.reconcile_access import ACCESS_MEMBER_TYPES
 from crmbuilder_v2.access.reconcile_compare import CAPTURABLE_GLOBAL_MEMBERS, UNKNOWN
 from crmbuilder_v2.ui.panels.reconcile_models import (
     FIELD_OPTIONS_ATTR,
@@ -59,6 +60,15 @@ from crmbuilder_v2.ui.panels.reconcile_models import (
 from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _log = logging.getLogger(__name__)
+
+
+class AccessPublishDeclined(Exception):
+    """The operator declined a role or team publish at its confirmation (REQ-521).
+
+    Distinct from a failure: the gate asked and was answered, so the apply loop
+    reports it as skipped rather than as something that went wrong.
+    """
+
 
 #: Recorded as the transaction actor for desktop-driven reconcile actions.
 _ACTOR = "desktop"
@@ -1028,6 +1038,10 @@ class ReconcileGridPanel(QWidget):
                     else:
                         self._execute_op(row, op)
                     applied += 1
+                except AccessPublishDeclined as exc:
+                    # The operator was asked and said no (REQ-521). That is an
+                    # answer, not a failure.
+                    skipped.append(f"{label}: {exc}")
                 except Exception as exc:  # noqa: BLE001
                     errors.append(f"{label}: {op['kind']} failed — {exc}")
 
@@ -1075,6 +1089,54 @@ class ReconcileGridPanel(QWidget):
             if fresh:
                 self._drill(fresh)
 
+    def _confirm_access_publish(
+        self, instance: str, member_type: str, member_identifier: str
+    ) -> tuple[bool, bool]:
+        """Put a role or team publish to the operator before it runs (REQ-521).
+
+        Two questions, not one. The first states the target and the effect,
+        because a role publish changes who can reach what and the operator finds
+        out otherwise only when someone cannot do their job. The second is asked
+        only when the change takes access away, and agreeing to the first is not
+        an answer to it.
+
+        Raises :class:`AccessPublishDeclined` when either is declined, so the
+        apply loop records it as skipped rather than as a failure.
+        """
+        assessment = self._client.reconcile_assess_access_publish(
+            instance=instance, member_type=member_type,
+            member_identifier=member_identifier,
+        )
+        lines = [c.get("description", "") for c in assessment.get("changes", [])]
+        detail = ("\n\n" + "\n".join(f"• {line}" for line in lines)) if lines else ""
+        proceed = CopyableMessageBox.question(
+            self, "Publish access change",
+            assessment.get("summary", "") + detail
+            + "\n\nPublish this to " + instance + "?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        if proceed != QMessageBox.StandardButton.Yes:
+            raise AccessPublishDeclined("publish not confirmed")
+        if not assessment.get("removes_access"):
+            return True, False
+
+        removals = [
+            c.get("description", "") for c in assessment.get("removals", [])
+        ]
+        confirm = CopyableMessageBox.warning(
+            self, "This removes access",
+            "This publish takes away access the instance currently grants. It "
+            "is never applied without a separate, deliberate confirmation.\n\n"
+            + "\n".join(f"• {line}" for line in removals)
+            + "\n\nRemove this access on " + instance + "?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            raise AccessPublishDeclined("access removal not confirmed")
+        return True, True
+
     def _execute_op(self, row: dict[str, Any], op: dict[str, str]) -> None:
         """Run one capture/publish operation against the API."""
         member_type = row["member_type"]
@@ -1107,9 +1169,15 @@ class ReconcileGridPanel(QWidget):
                 )
         else:  # publish
             instance = self._loc_instance(op["location"])
+            change = removal = False
+            if member_type in ACCESS_MEMBER_TYPES:
+                change, removal = self._confirm_access_publish(
+                    instance, member_type, mid
+                )
             self._client.reconcile_publish(
                 instance=instance, member_type=member_type,
                 member_identifier=mid, attribute=attribute, actor=_ACTOR,
+                confirm_access_change=change, confirm_access_removal=removal,
             )
 
     def _report_apply(

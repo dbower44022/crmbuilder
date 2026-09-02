@@ -69,9 +69,15 @@ RECONCILABLE_ENTITY_SETTINGS = frozenset({
 RECONCILABLE_ASSOCIATION_ATTRS = frozenset({"association_cardinality"})
 
 #: Member types that belong to the instance rather than to any entity and whose
-#: design record can be written from an instance's value (REQ-519). Publish stays
-#: closed until the emitter renders them into a program.
+#: design record can be written from an instance's value (REQ-519).
 CAPTURABLE_GLOBAL_MEMBERS = frozenset({"role", "team", "filtered_tab"})
+
+#: The subset of those the design can also push back (REQ-519 / PI-417). Roles
+#: and teams emit into the security program (DEC-998), which the deploy
+#: engine's Security step applies, so both directions are open. A filtered tab
+#: has no emitted block yet, so it stays capture-only — the gap is the emitter's,
+#: not the engine's, and this set is what closes when that block lands.
+PUBLISHABLE_GLOBAL_MEMBERS = frozenset({"role", "team"})
 
 #: Capability tokens a row carries per direction (REQ-479).
 CAPTURE = "capture"
@@ -104,12 +110,12 @@ def _attribute_capabilities(
     if member_type == "association":
         return attribute in RECONCILABLE_ASSOCIATION_ATTRS, False
     if member_type in CAPTURABLE_GLOBAL_MEMBERS:
-        # Capture-only for now (REQ-519). These belong to the instance rather
-        # than to an entity, and publish granularity is one entity = one
-        # generated program — but more decisively, the emitter renders no
-        # ``roles:`` / ``teams:`` / ``filteredTabs:`` block at all, so there is
-        # nothing to push even though the deploy engine could apply one.
-        return True, False
+        # These belong to the instance rather than to an entity (REQ-519). The
+        # one-entity-one-program rule left them nowhere to be emitted until
+        # DEC-998 admitted the entity-less security program; a role or team now
+        # renders into it and so publishes, while a filtered tab has no block
+        # yet and stays capture-only.
+        return True, member_type in PUBLISHABLE_GLOBAL_MEMBERS
     return False, False
 
 
@@ -118,11 +124,16 @@ def _presence_capabilities(member_type: str) -> tuple[bool, bool]:
 
     A relationship the design defines but an instance lacks is **publish-only** —
     publishing creates the link; there is nothing to capture, since the design
-    already carries the member (REQ-443). Other member types have no targeted
+    already carries the member (REQ-443). A role or team the design defines and
+    the instance lacks is the same case (PI-417): the security program declares
+    it and the deploy engine creates it, and no whole-entity promote would ever
+    reach it, since it belongs to no entity. Other member types have no targeted
     presence-push here — a missing field/layout is brought over by the
     whole-entity promote — so their presence rows stay view-only.
     """
-    return False, member_type == "association"
+    return False, (
+        member_type == "association" or member_type in PUBLISHABLE_GLOBAL_MEMBERS
+    )
 
 
 def _attribute_actionable(member_type: str, attribute: str | None) -> bool:

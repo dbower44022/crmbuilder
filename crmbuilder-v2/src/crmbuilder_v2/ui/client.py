@@ -3012,6 +3012,23 @@ class StorageClient:
         )
         return result if isinstance(result, dict) else {}
 
+    def reconcile_assess_access_publish(
+        self, *, instance: str, member_type: str, member_identifier: str
+    ) -> dict[str, Any]:
+        """GET /reconcile/assess-access-publish — what a role or team publish
+        would do to access on an instance (REQ-521).
+
+        Called before offering the confirmation, so the operator reads the
+        target and the effect instead of agreeing to a bare "publish".
+        """
+        path = "/reconcile/assess-access-publish" + self._query({
+            "instance": instance,
+            "member_type": member_type,
+            "member_identifier": member_identifier,
+        })
+        result = self._request("GET", path)
+        return result if isinstance(result, dict) else {}
+
     def reconcile_publish(
         self,
         *,
@@ -3023,12 +3040,20 @@ class StorageClient:
         allow_no_backup: bool = False,
         batch_id: str | None = None,
         note: str | None = None,
+        confirm_access_change: bool = False,
+        confirm_access_removal: bool = False,
     ) -> dict[str, Any]:
-        """POST /reconcile/publish — push an object's parent entity from the
-        design to a live instance, transaction-logged (REQ-376/369).
+        """POST /reconcile/publish — push an object from the design to a live
+        instance, transaction-logged (REQ-376/369). Most objects publish with
+        their parent entity; a role or team publishes with the instance-wide
+        security program (DEC-998).
 
         A live deploy (backup + deploy + verify) can run for minutes, so it uses
         the long audit/publish timeout, not the 30s default.
+
+        ``confirm_access_change`` / ``confirm_access_removal`` carry the
+        operator's two answers for a role or team publish (REQ-521); the API
+        refuses the publish without them.
         """
         body = {
             "instance": instance,
@@ -3039,6 +3064,8 @@ class StorageClient:
             "allow_no_backup": allow_no_backup,
             "batch_id": batch_id,
             "note": note,
+            "confirm_access_change": confirm_access_change,
+            "confirm_access_removal": confirm_access_removal,
         }
         result = self._request(
             "POST", "/reconcile/publish", json_body=body, timeout=_AUDIT_TIMEOUT

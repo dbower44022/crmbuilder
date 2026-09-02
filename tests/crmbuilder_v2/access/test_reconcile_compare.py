@@ -869,35 +869,59 @@ def test_agreeing_property_is_actionable_in_neither_direction():
         assert row["capturable"] is False and row["publishable"] is False
 
 
-# --- non-entity members become capture-only (PI-416 — REQ-519) --------------
+# --- non-entity members become actionable (PI-416 / PI-417 — REQ-519) -------
 
-@pytest.mark.parametrize(
-    ("member_type", "attribute", "instance_value", "design_value"),
-    [
-        ("role", "role_system_permissions", {"exportPermission": "no"},
-         {"exportPermission": "not-set"}),
-        # team_description left this list when DEC-928 excluded it from the
-        # compared set (PI-409): prose, not definition.
-        ("filtered_tab", "filtered_tab_label", "My Clients", "Clients"),
-    ],
-)
-def test_non_entity_members_are_capture_only(
-    member_type, attribute, instance_value, design_value
-):
-    """REQ-519: roles, teams and filtered tabs stop being view-only. They are
-    writable through the platform, so the read-only handling for non-writable
-    settings never described them. Publish stays closed because the emitter
-    renders no program block for them — nothing to push, not nothing to say."""
+def _global_member_row(member_type, attribute, instance_value, design_value):
     a = _mem(state="drifted", override={attribute: instance_value})
     rows = compute_member_rows(
         member_type=member_type, member_identifier="X-1", member_name="Thing",
         design_obj={attribute: design_value}, attributes=[attribute],
         membership_a=a, membership_b=_mem(),
     )
-    row = next(r for r in rows if r["attribute"] == attribute)
+    return next(r for r in rows if r["attribute"] == attribute)
+
+
+def test_a_filtered_tab_is_capture_only():
+    """REQ-519: filtered tabs stop being view-only — they are writable through
+    the platform, so the read-only handling for non-writable settings never
+    described them. Publish stays closed because the emitter renders no
+    ``filteredTabs:`` block: nothing to push, not nothing to say."""
+    row = _global_member_row(
+        "filtered_tab", "filtered_tab_label", "My Clients", "Clients"
+    )
     assert row["capturable"] is True
     assert row["publishable"] is False
     assert row["actionable"] is True
+
+
+def test_a_role_attribute_publishes_now_that_the_security_program_exists():
+    """PI-417 / DEC-998: what closed the publish direction was the emitter, not
+    the engine — one generated program was one entity, and a role belongs to
+    none. The entity-less security program gives roles and teams somewhere to be
+    written, so both directions open."""
+    row = _global_member_row(
+        "role", "role_system_permissions",
+        {"exportPermission": "no"}, {"exportPermission": "not-set"},
+    )
+    assert row["capturable"] is True
+    assert row["publishable"] is True
+    assert row["actionable"] is True
+
+
+@pytest.mark.parametrize("member_type", ["role", "team"])
+def test_a_role_or_team_the_instance_lacks_can_be_pushed(member_type):
+    """A team carries no compared attribute of its own — DEC-928 excluded its
+    description and its name is the match key — so presence is the only
+    difference it can have. No whole-entity promote reaches it either, since it
+    belongs to no entity; the security program is the only way it gets there."""
+    rows = compute_member_rows(
+        member_type=member_type, member_identifier="X-1", member_name="Thing",
+        design_obj={}, attributes=[],
+        membership_a=_mem(state="absent"), membership_b=_mem(),
+    )
+    row = next(r for r in rows if r["kind"] == "presence")
+    assert row["capturable"] is False
+    assert row["publishable"] is True
 
 
 def test_layout_attributes_stay_view_only():
