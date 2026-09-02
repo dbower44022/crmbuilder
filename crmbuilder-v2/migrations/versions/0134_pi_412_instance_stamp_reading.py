@@ -6,8 +6,8 @@ copies what it read — ``standardVersion``, ``planFingerprint``, and when — o
 the instance record. A failed read leaves the columns untouched, so their age
 is visible rather than reset.
 
-SQLite chain head 0132 -> 0133. Companion PG-chain delta:
-``migrations/pg/versions/0090_pi_412_instance_stamp_reading.py``.
+SQLite chain head 0133 -> 0134. Companion PG-chain delta:
+``migrations/pg/versions/0091_pi_412_instance_stamp_reading.py``.
 
 NOTE (live application): the live store is create_all-managed and is NOT walked
 through this SQLite chain. This migration is the canonical record of the delta;
@@ -20,8 +20,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0133_pi_412_instance_stamp_reading"
-down_revision: str | None = "0132_pi_410_conformance_overrides"
+revision: str = "0134_pi_412_instance_stamp_reading"
+down_revision: str | None = "0133_pi_448_audit_runs"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

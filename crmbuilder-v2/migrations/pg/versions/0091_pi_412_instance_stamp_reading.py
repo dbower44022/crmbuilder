@@ -6,8 +6,8 @@ copies what it read — ``standardVersion``, ``planFingerprint``, and when — o
 the instance record. A failed read leaves the columns untouched, so their age
 is visible rather than reset.
 
-PG chain head 0089 -> 0090. Companion of the SQLite-chain
-``0133_pi_412_instance_stamp_reading``.
+PG chain head 0090 -> 0091. Companion of the SQLite-chain
+``0134_pi_412_instance_stamp_reading``.
 
 NOTE (live application): the live application goes through
 ``crmbuilder-v2-bootstrap-db``, verified on a copy first, and is performed by
@@ -19,8 +19,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0090_pi_412_instance_stamp_reading"
-down_revision: str | None = "0089_pi_410_conformance_overrides"
+revision: str = "0091_pi_412_instance_stamp_reading"
+down_revision: str | None = "0090_pi_448_audit_runs"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
