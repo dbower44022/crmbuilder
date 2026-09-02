@@ -29,7 +29,7 @@ PATHSPEC = {
 DEPLOY = {
     "identifier": "GVR-240", "enforcement": "enforced", "applies_to": "all",
     "predicate": {"kind": "forbidden_command",
-                  "pattern": r"scripts/deploy-production\.sh|rsync\b[^\n]*138\.197\.72\.15",
+                  "pattern": r"(?:\./)?scripts/deploy-production\.sh|(?:rsync|ssh|scp)\b[^\n]*138\.197\.72\.15[^\n]*\b(?:systemctl\s+restart|alembic\s+upgrade|git\s+pull)\b|rsync\b[^\n]*138\.197\.72\.15",
                   "message": "production deploy is human-only"},
     "body": "Production deploy is human-only.",
 }
@@ -41,8 +41,9 @@ SECRET = {
 RULES = [TRAILER, PATHSPEC, DEPLOY, SECRET]
 
 
-def _ids(rules):
-    return [r["identifier"] for r in rules]
+def _ids(items):
+    # evaluate() yields (rule, fragment) pairs; load_rules() yields rule dicts.
+    return [(r[0] if isinstance(r, tuple) else r)["identifier"] for r in items]
 
 
 def test_forbidden_command_blocks_bare_commit_and_allows_pathspec():
@@ -136,3 +137,46 @@ def test_main_allows_when_no_command(monkeypatch, capsys):
     monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps({"tool_input": {}})))
     assert rc.main([]) == 0
     assert capsys.readouterr().out == ""
+
+
+# --- REQ-547 / PI-445: matching is positional, payloads are data ----------------
+
+
+def test_reading_or_naming_the_protected_script_is_allowed():
+    # the three 2026-08-31 false positives
+    assert rc.evaluate("cat scripts/deploy-production.sh", [DEPLOY]) == []
+    assert rc.evaluate("sed -n 1,50p scripts/deploy-production.sh", [DEPLOY]) == []
+    assert rc.evaluate('git commit -m "x" -- scripts/deploy-production.sh', [DEPLOY]) == []
+
+
+def test_mentioning_the_script_in_a_write_payload_is_allowed():
+    heredoc = "python3 - <<EOF\nprint('scripts/deploy-production.sh')\nEOF"
+    assert rc.evaluate(heredoc, [DEPLOY]) == []
+    payload = "curl -sS -d '{\"note\": \"see scripts/deploy-production.sh\"}' https://api.example/notes"
+    assert rc.evaluate(payload, [DEPLOY]) == []
+
+
+def test_executing_the_script_still_blocks_and_names_the_fragment():
+    for cmd in ("scripts/deploy-production.sh", "./scripts/deploy-production.sh", "cd /x && scripts/deploy-production.sh", "FOO=1 scripts/deploy-production.sh"):
+        hits = rc.evaluate(cmd, [DEPLOY])
+        assert _ids(hits) == ["GVR-240"], cmd
+        assert "scripts/deploy-production.sh" in hits[0][1]
+
+
+def test_droplet_mutations_still_block_and_remote_reads_pass():
+    assert _ids(rc.evaluate("rsync -av . root@138.197.72.15:/opt/", [DEPLOY])) == ["GVR-240"]
+    assert _ids(rc.evaluate("ssh root@138.197.72.15 'systemctl restart api'", [DEPLOY])) == ["GVR-240"]
+    assert _ids(rc.evaluate("ssh -i ~/.ssh/k root@138.197.72.15 'cd /opt && git pull'", [DEPLOY])) == ["GVR-240"]
+    assert rc.evaluate("ssh root@138.197.72.15 'cat /etc/hostname'", [DEPLOY]) == []
+
+
+def test_denial_message_names_the_matched_fragment(tmp_path: Path):
+    verdict = rc.decide(tmp_path, "scripts/deploy-production.sh", "sess", [DEPLOY])
+    reason = verdict["hookSpecificOutput"]["permissionDecisionReason"]
+    assert "matched:" in reason and "scripts/deploy-production.sh" in reason
+
+
+def test_protected_path_ignores_heredoc_payloads_but_guards_arguments():
+    heredoc = "python3 - <<EOF\nopen('crmbuilder-v2/data/crmbuilder.env')\nEOF"
+    assert rc.evaluate(heredoc, [SECRET]) == []
+    assert _ids(rc.evaluate("sed -i s/a/b/ crmbuilder-v2/data/crmbuilder.env", [SECRET])) == ["GVR-900"]
