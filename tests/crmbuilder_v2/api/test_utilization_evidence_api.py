@@ -483,3 +483,80 @@ def test_a7_evidence_survives_rejection_and_delete(client):
         f"/fields/{fld}?include_deleted=true&include_evidence=all"
     ).json()["data"]
     assert record["utilization_evidence"]["snapshot_count"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Filter strictness, the deposit-event alias, and paging (PI-452 / REQ-550)
+# ---------------------------------------------------------------------------
+
+
+def test_unknown_query_parameter_refused_not_ignored(client):
+    """The defect behind the "1025-row cap" report: a query parameter this
+    endpoint does not know was silently dropped, so a misspelled filter
+    returned the whole store while looking applied. Unknown parameters are
+    now a 422 naming the offender."""
+    ent = _make_entity(client)
+    _post_evidence(client, subject_type="entity", subject_identifier=ent)
+    response = client.get("/utilization-evidence?subject=entity")
+    assert response.status_code == 422
+    (error,) = response.json()["errors"]
+    assert error["code"] == "unknown_parameter"
+    assert error["field"] == "subject"
+
+
+def test_deposit_event_alias_filters_like_the_canonical_spelling(client):
+    """``deposit_event_identifier`` (the serialized column name — the exact
+    spelling the defect report used) filters identically to the documented
+    ``deposit_event``; before PI-452 it was silently ignored and returned
+    every row."""
+    ent = _make_entity(client)
+    _post_evidence(
+        client, subject_type="entity", subject_identifier=ent,
+        deposit_event_identifier="DEP-777",
+    )
+    other = _make_entity(client, name="Other")
+    _post_evidence(client, subject_type="entity", subject_identifier=other)
+    for spelling in ("deposit_event", "deposit_event_identifier"):
+        listing = client.get(f"/utilization-evidence?{spelling}=DEP-777")
+        assert listing.status_code == 200, spelling
+        rows = listing.json()["data"]
+        assert [r["evidence_subject_identifier"] for r in rows] == [ent], spelling
+
+
+def test_paging_states_the_total_and_reaches_every_row(client):
+    """``meta.total`` states the filtered total on paged and unpaged reads
+    alike, and walking ``limit``/``offset`` pages yields each row exactly
+    once — so a bounded read can never be mistaken for a complete one."""
+    ent = _make_entity(client)
+    fld = _make_field(client, ent)
+    for hour in range(7):
+        _post_evidence(
+            client, subject_type="field", subject_identifier=fld,
+            profiled_at=f"2026-06-11T{10 + hour:02d}:00:00Z",
+        )
+    unpaged = client.get("/utilization-evidence").json()
+    assert unpaged["meta"]["total"] == 7
+    assert len(unpaged["data"]) == 7
+
+    seen: list[int] = []
+    for offset in (0, 3, 6):
+        body = client.get(
+            f"/utilization-evidence?limit=3&offset={offset}"
+        ).json()
+        assert body["meta"]["total"] == 7
+        assert len(body["data"]) <= 3
+        seen += [row["id"] for row in body["data"]]
+    assert len(seen) == 7 and len(set(seen)) == 7
+
+    filtered = client.get(
+        "/utilization-evidence?subject_type=entity&limit=3"
+    ).json()
+    assert filtered["meta"]["total"] == 0
+    assert filtered["data"] == []
+
+
+def test_page_bounds_validated(client):
+    """A zero/negative page bound is a caller error, not an empty read."""
+    for query in ("limit=0", "limit=-1", "offset=-1"):
+        response = client.get(f"/utilization-evidence?{query}")
+        assert response.status_code == 422, query

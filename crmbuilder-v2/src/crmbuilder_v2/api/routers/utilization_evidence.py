@@ -17,7 +17,7 @@ to (WTK-097 §6.1).
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.exceptions import (
@@ -83,25 +83,81 @@ def embed_inline_evidence(
     )
 
 
+_LIST_QUERY_PARAMS = frozenset(
+    {
+        "subject_type",
+        "subject_identifier",
+        "deposit_event",
+        "deposit_event_identifier",
+        "max_population_rate",
+        "latest",
+        "limit",
+        "offset",
+    }
+)
+
+
 @router.get("")
 def list_all(
+    request: Request,
     subject_type: str | None = None,
     subject_identifier: str | None = None,
     deposit_event: str | None = None,
+    deposit_event_identifier: str | None = None,
     max_population_rate: float | None = None,
     latest: bool = False,
+    limit: int | None = None,
+    offset: int = 0,
 ):
-    with readonly_session() as s:
-        return ok(
-            utilization_evidence.list_utilization_evidence(
-                s,
-                subject_type=subject_type,
-                subject_identifier=subject_identifier,
-                deposit_event_identifier=deposit_event,
-                max_population_rate=max_population_rate,
-                latest=latest,
-            )
+    """List evidence rows: filtered, pageable, with a stated total.
+
+    An unknown query parameter is refused with 422 rather than silently
+    ignored (PI-452 / REQ-550). A misspelled filter FastAPI drops
+    returns the whole store while looking applied — that is how this
+    endpoint came to be reported as "ignoring filters and capping at
+    1025 rows", when 1025 was simply the full set.
+    ``deposit_event_identifier`` is accepted as an alias for
+    ``deposit_event`` (the serialized column name; the same convention
+    as ``/references?relationship=``); ``deposit_event`` wins when both
+    are supplied. ``meta.total`` always states the filtered total, so a
+    ``limit``-bounded page is distinguishable from a complete read.
+    """
+    unknown = sorted(
+        k for k in request.query_params if k not in _LIST_QUERY_PARAMS
+    )
+    if unknown:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    k,
+                    "unknown_parameter",
+                    "unknown query parameter; supported: "
+                    + ", ".join(sorted(_LIST_QUERY_PARAMS)),
+                )
+                for k in unknown
+            ]
         )
+    dep = deposit_event if deposit_event is not None else deposit_event_identifier
+    with readonly_session() as s:
+        rows = utilization_evidence.list_utilization_evidence(
+            s,
+            subject_type=subject_type,
+            subject_identifier=subject_identifier,
+            deposit_event_identifier=dep,
+            max_population_rate=max_population_rate,
+            latest=latest,
+            limit=limit,
+            offset=offset,
+        )
+        total = utilization_evidence.count_utilization_evidence(
+            s,
+            subject_type=subject_type,
+            subject_identifier=subject_identifier,
+            deposit_event_identifier=dep,
+            max_population_rate=max_population_rate,
+            latest=latest,
+        )
+        return ok(rows, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{evidence_id}")

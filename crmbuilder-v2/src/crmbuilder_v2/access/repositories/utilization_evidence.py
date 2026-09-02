@@ -171,32 +171,35 @@ def _optional_datetime(value: object, *, field: str) -> datetime | None:
 # ---------------------------------------------------------------------------
 
 
+
+def _require_page_bound(value: object, *, field: str, minimum: int) -> int | None:
+    """Admit ``None`` or an integer >= ``minimum`` (PI-452 paging bounds)."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise UnprocessableError(
+            [FieldError(field, "invalid_value", f"must be an integer >= {minimum}")]
+        )
+    return value
+
 def get_utilization_evidence(session: Session, evidence_id: int) -> dict | None:
     """Return one evidence row by integer primary key, or ``None``."""
     row = session.get(UtilizationEvidence, evidence_id)
     return to_dict(row) if row is not None else None
 
 
-def list_utilization_evidence(
-    session: Session,
+def _filtered_evidence_stmt(
     *,
     subject_type: str | None = None,
     subject_identifier: str | None = None,
     deposit_event_identifier: str | None = None,
     max_population_rate: float | None = None,
     latest: bool = False,
-) -> list[dict]:
-    """Return evidence rows, optionally filtered (WTK-088 §4.5).
+):
+    """The shared WHERE clause of the evidence read surface (PI-452).
 
-    Filters compose by exact match except ``max_population_rate``
-    (``evidence_population_rate <= value``, NULL rates excluded by SQL
-    semantics) and ``latest`` (the §4.4 latest-snapshot rule: keep only
-    the greatest ``evidence_profiled_at`` per ``(subject_type,
-    subject_identifier, source_label)``; ``id`` breaks exact ties so a
-    re-appended duplicate row wins deterministically). Ordered by
-    subject, then newest snapshot first — the nested per-subject reads
-    are this function with the two subject filters supplied.
-    """
+    Both the list read and its total count are built from this one
+    statement, so a row the count admits is a row a page can reach."""
     stmt = select(UtilizationEvidence)
     if latest:
         ranked = select(
@@ -234,13 +237,80 @@ def list_utilization_evidence(
         stmt = stmt.where(
             UtilizationEvidence.evidence_population_rate <= max_population_rate
         )
-    stmt = stmt.order_by(
+    return stmt
+
+
+def list_utilization_evidence(
+    session: Session,
+    *,
+    subject_type: str | None = None,
+    subject_identifier: str | None = None,
+    deposit_event_identifier: str | None = None,
+    max_population_rate: float | None = None,
+    latest: bool = False,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[dict]:
+    """Return evidence rows, optionally filtered (WTK-088 §4.5).
+
+    Filters compose by exact match except ``max_population_rate``
+    (``evidence_population_rate <= value``, NULL rates excluded by SQL
+    semantics) and ``latest`` (the §4.4 latest-snapshot rule: keep only
+    the greatest ``evidence_profiled_at`` per ``(subject_type,
+    subject_identifier, source_label)``; ``id`` breaks exact ties so a
+    re-appended duplicate row wins deterministically). Ordered by
+    subject, then newest snapshot first — the nested per-subject reads
+    are this function with the two subject filters supplied.
+
+    ``limit``/``offset`` page the filtered, ordered set (PI-452 /
+    REQ-550): ``limit`` must be a positive integer when given,
+    ``offset`` a non-negative one, and the ordering above is total
+    (``id`` breaks every tie), so pages neither skip nor repeat rows.
+    Pair with :func:`count_utilization_evidence` for the stated total.
+    """
+    limit = _require_page_bound(limit, field="limit", minimum=1)
+    offset = _require_page_bound(offset, field="offset", minimum=0) or 0
+    stmt = _filtered_evidence_stmt(
+        subject_type=subject_type,
+        subject_identifier=subject_identifier,
+        deposit_event_identifier=deposit_event_identifier,
+        max_population_rate=max_population_rate,
+        latest=latest,
+    ).order_by(
         UtilizationEvidence.evidence_subject_type,
         UtilizationEvidence.evidence_subject_identifier,
         UtilizationEvidence.evidence_profiled_at.desc(),
         UtilizationEvidence.id.desc(),
     )
+    if offset:
+        stmt = stmt.offset(offset)
+    if limit is not None:
+        stmt = stmt.limit(limit)
     return [to_dict(r) for r in session.scalars(stmt).all()]
+
+
+def count_utilization_evidence(
+    session: Session,
+    *,
+    subject_type: str | None = None,
+    subject_identifier: str | None = None,
+    deposit_event_identifier: str | None = None,
+    max_population_rate: float | None = None,
+    latest: bool = False,
+) -> int:
+    """Total rows the same filters admit — the stated total a paged
+    listing carries, so a truncated read is distinguishable from a
+    complete one (PI-452 / REQ-550)."""
+    stmt = select(func.count()).select_from(
+        _filtered_evidence_stmt(
+            subject_type=subject_type,
+            subject_identifier=subject_identifier,
+            deposit_event_identifier=deposit_event_identifier,
+            max_population_rate=max_population_rate,
+            latest=latest,
+        ).subquery()
+    )
+    return int(session.scalar(stmt))
 
 
 # ---------------------------------------------------------------------------
