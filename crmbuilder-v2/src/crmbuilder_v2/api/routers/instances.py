@@ -69,6 +69,7 @@ from crmbuilder_v2.introspect.reconcile import (
     reconcile_roles,
     reconcile_system_settings,
     reconcile_teams,
+    reconcile_workflows,
 )
 from crmbuilder_v2.introspect.record_export import export_records
 from crmbuilder_v2.introspect.utilization import reconcile_utilization
@@ -340,6 +341,9 @@ _AUDIT_AREAS: dict[str, tuple[str, object]] = {
     "email-templates": ("Email templates", reconcile_email_templates),
     # PI-421 / REQ-123 — field dynamic logic, after fields exist.
     "field-rules": ("Field rules", reconcile_field_rules),
+    # PI-413 / REQ-499 — workflows detected on the instance, compared
+    # against the design's automation records. Detection only (DEC-926).
+    "workflows": ("Workflows", reconcile_workflows),
     # PI-406 / REQ-485 — governed setting values, read with the instance's
     # ordinary credential so a missing role grant surfaces as its own outcome.
     "system-settings": ("System settings", reconcile_system_settings),

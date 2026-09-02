@@ -33,6 +33,7 @@ from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import (
     association_mapping as association_mapping_repo,
 )
+from crmbuilder_v2.access.repositories import automation as automation_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import (
@@ -2839,6 +2840,141 @@ def reconcile_filtered_tabs(
                     state, override = "present", None
             writer.upsert(member_id, state, override)
             summary[state] += 1
+
+    summary["absent"] = writer.sweep_absent()
+    return summary
+
+
+#: EspoCRM Workflow ``type`` -> the design's neutral automation trigger.
+#: Deliberately partial: a type with no faithful neutral reading (signal,
+#: sequential, afterRecordSaved's created-or-updated blend) maps to ``None``
+#: and the raw value is recorded — comparing an approximation would assert
+#: something false (the REQ-502 principle, applied to triggers).
+_ESPO_WORKFLOW_TRIGGERS: dict[str, str | None] = {
+    "afterRecordCreated": "on_create",
+    "afterRecordUpdated": "on_update",
+    "afterRecordRemoved": "on_delete",
+    "scheduled": "scheduled",
+    "manual": "manual",
+}
+
+
+class _WorkflowsClient(Protocol):
+    """The one call the workflow audit needs — the generic record path,
+    live-verified against the Advanced-Pack test instance (PI-413)."""
+
+    def get_records(self, entity: str, **kwargs: Any) -> tuple[int, dict | None]: ...
+
+
+def reconcile_workflows(
+    session: Session,
+    *,
+    instance_identifier: str,
+    client: _WorkflowsClient,
+    progress: ProgressFn | None = None,
+) -> dict:
+    """Audit the workflows an instance holds (PI-413 / REQ-499 / DEC-926).
+
+    Detection only — nothing is emitted or applied. Enumerates the instance's
+    Workflow records through the generic record path and matches each by name
+    against the design's automation records:
+
+    * a match records membership on the automation (AUT-NNN), with the
+      readable attributes — entity and trigger — as a sparse override when
+      they differ;
+    * a workflow the design does not describe is recorded as a membership
+      keyed by the workflow's own record id, carrying its name, entity and
+      raw trigger in the override — the observation conformance reports as
+      drift naming that workflow. It is deliberately NOT captured into the
+      design: the action/condition translator does not exist, and a
+      half-translated automation record would assert something false;
+    * a described automation the instance does not carry sweeps to absent.
+
+    A 404 is a positive observation — the Workflow scope does not exist (no
+    Advanced Pack), so the instance carries none. Any other failed read marks
+    the pass read-failed: unknown, never none-present (REQ-499).
+
+    :returns: A summary ``{seen, created, present, drifted, absent}`` plus
+        ``undescribed`` (the names the design does not describe) and, on a
+        failed read, ``reason``.
+    """
+    stamp = datetime.now(UTC)
+    summary: dict = {
+        "seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0,
+        "undescribed": [],
+    }
+    writer = _AreaMembershipWriter(
+        session,
+        instance_identifier=instance_identifier,
+        member_type="workflow",
+        last_audited_at=stamp,
+    )
+
+    status, body = client.get_records("Workflow", max_size=200)
+    if status == 404:
+        _note(
+            progress,
+            "workflows: the Workflow scope is absent (no Advanced Pack) — "
+            "the instance carries none",
+            "info",
+        )
+        summary["absent"] = writer.sweep_absent()
+        return summary
+    if status != 200 or not isinstance(body, dict):
+        writer.mark_read_failed()
+        summary["reason"] = (
+            f"workflows could not be read (HTTP {status}); their state is "
+            "unknown, not none-present"
+        )
+        _note(progress, summary["reason"], "warning")
+        summary["absent"] = writer.sweep_absent()
+        return summary
+
+    automations = {
+        _ci(a["automation_name"]): a
+        for a in automation_repo.list_automations(session)
+    }
+    # ``automation_entity`` stores the design entity's identifier; the audit
+    # reads a natural name, so the comparison resolves through the design's
+    # entity list and the override carries the observed natural name.
+    ent_name = {
+        e["entity_identifier"]: e["entity_name"]
+        for e in entity_repo.list_entities(session)
+    }
+    for record in body.get("list") or []:
+        if not isinstance(record, dict):
+            continue
+        name = str(record.get("name") or "")
+        if not name:
+            continue
+        summary["seen"] += 1
+        entity_name = strip_entity_c_prefix(str(record.get("entityType") or ""))
+        raw_trigger = str(record.get("type") or "")
+        trigger = _ESPO_WORKFLOW_TRIGGERS.get(raw_trigger)
+        match = automations.get(_ci(name))
+        if match is None:
+            member_id = str(record.get("id") or name)[:32]
+            writer.upsert(member_id, "present", {
+                "workflow_name": name,
+                "workflow_entity": entity_name,
+                "workflow_trigger": trigger or f"unmapped:{raw_trigger}",
+            })
+            summary["undescribed"].append(name)
+            summary["present"] += 1
+            continue
+        member_id = match["automation_identifier"]
+        override: dict[str, Any] = {}
+        design_entity = ent_name.get(
+            match.get("automation_entity"), match.get("automation_entity")
+        )
+        if entity_name and _ci(entity_name) != _ci(str(design_entity or "")):
+            override["automation_entity"] = entity_name
+        observed_trigger = trigger or f"unmapped:{raw_trigger}"
+        if observed_trigger != match.get("automation_trigger"):
+            override["automation_trigger"] = observed_trigger
+        state = "drifted" if override else "present"
+        writer.upsert(member_id, state, override or None)
+        summary[state] += 1
 
     summary["absent"] = writer.sweep_absent()
     return summary

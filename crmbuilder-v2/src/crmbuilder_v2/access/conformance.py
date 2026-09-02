@@ -36,6 +36,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access import compared_set
 from crmbuilder_v2.access.reconcile_compare import option_sets_equal
 from crmbuilder_v2.access.repositories import association as association_repo
+from crmbuilder_v2.access.repositories import automation as automation_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import filtered_tabs as filtered_tab_repo
@@ -64,7 +65,9 @@ NAMED_BUT_UNWRITABLE = "named_but_unwritable"
 #: for roles, teams and filtered tabs until the emitter renders them (REQ-519 /
 #: PI-417). A difference on one is real drift but nothing a deploy can fix, so
 #: it is named-but-unwritable rather than drifted (DEC-923's narrow refinement).
-_UNWRITABLE_MEMBER_TYPES = frozenset({"role", "team", "filtered_tab"})
+_UNWRITABLE_MEMBER_TYPES = frozenset(
+    {"role", "team", "filtered_tab", "workflow"}
+)
 
 #: Attributes the applier cannot write even though their member type deploys:
 #: the engine cannot alter an existing link's cardinality in place (REQ-443).
@@ -115,6 +118,9 @@ _AUDIT_READS: dict[str, frozenset[str]] = {
         "message_template_merge_fields",
     }),
     "rule": frozenset({"rule_condition"}),
+    # PI-413: entity and trigger are read; condition and actions have no
+    # reader/translator yet and stay unknown (REQ-491).
+    "workflow": frozenset({"automation_entity", "automation_trigger"}),
     "system_setting": frozenset({"value"}),
 }
 
@@ -139,6 +145,11 @@ _SOURCES = (
         "message_template_identifier", "message_template_name",
     ),
     ("rule", rule_repo.list_rules, "rule_identifier", "rule_name"),
+    # PI-413 / REQ-499: workflows compare against the design's automations.
+    (
+        "workflow", automation_repo.list_automations,
+        "automation_identifier", "automation_name",
+    ),
 )
 
 _PRESENT_STATES = frozenset({"present", "drifted"})
@@ -368,6 +379,31 @@ def evaluate_instance(
                 identifier_key, name_key,
             ))
     entries.extend(_setting_entries(session, instance_identifier, index))
+
+    # PI-413 / REQ-499: a workflow the instance carries that matches no
+    # design automation was recorded by the audit keyed by its own record id;
+    # it is drift naming that workflow — the design describes nothing for an
+    # administrator-created workflow to be conformant WITH.
+    described = {
+        a["automation_identifier"]
+        for a in automation_repo.list_automations(session)
+    }
+    for membership in memberships:
+        if membership["member_type"] != "workflow":
+            continue
+        if membership["member_identifier"] in described:
+            continue
+        if membership.get("state") not in _PRESENT_STATES:
+            continue
+        override = membership.get("override") or {}
+        name = override.get("workflow_name") or membership["member_identifier"]
+        entries.append(_entry(
+            "workflow", membership["member_identifier"], name, "presence",
+            DRIFT,
+            f"the instance carries a workflow the design does not describe: "
+            f"{name!r}",
+            _iso(membership.get("last_audited_at")),
+        ))
 
     counts = {MATCH: 0, DRIFT: 0, UNKNOWN: 0, "unwritable_drift": 0}
     for entry in entries:
