@@ -47,6 +47,7 @@ from crmbuilder_v2.access.repositories import (
     roles,
     rule,
     system_settings,
+    teams,
     view,
 )
 from crmbuilder_v2.adapters.espocrm.client import (
@@ -84,7 +85,7 @@ def test_both_clients_implement_the_whole_protocol():
     for m in METHODS:
         assert callable(getattr(AccessDesignClient, m, None)), m
         assert callable(getattr(RestDesignClient, m, None)), m
-    assert len(METHODS) == 14
+    assert len(METHODS) == 15
 
 
 def test_rest_list_fields_reads_the_serialized_edge_key(monkeypatch):
@@ -230,6 +231,10 @@ def _seed_every_surface() -> None:
         rol = roles.create_role(
             s, name="Mentor Coordinator", status="confirmed"
         )["role_identifier"]
+        teams.create_team(
+            s, name="Mentor Team", description="Coordinators and mentors",
+            status="confirmed",
+        )
         field_permission_rule.create_field_permission_rule(
             s, name="Coordinator read-only email", role=rol,
             target_field=email_fid, permission_level="read_only", status="confirmed",

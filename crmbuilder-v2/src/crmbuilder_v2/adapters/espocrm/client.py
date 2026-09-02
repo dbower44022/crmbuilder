@@ -80,6 +80,13 @@ class DesignClient:
         for the emitted security blocks (PI-051)."""
         raise NotImplementedError
 
+    def list_teams(self) -> list[dict]:
+        """Team records, for the security program's ``teams:`` block.
+
+        Roles were already read here to resolve a rule's role name; teams were
+        not read at all, because nothing emitted them until DEC-998 (PI-417)."""
+        raise NotImplementedError
+
     def list_system_settings(self) -> list[dict]:
         """Active governed system-setting records (PI-406 / REQ-485)."""
         raise NotImplementedError
@@ -174,6 +181,9 @@ class RestDesignClient(DesignClient):
 
     def list_roles(self) -> list[dict]:
         return self._get("/roles")
+
+    def list_teams(self) -> list[dict]:
+        return self._get("/teams")
 
     def list_system_settings(self) -> list[dict]:
         return self._get("/system-settings?status=confirmed")
@@ -313,6 +323,11 @@ class AccessDesignClient(DesignClient):
         from crmbuilder_v2.access.repositories import roles
 
         return self._rows(roles.list_roles)
+
+    def list_teams(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import teams
+
+        return self._rows(teams.list_teams)
 
     def list_system_settings(self) -> list[dict]:
         from crmbuilder_v2.access.repositories import system_settings

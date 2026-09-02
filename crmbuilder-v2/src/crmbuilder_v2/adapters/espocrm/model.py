@@ -163,12 +163,30 @@ class EntityProgram:
 
     ``program`` is the full top-level YAML mapping (version/description/
     entities); ``filename`` is the V1-convention per-entity file name.
+
+    The two entity fields are ``None`` for a program that owns no entity
+    (DEC-998). Roles grant permissions across many entities and teams belong to
+    none, so neither has an owning entity and, under one-program-per-entity,
+    neither could be published at all. They emit into the security program
+    instead, which names no entity — so anything reaching for these fields must
+    tolerate their absence rather than assume a program is an entity's.
     """
 
-    entity_identifier: str
-    entity_name: str
+    entity_identifier: str | None
+    entity_name: str | None
     filename: str
     program: dict
+
+    @property
+    def is_security(self) -> bool:
+        """Whether this is the instance-wide security program.
+
+        Deliberately a property of the program rather than a filename
+        comparison at each call site: a filename is presentation, and a caller
+        deciding behaviour from one would break the moment the convention
+        changed.
+        """
+        return self.entity_identifier is None
 
 
 @dataclass
@@ -2116,6 +2134,155 @@ def _apply_message_templates(
 # ---------------------------------------------------------------------------
 
 
+#: EspoCRM's system-permission keys mapped to the deployable schema's neutral
+#: ones. The design stores what the audit read from the CRM, and the schema
+#: speaks a smaller, neutral vocabulary, so the two must be translated rather
+#: than passed through — an untranslated key is rejected by the loader outright.
+_SYSTEM_PERMISSION_KEYS: dict[str, str] = {
+    "assignmentPermission": "assignment_permission",
+    "userPermission": "user_permission",
+    "exportPermission": "export",
+    "massUpdatePermission": "mass_update",
+    "portalPermission": "portal",
+}
+
+#: The neutral keys carrying a yes/no flag rather than a scope. EspoCRM spells
+#: these ``yes``/``no``; the schema wants a boolean.
+_SYSTEM_PERMISSION_FLAGS = frozenset({"export", "mass_update", "portal"})
+
+#: EspoCRM's ``not-set`` means the CRM's own default applies. It is dropped
+#: rather than translated: the schema's documented rule is that an omitted
+#: permission defaults to deny, so writing a value here would assert a decision
+#: the design never made.
+_UNSET = "not-set"
+
+
+def _translate_system_permissions(
+    raw: dict, role_name: str, deferrals: list[Deferral], role_id: str
+) -> dict:
+    """EspoCRM's system permissions in the deployable schema's vocabulary.
+
+    A permission the schema has no word for is deferred by name rather than
+    dropped — EspoCRM carries several the schema never modelled (audit, mention,
+    message, data privacy, calendar, group email, follower management), and
+    silently discarding one would publish a role quietly weaker or stronger than
+    the design describes.
+    """
+    out: dict = {}
+    for espo_key, value in sorted(raw.items()):
+        neutral = _SYSTEM_PERMISSION_KEYS.get(espo_key)
+        if neutral is None:
+            deferrals.append(
+                Deferral(
+                    kind="unmapped_system_permission",
+                    identifier=role_id,
+                    name=f"{role_name}.{espo_key}",
+                    parent=role_name,
+                    detail=(
+                        f"EspoCRM permission {espo_key!r} has no counterpart in "
+                        "the deployable schema and is not published; set it by "
+                        "hand if the role needs it"
+                    ),
+                )
+            )
+            continue
+        if value == _UNSET or value is None:
+            continue
+        if neutral in _SYSTEM_PERMISSION_FLAGS:
+            out[neutral] = value == "yes"
+        else:
+            out[neutral] = value
+    return out
+
+
+#: The security program's filename. Mirrors the V1 audit, which already writes
+#: roles and teams to ``security/security.yaml`` under its own subdirectory
+#: (DEC-182) — so an operator meeting this file has met its shape before.
+SECURITY_FILENAME = "security.yaml"
+
+
+def _security_program(
+    roles: list[dict], teams: list[dict], deferrals: list[Deferral]
+) -> EntityProgram | None:
+    """The instance-wide security program, or ``None`` when there is none to write.
+
+    Roles grant permissions across many entities and teams belong to none, so
+    neither has an owning entity to file under (DEC-998). They emit here, into
+    the deployable schema's top-level ``roles:`` and ``teams:`` blocks, which the
+    V1 deploy pipeline's Security step already consumes.
+
+    Only confirmed records are emitted, matching every other surface: a
+    candidate role is unfinished design, not something to push at a live CRM's
+    access control.
+
+    Returns ``None`` rather than an empty program when nothing is confirmed —
+    a file declaring no roles is not the same as no file, and publishing one
+    would invite a reader to think the design had decided there are none.
+    """
+    entries: dict[str, list[dict]] = {}
+
+    confirmed_roles = [r for r in roles if r.get("role_status") == "confirmed"]
+    for role in sorted(confirmed_roles, key=lambda r: r["role_identifier"]):
+        entry: dict = {"name": role["role_name"]}
+        if role.get("role_description"):
+            entry["description"] = role["role_description"]
+        if role.get("role_scope_access"):
+            entry["scope_access"] = role["role_scope_access"]
+        if role.get("role_system_permissions"):
+            translated = _translate_system_permissions(
+                role["role_system_permissions"], role["role_name"],
+                deferrals, role["role_identifier"],
+            )
+            if translated:
+                entry["system_permissions"] = translated
+        entries.setdefault("roles", []).append(entry)
+
+    confirmed_teams = [t for t in teams if t.get("team_status") == "confirmed"]
+    for team in sorted(confirmed_teams, key=lambda t: t["team_identifier"]):
+        entry = {"name": team["team_name"]}
+        if team.get("team_description"):
+            entry["description"] = team["team_description"]
+        entries.setdefault("teams", []).append(entry)
+
+    for record, id_key, name_key, status_key, kind in (
+        *[(r, "role_identifier", "role_name", "role_status", "role") for r in roles],
+        *[(t, "team_identifier", "team_name", "team_status", "team") for t in teams],
+    ):
+        if record.get(status_key) == "confirmed":
+            continue
+        deferrals.append(
+            Deferral(
+                kind=f"unconfirmed_{kind}",
+                identifier=record[id_key],
+                name=record.get(name_key) or record[id_key],
+                parent=None,
+                detail=(
+                    f"{kind} is {record.get(status_key)!r}, not confirmed, so it "
+                    "is not emitted — a candidate record is unfinished design, "
+                    "not access control to push at a live CRM"
+                ),
+            )
+        )
+
+    if not entries:
+        return None
+    program = {
+        "version": "1.0.0",
+        "description": (
+            "Generated EspoCRM security program — roles and teams "
+            "(instance-wide, DEC-998)"
+        ),
+        "content_version": "1.0.0",
+        **entries,
+    }
+    return EntityProgram(
+        entity_identifier=None,
+        entity_name=None,
+        filename=SECURITY_FILENAME,
+        program=program,
+    )
+
+
 def build_program_model(
     entities: list[dict],
     fields: list[dict],
@@ -2130,6 +2297,7 @@ def build_program_model(
     field_permission_rules: list[dict] | None = None,
     field_visibility_rules: list[dict] | None = None,
     roles: list[dict] | None = None,
+    teams: list[dict] | None = None,
     rendered_at: str,
     engagement: str | None = None,
 ) -> GenerationModel:
@@ -2169,6 +2337,7 @@ def build_program_model(
     field_permission_rules = field_permission_rules or []
     field_visibility_rules = field_visibility_rules or []
     roles = roles or []
+    teams = teams or []
     index = _override_index(overrides)
 
     confirmed_entities = sorted(
@@ -2269,6 +2438,12 @@ def build_program_model(
     )
 
     programs = [builds[e["entity_identifier"]].program for e in confirmed_entities]
+    # Instance-wide, so it is not built from any entity and is appended last
+    # (DEC-998). The deploy applies roles after teams, and both after the
+    # entities they grant access to, which the file order preserves.
+    security = _security_program(roles, teams, deferrals)
+    if security is not None:
+        programs.append(security)
 
     return GenerationModel(
         engine=ENGINE,

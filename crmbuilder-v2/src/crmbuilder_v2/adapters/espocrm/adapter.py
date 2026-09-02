@@ -81,6 +81,7 @@ class EspoCrmAdapter(CrmAdapter):
         field_permission_rules: list[dict] | None = None,
         field_visibility_rules: list[dict] | None = None,
         roles: list[dict] | None = None,
+        teams: list[dict] | None = None,
         rendered_at: str,
         engagement: str | None = None,
     ) -> GenerationResult:
@@ -103,6 +104,7 @@ class EspoCrmAdapter(CrmAdapter):
             field_permission_rules=field_permission_rules,
             field_visibility_rules=field_visibility_rules,
             roles=roles,
+            teams=teams,
             rendered_at=rendered_at,
             engagement=engagement,
         )
@@ -182,6 +184,7 @@ class EspoCrmAdapter(CrmAdapter):
         field_permission_rules = client.list_field_permission_rules()
         field_visibility_rules = client.list_field_visibility_rules()
         roles = client.list_roles()
+        teams = client.list_teams()
         result = self.generate(
             entities,
             fields,
@@ -195,6 +198,7 @@ class EspoCrmAdapter(CrmAdapter):
             field_permission_rules=field_permission_rules,
             field_visibility_rules=field_visibility_rules,
             roles=roles,
+            teams=teams,
             rendered_at=rendered_at,
             engagement=engagement,
         )
