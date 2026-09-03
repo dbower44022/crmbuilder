@@ -88,3 +88,8 @@ crmbuilder-v2/data/rule-checks.snapshot.json
 # LibreOffice lock files — transient, created while a document is open.
 # `*.lock` does not match these: the name ends in `#` (.~lock.Foo.odt#).
 .~lock.*#
+
+# Claude Code harness/plugin artifacts — session-local tooling state, never repo content.
+.agents/
+.claude/skills/
+skills-lock.json
