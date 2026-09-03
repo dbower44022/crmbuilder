@@ -51,6 +51,8 @@ _EXPECTED_COLUMNS = {
     "field_unique": "BOOLEAN",
     # PI-425 / REQ-523 — platform-shipped field; compared, never created.
     "field_built_in": "BOOLEAN",
+    # PI-407 / REQ-487 — data-bearing classification.
+    "field_data_bearing": "BOOLEAN",
     # PRJ-025 PI-197 — derived/formula intent (DEC-438).
     "field_derived_result_type": "TEXT",
     "field_formula": "JSON",

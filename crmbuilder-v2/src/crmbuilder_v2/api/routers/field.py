@@ -27,7 +27,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from crmbuilder_v2.access.exceptions import NotFoundError
-from crmbuilder_v2.access.repositories import field
+from crmbuilder_v2.access.repositories import field, system_settings
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.routers.utilization_evidence import embed_inline_evidence
@@ -63,6 +63,10 @@ _INTRINSIC_BODY_TO_KWARG = {
     "field_max": "max",
     "field_read_only": "read_only",
     "field_unique": "unique",
+    # PI-407 / REQ-487 — the data-bearing classification. Forwarded on POST
+    # and, when explicitly present, on PUT; see ``replace`` for why an
+    # omitted value does not clear it.
+    "field_data_bearing": "data_bearing",
     # PRJ-025 PI-197 — derived/formula intent (DEC-438). The repo separates
     # these from the §7 intrinsics (cross-field validation against the type)
     # but the router forwards them the same way.
@@ -91,12 +95,14 @@ def list_all(
     entity_identifier: str | None = None,
     include_deleted: bool = False,
     include_evidence: str | None = None,
+    data_bearing: bool | None = None,
 ):
     with readonly_session() as s:
         records = field.list_fields(
             s,
             entity_identifier=entity_identifier,
             include_deleted=include_deleted,
+            data_bearing=data_bearing,
         )
         return ok(
             embed_inline_evidence(
@@ -140,6 +146,16 @@ def get(
         return ok(record)
 
 
+@router.get("/{identifier}/active-subsets")
+def active_subsets(identifier: str):
+    """The field's data-bearing classification alongside every per-instance
+    active subset declared on it (PI-407 / REQ-487): the classification, the
+    complete option list, and each governing setting with its declared
+    per-instance values."""
+    with readonly_session() as s:
+        return ok(system_settings.active_subsets_for_field(s, identifier))
+
+
 @router.post("", status_code=201)
 def create(body: FieldCreateIn):
     with writable_session() as s:
@@ -164,6 +180,13 @@ def create(body: FieldCreateIn):
 
 @router.put("/{identifier}")
 def replace(identifier: str, body: FieldReplaceIn):
+    intrinsics = _intrinsic_kwargs(body)
+    # The data-bearing classification is a ruling reached by reading the
+    # consumers (REQ-487); it is changed by stating it, never by leaving it
+    # out of a full-replace body. An omitted ``field_data_bearing`` leaves
+    # the classification as it stands; an explicit value replaces it.
+    if intrinsics.get("data_bearing") is None:
+        intrinsics.pop("data_bearing", None)
     with writable_session() as s:
         return ok(
             field.update_field(
@@ -177,7 +200,7 @@ def replace(identifier: str, body: FieldReplaceIn):
                 notes=body.field_notes,
                 status=body.field_status,
                 options=_options_arg(body),
-                **_intrinsic_kwargs(body),
+                **intrinsics,
             )
         )
 

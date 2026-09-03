@@ -26,6 +26,8 @@ _EXPECTED_COLUMNS = {
     "system_setting_description": "TEXT",
     "system_setting_notes": "TEXT",
     "system_setting_status": "VARCHAR",
+    # PI-407 / REQ-486 — names the enum field whose active subset this is.
+    "system_setting_active_subset_field": "VARCHAR",
     "system_setting_created_at": "DATETIME",
     "system_setting_updated_at": "DATETIME",
     "system_setting_deleted_at": "DATETIME",

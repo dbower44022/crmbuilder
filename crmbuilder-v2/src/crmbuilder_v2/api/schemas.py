@@ -865,6 +865,9 @@ class FieldCreateIn(_Base):
     field_read_only: bool | None = None
     field_unique: bool | None = None
     field_built_in: bool | None = None
+    # PI-407 / REQ-487 — data-bearing classification (nothing branches on
+    # the value); the gate on a per-instance active subset.
+    field_data_bearing: bool | None = None
     # PRJ-025 PI-197 — derived/formula intent (DEC-438).
     field_derived_result_type: str | None = None
     field_formula: dict | None = None
@@ -904,6 +907,9 @@ class FieldReplaceIn(_Base):
     field_read_only: bool | None = None
     field_unique: bool | None = None
     field_built_in: bool | None = None
+    # PI-407 / REQ-487 — data-bearing classification (nothing branches on
+    # the value); the gate on a per-instance active subset.
+    field_data_bearing: bool | None = None
     # PRJ-025 PI-197 — derived/formula intent (DEC-438).
     field_derived_result_type: str | None = None
     field_formula: dict | None = None
@@ -943,6 +949,9 @@ class FieldPatchIn(_Base):
     field_read_only: bool | None = None
     field_unique: bool | None = None
     field_built_in: bool | None = None
+    # PI-407 / REQ-487 — data-bearing classification (nothing branches on
+    # the value); the gate on a per-instance active subset.
+    field_data_bearing: bool | None = None
     # PRJ-025 PI-197 — derived/formula intent (DEC-438).
     field_derived_result_type: str | None = None
     field_formula: dict | None = None
@@ -1196,6 +1205,9 @@ class SystemSettingCreateIn(_Base):
     system_setting_notes: str | None = None
     system_setting_status: str | None = None
     system_setting_identifier: str | None = None
+    # PI-407 / REQ-486 — when given, this setting names the active subset of
+    # that enum field; refused unless the field is data-bearing (REQ-487).
+    system_setting_active_subset_field: str | None = None
 
 
 class SystemSettingPatchIn(_Base):
@@ -1210,6 +1222,7 @@ class SystemSettingPatchIn(_Base):
     system_setting_description: str | None = None
     system_setting_notes: str | None = None
     system_setting_status: str | None = None
+    system_setting_active_subset_field: str | None = None
 
 
 class SystemSettingValueIn(_Base):

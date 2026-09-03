@@ -32,11 +32,18 @@ _PREFIX = "system_setting_"
 
 
 @router.get("")
-def list_all(include_deleted: bool = False, status: str | None = None):
+def list_all(
+    include_deleted: bool = False,
+    status: str | None = None,
+    active_subset_field: str | None = None,
+):
     with readonly_session() as s:
         return ok(
             system_settings.list_system_settings(
-                s, include_deleted=include_deleted, status=status
+                s,
+                include_deleted=include_deleted,
+                status=status,
+                active_subset_field=active_subset_field,
             )
         )
 
@@ -72,6 +79,7 @@ def create(body: SystemSettingCreateIn):
                 status=body.system_setting_status,
                 notes=body.system_setting_notes,
                 identifier=body.system_setting_identifier,
+                active_subset_field=body.system_setting_active_subset_field,
             )
         )
 
