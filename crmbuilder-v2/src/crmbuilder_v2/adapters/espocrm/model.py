@@ -28,6 +28,10 @@ from crmbuilder_v2.adapters.espocrm.formulas import (
     FormulaCompileError,
     compile_formula,
 )
+from crmbuilder_v2.adapters.espocrm.layouts import (
+    LayoutRenderError,
+    render_layout,
+)
 
 ENGINE = "espocrm"
 
@@ -1891,6 +1895,116 @@ def _apply_filtered_tabs(
         build.entity_block.setdefault("filteredTabs", []).append(item)
 
 
+#: Layout statuses the emitter renders. Every other construct emits only its
+#: ``confirmed`` records (design noise must not reach a deploy artifact); a
+#: layout follows the same rule, and the audit's candidates stay in the
+#: design until they are confirmed.
+_EMITTED_LAYOUT_STATUSES = frozenset({"confirmed"})
+
+
+def _link_names_by_entity(builds: dict[str, _EntityBuild]) -> dict[str, set[str]]:
+    """Every link name the emitted ``relationships:`` blocks give each entity,
+    keyed by entity name — the source side's ``link`` and the target side's
+    ``linkForeign`` — so a record view that places a link field resolves."""
+    out: dict[str, set[str]] = {}
+    for build in builds.values():
+        for rel in build.program.program.get("relationships") or []:
+            if rel.get("entity") and rel.get("link"):
+                out.setdefault(rel["entity"], set()).add(rel["link"])
+            if rel.get("entityForeign") and rel.get("linkForeign"):
+                out.setdefault(rel["entityForeign"], set()).add(rel["linkForeign"])
+    return out
+
+
+def _apply_layouts(
+    layouts: list[dict],
+    builds: dict[str, _EntityBuild],
+    confirmed_entity_ids: set[str],
+    entity_name_by_id: dict[str, str],
+    deferrals: list[Deferral],
+) -> None:
+    """Attach a ``layout:`` block to each owning entity's program (PI-427 /
+    REQ-519, DEC-951; schema §7.1).
+
+    A layout is entity-bound, so it files with its entity like a field or a
+    filtered tab does. Only emitted-status layouts whose owning entity is
+    emitted are rendered; the rest route to deferrals by name. The design
+    holds the CRM's own payload (what the audit captured); the reverse mapper
+    in :mod:`crmbuilder_v2.adapters.espocrm.layouts` turns it into the YAML
+    body the deploy engine reads, and a layout that places a field the
+    program does not emit defers rather than rendering a cell the engine
+    cannot fill. One entity, one program: V1's cross-file aggregation of a
+    native entity's layouts (REQ-403) has nothing to aggregate here, since
+    every layout of an entity renders into that entity's single program.
+
+    ``autoPlaceName`` is honoured in the design's favour: the deploy engine
+    prepends ``name`` to any record-view panel layout that does not place it,
+    which would publish a layout the design does not describe. When an emitted
+    panel layout leaves ``name`` out, the entity's ``settings.autoPlaceName``
+    is set false so the instance receives the layout as designed; when every
+    emitted panel layout places it, the engine's default stands.
+    """
+    links_by_entity = _link_names_by_entity(builds)
+    rendered_types: dict[str, set[str]] = {}
+    panels_without_name: set[str] = set()
+    for lay in sorted(layouts, key=lambda row: row["layout_identifier"]):
+        if lay.get("layout_status") not in _EMITTED_LAYOUT_STATUSES:
+            continue
+        lid = lay["layout_identifier"]
+        ltype = str(lay.get("layout_type") or "")
+        eid = lay.get("layout_entity_identifier")
+        if eid not in confirmed_entity_ids:
+            deferrals.append(
+                Deferral(
+                    kind="layout",
+                    identifier=lid,
+                    name=ltype,
+                    parent=entity_name_by_id.get(eid, eid),
+                    detail="owning entity is not confirmed/emitted — layout not rendered",
+                )
+            )
+            continue
+        build = builds[eid]
+        ename = build.program.entity_name
+        emitted_names = set(build.ref_map.values())
+        try:
+            render = render_layout(
+                ltype,
+                lay.get("layout_content"),
+                entity_name=ename,
+                entity_espo_type=str(build.entity_block.get("type") or "Base"),
+                emitted_field_names=emitted_names,
+                link_names=links_by_entity.get(ename, set()),
+            )
+        except LayoutRenderError as exc:
+            deferrals.append(
+                Deferral(
+                    kind="layout", identifier=lid, name=ltype, parent=ename,
+                    detail=str(exc),
+                )
+            )
+            continue
+        seen = rendered_types.setdefault(eid, set())
+        if render.espo_type in seen:
+            deferrals.append(
+                Deferral(
+                    kind="layout", identifier=lid, name=ltype, parent=ename,
+                    detail=(
+                        f"another confirmed {ltype} layout of {ename} is already "
+                        "rendered — an entity carries one layout per type"
+                    ),
+                )
+            )
+            continue
+        seen.add(render.espo_type)
+        build.entity_block.setdefault("layout", {})[render.espo_type] = render.body
+        if isinstance(render.body, dict) and "panels" in render.body:
+            if not render.places_name:
+                panels_without_name.add(eid)
+    for eid in panels_without_name:
+        builds[eid].entity_block["settings"]["autoPlaceName"] = False
+
+
 def _build_workflow_action(
     action: dict,
     build: _EntityBuild,
@@ -2441,6 +2555,7 @@ def build_program_model(
     roles: list[dict] | None = None,
     teams: list[dict] | None = None,
     filtered_tabs: list[dict] | None = None,
+    layouts: list[dict] | None = None,
     rendered_at: str,
     engagement: str | None = None,
 ) -> GenerationModel:
@@ -2474,6 +2589,9 @@ def build_program_model(
     PI-417 (REQ-519) adds the security constructs: ``role`` and ``team`` emit
     into the entity-less security program (DEC-998), and ``filtered_tab`` →
     ``filteredTabs:`` on its owning entity's program.
+
+    PI-427 (REQ-519 / DEC-951) adds ``layout`` → ``layout:`` on its owning
+    entity's program, rendered from the CRM payload the design holds.
     """
     associations = associations or []
     rules = rules or []
@@ -2486,6 +2604,7 @@ def build_program_model(
     roles = roles or []
     teams = teams or []
     filtered_tabs = filtered_tabs or []
+    layouts = layouts or []
     index = _override_index(overrides)
 
     confirmed_entities = sorted(
@@ -2587,6 +2706,11 @@ def build_program_model(
     # PI-417: filtered tabs are entity-bound and file with their entity.
     _apply_filtered_tabs(
         filtered_tabs, builds, confirmed_entity_ids, entity_name_by_id, deferrals
+    )
+    # PI-427: layouts are entity-bound too, and resolve link fields against
+    # the relationships blocks attached above.
+    _apply_layouts(
+        layouts, builds, confirmed_entity_ids, entity_name_by_id, deferrals
     )
 
     programs = [builds[e["entity_identifier"]].program for e in confirmed_entities]

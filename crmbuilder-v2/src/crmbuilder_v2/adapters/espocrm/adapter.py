@@ -83,6 +83,7 @@ class EspoCrmAdapter(CrmAdapter):
         roles: list[dict] | None = None,
         teams: list[dict] | None = None,
         filtered_tabs: list[dict] | None = None,
+        layouts: list[dict] | None = None,
         rendered_at: str,
         engagement: str | None = None,
     ) -> GenerationResult:
@@ -107,6 +108,7 @@ class EspoCrmAdapter(CrmAdapter):
             roles=roles,
             teams=teams,
             filtered_tabs=filtered_tabs,
+            layouts=layouts,
             rendered_at=rendered_at,
             engagement=engagement,
         )
@@ -188,6 +190,7 @@ class EspoCrmAdapter(CrmAdapter):
         roles = client.list_roles()
         teams = client.list_teams()
         filtered_tabs = client.list_filtered_tabs()
+        layouts = client.list_layouts()
         result = self.generate(
             entities,
             fields,
@@ -203,6 +206,7 @@ class EspoCrmAdapter(CrmAdapter):
             roles=roles,
             teams=teams,
             filtered_tabs=filtered_tabs,
+            layouts=layouts,
             rendered_at=rendered_at,
             engagement=engagement,
         )
