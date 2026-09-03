@@ -72,12 +72,17 @@ RECONCILABLE_ASSOCIATION_ATTRS = frozenset({"association_cardinality"})
 #: design record can be written from an instance's value (REQ-519).
 CAPTURABLE_GLOBAL_MEMBERS = frozenset({"role", "team", "filtered_tab"})
 
-#: The subset of those the design can also push back (REQ-519 / PI-417). Roles
-#: and teams emit into the security program (DEC-998), which the deploy
-#: engine's Security step applies, so both directions are open. A filtered tab
-#: has no emitted block yet, so it stays capture-only — the gap is the emitter's,
-#: not the engine's, and this set is what closes when that block lands.
-PUBLISHABLE_GLOBAL_MEMBERS = frozenset({"role", "team"})
+#: The two that belong to no entity and emit into the entity-less security
+#: program (DEC-998). A filtered tab is entity-bound — DEC-998 names it as the
+#: construct that files normally — so it publishes with its entity's program.
+SECURITY_PROGRAM_MEMBERS = frozenset({"role", "team"})
+
+#: The subset of the capturable members the design can also push back (REQ-519
+#: / PI-417): all three, now. Roles and teams render into the security program,
+#: which the deploy engine's Security step applies; a filtered tab renders into
+#: its entity's ``filteredTabs:`` block, which the engine's filtered-tab step
+#: applies (the Report Filter over REST, the scope metadata as a bundle).
+PUBLISHABLE_GLOBAL_MEMBERS = frozenset({"role", "team", "filtered_tab"})
 
 #: Capability tokens a row carries per direction (REQ-479).
 CAPTURE = "capture"
@@ -110,11 +115,10 @@ def _attribute_capabilities(
     if member_type == "association":
         return attribute in RECONCILABLE_ASSOCIATION_ATTRS, False
     if member_type in CAPTURABLE_GLOBAL_MEMBERS:
-        # These belong to the instance rather than to an entity (REQ-519). The
-        # one-entity-one-program rule left them nowhere to be emitted until
-        # DEC-998 admitted the entity-less security program; a role or team now
-        # renders into it and so publishes, while a filtered tab has no block
-        # yet and stays capture-only.
+        # Writable both ways (REQ-519 / PI-417). The one-entity-one-program
+        # rule left roles and teams nowhere to be emitted until DEC-998
+        # admitted the entity-less security program; a filtered tab always
+        # had an entity and now has its block.
         return True, member_type in PUBLISHABLE_GLOBAL_MEMBERS
     return False, False
 
@@ -128,11 +132,11 @@ def _presence_capabilities(member_type: str) -> tuple[bool, bool]:
     the instance lacks is the same case (PI-417): the security program declares
     it and the deploy engine creates it, and no whole-entity promote would ever
     reach it, since it belongs to no entity. Other member types have no targeted
-    presence-push here — a missing field/layout is brought over by the
-    whole-entity promote — so their presence rows stay view-only.
+    presence-push here — a missing field, layout or filtered tab is brought
+    over by the whole-entity promote — so their presence rows stay view-only.
     """
     return False, (
-        member_type == "association" or member_type in PUBLISHABLE_GLOBAL_MEMBERS
+        member_type == "association" or member_type in SECURITY_PROGRAM_MEMBERS
     )
 
 

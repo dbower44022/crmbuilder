@@ -61,13 +61,13 @@ DRIFTED = "drifted"
 UNABLE_TO_BE_CHECKED = "unable_to_be_checked"
 NAMED_BUT_UNWRITABLE = "named_but_unwritable"
 
-#: Member types the applier has NO write path for today: publish stays closed
-#: for roles, teams and filtered tabs until the emitter renders them (REQ-519 /
-#: PI-417). A difference on one is real drift but nothing a deploy can fix, so
-#: it is named-but-unwritable rather than drifted (DEC-923's narrow refinement).
-_UNWRITABLE_MEMBER_TYPES = frozenset(
-    {"role", "team", "filtered_tab", "workflow"}
-)
+#: Member types the applier has NO write path for today. A difference on one is
+#: real drift but nothing a deploy can fix, so it is named-but-unwritable rather
+#: than drifted (DEC-923's narrow refinement). Roles, teams and filtered tabs
+#: left this set when the emitter rendered them (REQ-519 / PI-417); workflows
+#: stay until the ruling DEC-997 defers to (the audit reads them, no deploy
+#: writes them).
+_UNWRITABLE_MEMBER_TYPES = frozenset({"workflow"})
 
 #: Attributes the applier cannot write even though their member type deploys:
 #: the engine cannot alter an existing link's cardinality in place (REQ-443).

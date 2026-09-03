@@ -1000,3 +1000,69 @@ def test_a_purely_additive_automatic_apply_proceeds(monkeypatch, _stub_live):
     )
     assert res.aborted is False
     assert all(p.deployed for p in res.programs)
+
+
+# --- generate_design_yaml reads every list the adapter's run() reads ---------
+
+class _RecordingDesignClient:
+    """Every ``list_*`` returns what it was seeded with, or nothing — and
+    records which readers the service actually asked, which is the point."""
+
+    def __init__(self, **lists):
+        self._lists = lists
+        self.asked: list[str] = []
+
+    def __getattr__(self, name):
+        if not name.startswith("list_"):
+            raise AttributeError(name)
+
+        def _reader(*args, **kwargs):
+            self.asked.append(name)
+            return list(self._lists.get(name[len("list_"):], []))
+
+        return _reader
+
+
+def test_generate_design_yaml_reads_the_same_lists_as_the_adapter_run():
+    """PI-417: the publish path read nine design lists while the adapter's own
+    ``run`` read eleven, so a publish silently omitted the field-permission,
+    field-visibility and security blocks. The two must stay in step — this
+    pins the set, not a count, so a new reader shows up by name."""
+    from crmbuilder_v2.adapters.espocrm.client import DesignClient
+
+    client = _RecordingDesignClient()
+    service.generate_design_yaml(client, rendered_at="2026-09-03T00:00:00Z")
+
+    protocol = {
+        m for m in dir(DesignClient)
+        if m.startswith("list_") and m != "list_system_settings"
+        and m != "list_system_setting_values"
+    }
+    assert set(client.asked) == protocol
+
+
+def test_generate_design_yaml_renders_the_security_program_and_filtered_tabs():
+    """The consequence stated as an outcome: a confirmed role reaches
+    ``security.yaml`` and a confirmed filtered tab reaches its entity's block
+    through the very path a publish uses."""
+    from tests.crmbuilder_v2.adapters.test_espocrm_model import _entity, _field
+
+    client = _RecordingDesignClient(
+        entities=[_entity()],
+        fields=[_field()],
+        roles=[{"role_identifier": "ROL-001", "role_name": "Mentor",
+                "role_status": "confirmed"}],
+        filtered_tabs=[{
+            "filtered_tab_identifier": "FTB-001",
+            "filtered_tab_entity_identifier": "ENT-001",
+            "filtered_tab_label": "Approved",
+            "filtered_tab_filter": {"field": "FLD-001", "op": "eq", "value": "a"},
+            "filtered_tab_status": "confirmed",
+        }],
+    )
+    result = service.generate_design_yaml(client, rendered_at="2026-09-03T00:00:00Z")
+    by_name = {a.filename: a.content for a in result.programs}
+    assert "security.yaml" in by_name
+    assert "- name: Mentor" in by_name["security.yaml"]
+    assert "filteredTabs:" in by_name["Mentor-Application.yaml"]
+    assert "scope: Approved" in by_name["Mentor-Application.yaml"]

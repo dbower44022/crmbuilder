@@ -881,17 +881,28 @@ def _global_member_row(member_type, attribute, instance_value, design_value):
     return next(r for r in rows if r["attribute"] == attribute)
 
 
-def test_a_filtered_tab_is_capture_only():
-    """REQ-519: filtered tabs stop being view-only — they are writable through
-    the platform, so the read-only handling for non-writable settings never
-    described them. Publish stays closed because the emitter renders no
-    ``filteredTabs:`` block: nothing to push, not nothing to say."""
+def test_a_filtered_tab_attribute_is_writable_both_ways():
+    """REQ-519 / PI-417: what kept publish closed for a filtered tab was the
+    emitter rendering no ``filteredTabs:`` block, never the engine. The block
+    now emits with the tab's entity, so the row publishes like a field's."""
     row = _global_member_row(
         "filtered_tab", "filtered_tab_label", "My Clients", "Clients"
     )
     assert row["capturable"] is True
-    assert row["publishable"] is False
+    assert row["publishable"] is True
     assert row["actionable"] is True
+
+
+def test_a_missing_filtered_tab_is_brought_over_by_its_entity_not_pushed_alone():
+    """A filtered tab belongs to an entity, so a whole-entity promote reaches
+    it — the presence row stays view-only like a field's, unlike a role or
+    team, which no promote would ever carry."""
+    from crmbuilder_v2.access import reconcile_compare
+
+    assert reconcile_compare._presence_capabilities("filtered_tab") == (
+        False, False,
+    )
+    assert reconcile_compare._presence_capabilities("role") == (False, True)
 
 
 def test_a_role_attribute_publishes_now_that_the_security_program_exists():

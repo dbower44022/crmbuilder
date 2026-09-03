@@ -305,16 +305,21 @@ CONSTRUCT_SETS: dict[str, ConstructDeclaration] = {
         _ALL_FOUR, "field rules ride the field payloads they gate"
     ),
     "role": ConstructDeclaration(
-        (CAPTURED, COMPARED_CONSTRUCT),
-        "emit/apply is PI-417's scope — until then captured and compared only",
+        _ALL_FOUR,
+        "emitted into the security program (DEC-998) and applied by the "
+        "deploy's Security step; a publish that changes access is confirmed "
+        "first, and one that removes access separately (REQ-521)",
     ),
     "team": ConstructDeclaration(
-        (CAPTURED, COMPARED_CONSTRUCT),
-        "emit/apply is PI-417's scope — until then captured and compared only",
+        _ALL_FOUR,
+        "emitted into the security program (DEC-998) and applied by the "
+        "deploy's Security step; a publish is confirmed first (REQ-521)",
     ),
     "filtered_tab": ConstructDeclaration(
-        (CAPTURED, COMPARED_CONSTRUCT),
-        "emit/apply is PI-417's scope — until then captured and compared only",
+        _ALL_FOUR,
+        "emitted as its entity's filteredTabs: block (PI-417); the deploy "
+        "writes the Report Filter when the Advanced Pack is present and hands "
+        "the scope metadata to the operator as a bundle (schema §5.9)",
     ),
     "saved_view": ConstructDeclaration(
         (CAPTURED,),

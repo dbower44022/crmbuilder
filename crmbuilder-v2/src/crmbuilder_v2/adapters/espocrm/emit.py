@@ -102,6 +102,7 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
         "field_rule": "Field rules not emitted (valid_when / unrenderable)",
         "entity_rule": "Entity-subject rules",
         "view": "Views not rendered as savedViews",
+        "filtered_tab": "Filtered tabs not rendered as filteredTabs",
         "automation": "Automations not rendered as workflows",
         "workflow_action": "Workflow actions not rendered",
         "dedup_rule": "Dedup rules not rendered as duplicateChecks",
