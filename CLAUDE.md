@@ -152,10 +152,9 @@ espo_impl/
 │   ├── output_panel.py # Color-coded output
 │   ├── confirm_delete_dialog.py # Delete confirmation + entity name mapping
 │   └── import_dialog.py # Four-step data import wizard
-└── workers/           # QThreads for the Configure / Verify / Audit / Import paths
+└── workers/           # QThreads for the Configure / Verify / Import paths
     ├── run_worker.py
     ├── import_worker.py
-    ├── audit_worker.py
     └── tooltip_worker.py
 
 automation/

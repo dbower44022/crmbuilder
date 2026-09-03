@@ -99,7 +99,11 @@ rssh "curl -sf -m 5 http://127.0.0.1:8765/health >/dev/null" || die "remote /hea
 # code on stale dependencies.
 if ! rssh "cat $DEST/uv.lock" | diff -q - uv.lock >/dev/null 2>&1; then
     die "uv.lock differs from the deployed copy — dependencies changed. \
-The droplet venv cannot be updated in place; rebuild it on the droplet first, then re-run."
+Rebuild the venv on the droplet first, then re-run. Recipe (LSN-072): copy the \
+committed pyproject.toml + uv.lock to $DEST, then on the droplet run \
+'cd $DEST && UV_PROJECT_ENVIRONMENT=$DEST/.venv uv sync --frozen' — build AT the \
+final path; a venv staged under another name bakes that path into every console \
+script's shebang and the service crash-loops with 203/EXEC after the rename."
 fi
 echo "    uv.lock unchanged — code-only deploy"
 
