@@ -55,6 +55,7 @@ from crmbuilder_v2.access.evidence_projection import (
     EVIDENCE_FLAG_KEYS,
     project_evidence_object,
 )
+from crmbuilder_v2.access.vocab import RETIRED_FIELD_TYPES
 from crmbuilder_v2.transform.normalize import (
     FALLBACK_FIELD_TYPE as _FALLBACK_FIELD_TYPE,
 )
@@ -466,6 +467,7 @@ def plan_deposit(
         return detail
 
     anomalies: list[str] = []
+    links_not_deposited: list[str] = []
     skipped: list[dict] = []
     creates: list[PlannedCreate] = []
     matches: list[PlannedMatch] = []
@@ -661,53 +663,26 @@ def plan_deposit(
                 rel.get("link"),
             ),
         )
-        for audited, wire_entity, label, link, other_entity, other_link in sides:
+        for audited, wire_entity, _label, link, other_entity, _other_link in sides:
             if not audited or not link:
                 continue
             entity_key = entity_key_by_wire.get(wire_entity or "")
             if entity_key is None:
                 continue  # side's entity skipped (§3.1) -> side skipped
             consumed_links.setdefault(entity_key, set()).add(link)
-            name = (label or link).strip()
-            notes = _source_block(
-                [
-                    ("relationship", rel.get("name")),
-                    ("link_type", rel.get("link_type")),
-                    ("link", link),
-                    ("entity_foreign", other_entity),
-                    ("relation_name", rel.get("relation_name")),
-                ]
+            # PI-459 (REQ-505 / DEC-932, DEC-988): a link between records is
+            # described once, as a relationship, never as a field — the
+            # ``reference`` kind these sides used to plan is retired and the
+            # store refuses it. The side is not planned; the fact that the
+            # source declared it is recorded on the run's deposit event
+            # (``links_not_deposited``), not in ``anomalies``, so a pure
+            # re-observation run still creates nothing (§8 T3). Depositing
+            # these as association records is tracked separately.
+            links_not_deposited.append(
+                f"{wire_entity}.{link} -> {other_entity or '?'} "
+                f"({rel.get('link_type') or 'unknown link type'}, "
+                f"relationship {rel.get('name')!r})"
             )
-            payload = {
-                "name": name,
-                "description": _synth_description(source_label),
-                "type": "reference",
-                "required": False,
-                "notes": notes,
-                "status": "candidate",
-            }
-            evidence = {
-                "subject_type": "field",
-                "catalog_class": (
-                    "custom"
-                    if entity_class_by_key.get(entity_key) == "custom"
-                    else "standard"
-                ),
-                # §4.3 relationship_pairing — the opposite side's wire
-                # identity. No wire_type: a RelationshipAuditResult
-                # carries the relationship's link_type, not the side's
-                # metadata field type.
-                "detail": evidence_detail(
-                    link,
-                    relationship_pairing={
-                        "relationship": rel.get("name"),
-                        "link_type": rel.get("link_type"),
-                        "entity": other_entity,
-                        "link": other_link,
-                    },
-                ),
-            }
-            relationship_fields.append((entity_key, payload, evidence))
 
     # ---- plain fields, deduped against consumed links (§3.3) --------------
     for entity, field_result in field_plans:
@@ -721,6 +696,16 @@ def plan_deposit(
             continue  # the relationship mapping wins
         name = _field_name(field_result)
         field_type = wire_type_map.get(wire_type)
+        if field_type in RETIRED_FIELD_TYPES:
+            # PI-459: same ruling as the relationship sides above — a
+            # link-shaped wire field (or a source-inferred reference, e.g.
+            # the spreadsheet adapter's cross-sheet containment) is never
+            # planned as a field. Recorded on the deposit event.
+            links_not_deposited.append(
+                f"{_entity_name(entity)}.{field_result.get('yaml_name')} "
+                f"(wire type {wire_type!r})"
+            )
+            continue
         if field_type is None:
             field_type = _FALLBACK_FIELD_TYPE
             anomalies.append(
@@ -1041,6 +1026,11 @@ def plan_deposit(
         "manifest_version": MANIFEST_VERSION,
         "transform_version": _TRANSFORM_VERSION,
     }
+    if links_not_deposited:
+        # PI-459: the links the vocabulary keeps out of the field plan,
+        # named on the run's own record. Stable across re-runs of the same
+        # manifest, so idempotency (§8 T3) is unaffected.
+        apply_context["links_not_deposited"] = sorted(links_not_deposited)
     return DepositPlan(
         source_label=source_label,
         snapshot_at=snapshot_at,

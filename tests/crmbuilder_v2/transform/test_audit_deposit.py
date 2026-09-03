@@ -35,6 +35,7 @@ from crmbuilder_v2.access.repositories import (
 )
 from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
+from crmbuilder_v2.access.vocab import RETIRED_FIELD_TYPES
 from crmbuilder_v2.transform import audit_deposit
 
 SOURCE_LABEL = "espocrm @ crm.example.org"
@@ -340,9 +341,12 @@ def test_t1_plan_shape():
         by_type.setdefault(item.record_type, []).append(item)
 
     assert len(by_type["entity"]) == 2
-    # 2 plain custom on Engagement + 1 custom on Contact + 2 relationship
-    # sides; the plain `contact` link field is deduped away (§3.3).
-    assert len(by_type["field"]) == 5
+    # 2 plain custom on Engagement + 1 custom on Contact. The two
+    # relationship sides and the plain `contact` link field are NOT
+    # planned: a link is a relationship, never a field (REQ-505 /
+    # DEC-932; the `reference` kind is retired) — they land on the
+    # run's apply_context instead.
+    assert len(by_type["field"]) == 3
     assert len(by_type["persona"]) == 2
     assert len(by_type["process"]) == 2
     assert len(by_type["manual_config"]) == 1
@@ -364,10 +368,17 @@ def test_t1_plan_shape():
     assert field_types == {
         "Engagement Stage": "enum",
         "Start Date": "date",
-        "Contact": "reference",
         "Mentor Status": "text",
-        "Engagements": "reference",
     }
+    # The links the vocabulary kept out of the plan are recorded on the
+    # deposit event's context, one line per side, sorted.
+    skipped = plan.apply_context["links_not_deposited"]
+    assert len(skipped) == 2
+    assert any("Engagement.contact -> Contact" in line for line in skipped)
+    assert any("Contact.engagements -> Engagement" in line for line in skipped)
+    assert not any(
+        item.payload.get("type") == "reference" for item in by_type["field"]
+    )
 
     # Native Contact maps because it carries a custom field; its kind
     # comes from the Person base type; Engagement (Base) has no kind.
@@ -448,8 +459,16 @@ def test_t5_wire_type_map_coverage():
         for item in plan.creates
         if item.record_type == "field"
     }
+    skipped = plan.apply_context.get("links_not_deposited") or []
     for i, wire in enumerate(sorted(audit_deposit.WIRE_TYPE_MAP)):
-        assert planned[f"F{i} {wire}"] == audit_deposit.WIRE_TYPE_MAP[wire]
+        mapped = audit_deposit.WIRE_TYPE_MAP[wire]
+        if mapped in RETIRED_FIELD_TYPES:
+            # A link-shaped wire type is never planned as a field
+            # (REQ-505 / DEC-932); it lands on the run's record instead.
+            assert f"F{i} {wire}" not in planned
+            assert any(f"Everything.f{i} " in line for line in skipped), wire
+        else:
+            assert planned[f"F{i} {wire}"] == mapped
     assert planned["Weird"] == "text"
     assert any("futureType" in line for line in plan.anomalies)
 
@@ -520,7 +539,7 @@ def test_t1_t2_full_transform_and_provenance(v2_env):
     assert summary["records_summary"] == {
         "domains": 1,
         "entities": 2,
-        "fields": 5,
+        "fields": 3,
         "personas": 2,
         "processes": 2,
         "manual_configs": 1,
@@ -578,8 +597,8 @@ def test_t1_t2_full_transform_and_provenance(v2_env):
     # structural facts populated, profiled_at = report timestamp.
     with session_scope() as s:
         rows = utilization_evidence.list_utilization_evidence(s)
-    assert len(rows) == 12
-    assert summary["evidence_rows"] == 12
+    assert len(rows) == 10
+    assert summary["evidence_rows"] == 10
     assert {r["evidence_deposit_event_identifier"] for r in rows} == {dep}
     assert all(r["evidence_population_rate"] is None for r in rows)
     stage_row = next(
@@ -606,14 +625,14 @@ def test_t3_idempotent_rerun(v2_env):
 
     with session_scope() as s:
         assert len(entity_repo.list_entities(s)) == 2
-        assert len(field_repo.list_fields(s)) == 5
+        assert len(field_repo.list_fields(s)) == 3
         assert len(persona.list_personas(s)) == 2
         assert len(process.list_processes(s)) == 2
         assert len(domain.list_domains(s)) == 1
         rows = utilization_evidence.list_utilization_evidence(s)
-    # One new evidence row per touched subject (12 + 12).
-    assert len(rows) == 24
-    assert second["evidence_rows"] == 12
+    # One new evidence row per touched subject (10 + 10).
+    assert len(rows) == 20
+    assert second["evidence_rows"] == 10
 
 
 def test_t4_incremental_rerun(v2_env):
