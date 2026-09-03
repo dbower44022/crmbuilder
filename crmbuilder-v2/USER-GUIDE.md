@@ -683,6 +683,28 @@ behaviours guard it (PI-411):
   produced it. Anything short of full success leaves the previous stamp
   untouched, so the stamp only ever claims a state that was verified.
 
+### Per-instance feature selection (chapters)
+
+When several chapters run the same shared design on their own instances
+(DEC-976/977), each instance can carry a **stored feature selection** — the
+design entities that are active for that chapter. Set it from the Instances
+panel with **Feature selection…**: check the entities, *Save selection*;
+*Clear selection* returns the instance to full design. How it behaves
+(REQ-546 / PI-444):
+
+- A publish or preview with nothing ticked at run time automatically sends
+  **only the selected entities**; the publish dialog's scope list comes
+  pre-checked from the stored selection so you see what a bare publish
+  would send.
+- Ticking a different scope in the dialog **overrides for that run only** —
+  the stored selection is unchanged.
+- An instance with **no** stored selection always publishes the full design,
+  including entities added to the design later.
+- A stored selection whose entities no longer exist in the design **refuses
+  to publish** rather than silently falling back to everything; fix or clear
+  the selection first.
+- Publish History shows when a run's scope came from the stored selection.
+
 ## Working with Claude (MCP)
 
 The MCP server exposes ~40 tools that wrap the same REST endpoints

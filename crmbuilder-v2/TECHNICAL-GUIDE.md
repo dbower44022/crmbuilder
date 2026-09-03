@@ -272,6 +272,20 @@ existing generate → validate → backup → deploy → verify flow:
   (verified live, DEC-973) and writable only by the applier's admin
   credential. `publish_runs.publish_run_plan_fingerprint` carries the
   identity; the run summary carries the release and stamp outcome.
+* **Stored feature selection (REQ-546 / PI-444).** `instances.
+  instance_feature_selection` is a JSON list of design-entity identifiers
+  (`ENT-NNN`; NULL = full design — identifiers, not filenames, so an entity
+  rename cannot detach the selection; migrations 0129/SQLite + 0086/PG).
+  `_run_publish` resolves it via
+  `access/reconcile_apply.feature_selection_scope` (identifier → generated
+  program filename) when no per-run scope is supplied; an explicit scope
+  wins for that run only. A selection resolving to nothing refuses the run
+  (`selection_matches_nothing`) instead of widening to a full publish.
+  Validate-only stays full-design — it is the dialog's discovery surface —
+  but reports the resolution so the publish dialog pre-checks its scope
+  list. `publish_runs` summaries carry `scope_source`
+  (`stored_selection`/`explicit_scope`/`full_design`) and the applied
+  selection; `FeatureSelectionDialog` (instances panel) edits it via PATCH.
 
 ## MCP server
 
