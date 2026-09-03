@@ -126,9 +126,21 @@ stays intact.
 
 - **Coverage shown:** entities, fields and field settings, relationships
   (listed under both linked entities), layouts, roles, teams, and filtered tabs.
-- **Capture (instance → design) in this release:** field attributes. Whole‑entity
-  copy, per‑attribute publish, and capture of non‑field members are planned
-  follow‑ons; for now use the Instances → Publish flow for design → instance.
+- **Capture (instance → design):** field attributes, reconcilable entity
+  settings, relationship cardinality (capture‑only — the engine cannot change a
+  link's cardinality in place), and role, team and filtered‑tab attributes
+  (REQ‑519).
+- **Publish (design → instance) from a row:** field attributes, entity settings,
+  relationships, and — since PI‑417 — roles and teams (through the instance‑wide
+  `security.yaml` program, DEC‑998) and filtered tabs (with their entity). A
+  role or team publish states its target and effect and is confirmed first; one
+  that removes access the instance currently grants needs a separate second
+  confirmation (REQ‑521). A missing role or team can be pushed from its presence
+  row; a missing field, layout or filtered tab is carried by its entity's
+  promote.
+- **Still view‑only:** layouts (writable and portal/role‑bound variants are being
+  separated under PI‑418, with the `layouts:` emitter as PI‑427) and workflows
+  (captured and compared, never written — DEC‑997).
 - **Freshness:** the diff reflects each instance's last audit. Re‑audit to
   refresh before reconciling if a system changed recently.
 
@@ -141,6 +153,10 @@ errors}`, `X-Engagement` header):
 |---|---|
 | `GET /reconcile/compare?instance_a=&instance_b=&entity=` | Three‑way diff (omit `entity` for the full scan). |
 | `POST /reconcile/capture` | Capture a field attribute into the design. |
+| `POST /reconcile/capture-member` | Capture a role, team or filtered‑tab attribute into the design. |
+| `GET /reconcile/assess-access-publish?instance=&member_type=&member_identifier=` | What a role or team publish would change on the instance, and which changes remove access (REQ‑521). |
+| `POST /reconcile/publish` | Publish a member with its program; a role or team needs `confirm_access_change`, and `confirm_access_removal` when the assessment reports a removal. |
+| `GET /reconcile/compared-set` | The declared compared set and the four construct sets (captured / emitted / applied / compared) per member type. |
 | `GET /reconcile/transactions` | The transaction log. |
 | `GET /reconcile/transactions/{id}/assess-revert` | Data‑loss analysis for a revert. |
 | `POST /reconcile/transactions/{id}/rollback` | Reverse a design change. |

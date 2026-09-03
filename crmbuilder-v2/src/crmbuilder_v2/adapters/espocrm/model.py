@@ -1749,6 +1749,148 @@ def _apply_views(
         build.entity_block.setdefault("savedViews", []).append(item)
 
 
+#: Schema §5.9: a filtered tab's scope name is ``^[A-Z][A-Za-z0-9]{0,59}$`` and
+#: unique across the program file (EspoCRM scope names share one namespace).
+_SCOPE_NAME_MAX = 60
+
+
+def _scope_name(label: str, identifier: str) -> str:
+    """PascalCase EspoCRM scope name for a filtered tab, derived from its label
+    (§6/§7 "derive, don't store": the design records the label a person reads,
+    and the scope is the engine's spelling of it). ``My Open Engagements`` →
+    ``MyOpenEngagements``. A label with no usable letters falls back to the
+    identifier so the tab still emits rather than being dropped."""
+    words = _words(label)
+    name = "".join(w[:1].upper() + w[1:] for w in words)
+    if not name or not name[0].isalpha():
+        name = "Tab" + (name or "".join(_words(identifier)))
+    return name[:_SCOPE_NAME_MAX]
+
+
+def _looks_engine_native(raw_filter: object) -> bool:
+    """Whether a stored filter is EspoCRM's own report-filter payload rather
+    than the neutral AST — the shape the audit writes when it captures a tab
+    (``{"where": [...]}`` or a list of ``{type, attribute, value}`` items)."""
+    if isinstance(raw_filter, dict):
+        return "where" in raw_filter or (
+            "type" in raw_filter and "attribute" in raw_filter
+        )
+    return isinstance(raw_filter, list)
+
+
+def _apply_filtered_tabs(
+    filtered_tabs: list[dict],
+    builds: dict[str, _EntityBuild],
+    confirmed_entity_ids: set[str],
+    entity_name_by_id: dict[str, str],
+    deferrals: list[Deferral],
+) -> None:
+    """Attach a ``filteredTabs:`` block to each owning entity's program
+    (PI-417 / REQ-519, schema §5.9).
+
+    A filtered tab is entity-bound — DEC-998 names it as the construct that
+    files normally, beside the entity-less security program — so it emits with
+    its entity like a field does. Only ``confirmed`` tabs whose owning entity
+    is emitted are rendered; the rest route to deferrals by name. ``filter`` is
+    required by the schema and is compiled from the neutral AST through the
+    same strict resolver the rules use, so a filter touching a non-emitted
+    field defers rather than emitting a reference ``validate_program`` would
+    reject. A filter stored in the engine's own report-filter form (the audit
+    captures that shape and has no neutral reading for it yet) is deferred by
+    name too, never guessed at.
+
+    ``id`` and ``scope`` are derived: the block ``id`` from the identifier and
+    the scope from the label. ``acl`` and ``navOrder`` are left to the schema's
+    defaults (``boolean``; operator decides position at install).
+    """
+    taken_scopes: dict[str, set[str]] = {}
+    for tab in sorted(filtered_tabs, key=lambda t: t["filtered_tab_identifier"]):
+        if tab.get("filtered_tab_status") != "confirmed":
+            continue
+        fid = tab["filtered_tab_identifier"]
+        label = str(tab.get("filtered_tab_label") or fid)
+        eid = tab.get("filtered_tab_entity_identifier")
+        if eid not in confirmed_entity_ids:
+            deferrals.append(
+                Deferral(
+                    kind="filtered_tab",
+                    identifier=fid,
+                    name=label,
+                    parent=entity_name_by_id.get(eid, eid),
+                    detail=(
+                        "owning entity is not confirmed/emitted — filteredTab "
+                        "not rendered"
+                    ),
+                )
+            )
+            continue
+        build = builds[eid]
+        ename = build.program.entity_name
+
+        raw_filter = tab.get("filtered_tab_filter")
+        if raw_filter is None:
+            deferrals.append(
+                Deferral(
+                    kind="filtered_tab",
+                    identifier=fid,
+                    name=label,
+                    parent=ename,
+                    detail=(
+                        "filteredTabs requires a filter (schema §5.9); this tab "
+                        "carries no filter — author one in the design"
+                    ),
+                )
+            )
+            continue
+        if _looks_engine_native(raw_filter):
+            deferrals.append(
+                Deferral(
+                    kind="filtered_tab",
+                    identifier=fid,
+                    name=label,
+                    parent=ename,
+                    detail=(
+                        "filter is stored in EspoCRM report-filter form (as the "
+                        "audit captured it); no neutral reading exists for that "
+                        "shape yet — author the filter in the design"
+                    ),
+                )
+            )
+            continue
+        try:
+            compiled_filter = compile_condition(
+                raw_filter, _strict_resolver(build.ref_map)
+            )
+        except CompileError as exc:
+            deferrals.append(
+                Deferral(
+                    kind="filtered_tab",
+                    identifier=fid,
+                    name=label,
+                    parent=ename,
+                    detail=f"filter not compilable to EspoCRM form: {exc}",
+                )
+            )
+            continue
+
+        scope = _scope_name(label, fid)
+        seen = taken_scopes.setdefault(eid, set())
+        if scope in seen:
+            # Two tabs on one entity whose labels spell the same scope: the
+            # identifier's digits keep them apart without hiding either.
+            suffix = "".join(ch for ch in fid if ch.isdigit())
+            scope = (scope[: _SCOPE_NAME_MAX - len(suffix)] + suffix)
+        seen.add(scope)
+
+        item: dict = {
+            "id": _slug_id(fid),
+            "scope": scope,
+            "label": label,
+            "filter": compiled_filter,
+        }
+        build.entity_block.setdefault("filteredTabs", []).append(item)
+
+
 def _build_workflow_action(
     action: dict,
     build: _EntityBuild,
@@ -2298,6 +2440,7 @@ def build_program_model(
     field_visibility_rules: list[dict] | None = None,
     roles: list[dict] | None = None,
     teams: list[dict] | None = None,
+    filtered_tabs: list[dict] | None = None,
     rendered_at: str,
     engagement: str | None = None,
 ) -> GenerationModel:
@@ -2327,6 +2470,10 @@ def build_program_model(
     ``emailTemplates:`` (deployable; its ``bodyFile`` body is emitted as a
     companion artifact). Only ``confirmed`` records whose owning entity is
     emitted are rendered; the rest route to deferrals.
+
+    PI-417 (REQ-519) adds the security constructs: ``role`` and ``team`` emit
+    into the entity-less security program (DEC-998), and ``filtered_tab`` →
+    ``filteredTabs:`` on its owning entity's program.
     """
     associations = associations or []
     rules = rules or []
@@ -2338,6 +2485,7 @@ def build_program_model(
     field_visibility_rules = field_visibility_rules or []
     roles = roles or []
     teams = teams or []
+    filtered_tabs = filtered_tabs or []
     index = _override_index(overrides)
 
     confirmed_entities = sorted(
@@ -2435,6 +2583,10 @@ def build_program_model(
     )
     captured_only = _collect_captured_only(
         views, automations, entity_name_by_id
+    )
+    # PI-417: filtered tabs are entity-bound and file with their entity.
+    _apply_filtered_tabs(
+        filtered_tabs, builds, confirmed_entity_ids, entity_name_by_id, deferrals
     )
 
     programs = [builds[e["entity_identifier"]].program for e in confirmed_entities]

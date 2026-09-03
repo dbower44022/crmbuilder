@@ -42,6 +42,7 @@ from crmbuilder_v2.access.repositories import (
     field,
     field_permission_rule,
     field_visibility_rule,
+    filtered_tabs,
     instances,
     message_template,
     roles,
@@ -85,7 +86,7 @@ def test_both_clients_implement_the_whole_protocol():
     for m in METHODS:
         assert callable(getattr(AccessDesignClient, m, None)), m
         assert callable(getattr(RestDesignClient, m, None)), m
-    assert len(METHODS) == 15
+    assert len(METHODS) == 16
 
 
 def test_rest_list_fields_reads_the_serialized_edge_key(monkeypatch):
@@ -233,6 +234,13 @@ def _seed_every_surface() -> None:
         )["role_identifier"]
         teams.create_team(
             s, name="Mentor Team", description="Coordinators and mentors",
+            status="confirmed",
+        )
+        # PI-417 (REQ-519): a filtered tab, entity-bound, with the neutral
+        # filter the emitter compiles into its filteredTabs: block.
+        filtered_tabs.create_filtered_tab(
+            s, entity_identifier=app, label="Approved applications",
+            filter={"field": status_fid, "op": "eq", "value": "approved"},
             status="confirmed",
         )
         field_permission_rule.create_field_permission_rule(

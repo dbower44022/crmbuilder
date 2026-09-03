@@ -111,17 +111,11 @@ def test_a3_schema_only_detail_keys():
     assert stage["detail"]["schema_only"] is True
     assert stage["declared_option_count"] == 7
 
-    # Relationship-side field: §4.3 relationship_pairing names the
-    # opposite side's wire identity.
-    engagements_side = evidence["contact/engagements"]
-    pairing = engagements_side["detail"]["relationship_pairing"]
-    assert pairing == {
-        "relationship": "engagementContact",
-        "link_type": "manyToOne",
-        "entity": "Engagement",
-        "link": "contact",
-    }
-    assert engagements_side["detail"]["wire_name"] == "engagements"
+    # Relationship sides are no longer planned as fields (REQ-505 /
+    # DEC-932: a link is a relationship; the `reference` kind is
+    # retired) — they land on the run's apply_context instead.
+    assert "contact/engagements" not in evidence
+    assert len(plan.apply_context["links_not_deposited"]) == 2
 
     # Persona: kind/kinds/scope_access (§4.4); the role+team merge is
     # impossible in T1, so each carries its own kind.
@@ -386,7 +380,7 @@ def test_a8_plan_read_parity(v2_env):
                 )
             )
             assert masked == plan_obj, (run, key)
-        assert len(read) == 12
+        assert len(read) == 10
 
 
 # ---------------------------------------------------------------------------

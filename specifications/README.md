@@ -3,8 +3,8 @@
 | Field | Value |
 |-------|-------|
 | Version | 0.1 |
-| Last Updated | 05-27-26 |
-| Status | Initial manifest — three canonical documents enumerated |
+| Last Updated | 09-03-26 19:30 |
+| Status | Manifest — three canonical documents plus the first domain-overview render |
 | Audience | Anyone trying to find the definitive document for a CRMBuilder topic |
 | Governs | Navigation of the `specifications/` directory |
 
@@ -16,12 +16,13 @@ The directory exists because CRMBuilder documentation was previously federated a
 
 ## Current Canonical Documents
 
-The three files below are the entire current contents of this directory. Each is the canonical specification for its scope as of the date noted on its frontmatter.
+The files below are the current contents of this directory. Each is the canonical specification for its scope as of the date noted on its frontmatter.
 
 | File | Purpose | Version / Status |
 |------|---------|------------------|
 | `master-crmbuilder-PRD.md` | Process-definition document for using V2 to capture the complete definition of a product, from first interview through deployed application. Internal L3 specification — names V2 specifically. Currently being authored against CRMBuilder dogfood; phase content drafted iteratively. | 0.1 (draft) — DISCUSSION DRAFT, NOT YET APPROVED |
 | `governance-recording-rules.md` | Normative rules for authoring governance records in V2 — workstreams, sessions, conversations, decisions, planning items, references, work tickets, close-out payloads. Applies equally to AI and human agents per DEC-310. | 0.1 — DISCUSSION DRAFT |
+| `governance-recording/domain-overview.md` | Domain Overview for Governance Recording, the methodology's ninth, cross-cutting domain (DEC-1003): identity, big question, scope, personas, processes, entities, rules corpus. A dated render of domain record DOM-012 in the V2 store, which is the source (DEC-1021). | 0.3 — DISCUSSION DRAFT, render of a candidate domain record |
 | `glossary.md` | Canonical definitions of terms used across CRMBuilder methodology, governance, and process documentation. Terms carry stable `TERM-NNN` identifiers; alphabetical order is rendering-only. | 0.2 — In progress, terms added as discussed |
 
 ## Recommended Reading Order

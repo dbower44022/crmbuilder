@@ -272,6 +272,48 @@ existing generate → validate → backup → deploy → verify flow:
   (verified live, DEC-973) and writable only by the applier's admin
   credential. `publish_runs.publish_run_plan_fingerprint` carries the
   identity; the run summary carries the release and stamp outcome.
+* **Stored feature selection (REQ-546 / PI-444).** `instances.
+  instance_feature_selection` is a JSON list of design-entity identifiers
+  (`ENT-NNN`; NULL = full design — identifiers, not filenames, so an entity
+  rename cannot detach the selection; migrations 0129/SQLite + 0086/PG).
+  `_run_publish` resolves it via
+  `access/reconcile_apply.feature_selection_scope` (identifier → generated
+  program filename) when no per-run scope is supplied; an explicit scope
+  wins for that run only. A selection resolving to nothing refuses the run
+  (`selection_matches_nothing`) instead of widening to a full publish.
+  Validate-only stays full-design — it is the dialog's discovery surface —
+  but reports the resolution so the publish dialog pre-checks its scope
+  list. `publish_runs` summaries carry `scope_source`
+  (`stored_selection`/`explicit_scope`/`full_design`) and the applied
+  selection; `FeatureSelectionDialog` (instances panel) edits it via PATCH.
+* **The security program and the access-change gate (REQ-519 / REQ-521,
+  PI-417, DEC-998).** Roles and teams belong to no entity, so the
+  generated model may carry one entity-less program, `security.yaml`
+  (`EntityProgram.is_security`), holding the deployable schema's
+  top-level `roles:` and `teams:` blocks; only confirmed records emit and
+  the rest defer by name. Filtered tabs are entity-bound and emit as
+  their entity's `filteredTabs:` block, with `scope` derived from the
+  label and the filter compiled from the neutral condition (a filter the
+  audit stored in EspoCRM report-filter form defers — no neutral reader
+  yet). `reconcile_compare.SECURITY_PROGRAM_MEMBERS` (role, team) routes
+  to `security.yaml` in `publish_scope_for_member`;
+  `PUBLISHABLE_GLOBAL_MEMBERS` (role, team, filtered_tab) opens the
+  publish direction on attribute rows; a filtered tab's presence row stays
+  view-only like a field's. `POST /reconcile/publish` for a role or team
+  (`reconcile_access.ACCESS_MEMBER_TYPES`) refuses with 409 unless
+  `confirm_access_change` is set, and refuses again unless
+  `confirm_access_removal` is set when `assess_access_publish` finds any
+  level the instance currently grants being lowered (`GET
+  /reconcile/assess-access-publish` reports target, changes and removals
+  first). The gate sits before target resolution, so a refusal never
+  reaches the instance.
+* **Generation parity (LSN-071).** `generate_design_yaml` — the
+  generation a publish actually runs — must read every `list_*` reader on
+  the `DesignClient` protocol that `EspoCrmAdapter.run` reads;
+  `tests/crmbuilder_v2/publish/test_service.py::
+  test_generate_design_yaml_reads_the_same_lists_as_the_adapter_run` pins
+  the set by name. A new emitted block needs a test that starts at this
+  function and asserts the block appears in the artifact.
 
 ## MCP server
 

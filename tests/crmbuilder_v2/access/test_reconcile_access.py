@@ -47,25 +47,52 @@ def test_a_team_scopes_to_the_security_program(v2_env):
     assert scope["filename"] == "security.yaml"
 
 
-def test_a_filtered_tab_still_has_no_publish_route(v2_env):
-    """It is capture-only until the emitter renders a filteredTabs: block."""
+def test_a_filtered_tab_scopes_to_its_entity_s_program(v2_env):
+    """A filtered tab is entity-bound (DEC-998 names it as the case that files
+    normally), so it publishes with its entity — not the security program."""
+    from crmbuilder_v2.access.repositories import entity as entity_repo
+    from crmbuilder_v2.access.repositories import filtered_tabs as tab_repo
+
     with session_scope() as s:
-        with pytest.raises(ConflictError):
-            reconcile_apply.publish_scope_for_member(s, "filtered_tab", "FTB-001")
+        eid = entity_repo.create_entity(
+            s, name="Mentor Application", description="x", status="confirmed",
+            track_activity=False,
+        )["entity_identifier"]
+        fid = tab_repo.create_filtered_tab(
+            s, entity_identifier=eid, label="Approved", status="confirmed",
+        )["filtered_tab_identifier"]
+        scope = reconcile_apply.publish_scope_for_member(s, "filtered_tab", fid)
+    assert scope == {
+        "entity_identifier": eid,
+        "entity_name": "Mentor Application",
+        "filename": "Mentor-Application.yaml",
+    }
+
+
+def test_an_unknown_filtered_tab_is_not_found_rather_than_refused(v2_env):
+    with session_scope() as s:
+        with pytest.raises(NotFoundError):
+            reconcile_apply.publish_scope_for_member(s, "filtered_tab", "FTB-999")
 
 
 # --- the capability table ----------------------------------------------------
 
 
-def test_role_and_team_are_now_publishable_and_filtered_tab_is_not():
-    for member in ("role", "team"):
+def test_role_team_and_filtered_tab_are_all_publishable_now():
+    for member, attribute in (
+        ("role", "role_scope_access"),
+        ("team", "team_description"),
+        ("filtered_tab", "filtered_tab_label"),
+    ):
         capturable, publishable = reconcile_compare._attribute_capabilities(
-            member, "role_scope_access"
+            member, attribute
         )
         assert (capturable, publishable) == (True, True), member
-    assert reconcile_compare._attribute_capabilities(
-        "filtered_tab", "filtered_tab_name"
-    ) == (True, False)
+
+
+def test_only_the_entity_less_members_route_to_the_security_program():
+    assert reconcile_compare.SECURITY_PROGRAM_MEMBERS == {"role", "team"}
+    assert "filtered_tab" in reconcile_compare.PUBLISHABLE_GLOBAL_MEMBERS
 
 
 # --- the assessment ----------------------------------------------------------

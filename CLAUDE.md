@@ -87,7 +87,7 @@ CRMBuilder v2 is the next major iteration of CRMBuilder. It rebuilds the methodo
 
 **Conduct framework for stakeholder-facing interviews.** The global, methodology-agnostic conduct rules for any AI-led requirements interview live in `PRDs/process/conduct/` — `charter.md` (the AI's role, question discipline, §11.6.b "inferences require positive support"), `kickoff.md` (pre-session priming), and `question-library.md` (annotated good/bad question patterns). Consult these before improvising a stakeholder session; phase guides defer to them.
 
-**V2 audit has V1-audit parity (2026-08-30, PRJ-112).** The native audit's eleven areas (entities, fields incl. built-in fields, associations, all 18 layout types, roles, field permissions, teams, filtered tabs, email templates, field dynamic-logic rules, and the opt-in record-utilization profiler) cover everything the V1 Audit feature captures. Evidence: `PRDs/product/crmbuilder-v2/v1-audit-parity-gap-matrix.md` (the learn-phase inventory) and `PRDs/product/crmbuilder-v2/v1-audit-parity-live-diff.md` (the live V1-versus-V2 diff). V1 audit code was removed on 2026-09-01 (PI-454 / REQ-549); the reconcile feature's retained discovery/reverse core lives at `espo_impl/core/reconcile/capture.py`. Publish-side layouts remain tracked as PI-427 (PRJ-110).
+**V2 audit has V1-audit parity (2026-08-30, PRJ-112).** The native audit's eleven areas (entities, fields incl. built-in fields, associations, all 18 layout types, roles, field permissions, teams, filtered tabs, email templates, field dynamic-logic rules, and the opt-in record-utilization profiler) cover everything the V1 Audit feature captures. Evidence: `PRDs/product/crmbuilder-v2/v1-audit-parity-gap-matrix.md` (the learn-phase inventory) and `PRDs/product/crmbuilder-v2/v1-audit-parity-live-diff.md` (the live V1-versus-V2 diff). V1 audit code was removed on 2026-09-01 (PI-454 / REQ-549); the reconcile feature's retained discovery/reverse core lives at `espo_impl/core/reconcile/capture.py`. Publish-side roles, teams and filtered tabs landed on 2026-09-03 (PI-417 / REQ-519 / REQ-521 / DEC-998: the entity-less `security.yaml` program, the `filteredTabs:` block, and the access-change confirmation gate). Publish-side layouts remain tracked as PI-427 (emitter) and PI-418 (writable-vs-variant split), both PRJ-120.
 
 **Reference relationship vocabulary lives in `crmbuilder-v2/src/crmbuilder_v2/access/vocab.py`.** The set of valid kinds is `REFERENCE_RELATIONSHIPS`; the `(source_type, target_type) → frozenset[kinds]` constraint mapping (`RELATIONSHIP_RULES`) is precomputed at module load by `_kinds_for_pair` from seven semantic rules. The UI's references-create dialog drives its cascading filters from `RELATIONSHIP_RULES` directly, so vocab compliance is strict end-to-end. **Adding a new relationship kind requires updating both** — `REFERENCE_RELATIONSHIPS` for the kind's existence, and `_kinds_for_pair` for its source/target constraints. (The `refs.relationship_kind` CHECK constraint also needs an Alembic migration.)
 
@@ -152,10 +152,9 @@ espo_impl/
 │   ├── output_panel.py # Color-coded output
 │   ├── confirm_delete_dialog.py # Delete confirmation + entity name mapping
 │   └── import_dialog.py # Four-step data import wizard
-└── workers/           # QThreads for the Configure / Verify / Audit / Import paths
+└── workers/           # QThreads for the Configure / Verify / Import paths
     ├── run_worker.py
     ├── import_worker.py
-    ├── audit_worker.py
     └── tooltip_worker.py
 
 automation/

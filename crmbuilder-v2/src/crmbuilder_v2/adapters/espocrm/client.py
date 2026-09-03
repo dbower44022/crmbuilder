@@ -87,6 +87,15 @@ class DesignClient:
         not read at all, because nothing emitted them until DEC-998 (PI-417)."""
         raise NotImplementedError
 
+    def list_filtered_tabs(self) -> list[dict]:
+        """Filtered-tab records, for each entity's ``filteredTabs:`` block.
+
+        Entity-bound, unlike roles and teams (DEC-998 names them as the case
+        that files normally), so they were never part of the security program
+        question — but nothing read them either until the block was emitted
+        (PI-417 / REQ-519)."""
+        raise NotImplementedError
+
     def list_system_settings(self) -> list[dict]:
         """Active governed system-setting records (PI-406 / REQ-485)."""
         raise NotImplementedError
@@ -184,6 +193,9 @@ class RestDesignClient(DesignClient):
 
     def list_teams(self) -> list[dict]:
         return self._get("/teams")
+
+    def list_filtered_tabs(self) -> list[dict]:
+        return self._get("/filtered-tabs")
 
     def list_system_settings(self) -> list[dict]:
         return self._get("/system-settings?status=confirmed")
@@ -328,6 +340,11 @@ class AccessDesignClient(DesignClient):
         from crmbuilder_v2.access.repositories import teams
 
         return self._rows(teams.list_teams)
+
+    def list_filtered_tabs(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import filtered_tabs
+
+        return self._rows(filtered_tabs.list_filtered_tabs)
 
     def list_system_settings(self) -> list[dict]:
         from crmbuilder_v2.access.repositories import system_settings

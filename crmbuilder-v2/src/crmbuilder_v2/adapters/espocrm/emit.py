@@ -11,11 +11,36 @@ from __future__ import annotations
 import io
 
 from ruamel.yaml import YAML
+from ruamel.yaml.representer import RoundTripRepresenter
 
 from crmbuilder_v2.adapters.base import Deferral
 from crmbuilder_v2.adapters.espocrm.model import EntityProgram, GenerationModel
 
 MANUAL_CONFIG_FILENAME = "MANUAL-CONFIG.md"
+
+#: Words a YAML 1.1 reader resolves to booleans (REQ-558 / DEC-1016).
+#:
+#: We emit with ruamel, whose resolver is YAML 1.2, where these are ordinary
+#: strings and so are written bare. The deploy engine reads with PyYAML's
+#: ``safe_load``, which is YAML 1.1, where they are ``True`` / ``False``. A
+#: design that offers the options ``Yes`` and ``No`` would therefore deploy as
+#: ``true`` and ``false`` — silently, since nothing raises and the instance
+#: simply ends up with the wrong option list.
+#:
+#: Quoting them on the way out closes that gap and only that gap: ruamel
+#: already quotes every string the 1.2 resolver would itself reclaim (numbers,
+#: nulls, dates), so this adds quotes precisely where a value is being written
+#: wrongly today. ``y`` and ``n`` are deliberately absent — PyYAML's safe
+#: loader leaves those as strings, and quoting them would churn output to no
+#: purpose.
+_YAML_11_BOOLEANS = frozenset({"yes", "no", "on", "off", "true", "false"})
+
+
+def _represent_str(representer: RoundTripRepresenter, data: str):
+    """Emit a string, quoting it when a YAML 1.1 reader would take it for a bool."""
+    if data.lower() in _YAML_11_BOOLEANS:
+        return representer.represent_scalar("tag:yaml.org,2002:str", data, style="'")
+    return RoundTripRepresenter.represent_str(representer, data)
 
 
 def _yaml() -> YAML:
@@ -23,6 +48,7 @@ def _yaml() -> YAML:
     yaml.default_flow_style = False
     yaml.width = 4096  # never line-wrap scalars (deterministic, readable)
     yaml.indent(mapping=2, sequence=4, offset=2)
+    yaml.representer.add_representer(str, _represent_str)
     return yaml
 
 
@@ -102,6 +128,7 @@ def emit_manual_config_md(model: GenerationModel, *, rendered_at: str) -> str:
         "field_rule": "Field rules not emitted (valid_when / unrenderable)",
         "entity_rule": "Entity-subject rules",
         "view": "Views not rendered as savedViews",
+        "filtered_tab": "Filtered tabs not rendered as filteredTabs",
         "automation": "Automations not rendered as workflows",
         "workflow_action": "Workflow actions not rendered",
         "dedup_rule": "Dedup rules not rendered as duplicateChecks",
