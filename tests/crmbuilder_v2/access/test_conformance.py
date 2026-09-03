@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from crmbuilder_v2.access import conformance
 from crmbuilder_v2.access.db import session_scope
+from crmbuilder_v2.access.repositories import automation as automation_repo
 from crmbuilder_v2.access.repositories import (
     conformance_overrides,
 )
@@ -110,8 +111,35 @@ def test_a_candidate_design_record_is_not_conformance(v2_env):
         assert result["status"] == "conformant"
 
 
+def _confirmed_workflow(s, eid, name="Nightly sweep"):
+    """A workflow is the one member type still without a write path
+    (DEC-997): the audit reads it, no deploy writes it."""
+    return automation_repo.create_automation(
+        s, name=name, entity=eid, trigger="on_update",
+        actions=[{"type": "set_field", "field": "x", "value": "y"}],
+        status="confirmed",
+    )["automation_identifier"]
+
+
 def test_unwritable_only_differences_get_their_own_status(v2_env):
     """DEC-923's narrow refinement: the ONLY differences have no write path."""
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        _present(s, iid, "entity", eid)
+        wid = _confirmed_workflow(s, eid)
+        _present(s, iid, "workflow", wid, state="absent")
+        result = conformance.evaluate_instance(s, iid)
+        assert result["status"] == "named_but_unwritable"
+        assert result["counts"]["unwritable_drift"] == 1
+        assert result["counts"]["drift"] == 0
+
+
+def test_a_team_difference_is_writable_drift_now(v2_env):
+    """PI-417 / REQ-519: a team the instance lacks used to be named-but-
+    unwritable because no deploy could create it. The security program
+    (DEC-998) can, so the same absence is drift a publish fixes — and the
+    check's exit code moves from 3 to 1 with it."""
     with session_scope() as s:
         iid = _instance(s)
         tid = team_repo.create_team(
@@ -119,9 +147,9 @@ def test_unwritable_only_differences_get_their_own_status(v2_env):
         )["team_identifier"]
         _present(s, iid, "team", tid, state="absent")
         result = conformance.evaluate_instance(s, iid)
-        assert result["status"] == "named_but_unwritable"
-        assert result["counts"]["unwritable_drift"] == 1
-        assert result["counts"]["drift"] == 0
+        assert result["status"] == "drifted"
+        assert result["counts"]["drift"] == 1
+        assert result["counts"]["unwritable_drift"] == 0
 
 
 def test_writable_drift_outranks_unwritable_and_unknown(v2_env):
@@ -130,10 +158,8 @@ def test_writable_drift_outranks_unwritable_and_unknown(v2_env):
         eid = _confirmed_entity(s)
         _present(s, iid, "entity", eid,
                  override={"entity_icon": "x"}, state="drifted")
-        tid = team_repo.create_team(
-            s, name="Mentors", status="confirmed"
-        )["team_identifier"]
-        _present(s, iid, "team", tid, state="absent")
+        wid = _confirmed_workflow(s, eid)
+        _present(s, iid, "workflow", wid, state="absent")
         result = conformance.evaluate_instance(s, iid)
         assert result["status"] == "drifted"
 

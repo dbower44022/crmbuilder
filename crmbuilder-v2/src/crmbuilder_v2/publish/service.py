@@ -246,9 +246,14 @@ def generate_design_yaml(
 ) -> GenerationResult:
     """Fetch the canonical design and generate engine YAML in memory.
 
-    Replicates the adapter's fetch→generate steps without writing files: the
-    nine design lists are read from ``design_client`` and handed to
-    :meth:`EspoCrmAdapter.generate`.
+    Replicates the adapter's fetch→generate steps without writing files: every
+    design list the adapter's own ``run`` reads is read from ``design_client``
+    and handed to :meth:`EspoCrmAdapter.generate`.
+
+    The two lists must stay in step. Until PI-417 this read nine lists while
+    ``run`` read eleven, so a publish never rendered the field-permission and
+    field-visibility blocks — and would never have rendered the security
+    program either, leaving a role publish scoped to a file that did not exist.
 
     :param design_client: The design source (e.g. ``RestDesignClient``).
     :param rendered_at: ISO timestamp for the generated provenance header.
@@ -266,6 +271,11 @@ def generate_design_yaml(
         automations=design_client.list_automations(),
         dedup_rules=design_client.list_dedup_rules(),
         message_templates=design_client.list_message_templates(),
+        field_permission_rules=design_client.list_field_permission_rules(),
+        field_visibility_rules=design_client.list_field_visibility_rules(),
+        roles=design_client.list_roles(),
+        teams=design_client.list_teams(),
+        filtered_tabs=design_client.list_filtered_tabs(),
         rendered_at=rendered_at,
         engagement=engagement,
     )

@@ -172,11 +172,14 @@ def test_the_ruled_dispositions_hold():
     assert cs.CONSTRUCT_SETS["system_setting"].sets == (
         cs.CAPTURED, cs.APPLIED, cs.COMPARED_CONSTRUCT,
     )
-    # The PI-417 trio: compared today, publishable later.
+    # The PI-417 trio: emitted and applied since the security program
+    # (DEC-998) and the filteredTabs: block landed — all four sets, and the
+    # note no longer describes a gap.
     for t in ("role", "team", "filtered_tab"):
         assert cs.CONSTRUCT_SETS[t].sets == (
-            cs.CAPTURED, cs.COMPARED_CONSTRUCT,
-        )
+            cs.CAPTURED, cs.EMITTED, cs.APPLIED, cs.COMPARED_CONSTRUCT,
+        ), t
+        assert "PI-417's scope" not in (cs.CONSTRUCT_SETS[t].note or ""), t
 
 
 def test_construct_sets_serialize_for_the_api():

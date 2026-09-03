@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
 from crmbuilder_v2.access.reconcile_compare import (
-    PUBLISHABLE_GLOBAL_MEMBERS,
+    SECURITY_PROGRAM_MEMBERS,
     option_sets_equal,
 )
 from crmbuilder_v2.access.repositories import _governance as gov
@@ -496,7 +496,9 @@ def entity_for_member(
 
     A role or a team has no parent entity and legitimately raises here; those
     publish through the security program instead — see
-    :func:`publish_scope_for_member`, which routes them before asking this.
+    :func:`publish_scope_for_member`, which routes them before asking this. A
+    filtered tab does have one (PI-417): it publishes with its entity, like a
+    field.
     """
     if member_type == "entity":
         ent = entity_repo.get_entity(session, member_identifier)
@@ -524,6 +526,11 @@ def entity_for_member(
         if assoc is None:
             raise NotFoundError("association", member_identifier)
         eid = assoc.get("association_source_entity")
+    elif member_type == "filtered_tab":
+        tab = filtered_tab_repo.get_filtered_tab(session, member_identifier)
+        if tab is None:
+            raise NotFoundError("filtered_tab", member_identifier)
+        eid = tab.get("filtered_tab_entity_identifier")
     else:
         raise ConflictError(
             f"member type {member_type!r} cannot be published to an instance"
@@ -561,15 +568,16 @@ def publish_scope_for_member(
 ) -> dict[str, Any]:
     """The generated-program filename to scope a publish to (REQ-376 / REQ-519).
 
-    Most members publish with their parent entity, one entity to one program. A
-    role or a team has no parent entity — it spans all of them — so it scopes to
-    the instance-wide security program instead (DEC-998), and the entity fields
-    come back ``None`` rather than being filled with a fiction.
+    Most members publish with their parent entity, one entity to one program —
+    a filtered tab among them (PI-417). A role or a team has no parent entity —
+    it spans all of them — so it scopes to the instance-wide security program
+    instead (DEC-998), and the entity fields come back ``None`` rather than
+    being filled with a fiction.
 
     :returns: ``{entity_identifier, entity_name, filename}`` — pass ``filename``
         as the publish ``scope`` to push just this object.
     """
-    if member_type in PUBLISHABLE_GLOBAL_MEMBERS:
+    if member_type in SECURITY_PROGRAM_MEMBERS:
         return {
             "entity_identifier": None,
             "entity_name": None,
