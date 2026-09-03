@@ -1,5 +1,10 @@
 # Claude Code session prompt — PI-418: separate writable layouts from portal- and role-bound variants
 
+> **SUPERSEDED (09-03-26, DEC-1019).** Doug settled this prompt's decision 1 as
+> option A: PI-427 and PI-418 build together in one session. Use
+> `CLAUDE-CODE-PROMPT-pi-427-418-layouts-single-shot.md` in this directory instead;
+> this file is retained for provenance only.
+
 **Written 2026-09-03 by the PI-417 close-out session (crmbuilder-dd). Give this file to a
 fresh Claude Code session rooted in `~/Dropbox/Projects/crmbuilder`.**
 
