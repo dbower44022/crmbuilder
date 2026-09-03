@@ -79,9 +79,17 @@ Standing rules (the SessionStart hook loads them; the load-bearing ones):
 - **Safety:** never target INST-002 (CBM Production). Production deploys are human-only
   (GVR-240). A layout publish rewrites what every user of an entity sees; do not run a
   layout **apply** against CBMTEST without Doug watching.
-- **LSN-070 (the ruamel/PyYAML `yes`/`no` defect) is NOT yours to fix** — it has no
-  confirmed requirement yet (crmbuilder-bb is raising it). Note it if a layout emits a
-  bare `yes`/`no` scalar; do not patch it as a drive-by.
+- **LSN-070 (the ruamel/PyYAML `yes`/`no` defect) is fixed** on main `aba5374d`
+  (REQ-558 / DEC-1016 / PI-461): `emit.py` quotes the six YAML 1.1 boolean words.
+  The rule it left behind, and which your layout emitter must follow: every test in
+  `tests/crmbuilder_v2/adapters/` used to read emitted YAML back with ruamel, the same
+  dialect that wrote it, so writer/reader disagreements were invisible. At least one
+  of your emitter tests must read the artifact back with the **consumer's** reader —
+  `pyyaml.safe_load` and the real `espo_impl` `ConfigLoader` — as
+  `tests/crmbuilder_v2/adapters/test_emit_yaml_dialect.py` does.
+- **LSN-073:** the full `tests/crmbuilder_v2/ui/` slice can segfault intermittently
+  inside pytestqt's event processing. One segfault is not evidence of a broken tree;
+  re-run the slice once, with `-v` into a file so the last `PASSED` line is visible.
 - **LSN-071:** a new emitted block needs at least one test that starts at
   `publish.service.generate_design_yaml` (or `/reconcile/publish` with a stubbed target)
   and asserts the block appears in the artifact. Unit tests on `build_program_model` and
