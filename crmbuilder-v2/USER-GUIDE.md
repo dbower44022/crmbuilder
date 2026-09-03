@@ -683,6 +683,25 @@ behaviours guard it (PI-411):
   produced it. Anything short of full success leaves the previous stamp
   untouched, so the stamp only ever claims a state that was verified.
 
+### Publishing roles, teams and filtered tabs
+
+Roles, teams and filtered tabs can be published from the Reconcile grid like
+a field can (PI-417). Roles and teams go out in their own `security.yaml`
+program, since they belong to no single entity; a filtered tab goes out with
+its entity. Two extra questions guard a role or team publish, because it
+changes who can reach what on a live CRM (REQ-521):
+
+- **The publish states its target and effect first.** Before anything runs,
+  the grid shows which instance, which role or team, and every access setting
+  that would change, and asks you to confirm.
+- **Taking access away is never automatic.** If any change lowers a level the
+  instance currently grants, the grid asks a second, separate question naming
+  the grant that would be lost. Declining either question skips the row; it is
+  not a failure.
+
+A candidate role, team or filtered tab is unfinished design and is never
+published; it is listed by name in the MANUAL-CONFIG companion instead.
+
 ### Per-instance feature selection (chapters)
 
 When several chapters run the same shared design on their own instances
