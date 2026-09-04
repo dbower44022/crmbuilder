@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| Version | 1.0 |
-| Last Updated | 09-03-26 20:05 |
-| Status | Ready to run |
+| Version | 1.1 |
+| Last Updated | 09-03-26 23:20 |
+| Status | Executed 09-03-26 by session crmbuilder-a0 (SES-395 / CNV-367); PI-086 Resolved. Retained as the record of the handoff |
 | Audience | A fresh Claude Code session rooted in `~/Dropbox/Projects/crmbuilder` |
 | Governs | Execution of PI-086 (REQ-409) in PRJ-023 |
 
@@ -223,3 +223,4 @@ Both AI-agent names were ruled by Doug in a parallel session (DEC-1022): Claude 
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 09-03-26 20:05 | Written by the PI-085 session (SES-392) on Doug's request for a new-session prompt; carries the SES-388 v0.2 persona draft and its two open questions forward. |
+| 1.1 | 09-03-26 23:20 | Marked executed. Outcome: DEC-1030 (Engagement Lead backed by participant seat PTC-006, created now) and DEC-1032 (no participant backing for the two AI-agent personas; PTC-005 an exception to review); personas PER-013, PER-014, PER-015 written and scoped to DOM-012; render `specifications/personas/governance-recording-personas.md` v0.1, domain overview v0.4, manifest v0.2 committed as 3f363e8c and pushed; PI-086 resolved by CNV-367. One correction to section 3: DEC-1025 (read at start) makes a participant the seat, not the person, so Decision 1 was put as an Engagement Lead seat rather than a record for Doug. |
