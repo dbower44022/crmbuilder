@@ -39,15 +39,31 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.models import SystemSetting, SystemSettingValue
+from crmbuilder_v2.access.models import (
+    Field,
+    FieldOption,
+    SystemSetting,
+    SystemSettingValue,
+)
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.vocab import FIELD_TYPES, SYSTEM_SETTING_STATUSES
 
 _ENTITY_TYPE = "system_setting"
 _PREFIX = "SET"
 _IDENTIFIER_RE = re.compile(r"^SET-\d{3}$")
+_FIELD_IDENTIFIER_RE = re.compile(r"^FLD-\d{3}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
-_PATCHABLE = frozenset({"key", "name", "value_type", "description", "status", "notes"})
+_PATCHABLE = frozenset(
+    {
+        "key",
+        "name",
+        "value_type",
+        "description",
+        "status",
+        "notes",
+        "active_subset_field",
+    }
+)
 
 
 def _require_status(v: object) -> str:
@@ -62,6 +78,122 @@ def _require_value_type(v: object) -> str:
     to keep correct.
     """
     return gov.require_in(v, FIELD_TYPES, field="system_setting_value_type")
+
+
+def _complete_option_values(session: Session, field_identifier: str) -> list[str]:
+    """The field's complete option list, in business order (REQ-486)."""
+    rows = session.scalars(
+        select(FieldOption)
+        .where(FieldOption.field_identifier == field_identifier)
+        .order_by(FieldOption.option_order, FieldOption.id)
+    ).all()
+    return [r.option_value for r in rows]
+
+
+def _require_active_subset_field(
+    session: Session, value: object
+) -> str | None:
+    """Validate the field a setting would narrow (PI-407 / REQ-486, REQ-487).
+
+    ``None`` is an ordinary setting. Otherwise the field must exist and be
+    live, must be an ``enum`` (the only kind that carries a complete option
+    list to draw a subset from), and must be classified data-bearing. The
+    last is the whole safety property: a field anything branches on is
+    permanently ineligible, and the answer is a refusal that names the field
+    and the reason — never a warning, because a warning is read once by the
+    person declaring and never again by the person who later adds the branch.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str) or not _FIELD_IDENTIFIER_RE.match(value):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "system_setting_active_subset_field",
+                    "invalid_format",
+                    "must look like FLD-001",
+                )
+            ]
+        )
+    row = get_by_identifier(session, Field, Field.field_identifier, value)
+    if row is None or row.field_deleted_at is not None:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "system_setting_active_subset_field",
+                    "field_not_found",
+                    f"field {value!r} does not exist or is deleted",
+                )
+            ]
+        )
+    if row.field_type != "enum":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "system_setting_active_subset_field",
+                    "not_an_option_field",
+                    f"field {value!r} ({row.field_name}) is of type "
+                    f"{row.field_type!r}; only an enum field carries a complete "
+                    "option list an active subset can be drawn from",
+                )
+            ]
+        )
+    if not row.field_data_bearing:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "system_setting_active_subset_field",
+                    "not_data_bearing",
+                    f"field {value!r} ({row.field_name}) is not classified "
+                    "data-bearing; only a data-bearing field may carry a "
+                    "variable active subset (REQ-487)",
+                )
+            ]
+        )
+    return value
+
+
+def _require_subset_value(
+    session: Session, setting: SystemSetting, value: Any
+) -> list[str]:
+    """Validate an active-subset declaration against the complete list.
+
+    The value is the list of option values active on one instance. Every
+    entry must be one of the field's complete option values — the subset
+    names *which* of the deployed values are active and can never introduce a
+    value the deployed list does not hold (REQ-486). Order and duplicates are
+    normalised away: the subset is a set, the complete list carries the order.
+    """
+    field_identifier = setting.system_setting_active_subset_field
+    if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "value",
+                    "invalid_value",
+                    f"{setting.system_setting_identifier} names the active "
+                    f"subset of field {field_identifier!r}; its value must be a "
+                    "list of that field's option values",
+                )
+            ]
+        )
+    complete = _complete_option_values(session, field_identifier)
+    unknown = sorted({v for v in value if v not in complete})
+    if unknown:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "value",
+                    "not_in_complete_option_list",
+                    f"{unknown!r} not in the complete option list of field "
+                    f"{field_identifier!r} ({complete!r}); an active subset "
+                    "may only name values every instance already holds "
+                    "(REQ-486)",
+                )
+            ]
+        )
+    wanted = set(value)
+    return [v for v in complete if v in wanted]
 
 
 def _get_row(session: Session, identifier: str) -> SystemSetting:
@@ -82,13 +214,53 @@ def list_system_settings(
     *,
     include_deleted: bool = False,
     status: str | None = None,
+    active_subset_field: str | None = None,
 ) -> list[dict]:
+    """Governed settings; ``active_subset_field`` narrows to the settings that
+    name one field's active subset (PI-407)."""
     stmt = select(SystemSetting).order_by(SystemSetting.system_setting_identifier)
     if not include_deleted:
         stmt = stmt.where(SystemSetting.system_setting_deleted_at.is_(None))
     if status is not None:
         stmt = stmt.where(SystemSetting.system_setting_status == status)
+    if active_subset_field is not None:
+        stmt = stmt.where(
+            SystemSetting.system_setting_active_subset_field == active_subset_field
+        )
     return [to_dict(r) for r in session.scalars(stmt).all()]
+
+
+def active_subsets_for_field(session: Session, field_identifier: str) -> dict:
+    """One field's classification alongside every active subset declared on it.
+
+    REQ-487's third acceptance clause: whenever the design is asked about a
+    field carrying a variable active subset, its data-bearing classification
+    comes back with it. The complete option list is returned too, so a reader
+    can see what each instance's subset is a subset *of*.
+    """
+    row = get_by_identifier(session, Field, Field.field_identifier, field_identifier)
+    if row is None or row.field_deleted_at is not None:
+        raise NotFoundError("field", field_identifier)
+    subsets = []
+    for setting in list_system_settings(
+        session, active_subset_field=field_identifier
+    ):
+        subsets.append(
+            {
+                **setting,
+                "values": list_values(
+                    session,
+                    system_setting_identifier=setting["system_setting_identifier"],
+                ),
+            }
+        )
+    return {
+        "field_identifier": row.field_identifier,
+        "field_name": row.field_name,
+        "field_data_bearing": bool(row.field_data_bearing),
+        "complete_option_list": _complete_option_values(session, field_identifier),
+        "active_subsets": subsets,
+    }
 
 
 def get_system_setting(
@@ -111,7 +283,16 @@ def next_system_setting_identifier(session: Session) -> str:
     )
 
 
-def _new_row(identifier, key, name, value_type, description, status, notes):
+def _new_row(
+    identifier,
+    key,
+    name,
+    value_type,
+    description,
+    status,
+    notes,
+    active_subset_field=None,
+):
     return SystemSetting(
         system_setting_identifier=identifier,
         system_setting_key=key,
@@ -120,6 +301,7 @@ def _new_row(identifier, key, name, value_type, description, status, notes):
         system_setting_description=description,
         system_setting_status=status,
         system_setting_notes=notes,
+        system_setting_active_subset_field=active_subset_field,
     )
 
 
@@ -157,12 +339,19 @@ def create_system_setting(
     status: str | None = None,
     notes: str | None = None,
     identifier: str | None = None,
+    active_subset_field: str | None = None,
 ) -> dict:
-    """Declare one governed system setting."""
+    """Declare one governed system setting.
+
+    ``active_subset_field`` makes it the setting that names one enum field's
+    per-instance active subset (PI-407); refused unless that field is
+    classified data-bearing (REQ-487).
+    """
     key = gov.require_nonempty(key, field="system_setting_key")
     name = gov.require_nonempty(name, field="system_setting_name")
     value_type = _require_value_type(value_type)
     status = _require_status(status if status is not None else "candidate")
+    active_subset_field = _require_active_subset_field(session, active_subset_field)
 
     # Check the key before entering the identifier allocator. The allocator
     # retries on IntegrityError because it expects an identifier collision, and
@@ -188,6 +377,7 @@ def create_system_setting(
         "description": description,
         "status": status,
         "notes": notes,
+        "active_subset_field": active_subset_field,
     }
     if identifier is None:
         row = _insert_with_autoassign(session, **columns)
@@ -258,6 +448,10 @@ def patch_system_setting(session: Session, identifier: str, **fields) -> dict:
         row.system_setting_notes = fields["notes"]
     if "status" in fields:
         row.system_setting_status = _require_status(fields["status"])
+    if "active_subset_field" in fields:
+        row.system_setting_active_subset_field = _require_active_subset_field(
+            session, fields["active_subset_field"]
+        )
     session.flush()
     after = to_dict(row)
     emit(
@@ -320,11 +514,18 @@ def set_value(
     instance_identifier: str,
     value: Any,
 ) -> dict:
-    """Declare what one instance should hold for one governed setting."""
-    _get_row(session, system_setting_identifier)  # 404 on an unknown setting
+    """Declare what one instance should hold for one governed setting.
+
+    For a setting that names a field's active subset the value is the list of
+    option values active on that instance, checked against the field's
+    complete option list (REQ-486).
+    """
+    setting = _get_row(session, system_setting_identifier)  # 404 if unknown
     instance_identifier = gov.require_nonempty(
         instance_identifier, field="instance_identifier"
     )
+    if setting.system_setting_active_subset_field is not None:
+        value = _require_subset_value(session, setting, value)
     stmt = select(SystemSettingValue).where(
         SystemSettingValue.system_setting_identifier == system_setting_identifier,
         SystemSettingValue.instance_identifier == instance_identifier,

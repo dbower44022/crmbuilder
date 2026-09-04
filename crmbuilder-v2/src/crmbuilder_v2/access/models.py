@@ -1080,6 +1080,18 @@ class Field(EngagementScopedPKMixin, Base):
     field_built_in: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
+    # PI-407 / REQ-487 — the data-bearing classification: no application
+    # logic, in the CRM or in any consuming application, branches on this
+    # field's value. It is a claim about the whole system and is established
+    # by reading the consumers, so it is recorded as data and never inferred.
+    # Only a data-bearing field may carry a per-instance active subset
+    # (``SystemSetting.system_setting_active_subset_field``); the default is
+    # "not classified", which is ineligible — a field becomes eligible by an
+    # explicit ruling, never by omission. Server-defaulted too, so a table
+    # built by create_all reads the same as one the migration altered.
+    field_data_bearing: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
     # PRJ-025 PI-197 (design §7/§9, DEC-438) — derived/formula intent.
     # ``field_derived_result_type`` is the value-type the formula yields
     # (validated against DERIVED_RESULT_TYPES, required when ``field_type``
@@ -1146,6 +1158,10 @@ class Field(EngagementScopedPKMixin, Base):
         CheckConstraint(
             _BooleanDomainCheck("field_built_in"),
             name="ck_field_built_in_boolean",
+        ),
+        CheckConstraint(
+            _BooleanDomainCheck("field_data_bearing"),
+            name="ck_field_data_bearing_boolean",
         ),
         Index("ix_fields_field_status", "field_status"),
         Index("ix_fields_field_type", "field_type"),
@@ -2070,6 +2086,16 @@ class SystemSetting(EngagementScopedPKMixin, Base):
     system_setting_status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="candidate"
     )
+    # PI-407 / REQ-486 — when set, this setting names the *active subset* of
+    # the named enum field's complete option list, and its per-instance value
+    # is the list of option values active on that instance. The complete list
+    # itself stays on the field (``field_options``) and deploys identically
+    # everywhere; only this setting varies. The access layer refuses to point
+    # it at a field not classified data-bearing (REQ-487). Nullable: an
+    # ordinary governed setting names no field.
+    system_setting_active_subset_field: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
     system_setting_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -2100,6 +2126,10 @@ class SystemSetting(EngagementScopedPKMixin, Base):
         Index(
             "ix_system_settings_system_setting_deleted_at",
             "system_setting_deleted_at",
+        ),
+        Index(
+            "ix_system_settings_active_subset_field",
+            "system_setting_active_subset_field",
         ),
     )
 

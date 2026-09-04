@@ -69,7 +69,14 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.formulas import FormulaError, validate_formula
-from crmbuilder_v2.access.models import Entity, Field, FieldOption, Reference
+from crmbuilder_v2.access.models import (
+    Entity,
+    Field,
+    FieldOption,
+    Reference,
+    SystemSetting,
+    SystemSettingValue,
+)
 from crmbuilder_v2.access.repositories import _rejection
 from crmbuilder_v2.access.vocab import (
     DERIVED_RESULT_TYPES,
@@ -120,11 +127,18 @@ _INTRINSIC_COLUMN_BY_KWARG: dict[str, str] = {
     # (0130) — ``supplied_by = "another_system"`` replaced it (DEC-939).
     # PI-425 / REQ-523 — platform-shipped field; compared, never created.
     "built_in": "field_built_in",
+    # PI-407 / REQ-487 — the data-bearing classification: nothing branches on
+    # the field's value anywhere in the system. Established by reading the
+    # consumers and recorded as data; the only gate on a per-instance active
+    # subset. Never inferred from the field's type or options.
+    "data_bearing": "field_data_bearing",
     # PI-374 — a ``foreign`` field's mirror coordinates (link + target field).
     "foreign_link": "field_foreign_link",
     "foreign_target": "field_foreign_target",
 }
-_INTRINSIC_BOOL_KWARGS = frozenset({"read_only", "unique", "built_in"})
+_INTRINSIC_BOOL_KWARGS = frozenset(
+    {"read_only", "unique", "built_in", "data_bearing"}
+)
 
 # PI-414 — the qualifying properties added with the expressive field vocabulary,
 # each validated against its own vocabulary when present. Kept as a map rather
@@ -455,6 +469,104 @@ def _field_to_dict(session: Session, row: Field) -> dict:
     return out
 
 
+def _active_subset_settings(
+    session: Session, field_identifier: str
+) -> list[SystemSetting]:
+    """The live governed settings that name this field's active subset.
+
+    PI-407 / REQ-486: a setting whose ``system_setting_active_subset_field``
+    points at the field. Soft-deleted settings are not counted — they govern
+    nothing until restored.
+    """
+    return list(
+        session.scalars(
+            select(SystemSetting)
+            .where(
+                SystemSetting.system_setting_active_subset_field
+                == field_identifier,
+                SystemSetting.system_setting_deleted_at.is_(None),
+            )
+            .order_by(SystemSetting.system_setting_identifier)
+        ).all()
+    )
+
+
+def _refuse_declassifying_with_active_subsets(
+    session: Session, row: Field, requested: object
+) -> None:
+    """REQ-487: a field carrying an active subset cannot stop being data-bearing.
+
+    The classification is the safety property the whole construct rests on.
+    Turning it off while an instance's active subset still narrows the field
+    would leave a varying vocabulary on a field the design now says logic may
+    branch on — exactly the wrong-answer-not-error defect REQ-487 exists to
+    prevent. Withdraw the settings first; then the field may be declassified.
+    Checked before the row is touched, so a refusal leaves nothing half-set.
+    """
+    if bool(requested):
+        return
+    settings = _active_subset_settings(session, row.field_identifier)
+    if not settings:
+        return
+    named = ", ".join(s.system_setting_identifier for s in settings)
+    raise UnprocessableError(
+        [
+            FieldError(
+                "field_data_bearing",
+                "active_subset_declared",
+                f"field {row.field_identifier!r} ({row.field_name}) carries an "
+                f"active subset ({named}); a field with a variable active "
+                "subset must stay classified data-bearing (REQ-487). Withdraw "
+                "the setting first.",
+            )
+        ]
+    )
+
+
+def _refuse_orphaning_declared_subset_values(
+    session: Session, field_identifier: str, new_values: set[str]
+) -> None:
+    """REQ-486: a declared active subset must stay within the complete list.
+
+    Every instance holds the complete option list; the active subset names
+    some of it. Retiring an option that an instance's declared subset still
+    names would leave that subset asserting a value the deployed list no
+    longer holds — refused, naming the instance and the values, so the
+    operator narrows the subsets before narrowing the list.
+    """
+    settings = _active_subset_settings(session, field_identifier)
+    if not settings:
+        return
+    setting_ids = [s.system_setting_identifier for s in settings]
+    rows = session.scalars(
+        select(SystemSettingValue)
+        .where(SystemSettingValue.system_setting_identifier.in_(setting_ids))
+        .order_by(SystemSettingValue.id)
+    ).all()
+    orphaned: list[str] = []
+    for value_row in rows:
+        declared = value_row.value if isinstance(value_row.value, list) else []
+        missing = [v for v in declared if isinstance(v, str) and v not in new_values]
+        if missing:
+            orphaned.append(
+                f"{value_row.system_setting_identifier}/"
+                f"{value_row.instance_identifier} names {missing!r}"
+            )
+    if orphaned:
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "field_options",
+                    "active_subset_names_retired_value",
+                    f"field {field_identifier!r}: a declared active subset "
+                    "names a value the new option list no longer holds "
+                    f"({'; '.join(orphaned)}); narrow the active subset "
+                    "before retiring the value (REQ-486).",
+                )
+            ]
+        )
+
+
 def _replace_options(
     session: Session, field_identifier: str, options: list
 ) -> None:
@@ -463,7 +575,9 @@ def _replace_options(
     Each option is ``{"option_value": str, "option_label": str|None,
     "option_order": int|None}``; ``option_order`` defaults to the list
     index. An empty list clears the set. Duplicate ``option_value`` (the
-    DB unique key) is rejected with a 422 before touching the DB.
+    DB unique key) is rejected with a 422 before touching the DB. A
+    replacement that would drop a value an instance's declared active
+    subset still names is refused (PI-407 / REQ-486).
     """
     if not isinstance(options, list):
         raise UnprocessableError(
@@ -519,6 +633,8 @@ def _replace_options(
         order = opt.get("option_order")
         order = idx if order is None else int(order)
         normalized.append((value, label, order))
+
+    _refuse_orphaning_declared_subset_values(session, field_identifier, seen)
 
     session.execute(
         delete(FieldOption).where(
@@ -680,10 +796,14 @@ def list_fields(
     *,
     entity_identifier: str | None = None,
     include_deleted: bool = False,
+    data_bearing: bool | None = None,
 ) -> list[dict]:
     """Return all fields ordered by identifier ascending.
 
     Soft-deleted rows are excluded unless ``include_deleted`` is True.
+    ``data_bearing`` narrows to fields whose classification matches
+    (PI-407 / REQ-487 — the classification is queryable, so a consuming
+    codebase can be checked against it rather than trusted to remember).
     When ``entity_identifier`` is supplied (per spec §3.5.5), the
     result is filtered to fields whose live
     ``field_belongs_to_entity`` edge points to the supplied entity.
@@ -707,6 +827,8 @@ def list_fields(
     else:
         if not include_deleted:
             stmt = stmt.where(Field.field_deleted_at.is_(None))
+    if data_bearing is not None:
+        stmt = stmt.where(Field.field_data_bearing.is_(bool(data_bearing)))
     return [_field_to_dict(session, r) for r in session.scalars(stmt).all()]
 
 
@@ -1034,6 +1156,10 @@ def update_field(
     row.field_type = field_type
     row.field_required = bool(required)
     row.field_notes = notes
+    if "data_bearing" in intrinsics:
+        _refuse_declassifying_with_active_subsets(
+            session, row, intrinsics["data_bearing"]
+        )
     _apply_intrinsics(row, intrinsics)
     _apply_derived(row, derived, effective_type=field_type)
     session.flush()
@@ -1140,6 +1266,11 @@ def patch_field(session: Session, identifier: str, **fields) -> dict:
             source_identifier=identifier,
             decision_identifier=rejected_by_decision,
             current_status=row.field_status,
+        )
+
+    if "data_bearing" in fields:
+        _refuse_declassifying_with_active_subsets(
+            session, row, fields["data_bearing"]
         )
 
     # Intrinsic §7 attributes — only the supplied keys are touched.
