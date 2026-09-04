@@ -24,7 +24,6 @@ relationship.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
 from PySide6.QtWidgets import QWidget
@@ -188,54 +187,9 @@ class ReferenceCreateDialog(EntityCrudDialog):
         cached = self._entity_list_cache.get(entity_type)
         if cached is not None:
             return cached
-        list_method = self._list_method_for(entity_type)
-        if list_method is None:
-            self._entity_list_cache[entity_type] = []
-            return []
-        try:
-            records = list_method()
-        except Exception:
-            # Best effort — empty list lets the user know the cascade
-            # blocked, even though the picker accepts free text. The
-            # base's error pipeline catches save failures.
-            self._entity_list_cache[entity_type] = []
-            return []
-        out: list[tuple[str, str]] = []
-        for record in records:
-            identifier, title = _identifier_and_title(record, entity_type)
-            if identifier:
-                out.append((identifier, title))
+        out = list_records_for_type(self._client, entity_type)
         self._entity_list_cache[entity_type] = out
         return out
-
-    def _list_method_for(
-        self, entity_type: str
-    ) -> Callable[[], list[dict[str, Any]]] | None:
-        """Resolve the client list call that backs ``entity_type``'s picker.
-
-        Every record type the reference vocabulary allows and the client
-        can list without arguments is covered (REQ-562 / PI-463); before
-        that only the seven governance types were, so a process, entity,
-        persona, field or domain picker opened empty and the operator had
-        to type the identifier from memory. Charter and status are
-        version-keyed and go through the labelled wrapper. A type with no
-        list call resolves to ``None`` and the picker stays free-text.
-        """
-        if entity_type in ("charter", "status"):
-            return self._list_versioned_with_label(entity_type)
-        method_name = _LIST_METHOD_NAMES.get(entity_type)
-        if method_name is None:
-            return None
-        return getattr(self._client, method_name, None)
-
-    def _list_versioned_with_label(
-        self, entity_type: str
-    ) -> Callable[[], list[dict[str, Any]]]:
-        """Wrap charter/status list calls so cached results survive
-        the version-keyed shape (no per-row title field on those rows)."""
-        if entity_type == "charter":
-            return self._client.list_charter_versions
-        return self._client.list_status_versions
 
     def created_identifier(self) -> str | None:
         """Identifier of the newly created record (mirrors other dialogs).
@@ -324,6 +278,39 @@ def _identifier_and_title(record: dict[str, Any], entity_type: str) -> tuple[str
             title = str(record[key])
             break
     return str(identifier), title
+
+
+def list_records_for_type(
+    client: StorageClient, entity_type: str
+) -> list[tuple[str, str]]:
+    """Return ``[(identifier, title), ...]`` for every live record of a type.
+
+    Shared by the References-pane dialog (REQ-562) and the record-side
+    connection form (REQ-563) so both pickers show the same list. A type
+    with no argument-free list call, or a list call that fails, yields an
+    empty list: the caller's picker stays free-text rather than erroring.
+    """
+    if entity_type in ("charter", "status"):
+        list_method = (
+            client.list_charter_versions
+            if entity_type == "charter"
+            else client.list_status_versions
+        )
+    else:
+        method_name = _LIST_METHOD_NAMES.get(entity_type)
+        list_method = getattr(client, method_name, None) if method_name else None
+    if list_method is None:
+        return []
+    try:
+        records = list_method()
+    except Exception:
+        return []
+    out: list[tuple[str, str]] = []
+    for record in records:
+        identifier, title = _identifier_and_title(record, entity_type)
+        if identifier:
+            out.append((identifier, title))
+    return out
 
 
 # Sanity-check: keep RELATIONSHIP_RULES import live so the module

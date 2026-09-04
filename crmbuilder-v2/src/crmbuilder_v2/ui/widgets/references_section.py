@@ -466,6 +466,18 @@ class ReferencesSection(QWidget):
         self._preview = None
         if rows is None:
             rows = self._flatten(references_payload or {})
+        # Outbound (kind, target_type, target_id) keys this record already
+        # holds — the record-side connection form (REQ-563) locks them so
+        # the unique-tuple index cannot be tripped.
+        self._linked_keys: frozenset[tuple[str, str, str]] = frozenset(
+            (
+                str((row.get("ref") or {}).get("relationship") or ""),
+                str(row.get("other_type") or ""),
+                str(row.get("other_id") or ""),
+            )
+            for row in rows
+            if row.get("direction") == "outbound"
+        )
         self._build(rows)
 
     # ------------------------------------------------------------------
@@ -950,18 +962,28 @@ class ReferencesSection(QWidget):
     # ------------------------------------------------------------------
 
     def _on_add_clicked(self) -> None:
+        """Open the record-side connection form (REQ-563 / PI-464).
+
+        The starting record is this section's record, so the generic
+        cascading dialog (still the References pane's form, REQ-562) is
+        not used here: the form never asks for the source, offers only
+        the kinds allowed from this record's type, and creates one
+        reference per ticked target on a single save.
+        """
         if self._client is None:
             return
-        from crmbuilder_v2.ui.dialogs.reference_create import (
-            ReferenceCreateDialog,
-        )
+        from crmbuilder_v2.ui.dialogs.record_connect import RecordConnectDialog
 
-        dialog = ReferenceCreateDialog(
+        dialog = RecordConnectDialog(
             self._client,
-            pre_populated_source=(self._entity_type, self._identifier),
+            source_type=self._entity_type,
+            source_id=self._identifier,
+            existing=self._linked_keys,
             parent=self,
         )
-        if dialog.exec() == QDialog.DialogCode.Accepted:
+        dialog.exec()
+        # A partial save that was then cancelled still changed the store.
+        if dialog.created_references():
             self.references_changed.emit()
 
     def _on_delete_clicked(self, reference: dict[str, Any]) -> None:
