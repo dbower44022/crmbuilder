@@ -1,18 +1,15 @@
 # Claude Code session prompt — PI-427 + PI-418 in one shot: layouts emit, publish, and actionability
 
-Last Updated: 09-04-26 00:20 · Revision 1.1 — change log at end.
+Last Updated: 09-04-26 01:45 · Revision 1.2 — change log at end.
 
-> **STATUS (09-04-26): IN EXECUTION — do not start a second session from this file.**
-> Session **SES-394** (terminal `crmbuilder-58`, conversation CNV-366) holds the claim on
-> PI-427 and PI-418 and is building on branch `pi-427-418` in worktree
-> `../crmbuilder-wt-pi427-418`. PI-427's emitter is committed (`066e021c`). Decision 3 is
-> settled (DEC-1026, confirmed-only emission); decision 1 (DEC-1029, option A: the audit
-> fetches the five portal variants; Layout Sets are REQ-559) and decision 2 (DEC-1033,
-> the reason rides the row as `capability_reason`) are settled. **Before acting on this
-> file, read PI-427 and PI-418 from the store: if `claimed_by` is set and a session for
-> them is `in_flight`, the holder is live even when `ListAgents` shows it idle — message
-> it, or ask Doug; do not claim, build, record decisions, or edit the worktree** (LSN-076;
-> a second session did exactly that on 09-03-26 and its records had to be superseded).
+> **STATUS (09-04-26): EXECUTED — do not run this file again; retained as the record of the handoff.**
+> Executed by session SES-394 (terminal `crmbuilder-58`; conversations CNV-366 for PI-427,
+> CNV-370 for PI-418). Outcome: PI-427 built as `066e021c` and PI-418 as `bbad9bca` on branch
+> `pi-427-418`; Doug's eight-step walkthrough under `/tmp/pi427-418` matched; merged to main as
+> `19f21198`, the portal-layout migration renumbered to 0137/0094 in `15e14c83` after PI-407 took
+> 0136/0093 (LSN-075); guides updated in `e3d0aeaf`; all pushed. Rulings: DEC-1026 (confirmed-only
+> emission), DEC-1029 (audit the five portal variants; Layout Sets are REQ-559), DEC-1033
+> (`capability_reason` on the row). Both PIs Resolved; PRJ-120 completed 09-04-26.
 
 **Give this file to a fresh Claude Code session rooted in `~/Dropbox/Projects/crmbuilder`.
 It supersedes `CLAUDE-CODE-PROMPT-pi-418-layout-actionability.md` (the PI-418-only
@@ -248,5 +245,6 @@ The remaining three:
 
 | Rev | Date | Change |
 |---|---|---|
+| 1.2 | 09-04-26 01:45 | Marked executed. Outcome: PI-427 (066e021c) and PI-418 (bbad9bca) built, demonstrated, merged as 19f21198 (+15e14c83 migration renumber, LSN-075), guides e3d0aeaf, pushed; DEC-1026/1029/1033, REQ-559, LSN-075 recorded; both PIs Resolved by CNV-366 / CNV-370; PRJ-120 completed. Notes owed: CBM's 257 candidate layouts need a confirmation pass; the layout API create body types content as a mapping while record-view layouts are lists. |
 | 1.1 | 09-04-26 00:20 | Status banner added: the prompt is in execution by SES-394; PI-427 committed, decisions 1–3 settled (DEC-1026/1029/1033, REQ-559); a claim-check rule placed before the kickoff instruction after a second session ran the file in parallel and had to stand down (LSN-076, DEC-1028/1031 superseded). |
 | 1.0 | 09-03-26 | Combined single-shot prompt created from `CLAUDE-CODE-PROMPT-pi-418-layout-actionability.md` (PI-417 close-out session, 09-03-26) per DEC-1019: decision 1 settled as build-together; branch/worktree/demo paths renamed `pi-427-418`; both-PI claim and resolve; LSN-066 resolve-after-push order; REQ-546 feature-selection note added to publish scope; popup-widget prohibition added per Doug's global rules. |
