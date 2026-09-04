@@ -4,16 +4,16 @@ portal variants.
 The audit now fetches ``listPortal`` / ``detailPortal`` / ``listSmallPortal`` /
 ``detailSmallPortal`` / ``relationshipsPortal`` per entity so a layout the
 platform cannot write can still be shown as a difference, non-actionable and
-naming why. The ``ck_layout_type`` CHECK — rebuilt last by 0074 — is rebuilt
+naming why. The ``ck_layout_type`` CHECK — rebuilt last by 0117 — is rebuilt
 again from the live vocabulary.
 
 Downgrade removes the portal rows (and their memberships) before narrowing the
-CHECK back, as 0074 did.
+CHECK back, as 0117 did.
 
-Companion SQLite-chain delta: ``migrations/versions/0136_pi_418_portal_layout_types.py``.
+Companion PG-chain delta: ``migrations/pg/versions/0094_pi_418_portal_layout_types.py``.
 
-Revision ID: 0093_pi_418_portal_layout_types
-Revises: 0092_pi_413_workflow_membership
+Revision ID: 0137_pi_418_portal_layout_types
+Revises: 0136_pi_407_active_subset
 Create Date: 2026-09-03
 """
 
@@ -25,8 +25,8 @@ import sqlalchemy as sa
 from alembic import op
 from crmbuilder_v2.access.vocab import LAYOUT_TYPES, PORTAL_LAYOUT_TYPES, _check_in
 
-revision: str = "0093_pi_418_portal_layout_types"
-down_revision: str | None = "0092_pi_413_workflow_membership"
+revision: str = "0137_pi_418_portal_layout_types"
+down_revision: str | None = "0136_pi_407_active_subset"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -37,8 +37,9 @@ _TYPES_OLD = LAYOUT_TYPES - PORTAL_LAYOUT_TYPES
 def _rebuild_layout_type_check(types: frozenset[str]) -> None:
     if "layouts" not in set(sa.inspect(op.get_bind()).get_table_names()):
         return
-    op.drop_constraint("ck_layout_type", "layouts", type_="check")
-    op.create_check_constraint("ck_layout_type", "layouts", _check_in("layout_type", types))
+    with op.batch_alter_table("layouts") as batch:
+        batch.drop_constraint("ck_layout_type", type_="check")
+        batch.create_check_constraint("ck_layout_type", _check_in("layout_type", types))
 
 
 def upgrade() -> None:
