@@ -10,6 +10,10 @@ but the instance itself, and stays drift.
 
 from __future__ import annotations
 
+import pathlib
+import tempfile
+
+import yaml as pyyaml
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.reconcile_compare import (
     option_sets_equal,
@@ -25,6 +29,8 @@ from crmbuilder_v2.publish.service import (
     declared_setting_values,
     plan_fingerprint_for,
 )
+
+from espo_impl.core.config_loader import ConfigLoader
 
 RENDERED_AT = "2026-09-02T12:00:00+00:00"
 _COMPLETE = ["Cuyahoga", "Summit", "Lorain", "Medina"]
@@ -114,6 +120,18 @@ def test_two_instances_with_different_subsets_receive_the_same_program(v2_env):
     block = program_model.program["entities"][program_model.entity_name]
     [emitted] = [f for f in block["fields"] if f["name"] == "areaOfService"]
     assert emitted["options"] == _COMPLETE
+
+    # Read back with the consumers' readers, not the writer's dialect (LSN-070):
+    # the deploy engine's loader must see the same four options, and none of
+    # them may have turned into anything but text on the way.
+    entity_block = pyyaml.safe_load(program.content)["entities"][program_model.entity_name]
+    [read_back] = [f for f in entity_block["fields"] if f["name"] == "areaOfService"]
+    assert read_back["options"] == _COMPLETE
+    path = pathlib.Path(tempfile.mkdtemp()) / program.filename
+    path.write_text(program.content)
+    loaded = ConfigLoader().load_program(path)
+    [loaded_field] = [f for f in loaded.entities[0].fields if f.name == "areaOfService"]
+    assert loaded_field.options == _COMPLETE
 
     # What differs per instance is the plan's setting values, not its programs:
     # the same artifacts fingerprint differently only because of them.
