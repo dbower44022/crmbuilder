@@ -228,10 +228,20 @@ def test_an_empty_payload_defers():
         )
 
 
+def test_a_portal_variant_defers_naming_the_platform_s_limit():
+    """PI-418 / REQ-520: the audit captures the five portal variants so they
+    can be shown as differences; the emitter never renders one, because the
+    deploy engine has no write path for it, and MANUAL-CONFIG says so."""
+    model = _model([_layout(layout_type="list_portal", content=LIST)])
+    assert _block(model) is None
+    (d,) = model.deferrals
+    assert d.kind == "layout" and "portal" in d.detail and "REQ-520" in d.detail
+
+
 def test_an_unmapped_type_defers():
     with pytest.raises(LayoutRenderError, match="no deployable"):
         render_layout(
-            "list_portal", LIST, entity_name="Mentor Application", entity_espo_type="Base",
+            "not_a_type", LIST, entity_name="Mentor Application", entity_espo_type="Base",
             emitted_field_names={"mentorStatus"}, link_names=set(),
         )
 

@@ -62,6 +62,34 @@ LAYOUT_TYPE_TO_ESPO: dict[str, str] = {
     "bottom_panels_edit_small": "bottomPanelsEditSmall",
 }
 
+#: The five portal variants (PI-418 / DEC-1029): read by the audit so they can
+#: be shown as differences, never rendered — the deploy engine has no write
+#: path for them (``layout_types.PORTAL_LAYOUTS`` is deploy-deferred) and the
+#: platform offers none apart from the portal's own Layout Manager (REQ-520).
+PORTAL_LAYOUT_TYPE_TO_ESPO: dict[str, str] = {
+    "list_portal": "listPortal",
+    "detail_portal": "detailPortal",
+    "list_small_portal": "listSmallPortal",
+    "detail_small_portal": "detailSmallPortal",
+    "relationships_portal": "relationshipsPortal",
+}
+
+#: Everything the audit fetches per entity: the writable eighteen and the
+#: portal five. The emitter renders only :data:`LAYOUT_TYPE_TO_ESPO`.
+AUDITED_LAYOUT_TYPE_TO_ESPO: dict[str, str] = {
+    **LAYOUT_TYPE_TO_ESPO,
+    **PORTAL_LAYOUT_TYPE_TO_ESPO,
+}
+
+#: Why a portal variant is not rendered — the same fact the reconcile surface
+#: states on the row (``reconcile_compare.capability_reason``), said for the
+#: MANUAL-CONFIG reader.
+PORTAL_LAYOUT_DEFERRAL = (
+    "a portal layout variant: the platform offers no write path for it apart "
+    "from the portal's own Layout Manager, so it is not published (REQ-520) — "
+    "set it there by hand"
+)
+
 #: The field-list layouts whose entries are field names. ``relationships`` is
 #: the third field-list type and its entries are link names, which are not
 #: fields and are not resolved.
@@ -343,6 +371,8 @@ def render_layout(
     """
     espo_type = LAYOUT_TYPE_TO_ESPO.get(layout_type)
     if espo_type is None:
+        if layout_type in PORTAL_LAYOUT_TYPE_TO_ESPO:
+            raise LayoutRenderError(PORTAL_LAYOUT_DEFERRAL)
         raise LayoutRenderError(
             f"layout type {layout_type!r} has no deployable EspoCRM layout"
         )

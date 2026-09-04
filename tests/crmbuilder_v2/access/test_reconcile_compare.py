@@ -8,6 +8,7 @@ from crmbuilder_v2.access.reconcile_compare import (
     PRESENT,
     UNKNOWN,
     _override_attrs,
+    capability_reason,
     compute_member_properties,
     compute_member_rows,
     option_sets_equal,
@@ -935,18 +936,59 @@ def test_a_role_or_team_the_instance_lacks_can_be_pushed(member_type):
     assert row["publishable"] is True
 
 
-def test_layout_attributes_stay_view_only():
-    """REQ-520: a layout is not in the capturable set — its variants bound to a
-    portal or a role have no mechanism to set, and the whole type stays
-    non-actionable until that subset can be told apart."""
-    a = _mem(state="drifted", override={"layout_rows": ["name"]})
-    rows = compute_member_rows(
-        member_type="layout", member_identifier="LAY-1", member_name="detailLayout",
-        design_obj={"layout_rows": ["name", "phone"]}, attributes=["layout_rows"],
+def _layout_rows(layout_type):
+    a = _mem(state="drifted", override={"layout_content": [{"rows": [["name"]]}]})
+    return compute_member_rows(
+        member_type="layout", member_identifier="LAY-1", member_name=layout_type,
+        design_obj={"layout_type": layout_type,
+                    "layout_content": [{"rows": [["name", "phone"]]}]},
+        attributes=["layout_content"],
         membership_a=a, membership_b=_mem(),
     )
-    row = rows[0]
+
+
+def test_an_ordinary_layout_captures_and_publishes():
+    """PI-418 (REQ-519): the whole type used to be held view-only because its
+    portal- and role-bound variants have no mechanism to set. Told apart, an
+    ordinary detail layout is writable both ways — captured onto the design
+    record, published through its entity's layout: block (PI-427)."""
+    (row,) = _layout_rows("detail")
+    assert row["capturable"] is True and row["publishable"] is True
+    assert row["actionable"] is True
+    assert row["capability_reason"] is None
+
+
+def test_a_portal_layout_variant_stays_view_only_and_names_why():
+    """REQ-520: the read-only handling now applies to the subset it actually
+    describes, and the row says why — on the row, where the operator reads it
+    (DEC-1033)."""
+    (row,) = _layout_rows("detail_portal")
     assert row["capturable"] is False and row["publishable"] is False
+    assert row["differs"] is True
+    assert "portal" in row["capability_reason"]
+    assert "REQ-520" in row["capability_reason"]
+
+
+def test_a_writable_row_in_sync_carries_no_capability_reason():
+    """The reason names inability, not mere inaction: a row that matches is
+    offered no action for a different reason and must not claim this one."""
+    rows = compute_member_rows(
+        member_type="layout", member_identifier="LAY-1", member_name="detail_portal",
+        design_obj={"layout_type": "detail_portal", "layout_content": [1]},
+        attributes=["layout_content"],
+        membership_a=_mem(), membership_b=_mem(), include_unchanged=True,
+    )
+    attr = next(r for r in rows if r["kind"] == "attribute")
+    assert attr["differs"] is False and attr["capability_reason"] is None
+
+
+def test_the_reason_table_answers_per_construct():
+    assert capability_reason("layout", "layout_content", {"layout_type": "list"}) is None
+    assert "portal" in capability_reason(
+        "layout", "layout_content", {"layout_type": "list_portal"}
+    )
+    assert "DEC-997" in capability_reason("workflow", "automation_trigger", {})
+    assert capability_reason("field", "field_required", {}) is None
 
 
 # --- undeclared vs drifted (PI-414 — REQ-513 / DEC-938 / DEC-940) -----------

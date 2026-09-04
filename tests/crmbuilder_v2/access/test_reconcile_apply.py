@@ -10,6 +10,7 @@ from crmbuilder_v2.access.repositories import entity as entity_repo
 from crmbuilder_v2.access.repositories import field as field_repo
 from crmbuilder_v2.access.repositories import instance_membership as mb
 from crmbuilder_v2.access.repositories import instances as inst_repo
+from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import reconcile_transactions as txn_repo
 from crmbuilder_v2.access.repositories import roles as role_repo
 from crmbuilder_v2.access.repositories import source_mapping as sm_repo
@@ -636,9 +637,61 @@ def test_capture_member_refuses_a_type_with_no_design_repository(v2_env):
         iid, rid = _role_setup(s)
         with pytest.raises(ConflictError):
             reconcile_apply.capture_member_attribute(
-                s, instance=iid, member_type="layout", member_identifier=rid,
-                attribute="layout_rows", actor="Doug",
+                s, instance=iid, member_type="message_template",
+                member_identifier=rid, attribute="message_template_body",
+                actor="Doug",
             )
+
+
+def _layout_setup(s, layout_type):
+    iid = inst_repo.create_instance(
+        s, name="src", url="https://src.example.org", role="source"
+    )["instance_identifier"]
+    eid = entity_repo.create_entity(
+        s, name="Contact", description="x", status="confirmed"
+    )["entity_identifier"]
+    lid = layout_repo.create_layout(
+        s, entity_identifier=eid, layout_type=layout_type,
+        content=[{"label": "", "rows": [["name"]]}], status="confirmed",
+    )["layout_identifier"]
+    mb.upsert_membership(
+        s, instance_identifier=iid, member_type="layout", member_identifier=lid,
+        state="drifted",
+        override={"layout_content": [{"label": "", "rows": [["name", "cPhone"]]}]},
+    )
+    return iid, lid
+
+
+def test_capture_an_ordinary_layout_writes_the_design_and_clears_the_drift(v2_env):
+    """PI-418 (REQ-519): the design ends up holding the instance's layout, with a
+    reversible transaction, exactly as a field attribute or a role does."""
+    with session_scope() as s:
+        iid, lid = _layout_setup(s, "detail")
+        out = reconcile_apply.capture_member_attribute(
+            s, instance=iid, member_type="layout", member_identifier=lid,
+            attribute="layout_content", actor="Doug",
+        )
+        assert out["member"]["layout_content"] == [{"label": "", "rows": [["name", "cPhone"]]}]
+        assert out["transaction"]["direction"] == "capture"
+        row = mb.list_memberships(
+            s, instance_identifier=iid, member_type="layout", member_identifier=lid
+        )[0]
+        assert row["state"] == "present" and not row["override"]
+
+
+def test_capture_a_portal_layout_variant_is_refused_with_the_reason(v2_env):
+    """REQ-520: the platform cannot write it, so the engine refuses in the same
+    words the row shows, rather than quietly writing the design."""
+    with session_scope() as s:
+        iid, lid = _layout_setup(s, "detail_portal")
+        with pytest.raises(ConflictError, match="portal"):
+            reconcile_apply.capture_member_attribute(
+                s, instance=iid, member_type="layout", member_identifier=lid,
+                attribute="layout_content", actor="Doug",
+            )
+        assert layout_repo.get_layout(s, lid)["layout_content"] == [
+            {"label": "", "rows": [["name"]]}
+        ]
 
 
 def test_capture_member_refuses_when_the_instance_records_no_deviation(v2_env):

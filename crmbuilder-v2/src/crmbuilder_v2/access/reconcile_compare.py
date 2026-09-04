@@ -34,6 +34,7 @@ from crmbuilder_v2.access.repositories import roles as role_repo
 from crmbuilder_v2.access.repositories import rule as rule_repo
 from crmbuilder_v2.access.repositories import system_settings as system_settings_repo
 from crmbuilder_v2.access.repositories import teams as team_repo
+from crmbuilder_v2.access.vocab import WRITABLE_LAYOUT_TYPES
 
 #: A source carries the member on the instance (its value participates in diffs).
 PRESENT = "present"
@@ -88,6 +89,46 @@ PUBLISHABLE_GLOBAL_MEMBERS = frozenset({"role", "team", "filtered_tab"})
 CAPTURE = "capture"
 PUBLISH = "publish"
 
+#: Why a row is offered no action in either direction because the platform
+#: cannot write the construct (REQ-520 / PI-418, DEC-1033). Keyed by member
+#: type; the value answers ``(attribute, design_obj)`` with the reason, or
+#: ``None`` when this member is one the platform *can* write. Carried on the
+#: row as ``capability_reason`` so the operator reads it where the decision is
+#: made, and quoted in the grid's refusal. The compared-set declaration says
+#: what is compared; this table says why nothing can be done about it.
+_PORTAL_LAYOUT_REASON = (
+    "a portal layout variant: the platform has no way to set it apart from the "
+    "portal's own Layout Manager, so it can be neither captured into the design "
+    "nor published to an instance (REQ-520)"
+)
+_WORKFLOW_REASON = (
+    "a workflow: the audit reads it, but no deploy writes it (DEC-997), so a "
+    "difference is shown for the record only"
+)
+
+
+def capability_reason(
+    member_type: str,
+    attribute: str | None,
+    design_obj: dict[str, Any] | None = None,
+) -> str | None:
+    """The reason a construct the platform cannot write is non-actionable
+    (REQ-520), or ``None`` when the platform can write it.
+
+    Deliberately narrower than "capturable and publishable are both off": a
+    presence row that is view-only because its entity's promote carries it, or
+    a matching row shown for verification, has no platform reason and gets
+    none — this names inability, not mere inaction.
+    """
+    if member_type == "layout":
+        layout_type = (design_obj or {}).get("layout_type")
+        if layout_type not in WRITABLE_LAYOUT_TYPES:
+            return _PORTAL_LAYOUT_REASON
+        return None
+    if member_type == "workflow":
+        return _WORKFLOW_REASON
+    return None
+
 
 def _attribute_capabilities(
     member_type: str,
@@ -120,6 +161,18 @@ def _attribute_capabilities(
         # admitted the entity-less security program; a filtered tab always
         # had an entity and now has its block.
         return True, member_type in PUBLISHABLE_GLOBAL_MEMBERS
+    if member_type == "layout":
+        # PI-418 (REQ-519 / REQ-520): the type is split by what the platform
+        # can write. An ordinary layout captures (``layout_content`` onto the
+        # design record) and publishes (its entity's program now carries a
+        # ``layout:`` block, PI-427). A portal variant stays view-only — the
+        # blanket default this used to be, now applied to the subset it
+        # actually describes — and :func:`capability_reason` says why.
+        writable = (
+            attribute == "layout_content"
+            and (design_obj or {}).get("layout_type") in WRITABLE_LAYOUT_TYPES
+        )
+        return writable, writable
     return False, False
 
 
@@ -133,14 +186,19 @@ def _presence_capabilities(member_type: str) -> tuple[bool, bool]:
     it and the deploy engine creates it, and no whole-entity promote would ever
     reach it, since it belongs to no entity. Other member types have no targeted
     presence-push here — a missing field, layout or filtered tab is brought
-    over by the whole-entity promote — so their presence rows stay view-only.
+    over by the whole-entity promote — so their presence rows stay view-only
+    (a layout's presence follows the field precedent, PI-418).
     """
     return False, (
         member_type == "association" or member_type in SECURITY_PROGRAM_MEMBERS
     )
 
 
-def _attribute_actionable(member_type: str, attribute: str | None) -> bool:
+def _attribute_actionable(
+    member_type: str,
+    attribute: str | None,
+    design_obj: dict[str, Any] | None = None,
+) -> bool:
     """Whether this attribute row can be acted on in *either* direction.
 
     Retained as the disjunction of :func:`_attribute_capabilities` so callers that
@@ -148,7 +206,9 @@ def _attribute_actionable(member_type: str, attribute: str | None) -> bool:
     view-only bucketing) keep working. Routing an actual apply must consult the
     specific direction instead — see ``plan_apply``.
     """
-    capturable, publishable = _attribute_capabilities(member_type, attribute)
+    capturable, publishable = _attribute_capabilities(
+        member_type, attribute, design_obj
+    )
     return capturable or publishable
 
 
@@ -448,6 +508,13 @@ def compute_member_rows(
             "capturable": cap,
             "publishable": pub,
             "actionable": cap or pub,
+            # REQ-520: a difference the platform cannot act on says why, on
+            # the row. ``None`` whenever an action is offered or the row is
+            # merely in sync.
+            "capability_reason": (
+                capability_reason(member_type, attr, design_obj)
+                if not agrees and not (cap or pub) else None
+            ),
         })
 
     # REQ-447: an enum/multi-select field shown in the tree should always be

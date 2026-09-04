@@ -23,6 +23,7 @@ from crmbuilder_v2.access.repositories import (
 from crmbuilder_v2.access.repositories import (
     instances as instances_repo,
 )
+from crmbuilder_v2.access.repositories import layouts as layout_repo
 from crmbuilder_v2.access.repositories import teams as team_repo
 
 
@@ -133,6 +134,52 @@ def test_unwritable_only_differences_get_their_own_status(v2_env):
         assert result["status"] == "named_but_unwritable"
         assert result["counts"]["unwritable_drift"] == 1
         assert result["counts"]["drift"] == 0
+
+
+def _confirmed_layout(s, eid, layout_type):
+    return layout_repo.create_layout(
+        s, entity_identifier=eid, layout_type=layout_type,
+        content=[{"rows": [["name"]]}], status="confirmed",
+    )["layout_identifier"]
+
+
+def test_an_ordinary_layout_difference_is_writable_drift(v2_env):
+    """PI-418: a layout difference already reported as drifted while the
+    surface offered no write path. The emitter (PI-427) and the split give
+    the ordinary types the path, so the verdict now claims what is true."""
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        _present(s, iid, "entity", eid)
+        lid = _confirmed_layout(s, eid, "detail")
+        _present(s, iid, "layout", lid,
+                 override={"layout_content": [{"rows": [["name", "x"]]}]},
+                 state="drifted")
+        result = conformance.evaluate_instance(s, iid)
+        assert result["status"] == "drifted"
+        entry = next(e for e in result["entries"]
+                     if e["member_type"] == "layout" and e["attribute"] == "layout_content")
+        assert entry["writable"] is True and entry["capability_reason"] is None
+
+
+def test_a_portal_layout_difference_is_named_but_unwritable(v2_env):
+    """REQ-520 / DEC-923: the platform cannot write a portal variant, so its
+    drift is named-but-unwritable, and the entry says why."""
+    with session_scope() as s:
+        iid = _instance(s)
+        eid = _confirmed_entity(s)
+        _present(s, iid, "entity", eid)
+        lid = _confirmed_layout(s, eid, "detail_portal")
+        _present(s, iid, "layout", lid,
+                 override={"layout_content": [{"rows": [["name", "x"]]}]},
+                 state="drifted")
+        result = conformance.evaluate_instance(s, iid)
+        assert result["status"] == "named_but_unwritable"
+        assert result["counts"]["unwritable_drift"] == 1
+        entry = next(e for e in result["entries"]
+                     if e["member_type"] == "layout" and e["attribute"] == "layout_content")
+        assert entry["writable"] is False
+        assert "portal" in entry["capability_reason"]
 
 
 def test_a_team_difference_is_writable_drift_now(v2_env):

@@ -1024,9 +1024,12 @@ class ReconcileGridPanel(QWidget):
             for reason in plan["skipped"]:
                 skipped.append(f"{label}: {reason}")
             for ref in plan.get("refused", []):
+                # REQ-520 / PI-418: a construct the platform cannot write says
+                # why, in the refusal, beside the row it refuses.
+                why = row.get("capability_reason")
                 refusals.setdefault(
                     (ref["direction"], ref["location"]), []
-                ).append(label)
+                ).append(f"{label} — {why}" if why else label)
             for op in plan["ops"]:
                 try:
                     if op["kind"] == "capture" and per_value is not None:

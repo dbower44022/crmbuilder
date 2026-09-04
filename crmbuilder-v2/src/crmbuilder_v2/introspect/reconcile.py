@@ -66,7 +66,7 @@ from crmbuilder_v2.adapters.espocrm.field_types import (
     ESPO_LINK_FIELD_TYPES,
     ESPO_LINK_TYPES_READ_AS_RELATIONSHIPS,
 )
-from crmbuilder_v2.adapters.espocrm.layouts import LAYOUT_TYPE_TO_ESPO
+from crmbuilder_v2.adapters.espocrm.layouts import AUDITED_LAYOUT_TYPE_TO_ESPO
 from crmbuilder_v2.introspect.audit_utils import (
     NATIVE_ENTITIES,
     EntityClass,
@@ -1937,8 +1937,10 @@ def _reconcile_associations_drift(
 # (``AuditManager._layout_types_to_extract``); portal and forRoles variants
 # are deliberately not read (PI-418).
 #: PI-427: the adapter owns the neutral→EspoCRM layout-type map, since the
-#: emitter and the audit must agree on it; this is the same object.
-_LAYOUT_TYPE_TO_ESPO: dict[str, str] = LAYOUT_TYPE_TO_ESPO
+#: emitter and the audit must agree on it. The audit reads the writable
+#: eighteen plus the five portal variants (PI-418 / DEC-1029) — the latter so
+#: an unwritable difference can be shown at all (REQ-520).
+_LAYOUT_TYPE_TO_ESPO: dict[str, str] = AUDITED_LAYOUT_TYPE_TO_ESPO
 
 
 def _layout_body_present(status: int, content: Any) -> bool:
