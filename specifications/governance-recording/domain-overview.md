@@ -2,10 +2,10 @@
 
 | Field | Value |
 |-------|-------|
-| Version | 0.3 |
-| Last Updated | 09-03-26 19:30 |
+| Version | 0.4 |
+| Last Updated | 09-03-26 23:05 |
 | Status | DISCUSSION DRAFT — render of domain record DOM-012 (candidate) as of 09-03-26 |
-| Audience | Anyone working in or on the CRMBuilder methodology's ninth domain; PI-086, PI-087 and PI-088 authors |
+| Audience | Anyone working in or on the CRMBuilder methodology's ninth domain; PI-087 and PI-088 authors |
 | Governs | Nothing on its own. The domain record DOM-012 and its links in the V2 store are the source (DEC-393, DEC-394, DEC-1021); this file is a render and goes stale between renders |
 
 ## Purpose
@@ -45,18 +45,17 @@ CRMBuilder's mission is to hold the complete definition of a product in a struct
 - PER-006 Scheduler, PER-007 Reconciliation Agent, PER-008 Architect Agent, PER-009 Project Manager Agent, PER-010 PI Lead Agent, PER-011 Developer Agent, PER-012 Tester Agent — every pipeline agent writes to the store under this Domain's rules: release runs, demand-sets, build plans and work tasks, planning-item dispatch and phase transitions, commits carrying their governing item, findings and verification results.
 *Evidence: DEC-1015; GVR-229; TERM-042 (`ado_agent` audience).*
 
-**Engagement Lead — exists as a glossary term (TERM-012), defined as a persona in PI-086:** the person who runs the engagement; approves requirements and governance rules; reviews each demonstrable increment and each PI report before the next item launches; reviews Claude Code's local commits and pushes them; alone deploys to production; the human point of contact when an agent or phase needs attention. Decision authority: final on every ruling this Domain records.
-*Evidence: DEC-1009; DEC-1010; TERM-012; LSN-045; GVR-239; GVR-240 / DEC-907; GVR-232.*
+**Defined as persona records in PI-086 (REQ-409) — rendered in `specifications/personas/governance-recording-personas.md`:**
 
-**Named here, defined as persona records in PI-086 (DEC-1022):**
+- **PER-013 Engagement Lead** (TERM-012): the person who runs the engagement; approves requirements and governance rules; reviews each demonstrable increment and each PI report before the next item launches; reviews Claude Code's local commits and pushes them; alone deploys to production; the human point of contact when an agent or phase needs attention. Decision authority: final on every ruling this Domain records. Backed by participant seat PTC-006 in ENG-001 (DEC-1030).
+  *Evidence: DEC-1009; DEC-1010; DEC-1030; TERM-012; LSN-045; GVR-239; GVR-240 / DEC-907; GVR-232.*
+- **PER-014 Claude Code Agent** (TERM-046): reaches the live store; records each governance record by direct API write as it occurs; commits with a `Governed-By` trailer, does not push. Authority: none over content; stops at a topic boundary and surfaces rulings rather than making them. No participant backing (DEC-1032).
+  *Evidence: REQ-095; GVR-229; GVR-231; LSN-045; REQ-081; DEC-1022.*
+- **PER-015 Claude.ai Sandbox Agent** (TERM-047): cannot reach the store; authors the close-out payload and apply prompt; commits and pushes in the same turn. Authority: as above. Not the sandbox of the Development and Sandbox domain, which is a test copy of a client CRM. No participant backing (DEC-1032).
+  *Evidence: REQ-096..098; LSN-042; LSN-045; DEC-1022.*
 
-- **Claude Code Agent** (TERM-046): reaches the live store; records each governance record by direct API write as it occurs; commits with a `Governed-By` trailer, does not push. Authority: none over content; stops at a topic boundary and surfaces rulings rather than making them.
-  *Evidence: REQ-095; GVR-229; GVR-231; LSN-045; REQ-081.*
-- **Claude.ai Sandbox Agent** (TERM-047): cannot reach the store; authors the close-out payload and apply prompt; commits and pushes in the same turn. Authority: as above. Not the sandbox of the Development and Sandbox domain, which is a test copy of a client CRM.
-  *Evidence: REQ-096..098; LSN-042; LSN-045.*
-
-The rules bind "Doug or anyone else operating against the V2 governance database"; whether any human other than the Engagement Lead and the Consultant needs a persona is for PI-086 to decide.
-*Evidence: REQ-066; DEC-310.*
+No other persona is involved: the rules bind "Doug or anyone else operating against the V2 governance database", and every human that could mean already has a record (PER-003, PER-005, PER-013); the desktop UI is for monitoring, not authoring, so a UI user records nothing.
+*Evidence: REQ-066; DEC-310; REQ-064; persona render section 4.*
 
 ## 5. Processes within the Domain
 
@@ -176,10 +175,10 @@ No term in this document lacks a glossary entry.
 
 ## 10. What comes next
 
-- **PI-086** defines the persona records for the Engagement Lead, the Claude Code Agent and the Claude.ai Sandbox Agent and links them to DOM-012.
+- **PI-086** is done: PER-013, PER-014 and PER-015 are linked to DOM-012 and rendered in `specifications/personas/governance-recording-personas.md`.
 - **PI-087** defines the Session/Conversation governance Process, the first process record of this domain.
 - **PI-088** defines the meta process by which process PRDs are produced, after PI-087 has been observed.
-- DOM-012 and ENT-045 to ENT-058 move from candidate to confirmed together when this overview leaves discussion-draft status.
+- DOM-012, ENT-045 to ENT-058 and PER-013 to PER-015 move from candidate to confirmed together when this overview leaves discussion-draft status.
 
 ## Change log
 
@@ -188,3 +187,4 @@ No term in this document lacks a glossary entry.
 | 0.1 | 09-03-26 | Discussion draft authored in SES-388 / CNV-360 under PI-085 per DEC-1003, with seven open questions. |
 | 0.2 | 09-03-26 | Rulings DEC-1009 to DEC-1013 and DEC-1015 applied; domain DOM-012, ENT-045 to ENT-058 and twenty-four scope links written to the store; PI-085 resolved. |
 | 0.3 | 09-03-26 19:30 | First committed render (DEC-1021). Persona names approved (DEC-1022, TERM-046, TERM-047); eight glossary entries added (DEC-1023, TERM-048 to TERM-055); entity identifiers filled in; the parallel-ruling detour recorded (DEC-1024). Authored in SES-392 / CNV-364. |
+| 0.4 | 09-03-26 23:05 | Section 4 names the persona records written under PI-086: PER-013 Engagement Lead, PER-014 Claude Code Agent, PER-015 Claude.ai Sandbox Agent, with their backing rulings DEC-1030 and DEC-1032; section 10 updated. Authored in SES-395 / CNV-367. |

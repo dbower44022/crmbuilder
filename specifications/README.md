@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| Version | 0.1 |
-| Last Updated | 09-03-26 19:30 |
-| Status | Manifest — three canonical documents plus the first domain-overview render |
+| Version | 0.2 |
+| Last Updated | 09-03-26 23:05 |
+| Status | Manifest — three canonical documents plus the first domain-overview render and the first persona render |
 | Audience | Anyone trying to find the definitive document for a CRMBuilder topic |
 | Governs | Navigation of the `specifications/` directory |
 
@@ -22,7 +22,8 @@ The files below are the current contents of this directory. Each is the canonica
 |------|---------|------------------|
 | `master-crmbuilder-PRD.md` | Process-definition document for using V2 to capture the complete definition of a product, from first interview through deployed application. Internal L3 specification — names V2 specifically. Currently being authored against CRMBuilder dogfood; phase content drafted iteratively. | 0.1 (draft) — DISCUSSION DRAFT, NOT YET APPROVED |
 | `governance-recording-rules.md` | Normative rules for authoring governance records in V2 — workstreams, sessions, conversations, decisions, planning items, references, work tickets, close-out payloads. Applies equally to AI and human agents per DEC-310. | 0.1 — DISCUSSION DRAFT |
-| `governance-recording/domain-overview.md` | Domain Overview for Governance Recording, the methodology's ninth, cross-cutting domain (DEC-1003): identity, big question, scope, personas, processes, entities, rules corpus. A dated render of domain record DOM-012 in the V2 store, which is the source (DEC-1021). | 0.3 — DISCUSSION DRAFT, render of a candidate domain record |
+| `governance-recording/domain-overview.md` | Domain Overview for Governance Recording, the methodology's ninth, cross-cutting domain (DEC-1003): identity, big question, scope, personas, processes, entities, rules corpus. A dated render of domain record DOM-012 in the V2 store, which is the source (DEC-1021). | 0.4 — DISCUSSION DRAFT, render of a candidate domain record |
+| `personas/governance-recording-personas.md` | Persona records the Governance Recording domain involves and no earlier domain defined: PER-013 Engagement Lead, PER-014 Claude Code Agent, PER-015 Claude.ai Sandbox Agent — role, responsibilities, Governance Recording duties, decision authority, lifecycle, participant backing. Personas are first-class and cross-domain, so the render lives under `personas/`, not in a domain folder. A dated render of the persona records in the V2 store, which is the source (DEC-1021). | 0.1 — DISCUSSION DRAFT, render of candidate persona records |
 | `glossary.md` | Canonical definitions of terms used across CRMBuilder methodology, governance, and process documentation. Terms carry stable `TERM-NNN` identifiers; alphabetical order is rendering-only. | 0.2 — In progress, terms added as discussed |
 
 ## Recommended Reading Order
@@ -73,3 +74,10 @@ Do not delete superseded documents; let them remain available as historical refe
 - `PRDs/product/crmbuilder-v2/` — V2 architecture, component PRDs, execution history, close-out payloads, deposit-event logs.
 - `PRDs/process/` — legacy methodology documents being consolidated into `master-crmbuilder-PRD.md`. Still operative for any topic the Master CRMBuilder PRD has not yet covered.
 - `PRDs/product/` — V1 product PRDs and the federated automation PRDs.
+
+## Change log
+
+| Version | Date | Change |
+|---|---|---|
+| 0.1 | 09-03-26 19:30 | Manifest created with the three canonical documents and the first domain-overview render (SES-392 / CNV-364). |
+| 0.2 | 09-03-26 23:05 | Added the first persona render, `personas/governance-recording-personas.md` v0.1; domain-overview row bumped to v0.4; change log added (SES-395 / CNV-367, PI-086). |
