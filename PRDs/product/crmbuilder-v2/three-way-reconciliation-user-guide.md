@@ -74,7 +74,9 @@ read‑only). Other rows — whole‑member presence, relationships, layouts, ro
 teams — are shown for visibility but are not yet reconcilable from this panel; if
 you select one and try to capture, the panel tells you so. Settings that can be
 read but not written back through the platform are likewise shown but never
-offered an action they can't perform.
+offered an action they can't perform. Where the platform itself cannot write a
+construct — a portal layout variant, a workflow — the row says why, and the
+refusal you see on trying to act quotes the same reason (REQ‑520, PI‑418).
 
 ## 5. Capture a value into the design
 
@@ -128,19 +130,24 @@ stays intact.
   (listed under both linked entities), layouts, roles, teams, and filtered tabs.
 - **Capture (instance → design):** field attributes, reconcilable entity
   settings, relationship cardinality (capture‑only — the engine cannot change a
-  link's cardinality in place), and role, team and filtered‑tab attributes
-  (REQ‑519).
+  link's cardinality in place), role, team and filtered‑tab attributes
+  (REQ‑519), and an ordinary layout's content (PI‑418).
 - **Publish (design → instance) from a row:** field attributes, entity settings,
   relationships, and — since PI‑417 — roles and teams (through the instance‑wide
   `security.yaml` program, DEC‑998) and filtered tabs (with their entity). A
   role or team publish states its target and effect and is confirmed first; one
   that removes access the instance currently grants needs a separate second
-  confirmation (REQ‑521). A missing role or team can be pushed from its presence
-  row; a missing field, layout or filtered tab is carried by its entity's
-  promote.
-- **Still view‑only:** layouts (writable and portal/role‑bound variants are being
-  separated under PI‑418, with the `layouts:` emitter as PI‑427) and workflows
-  (captured and compared, never written — DEC‑997).
+  confirmation (REQ‑521). Since PI‑427, an ordinary layout (detail, edit, list,
+  filters, the side and bottom panel maps — the eighteen types the deploy
+  engine writes) publishes with its entity, whose generated program now carries
+  a `layout:` block; only confirmed layouts are rendered (DEC‑1026). A missing
+  role or team can be pushed from its presence row; a missing field, layout or
+  filtered tab is carried by its entity's promote.
+- **Still view‑only, and saying why:** the five portal layout variants (the
+  audit now captures them, DEC‑1029; the platform offers no way to set them
+  apart from the portal's own Layout Manager, so the row carries that reason —
+  REQ‑520, PI‑418) and workflows (captured and compared, never written —
+  DEC‑997). Team‑bound Layout Sets are not represented yet (REQ‑559).
 - **Freshness:** the diff reflects each instance's last audit. Re‑audit to
   refresh before reconciling if a system changed recently.
 
@@ -153,7 +160,7 @@ errors}`, `X-Engagement` header):
 |---|---|
 | `GET /reconcile/compare?instance_a=&instance_b=&entity=` | Three‑way diff (omit `entity` for the full scan). |
 | `POST /reconcile/capture` | Capture a field attribute into the design. |
-| `POST /reconcile/capture-member` | Capture a role, team or filtered‑tab attribute into the design. |
+| `POST /reconcile/capture-member` | Capture a role, team, filtered‑tab or layout attribute into the design; a portal layout variant is refused with its reason (409). |
 | `GET /reconcile/assess-access-publish?instance=&member_type=&member_identifier=` | What a role or team publish would change on the instance, and which changes remove access (REQ‑521). |
 | `POST /reconcile/publish` | Publish a member with its program; a role or team needs `confirm_access_change`, and `confirm_access_removal` when the assessment reports a removal. |
 | `GET /reconcile/compared-set` | The declared compared set and the four construct sets (captured / emitted / applied / compared) per member type. |

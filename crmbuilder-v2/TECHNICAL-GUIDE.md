@@ -314,6 +314,30 @@ existing generate → validate → backup → deploy → verify flow:
   test_generate_design_yaml_reads_the_same_lists_as_the_adapter_run` pins
   the set by name. A new emitted block needs a test that starts at this
   function and asserts the block appears in the artifact.
+* **The `layout:` block and the writable split (REQ-519 / REQ-520, PI-427 /
+  PI-418).** `adapters/espocrm/layouts.py` owns the neutral→EspoCRM layout
+  type maps (`LAYOUT_TYPE_TO_ESPO`, the eighteen the engine writes;
+  `AUDITED_LAYOUT_TYPE_TO_ESPO` adds the five portal variants the audit
+  reads) and `render_layout`, a port of the V1 audit's reverse mappers —
+  ported, not imported, because nothing under `crmbuilder_v2` may import
+  the V1 audit (REQ-549); `tests/crmbuilder_v2/adapters/
+  test_layout_program.py` checks the port against the V1 original on every
+  fixture. `model._apply_layouts` renders each confirmed layout of an
+  emitted entity under that entity's `layout:` key, resolving every placed
+  field against the program (emitted field names, link names from the
+  relationships blocks, the platform's own fields per base type; on a
+  platform entity the CRM's `c`-prefixed custom fields reverse to their
+  emitted names) and deferring by name otherwise; a panel layout that
+  leaves `name` out sets `settings.autoPlaceName: false`. In the access
+  layer `vocab.WRITABLE_LAYOUT_TYPES` / `PORTAL_LAYOUT_TYPES` split the
+  type; `reconcile_compare.capability_reason` is the per-construct table
+  behind the row field `capability_reason` (DEC-1033), consulted by
+  `_attribute_capabilities`, by `reconcile_apply.capture_member_attribute`
+  (layout joins `_GLOBAL_MEMBER_REPOS`; a portal variant is refused with
+  the reason) and by `conformance._writable` (an ordinary layout's drift is
+  `drifted`, a portal variant's `named_but_unwritable`). Migrations 0137
+  (SQLite) / 0094 (PG) widen `ck_layout_type`; LSN-075 records why they
+  were renumbered at merge.
 
 ## MCP server
 

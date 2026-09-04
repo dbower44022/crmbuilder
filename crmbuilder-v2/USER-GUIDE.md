@@ -702,6 +702,33 @@ changes who can reach what on a live CRM (REQ-521):
 A candidate role, team or filtered tab is unfinished design and is never
 published; it is listed by name in the MANUAL-CONFIG companion instead.
 
+### Publishing layouts
+
+A screen layout — the detail and edit views, the list views, the filter and
+mass-update field lists, and the side- and bottom-panel placements — publishes
+with its entity (PI-427). The entity's generated program carries a `layout:`
+block rendered from the layout records the audit captured, and the deploy
+engine applies it exactly as it applies a hand-authored one. Two rules decide
+what reaches an instance:
+
+- **Only confirmed layouts publish (DEC-1026).** A layout the audit captured is
+  a candidate until someone reviews it, and a candidate is unfinished design:
+  it is skipped silently, never published. An engagement whose layouts were all
+  captured by the audit therefore publishes no layouts until they are confirmed.
+- **A layout that places a field the design does not emit is not rendered.**
+  It is listed by name in the MANUAL-CONFIG companion with the field named, so
+  the remedy is clear: confirm the field, or take it out of the layout.
+
+An ordinary layout can also be **captured** from the Reconcile grid: the design
+takes the instance's arrangement, with a transaction you can roll back.
+
+The five **portal layout variants** (the views a portal user sees) are the
+exception (PI-418, REQ-520). The audit captures them and the grid shows their
+differences, but the platform has no way to set them apart from the portal's
+own Layout Manager, so the row offers no capture and no publish and says why;
+trying to act on one is refused with that reason. Layouts bound to a team
+through a Layout Set are not represented yet (REQ-559).
+
 ### Per-instance feature selection (chapters)
 
 When several chapters run the same shared design on their own instances
