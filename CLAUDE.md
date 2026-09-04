@@ -382,12 +382,18 @@ Fields/Layouts/Relationships → Workflows
 
 These are constraints that operators must follow when authoring YAML
 program files. Some are documented in the schema spec
-(`PRDs/product/app-yaml-schema.md` v1.2.1+); all are enforced at
+(`PRDs/product/app-yaml-schema.md` v1.2.1+). Most are enforced at
 deployment time by `validate_program()`, which runs as a hard-reject
 pre-flight in the Configure flow as of error-handling Prompt E
 (05-02-26). A YAML file with any validation error is excluded from the
 deployment batch entirely with errors shown in the run log; other files
 in the batch run normally.
+
+**Not every rule here has a validator behind it.** The YAML 1.1 quoting
+rule below is the exception: nothing detects it, the run reports success,
+and the instance is simply wrong. Where a rule is unenforced this section
+says so — do not assume the pre-flight is a safety net for everything
+listed here.
 
 ### Link relationships go in `relationships:` only
 
@@ -436,6 +442,33 @@ link and fails the foreign field (no link yet); the second succeeds
 on both. If the relationship is already deployed (declared in a
 sibling YAML or in an earlier deploy), a single run suffices.
 Subsequent re-runs are idempotent.
+
+### Quote values the engine would read as booleans
+
+The deploy engine parses program files with PyYAML's `safe_load`, which
+is YAML 1.1. In that dialect `yes`, `no`, `on`, `off`, `true` and
+`false` are booleans in **every** capitalization — `Yes`, `NO`, `Off`
+included. An unquoted string equal to one of those six words reaches the
+engine as `True`/`False` instead of as text.
+
+The realistic casualty is an enum option list: a field declared with
+
+```yaml
+options: [Yes, No]        # WRONG — deploys as the option list [true, false]
+options: ["Yes", "No"]    # correct
+```
+
+**Nothing catches this.** `validate_program()` passes such a file
+(verified 09-03-26), the Configure run reports success, and the field
+lands on the instance with the wrong options. It is not specific to
+`options:` — any string value in a hand-authored file is exposed,
+including `translatedOptions` keys, a `default:`, or a label.
+
+Generated programs are safe: the V2 emitter quotes these six words on
+the way out (REQ-558 / PI-461, commit `aba5374d`). This rule is for
+hand-authored files, which have no such protection and never did. Full
+statement with worked example: `PRDs/product/app-yaml-schema.md` §6.3
+(v1.3.4).
 
 ### Three features have no public REST API write path
 
