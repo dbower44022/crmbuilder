@@ -34,7 +34,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from crmbuilder_v2.access import compared_set
-from crmbuilder_v2.access.reconcile_compare import option_sets_equal
+from crmbuilder_v2.access.reconcile_compare import capability_reason, option_sets_equal
 from crmbuilder_v2.access.repositories import association as association_repo
 from crmbuilder_v2.access.repositories import automation as automation_repo
 from crmbuilder_v2.access.repositories import entity as entity_repo
@@ -66,7 +66,9 @@ NAMED_BUT_UNWRITABLE = "named_but_unwritable"
 #: than drifted (DEC-923's narrow refinement). Roles, teams and filtered tabs
 #: left this set when the emitter rendered them (REQ-519 / PI-417); workflows
 #: stay until the ruling DEC-997 defers to (the audit reads them, no deploy
-#: writes them).
+#: writes them). A layout is split within the type (PI-418): the ordinary
+#: types write, the portal variants do not — :func:`capability_reason` is the
+#: authority for that per-record answer, and ``_writable`` consults it.
 _UNWRITABLE_MEMBER_TYPES = frozenset({"workflow"})
 
 #: Attributes the applier cannot write even though their member type deploys:
@@ -155,10 +157,14 @@ _SOURCES = (
 _PRESENT_STATES = frozenset({"present", "drifted"})
 
 
-def _writable(member_type: str, attribute: str | None) -> bool:
+def _writable(
+    member_type: str, attribute: str | None, obj: dict[str, Any] | None = None
+) -> bool:
     if member_type in _UNWRITABLE_MEMBER_TYPES:
         return False
     if attribute is not None and (member_type, attribute) in _UNWRITABLE_ATTRIBUTES:
+        return False
+    if capability_reason(member_type, attribute, obj) is not None:
         return False
     return True
 
@@ -171,6 +177,7 @@ def _entry(
     outcome: str,
     reason: str | None,
     read_at: str | None,
+    obj: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return {
         "construct": f"{member_type} {member_name or member_identifier}",
@@ -179,7 +186,10 @@ def _entry(
         "attribute": attribute,
         "outcome": outcome,
         "reason": reason,
-        "writable": _writable(member_type, attribute),
+        "writable": _writable(member_type, attribute, obj),
+        # REQ-520 / PI-418: why an unwritable construct is unwritable, on the
+        # entry, so the report names it beside the verdict.
+        "capability_reason": capability_reason(member_type, attribute, obj),
         "read_at": read_at,
     }
 
@@ -204,27 +214,32 @@ def _member_entries(
     read_at = _iso((membership or {}).get("last_audited_at"))
     entries: list[dict[str, Any]] = []
 
+    def _e(*args):
+        # Every entry of this member carries its design record, so writability
+        # and the REQ-520 reason are answered per record (PI-418).
+        return _entry(*args, obj=obj)
+
     if membership is None:
-        entries.append(_entry(
+        entries.append(_e(
             member_type, member_id, name, "presence", UNKNOWN,
             "this construct was never audited on this instance", None,
         ))
         for attribute in attributes:
-            entries.append(_entry(
+            entries.append(_e(
                 member_type, member_id, name, attribute, UNKNOWN,
                 "this construct was never audited on this instance", None,
             ))
         return entries
 
     if membership.get("state") not in _PRESENT_STATES:
-        entries.append(_entry(
+        entries.append(_e(
             member_type, member_id, name, "presence", DRIFT,
             "the design defines this construct and the instance does not "
             "carry it", read_at,
         ))
         return entries
 
-    entries.append(_entry(
+    entries.append(_e(
         member_type, member_id, name, "presence", MATCH, None, read_at
     ))
     override = membership.get("override") or {}
@@ -234,7 +249,7 @@ def _member_entries(
             and attribute == "field_formula"
             and obj.get("field_formula") is not None
         ):
-            entries.append(_entry(
+            entries.append(_e(
                 member_type, member_id, name, attribute, UNKNOWN,
                 "a declared formula is verified through the entity's "
                 "formula scripts, which have no per-field reader yet",
@@ -242,7 +257,7 @@ def _member_entries(
             ))
             continue
         if attribute not in reads:
-            entries.append(_entry(
+            entries.append(_e(
                 member_type, member_id, name, attribute, UNKNOWN,
                 "the audit has no reader for this attribute yet", read_at,
             ))
@@ -257,12 +272,12 @@ def _member_entries(
                     member_type, attribute, design_value, observed
                 )
             if equal:
-                entries.append(_entry(
+                entries.append(_e(
                     member_type, member_id, name, attribute, MATCH, None,
                     read_at,
                 ))
             else:
-                entries.append(_entry(
+                entries.append(_e(
                     member_type, member_id, name, attribute, DRIFT,
                     "the instance holds a different value than the design "
                     "declares", read_at,
@@ -270,7 +285,7 @@ def _member_entries(
         else:
             # No stored deviation on an attribute the audit reads: the last
             # audit answered it and found it equal to the design.
-            entries.append(_entry(
+            entries.append(_e(
                 member_type, member_id, name, attribute, MATCH, None, read_at
             ))
     return entries

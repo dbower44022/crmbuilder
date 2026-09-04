@@ -1041,6 +1041,40 @@ def test_generate_design_yaml_reads_the_same_lists_as_the_adapter_run():
     assert set(client.asked) == protocol
 
 
+def test_generate_design_yaml_renders_a_confirmed_layout_on_its_entity():
+    """PI-427 (REQ-519), the LSN-071 rule: a new emitted block needs a test
+    that starts at the publish path's generation and finds the block in the
+    artifact — the unit on ``build_program_model`` and the validation gate
+    can both be green while the publish renders nothing."""
+    import yaml as pyyaml
+
+    from tests.crmbuilder_v2.adapters.test_espocrm_model import _entity, _field
+
+    client = _RecordingDesignClient(
+        entities=[_entity()],
+        fields=[_field()],
+        layouts=[{
+            "layout_identifier": "LAY-001",
+            "layout_entity_identifier": "ENT-001",
+            "layout_type": "detail",
+            "layout_content": [
+                {"label": "Overview", "rows": [[{"name": "name"}, {"name": "mentorStatus"}]]}
+            ],
+            "layout_status": "confirmed",
+            "layout_notes": None,
+        }],
+    )
+    result = service.generate_design_yaml(client, rendered_at="2026-09-03T00:00:00Z")
+    program = next(p for p in result.programs if p.filename != "security.yaml")
+    # Read with the deploy engine's dialect, never the writer's (LSN-070).
+    loaded = pyyaml.safe_load(program.content)
+    block = loaded["entities"]["Mentor Application"]["layout"]
+    assert block == {
+        "detail": {"panels": [{"label": "Overview", "rows": [["name", "mentorStatus"]]}]}
+    }
+    assert "list_layouts" in client.asked
+
+
 def test_generate_design_yaml_renders_the_security_program_and_filtered_tabs():
     """The consequence stated as an outcome: a confirmed role reaches
     ``security.yaml`` and a confirmed filtered tab reaches its entity's block

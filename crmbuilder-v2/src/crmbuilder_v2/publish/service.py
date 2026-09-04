@@ -276,6 +276,7 @@ def generate_design_yaml(
         roles=design_client.list_roles(),
         teams=design_client.list_teams(),
         filtered_tabs=design_client.list_filtered_tabs(),
+        layouts=design_client.list_layouts(),
         rendered_at=rendered_at,
         engagement=engagement,
     )

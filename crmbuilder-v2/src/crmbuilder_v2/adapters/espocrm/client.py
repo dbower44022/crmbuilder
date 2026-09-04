@@ -96,6 +96,16 @@ class DesignClient:
         (PI-417 / REQ-519)."""
         raise NotImplementedError
 
+    def list_layouts(self) -> list[dict]:
+        """Layout records, for each entity's ``layout:`` block (PI-427 /
+        REQ-519, DEC-951).
+
+        Entity-bound like a filtered tab, so a layout files with its entity's
+        program. The audit captured and compared layouts long before anything
+        emitted them; until this reader existed a designed layout could be
+        seen to differ from an instance but never pushed to one."""
+        raise NotImplementedError
+
     def list_system_settings(self) -> list[dict]:
         """Active governed system-setting records (PI-406 / REQ-485)."""
         raise NotImplementedError
@@ -196,6 +206,9 @@ class RestDesignClient(DesignClient):
 
     def list_filtered_tabs(self) -> list[dict]:
         return self._get("/filtered-tabs")
+
+    def list_layouts(self) -> list[dict]:
+        return self._get("/layouts")
 
     def list_system_settings(self) -> list[dict]:
         return self._get("/system-settings?status=confirmed")
@@ -345,6 +358,11 @@ class AccessDesignClient(DesignClient):
         from crmbuilder_v2.access.repositories import filtered_tabs
 
         return self._rows(filtered_tabs.list_filtered_tabs)
+
+    def list_layouts(self) -> list[dict]:
+        from crmbuilder_v2.access.repositories import layouts
+
+        return self._rows(layouts.list_layouts)
 
     def list_system_settings(self) -> list[dict]:
         from crmbuilder_v2.access.repositories import system_settings

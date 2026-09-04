@@ -299,7 +299,13 @@ CONSTRUCT_SETS: dict[str, ConstructDeclaration] = {
     "entity": ConstructDeclaration(_ALL_FOUR),
     "field": ConstructDeclaration(_ALL_FOUR),
     "association": ConstructDeclaration(_ALL_FOUR),
-    "layout": ConstructDeclaration(_ALL_FOUR),
+    "layout": ConstructDeclaration(
+        _ALL_FOUR,
+        "the eighteen ordinary types emit as the entity's layout: block "
+        "(PI-427) and capture/publish (PI-418); the five portal variants are "
+        "captured and compared but the platform cannot write them, so they "
+        "show as non-actionable differences naming why (REQ-520)",
+    ),
     "message_template": ConstructDeclaration(_ALL_FOUR),
     "rule": ConstructDeclaration(
         _ALL_FOUR, "field rules ride the field payloads they gate"

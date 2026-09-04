@@ -44,6 +44,7 @@ from crmbuilder_v2.access.repositories import (
     field_visibility_rule,
     filtered_tabs,
     instances,
+    layouts,
     message_template,
     roles,
     rule,
@@ -86,7 +87,7 @@ def test_both_clients_implement_the_whole_protocol():
     for m in METHODS:
         assert callable(getattr(AccessDesignClient, m, None)), m
         assert callable(getattr(RestDesignClient, m, None)), m
-    assert len(METHODS) == 16
+    assert len(METHODS) == 17
 
 
 def test_rest_list_fields_reads_the_serialized_edge_key(monkeypatch):
@@ -241,6 +242,13 @@ def _seed_every_surface() -> None:
         filtered_tabs.create_filtered_tab(
             s, entity_identifier=app, label="Approved applications",
             filter={"field": status_fid, "op": "eq", "value": "approved"},
+            status="confirmed",
+        )
+        # PI-427 (REQ-519): a layout, entity-bound, holding the CRM payload
+        # the audit captures and the emitter renders into layout:.
+        layouts.create_layout(
+            s, entity_identifier=app, layout_type="detail",
+            content=[{"label": "Overview", "rows": [[{"name": "name"}, False]]}],
             status="confirmed",
         )
         field_permission_rule.create_field_permission_rule(

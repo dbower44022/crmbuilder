@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from crmbuilder_v2.access.exceptions import ConflictError, NotFoundError
 from crmbuilder_v2.access.reconcile_compare import (
     SECURITY_PROGRAM_MEMBERS,
+    capability_reason,
     option_sets_equal,
 )
 from crmbuilder_v2.access.repositories import _governance as gov
@@ -406,6 +407,10 @@ _GLOBAL_MEMBER_REPOS: dict[str, tuple[Any, Any, str]] = {
         filtered_tab_repo.patch_filtered_tab,
         "filtered_tab_",
     ),
+    # PI-418 (REQ-519): an ordinary layout's ``layout_content`` is captured
+    # onto the design record; a portal variant is refused with its reason
+    # before the patch (REQ-520) — see :func:`capture_member_attribute`.
+    "layout": (layout_repo.get_layout, layout_repo.patch_layout, "layout_"),
 }
 
 
@@ -422,9 +427,10 @@ def capture_member_attribute(
 ) -> dict[str, Any]:
     """Capture an instance's value for a non-entity member into the design (REQ-519).
 
-    The role / team / filtered-tab twin of :func:`capture_entity_setting`. These
-    members belong to the instance rather than to an entity, so they carry no
-    parent to publish with, but capturing them is the same operation: read the
+    The role / team / filtered-tab / layout twin of :func:`capture_entity_setting`.
+    Roles and teams belong to the instance rather than to an entity, so they
+    carry no parent to publish with; a filtered tab and a layout (PI-418) do,
+    and publish with it. Capturing any of them is the same operation: read the
     instance's recorded override for ``attribute``, write it onto the canonical
     record, log the transaction, and clear that attribute's drift on the source.
 
@@ -452,6 +458,12 @@ def capture_member_attribute(
     current = get_one(session, member_identifier)
     if current is None:
         raise NotFoundError(member_type, member_identifier)
+    reason = capability_reason(member_type, attribute, current)
+    if reason is not None:
+        # REQ-520: the platform cannot write this construct; the surface shows
+        # the difference and offers no action, and the engine refuses with the
+        # same words rather than silently writing the design.
+        raise ConflictError(f"{member_identifier} cannot be captured — {reason}")
     before_value = current.get(attribute)
 
     patch_one(session, member_identifier, **{attribute.removeprefix(prefix): new_value})

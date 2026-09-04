@@ -629,6 +629,58 @@ def test_view_only_item_explains_and_is_not_applied(qtbot, monkeypatch):
     assert "• Account · Sales Role · Scope (role)" in body
 
 
+_UNWRITABLE_LAYOUT_GROUPS = [
+    {
+        "entity": "Account", "entity_identifier": "ENT-001", "entity_label": None,
+        "rows": [],
+        "object_groups": [
+            {"object_type": "layouts", "differing_count": 1, "rows": [
+                {"member_type": "layout", "member_identifier": "LAY-7",
+                 "member_name": "detail_portal", "kind": "attribute",
+                 "attribute": "layout_content",
+                 "design": [{"rows": [["name"]]}], "instance_a": [{"rows": [["x"]]}],
+                 "instance_b": [{"rows": [["name"]]}],
+                 "differs": True, "actionable": False,
+                 "capturable": False, "publishable": False,
+                 "capability_reason": "a portal layout variant: the platform has no "
+                 "way to set it apart from the portal's own Layout Manager (REQ-520)"},
+            ]},
+        ],
+    }
+]
+
+
+def test_a_refusal_quotes_why_the_platform_cannot_write_the_row(qtbot, monkeypatch):
+    """REQ-520 / PI-418 (DEC-1033): a construct the platform cannot write is
+    refused with its reason beside the row, not with the generic remedy alone."""
+    import crmbuilder_v2.ui.panels.reconcile_grid as mod
+    seen: dict[str, str] = {}
+    monkeypatch.setattr(
+        mod.CopyableMessageBox, "information",
+        classmethod(lambda cls, parent, title, text, *a, **k: seen.update(title=title, text=text)),
+    )
+    client = _RecordingClient(build_client(_handler))
+    panel = ReconcileGridPanel(client)
+    qtbot.addWidget(panel)
+    panel._combo_a.setCurrentIndex(0)
+    panel._combo_b.setCurrentIndex(1)
+    panel._on_compare()
+    panel._groups_by_entity["ENT-001"] = _UNWRITABLE_LAYOUT_GROUPS[0]
+    panel._drill(_EXISTENCE[0])
+    grp = panel._detail_model.index(0, 0)
+    child = panel._detail_model.index(0, 0, grp)
+    panel._detail.selectionModel().select(
+        child, panel._detail.selectionModel().SelectionFlag.Select
+    )
+    panel._source_combo.setCurrentIndex(1)
+    panel._target_design.setChecked(True)
+    panel._on_apply()
+    assert client.captures == [] and client.publishes == []
+    body = seen.get("text", "")
+    assert "(layout)" in body
+    assert "portal layout variant" in body and "REQ-520" in body
+
+
 #: A show-all verification row (REQ-478): matching everywhere, so non-actionable —
 #: but for a completely different reason than the view-only row above.
 _IN_SYNC_GROUPS = [

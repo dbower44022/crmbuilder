@@ -1116,7 +1116,24 @@ FILTERED_TAB_STATUSES: frozenset[str] = frozenset(
 # Layout design family (PI-193 — PRJ-027). One detail/list/etc. layout of an
 # entity, audit-captured and publishable. Reconcile-populated; full ENTITY_TYPE.
 # ---------------------------------------------------------------------------
-LAYOUT_TYPES: frozenset[str] = frozenset(
+#: The five portal variants — the layouts a portal user sees. EspoCRM 9.x
+#: offers no write path for them apart from the portal's own Layout Manager,
+#: so they are captured and compared but never captured-into-the-design or
+#: published (REQ-520 / PI-418, DEC-1029). Role-bound variants (Layout Sets
+#: bound to Teams) are a different construct and are not represented (REQ-559).
+PORTAL_LAYOUT_TYPES: frozenset[str] = frozenset(
+    {
+        "list_portal",
+        "detail_portal",
+        "list_small_portal",
+        "detail_small_portal",
+        "relationships_portal",
+    }
+)
+
+#: The eighteen ordinary types the deploy engine writes: capturable into the
+#: design and publishable to an instance (REQ-519 / PI-418).
+WRITABLE_LAYOUT_TYPES: frozenset[str] = frozenset(
     {
         # panel-structured record views
         "detail",
@@ -1142,6 +1159,10 @@ LAYOUT_TYPES: frozenset[str] = frozenset(
         "bottom_panels_edit_small",
     }
 )
+
+#: Every layout type the store holds — the writable eighteen plus the five
+#: portal variants the audit reads for visibility only.
+LAYOUT_TYPES: frozenset[str] = WRITABLE_LAYOUT_TYPES | PORTAL_LAYOUT_TYPES
 LAYOUT_STATUSES: frozenset[str] = frozenset(
     {"candidate", "confirmed", "deferred", "rejected"}
 )
