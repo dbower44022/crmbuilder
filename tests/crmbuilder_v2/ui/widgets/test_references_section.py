@@ -39,14 +39,10 @@ def _grid_cells(section) -> list[dict[str, str]]:
     proxy = section._proxy
     src = proxy.sourceModel()
     headers = [
-        src.headerData(c, Qt.Orientation.Horizontal)
-        for c in range(proxy.columnCount())
+        src.headerData(c, Qt.Orientation.Horizontal) for c in range(proxy.columnCount())
     ]
     return [
-        {
-            headers[c]: proxy.data(proxy.index(r, c))
-            for c in range(proxy.columnCount())
-        }
+        {headers[c]: proxy.data(proxy.index(r, c)) for c in range(proxy.columnCount())}
         for r in range(proxy.rowCount())
     ]
 
@@ -382,10 +378,7 @@ def test_table_has_custom_context_menu_policy(qapp, qtbot):
         client=MagicMock(),
     )
     qtbot.addWidget(section)
-    assert (
-        section._table.contextMenuPolicy()
-        == Qt.ContextMenuPolicy.CustomContextMenu
-    )
+    assert section._table.contextMenuPolicy() == Qt.ContextMenuPolicy.CustomContextMenu
 
 
 # ---------------------------------------------------------------------------
@@ -409,10 +402,7 @@ def test_add_reference_button_absent_when_no_client(qapp, qtbot):
 
     section = ReferencesSection("decision", "DEC-001", _payload())
     qtbot.addWidget(section)
-    assert (
-        section.findChild(QPushButton, "references_section_add_button")
-        is None
-    )
+    assert section.findChild(QPushButton, "references_section_add_button") is None
 
 
 def test_add_reference_button_renders_when_client_supplied(qapp, qtbot):
@@ -420,9 +410,7 @@ def test_add_reference_button_renders_when_client_supplied(qapp, qtbot):
 
     from PySide6.QtWidgets import QPushButton
 
-    section = ReferencesSection(
-        "decision", "DEC-001", _payload(), client=MagicMock()
-    )
+    section = ReferencesSection("decision", "DEC-001", _payload(), client=MagicMock())
     qtbot.addWidget(section)
     btn = section.findChild(QPushButton, "references_section_add_button")
     assert btn is not None
@@ -434,18 +422,20 @@ def test_set_add_enabled_hides_button(qapp, qtbot):
 
     from PySide6.QtWidgets import QPushButton
 
-    section = ReferencesSection(
-        "decision", "DEC-001", _payload(), client=MagicMock()
-    )
+    section = ReferencesSection("decision", "DEC-001", _payload(), client=MagicMock())
     qtbot.addWidget(section)
     btn = section.findChild(QPushButton, "references_section_add_button")
     section.set_add_enabled(False)
     assert not btn.isVisible()
 
 
-def test_add_reference_click_opens_create_dialog_with_pre_populated_source(
+def test_add_reference_click_opens_record_side_form_for_this_record(
     qapp, qtbot, monkeypatch
 ):
+    """REQ-563 / PI-464: the detail-view Add affordance opens the
+    record-side connection form with this record as the fixed source and
+    its existing outbound keys passed for locking — never the generic
+    cascading dialog."""
     from unittest.mock import MagicMock
 
     from PySide6.QtWidgets import QDialog, QPushButton
@@ -453,51 +443,64 @@ def test_add_reference_click_opens_create_dialog_with_pre_populated_source(
     captured = {}
 
     class _StubDialog:
-        def __init__(self, client, *, pre_populated_source=None, parent=None):
-            captured["pre_populated_source"] = pre_populated_source
+        def __init__(
+            self, client, *, source_type, source_id, existing=None, parent=None
+        ):
+            captured["source"] = (source_type, source_id)
+            captured["existing"] = set(existing or ())
             captured["parent"] = parent
 
         def exec(self):  # noqa: A003
             return QDialog.DialogCode.Rejected
 
+        def created_references(self):
+            return []
+
     monkeypatch.setattr(
-        "crmbuilder_v2.ui.dialogs.reference_create.ReferenceCreateDialog",
+        "crmbuilder_v2.ui.dialogs.record_connect.RecordConnectDialog",
         _StubDialog,
     )
-    section = ReferencesSection(
-        "decision", "DEC-018", _payload(), client=MagicMock()
-    )
+    section = ReferencesSection("decision", "DEC-018", _payload(), client=MagicMock())
     qtbot.addWidget(section)
     btn = section.findChild(QPushButton, "references_section_add_button")
     btn.click()
-    assert captured["pre_populated_source"] == ("decision", "DEC-018")
+    assert captured["source"] == ("decision", "DEC-018")
     assert captured["parent"] is section
+    outbound = {
+        (r["relationship"], r["target_type"], r["target_id"])
+        for r in _payload()["as_source"]
+    }
+    assert captured["existing"] == outbound
 
 
-def test_add_reference_dialog_accept_emits_references_changed(
+def test_add_reference_form_that_created_rows_emits_references_changed(
     qapp, qtbot, monkeypatch
 ):
+    """The section refreshes whenever the form created at least one
+    reference — including a partial save the operator then cancelled."""
     from unittest.mock import MagicMock
 
-    from PySide6.QtWidgets import QDialog
+    from PySide6.QtWidgets import QDialog, QPushButton
 
-    class _AcceptDialog:
+    class _PartialDialog:
         def __init__(self, *_a, **_kw):
             pass
 
         def exec(self):  # noqa: A003
-            return QDialog.DialogCode.Accepted
+            return QDialog.DialogCode.Rejected
+
+        def created_references(self):
+            return [{"target_id": "X"}]
 
     monkeypatch.setattr(
-        "crmbuilder_v2.ui.dialogs.reference_create.ReferenceCreateDialog",
-        _AcceptDialog,
+        "crmbuilder_v2.ui.dialogs.record_connect.RecordConnectDialog",
+        _PartialDialog,
     )
-    section = ReferencesSection(
-        "decision", "DEC-018", _payload(), client=MagicMock()
-    )
+    section = ReferencesSection("decision", "DEC-018", _payload(), client=MagicMock())
     qtbot.addWidget(section)
-    with qtbot.waitSignal(section.references_changed, timeout=2000):
-        section._on_add_clicked()
+    btn = section.findChild(QPushButton, "references_section_add_button")
+    with qtbot.waitSignal(section.references_changed, timeout=1000):
+        btn.click()
 
 
 def test_delete_reference_action_opens_delete_dialog(qapp, qtbot, monkeypatch):
@@ -520,9 +523,7 @@ def test_delete_reference_action_opens_delete_dialog(qapp, qtbot, monkeypatch):
         "crmbuilder_v2.ui.dialogs.reference_delete.ReferenceDeleteDialog",
         _StubDialog,
     )
-    section = ReferencesSection(
-        "decision", "DEC-007", _payload(), client=MagicMock()
-    )
+    section = ReferencesSection("decision", "DEC-007", _payload(), client=MagicMock())
     qtbot.addWidget(section)
     section._on_delete_clicked(_ref_outbound(target_id="DEC-007", ref_id=42))
     assert captured["reference_id"] == 42
@@ -548,9 +549,7 @@ def test_delete_reference_dialog_accept_emits_references_changed(
         "crmbuilder_v2.ui.dialogs.reference_delete.ReferenceDeleteDialog",
         _AcceptDialog,
     )
-    section = ReferencesSection(
-        "decision", "DEC-007", _payload(), client=MagicMock()
-    )
+    section = ReferencesSection("decision", "DEC-007", _payload(), client=MagicMock())
     qtbot.addWidget(section)
     with qtbot.waitSignal(section.references_changed, timeout=2000):
         section._on_delete_clicked(_ref_outbound(ref_id=99))
@@ -671,9 +670,7 @@ def test_work_task_grid_section_has_no_add_button(qapp, qtbot):
     qtbot.addWidget(section)
     from PySide6.QtWidgets import QPushButton
 
-    assert (
-        section.findChild(QPushButton, "references_section_add_button") is None
-    )
+    assert section.findChild(QPushButton, "references_section_add_button") is None
 
 
 def test_work_task_grid_section_double_click_navigates(qapp, qtbot):
