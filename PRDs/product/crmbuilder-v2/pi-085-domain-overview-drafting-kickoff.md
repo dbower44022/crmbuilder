@@ -3,11 +3,21 @@
 **Document type:** Kickoff prompt (session seed for executing PI-085)
 **Repository:** `crmbuilder`
 **Path:** `PRDs/product/crmbuilder-v2/pi-085-domain-overview-drafting-kickoff.md`
-**Last Updated:** 05-26-26
+**Last Updated:** 09-03-26 20:20
 **Operating mode:** ARCHITECTURE
 **Estimated duration:** One substantive session; produces v0.1 DISCUSSION DRAFT of the Domain Overview, possibly seeds the kickoff for PI-086 (Personas)
 **Engagement:** CRMBUILDER
 **Predecessor sessions:** SES-089 (architecture review), SES-092 (governance recording rules required, DEC-310 + PI-084), SES-093 (dogfood reframe, DEC-311 + PI-085..088 superseding PI-084)
+
+
+> **Status: EXECUTED 2026-09-03.** PI-085 is Resolved. Domain **DOM-012 Governance Recording**
+> exists in the V2 store (DEC-1003) and is the source of the Domain Overview; the committed
+> render is `specifications/governance-recording/domain-overview.md` (v0.3, DEC-1021). The
+> naming question below was settled by DEC-1003; the seven open questions of the v0.1 draft by
+> DEC-1009..DEC-1013, DEC-1015, DEC-1021..DEC-1024; the terms by DEC-1022 and DEC-1023. This
+> file is retained as the historical kickoff. The next item, PI-086, has its own prompt:
+> `PRDs/product/crmbuilder-v2/CLAUDE-CODE-PROMPT-pi-086-governance-recording-personas.md`.
+> The pre-flight below targets the retired local API; live work uses the cloud API per CLAUDE.md.
 
 ---
 
@@ -134,3 +144,12 @@ we proceed one thing at a time.
 ```
 
 Doug pastes that block into a new Claude.ai conversation. The new sandbox reads this kickoff, asks for heads, proposes Domain names, waits for selection, and begins drafting.
+
+---
+
+## Change log
+
+| Version | Date | Change |
+|---|---|---|
+| 1.0 | 05-26-26 | Kickoff authored (SES-093 follow-on). |
+| 1.1 | 09-03-26 20:20 | Executed-status banner added after PI-085 resolved; points at DOM-012, the v0.3 render, the rulings and the PI-086 prompt. |

@@ -20,6 +20,8 @@ The active work in this repo is consolidating into a single canonical **Master C
 
 Each carries a transitional status header pointing to the Master CRMBuilder PRD as the future source of truth. Until that PRD covers a topic, the corresponding existing document remains the reference.
 
+**Domain overviews (09-03-26):** a domain's overview is authored as the `domain` record in the V2 store (purpose, description, notes and its persona/entity links) and rendered to `specifications/{domain-name-slug}/domain-overview.md` as a dated file with a frontmatter table and change log (DEC-1021). The first is Governance Recording, DOM-012, the methodology's ninth and cross-cutting domain (DEC-1003): `specifications/governance-recording/domain-overview.md`. The store is the source; when the file and the store disagree, re-render.
+
 **Format rule (05-26-26):** All PRDs and internal documents in MD going forward. No new Word documents for internal use. Customer-facing deliverables remain format-flexible (Word, PDF, etc.) per case.
 
 Sections below this one describe the existing federated V1/V2 state and are retained as orientation until the Master CRMBuilder PRD subsumes them.
