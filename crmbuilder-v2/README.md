@@ -924,6 +924,46 @@ Notes:
 - Don't edit the baseline (`0001_initial_schema.py`) after the fact —
   add a new migration that does the schema change you need.
 
+### Planning-item record drift
+
+Reports any planning item recorded as unstarted while its implementing work
+is merged. Run it from the repo root with the store credentials loaded:
+
+```bash
+uv run python -m crmbuilder_v2.record_drift
+```
+
+Exit `0` means every planning item named by a merged commit is recorded as
+at least started. Exit `1` means a record is misleading — it names the item
+and the commits that contradict it. Exit `2` means it refused: no
+credentials were set.
+
+Options: `--ref` (default `origin/main`), `--limit` (default 400 commits),
+`--engagement` (default `ENG-001`).
+
+Notes:
+
+- **It never changes a status.** Closing an item rests on verifying its
+  acceptance criteria, which is judgement. A check that resolved an item it
+  could not verify would manufacture the false assurance it exists to
+  prevent. Exit 1 is an instruction to a person, not a failure.
+- **It reads the store over the API on purpose**, and refuses rather than
+  falling back to the local SQLite store, which the cloud cutover retired
+  and which may sit behind on migrations. A fallback there would compare
+  real commits against a stale record and report drift that is an artefact
+  of reading the wrong store.
+- **It reads `origin/main`, not local `main`.** Work merged locally but not
+  yet pushed is invisible to it — which is correct under Model A, where
+  Claude merges and Doug pushes.
+- It says nothing about an item merely *stalled* — in progress with its work
+  long delivered. DEC-996 records that as a known remaining gap.
+- The item count in the output rises as governed commits land; only the
+  finding half of the line carries information.
+
+The comparison logic is pure and unit-tested at
+`tests/crmbuilder_v2/test_record_drift.py` (12 tests, no DB, no network);
+only `main()` touches git or the store. REQ-556 / PI-458 / DEC-996.
+
 ### JSON export consistency
 
 The exporter rewrites all entity files atomically on every successful
