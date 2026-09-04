@@ -66,7 +66,7 @@ through the API or MCP.
 | Identity / auth | none (localhost, single operator; `SharedSecretMiddleware` already removed; the OAuth 2.1/PKCE infra shelved upstream-blocked, DEC-244) | → **principals + tokens + RBAC** (D2/D3/D4) |
 | Snapshot/export | `session_scope` flush→`build_snapshot`→`write_staging`→`promote`; git-tracked `db-export/*.json`; `meta_exporter` | → **removed** (D7); payloads + deposit-event logs are the git trail |
 | Client orientation | CLAUDE.md Tier-2 has an MCP path **and** a static-JSON file-fallback (`db-export/`) | → **API/MCP only** (D8) |
-| Clients | Claude Code, desktop app (`StorageClient` → API), MCP-stdio (Claude Desktop), the chat-UI-on-Anthropic-API (DEC-245); claude.ai-web blocked upstream | all → API/MCP principals |
+| Clients | Claude Code, desktop app (`StorageClient` → API), MCP-stdio (Claude Desktop), the chat-UI-on-Anthropic-API (DEC-245); claude.ai-web via the remote MCP connector (connected since 09-04-26 once Cloudflare's Block AI bots rule stopped rejecting the Claude-User agent, DEC-1044 superseding DEC-328) | all → API/MCP principals |
 
 Live engagements in the unified DB: `CRMBUILDER` (ENG-001, full data) and `CBM`
 (ENG-002, freshly empty per the cutover decision).
@@ -287,3 +287,10 @@ then start this program on a fresh branch. PI-α → PI-γ; PI-β in parallel.
 
 *End of document — Architecture pass v0.1. Next: review/refine, then create
 PI-α/β/γ (via close-out on `main`) once PI-123 is merged + resolved.*
+
+## Change log
+
+| Version | Date | Change |
+|---|---|---|
+| 0.1 | 06-02-26 | Architecture/design pass. |
+| 0.1.1 | 09-04-26 13:40 | Clients row: claude.ai-web is no longer blocked upstream; the cause was a Cloudflare bot rule on the Claude-User agent, fixed per DEC-1044 (PI-104 resolved). |
