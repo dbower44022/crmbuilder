@@ -30,6 +30,27 @@ _DEFAULT_SESSIONS = [
 _DEFAULT_TOPICS = [
     {"identifier": "TOP-001", "title": "Topic one"},
 ]
+# Methodology rows carry type-prefixed keys, not bare identifier/title
+# (REQ-562 / PI-463): the picker must read them.
+_DEFAULT_PROCESSES = [
+    {
+        "process_identifier": "PROC-001",
+        "process_name": "Mentor matching",
+        "process_domain_identifier": "DOM-001",
+    },
+    {
+        "process_identifier": "PROC-002",
+        "process_name": "Session logging",
+        "process_domain_identifier": "DOM-001",
+    },
+]
+_DEFAULT_ENTITIES = [
+    {"entity_identifier": "ENT-001", "entity_name": "Contact"},
+    {"entity_identifier": "ENT-002", "entity_name": "Account"},
+]
+_DEFAULT_PERSONAS = [
+    {"persona_identifier": "PER-001", "persona_name": "Mentor coordinator"},
+]
 
 
 def _refs_handler(captured: dict[str, Any] | None = None):
@@ -49,6 +70,12 @@ def _refs_handler(captured: dict[str, Any] | None = None):
                 return httpx.Response(200, json=envelope_ok([]))
             if path == "/topics":
                 return httpx.Response(200, json=envelope_ok(_DEFAULT_TOPICS))
+            if path == "/processes":
+                return httpx.Response(200, json=envelope_ok(_DEFAULT_PROCESSES))
+            if path == "/entities":
+                return httpx.Response(200, json=envelope_ok(_DEFAULT_ENTITIES))
+            if path == "/personas":
+                return httpx.Response(200, json=envelope_ok(_DEFAULT_PERSONAS))
             if path == "/charter/versions":
                 return httpx.Response(200, json=envelope_ok([]))
             if path == "/status/versions":
@@ -75,9 +102,7 @@ def _refs_handler(captured: dict[str, Any] | None = None):
 
 def _make(qtbot, *, pre_populated_source=None):
     client = build_client(_refs_handler())
-    dialog = ReferenceCreateDialog(
-        client, pre_populated_source=pre_populated_source
-    )
+    dialog = ReferenceCreateDialog(client, pre_populated_source=pre_populated_source)
     qtbot.addWidget(dialog)
     return dialog
 
@@ -171,9 +196,7 @@ def test_target_type_combo_supersedes_is_same_type_only(qapp, qtbot):
     assert items == ["decision"]
 
 
-def test_target_identifier_picker_repopulates_on_target_type_change(
-    qapp, qtbot
-):
+def test_target_identifier_picker_repopulates_on_target_type_change(qapp, qtbot):
     dialog = _make(qtbot)
     dialog._field_widgets["source_type"].setCurrentText("decision")
     dialog._field_widgets["relationship"].setCurrentText("decided_in")
@@ -193,6 +216,90 @@ def test_source_id_picker_populates_after_source_type_set(qapp, qtbot):
     assert items == ["DEC-001", "DEC-002"]
 
 
+def test_source_id_picker_lists_processes_by_identifier_and_name(qapp, qtbot):
+    """REQ-562: a process source lists the engagement's processes, read
+    from the type-prefixed row keys, so the operator picks instead of
+    typing the identifier."""
+    dialog = _make(qtbot)
+    dialog._field_widgets["source_type"].setCurrentText("process")
+    source_id = dialog._field_widgets["source_id"]
+    assert isinstance(source_id, EntityIdentifierPicker)
+    items = [source_id.itemData(i) for i in range(source_id.count())]
+    assert items == ["PROC-001", "PROC-002"]
+    labels = [source_id.itemText(i) for i in range(source_id.count())]
+    assert any("Mentor matching" in label for label in labels)
+
+
+def test_target_id_picker_lists_entities_for_process_touches_entity(qapp, qtbot):
+    """REQ-562: choosing process -> process_touches_entity -> entity fills
+    the target picker with the engagement's entities."""
+    dialog = _make(qtbot)
+    dialog._field_widgets["source_type"].setCurrentText("process")
+    dialog._field_widgets["relationship"].setCurrentText("process_touches_entity")
+    dialog._field_widgets["target_type"].setCurrentText("entity")
+    target_id = dialog._field_widgets["target_id"]
+    assert isinstance(target_id, EntityIdentifierPicker)
+    items = [target_id.itemData(i) for i in range(target_id.count())]
+    assert items == ["ENT-001", "ENT-002"]
+
+
+def test_target_id_picker_lists_personas_for_performed_by(qapp, qtbot):
+    dialog = _make(qtbot)
+    dialog._field_widgets["source_type"].setCurrentText("process")
+    dialog._field_widgets["relationship"].setCurrentText("process_performed_by_persona")
+    dialog._field_widgets["target_type"].setCurrentText("persona")
+    target_id = dialog._field_widgets["target_id"]
+    items = [target_id.itemData(i) for i in range(target_id.count())]
+    assert items == ["PER-001"]
+
+
+def test_every_listed_type_maps_to_a_real_client_method(qapp, qtbot):
+    """The fetch map names only StorageClient methods that exist and take
+    no required arguments, so no picker can fail on a signature."""
+    import inspect
+
+    from crmbuilder_v2.access.vocab import ENTITY_TYPES
+    from crmbuilder_v2.ui.client import StorageClient
+    from crmbuilder_v2.ui.dialogs.reference_create import _LIST_METHOD_NAMES
+
+    for entity_type, method_name in _LIST_METHOD_NAMES.items():
+        assert entity_type in ENTITY_TYPES
+        method = getattr(StorageClient, method_name)
+        params = list(inspect.signature(method).parameters.values())[1:]
+        required = [
+            p.name
+            for p in params
+            if p.default is inspect.Parameter.empty
+            and p.kind
+            in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            )
+        ]
+        assert required == [], (entity_type, method_name, required)
+
+
+def test_identifier_and_title_reads_prefixed_bare_and_versioned_rows():
+    from crmbuilder_v2.ui.dialogs.reference_create import _identifier_and_title
+
+    assert _identifier_and_title(
+        {
+            "field_identifier": "FLD-1",
+            "field_name": "Email",
+            "field_previous_parent_entity_identifier": "ENT-9",
+        },
+        "field",
+    ) == ("FLD-1", "Email")
+    assert _identifier_and_title(
+        {"identifier": "DEC-1", "title": "A ruling"}, "decision"
+    ) == ("DEC-1", "A ruling")
+    assert _identifier_and_title({"version": 3}, "charter") == ("v3", "")
+    assert _identifier_and_title(
+        {"reference_book_identifier": "RBK-1", "reference_book_title": "Book"},
+        "reference_book",
+    ) == ("RBK-1", "Book")
+
+
 # ---------------------------------------------------------------------------
 # Save flow
 # ---------------------------------------------------------------------------
@@ -207,15 +314,11 @@ def test_save_posts_correct_payload(qapp, qtbot):
     dialog._field_widgets["source_type"].setCurrentText("decision")
     # Set via the dialog helper so it resolves the identifier through
     # the EntityIdentifierPicker's user-data lookup.
-    dialog._set_widget_value(
-        dialog._fields_by_key["source_id"], "DEC-001"
-    )
+    dialog._set_widget_value(dialog._fields_by_key["source_id"], "DEC-001")
     dialog._refresh_dependent_fields()
     dialog._field_widgets["relationship"].setCurrentText("decided_in")
     dialog._field_widgets["target_type"].setCurrentText("session")
-    dialog._set_widget_value(
-        dialog._fields_by_key["target_id"], "SES-001"
-    )
+    dialog._set_widget_value(dialog._fields_by_key["target_id"], "SES-001")
 
     with qtbot.waitSignal(dialog.accepted, timeout=2000):
         dialog._on_save_clicked()

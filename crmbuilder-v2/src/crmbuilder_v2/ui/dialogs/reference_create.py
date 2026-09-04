@@ -188,16 +188,7 @@ class ReferenceCreateDialog(EntityCrudDialog):
         cached = self._entity_list_cache.get(entity_type)
         if cached is not None:
             return cached
-        method_map: dict[str, Callable[[], list[dict[str, Any]]]] = {
-            "decision": self._client.list_decisions,
-            "session": self._client.list_sessions,
-            "risk": self._client.list_risks,
-            "planning_item": self._client.list_planning_items,
-            "topic": self._client.list_topics,
-            "charter": self._list_versioned_with_label("charter"),
-            "status": self._list_versioned_with_label("status"),
-        }
-        list_method = method_map.get(entity_type)
+        list_method = self._list_method_for(entity_type)
         if list_method is None:
             self._entity_list_cache[entity_type] = []
             return []
@@ -211,17 +202,31 @@ class ReferenceCreateDialog(EntityCrudDialog):
             return []
         out: list[tuple[str, str]] = []
         for record in records:
-            identifier = record.get("identifier") or ""
-            if not identifier:
-                # Charter / status records use ``version`` for identity;
-                # surface a synthetic label.
-                version = record.get("version")
-                if version is not None:
-                    identifier = f"v{version}"
-            title = record.get("title") or ""
-            out.append((identifier, title))
+            identifier, title = _identifier_and_title(record, entity_type)
+            if identifier:
+                out.append((identifier, title))
         self._entity_list_cache[entity_type] = out
         return out
+
+    def _list_method_for(
+        self, entity_type: str
+    ) -> Callable[[], list[dict[str, Any]]] | None:
+        """Resolve the client list call that backs ``entity_type``'s picker.
+
+        Every record type the reference vocabulary allows and the client
+        can list without arguments is covered (REQ-562 / PI-463); before
+        that only the seven governance types were, so a process, entity,
+        persona, field or domain picker opened empty and the operator had
+        to type the identifier from memory. Charter and status are
+        version-keyed and go through the labelled wrapper. A type with no
+        list call resolves to ``None`` and the picker stays free-text.
+        """
+        if entity_type in ("charter", "status"):
+            return self._list_versioned_with_label(entity_type)
+        method_name = _LIST_METHOD_NAMES.get(entity_type)
+        if method_name is None:
+            return None
+        return getattr(self._client, method_name, None)
 
     def _list_versioned_with_label(
         self, entity_type: str
@@ -240,6 +245,85 @@ class ReferenceCreateDialog(EntityCrudDialog):
         only need to refresh on success can continue to ignore this.
         """
         return self.saved_identifier()
+
+
+# Client list call per record type (REQ-562 / PI-463). Keys are
+# ``ENTITY_TYPES`` members; values are ``StorageClient`` method names
+# that take no required arguments. A type absent here has no list call
+# the picker can use and stays free-text.
+_LIST_METHOD_NAMES: dict[str, str] = {
+    "agent_profile": "list_agent_profiles",
+    "association": "list_associations",
+    "association_mapping": "list_association_mappings",
+    "close_out_payload": "list_close_out_payloads",
+    "commit": "list_commits",
+    "conversation": "list_conversations",
+    "crm_candidate": "list_crm_candidates",
+    "decision": "list_decisions",
+    "deposit_event": "list_deposit_events",
+    "domain": "list_domains",
+    "entity": "list_entities",
+    "field": "list_fields",
+    "field_mapping": "list_field_mappings",
+    "governance_rule": "list_governance_rules",
+    "instance": "list_instances",
+    "learning": "list_learnings",
+    "lesson": "list_lessons",
+    "manual_config": "list_manual_configs",
+    "mapping_candidate": "list_mapping_candidates",
+    "participant": "list_participants",
+    "persona": "list_personas",
+    "planning_item": "list_planning_items",
+    "preference": "list_preferences",
+    "process": "list_processes",
+    "project": "list_projects",
+    "reference_book": "list_reference_books",
+    "reference_entry": "list_reference_entries",
+    "reference_pointer": "list_reference_pointers",
+    "release": "list_releases",
+    "requirement": "list_requirements",
+    "risk": "list_risks",
+    "session": "list_sessions",
+    "skill": "list_skills",
+    "source_mapping": "list_source_mappings",
+    "term": "list_terms",
+    "test_spec": "list_test_specs",
+    "topic": "list_topics",
+    "work_task": "list_work_tasks",
+    "work_ticket": "list_work_tickets",
+    "workstream": "list_workstreams",
+}
+
+
+def _identifier_and_title(record: dict[str, Any], entity_type: str) -> tuple[str, str]:
+    """Return ``(identifier, title)`` for any list-row shape the API emits.
+
+    Governance rows carry bare ``identifier`` / ``title``; methodology and
+    later rows prefix them with the type name (``process_identifier``,
+    ``process_name``, ``workstream_title``), so the type-prefixed key is
+    tried first and the bare key second. Charter and status rows have no
+    identifier at all and are keyed by ``version``, surfaced as ``vN``.
+    Title falls back to empty, never to the identifier, so the picker's
+    display stays ``identifier — title`` shaped.
+    """
+    identifier = (
+        record.get(f"{entity_type}_identifier") or record.get("identifier") or ""
+    )
+    if not identifier:
+        version = record.get("version")
+        if version is not None:
+            identifier = f"v{version}"
+    title = ""
+    for key in (
+        f"{entity_type}_title",
+        f"{entity_type}_name",
+        "title",
+        "name",
+    ):
+        if record.get(key):
+            title = str(record[key])
+            break
+    return str(identifier), title
 
 
 # Sanity-check: keep RELATIONSHIP_RULES import live so the module
