@@ -10,6 +10,7 @@ Last Updated: 09-04-26 01:45 · Revision 1.2 — change log at end.
 > 0136/0093 (LSN-075); guides updated in `e3d0aeaf`; all pushed. Rulings: DEC-1026 (confirmed-only
 > emission), DEC-1029 (audit the five portal variants; Layout Sets are REQ-559), DEC-1033
 > (`capability_reason` on the row). Both PIs Resolved; PRJ-120 completed 09-04-26.
+> Rolled out to production 2026-09-04T04:40:33Z — `DEPLOY OK: commit 48b6cf6e | v0.7.0 | alembic 0094_pi_418_portal_layout_types (head)`; publish check against CBMTEST healthy.
 
 **Give this file to a fresh Claude Code session rooted in `~/Dropbox/Projects/crmbuilder`.
 It supersedes `CLAUDE-CODE-PROMPT-pi-418-layout-actionability.md` (the PI-418-only
