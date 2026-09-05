@@ -18,10 +18,14 @@ the waiver is recorded in the store (``POST
 /governance-rules/{id}/enforcement-overrides``); if the store cannot take the
 record it is appended to the git-tracked exemption log instead.
 
-Rules are cached in a gitignored snapshot with a short TTL so the hook does not
-call the API on every command; when the store is unreachable and no snapshot
-exists the hook fails open with a warning — a check that cannot be read must
-never silently block work. Stdlib-only, like ``session_context``.
+Since PI-488 (REQ-575) the enforced rules come first from the contract the
+session received: the per-session marker the session-start hook writes (the
+cross-cutting contract) and the prompt-submission hook replaces (the first
+segment's merged contract). Without a marker, rules are read from the store
+and cached in a gitignored snapshot with a short TTL so the hook does not call
+the API on every command; when the store is unreachable and no snapshot exists
+the hook fails open with a warning — a check that cannot be read must never
+silently block work. Stdlib-only, like ``session_context``.
 """
 
 from __future__ import annotations
@@ -42,6 +46,7 @@ from crmbuilder_v2.session_context import (  # noqa: E402
     Fetcher,
     _bound_rule_ids,
     make_fetcher,
+    read_marker,
     resolve_config,
 )
 
@@ -107,8 +112,34 @@ def select_enforced_rules(fetch: Fetcher) -> list[dict]:
     return sorted(selected, key=lambda r: r["identifier"])
 
 
-def load_rules(project_dir: Path, fetch: Fetcher | None = None) -> tuple[list[dict], str]:
-    """``(rules, source)`` — ``live`` / ``snapshot`` / ``none`` (fail open)."""
+def contract_enforced_rules(project_dir: Path, session_id: str | None) -> list[dict] | None:
+    """The enforced rules of the contract this session received (REQ-575).
+
+    The session-start hook stores the cross-cutting contract in the session's
+    marker before the first prompt, and the prompt-submission hook replaces it
+    with the first segment's merged contract once the session is opened; both
+    carry each enforced rule's check. ``None`` when no marker exists (the
+    audience query below is then the source).
+    """
+    marker = read_marker(project_dir, session_id)
+    if not marker:
+        return None
+    ruleset = (marker.get("contract") or {}).get("enforced_ruleset")
+    if not isinstance(ruleset, list):
+        return None
+    return sorted(
+        (r for r in ruleset if r.get("enforcement") in ENFORCED_MODES),
+        key=lambda r: r["identifier"],
+    )
+
+
+def load_rules(
+    project_dir: Path, fetch: Fetcher | None = None, *, session_id: str | None = None
+) -> tuple[list[dict], str]:
+    """``(rules, source)`` — ``contract`` / ``live`` / ``snapshot`` / ``none`` (fail open)."""
+    from_contract = contract_enforced_rules(project_dir, session_id)
+    if from_contract is not None:
+        return from_contract, "contract"
     snapshot = project_dir / SNAPSHOT_FILE
     if snapshot.is_file():
         try:
@@ -282,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
     if not command:
         return 0
     try:
-        rules, _source = load_rules(project_dir)
+        rules, _source = load_rules(project_dir, session_id=payload.get("session_id"))
         verdict = decide(project_dir, command, payload.get("session_id"), rules)
     except Exception as exc:  # noqa: BLE001 — a hook defect must never block work
         sys.stderr.write(f"[rule-check] internal error ({exc}) — allowing\n")
