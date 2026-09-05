@@ -1,0 +1,50 @@
+=== Applying close-out payload ===
+Source: PRDs/product/crmbuilder-v2/close-out-payloads/ses_406.json
+Label:  SES-406 — Phase-specific governance: rules and skills selected by the work in front of the session
+Deposit event: DEP-163
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-380 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (9 records) ===
+  ✓ POST planning_items  PI-486 (HTTP 201)
+  ✓ POST planning_items  PI-487 (HTTP 201)
+  ✓ POST planning_items  PI-488 (HTTP 201)
+  ✓ POST planning_items  PI-489 (HTTP 201)
+  ✓ POST planning_items  PI-490 (HTTP 201)
+  ✓ POST planning_items  PI-491 (HTTP 201)
+  ✓ POST planning_items  PI-492 (HTTP 201)
+  ✓ POST planning_items  PI-493 (HTTP 201)
+  ✓ POST planning_items  PI-494 (HTTP 201)
+
+=== decisions (3 records) ===
+
+=== references (12 records) ===
+  ✓ POST references  DEC-1057 decided_in CNV-380 (HTTP 201)
+  ✓ POST references  DEC-1058 decided_in CNV-380 (HTTP 201)
+  ✓ POST references  DEC-1059 decided_in CNV-380 (HTTP 201)
+  ✓ POST references  PI-486 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-487 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-488 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-489 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-490 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-491 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-492 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-493 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-494 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-163 (HTTP 201).
+
+=== Follow-on (same session, after DEP-163 was recorded) ===
+The three decisions failed above because the decisions repository accepts an explicit identifier only when it has three digits (^DEC-\d{3}$) — the PI-493 defect. They were re-posted without an identifier so the server assigned the next ones, which landed on the identifiers the payload and its decided_in references already named. The three decided_in references had already been accepted in step 1 (the references endpoint does not check that the source exists), so they were not re-posted.
+POST decision wanted DEC-1057: HTTP 201 -> DEC-1057
+POST decision wanted DEC-1058: HTTP 201 -> DEC-1058
+POST decision wanted DEC-1059: HTTP 201 -> DEC-1059
+--- decisions resolve
+DEC-1057 200 Rules and skills are selected by an agent profile the system names from the user's plain-language opening answer, not by a phase on the engagement
+DEC-1058 200 The opening answer maps to a kind of work composed of phase segments; five phase profiles hold the rules, the kind of work holds the sequence
+DEC-1059 200 The seven lifecycle domain records are the phase vocabulary; the thirteen Master PRD phases are the steps inside them
