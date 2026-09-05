@@ -93,6 +93,13 @@ class SessionCreateIn(_Base):
     session_ended_at: datetime | None = None
     session_participants: list | None = None
     session_medium_metadata: dict | None = None
+    # PI-488 / REQ-568: the opening answer and what followed from it. Normally
+    # written by the session-open and segment-advance operations; accepted
+    # here so a record can be repaired or imported with the values in hand.
+    session_opening_answer: str | None = None
+    session_kind_of_work: str | None = None
+    session_confirmation_line: str | None = None
+    session_phase_segments: list | None = None
     references: list[GovernanceEdgeIn] | None = None
     timestamps: dict[str, Any] | None = None
 
@@ -112,6 +119,13 @@ class SessionReplaceIn(_Base):
     session_ended_at: datetime | None = None
     session_participants: list | None = None
     session_medium_metadata: dict | None = None
+    # PI-488 / REQ-568: the opening answer and what followed from it. Normally
+    # written by the session-open and segment-advance operations; accepted
+    # here so a record can be repaired or imported with the values in hand.
+    session_opening_answer: str | None = None
+    session_kind_of_work: str | None = None
+    session_confirmation_line: str | None = None
+    session_phase_segments: list | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -129,6 +143,13 @@ class SessionPatchIn(_Base):
     session_ended_at: datetime | None = None
     session_participants: list | None = None
     session_medium_metadata: dict | None = None
+    # PI-488 / REQ-568: the opening answer and what followed from it. Normally
+    # written by the session-open and segment-advance operations; accepted
+    # here so a record can be repaired or imported with the values in hand.
+    session_opening_answer: str | None = None
+    session_kind_of_work: str | None = None
+    session_confirmation_line: str | None = None
+    session_phase_segments: list | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 

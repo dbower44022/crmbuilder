@@ -91,6 +91,10 @@ def create(body: SessionCreateIn):
                 identifier=body.session_identifier,
                 references=_edges(body),
                 timestamps=body.timestamps,
+                opening_answer=body.session_opening_answer,
+                kind_of_work=body.session_kind_of_work,
+                confirmation_line=body.session_confirmation_line,
+                phase_segments=body.session_phase_segments,
             )
         )
 
@@ -115,6 +119,10 @@ def replace(identifier: str, body: SessionReplaceIn):
                 medium_metadata=body.session_medium_metadata,
                 executive_summary=body.session_executive_summary,
                 references=_edges(body),
+                opening_answer=body.session_opening_answer,
+                kind_of_work=body.session_kind_of_work,
+                confirmation_line=body.session_confirmation_line,
+                phase_segments=body.session_phase_segments,
             )
         )
 
