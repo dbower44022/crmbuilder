@@ -1,0 +1,257 @@
+{
+  "label": "SES-406 — Phase-specific governance: rules and skills selected by the work in front of the session",
+  "conversation": {
+    "conversation_identifier": "CNV-380",
+    "conversation_title": "Governance rules and skills selected by the phase of the work in front of the session",
+    "conversation_purpose": "Review how governance rules, skills and agent profiles are selected today, and agree the plan that gives each engagement phase — requirements gathering, designing, developing, deploying, maintaining — rules and skills fitted to that phase.",
+    "conversation_description": "Seed prompt: \"I need to discuss how CRMbuilder governance rules work for the various phases of a CRMBuilder engagement and how depending on the phase, there may be different rules. I need you to review the current architecture and then discuss with me how to create a plan to make sure that the each of the various phases - requirements gathering, designing, developing, deploying, maintaining have different skills and rules that are optimized specifically for that phase/domain.\" The review read the repository CLAUDE.md, the governance rule model, the session-start hook, the command check, the skill registry, the agent profile contract resolver, the engagement model, the Master CRMBuilder PRD phase table, and the domain records, and counted every rule, skill and agent profile in the store. Findings: nothing in the selection path knows what phase the work is in; 228 of 247 rules are addressed to the delivery-pipeline agent; the seven rules that govern requirements work are addressed to that agent and so never load for an interview; no design or maintenance rules exist; 98 tool skills are delivery-pipeline plumbing with heavy duplication; the 38 agent profiles are organised by code layer and tier. Two rulings followed. First, the session names an agent profile and the system does the naming from the user's plain-language answer to an opening question, because an engagement is in several phases at once and a phase on the engagement would be wrong within days. Second, the opening answer maps to a kind of work built from phase segments, because a request such as adding a field to an existing screen passes through requirements, design, build and release in one sitting. The seven lifecycle domain records are the phase vocabulary. The plan was drafted as a discussion document with five phase profiles, a nine-entry catalogue of kinds of work, one server-side session-open operation for all three surfaces, a cross-cutting-only fallback, and a seven-step sequence with an exit test per step.",
+    "conversation_summary": "Ruled: rules and skills are selected by an agent profile the system names from the user's plain-language opening answer, not by a phase on the engagement; the answer maps to a kind of work composed of phase segments, with five phase profiles holding the rules and the kind of work holding the sequence; the seven lifecycle domain records are the phase vocabulary. Produced: the phase-specific governance plan, version 0.1, and nine planning items.",
+    "conversation_executive_summary": "Today every session loads the same rules whatever it is doing, and almost every rule and skill in the store was written for CRMBuilder building itself rather than for a client engagement. The product owner ruled that a session opens by asking what the user wants to do, the answer is classified into a kind of work, and each phase segment of that work loads its own phase profile of rules and skills. The plan to build this is drafted and its steps are planning items.",
+    "conversation_status": "complete",
+    "references": [
+      {
+        "source_type": "conversation",
+        "source_id": "CNV-380",
+        "target_type": "session",
+        "target_id": "SES-406",
+        "relationship": "conversation_belongs_to_session"
+      }
+    ]
+  },
+  "session": {
+    "session_identifier": "SES-406",
+    "session_title": "Phase-specific governance: rules and skills selected by the work in front of the session",
+    "session_description": "Claude.ai Cowork session, 2026-09-05. Reviewed how governance rules, skills and agent profiles are selected and found no phase dimension anywhere in the selection path. Ruled the selector (an agent profile named by the system from the user's opening answer) and the mapping (a kind of work composed of phase segments). Drafted the phase-specific governance plan, version 0.1, with five phase profiles, a catalogue of kinds of work, the session-open mechanics, the corpus cleanup, and a seven-step sequence.",
+    "session_medium": "chat",
+    "session_medium_metadata": {
+      "chat_platform": "claude_ai_cowork"
+    },
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
+    "session_status": "complete",
+    "session_executive_summary": "The governance architecture selects rules by audience and moment and knows nothing of the phase the work is in; nearly all existing rules and skills serve CRMBuilder's own delivery pipeline. The product owner ruled that a session opens with a plain-language question, the answer maps to a kind of work, and each phase segment loads a phase profile of rules and skills. The plan is drafted at version 0.1 and its steps are planning items; the first build step creates the two profiles whose content already exists.",
+    "session_notes": "In flight at end: the plan is a discussion draft, not yet approved as a whole; the terms phase profile, kind of work, phase segment and opening answer are used in it and are not yet glossary terms. A store defect surfaced while preparing the close-out: a decision posted with an explicit four-digit identifier is rejected while the payload validator requires one, so decisions are posted without identifiers and their references written afterwards. Next step: Step 2 of the plan — the corpus cleanup and the Requirements Interviewer and Release Operator profiles.",
+    "references": [
+      {
+        "source_type": "session",
+        "source_id": "SES-406",
+        "target_type": "project",
+        "target_id": "PRJ-023",
+        "relationship": "session_belongs_to_project"
+      }
+    ]
+  },
+  "planning_items": [
+    {
+      "identifier": "PI-486",
+      "title": "Bind the delivery-pipeline rules to the Software Delivery profiles and collapse the duplicated tool skills",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "Of 247 governance rules, 228 are addressed to the delivery-pipeline agent by audience alone, and 98 tool skills are pipeline plumbing with the same verb repeated once per area profile (thirteen copies of the skill that claims a work task). Before any phase profile exists, bind the pipeline rules explicitly to the Software Delivery profiles so they cannot reach a client session by audience, and collapse the tool skills to one skill per verb bound to many profiles. Step 2 of the phase-specific governance plan, cleanup half.",
+      "executive_summary": "Make the existing rule and skill corpus honest before phase profiles are built on it. The 228 delivery-pipeline rules are bound explicitly to the Software Delivery profiles so they cannot leak into a client session by audience alone, and the duplicated tool skills (thirteen copies of the same verb, one per area profile) collapse to one skill per verb bound to many profiles. This is the cleanup half of Step 2 of the phase-specific governance plan; the exit test is that resolving a client-facing profile returns nothing from the pipeline.",
+      "execution_mode": "interactive"
+    },
+    {
+      "identifier": "PI-487",
+      "title": "Create the Requirements Interviewer and Release Operator phase profiles from rules and skills that already exist",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "The two phases whose content exists today: requirements work has seven rules (positive support for inferences, one output per conversation, strict phase sequence, no product names, unique identifiers, Markdown only, documents are renders) and three conduct documents that become instruction skills, plus the requirement-authoring gate skill; release work has the deploy rules (human-only production deploy, validate every program file, links only in the relationships block, never re-run the clean installer, deferred options, audit output not deployable, DNS not proxied) and three configuration-check skills. Create the two agent profiles and bind their rules and skills. Step 2 of the plan, build half.",
+      "executive_summary": "Create the first two phase profiles from content that already exists. The Requirements Interviewer profile binds the seven requirements rules, the three conduct documents as instruction skills, and the requirement-authoring gate. The Release Operator profile binds the deployment rules and the three configuration-check skills. The exit test is that resolving either profile's contract returns exactly those rules and skills and nothing from the delivery pipeline. This is the build half of Step 2 of the phase-specific governance plan.",
+      "execution_mode": "interactive"
+    },
+    {
+      "identifier": "PI-488",
+      "title": "Session-open and segment-advance operations, the catalogue of kinds of work as process records, and the session fields that record them",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "One server-side operation takes the engagement and the user's plain-language opening answer, classifies it against the catalogue of kinds of work, creates the session record carrying the answer verbatim and the kind of work, and returns the first phase segment's profile contract. A second operation advances the session to the next segment and returns its contract. The catalogue lives in the store as process records. The Claude Code session-start hook, the claude.ai connector and the desktop application all call the same two operations. A session opened without an answer loads only the cross-cutting rules and says so. Step 3 of the plan.",
+      "executive_summary": "Build the front door. A session-open operation classifies the user's plain-language answer into a kind of work, records it on the session, and returns the first segment's profile contract; a segment-advance operation returns the next. The catalogue of kinds of work is held as process records so it is governed like everything else. All three surfaces call the same operations, and a session opened without an answer loads only the cross-cutting rules. The exit test is a Claude Code session opened with a requirements request loading the Requirements Interviewer contract. Step 3 of the plan.",
+      "execution_mode": "interactive"
+    },
+    {
+      "identifier": "PI-489",
+      "title": "Dogfood the opening prompt on three real sessions in the CRMBUILDER engagement",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "Run the next three real sessions through the opening question. Each session record must show the answer as given, the kind of work chosen, the confirmation line the system said back, and the segments that ran. Any request the catalogue misses is answered with one follow-up question and recorded as a planning item so the catalogue grows from use. Step 4 of the plan.",
+      "executive_summary": "Prove the front door on real work before authoring the remaining profiles. Three consecutive sessions in the CRMBUILDER engagement open through the question, and their records show the answer, the classification, the confirmation line and the segments run. Misses become planning items rather than silent guesses. The exit test is three session records with those fields filled and every miss recorded. Step 4 of the phase-specific governance plan.",
+      "execution_mode": "interactive"
+    },
+    {
+      "identifier": "PI-490",
+      "title": "Author the Maintainer and Application Developer phase profiles",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "No maintenance rules exist, and most client requests after go-live enter through maintenance. Author the Maintainer profile: change-request intake (what, why, who is affected), impact check against the approved design version before any change, a change re-enters the design as a new version rather than a patch, regression before release, release cadence. Author the Application Developer profile from the delivery-pipeline rules that transfer to any build (implement what the design decided, minimal change in your own area, self-verify, blind verification, test observable behaviour, never build on unfrozen ground), the thirteen custom web application standards, the coding standards, and the user-review checkpoint. Step 5 of the plan.",
+      "executive_summary": "Author the two profiles that most live-client requests pass through. The Maintainer profile is new content: change-request intake, impact check against the approved design version, changes re-enter the design as a new version, regression before release, and release cadence. The Application Developer profile is assembled from the delivery-pipeline rules that transfer to any build plus the custom web application standards and coding standards. The exit test is a request to add a field to the intake screen running end to end on the mentoring application under changing profiles. Step 5 of the plan.",
+      "execution_mode": "interactive"
+    },
+    {
+      "identifier": "PI-491",
+      "title": "Author the Solution Designer phase profile once the design-phase decisions are ruled",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "The design phases are placeholders in the Master CRMBuilder PRD and a candidate requirement set for them exists as a discussion draft gated on two decisions. Once those are ruled and the candidates confirmed, author the Solution Designer profile: derive the design from the confirmed inventory, every field traces to a need, defaults are marked as defaulted, coherence and completeness gates before approval, approval recorded as a versioned design, product names stay out until a platform is chosen. Step 6 of the plan.",
+      "executive_summary": "Author the design-phase profile after the decisions that gate the design-phase requirements are ruled. The Solution Designer profile carries the rules that take a domain from its confirmed inventory to an approved, versioned design: derivation from the inventory, field-to-need traceability, marked defaults, coherence and completeness gates, recorded approval, and no product names before a platform is chosen. The exit test is a design session loading design rules and none from elsewhere. Step 6 of the phase-specific governance plan, blocked on the design-phase decisions.",
+      "execution_mode": "interactive"
+    },
+    {
+      "identifier": "PI-492",
+      "title": "Validate the phase profiles with a real stakeholder session in the Cleveland Business Mentors engagement",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "After the dogfood, run one real stakeholder session in the client engagement through the opening question. The stakeholder must never see a phase name or a role name; the session record must show the correct profile loaded and the segments run. Step 7 of the plan.",
+      "executive_summary": "Validate the whole mechanism on a client. One real stakeholder session in the Cleveland Business Mentors engagement opens through the plain-language question, the stakeholder never sees a phase or role name, and the session record shows the correct profile and segments. This is the last step of the phase-specific governance plan and the point at which the mechanism is judged fit for a client rather than for dogfood. The exit test is that session record.",
+      "execution_mode": "interactive"
+    },
+    {
+      "identifier": "PI-493",
+      "title": "Decisions with a four-digit identifier cannot be posted explicitly, yet the close-out validator requires the identifier",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "The decisions repository accepts an explicit identifier only when it matches DEC- followed by exactly three digits, while server-assigned identifiers are already past DEC-1000. The close-out payload validator requires an identifier on every decision. The result is that every close-out since the thousandth decision fails on its decisions and they are re-posted by hand, and the decided-in references must be written afterwards. Surfaced while preparing this session's close-out; the previous session's commit message records the same workaround. Fix: widen the pattern to three or more digits, or let the apply script post decisions without identifiers and rewrite the references from the assigned ones.",
+      "executive_summary": "Fix the defect that breaks every close-out since the thousandth decision. The decisions repository rejects an explicit identifier with four digits while the payload validator demands one, so decisions fail on apply and are re-posted by hand with their references written afterwards. Either widen the identifier pattern to three or more digits or let the apply script post decisions without identifiers and rewrite the decided-in references from the assigned values. The exit test is a close-out payload with four-digit decision identifiers applying cleanly in one run.",
+      "execution_mode": "interactive"
+    },
+    {
+      "identifier": "PI-494",
+      "title": "Approve and record the glossary terms the phase-specific governance plan introduces",
+      "item_type": "pending_work",
+      "status": "Draft",
+      "description": "The plan uses four terms that are not yet in the glossary: phase profile (an agent profile that holds the rules and skills for one engagement phase), kind of work (a catalogue entry naming what a user wants to do, in the user's words, composed of phase segments), phase segment (one phase's portion of a kind of work, loading that phase's profile), and opening answer (the user's verbatim reply to the session's opening question). Terminology governance requires the product owner's approval before a new term is used in code or documentation. Put the four to the product owner, record the approved ones as term records, and correct the plan if any is renamed.",
+      "executive_summary": "Get the four new terms in the phase-specific governance plan approved before they spread into code and records. Phase profile, kind of work, phase segment and opening answer are each defined in one sentence in the plan; terminology governance says no new term is used without the product owner's approval and every term has a glossary entry. Put the four to the product owner, record the approved ones as term records, and correct the plan where a term is renamed. The exit test is four term records or a ruling that renames them and a corrected plan.",
+      "execution_mode": "interactive"
+    }
+  ],
+  "decisions": [
+    {
+      "identifier": "DEC-1057",
+      "title": "Rules and skills are selected by an agent profile the system names from the user's plain-language opening answer, not by a phase on the engagement",
+      "decision_date": "2026-09-05",
+      "status": "Active",
+      "context": "The review found no phase dimension in the rule, skill or profile selection path: rules carry an audience and a moment, the session-start hook loads every rule for its audience whatever the session is doing, and the engagement record carries only a status. Two ways to add the dimension were put: a phase selector on the records and a phase field on the session, or an agent profile per phase resolved through the existing contract resolver. The product owner added that every session should open by asking what the user wants to do, with examples in the user's own words, and that the system should work out the phase from the answer because a user may not know terms such as requirements gathering or devops.",
+      "decision": "The selector is an agent profile. The session record names its profile at open. The user never picks a profile: the session opens with the question what do you want to do today, the answer is classified, and the system says back in plain words what it understood before loading anything. The profile is resolved through the existing contract resolver, which already applies the engagement overlay and the learnings. No phase is stamped on the engagement.",
+      "rationale": "An engagement is in several phases at once — a client can be maintaining one application, gathering requirements for the next domain and deploying a CRM in the same week — so a phase on the engagement would be wrong within days. The profile mechanism, its bindings, the engagement overlay and the contract resolver already exist and are tested, and the profile names the thing that varies: the kind of work in front of the session. The product owner's own domain model already ruled that governance recording is cross-cutting and not a lifecycle stage; the same reasoning applies to the selector.",
+      "alternatives_considered": "A phase selector on the rule, skill and profile records with a phase field on the session record (rejected: a schema change on four record types, every existing rule needs a phase value, and the phase mechanism would run beside the profile mechanism as a second way of selecting rules). Leaving rules global and writing phase behaviour into skills chosen by hand at session start (rejected: it depends on the user knowing the phase).",
+      "consequences": "The profile registry gains a second axis beside the area-and-tier grid used by the delivery pipeline, and the pipeline profiles must be kept from reaching client sessions. A session that opens without an answer needs a defined fallback rather than a guess. The classifier's confirmation line becomes part of the opening step. The opening answer is stored verbatim on the session record.",
+      "executive_summary": "The product owner ruled (2026-09-05) that a session's rules and skills are selected by an agent profile that the system names from the user's plain-language answer to an opening question, resolved through the existing contract mechanism; no phase is stamped on the engagement, because an engagement is in several phases at once."
+    },
+    {
+      "identifier": "DEC-1058",
+      "title": "The opening answer maps to a kind of work composed of phase segments; five phase profiles hold the rules, the kind of work holds the sequence",
+      "decision_date": "2026-09-05",
+      "status": "Active",
+      "context": "The product owner's three example answers were not the same shape. Defining new business processes and upgrading the platform each sit inside one phase. Adding a field to an existing application screen is a short requirements step, a design change, a build, a sandbox check and a release, all in one sitting — the ordinary maintenance loop, and probably the most common request a live client makes. Mapping that answer to one phase would load the wrong rules for most of the session.",
+      "decision": "The opening answer maps to a named kind of work from a curated catalogue. Each kind of work is an ordered sequence of phase segments, and each segment names one of five phase profiles: Requirements Interviewer, Solution Designer, Application Developer, Release Operator, Maintainer. The phase profiles hold the rules and skills; the kind of work holds only the sequence. As the session moves from one segment to the next, the loaded profile changes with it and the session record shows which segments ran. The catalogue lives in the store as process records. When no catalogue entry matches with confidence, the system asks one follow-up question in plain words rather than guessing.",
+      "rationale": "A rule written once for a phase is inherited by every kind of work that passes through that phase. Writing rules per kind of work instead would copy the deploy rules into every kind of work that ends in a deploy — the same duplication the thirteen copies of the claim-a-work-task skill already show. Only this model handles the common maintenance request without asking the user to understand the phases, which was the purpose of the opening question.",
+      "alternatives_considered": "Mapping the answer to one of the five phases directly (rejected: simple to build and explain, but every change request would have to be split by the user into separate sessions or the later steps would run under the wrong rules).",
+      "consequences": "Two things must be curated instead of one: the five profiles and the catalogue. A first catalogue will miss requests; each miss is answered with one follow-up question and recorded as a planning item so the catalogue grows from use. Segment boundaries inside a session become natural moments to write the decision or planning item the segment produced.",
+      "executive_summary": "The product owner ruled (2026-09-05) that the opening answer maps to a kind of work from a curated catalogue, each kind of work being a sequence of phase segments that load one of five phase profiles in turn; the profiles hold the rules and skills, the kind of work holds the sequence, and a miss is answered with one follow-up question."
+    },
+    {
+      "identifier": "DEC-1059",
+      "title": "The seven lifecycle domain records are the phase vocabulary; the thirteen Master PRD phases are the steps inside them",
+      "decision_date": "2026-09-05",
+      "status": "Active",
+      "context": "Two phase vocabularies already exist: the thirteen numbered phases of the Master CRMBuilder PRD and the seven lifecycle domain records — Project Definition, Requirements Capture, Specification and Approval, Solution Analysis, Development and Sandbox, Release to Production, Feedback and Upgrades — with Software Delivery for CRMBuilder's own work and Governance Recording cross-cutting. The product owner named five phases: requirements gathering, designing, developing, deploying, maintaining.",
+      "decision": "The seven lifecycle domain records are the phase vocabulary for phase profiles and phase segments. The product owner's five phases map onto them: requirements gathering is Project Definition and Requirements Capture; designing is Specification and Approval and Solution Analysis; developing is Development and Sandbox; deploying is Release to Production; maintaining is Feedback and Upgrades. The thirteen Master PRD phases are the steps inside those domains. No third vocabulary is introduced. This was decided and announced by the assistant as a routine choice, not put as a question, and the product owner did not object.",
+      "rationale": "The domain records exist, are confirmed, and are already the organising unit for personas, processes and requirements; a third vocabulary would have to be reconciled with both existing ones on every change.",
+      "alternatives_considered": "Adopting the five names as a new vocabulary (rejected: a third set of names for the same lifecycle). Using the thirteen Master PRD phases directly (rejected: too fine for profile selection; several are placeholders and one has been subsumed into another).",
+      "consequences": "Phase profiles are named for the work done in a lifecycle domain, and a profile may span two domains (Requirements Interviewer covers Project Definition and Requirements Capture in the first version). Whether Project Definition gets its own profile is an open item.",
+      "executive_summary": "The assistant decided and announced (2026-09-05), without objection from the product owner, that the seven lifecycle domain records are the phase vocabulary for profiles and segments, the five phases the product owner named map onto them two-to-one at the requirements and design ends, and the thirteen Master PRD phases are the steps within them."
+    }
+  ],
+  "references": [
+    {
+      "source_type": "decision",
+      "source_id": "DEC-1057",
+      "target_type": "conversation",
+      "target_id": "CNV-380",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-1058",
+      "target_type": "conversation",
+      "target_id": "CNV-380",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-1059",
+      "target_type": "conversation",
+      "target_id": "CNV-380",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-486",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-487",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-488",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-489",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-490",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-491",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-492",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-493",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-494",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    }
+  ],
+  "work_tickets": [],
+  "commits": [],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
+}
