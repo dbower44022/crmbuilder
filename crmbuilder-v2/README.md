@@ -466,6 +466,29 @@ natural-language prompt. Full source: `crmbuilder-v2/src/crmbuilder_v2/mcp_serve
 Each tool wraps a single REST call. To add a tool, add a wrapper in
 `tools.py` and a corresponding REST endpoint if one doesn't already exist.
 
+> **Requirements-workflow record set — read tools (09-04-26, REQ-567 /
+> PI-469, DEC-1050):** a claude.ai review session was blocked because the
+> connector had no tool for process records, and on inspection none for
+> requirements, domains, personas, projects or terms either. Doug chose to
+> add read tools for all six at once: `get_process` / `list_processes`,
+> `get_requirement` / `list_requirements`, `get_domain` / `list_domains`,
+> `get_persona` / `list_personas`, `get_project` / `list_projects`,
+> `get_term` / `list_terms`. Each wraps the existing REST read endpoint and
+> passes through the optional filters that endpoint already accepts
+> (`include_deleted`, `include_evidence`, project `status`, term `status` /
+> `scope`). No write tools were added; other record types stay unexposed
+> until a requirement names them. Tests:
+> `tests/crmbuilder_v2/mcp_server/test_workflow_record_read_tools.py`.
+>
+> **Connector token (same session):** the HTTP MCP server behind
+> `mcp.crmbuilder.ai` forwards `CRMBUILDER_V2_MCP_TOKEN` as its bearer on
+> every REST call. When principal auth is on at the API and that setting is
+> empty, every connector call returns 401 even though the connector's own
+> OAuth login succeeds — the failure is on the second hop. Mint a token on
+> the owner principal (`POST /admin/tokens`), set the variable in the
+> gitignored `crmbuilder-v2/data/crmbuilder.env`, and restart the MCP
+> service.
+
 > **Governance rules — per-engagement overrides (08-31-26, REQ-529..538,
 > DEC-955 / DEC-969, delivered on `main` `d766eee6`, `68903d7a`, `5239af7a`):**
 > a system rule is the default; an engagement-scoped rule with the same

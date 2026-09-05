@@ -2107,6 +2107,195 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
             await http.post(f"/message-templates/{identifier}/restore")
         )
 
+
+    # ---------- Requirements-workflow record set (REQ-567 / PI-469) ----------
+    # Read-only tools for the six record types a requirements review reads:
+    # process, requirement, domain, persona, project and term. Each wraps the
+    # existing REST list / get endpoint and passes through the optional
+    # filters that endpoint already accepts. No write tools by design.
+
+    def _read_params(**kwargs: Any) -> dict[str, str] | None:
+        """Build a query-string dict from the given filters, dropping unset
+        values and rendering booleans as the API expects (``true``)."""
+        params: dict[str, str] = {}
+        for key, value in kwargs.items():
+            if value is None or value is False:
+                continue
+            params[key] = "true" if value is True else str(value)
+        return params or None
+
+    async def get_process(
+        identifier: str,
+        include_deleted: bool = False,
+        include_evidence: str | None = None,
+    ) -> Any:
+        """Return one process record (``PROC-NNN``) — its steps, triggers,
+        outcomes and edge cases.
+
+        Pass ``include_deleted=true`` to read a soft-deleted record; pass
+        ``include_evidence`` (e.g. ``inline``) to embed the linked evidence
+        the way the REST endpoint does.
+        """
+        return await _unwrap(
+            await http.get(
+                f"/processes/{identifier}",
+                params=_read_params(
+                    include_deleted=include_deleted,
+                    include_evidence=include_evidence,
+                ),
+            )
+        )
+
+    async def list_processes(
+        include_deleted: bool = False, include_evidence: str | None = None
+    ) -> Any:
+        """List all process records in identifier order.
+
+        Pass ``include_deleted=true`` to include soft-deleted rows.
+        """
+        return await _unwrap(
+            await http.get(
+                "/processes",
+                params=_read_params(
+                    include_deleted=include_deleted,
+                    include_evidence=include_evidence,
+                ),
+            )
+        )
+
+    async def get_requirement(
+        identifier: str, include_deleted: bool = False
+    ) -> Any:
+        """Return one requirement record (``REQ-NNN``).
+
+        Pass ``include_deleted=true`` to read a soft-deleted record.
+        """
+        return await _unwrap(
+            await http.get(
+                f"/requirements/{identifier}",
+                params=_read_params(include_deleted=include_deleted),
+            )
+        )
+
+    async def list_requirements(include_deleted: bool = False) -> Any:
+        """List all requirement records in identifier order.
+
+        Pass ``include_deleted=true`` to include soft-deleted rows.
+        """
+        return await _unwrap(
+            await http.get(
+                "/requirements",
+                params=_read_params(include_deleted=include_deleted),
+            )
+        )
+
+    async def get_domain(identifier: str, include_deleted: bool = False) -> Any:
+        """Return one domain record (``DOM-NNN``).
+
+        Pass ``include_deleted=true`` to read a soft-deleted record.
+        """
+        return await _unwrap(
+            await http.get(
+                f"/domains/{identifier}",
+                params=_read_params(include_deleted=include_deleted),
+            )
+        )
+
+    async def list_domains(include_deleted: bool = False) -> Any:
+        """List all domain records in identifier order.
+
+        Pass ``include_deleted=true`` to include soft-deleted rows.
+        """
+        return await _unwrap(
+            await http.get(
+                "/domains", params=_read_params(include_deleted=include_deleted)
+            )
+        )
+
+    async def get_persona(
+        identifier: str,
+        include_deleted: bool = False,
+        include_evidence: str | None = None,
+    ) -> Any:
+        """Return one persona record (``PER-NNN``).
+
+        Pass ``include_deleted=true`` to read a soft-deleted record; pass
+        ``include_evidence`` (e.g. ``inline``) to embed the linked evidence.
+        """
+        return await _unwrap(
+            await http.get(
+                f"/personas/{identifier}",
+                params=_read_params(
+                    include_deleted=include_deleted,
+                    include_evidence=include_evidence,
+                ),
+            )
+        )
+
+    async def list_personas(
+        include_deleted: bool = False, include_evidence: str | None = None
+    ) -> Any:
+        """List all persona records in identifier order.
+
+        Pass ``include_deleted=true`` to include soft-deleted rows.
+        """
+        return await _unwrap(
+            await http.get(
+                "/personas",
+                params=_read_params(
+                    include_deleted=include_deleted,
+                    include_evidence=include_evidence,
+                ),
+            )
+        )
+
+    async def get_project(identifier: str, include_deleted: bool = False) -> Any:
+        """Return one project record (``PRJ-NNN``).
+
+        Pass ``include_deleted=true`` to read a soft-deleted record.
+        """
+        return await _unwrap(
+            await http.get(
+                f"/projects/{identifier}",
+                params=_read_params(include_deleted=include_deleted),
+            )
+        )
+
+    async def list_projects(
+        include_deleted: bool = False, status: str | None = None
+    ) -> Any:
+        """List project records in identifier order.
+
+        Pass ``status`` (e.g. ``in_flight``) to filter by lifecycle status;
+        pass ``include_deleted=true`` to include soft-deleted rows.
+        """
+        return await _unwrap(
+            await http.get(
+                "/projects",
+                params=_read_params(
+                    include_deleted=include_deleted, status=status
+                ),
+            )
+        )
+
+    async def get_term(identifier: str) -> Any:
+        """Return one glossary term record (``TERM-NNN``)."""
+        return await _unwrap(await http.get(f"/terms/{identifier}"))
+
+    async def list_terms(
+        status: str | None = None, scope: str | None = None
+    ) -> Any:
+        """List glossary terms in name order.
+
+        Pass ``status`` (e.g. ``active``) or ``scope`` (``system`` or an
+        ``ENG-NNN`` identifier) to filter.
+        """
+        return await _unwrap(
+            await http.get(
+                "/terms", params=_read_params(status=status, scope=scope)
+            )
+        )
+
     # Declaration-ordered surface. Adding a tool = define it above and
     # append it here; both the MCP server and the chat dispatcher pick it
     # up automatically.
@@ -2227,6 +2416,18 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         update_message_template,
         delete_message_template,
         restore_message_template,
+        get_process,
+        list_processes,
+        get_requirement,
+        list_requirements,
+        get_domain,
+        list_domains,
+        get_persona,
+        list_personas,
+        get_project,
+        list_projects,
+        get_term,
+        list_terms,
     ]
     return [
         ToolDefinition(
