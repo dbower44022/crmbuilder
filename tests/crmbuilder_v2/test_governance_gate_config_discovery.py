@@ -19,6 +19,7 @@ from crmbuilder_v2.governance_gate import (
     _api_config,
     _emit,
     _env_file_candidates,
+    _parse_env_file,
     guarded_evaluate,
 )
 
@@ -28,7 +29,9 @@ CODE = ["crmbuilder-v2/src/crmbuilder_v2/x.py"]
 @pytest.fixture
 def no_env_vars(monkeypatch: pytest.MonkeyPatch):
     for var in (
+        "CRMBUILDER_V2_API_BASE_URL",
         "CRMBUILDER_V2_API_BASE",
+        "CRMBUILDER_V2_API_TOKEN",
         "CRMBUILDER_V2_GATE_TOKEN",
         "CRMBUILDER_V2_GATE_ENGAGEMENT",
     ):
@@ -161,3 +164,71 @@ def test_emit_stays_silent_on_a_clean_pass(capsys):
         == 0
     )
     assert capsys.readouterr().err == ""
+
+
+# --- PI-470: the interpreter never decides whether the gate can validate -----
+
+
+def _break_settings_import(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make ``from crmbuilder_v2.config import Settings`` fail, as it does under
+    the system interpreter a linked worktree's hook falls back to."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def failing(name, *args, **kwargs):
+        if name == "crmbuilder_v2.config":
+            raise ModuleNotFoundError("No module named 'pydantic_settings'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", failing)
+
+
+def test_env_file_is_parsed_directly_when_the_settings_loader_cannot_import(
+    tmp_path: Path, monkeypatch, no_env_vars
+):
+    env_file = tmp_path / "crmbuilder.env"
+    env_file.write_text(
+        "# store\n"
+        "export CRMBUILDER_V2_API_BASE_URL='https://store.example'\n"
+        'CRMBUILDER_V2_API_TOKEN="tok-parsed"\n'
+    )
+    monkeypatch.setattr(governance_gate, "_env_file_candidates", lambda: [env_file])
+    _break_settings_import(monkeypatch)
+    base, token, engagement = _api_config()
+    assert base == "https://store.example"
+    assert token == "tok-parsed"
+    assert engagement
+
+
+def test_parse_env_file_skips_comments_and_strips_quotes(tmp_path: Path):
+    f = tmp_path / "x.env"
+    f.write_text("A=1\n\n# c\nB = \"two\"\nexport C='3'\nnot a pair\n")
+    assert _parse_env_file(f) == {"A": "1", "B": "two", "C": "3"}
+
+
+def test_the_new_environment_name_wins_and_the_old_one_is_still_honoured(
+    tmp_path: Path, monkeypatch, no_env_vars
+):
+    monkeypatch.setattr(
+        governance_gate, "_env_file_candidates", lambda: [tmp_path / "absent.env"]
+    )
+    monkeypatch.setenv("CRMBUILDER_V2_API_BASE", "https://old.example")
+    assert _api_config()[0] == "https://old.example"
+    monkeypatch.setenv("CRMBUILDER_V2_API_BASE_URL", "https://new.example")
+    assert _api_config()[0] == "https://new.example"
+
+
+def test_not_found_message_names_the_real_variable_and_the_real_cause(
+    tmp_path: Path, monkeypatch, no_env_vars
+):
+    env_file = tmp_path / "crmbuilder.env"
+    env_file.write_text("CRMBUILDER_V2_API_TOKEN=only-a-token\n")
+    monkeypatch.setattr(governance_gate, "_env_file_candidates", lambda: [env_file])
+    _break_settings_import(monkeypatch)
+    with pytest.raises(StoreConfigurationNotFound) as exc:
+        _api_config()
+    msg = str(exc.value)
+    assert "CRMBUILDER_V2_API_BASE_URL" in msg
+    assert "settings loader failed" in msg and "ModuleNotFoundError" in msg
+    assert str(env_file) in msg

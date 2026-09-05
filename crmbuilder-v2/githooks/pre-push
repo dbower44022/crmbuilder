@@ -5,6 +5,16 @@ mode="${CRMBUILDER_GOVERNANCE_GATE:-warn}"
 [ "$mode" = "off" ] && exit 0
 root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 py="$root/.venv/bin/python3"
+# A linked worktree has no .venv of its own: use the main worktree's
+# interpreter (the parent of the shared .git directory) before falling
+# back to the system python3, which lacks the gate's dependencies
+# (REQ-555 / PI-470).
+if [ ! -x "$py" ]; then
+  common="$(git rev-parse --git-common-dir 2>/dev/null)"
+  case "$common" in /*) ;; *) common="$root/$common" ;; esac
+  main_root="$(cd "$common/.." 2>/dev/null && pwd -P)"
+  [ -n "$main_root" ] && py="$main_root/.venv/bin/python3"
+fi
 [ -x "$py" ] || py="$(command -v python3 || true)"
 [ -x "$py" ] || exit 0
 PYTHONPATH="$root/crmbuilder-v2/src${PYTHONPATH:+:$PYTHONPATH}" \
