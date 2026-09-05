@@ -7,6 +7,19 @@ confirm it **deploys** (``POST /publish``) and renders the per-program result
 with summary counts. Both phases run off the UI thread via
 :func:`run_in_thread`; the render helpers are pure so they are unit-tested
 directly.
+
+The access gate (REQ-521 / PI-468). A publish carries the security program,
+so it changes who can reach what on the target. The preview states that
+effect — each role against the live target, removals flagged, or *unknown*
+when the target could not be read — and hands the dialog the plan
+fingerprint. A publish that follows a preview is a **reviewed run**: it sends
+that fingerprint, and the confirmation box states the effect in the same
+words. A removal is put to the operator as a second, separate question, and
+``confirm_access_removal`` is sent only when that question is answered yes —
+never on the dialog's own initiative. A publish with no preview behind it is
+an **automatic run** (DEC-982): it sends no fingerprint, only ever adds or
+widens, and when the API declines a removal by name the dialog shows the
+reasons and offers the reviewed path rather than a bare failure.
 """
 
 from __future__ import annotations
@@ -30,7 +43,7 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
-from crmbuilder_v2.ui.exceptions import StorageConnectionError
+from crmbuilder_v2.ui.exceptions import ConflictError, StorageConnectionError
 from crmbuilder_v2.ui.widgets.form_helpers import primary_button
 from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 from crmbuilder_v2.ui.workers import run_in_thread
@@ -213,6 +226,182 @@ def render_verification_html(result: dict) -> str:
     return "".join(parts)
 
 
+# -- the access effect (REQ-521 / PI-468) ------------------------------------
+
+#: The words the API uses for how the target holds a role right now
+#: (``publish.access.LIVE_*``), rendered for the operator.
+_LIVE_STATE_WORDS = {
+    "present": "on the target today",
+    "absent": "not on the target yet — created",
+    "unknown": "state unknown — the target could not be read",
+}
+
+
+def access_removal_lines(section: dict | None) -> list[str]:
+    """Each removal in the API's own words (``description``), in order."""
+    return [
+        c.get("description", "")
+        for c in (section or {}).get("removals") or []
+    ]
+
+
+def access_change_lines(section: dict | None) -> list[str]:
+    """Every access change in the API's own words, in order."""
+    return [
+        c.get("description", "")
+        for c in (section or {}).get("changes") or []
+    ]
+
+
+def access_is_unknown(section: dict | None) -> bool:
+    """True when the target could not be read, so the effect is not stated."""
+    return bool(section) and bool(section.get("assessed")) and not section.get(
+        "known", True
+    )
+
+
+def render_access_html(section: dict | None) -> str:
+    """Render the ``access`` section of a preview or publish result.
+
+    The words are the API's (``summary`` and each change's ``description``,
+    e.g. ``Mentor: Contact.delete all → no``); this only lays them out — a
+    summary line, then each role with its effect lines, a removal flagged in
+    red, and an explicit *unknown* when the target could not be read, so the
+    dialog never implies "no change" where nothing was proven. Returns ``""``
+    when the result carries no section (a validate-only result).
+    """
+    if not section:
+        return ""
+    if not section.get("assessed"):
+        return (
+            f"<p style='color:{_MUTE};margin:8px 0 0 0'>&#128274; Access: "
+            f"{_esc(section.get('summary') or 'no role or team is published.')}"
+            f"</p>"
+        )
+    parts: list[str] = []
+    if access_is_unknown(section):
+        parts.append(
+            f"<h4 style='margin:12px 0 4px 0;color:{_AMBER}'>&#9888; Access "
+            f"effect unknown — the target could not be read.</h4>"
+        )
+        reason = section.get("reason")
+        if reason:
+            parts.append(
+                f"<p style='color:{_AMBER};margin:0 0 4px 0'>{_esc(reason)}</p>"
+            )
+        parts.append(
+            "<p style='color:#555;margin:0 0 4px 0'>Nothing is claimed either "
+            "way. An automatic publish is refused while the effect is "
+            "unknown; a reviewed publish proceeds on the approved plan and "
+            "the deploy fails if the target still cannot be read.</p>"
+        )
+    else:
+        removals = access_removal_lines(section)
+        color = _RED if removals else _GREEN
+        glyph = "&#10007;" if removals else "&#10003;"
+        parts.append(
+            f"<h4 style='margin:12px 0 4px 0;color:{color}'>{glyph} Access: "
+            f"{_esc(section.get('summary') or '')}</h4>"
+        )
+        if removals:
+            parts.append(
+                f"<p style='color:{_RED};margin:0 0 4px 0'>This publish takes "
+                f"away access the instance currently grants. It is never "
+                f"applied automatically — Publish will ask you to confirm "
+                f"each removal separately.</p>"
+            )
+    for role in section.get("roles") or []:
+        name = _esc((role.get("target") or {}).get("member_name") or "?")
+        state = _LIVE_STATE_WORDS.get(role.get("live_state") or "", "")
+        where = f" <span style='color:{_MUTE}'>({state})</span>" if state else ""
+        parts.append(
+            f"<p style='margin:6px 0 2px 0'><b>Role {name}</b>{where}</p>"
+        )
+        changes = role.get("changes") or []
+        if role.get("live_state") == "unknown":
+            parts.append(
+                f"<p style='color:{_AMBER};margin:0 0 0 18px'>effect unknown "
+                f"— {_esc(role.get('summary') or '')}</p>"
+            )
+            continue
+        if not changes:
+            parts.append(
+                f"<p style='color:{_MUTE};margin:0 0 0 18px'>"
+                f"{_esc(role.get('summary') or 'no access setting changes.')}"
+                f"</p>"
+            )
+            continue
+        parts.append("<ul style='margin:0;padding-left:18px'>")
+        for change in changes:
+            line = _esc(change.get("description") or "")
+            if change.get("removes_access"):
+                parts.append(
+                    f"<li style='color:{_RED}'>&#10007; {line} "
+                    f"<b>— removes access</b></li>"
+                )
+            else:
+                parts.append(f"<li>&#9656; {line}</li>")
+        parts.append("</ul>")
+    for team in section.get("teams") or []:
+        name = _esc((team.get("target") or {}).get("member_name") or "?")
+        parts.append(
+            f"<p style='margin:6px 0 2px 0'><b>Team {name}</b> "
+            f"<span style='color:{_MUTE}'>{_esc(team.get('summary') or '')}"
+            f"</span></p>"
+        )
+    return "".join(parts)
+
+
+def render_declined_html(result: dict) -> str:
+    """Render an automatic run's declined changes (REQ-497 / DEC-982).
+
+    The API declines a removal, narrowing or type change by name on a run
+    that carries no approved plan; this shows each in the API's words and
+    names the way through — Preview, then Publish — instead of a bare
+    failure. Returns ``""`` when nothing was declined.
+    """
+    declined = result.get("declined_changes") or []
+    if not declined:
+        return ""
+    parts = [
+        f"<h4 style='margin:12px 0 4px 0;color:{_RED}'>&#10007; Not applied "
+        f"— an automatic publish may only add or widen "
+        f"({len(declined)} change(s) declined).</h4>",
+        "<ul style='margin:0;padding-left:18px'>",
+    ]
+    for d in declined:
+        construct = _esc(d.get("construct") or "?")
+        kind = _esc(d.get("kind") or "change")
+        reason = _esc(d.get("reason") or "")
+        parts.append(
+            f"<li><b>{construct}</b>: {kind}"
+            f"{' — ' + reason if reason else ''}</li>"
+        )
+    parts.append("</ul>")
+    parts.append(
+        "<p style='color:#555;margin:4px 0 0 0'>Nothing was written. To carry "
+        "these deliberately, click <b>Preview</b> to review the plan and its "
+        "access effect, then <b>Publish</b> for a reviewed run; a change "
+        "that takes access away is confirmed separately.</p>"
+    )
+    return "".join(parts)
+
+
+def render_refused_html(result: dict, target: str) -> str:
+    """Render the API's 409 refusal of a reviewed run that takes access away
+    without the separate word (REQ-521): its message verbatim, and the way
+    through."""
+    parts = [
+        f"<h3 style='margin:0 0 4px 0'>Publish refused &middot; {_esc(target)}"
+        f"</h3>",
+        f"<p style='color:{_RED}'>{_esc(result.get('message') or '')}</p>",
+        "<p style='color:#555'>Nothing was written. Click <b>Preview</b> to "
+        "review the access effect, then <b>Publish</b> and confirm the "
+        "removal when asked.</p>",
+    ]
+    return "".join(parts)
+
+
 def render_validate_html(result: dict) -> str:
     """Render the validate-phase report as rich text."""
     programs = result.get("programs", [])
@@ -254,10 +443,23 @@ def render_validate_html(result: dict) -> str:
 
 
 def _backup_note(result: dict) -> str:
-    """A one-line note on the pre-publish backup / abort state (REQ-292)."""
+    """A one-line note on the pre-publish backup / abort state (REQ-292).
+
+    An abort is not always the backup gate: the plan can have moved since the
+    preview (REQ-496), or the run can have been declined or held for an
+    access effect (REQ-521); those say so in the API's words and are not told
+    to override the backup gate.
+    """
     if result.get("aborted"):
         reason = _esc(result.get("abort_reason") or "the target could not be "
                       "backed up")
+        if result.get("declined_changes"):
+            return ""  # render_declined_html carries the reasons
+        if result.get("plan_moved") or access_is_unknown(result.get("access")):
+            return (
+                f"<p style='color:{_RED};font-weight:bold'>&#10007; Publish "
+                f"not run — {reason}</p>"
+            )
         return (
             f"<p style='color:{_RED};font-weight:bold'>&#10007; Publish "
             f"aborted — {reason}. Nothing was written. Re-try, or override the "
@@ -281,6 +483,7 @@ def render_publish_html(result: dict) -> str:
     parts = [_header("Publish", result)]
     if result.get("aborted"):
         parts.append(_backup_note(result))
+        parts.append(render_declined_html(result))
         return "".join(parts)
     programs = result.get("programs", [])
     parts.append("<ul style='margin:0;padding-left:18px'>")
@@ -304,6 +507,7 @@ def render_publish_html(result: dict) -> str:
             )
     parts.append("</ul>")
     parts.append(_backup_note(result))
+    parts.append(render_access_html(result.get("access")))
     parts.append(render_verification_html(result))
     parts.append(render_manual_config_html(result))
     return "".join(parts)
@@ -354,6 +558,13 @@ def render_preview_html(result: dict) -> str:
                 f"would: {_esc(_preview_counts(p.get('summary')))}</li>"
             )
     parts.append("</ul>")
+    parts.append(render_access_html(result.get("access")))
+    fp = result.get("plan_fingerprint")
+    if fp:
+        parts.append(
+            f"<p style='color:{_MUTE};margin:8px 0 0 0'>Plan {_esc(fp)} — "
+            f"Publish now runs this reviewed plan.</p>"
+        )
     parts.append(render_manual_config_html(result))
     return "".join(parts)
 
@@ -388,6 +599,13 @@ class PublishDialog(QDialog):
         )
         self._can_publish = False
         self._worker = None
+        # The reviewed-run handoff (REQ-521 / DEC-982): the plan fingerprint
+        # and access section the last preview returned for the current scope.
+        # ``None`` means no preview stands behind the next publish, which then
+        # runs automatic (no fingerprint, additive-only). Dropped whenever the
+        # plan can have moved: a re-validate, a scope change, a publish.
+        self._plan_fingerprint: str | None = None
+        self._access: dict | None = None
 
         self.setWindowTitle(f"Publish design → {self._target_name}")
         self.resize(680, 500)
@@ -513,6 +731,10 @@ class PublishDialog(QDialog):
         return checked
 
     def _on_scope_changed(self, _item) -> None:
+        # A different scope is a different plan: the previewed fingerprint no
+        # longer names what would be sent, so the next publish is automatic
+        # until the operator previews again.
+        self._drop_reviewed_plan()
         # Re-evaluate the Publish button (needs at least one selected program).
         self._publish_btn.setEnabled(
             not getattr(self, "_busy", False)
@@ -520,9 +742,21 @@ class PublishDialog(QDialog):
             and self._has_selection()
         )
 
+    # -- the reviewed-run handoff (REQ-521 / DEC-982) --------------------
+
+    def _drop_reviewed_plan(self) -> None:
+        self._plan_fingerprint = None
+        self._access = None
+
+    def is_reviewed(self) -> bool:
+        """True when a preview stands behind the next publish, so it runs as
+        the reviewed run (with the plan fingerprint) rather than automatic."""
+        return self._plan_fingerprint is not None
+
     # -- validate phase --------------------------------------------------
 
     def _start_validate(self) -> None:
+        self._drop_reviewed_plan()
         self._status.setText("Validating the design against the target…")
         self._set_busy(True)
         self._worker = run_in_thread(
@@ -584,6 +818,7 @@ class PublishDialog(QDialog):
 
     def _on_previewed(self, result: dict[str, Any]) -> None:
         if result.get("validation_failed"):
+            self._drop_reviewed_plan()
             self._results.setHtml(render_validate_html(result))
             self._status.setText(
                 "Validation failed — fix the errors before publishing."
@@ -591,38 +826,115 @@ class PublishDialog(QDialog):
             self._set_busy(False, can_publish=False)
             return
         self._results.setHtml(render_preview_html(result))
-        self._status.setText(
-            "Preview complete — nothing was written. Ready to publish."
-        )
+        # The preview is how the fingerprint is obtained (DEC-982): the next
+        # publish sends it and runs reviewed, carrying the access effect the
+        # operator has just been shown.
+        self._plan_fingerprint = result.get("plan_fingerprint") or None
+        self._access = result.get("access")
+        if access_removal_lines(self._access):
+            status = (
+                "Preview complete — nothing was written. This publish takes "
+                "access away; Publish will ask you to confirm each removal."
+            )
+        elif access_is_unknown(self._access):
+            status = (
+                "Preview complete — nothing was written. The access effect "
+                "is unknown because the target could not be read."
+            )
+        elif self._plan_fingerprint:
+            status = (
+                "Preview complete — nothing was written. Publish now runs "
+                "the reviewed plan."
+            )
+        else:
+            status = "Preview complete — nothing was written. Ready to publish."
+        self._status.setText(status)
         self._set_busy(False, can_publish=True)
 
     # -- publish phase ---------------------------------------------------
 
-    def _on_publish_clicked(self) -> None:
-        scope = self._selected_scope()
+    def _confirm_publish(self, scope: list[str] | None) -> bool:
+        """The first question (REQ-521): the target and the effect.
+
+        A reviewed run states the access effect the preview showed in the
+        API's words — every change, a removal marked; an automatic run says
+        it can only add or widen. Agreeing here is not agreeing to a removal;
+        that is :meth:`_confirm_access_removal`'s separate question.
+        """
         what = (
             "the canonical design"
             if scope is None
             else f"{len(scope)} selected program(s)"
         )
+        lines = [f"Deploy {what} to {self._target_name}?"]
+        if self.is_reviewed():
+            lines.append(f"\nReviewed run — plan {self._plan_fingerprint}.")
+            access = self._access or {}
+            if access.get("assessed"):
+                lines.append(access.get("summary") or "")
+                removals = set(access_removal_lines(access))
+                for line in access_change_lines(access):
+                    mark = "  (removes access)" if line in removals else ""
+                    lines.append(f"• {line}{mark}")
+        else:
+            lines.append(
+                "\nAutomatic run — no preview approved. It only adds or "
+                "widens: a change that removes, narrows or lowers access is "
+                "declined by name. Click Preview first to review and carry "
+                "such changes."
+            )
+        lines.append("\nThis writes configuration to the live instance.")
         confirm = CopyableMessageBox(self)
         confirm.setWindowTitle("Confirm publish")
-        confirm.setText(
-            f"Deploy {what} to {self._target_name}?\n\n"
-            "This writes configuration to the live instance."
-        )
+        confirm.setText("\n".join(lines))
         confirm.setStandardButtons(
             QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel
         )
         confirm.setDefaultButton(QMessageBox.StandardButton.Cancel)
-        if confirm.exec() != QMessageBox.StandardButton.Ok:
+        return confirm.exec() == QMessageBox.StandardButton.Ok
+
+    def _confirm_access_removal(self) -> bool:
+        """The second, separate question (REQ-521), asked only when the
+        previewed plan takes access away — the same words as the Reconcile
+        grid's gate. Yes is the only thing that makes the dialog send
+        ``confirm_access_removal``.
+        """
+        removals = access_removal_lines(self._access)
+        answer = CopyableMessageBox.warning(
+            self, "This removes access",
+            "This publish takes away access the instance currently grants. It "
+            "is never applied without a separate, deliberate confirmation.\n\n"
+            + "\n".join(f"• {line}" for line in removals)
+            + "\n\nRemove this access on " + str(self._target_name) + "?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        return answer == QMessageBox.StandardButton.Yes
+
+    def _on_publish_clicked(self) -> None:
+        scope = self._selected_scope()
+        if not self._confirm_publish(scope):
             return
+        fingerprint = self._plan_fingerprint
+        confirm_removal = False
+        if self.is_reviewed() and access_removal_lines(self._access):
+            if not self._confirm_access_removal():
+                self._status.setText(
+                    "Publish not run — the access removal was not confirmed; "
+                    "nothing was sent."
+                )
+                return
+            confirm_removal = True
         allow_no_backup = self._allow_no_backup.isChecked()
         self._status.setText(f"Backing up + publishing to {self._target_name}…")
         self._set_busy(True)
+        # The plan is spent once sent: a further publish previews again.
+        self._drop_reviewed_plan()
         self._worker = run_in_thread(
             lambda: self._client.publish_instance(
-                self._identifier, scope, allow_no_backup
+                self._identifier, scope, allow_no_backup,
+                expected_plan_fingerprint=fingerprint,
+                confirm_access_removal=confirm_removal,
             ),
             on_success=self._on_published,
             on_error=self._on_error,
@@ -631,7 +943,24 @@ class PublishDialog(QDialog):
 
     def _on_published(self, result: dict[str, Any]) -> None:
         self._results.setHtml(render_publish_html(result))
-        if result.get("aborted"):
+        if result.get("declined_changes"):
+            n = len(result["declined_changes"])
+            status = (
+                f"Publish declined — {n} change(s) need a reviewed run. "
+                "Click Preview to review them, then Publish."
+            )
+        elif result.get("aborted") and result.get("plan_moved"):
+            status = (
+                "Publish not run — the plan has moved since the preview. "
+                "Click Preview to review the new plan, then Publish."
+            )
+        elif result.get("aborted") and access_is_unknown(result.get("access")):
+            status = (
+                "Publish not run — the access effect is unknown because the "
+                "target could not be read. Click Preview when it can be read, "
+                "then Publish."
+            )
+        elif result.get("aborted"):
             status = "Publish aborted — the target could not be backed up."
         elif _publish_failed(result):
             status = "Publish finished with issues — see the report."
@@ -644,6 +973,22 @@ class PublishDialog(QDialog):
     # -- errors ----------------------------------------------------------
 
     def _on_error(self, exc: Exception) -> None:
+        if isinstance(exc, ConflictError):
+            # REQ-521: the API refused a reviewed run that takes access away
+            # without the separate word (the removal was not in the preview
+            # this dialog showed, or the target has changed since). Shown in
+            # the API's words, with the way through, not as a failure.
+            _log.info("Publish refused by the access gate: %s", exc)
+            self._results.setHtml(
+                render_refused_html({"message": str(exc)}, self._target_name)
+            )
+            self._status.setText(
+                "Publish refused — it takes access away that was not "
+                "confirmed. Click Preview, then Publish and confirm the "
+                "removal."
+            )
+            self._set_busy(False, can_publish=False)
+            return
         _log.warning("Publish operation failed: %s", exc)
         title = (
             "Connection lost"
