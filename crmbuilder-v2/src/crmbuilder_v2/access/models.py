@@ -570,7 +570,7 @@ class Session(EngagementScopedPKMixin, Base):
         Text, nullable=True
     )
     session_phase_segments: Mapped[list] = mapped_column(
-        JSONColumn, nullable=False, default=list
+        JSONColumn, nullable=False, default=list, server_default=text("'[]'")
     )
     session_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
