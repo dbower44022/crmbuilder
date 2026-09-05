@@ -68,6 +68,31 @@ def test_build_panel_returns_review_panel(review_client, qtbot):
     assert isinstance(panel, ListDetailPanel)
 
 
+def test_show_without_action_cluster_does_not_raise(review_client, qtbot):
+    # ReviewPanel replaces _build_ui wholesale, so the base control-line
+    # action cluster never exists on it. The base showEvent's arrangement
+    # must tolerate that opt-out instead of raising (REQ-566 / PI-467 —
+    # regression from the grid control line, PI-436).
+    panel = ReviewPanel(review_client)
+    qtbot.addWidget(panel)
+    assert not panel._has_action_cluster()
+    raised: list[BaseException] = []
+    original = panel._arrange_control_actions
+
+    def _guarded():
+        try:
+            return original()
+        except Exception as exc:  # pragma: no cover - the assertion below
+            raised.append(exc)
+            raise
+
+    panel._arrange_control_actions = _guarded
+    with qtbot.waitExposed(panel):
+        panel.show()
+    assert raised == []
+    assert panel._ranked_actions == []
+
+
 # -- live refresh ---------------------------------------------------------
 
 

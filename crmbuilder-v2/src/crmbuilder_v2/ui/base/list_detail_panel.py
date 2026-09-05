@@ -1020,6 +1020,16 @@ class ListDetailPanel(QWidget):
         layout.addWidget(self._actions_button)
         return cluster
 
+    def _has_action_cluster(self) -> bool:
+        """True when ``_build_action_cluster`` ran.
+
+        A subclass that replaces ``_build_ui`` wholesale (``ReviewPanel``)
+        never builds the control line, so the cluster's widgets do not
+        exist on it; the show-time arrangement must tolerate that opt-out
+        (REQ-566).
+        """
+        return hasattr(self, "_action_layout")
+
     def _subclass_action_buttons(self) -> list[QPushButton]:
         """The buttons a subclass placed in ``_action_layout``, in order."""
         buttons: list[QPushButton] = []
@@ -1039,8 +1049,12 @@ class ListDetailPanel(QWidget):
         as buttons; the rest are hidden (never disabled) and remain
         reachable through the ``Actions`` dropdown. Returns the ranked
         ``(label, button)`` list. Idempotent; runs on show and before every
-        dropdown open so late-added buttons are picked up.
+        dropdown open so late-added buttons are picked up. A panel without
+        the action cluster (custom ``_build_ui``) returns an empty list.
         """
+        if not self._has_action_cluster():
+            self._ranked_actions = []
+            return []
         entries: list[tuple[str, QPushButton]] = [
             (button.text(), button) for button in self._subclass_action_buttons()
         ]
