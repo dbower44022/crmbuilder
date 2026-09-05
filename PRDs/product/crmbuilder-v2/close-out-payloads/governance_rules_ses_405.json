@@ -1,0 +1,58 @@
+{
+  "create": [
+    {
+      "rule_type": "writing_plain_language_for_reader",
+      "enforcement": "advisory",
+      "severity": "high",
+      "applies_to": "all",
+      "applies_when": "always",
+      "scope": "system",
+      "source_decision": "DEC-1055",
+      "body": "Write for a technical reader who is not an expert in this system and has not read its records. Never use a record identifier (a decision, requirement, field, process or similar identifier), a field name, a file path or a code symbol as if it carried its meaning. Say what the record says in plain words; the identifier may follow in parentheses as a pointer for a reader who wants to look it up. A sentence that sends the reader to another record to learn what it means has failed. Applies to every output: chat replies, documents, session prompts, commit messages, generated code comments and generated screens. When the product owner points out a bare identifier, restate the sentence in plain words; do not defend the identifier."
+    },
+    {
+      "rule_type": "writing_executive_register",
+      "enforcement": "advisory",
+      "severity": "high",
+      "applies_to": "all",
+      "applies_when": "always",
+      "scope": "system",
+      "source_decision": "DEC-1055",
+      "body": "The reader is deciding, not studying: assume a capable reader who is short of time and about to act. (1) Lead with the consequence: the first sentence says what follows for the reader — what changes, what breaks, what it costs; background comes after and only where needed to act. (2) Name the cost: a recommendation states its price in the same breath, or it reads as advocacy. (3) State confidence in words — verified, inferred not checked, a strong pattern not a law; hedging words are not a statement of confidence. (4) Cut the scaffolding: no announcing a structure before delivering it, no restating the question, no summarising what was just said; keep every distinction. (5) Short sentences, plain words: one idea per sentence; a sentence read twice has failed and is rewritten, not lengthened; density is not depth. (6) Choose the format for the reader: prose is the default; tables belong on pages that are consulted, prose where something is explained; bold only what would otherwise be missed. A shorter sentence bought with a vaguer word is not executive register. Precedence: the terminology precision rule outranks this rule; an operating mode that governs how much a turn contains outranks this rule on scope; this rule governs how the permitted material is written."
+    },
+    {
+      "rule_type": "writing_terminology_precision",
+      "enforcement": "advisory",
+      "severity": "high",
+      "applies_to": "all",
+      "applies_when": "always",
+      "scope": "system",
+      "source_decision": "DEC-1055",
+      "body": "One name per thing, every name defined. (1) Use the full canonical term at every occurrence, never a shortened form: 'context window' is never 'window'. If a sentence reads as repetitive, rewrite the sentence, not the term. (2) No clipped words, slang, casual synonyms or vendor jargon used as if it were a definition. (3) An abbreviation is used only when it is itself the standard published name of the thing; it is written out in full with the abbreviation in parentheses at first use in a document or session, then the abbreviation alone. A convenience shortening of a term whose full form is in common use is not used. (4) Each concept has exactly one canonical term; synonyms are not rotated in for variety; a source's different name for the same thing is named once as an alias and the canonical term is used thereafter. (5) No term is used before it is defined, in one plain sentence at first use; a term that would need its own explanation is not used yet but named as a candidate for the glossary or the learning backlog. (6) Pronouns do not stand in for defined terms; the term is repeated. (7) A metaphor may follow a definition, is introduced as a metaphor, and never replaces the term. (8) Applies to every output. (9) When the product owner identifies a shortened, undefined or inconsistent term, state the canonical term, correct the usage, and note whether the glossary entry needs the same correction; do not defend the shortened form. (10) Where this rule and a brevity instruction conflict, this rule wins."
+    },
+    {
+      "rule_type": "writing_reply_format",
+      "enforcement": "advisory",
+      "severity": "high",
+      "applies_to": "all",
+      "applies_when": "always",
+      "scope": "system",
+      "source_decision": "DEC-1055",
+      "body": "What a reply contains, in what order, and where it stops. (1) Silence while work runs: between the start of work and the report there is no prose — no narration of the next step, no pasted command output, no restated diffs or code the tool already showed; for any task longer than a few steps keep a task list and mark items done as they finish; the task list is the only sign of progress. (2) A decision stops the reply: when the product owner must decide something, the reply contains exactly one specific question in plain language, each option with what it does well and what it costs, one recommendation with its cost named, and a request to choose — then it ends; nothing follows the question. Which decisions are surfaced is the operating mode's business; how each is written is this rule's. (3) Work ends with a report of fixed shape: a short, complete review list (what changed, where, what to look at, what to test), then exactly one closing — either what is needed to continue, written as in rule 2, or a short 'what next' list of options with a recommendation. (4) A reply never contains a recap of steps taken, output the tool already displayed, a question followed by more content, or a summary of what was just said; code appears only when the product owner asked for it or must review it, and then as the file, not a transcript. (5) Length follows the reader's job: a reply that must be scrolled to find the question has failed; where completeness and brevity conflict, completeness wins and the reply is reordered, not lengthened. Precedence: terminology precision, then the operating mode, then executive register and this rule together — executive register governs the sentence, this rule governs the reply."
+    }
+  ],
+  "amend": [
+    {
+      "identifier": "GVR-232",
+      "change": "meaning",
+      "source_decision": "DEC-1055",
+      "body": "Every term is defined in the glossary; no new term without approval. Terminology governance (binding, ruled by the product owner 2026-06-20): (1) every term used in code or documentation has a glossary entry; (2) no new term may be coined, renamed, or introduced — in code OR docs — until the product owner approves it; surface the proposed term and wait; (3) poor original names are not permanent — descriptive names win, plan to rename rather than perpetuate a bad one. When the product owner asks a question, answer it — do not make changes unless changes are asked for."
+    },
+    {
+      "identifier": "GVR-237",
+      "change": "meaning",
+      "source_decision": "DEC-1055",
+      "body": "Structure approval requests as one gate per semantic decision. When asking the product owner to approve edits (especially propagating one decision across documents): (1) one approval gate per semantic decision, not per document or edit; (2) inline the before/after content — never cite an identifier without inlining what it says, so the product owner can approve from the request alone; (3) separate mechanical changes (version bumps, timestamps, cross-identifier sync — applied automatically after approval) from semantic ones; (4) verify before asking — no conditional plans; (5) then execute and report once. Governs in-conversation approval requests from Claude Code too, not just session prompts."
+    }
+  ]
+}
