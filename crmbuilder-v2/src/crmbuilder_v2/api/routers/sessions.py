@@ -64,13 +64,15 @@ def next_identifier():
 
 
 @router.get("/opening")
-def opening(engagement: str | None = None):
+def opening(engagement: str | None = None, answer: str | None = None):
     """The opening question, its examples, the catalogue of kinds of work and
     the cross-cutting contract (PI-488). No write — what a surface needs before
-    the user answers. Registered above ``/{identifier}`` so it is reachable."""
+    the user answers. With ``answer`` the response also carries ``preview``:
+    the kind of work and the confirmation line the operation would say back.
+    Registered above ``/{identifier}`` so it is reachable."""
     active = engagement if engagement is not None else get_active_engagement()
     with readonly_session() as s:
-        return ok(session_opening.opening(s, active))
+        return ok(session_opening.opening(s, active, answer=answer))
 
 
 @router.post("/open", status_code=201)
@@ -93,6 +95,9 @@ def open_session(body: SessionOpenIn):
                 title=body.title,
                 participants=body.participants,
                 medium_metadata=body.medium_metadata,
+                description=body.description,
+                executive_summary=body.executive_summary,
+                notes=body.notes,
             )
         )
 

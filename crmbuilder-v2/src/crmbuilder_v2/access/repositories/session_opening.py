@@ -322,9 +322,43 @@ def _segment_contract(session: DbSession, segment: dict, engagement_id: str | No
 # --- the opening (no write) ---------------------------------------------------
 
 
-def opening(session: DbSession, engagement_id: str | None) -> dict:
+def preview(answer: str, entries: list[dict]) -> dict:
+    """What the session-open operation would say back for ``answer``, without
+    a write: the kind of work, the confidence, the confirmation line or the
+    follow-up question. Lets a surface show the line before it creates the
+    session (REQ-576) while the server still does every classification."""
+    answer = " ".join((answer or "").split())
+    result = classify(answer, entries) if answer else {"entry": None, "confidence": 0.0, "ranked": []}
+    entry = result["entry"]
+    if entry is not None:
+        line = confirmation_line_for(entry)
+        return {
+            "opening_answer": answer,
+            "kind_of_work": entry["process_identifier"],
+            "kind_of_work_name": entry["name"],
+            "confidence": result["confidence"],
+            "confirmation_line": line,
+            "first_line": line,
+            "follow_up_question": None,
+            "segments": entry["segments"],
+        }
+    return {
+        "opening_answer": answer,
+        "kind_of_work": None,
+        "kind_of_work_name": None,
+        "confidence": result["confidence"],
+        "confirmation_line": None,
+        "first_line": NO_KIND_OF_WORK_LINE if not answer else f"{NO_KIND_OF_WORK_LINE} {FOLLOW_UP_QUESTION}",
+        "follow_up_question": FOLLOW_UP_QUESTION if answer else None,
+        "segments": [],
+    }
+
+
+def opening(session: DbSession, engagement_id: str | None, *, answer: str | None = None) -> dict:
     """The opening question, its examples, the catalogue and the cross-cutting
-    contract — everything a surface needs before the user answers."""
+    contract — everything a surface needs before the user answers. With
+    ``answer`` the result also carries ``preview``: what the operation would
+    say back, without a write."""
     entries = list_catalogue(session)
     by_name = {e["name"]: e for e in entries}
     examples = [n for n in EXAMPLE_NAMES if n in by_name][:4]
@@ -343,6 +377,7 @@ def opening(session: DbSession, engagement_id: str | None) -> dict:
             for e in entries
         ],
         "cross_cutting": cross_cutting_contract(session, engagement_id),
+        "preview": preview(answer, entries) if answer is not None else None,
     }
 
 
@@ -459,9 +494,16 @@ def open_session(
     title: str | None = None,
     participants: list | None = None,
     medium_metadata: dict | None = None,
+    description: str | None = None,
+    executive_summary: str | None = None,
+    notes: str | None = None,
 ) -> dict:
     """Classify the opening answer, create the session record and return the
     first segment's contract merged with the cross-cutting rules.
+
+    ``title``, ``description``, ``executive_summary`` and ``notes`` are
+    generated from the answer when not supplied; a surface with a form (the
+    desktop dialog) passes what the user typed.
 
     Returns ``{session, kind_of_work, confidence, ranked, confirmation_line,
     first_line, follow_up_question, segment, contract, planning_item}``.
@@ -508,16 +550,17 @@ def open_session(
         session,
         identifier=identifier,
         title=session_title,
-        description=(
+        description=description or (
             f"Opened through the session-open operation with the opening answer "
             f"\"{answer}\"." if answer else
             "Opened through the session-open operation without an opening answer."
         ),
         medium=medium,
         status="in_flight",
+        notes=notes,
         participants=participants,
         medium_metadata=metadata,
-        executive_summary=_executive_summary(answer, entry, confirmation or first_line),
+        executive_summary=executive_summary or _executive_summary(answer, entry, confirmation or first_line),
         opening_answer=answer or None,
         kind_of_work=entry["process_identifier"] if entry else None,
         confirmation_line=confirmation,

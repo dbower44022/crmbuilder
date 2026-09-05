@@ -168,6 +168,9 @@ class SessionOpenIn(_Base):
     title: str | None = None
     participants: list | None = None
     medium_metadata: dict | None = None
+    description: str | None = None
+    executive_summary: str | None = None
+    notes: str | None = None
     engagement: str | None = None
 
 

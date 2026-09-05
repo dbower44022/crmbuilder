@@ -317,3 +317,32 @@ def test_classify_is_deterministic_and_thresholded():
     assert miss["entry"] is None and miss["confidence"] < so.MATCH_THRESHOLD
     assert so.classify("", entries)["entry"] is None
     assert so.classify("fix", entries)["entry"] is None  # one word of three: below threshold
+
+
+# --- REQ-576: a preview for surfaces that show the line before creating -------------
+
+
+def test_opening_preview_says_the_line_back_without_a_write(client, seeded):
+    before = len(client.get("/sessions").json()["data"])
+    r = client.get("/sessions/opening", params={"answer": "define new business processes"})
+    assert r.status_code == 200, r.text
+    pv = r.json()["data"]["preview"]
+    assert pv["kind_of_work"] == seeded["define"]
+    assert pv["confirmation_line"].startswith("It sounds like you want to define new business processes")
+    assert pv["follow_up_question"] is None
+    miss = client.get("/sessions/opening", params={"answer": "send birthday cards"}).json()["data"]["preview"]
+    assert miss["kind_of_work"] is None and miss["follow_up_question"] == so.FOLLOW_UP_QUESTION
+    assert client.get("/sessions/opening").json()["data"]["preview"] is None
+    assert len(client.get("/sessions").json()["data"]) == before
+
+
+def test_open_accepts_form_overrides(client, seeded):
+    summary = "x" * 250
+    d = client.post("/sessions/open", json={"opening_answer": "upgrade the platform", "title": "My title",
+                                            "description": "My description", "executive_summary": summary,
+                                            "notes": "My notes", "participants": ["Doug Bower"]}).json()["data"]
+    rec = client.get(f"/sessions/{d['session']['session_identifier']}").json()["data"]
+    assert rec["session_title"] == "My title" and rec["session_description"] == "My description"
+    assert rec["session_executive_summary"] == summary and rec["session_notes"] == "My notes"
+    assert rec["session_participants"] == ["Doug Bower"]
+    assert rec["session_kind_of_work"] == seeded["upgrade"]
