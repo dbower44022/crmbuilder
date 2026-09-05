@@ -567,6 +567,22 @@ existing instance instead of spawning a duplicate.
 > and stamp outcome. See TECHNICAL-GUIDE "Publish gates and the
 > design-version stamp".
 
+> **Reference creation (09-04-26, REQ-562..565 / PI-463..465, DEC-1042, DEC-1043,
+> DEC-1045):** references are created through two distinct forms. The References
+> panel's `New Reference` dialog (`ui/dialogs/reference_create.py`) is the generic
+> source-first cascading form for a connection whose starting record is not open;
+> its Source and Target identifier pickers now list every record type the client
+> can list, by identifier and name (REQ-562). The `Add reference` affordance on a
+> detail pane's `ReferencesSection` opens the record-side connection form instead
+> (`ui/dialogs/record_connect.py`, REQ-563): the source is fixed and never shown,
+> only the relationship kinds allowed from that record's type are offered, the
+> target type follows from the kind, eligible targets are listed with tick boxes,
+> and one save creates one reference per tick; already-connected targets are
+> pre-ticked and locked, and a partial failure locks what landed and keeps the
+> form open. Both forms draw their lists from `list_records_for_type`. The shared
+> `EntityIdentifierPicker` opens as a compact popup — single-spaced rows and a
+> search box at the top that narrows rows by identifier or name (REQ-564 / REQ-565).
+
 ### v0.1 (read-only foundation + decisions write surface)
 
 - Sidebar navigation across all eight v2 entity types: Charter,
