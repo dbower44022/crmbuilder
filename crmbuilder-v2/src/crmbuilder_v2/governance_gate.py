@@ -138,41 +138,102 @@ def _env_file_candidates() -> list[Path]:
     return unique
 
 
+def _parse_env_file(path: Path) -> dict[str, str]:
+    """Read ``KEY=VALUE`` lines from a dotenv-style file without any library.
+
+    The gate may run under an interpreter that lacks the application's
+    settings dependencies (a linked worktree has no ``.venv``, so the hook can
+    fall back to the system ``python3``). The store address and token must
+    still be found there, so this parser is deliberately dependency-free:
+    blank lines and ``#`` comments are skipped, an optional ``export`` prefix
+    and surrounding quotes are dropped.
+    """
+    values: dict[str, str] = {}
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):].lstrip()
+        key, _, value = line.partition("=")
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        values[key.strip()] = value
+    return values
+
+
 def _api_config() -> tuple[str, str, str]:
     """Resolve ``(base_url, token, engagement)`` for gate lookups (REQ-451/REQ-555).
 
-    Explicit env vars win. Otherwise the application settings are loaded from
-    the first configuration file that exists — this checkout's, the main
-    worktree's, or the per-user file — so a linked worktree validates against
-    the same store, with the same bearer token, as the maintained checkout.
+    Explicit env vars win: ``CRMBUILDER_V2_API_BASE_URL`` (the name the data
+    file and every other component use; the older ``CRMBUILDER_V2_API_BASE`` is
+    still honoured), ``CRMBUILDER_V2_GATE_TOKEN`` (or ``CRMBUILDER_V2_API_TOKEN``)
+    and ``CRMBUILDER_V2_GATE_ENGAGEMENT``. Otherwise the first configuration
+    file that exists — this checkout's, the main worktree's, or the per-user
+    file — is read, so a linked worktree validates against the same store, with
+    the same bearer token, as the maintained checkout. The application settings
+    loader is tried first; when it cannot even be imported (the hook fell back
+    to an interpreter without the settings library) the file is parsed
+    directly, so the interpreter never decides whether the gate can validate.
 
-    Raises :class:`StoreConfigurationNotFound` when no base URL can be found.
-    There is deliberately no local-development default: a gate that silently
-    checks the wrong store reports real planning items as missing.
+    Raises :class:`StoreConfigurationNotFound` when no base URL can be found,
+    naming where it looked and why a found file yielded nothing. There is
+    deliberately no local-development default: a gate that silently checks
+    the wrong store reports real planning items as missing.
     """
-    base = os.environ.get("CRMBUILDER_V2_API_BASE")
-    token = os.environ.get("CRMBUILDER_V2_GATE_TOKEN")
+    base = os.environ.get("CRMBUILDER_V2_API_BASE_URL") or os.environ.get(
+        "CRMBUILDER_V2_API_BASE"
+    )
+    token = os.environ.get("CRMBUILDER_V2_GATE_TOKEN") or os.environ.get(
+        "CRMBUILDER_V2_API_TOKEN"
+    )
     engagement = os.environ.get("CRMBUILDER_V2_GATE_ENGAGEMENT")
+    problem: str | None = None
     if base is None or token is None or engagement is None:
         env_file = next((c for c in _env_file_candidates() if c.is_file()), None)
         if env_file is not None:
+            loaded: dict[str, str | None] = {}
             try:  # lazy — avoid importing settings (and its deps) unless needed
                 from crmbuilder_v2.config import Settings
 
                 s = Settings(_env_file=str(env_file))
-                if base is None:
-                    base = s.api_base_url
-                if token is None:
-                    token = s.api_token
-                if engagement is None:
-                    engagement = s.mcp_engagement or None
-            except Exception:  # noqa: BLE001 — config must never break the gate
-                pass
+                loaded = {
+                    "base": s.api_base_url,
+                    "token": s.api_token,
+                    "engagement": s.mcp_engagement or None,
+                }
+            except Exception as exc:  # noqa: BLE001 — config must never break the gate
+                # The settings loader is unavailable or unhappy under this
+                # interpreter; the file itself is still the source of truth.
+                try:
+                    raw = _parse_env_file(env_file)
+                except OSError as read_exc:
+                    problem = f"{env_file} could not be read ({read_exc})"
+                    raw = {}
+                else:
+                    problem = (
+                        f"{env_file} was found but the settings loader failed "
+                        f"({type(exc).__name__}: {exc}); parsed it directly"
+                    )
+                loaded = {
+                    "base": raw.get("CRMBUILDER_V2_API_BASE_URL")
+                    or raw.get("CRMBUILDER_V2_API_BASE"),
+                    "token": raw.get("CRMBUILDER_V2_API_TOKEN"),
+                    "engagement": raw.get("CRMBUILDER_V2_MCP_ENGAGEMENT") or None,
+                }
+            if base is None:
+                base = loaded.get("base")
+            if token is None:
+                token = loaded.get("token")
+            if engagement is None:
+                engagement = loaded.get("engagement")
     if not base:
         looked = ", ".join(str(c) for c in _env_file_candidates())
+        detail = f"; {problem}" if problem else ""
         raise StoreConfigurationNotFound(
-            "no CRMBUILDER_V2_API_BASE in the environment and no crmbuilder.env "
-            f"found (looked in: {looked})"
+            "no CRMBUILDER_V2_API_BASE_URL in the environment and no usable "
+            f"crmbuilder.env found (looked in: {looked}){detail}"
         )
     return base, (token or ""), (engagement or "CRMBUILDER")
 
@@ -491,7 +552,7 @@ def guarded_evaluate(
             d.reasons = ["governance store configuration not found; add "
                          "crmbuilder-v2/data/crmbuilder.env to the main worktree "
                          "(or ~/.config/crmbuilder/crmbuilder.env), or set "
-                         "CRMBUILDER_V2_API_BASE"]
+                         "CRMBUILDER_V2_API_BASE_URL"]
         return d
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         d = GateDecision(
