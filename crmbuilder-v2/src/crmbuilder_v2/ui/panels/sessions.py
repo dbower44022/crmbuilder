@@ -1,7 +1,7 @@
 """Sessions panel — PI-073 / DEC-314 redesign.
 
 Sessions are now the medium-agnostic communication container (Claude.ai
-chat / email / phone / zoom / in_person / slack / other) with a
+chat / claude_code / email / phone / zoom / in_person / slack / other) with a
 schedulable, stateful six-status lifecycle. Replaces the legacy
 append-only panel — supports create / edit / delete / restore now.
 """

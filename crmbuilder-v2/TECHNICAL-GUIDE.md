@@ -808,8 +808,10 @@ grow consciously.
 
 `access/vocab.py:REFERENCE_RELATIONSHIPS` lists the seven values:
 `is_about`, `supersedes`, `decided_in`, `affects`, `covers`,
-`blocks`, `references`. Same change procedure as any other
-controlled vocabulary.
+`blocks`, `references`, plus the typed kinds added since. `withdraws`
+(REQ-560 / DEC-1034, PI-462) is decision → withdrawn governed record; its
+pair rule is enforced in `references.create` as well as the dialogs. Same
+change procedure as any other controlled vocabulary.
 
 ### Code style
 

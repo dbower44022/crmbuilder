@@ -89,9 +89,9 @@ Field naming follows the parent-prefix convention per DEC-046: all fields includ
 | Field name | Type | Required | Default | Validation | Description |
 |------------|------|----------|---------|------------|-------------|
 | `session_status` | TEXT | yes | `planned` | enum: `planned` \| `in_flight` \| `complete` \| `cancelled` \| `not_started` \| `superseded`; valid transitions per §3.4 | Lifecycle status. See §3.4 for the full state machine. |
-| `session_medium` | TEXT | yes | — | enum: `chat` \| `email` \| `phone` \| `zoom` \| `in_person` \| `slack` \| `other` | The medium in which the session occurs. Drives the shape of `session_medium_metadata` and the rendering of the session view in the desktop UI. Required at create time so a scheduled-for-the-future session declares its medium up front. |
+| `session_medium` | TEXT | yes | — | enum: `chat` \| `claude_code` \| `email` \| `phone` \| `zoom` \| `in_person` \| `slack` \| `other` | The medium in which the session occurs. Drives the shape of `session_medium_metadata` and the rendering of the session view in the desktop UI. Required at create time so a scheduled-for-the-future session declares its medium up front. |
 
-**Medium enum posture.** Six concrete mediums plus `other`. The list is deliberately small in this release. Adding a new medium is a vocab change (enum extension) plus an Alembic migration on the CHECK constraint; the JSON metadata column avoids any per-medium schema churn beyond the enum entry. Build-planning may add `letter` (postal mail) or `videoconference_non_zoom` if a concrete use surfaces; deferred to signal.
+**Medium enum posture.** Six concrete mediums plus `other`. `claude_code` was added by PI-462 (REQ-561 / DEC-1035): a session run in Claude Code with the live store reachable records it; a claude.ai sandbox conversation keeps `chat`. The list is deliberately small in this release. Adding a new medium is a vocab change (enum extension) plus an Alembic migration on the CHECK constraint; the JSON metadata column avoids any per-medium schema churn beyond the enum entry. Build-planning may add `letter` (postal mail) or `videoconference_non_zoom` if a concrete use surfaces; deferred to signal.
 
 #### 3.2.4 Universal communication fields
 

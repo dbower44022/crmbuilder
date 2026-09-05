@@ -217,8 +217,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         project_identifier: str | None = None,
     ) -> Any:
         """List sessions. Filters: ``status`` (planned, in_flight, complete,
-        cancelled, not_started, superseded), ``medium`` (chat, email, phone,
-        zoom, in_person, slack, other), ``project_identifier``
+        cancelled, not_started, superseded), ``medium`` (chat, claude_code,
+        email, phone, zoom, in_person, slack, other), ``project_identifier``
         (resolves the session_belongs_to_project edge).
         """
         params = {
@@ -256,7 +256,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         """Create a session record in the redesigned shape (PI-073 / DEC-314).
 
         Required: ``title``, ``description``, ``medium`` (one of chat,
-        email, phone, zoom, in_person, slack, other), and
+        claude_code, email, phone, zoom, in_person, slack, other — a Claude
+        Code session with the live store reachable records ``claude_code``,
+        a claude.ai sandbox conversation records ``chat``; REQ-561), and
         ``executive_summary`` (PI-075: a 200-800 character summary).
 
         Status defaults to ``planned`` — pass ``in_flight`` to mark an
@@ -652,7 +654,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         relationship: str,
     ) -> Any:
         """Create a cross-entity reference. relationship ∈ {is_about, supersedes,
-        decided_in, affects, covers, blocks, references}."""
+        withdraws, decided_in, affects, covers, blocks, references, ...} — the
+        full set is ``vocab.REFERENCE_RELATIONSHIPS``. ``withdraws`` runs from
+        the withdrawing decision to the withdrawn record (REQ-560)."""
         return await _unwrap(
             await http.post(
                 "/references",

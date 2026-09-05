@@ -279,7 +279,11 @@ session's `Decisions made:` field. Going forward, references are
 created explicitly through the API or MCP.
 
 The reference vocabulary (per DEC-006) is `is_about`, `supersedes`,
-`decided_in`, `affects`, `covers`, `blocks`, `references`. New values
+`decided_in`, `affects`, `covers`, `blocks`, `references`, plus the typed
+kinds added since. `withdraws` (REQ-560 / DEC-1034, PI-462) runs from the
+withdrawing decision to the artifact it withdraws without replacing, so a
+withdrawal is found from the edges alone as a supersession is through
+`supersedes`. New values
 require a deliberate edit to
 `crmbuilder_v2/access/vocab.py:REFERENCE_RELATIONSHIPS` plus an Alembic
 migration that updates the CHECK constraint on the `refs` table.
@@ -517,7 +521,10 @@ Each tool wraps a single REST call. To add a tool, add a wrapper in
 > agent contract's hard-gates section verified by the Tester tier (DEC-972).
 > In Claude Code the repo's `.claude/settings.json` wires the mechanism: a
 > `SessionStart` hook (`session_context.py`) injects the effective
-> session-audience rules and active preferences into every session, and a
+> session-audience rules and active preferences into every session (such a
+> session, run with the live store reachable, records `session_medium =
+> claude_code`; a claude.ai sandbox conversation records `chat` — REQ-561 /
+> DEC-1035, PI-462), and a
 > `PreToolUse` hook (`rule_check.py`) evaluates the enforced checks before
 > each Bash command, denying with the rule named; an `enforced_with_override`
 > failure can be waved through with `GVR_OVERRIDE='GVR-NNN: <reason>'`, the
