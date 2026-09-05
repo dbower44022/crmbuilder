@@ -32,6 +32,7 @@ from crmbuilder_v2.access.models import Reference, Release
 from crmbuilder_v2.access.vocab import (
     ENTITY_TYPES,
     REFERENCE_RELATIONSHIPS,
+    RELATIONSHIP_RULES,
     RELEASE_TERMINAL_STATUSES,
 )
 
@@ -284,6 +285,26 @@ def create(
     )
     if existing is not None:
         raise ConflictError(f"reference already exists: {_identifier(existing)}")
+
+    # PI-462 (REQ-560 / DEC-1034): ``withdraws`` runs from the withdrawing
+    # decision to the governed record it withdraws. The pair rule lives in
+    # ``RELATIONSHIP_RULES`` (the UI dialogs already read it); it is enforced
+    # here as well so an edge from a non-decision source, or at a type a
+    # decision does not withdraw (a session, a conversation, ...), is refused
+    # through the API and the access layer, not only in the dialog.
+    if relationship == "withdraws" and "withdraws" not in RELATIONSHIP_RULES.get(
+        (source_type, target_type), frozenset()
+    ):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "relationship",
+                    "pair_not_allowed",
+                    "withdraws runs from a decision to a governed record; "
+                    f"({source_type}, {target_type}) is not such a pair",
+                )
+            ]
+        )
 
     # PI-216 (PRJ-031, FE-3): a release's scope membership is closed once frozen.
     # Reject adding a project/PI/requirement membership edge into a frozen

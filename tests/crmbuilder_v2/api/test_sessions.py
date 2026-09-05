@@ -148,3 +148,12 @@ def test_post_with_invalid_identifier_format_returns_422(client):
         },
     )
     assert r.status_code == 422, r.json()
+
+
+def test_claude_code_medium_posts(client):
+    """PI-462 (REQ-561): a Claude Code session records ``claude_code``."""
+    ws_id = _make_workstream(client)
+    r = _create(client, ws_id, session_medium="claude_code")
+    assert r.status_code == 201, r.json()
+    r = client.get("/sessions/SES-001")
+    assert r.json()["data"]["session_medium"] == "claude_code"

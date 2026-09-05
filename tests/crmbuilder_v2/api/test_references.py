@@ -228,3 +228,34 @@ def test_relationship_query_param_aliases_relationship_kind(client):
         "&relationship_kind=decided_in&relationship=supersedes"
     ).json()["data"]
     assert [e["relationship"] for e in both_given] == ["decided_in"]
+
+
+def test_withdraws_edge_posts(client):
+    """PI-462 (REQ-560): a decision's withdrawal of a requirement is an edge."""
+    r = client.post(
+        "/references",
+        json={
+            "source_type": "decision",
+            "source_id": "DEC-001",
+            "target_type": "requirement",
+            "target_id": "REQ-001",
+            "relationship": "withdraws",
+        },
+    )
+    assert r.status_code == 201, r.text
+    rows = client.get("/references?source_id=DEC-001").json()["data"]
+    assert [e["relationship"] for e in rows] == ["withdraws"]
+
+
+def test_withdraws_edge_from_a_non_decision_is_422(client):
+    r = client.post(
+        "/references",
+        json={
+            "source_type": "session",
+            "source_id": "SES-001",
+            "target_type": "requirement",
+            "target_id": "REQ-001",
+            "relationship": "withdraws",
+        },
+    )
+    assert r.status_code == 422, r.text

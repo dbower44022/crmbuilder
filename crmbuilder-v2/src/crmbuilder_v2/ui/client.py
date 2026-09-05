@@ -228,7 +228,8 @@ class StorageClient:
         Redesigned in PI-073 / DEC-314 — sessions are the medium-agnostic
         communication container. Filters: ``status`` (planned, in_flight,
         complete, cancelled, not_started, superseded), ``medium`` (chat,
-        email, phone, zoom, in_person, slack, other), ``project_identifier``
+        claude_code, email, phone, zoom, in_person, slack, other),
+        ``project_identifier``
         (filters via the session_belongs_to_project edge).
         """
         query: list[str] = []

@@ -254,3 +254,28 @@ def test_autoassign_retries_on_identifier_collision(v2_env, monkeypatch):
             references=[_member_edge("SES-002", wid)],
         )
     assert row["session_identifier"] == "SES-002"
+
+
+# ---------------------------------------------------------------------------
+# PI-462 (REQ-561 / DEC-1035) — a Claude Code session records ``claude_code``.
+# ---------------------------------------------------------------------------
+
+
+def test_claude_code_medium_round_trips(v2_env):
+    with session_scope() as s:
+        wid = _ws(s)
+        _make(s, wid, identifier="SES-001", medium="claude_code")
+    with session_scope() as s:
+        row = sessions.get(s, "SES-001")
+    assert row["session_medium"] == "claude_code"
+
+
+@pytest.mark.parametrize(
+    "medium", ["chat", "email", "phone", "zoom", "in_person", "slack", "other"]
+)
+def test_existing_mediums_still_accepted(v2_env, medium):
+    with session_scope() as s:
+        wid = _ws(s)
+        _make(s, wid, identifier="SES-001", medium=medium)
+    with session_scope() as s:
+        assert sessions.get(s, "SES-001")["session_medium"] == medium

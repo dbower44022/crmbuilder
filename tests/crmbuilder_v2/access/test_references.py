@@ -471,3 +471,39 @@ class TestOpensAgainstStatusFlip:
             row = wt.get_work_ticket(s, wt_id, include_deleted=True)
         assert row["work_ticket_status"] == "ready"
         assert row["work_ticket_consumed_at"] is None
+
+
+# ---------------------------------------------------------------------------
+# PI-462 (REQ-560 / DEC-1034) — the ``withdraws`` kind: decision → governed
+# record. The pair rule is enforced at the access layer, not only in the UI.
+# ---------------------------------------------------------------------------
+
+
+def _withdraws(s, source_type="decision", source_id="DEC-001", target_type="requirement"):
+    return references.create(
+        s,
+        source_type=source_type,
+        source_id=source_id,
+        target_type=target_type,
+        target_id="X-001",
+        relationship="withdraws",
+    )
+
+
+def test_withdraws_decision_to_requirement_succeeds(v2_env):
+    with session_scope() as s:
+        _withdraws(s)
+    with session_scope() as s:
+        rows = references.list_from(s, source_type="decision", source_id="DEC-001")
+    assert [r["relationship"] for r in rows] == ["withdraws"]
+
+
+def test_withdraws_decision_to_session_refused(v2_env):
+    with session_scope() as s, pytest.raises(UnprocessableError) as exc:
+        _withdraws(s, target_type="session")
+    assert "pair_not_allowed" in str(exc.value.errors)
+
+
+def test_withdraws_from_a_non_decision_refused(v2_env):
+    with session_scope() as s, pytest.raises(UnprocessableError):
+        _withdraws(s, source_type="requirement", source_id="REQ-001")

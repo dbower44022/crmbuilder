@@ -37,8 +37,13 @@ SESSION_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 
 # `session_medium` enum (DEC-314, PI-073). Seven mediums plus 'other' for
 # extensibility — chat, email, phone, zoom, in_person, slack, other.
+# PI-462 (REQ-561 / DEC-1035) adds ``claude_code``: a session run in Claude
+# Code with the live store reachable records it; a claude.ai sandbox
+# conversation keeps ``chat``, so the close-out completeness audit can tell
+# the live-store variant of the process from the fallback variant from the
+# session record alone. CHECK ``ck_session_medium`` rebuilt by 0138 / 0095.
 SESSION_MEDIUMS: frozenset[str] = frozenset(
-    {"chat", "email", "phone", "zoom", "in_person", "slack", "other"}
+    {"chat", "claude_code", "email", "phone", "zoom", "in_person", "slack", "other"}
 )
 
 RISK_PROBABILITIES: frozenset[str] = frozenset({"Low", "Medium", "High"})
@@ -1730,6 +1735,14 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
     {
         "is_about",
         "supersedes",
+        # PI-462 (REQ-560 / DEC-1034). A decision that withdraws an artifact
+        # without replacing it records ``withdraws`` (decision → the withdrawn
+        # governed record) alongside the status change, so the close-out
+        # completeness audit finds every withdrawal from the edges alone, as it
+        # finds every supersession through ``supersedes``. Source is always a
+        # decision; the admitted targets are the ``_WITHDRAWS_TARGET_TYPES``
+        # clause in ``_kinds_for_pair``, enforced at the access layer too.
+        "withdraws",
         "decided_in",
         "affects",
         "covers",
@@ -2178,6 +2191,31 @@ ENTITY_TYPES: frozenset[str] = frozenset(
 )
 
 
+# PI-462 (REQ-560 / DEC-1034). The governed record types a decision can
+# withdraw without replacing: the ones whose lifecycle a decision rules and
+# that carry a withdrawn / cancelled / retired / rejected terminal. Read by the
+# ``withdraws`` clause of :func:`_kinds_for_pair` and, through
+# :data:`RELATIONSHIP_RULES`, by the references access layer.
+_WITHDRAWS_TARGET_TYPES: frozenset[str] = frozenset(
+    {
+        "decision",
+        "requirement",
+        "planning_item",
+        "project",
+        "workstream",
+        "work_task",
+        "release",
+        "governance_rule",
+        "preference",
+        "lesson",
+        "reference_pointer",
+        "term",
+        "topic",
+        "risk",
+    }
+)
+
+
 def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     """Return the valid relationship kinds for a (source, target) pair.
 
@@ -2187,6 +2225,11 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     * ``is_about`` and ``references`` — generic, valid for any pair.
     * ``decided_in`` — target must be a session.
     * ``supersedes`` — source and target types must match.
+    * ``withdraws`` — source must be a decision, target one of the governed
+      record types a decision rules (:data:`_WITHDRAWS_TARGET_TYPES`;
+      PI-462, REQ-560 / DEC-1034). Unlike ``supersedes`` the types need
+      not match: the withdrawing decision and the withdrawn artifact are
+      different records.
     * ``affects`` — source must be a risk.
     * ``covers`` — source must be charter or status.
     * ``entity_scopes_to_domain`` — source must be an entity, target must
@@ -2267,6 +2310,12 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("decided_in")
     if source_type == target_type:
         kinds.add("supersedes")
+    # PI-462 (REQ-560 / DEC-1034): the withdrawing decision → the withdrawn
+    # governed record. Communication and mechanical types (session,
+    # conversation, commit, deposit_event, ...) are not withdrawn by decision,
+    # so they are not targets; the access layer refuses the pair as well.
+    if source_type == "decision" and target_type in _WITHDRAWS_TARGET_TYPES:
+        kinds.add("withdraws")
     if source_type == "risk":
         kinds.add("affects")
     if source_type in ("charter", "status"):
