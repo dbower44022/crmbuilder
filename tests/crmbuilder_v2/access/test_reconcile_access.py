@@ -233,3 +233,48 @@ def test_a_missing_role_is_not_found(v2_env):
             reconcile_access.assess_access_publish(
                 s, instance=iid, member_type="role", member_identifier="ROL-999"
             )
+
+
+# --- the store-free core the whole-design route reuses (PI-466) --------------
+
+
+def test_the_core_assessment_takes_both_sides_as_values():
+    """The whole-design publish hands the target's live role in here; the
+    words and the verdict are the reconcile route's, not a second judgement."""
+    out = reconcile_access.assess_member_access(
+        instance="INST-009", member_type="role", member_identifier="ROL-001",
+        member_name="Mentor",
+        design_scope_access={"Contact": {"read": "all", "delete": "no"}},
+        design_system_permissions={"exportPermission": "no"},
+        instance_scope_access={"Contact": {"read": "all", "delete": "all"}},
+        instance_system_permissions={"exportPermission": "yes"},
+    )
+    assert out["removes_access"] is True
+    assert [c["description"] for c in out["removals"]] == [
+        "Mentor: Contact.delete all → no",
+        "Mentor: exportPermission yes → no",
+    ]
+    assert out["target"] == {
+        "instance": "INST-009", "member_type": "role",
+        "member_identifier": "ROL-001", "member_name": "Mentor",
+    }
+    assert "2 of which take access away" in out["summary"]
+
+
+def test_an_instance_holding_nothing_makes_every_setting_new_not_a_removal():
+    out = reconcile_access.assess_member_access(
+        instance="INST-009", member_type="role", member_identifier="ROL-001",
+        member_name="Mentor",
+        design_scope_access={"Contact": {"read": "all", "delete": "no"}},
+    )
+    assert out["removes_access"] is False
+    assert [c["before"] for c in out["changes"]] == [None, None]
+    assert out["changes"][0]["description"] == "Mentor: Contact.delete unset → no"
+
+
+def test_the_core_refuses_a_member_type_that_does_not_change_access():
+    with pytest.raises(ConflictError):
+        reconcile_access.assess_member_access(
+            instance="INST-009", member_type="field",
+            member_identifier="FLD-001", member_name="x",
+        )

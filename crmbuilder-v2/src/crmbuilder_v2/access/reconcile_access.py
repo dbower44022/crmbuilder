@@ -12,6 +12,12 @@ This module answers both questions and applies neither. It reads the design
 record and the instance's recorded deviation, then reports the change in the
 vocabulary an operator reads — scope, action, from, to — and says plainly
 whether any part of it is a removal.
+
+The comparison itself (:func:`assess_member_access`) takes the two sides as
+plain values and touches no store, so the whole-design publish route can put
+the *live* target's roles through the same assessment (PI-466 / REQ-521) and
+state the effect in the same words, rather than keeping a second judgement of
+what counts as taking access away.
 """
 
 from __future__ import annotations
@@ -142,19 +148,29 @@ def _describe(change: dict[str, Any], member_name: str) -> str:
     return f"{member_name}: {where} {before} → {change['after']}"
 
 
-def assess_access_publish(
-    session: Session,
+def assess_member_access(
     *,
     instance: str,
     member_type: str,
     member_identifier: str,
+    member_name: str,
+    design_scope_access: dict | None = None,
+    design_system_permissions: dict | None = None,
+    instance_scope_access: dict | None = None,
+    instance_system_permissions: dict | None = None,
 ) -> dict[str, Any]:
-    """What a role or team publish would do to access on ``instance`` (REQ-521).
+    """The effect of writing a member's design definition over what an
+    instance currently holds (REQ-521) — the store-free core of the gate.
 
-    Compares the design record against the instance's recorded deviation and
-    reports the effect. ``removes_access`` is true when any part of the change
-    lowers a level the instance currently grants; the caller must not apply such
-    a publish without a deliberate second confirmation.
+    The instance side is whatever the caller knows the instance to grant: the
+    recorded deviation on the reconcile route, the live role read from the
+    target on the whole-design route (PI-466). ``None`` on the instance side
+    means the instance holds no value there, so every declared setting is new
+    and nothing can be a removal.
+
+    ``removes_access`` is true when any part of the change lowers a level the
+    instance currently grants; the caller must not apply such a publish
+    without a deliberate second confirmation.
 
     A team carries no access levels of its own — it is a container users are put
     into — so a team publish always requires confirmation and never reports a
@@ -169,32 +185,13 @@ def assess_access_publish(
             "this assessment does not apply"
         )
 
-    if member_type == "role":
-        record = roles_repo.get_role(session, member_identifier)
-        name_key = "role_name"
-    else:
-        record = teams_repo.get_team(session, member_identifier)
-        name_key = "team_name"
-    if record is None:
-        raise NotFoundError(member_type, member_identifier)
-    member_name = record.get(name_key) or member_identifier
-
-    rows = membership_repo.list_memberships(
-        session,
-        instance_identifier=instance,
-        member_type=member_type,
-        member_identifier=member_identifier,
-    )
-    override = (rows[0] if rows else {}).get("override") or {}
-
     changes: list[dict[str, Any]] = []
     if member_type == "role":
         changes += _scope_access_changes(
-            override.get("role_scope_access"), record.get("role_scope_access")
+            instance_scope_access, design_scope_access
         )
         changes += _system_permission_changes(
-            override.get("role_system_permissions"),
-            record.get("role_system_permissions"),
+            instance_system_permissions, design_system_permissions
         )
 
     removals = [c for c in changes if c["removes_access"]]
@@ -231,3 +228,55 @@ def assess_access_publish(
         "requires_confirmation": True,
         "summary": summary,
     }
+
+
+def assess_access_publish(
+    session: Session,
+    *,
+    instance: str,
+    member_type: str,
+    member_identifier: str,
+) -> dict[str, Any]:
+    """What a role or team publish would do to access on ``instance`` (REQ-521).
+
+    Compares the design record against the instance's recorded deviation (the
+    reconcile route's view of the instance) and reports the effect through
+    :func:`assess_member_access`.
+
+    :returns: ``{target, changes, removals, removes_access,
+        requires_confirmation, summary}``.
+    """
+    if member_type not in ACCESS_MEMBER_TYPES:
+        raise ConflictError(
+            f"member type {member_type!r} does not change access; "
+            "this assessment does not apply"
+        )
+
+    if member_type == "role":
+        record = roles_repo.get_role(session, member_identifier)
+        name_key = "role_name"
+    else:
+        record = teams_repo.get_team(session, member_identifier)
+        name_key = "team_name"
+    if record is None:
+        raise NotFoundError(member_type, member_identifier)
+    member_name = record.get(name_key) or member_identifier
+
+    rows = membership_repo.list_memberships(
+        session,
+        instance_identifier=instance,
+        member_type=member_type,
+        member_identifier=member_identifier,
+    )
+    override = (rows[0] if rows else {}).get("override") or {}
+
+    return assess_member_access(
+        instance=instance,
+        member_type=member_type,
+        member_identifier=member_identifier,
+        member_name=member_name,
+        design_scope_access=record.get("role_scope_access"),
+        design_system_permissions=record.get("role_system_permissions"),
+        instance_scope_access=override.get("role_scope_access"),
+        instance_system_permissions=override.get("role_system_permissions"),
+    )

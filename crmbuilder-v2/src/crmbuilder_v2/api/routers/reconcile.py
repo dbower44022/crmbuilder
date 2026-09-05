@@ -402,6 +402,10 @@ def publish_object(body: PublishObjectIn):
         engagement=engagement,
         scope={scope["filename"]},
         allow_no_backup=body.allow_no_backup,
+        # REQ-521 / PI-466: the service now fences access on every route; the
+        # word this gate collected above is what lets a confirmed removal
+        # through the service's automatic-apply screen.
+        confirm_access_removal=body.confirm_access_removal,
     )
     payload = _serialize_publish_result(result)
     payload["scope"] = scope

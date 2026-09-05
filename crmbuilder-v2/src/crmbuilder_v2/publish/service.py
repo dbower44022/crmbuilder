@@ -29,10 +29,15 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from crmbuilder_v2.access.apply_plan import fingerprint_plan, screen_automatic
+from crmbuilder_v2.access.apply_plan import (
+    REMOVAL,
+    fingerprint_plan,
+    screen_automatic,
+)
 from crmbuilder_v2.adapters.base import GenerationResult
 from crmbuilder_v2.adapters.espocrm.adapter import EspoCrmAdapter
 from crmbuilder_v2.adapters.espocrm.client import DesignClient
+from crmbuilder_v2.publish.access import assess_publish_access, describe_removals
 from crmbuilder_v2.publish.backup import BackupCaptureError, capture_target_backup
 from crmbuilder_v2.publish.live_state import gather_server_fields
 from espo_impl.core.api_client import EspoAdminClient
@@ -204,6 +209,15 @@ class PublishResult:
     #: REQ-497 / DEC-982 — the changes an automatic apply declined, each
     #: carrying its kind and reason. Non-empty only on a refused run.
     declined_changes: list = field(default_factory=list)
+    #: REQ-521 / PI-466 — what this publish does to access on the target:
+    #: each declared role and team against the target's live roles, in the
+    #: reconcile route's words, or ``known: False`` when the target could not
+    #: be read. ``None`` when the run stopped before the assessment
+    #: (validate-only, validation failure).
+    access: dict | None = None
+    #: True when a reviewed run was refused because it takes access away and
+    #: the request did not carry the separate removal confirmation.
+    access_removal_unconfirmed: bool = False
     abort_reason: str | None = None
 
 
@@ -410,7 +424,10 @@ def declared_setting_values(
 
 
 def automatic_apply_declines(
-    programs: list[tuple[str, ProgramFile]], client: EspoAdminClient
+    programs: list[tuple[str, ProgramFile]],
+    client: EspoAdminClient,
+    *,
+    access: dict | None = None,
 ) -> list[dict]:
     """The changes an automatic apply of these programs must decline (REQ-497).
 
@@ -424,6 +441,13 @@ def automatic_apply_declines(
     treated as the engine treats it: the objects deploy as new, which is
     additive.
 
+    Access is screened from the assessment already made (REQ-521 / PI-466):
+    every setting the security program would lower — a scope level, a system
+    permission — is a removal, declined by name. The judgement of what counts
+    as lowering is the reconcile gate's, not restated here.
+
+    :param access: the :func:`assess_publish_access` section for this run,
+        or ``None`` to screen the programs alone.
     :returns: the declined changes, each carrying ``kind`` and ``reason``.
     """
     changes: list[dict] = []
@@ -468,6 +492,18 @@ def automatic_apply_declines(
                         "instance": live_options,
                     })
     _, declined = screen_automatic(changes)
+    for removal in (access or {}).get("removals", []):
+        declined.append({
+            "construct": f"role {removal.get('member_name')} (security.yaml)",
+            "attribute": removal.get("attribute"),
+            "design": removal.get("after"),
+            "instance": removal.get("before"),
+            "kind": REMOVAL,
+            "reason": (
+                "takes away access the instance currently grants: "
+                f"{removal.get('description')}"
+            ),
+        })
     return declined
 
 
@@ -587,6 +623,7 @@ def publish(
     allow_no_backup: bool = False,
     expected_plan_fingerprint: str | None = None,
     release_identifier: str | None = None,
+    confirm_access_removal: bool = False,
     output_fn: OutputFn | None = None,
 ) -> PublishResult:
     """Generate, validate, and (unless ``validate_only``) deploy the design.
@@ -617,6 +654,14 @@ def publish(
         design-version stamp into the instance (REQ-495 / DEC-980, DEC-981);
         a publish outside a frozen release never writes it. The caller
         validates the release's freeze state.
+    :param confirm_access_removal: The operator's separate word that access
+        the target currently grants may be taken away (REQ-521 / PI-466).
+        Without it a reviewed run carrying a removal is refused
+        (``access_removal_unconfirmed``) and an automatic run declines the
+        removal (DEC-982); with it, the removal — or an effect the target
+        would not let us read — proceeds. The reconcile route's gate collects
+        this word before calling; the whole-design route accepts it only
+        alongside an approved plan fingerprint.
     :param output_fn: Optional deploy log callback; when omitted, each
         program's log is captured into its :class:`ProgramOutcome`.
     :returns: A :class:`PublishResult`.
@@ -686,6 +731,13 @@ def publish(
             )
         return pub
 
+    # Access effect (REQ-521 / PI-466): what the security program in this
+    # run would do to who can reach what, read from the target's live roles.
+    # Stated on every preview and real run; the fences below act on it.
+    pub.access = assess_publish_access(
+        programs, design_client, client, target_identifier=target_identifier
+    )
+
     # Plan-identity gate (REQ-496 / PI-411): the plan was re-derived by the
     # generation above; if the operator approved a different plan, refuse and
     # report the newly derived one rather than proceeding. A preview writes
@@ -709,12 +761,64 @@ def publish(
             )
         return pub
 
+    # Removal fence on a reviewed run (REQ-521 / PI-466): approving the plan
+    # is agreeing to push the roles, not to revoke what the instance grants.
+    # A removal needs its own word, exactly as on the reconcile route.
+    if (
+        not preview
+        and expected_plan_fingerprint is not None
+        and pub.access["removes_access"]
+        and not confirm_access_removal
+    ):
+        pub.aborted = True
+        pub.access_removal_unconfirmed = True
+        pub.abort_reason = (
+            f"{pub.access['summary']} This publish removes access the "
+            "instance currently grants and is never applied automatically; "
+            "confirm the removal separately (confirm_access_removal): "
+            + describe_removals(pub.access)
+        )
+        for filename, program in programs:
+            pub.programs.append(
+                ProgramOutcome.for_program(filename, program, deployed=False)
+            )
+        return pub
+
     # Additive-only fence (REQ-497 / DEC-982): a publish without an approved
     # plan fingerprint is an automatic apply and may only add or widen. A
     # removal, narrowing, or type change is refused by name; the reviewed run
-    # that may carry them is the preview-then-approve flow above.
+    # that may carry them is the preview-then-approve flow above. Access the
+    # security program would lower is a removal (PI-466), and an effect the
+    # target would not let us read is not proven additive, so it is refused
+    # too — unless the removal was confirmed in so many words.
     if not preview and expected_plan_fingerprint is None:
-        declined = automatic_apply_declines(programs, client)
+        access_unknown = (
+            pub.access["assessed"]
+            and not pub.access["known"]
+            and not confirm_access_removal
+        )
+        if access_unknown:
+            pub.aborted = True
+            pub.abort_reason = (
+                f"{pub.access['summary']}. An automatic apply proceeds only "
+                "when it is proven to add or widen (DEC-982), and the "
+                "security program's effect on access is unknown. Nothing "
+                "was applied. Run a publish preview when the target can be "
+                "read, review the access effect, and resubmit with the "
+                "approved plan fingerprint."
+            )
+            for filename, program in programs:
+                pub.programs.append(
+                    ProgramOutcome.for_program(
+                        filename, program, deployed=False
+                    )
+                )
+            return pub
+        declined = automatic_apply_declines(
+            programs,
+            client,
+            access=None if confirm_access_removal else pub.access,
+        )
         if declined:
             pub.aborted = True
             pub.declined_changes = declined

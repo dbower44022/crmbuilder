@@ -291,3 +291,157 @@ def test_creating_an_instance_reports_422_when_nothing_can_store_the_secret(
     )
     assert r.status_code == 422, r.text
     assert r.json()["errors"][0]["code"] == "secret_backend_unavailable"
+
+
+# -- the access fence on the whole-design route (REQ-521 / PI-466) -----------
+
+
+def _access_section(*, removes=True, known=True):
+    removal = {
+        "attribute": "role_scope_access", "scope": "Contact",
+        "action": "delete", "before": "all", "after": "no",
+        "removes_access": True, "member_name": "Mentor",
+        "description": "Mentor: Contact.delete all → no",
+    }
+    return {
+        "target": "INST-001", "assessed": True, "known": known,
+        "reason": None if known else "could not read the target's roles (HTTP 500)",
+        "roles": [], "teams": [],
+        "changes": [removal] if removes else [],
+        "removals": [removal] if removes else [],
+        "removes_access": removes, "requires_confirmation": True,
+        "summary": "Publishing the security program to INST-001 changes 1 "
+        "access setting(s) across 1 role(s), 1 of which take access away.",
+    }
+
+
+def _fake_publish_with_fence(captured):
+    """A service double that behaves as the real fence does on the flags it
+    is handed, so the route's wiring of them is what gets exercised."""
+
+    def fake_publish(rec, design_client, *, preview=False, validate_only=False,
+                     expected_plan_fingerprint=None,
+                     confirm_access_removal=False, **kw):
+        captured.update(
+            preview=preview,
+            expected_plan_fingerprint=expected_plan_fingerprint,
+            confirm_access_removal=confirm_access_removal,
+        )
+        result = _fake_result(validate_only=False)
+        result.preview = preview
+        result.plan_fingerprint = "fp-1"
+        result.access = _access_section()
+        if preview:
+            return result
+        if expected_plan_fingerprint is None and not confirm_access_removal:
+            result.aborted = True
+            result.programs = []
+            result.declined_changes = [{
+                "construct": "role Mentor (security.yaml)", "kind": "removal",
+                "reason": "takes away access the instance currently grants: "
+                "Mentor: Contact.delete all → no",
+            }]
+            result.abort_reason = "declined 1 change(s): role Mentor"
+        elif not confirm_access_removal:
+            result.aborted = True
+            result.programs = []
+            result.access_removal_unconfirmed = True
+            result.abort_reason = (
+                "This publish removes access the instance currently grants "
+                "and is never applied automatically; confirm the removal "
+                "separately (confirm_access_removal): "
+                "Mentor: Contact.delete all → no"
+            )
+        return result
+
+    return fake_publish
+
+
+def test_the_preview_response_carries_the_access_section(client, monkeypatch):
+    iid = _make_instance(client)
+    monkeypatch.setattr(publish_service, "publish", _fake_publish_with_fence({}))
+    r = client.post(f"/instances/{iid}/publish-preview")
+    assert r.status_code == 200, r.text
+    access = r.json()["data"]["access"]
+    assert access["removes_access"] is True
+    assert access["removals"][0]["description"] == "Mentor: Contact.delete all → no"
+
+
+def test_an_automatic_publish_that_lowers_access_is_declined_by_name(
+    client, monkeypatch
+):
+    iid = _make_instance(client)
+    monkeypatch.setattr(publish_service, "publish", _fake_publish_with_fence({}))
+    r = client.post(f"/instances/{iid}/publish")
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["aborted"] is True
+    assert data["declined_changes"][0]["kind"] == "removal"
+    assert "Contact.delete all → no" in data["declined_changes"][0]["reason"]
+    assert data["access"]["removes_access"] is True
+
+
+def test_a_reviewed_publish_with_a_removal_is_409_without_the_word(
+    client, monkeypatch
+):
+    iid = _make_instance(client)
+    captured = {}
+    monkeypatch.setattr(
+        publish_service, "publish", _fake_publish_with_fence(captured)
+    )
+    r = client.post(f"/instances/{iid}/publish", json={
+        "expected_plan_fingerprint": "fp-1",
+    })
+    assert r.status_code == 409, r.text
+    assert r.json()["errors"][0]["code"] == "conflict"
+    assert "removes access" in r.text
+    assert "Mentor: Contact.delete all → no" in r.text
+    # the refusal is a gate, not an outcome: no run is recorded
+    assert client.get("/publish-runs").json()["data"] == []
+
+
+def test_confirming_the_change_is_not_confirming_the_removal(client, monkeypatch):
+    iid = _make_instance(client)
+    monkeypatch.setattr(publish_service, "publish", _fake_publish_with_fence({}))
+    r = client.post(f"/instances/{iid}/publish", json={
+        "expected_plan_fingerprint": "fp-1", "confirm_access_change": True,
+    })
+    assert r.status_code == 409, r.text
+    assert "confirm_access_removal" in r.text
+
+
+def test_a_reviewed_publish_with_the_word_proceeds(client, monkeypatch):
+    iid = _make_instance(client)
+    captured = {}
+    monkeypatch.setattr(
+        publish_service, "publish", _fake_publish_with_fence(captured)
+    )
+    r = client.post(f"/instances/{iid}/publish", json={
+        "expected_plan_fingerprint": "fp-1", "confirm_access_removal": True,
+    })
+    assert r.status_code == 200, r.text
+    assert captured == {
+        "preview": False,
+        "expected_plan_fingerprint": "fp-1",
+        "confirm_access_removal": True,
+    }
+    data = r.json()["data"]
+    assert data["aborted"] is False
+    assert data["access"]["removes_access"] is True
+    assert data["publish_run"] is not None
+
+
+def test_the_removal_word_without_a_reviewed_run_is_422(client, monkeypatch):
+    """DEC-924: the word is not an incident-time switch that lets an
+    automatic run revoke access — it needs the reviewed run's fingerprint."""
+    iid = _make_instance(client)
+    called = []
+    monkeypatch.setattr(
+        publish_service, "publish", lambda *a, **k: called.append(1)
+    )
+    r = client.post(f"/instances/{iid}/publish", json={
+        "confirm_access_removal": True,
+    })
+    assert r.status_code == 422, r.text
+    assert r.json()["errors"][0]["code"] == "removal_needs_reviewed_run"
+    assert called == []

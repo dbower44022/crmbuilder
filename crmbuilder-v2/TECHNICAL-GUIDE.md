@@ -307,6 +307,30 @@ existing generate → validate → backup → deploy → verify flow:
   /reconcile/assess-access-publish` reports target, changes and removals
   first). The gate sits before target resolution, so a refusal never
   reaches the instance.
+* **The same fence on the whole-design route (REQ-521 / DEC-982,
+  PI-466).** `POST /instances/{id}/publish` and `/publish-preview` run
+  the security program too, so they now state and fence its effect.
+  `publish.access.assess_publish_access` reads the target's live roles
+  and teams (`GET /Role`, `GET /Team` — the audit's readers) and puts each
+  declared role through `reconcile_access.assess_member_access`, the
+  store-free core the reconcile gate uses, so the words and the removal
+  verdict are the same on both routes. The result's `access` section
+  (`known`, per-role `live_state` present/absent/unknown, `changes`,
+  `removals`, `removes_access`, `summary`) is returned on every preview
+  and publish; a target whose roles cannot be read reports `known: false`
+  and is never guessed. On an automatic run (no plan fingerprint)
+  `automatic_apply_declines(..., access=)` declines every lowered scope
+  level or system permission as a `removal`, and an unknown effect
+  aborts the run as unproven-additive. On a reviewed run the fingerprint
+  is the change confirmation (the preview stated the effect and the
+  fingerprint names that plan); a removal additionally needs
+  `confirm_access_removal`, refused with 409 (`ConflictError`, no run
+  recorded) otherwise — `confirm_access_change` is accepted for parity
+  but never stands in for it. `confirm_access_removal` without a
+  fingerprint is 422 (`removal_needs_reviewed_run`), so the word cannot
+  become the incident-time switch DEC-924 rejected. A team is stated
+  (present/absent) and confirmed but never a removal: the program carries
+  no user assignment and the deploy never deletes a team.
 * **Generation parity (LSN-071).** `generate_design_yaml` — the
   generation a publish actually runs — must read every `list_*` reader on
   the `DesignClient` protocol that `EspoCrmAdapter.run` reads;

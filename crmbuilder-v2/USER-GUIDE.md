@@ -702,6 +702,18 @@ changes who can reach what on a live CRM (REQ-521):
 A candidate role, team or filtered tab is unfinished design and is never
 published; it is listed by name in the MANUAL-CONFIG companion instead.
 
+The same two questions guard a whole-design publish (the Publish dialog, a
+release run, a feature-selection publish), which carries the security
+program along with everything else (PI-466). The publish preview states, for
+every role and team it would push, what the instance grants today and what
+would change, naming each setting that would take access away — or says the
+effect is unknown when the instance cannot be read, rather than guessing. An
+automatic run (one without an approved plan) only ever adds or widens: a
+lowered level is declined by name and nothing is applied. A reviewed run
+takes your approval of the plan as agreement to the changes it showed you,
+but taking access away still needs its own separate confirmation
+(`confirm_access_removal`), exactly as in the Reconcile grid.
+
 ### Publishing layouts
 
 A screen layout — the detail and edit views, the list views, the filter and
