@@ -461,22 +461,37 @@ def test_render_preview_html():
 
 
 class _FakeClient:
-    def __init__(self, validate_result, publish_result=None):
+    """A stubbed StorageClient. ``publish_result`` may be a dict or a callable
+    taking the publish kwargs (``expected_plan_fingerprint``,
+    ``confirm_access_removal``) so a test can behave as the API's fence does;
+    ``preview_result`` defaults to ``publish_result``."""
+
+    def __init__(self, validate_result, publish_result=None, preview_result=None):
         self._v = validate_result
         self._p = publish_result if publish_result is not None else validate_result
+        self._pv = preview_result if preview_result is not None else self._p
         self.calls: list[tuple] = []
+        self.publish_kwargs: list[dict] = []
 
     def publish_validate_instance(self, identifier, scope=None):
         self.calls.append(("validate", identifier, scope))
         return self._v
 
-    def publish_instance(self, identifier, scope=None, allow_no_backup=False):
+    def publish_instance(
+        self, identifier, scope=None, allow_no_backup=False, *,
+        expected_plan_fingerprint=None, confirm_access_removal=False,
+    ):
         self.calls.append(("publish", identifier, scope, allow_no_backup))
-        return self._p
+        kwargs = {
+            "expected_plan_fingerprint": expected_plan_fingerprint,
+            "confirm_access_removal": confirm_access_removal,
+        }
+        self.publish_kwargs.append(kwargs)
+        return self._p(**kwargs) if callable(self._p) else self._p
 
     def publish_preview_instance(self, identifier, scope=None):
         self.calls.append(("preview", identifier, scope))
-        return self._p
+        return self._pv
 
 
 _RECORD = {"instance_identifier": "INST-001", "instance_name": "CBM sandbox"}
@@ -562,3 +577,461 @@ def test_dialog_publish_disabled_when_nothing_selected(qtbot):
     for i in range(dlg._scope_list.count()):
         dlg._scope_list.item(i).setCheckState(Qt.CheckState.Unchecked)
     assert not dlg._publish_btn.isEnabled()
+
+
+# -- the access gate in the dialog (REQ-521 / PI-468) -----------------------
+#
+# The API contract (PI-466): the preview carries ``plan_fingerprint`` and an
+# ``access`` section; a run without the fingerprint is automatic and a
+# removal comes back declined by name (200, ``declined_changes``); a run with
+# the fingerprint and a removal is 409 unless ``confirm_access_removal`` is
+# sent. The client is stubbed to behave exactly as that fence does.
+
+_REMOVAL = {
+    "attribute": "role_scope_access", "scope": "Contact", "action": "delete",
+    "before": "all", "after": "no", "removes_access": True,
+    "member_name": "Mentor", "description": "Mentor: Contact.delete all → no",
+}
+_WIDENING = {
+    "attribute": "role_scope_access", "scope": "Account", "action": "read",
+    "before": "own", "after": "all", "removes_access": False,
+    "member_name": "Mentor", "description": "Mentor: Account.read own → all",
+}
+
+
+def _role_entry(changes, *, live_state="present", summary=None):
+    removals = [c for c in changes if c["removes_access"]]
+    return {
+        "target": {
+            "instance": "INST-001", "member_type": "role",
+            "member_identifier": "ROL-001", "member_name": "Mentor",
+        },
+        "changes": changes, "removals": removals,
+        "removes_access": bool(removals), "requires_confirmation": True,
+        "summary": summary or (
+            f"Publishing role Mentor to INST-001 changes {len(changes)} access "
+            f"setting(s), {len(removals)} of which take access away."
+        ),
+        "live_state": live_state,
+    }
+
+
+def _access_section(changes, *, known=True):
+    removals = [c for c in changes if c["removes_access"]]
+    if not known:
+        role = _role_entry(
+            [], live_state="unknown",
+            summary="Publishing role Mentor to INST-001 has an effect on "
+            "access that could not be determined: could not read the "
+            "target's roles (HTTP 500)",
+        )
+        return {
+            "target": "INST-001", "assessed": True, "known": False,
+            "reason": "could not read the target's roles (HTTP 500)",
+            "roles": [role], "teams": [], "changes": [], "removals": [],
+            "removes_access": False, "requires_confirmation": True,
+            "summary": "The effect of this publish on access at INST-001 could "
+            "not be determined: could not read the target's roles (HTTP 500)",
+        }
+    return {
+        "target": "INST-001", "assessed": True, "known": True, "reason": None,
+        "roles": [_role_entry(changes)],
+        "teams": [{
+            "target": {
+                "instance": "INST-001", "member_type": "team",
+                "member_identifier": "Mentors", "member_name": "Mentors",
+            },
+            "changes": [], "removals": [], "removes_access": False,
+            "requires_confirmation": True, "live_state": "absent",
+            "summary": "Publishing team Mentors to INST-001 changes who is "
+            "grouped for sharing on that instance. The target holds no such "
+            "team; it is created.",
+        }],
+        "changes": changes, "removals": removals,
+        "removes_access": bool(removals), "requires_confirmation": True,
+        "summary": "Publishing the security program to INST-001 changes "
+        f"{len(changes)} access setting(s) across 1 role(s), {len(removals)} "
+        "of which take access away. 1 team(s) change who is grouped for "
+        "sharing on that instance.",
+    }
+
+
+def _preview_result(access, fingerprint="fp-1"):
+    return {
+        "engine": "espocrm", "target_instance": "INST-001", "preview": True,
+        "validation_failed": False,
+        "programs": [
+            {"filename": "Contact.yaml", "summary": {"created": 1},
+             "validation_errors": []},
+        ],
+        "deferrals": [], "plan_fingerprint": fingerprint, "access": access,
+    }
+
+
+def _fenced_publish(access):
+    """Behave as ``POST /instances/{id}/publish`` does on the two words."""
+    from crmbuilder_v2.ui.exceptions import ConflictError
+
+    base = {
+        "engine": "espocrm", "target_instance": "INST-001",
+        "programs": [{"filename": "Contact.yaml", "deployed": True}],
+        "backup_captured": True, "publish_run": "PUB-009",
+        "plan_fingerprint": "fp-1", "access": access, "declined_changes": [],
+        "aborted": False,
+    }
+
+    def _publish(*, expected_plan_fingerprint, confirm_access_removal):
+        if not access.get("removes_access"):
+            return base
+        if expected_plan_fingerprint is None:
+            return {
+                **base, "aborted": True, "backup_captured": False,
+                "publish_run": "PUB-008",
+                "programs": [{"filename": "Contact.yaml", "deployed": False}],
+                "declined_changes": [{
+                    "construct": "role Mentor (security.yaml)",
+                    "attribute": "role_scope_access", "design": "no",
+                    "instance": "all", "kind": "removal",
+                    "reason": "takes away access the instance currently "
+                    "grants: Mentor: Contact.delete all → no",
+                }],
+                "abort_reason": "an automatic apply may only add or widen "
+                "(REQ-497); declined 1 change(s): role Mentor (security.yaml): "
+                "removal — takes away access the instance currently grants: "
+                "Mentor: Contact.delete all → no. Nothing was applied. Run a "
+                "publish preview, review these changes, and resubmit with the "
+                "approved plan fingerprint.",
+            }
+        if not confirm_access_removal:
+            raise ConflictError(
+                errors=[{"code": "conflict"}],
+                message=access["summary"] + " This publish removes access "
+                "the instance currently grants and is never applied "
+                "automatically; confirm the removal separately "
+                "(confirm_access_removal): Mentor: Contact.delete all → no",
+            )
+        return base
+
+    return _publish
+
+
+def _accept_publish(monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    seen: list[str] = []
+
+    def _exec(self):
+        seen.append(self.text())
+        return QMessageBox.StandardButton.Ok
+
+    monkeypatch.setattr(
+        "crmbuilder_v2.ui.dialogs.publish_dialog.CopyableMessageBox.exec", _exec
+    )
+    return seen
+
+
+def _answer_removal(monkeypatch, reply):
+    """Answer the separate removal question, recording the text shown."""
+    from crmbuilder_v2.ui.dialogs import publish_dialog as pd
+
+    seen: list[str] = []
+
+    def _warning(parent, title, text, *args, **kwargs):
+        seen.append(f"{title}\n{text}")
+        return reply
+
+    monkeypatch.setattr(pd.CopyableMessageBox, "warning", staticmethod(_warning))
+    return seen
+
+
+def _open(qtbot, client):
+    dlg = PublishDialog(client, _RECORD)
+    qtbot.addWidget(dlg)
+    qtbot.waitUntil(lambda: dlg._revalidate_btn.isEnabled(), timeout=3000)
+    return dlg
+
+
+def _preview(qtbot, dlg, client):
+    dlg._start_preview()
+    qtbot.waitUntil(
+        lambda: any(c[0] == "preview" for c in client.calls)
+        and dlg._revalidate_btn.isEnabled(),
+        timeout=3000,
+    )
+
+
+def _wait_published(qtbot, dlg, client):
+    qtbot.waitUntil(
+        lambda: any(c[0] == "publish" for c in client.calls)
+        and dlg._revalidate_btn.isEnabled(),
+        timeout=3000,
+    )
+
+
+# renderers
+
+
+def test_render_access_additive_states_each_change_in_the_apis_words():
+    from crmbuilder_v2.ui.dialogs.publish_dialog import render_access_html
+
+    out = render_access_html(_access_section([_WIDENING]))
+    assert "changes 1 access setting(s)" in out
+    assert "Role Mentor" in out
+    assert "Mentor: Account.read own → all" in out
+    assert "removes access" not in out
+    assert "Team Mentors" in out
+    assert "it is created" in out
+    assert "&#10003;" in out
+
+
+def test_render_access_flags_each_removal():
+    from crmbuilder_v2.ui.dialogs.publish_dialog import render_access_html
+
+    out = render_access_html(_access_section([_WIDENING, _REMOVAL]))
+    assert "1 of which take access away" in out
+    assert "Mentor: Contact.delete all → no" in out
+    assert "removes access" in out
+    assert "confirm each removal separately" in out
+    # the additive line is not flagged
+    assert out.index("Account.read own → all") < out.index("Contact.delete")
+    assert "&#10007;" in out
+
+
+def test_render_access_unknown_says_the_target_could_not_be_read():
+    from crmbuilder_v2.ui.dialogs.publish_dialog import render_access_html
+
+    out = render_access_html(_access_section([], known=False))
+    assert "Access effect unknown" in out
+    assert "the target could not be read" in out
+    assert "could not read the target&#x27;s roles (HTTP 500)" in out
+    assert "effect unknown" in out  # the role line, not "no changes"
+    assert "no access setting changes" not in out
+
+
+def test_render_access_absent_on_a_validate_result():
+    from crmbuilder_v2.ui.dialogs.publish_dialog import render_access_html
+
+    assert render_access_html(None) == ""
+    assert "no role or team" in render_access_html(
+        {"assessed": False, "summary": "The published programs declare no "
+         "role or team; access on INST-001 is left as it is."}
+    )
+
+
+def test_render_preview_includes_access_and_plan():
+    out = render_preview_html(_preview_result(_access_section([_REMOVAL])))
+    assert "Mentor: Contact.delete all → no" in out
+    assert "fp-1" in out
+
+
+def test_render_publish_declined_lists_reasons_and_the_reviewed_path():
+    from crmbuilder_v2.ui.dialogs.publish_dialog import render_declined_html
+
+    result = _fenced_publish(_access_section([_REMOVAL]))(
+        expected_plan_fingerprint=None, confirm_access_removal=False
+    )
+    out = render_publish_html(result)
+    assert "an automatic publish may only add or widen" in out
+    assert "role Mentor (security.yaml)" in out
+    assert "Mentor: Contact.delete all → no" in out
+    assert "Preview" in out and "Publish" in out
+    # not the backup-gate wording
+    assert "override the backup gate" not in out
+    assert render_declined_html({"declined_changes": []}) == ""
+
+
+# the dialog
+
+
+def test_dialog_preview_renders_access_and_holds_the_fingerprint(qtbot):
+    client = _FakeClient(
+        _two_program_validate(),
+        preview_result=_preview_result(_access_section([_WIDENING])),
+    )
+    dlg = _open(qtbot, client)
+    assert not dlg.is_reviewed()
+    _preview(qtbot, dlg, client)
+    assert dlg.is_reviewed()
+    assert "Mentor: Account.read own → all" in dlg._results.toPlainText()
+    assert "reviewed plan" in dlg._status.text()
+
+
+def test_dialog_additive_reviewed_run_sends_the_fingerprint_only(
+    qtbot, monkeypatch
+):
+    access = _access_section([_WIDENING])
+    client = _FakeClient(
+        _two_program_validate(),
+        publish_result=_fenced_publish(access),
+        preview_result=_preview_result(access),
+    )
+    dlg = _open(qtbot, client)
+    _preview(qtbot, dlg, client)
+    shown = _accept_publish(monkeypatch)
+    asked = _answer_removal(monkeypatch, None)
+    dlg._on_publish_clicked()
+    _wait_published(qtbot, dlg, client)
+    # one question, stating the target and the effect; no removal question
+    assert len(shown) == 1
+    assert "CBM sandbox" in shown[0]
+    assert "Mentor: Account.read own → all" in shown[0]
+    assert "Reviewed run — plan fp-1" in shown[0]
+    assert asked == []
+    assert client.publish_kwargs == [
+        {"expected_plan_fingerprint": "fp-1", "confirm_access_removal": False}
+    ]
+    assert dlg._status.text() == "Publish complete."
+
+
+def test_dialog_automatic_run_sends_no_fingerprint_and_shows_the_decline(
+    qtbot, monkeypatch
+):
+    access = _access_section([_REMOVAL])
+    client = _FakeClient(
+        _two_program_validate(), publish_result=_fenced_publish(access)
+    )
+    dlg = _open(qtbot, client)
+    shown = _accept_publish(monkeypatch)
+    asked = _answer_removal(monkeypatch, None)
+    dlg._on_publish_clicked()  # no preview: automatic
+    _wait_published(qtbot, dlg, client)
+    assert "Automatic run" in shown[0]
+    assert asked == []  # the dialog never asks for a word it cannot send
+    assert client.publish_kwargs == [
+        {"expected_plan_fingerprint": None, "confirm_access_removal": False}
+    ]
+    text = dlg._results.toPlainText()
+    assert "Mentor: Contact.delete all → no" in text
+    assert "an automatic publish may only add or widen" in text
+    assert "declined" in dlg._status.text()
+    assert "Preview" in dlg._status.text()
+    # the reviewed path is open: Preview is enabled
+    assert dlg._preview_btn.isEnabled()
+
+
+def test_dialog_removal_is_refused_until_confirmed_then_proceeds(
+    qtbot, monkeypatch
+):
+    from PySide6.QtWidgets import QMessageBox
+
+    access = _access_section([_WIDENING, _REMOVAL])
+    client = _FakeClient(
+        _two_program_validate(),
+        publish_result=_fenced_publish(access),
+        preview_result=_preview_result(access),
+    )
+    dlg = _open(qtbot, client)
+    _preview(qtbot, dlg, client)
+    assert "confirm each removal" in dlg._status.text()
+    shown = _accept_publish(monkeypatch)
+    # Agreeing to the publish and declining the removal sends nothing.
+    asked = _answer_removal(monkeypatch, QMessageBox.StandardButton.Cancel)
+    dlg._on_publish_clicked()
+    assert len(asked) == 1
+    assert "This removes access" in asked[0]
+    assert "Mentor: Contact.delete all → no" in asked[0]
+    assert "Account.read own → all" not in asked[0]  # only the removals
+    assert "Remove this access on CBM sandbox?" in asked[0]
+    assert client.publish_kwargs == []
+    assert "not confirmed" in dlg._status.text()
+    assert dlg.is_reviewed()  # the plan still stands; nothing was spent
+    # Confirming the removal sends the fingerprint and the word together.
+    asked = _answer_removal(monkeypatch, QMessageBox.StandardButton.Yes)
+    dlg._on_publish_clicked()
+    _wait_published(qtbot, dlg, client)
+    assert len(shown) == 2
+    assert "(removes access)" in shown[1]
+    assert client.publish_kwargs == [
+        {"expected_plan_fingerprint": "fp-1", "confirm_access_removal": True}
+    ]
+    assert dlg._status.text() == "Publish complete."
+    assert not dlg.is_reviewed()  # spent
+
+
+def test_dialog_unknown_effect_reviewed_run_proceeds_without_the_word(
+    qtbot, monkeypatch
+):
+    access = _access_section([], known=False)
+    client = _FakeClient(
+        _two_program_validate(),
+        publish_result=_fenced_publish(access),
+        preview_result=_preview_result(access),
+    )
+    dlg = _open(qtbot, client)
+    _preview(qtbot, dlg, client)
+    assert "unknown because the target could not be read" in dlg._status.text()
+    assert "Access effect unknown" in dlg._results.toPlainText()
+    shown = _accept_publish(monkeypatch)
+    asked = _answer_removal(monkeypatch, None)
+    dlg._on_publish_clicked()
+    _wait_published(qtbot, dlg, client)
+    assert "could not be determined" in shown[0]
+    assert asked == []
+    assert client.publish_kwargs == [
+        {"expected_plan_fingerprint": "fp-1", "confirm_access_removal": False}
+    ]
+
+
+def test_dialog_shows_the_apis_refusal_and_the_way_through(qtbot, monkeypatch):
+    """The target changed after the preview: a removal the preview did not
+    show. The API's 409 is rendered in its words, not as an error dialog."""
+    access = _access_section([_REMOVAL])
+    client = _FakeClient(
+        _two_program_validate(),
+        publish_result=_fenced_publish(access),
+        preview_result=_preview_result(_access_section([_WIDENING])),
+    )
+    dlg = _open(qtbot, client)
+    _preview(qtbot, dlg, client)
+    _accept_publish(monkeypatch)
+    monkeypatch.setattr(
+        "crmbuilder_v2.ui.dialogs.publish_dialog.ErrorDialog.exec",
+        lambda self: (_ for _ in ()).throw(AssertionError("error dialog shown")),
+    )
+    dlg._on_publish_clicked()
+    _wait_published(qtbot, dlg, client)
+    assert client.publish_kwargs[0]["confirm_access_removal"] is False
+    text = dlg._results.toPlainText()
+    assert "Publish refused" in text
+    assert "confirm_access_removal" in text
+    assert "Mentor: Contact.delete all → no" in text
+    assert "refused" in dlg._status.text()
+    assert dlg._preview_btn.isEnabled()
+
+
+def test_dialog_scope_change_and_revalidate_drop_the_reviewed_plan(qtbot):
+    from PySide6.QtCore import Qt
+
+    client = _FakeClient(
+        _two_program_validate(),
+        preview_result=_preview_result(_access_section([_WIDENING])),
+    )
+    dlg = _open(qtbot, client)
+    _preview(qtbot, dlg, client)
+    assert dlg.is_reviewed()
+    dlg._scope_list.item(0).setCheckState(Qt.CheckState.Unchecked)
+    assert not dlg.is_reviewed()  # a different scope is a different plan
+    _preview(qtbot, dlg, client)
+    assert dlg.is_reviewed()
+    dlg._start_validate()
+    qtbot.waitUntil(lambda: dlg._revalidate_btn.isEnabled(), timeout=3000)
+    assert not dlg.is_reviewed()
+
+
+def test_client_publish_sends_the_fingerprint_and_the_word():
+    sc = StorageClient.__new__(StorageClient)
+    calls: list[tuple[str, str, object]] = []
+
+    def _req(method, path, *, json_body=None):
+        calls.append((method, path, json_body))
+        return {}
+
+    sc._request = _req
+    sc.publish_instance(
+        "INST-006", None, expected_plan_fingerprint="fp-1",
+        confirm_access_removal=True,
+    )
+    assert calls == [(
+        "POST", "/instances/INST-006/publish",
+        {"expected_plan_fingerprint": "fp-1", "confirm_access_removal": True},
+    )]
