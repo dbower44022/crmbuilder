@@ -26,7 +26,10 @@
     "session_medium_metadata": {
       "chat_platform": "claude_ai_cowork"
     },
-    "session_participants": ["Doug Bower", "Claude"],
+    "session_participants": [
+      "Doug Bower",
+      "Claude"
+    ],
     "session_status": "complete",
     "session_executive_summary": "CRM Builder cannot yet build the Mentor Application from its definition: the definition describes the business process well but is silent on the form, the screens, failure behaviour and access. The product owner ruled that an AI agent builds the application from the definition. Sixteen gaps in three layers were registered and fifteen become planning items. The writing standards become system-scope governance rules so the rules travel with the system.",
     "session_notes": "In flight at end: two rulings belong to the Cleveland Business Mentors engagement, not this one — whether a person or the application moves a candidate to Provisional (the definition and the prototype disagree), and the fill policy for a repeat applicant's existing record. Next step: rule the Provisional question, then write the transition table and the field roles for the Mentor Application.",
@@ -47,7 +50,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "An application needs one list of allowed status moves: from which value to which, who may make the move, what must be filled in first, and what happens automatically afterward. Today that list can only be assembled from a process's prose steps and several decisions, and two regenerations would assemble it differently. Add a transition record type on the process, referencing the entity and its status field, and let views, screens, automations and conformance tests refer to individual transitions. Source: gap GAP-01 in the application-generation gap register.",
-      "executive_summary": "Add a transition record type so a process's status lifecycle is stated once, as data, and everything else can refer to it.",
+      "executive_summary": "Add a transition record type so a process's status lifecycle is stated once, as data, and everything else can refer to it. Each row names the move from one status value to another, who may make it, which fields must be filled in first, and what happens automatically afterward. Views, screens, automations and conformance tests then refer to individual transitions instead of reassembling the lifecycle from prose steps and decisions. Source: gap GAP-01 in the application-generation gap register.",
       "execution_mode": "interactive"
     },
     {
@@ -56,7 +59,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "The process-to-field link says only that a process touches a field. An application needs to know whether the field is typed into a public form, edited by a team member during the process, set by the system, or shown read-only, and for form fields, in what order and grouping. Without the role a builder has to guess from field names. Add the role, order and group attributes to the link. Source: GAP-02.",
-      "executive_summary": "Add a role and ordering to process-to-field links so forms and screens can be derived from them.",
+      "executive_summary": "Add a role and ordering to process-to-field links so forms and screens can be derived from them. Today the link says only that a process touches a field. The role states whether the field is typed into a public form, edited by a team member during the process, set by the system, or shown read-only; for form fields the link also carries the order and grouping. Without this a builder has to guess from field names. Source: GAP-02.",
       "execution_mode": "interactive"
     },
     {
@@ -65,7 +68,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "Nothing in the definition describes a public form. The prototype form has required fields, option lists, a resume upload, a hidden bot-trap field, one consent checkbox that writes six yes/no fields across two records, a message per outcome, and a mapping from submitted data onto two CRM records. Add a form record type owning the collected field set (from PI-472), per-field validation, one-to-many value mapping, file handling, spam protection and the messages the submitter sees on success, refusal and error. Source: GAP-03.",
-      "executive_summary": "Add a form record type so a public form can be built from the definition instead of invented.",
+      "executive_summary": "Add a form record type so a public form can be built from the definition instead of invented. The record owns the collected field set, per-field validation, one-to-many value mapping onto CRM records, file handling, spam protection and the messages the submitter sees on success, refusal and error. Nothing in the definition describes a public form today; the prototype's form carries all of these. Source: GAP-03.",
       "execution_mode": "interactive"
     },
     {
@@ -74,7 +77,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "The definition names automatic actions (thank-you email, conflict notification, mailbox creation, login creation) but not what each needs before it runs, how success is confirmed, or what happens when it fails. The prototype encodes all three: the status moves only once the mailbox is confirmed; a failed group membership is reported but does not block; a missing mailbox blocks approval when creation is off. Extend the automation record type with these three attributes so outage-time behaviour is stated, not decided by the builder. Source: GAP-05.",
-      "executive_summary": "Extend automation records with precondition, confirmation and failure behaviour so a rebuilt application behaves the same on a bad day.",
+      "executive_summary": "Extend automation records with a precondition, a confirmation condition and a failure behaviour so a rebuilt application behaves the same on a bad day. The definition names automatic actions but not what each needs before it runs, how success is confirmed, or what happens when it fails; the prototype encodes all three. Stating them in the record removes the builder's guesswork about outage-time behaviour. Source: GAP-05.",
       "execution_mode": "interactive"
     },
     {
@@ -83,7 +86,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "The prototype talks to the CRM, a directory service for mailboxes and groups, an email sender and the website, each with credentials and settings. CRM Builder records individual settings but has no record for an external system. Add a record naming the system, the capabilities used (check a mailbox exists, create one, manage groups, send mail), the settings each capability needs, and a test-connection requirement. Automation records reference it. This is the one place product names belong. Source: GAP-06.",
-      "executive_summary": "Add an external system record type so automations can name what they talk to and what they need.",
+      "executive_summary": "Add an external system record type so automations can name what they talk to and what they need. The record names the system, the capabilities used (check a mailbox exists, create one, manage groups, send mail), the settings each capability needs, and a test-connection requirement. Automation records reference it. This is the one place product names belong. Source: GAP-06.",
       "execution_mode": "interactive"
     },
     {
@@ -92,7 +95,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "The definition describes one filtered list. The prototype's staff tool has a searchable roster with computed columns, a detail screen with a summary card and a tabbed editor, transition buttons, a separate save for permission groups, and a bulk sweep. Add a screen record type built from views, the field groups of PI-472, the transitions of PI-471 and bulk actions, each screen tied to the persona that uses it. This is the gap where two rebuilds would differ most. Source: GAP-07.",
-      "executive_summary": "Add a screen record type so what a team sees is defined, not improvised.",
+      "executive_summary": "Add a screen record type so what a team sees is defined, not improvised. A screen is a list or detail screen composed of views, the field groups of the process-to-field links, the transitions of the transition record type and bulk actions, and is tied to the persona that uses it. This is the gap where two rebuilds of the same application would differ most. Source: GAP-07.",
       "execution_mode": "interactive"
     },
     {
@@ -101,7 +104,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "The Mentor Application requires each reviewer's written opinion, a decision summary per vote (outcome, date, decline reason) and a provisional-period checklist. The checklist items are fields; the opinions and decision summaries exist nowhere. Rather than model them per engagement, add a general pattern that the builder applies automatically at every transition: a note attached to a process step, and a decision record attached to a transition. Source: GAP-10.",
-      "executive_summary": "Add a general pattern for review notes and per-transition decision records.",
+      "executive_summary": "Add a general pattern for review notes and per-transition decision records that the builder applies automatically at every transition: a note attached to a process step and a decision record attached to a transition. The Mentor Application requires reviewer opinions and a decision summary per vote, and these exist nowhere in the definition today; a general pattern avoids modelling them per engagement. Source: GAP-10.",
       "execution_mode": "interactive"
     },
     {
@@ -110,7 +113,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "The prototype runs every read and write as the signed-in user so the CRM enforces permissions, except creating a login, which runs under an administrator service account; access to the tool is limited to one team. The definition has personas and roles but says nothing about which actions run as whom or which team membership opens which screen. Add an execution identity (signed-in user or service account) and an admission rule (persona or team) to screens (PI-476) and automation actions (PI-474). Source: GAP-11.",
-      "executive_summary": "State who each screen and action runs as, and who may reach it.",
+      "executive_summary": "State who each screen and action runs as, and who may reach it. Add an execution identity (the signed-in user or a service account) and an admission rule (a persona or a team) to screen records and automation actions. The prototype runs most work as the signed-in user so the CRM enforces permissions, with one privileged action under a service account, and limits the tool to one team; the definition says none of this today. Source: GAP-11.",
       "execution_mode": "interactive"
     },
     {
@@ -119,7 +122,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "CRM Builder stores agent profiles, skills and governance rules and loads them into sessions, but has no profile for the agent that builds an application. Define one: what it reads from the definition and in what order (process, transitions, forms, screens, automations, external systems, access, the kernel contract), what it produces, what it may not decide on its own, and a standing rule that any behaviour the definition does not state is raised as a planning item rather than invented. Source: GAP-12.",
-      "executive_summary": "Define the agent that builds applications from definitions.",
+      "executive_summary": "Define the agent that builds applications from definitions: an agent profile and skill stating what it reads from the definition and in what order, what it produces, what it may not decide on its own, and a standing rule that any behaviour the definition does not state is raised as a planning item rather than invented. CRM Builder stores agent profiles and rules today but has no profile for this agent. Source: GAP-12.",
       "execution_mode": "interactive"
     },
     {
@@ -128,7 +131,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "The prototype contains the runtime every generated application needs identically: capture to the application's own database before the CRM is touched, a file-queue fallback (required, not yet built), an idempotent delivery worker, a receipt record, reconciliation sweeps, CRM sign-in passthrough with a service account for privileged actions, option-value drift tolerance, phone normalisation, attachments, template email sending, and an encrypted settings store with test-connection actions. Extract it into a library with a contract stating how a form registers, how a transition is declared and how an automation names an external system, so the builder produces only the process-specific layer. Largest item in the register; size unverified. Source: GAP-13 and Layer 3.",
-      "executive_summary": "Turn the prototype's generic runtime into a reusable kernel the builder composes rather than rebuilds.",
+      "executive_summary": "Turn the prototype's generic runtime into a reusable kernel the builder composes rather than rebuilds. Extract the capture-first storage, file-queue fallback, idempotent delivery worker, receipts, reconciliation sweeps, CRM sign-in passthrough, drift tolerance, phone normalisation, attachments, template email and encrypted settings store into a versioned library with a written contract. Largest item in the register; size unverified. Source: GAP-13 and Layer 3.",
       "execution_mode": "interactive"
     },
     {
@@ -137,7 +140,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "Nothing checks that a built application does what its definition says. Generate a test specification from the definition — one case per transition, per repeat-applicant branch, per automation precondition and failure path, per form outcome message — that the application must pass before deployment. This is what makes rebuilding from a changed definition safe. The verification-specification generator skeleton for CRM configuration is the starting point. Source: GAP-14.",
-      "executive_summary": "Generate behaviour tests from the definition so a rebuild can be checked, not trusted.",
+      "executive_summary": "Generate behaviour tests from the definition so a rebuild can be checked, not trusted. The test specification carries one case per transition, per repeat-applicant branch, per automation precondition and failure path, and per form outcome message, and the application must pass it before deployment. The verification-specification generator skeleton for CRM configuration is the starting point. Source: GAP-14.",
       "execution_mode": "interactive"
     },
     {
@@ -146,7 +149,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "The prototype cites decisions in code comments by hand and inconsistently. Add a rule, and the builder behaviour behind it, that generated code, tests and screens name the process, transition, form, view, automation and requirement they implement, so a definition change can be traced to the code it affects and a rebuild reviewed as a diff against the definition. Source: GAP-15.",
-      "executive_summary": "Trace every generated artifact back to the definition records it implements.",
+      "executive_summary": "Trace every generated artifact back to the definition records it implements. Add the rule, and the builder behaviour behind it, that generated code, tests and screens name the process, transition, form, view, automation and requirement they realise, so a definition change can be traced to the code it affects and a rebuild reviewed as a diff against the definition. Source: GAP-15.",
       "execution_mode": "interactive"
     },
     {
@@ -155,7 +158,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "The prototype is maintained by prompting. Write the procedure for bringing an application back into line after its definition changes: which records changed, which code is affected (PI-482), which tests must run again (PI-481), how the technical user approves the change, and how it is deployed. Record it as a process in this engagement, executed by the agent profile of PI-479. Source: GAP-16.",
-      "executive_summary": "Define the procedure that keeps a built application in step with its definition.",
+      "executive_summary": "Define the procedure that keeps a built application in step with its definition: which records changed, which code is affected, which tests must run again, how the technical user approves the change, and how it is deployed. Record it as a process in this engagement, executed by the application-builder agent profile. The prototype is maintained by prompting today. Source: GAP-16.",
       "execution_mode": "interactive"
     },
     {
@@ -164,7 +167,7 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "Claude Code sessions load the effective rules through a session-start hook; build agents resolve them through their profile contract; a chat or Cowork session gets them only if project instructions tell it to read them. For the rules to reach any surface for any user with no outside instructions, add a single bootstrap tool on the MCP server that returns the effective rules for the active engagement and the requested agent profile's contract in one call. Raised when the writing standards moved into the system.",
-      "executive_summary": "Let any session on any surface load the rules with one call and no outside instructions.",
+      "executive_summary": "Let any session on any surface load the rules with one call and no outside instructions. Add a single bootstrap tool on the MCP server that returns the effective governance rules for the active engagement and the requested agent profile's contract together. Today Claude Code sessions get the rules from a start hook and chat sessions only if project instructions say to read them. Raised when the writing standards moved into the system.",
       "execution_mode": "interactive"
     },
     {
@@ -173,13 +176,13 @@
       "item_type": "pending_work",
       "status": "Draft",
       "description": "Enforced rules are checked today by a hook that evaluates a shell command against a predicate before it runs; the check kinds are forbidden command, required trailer and protected path. Writing rules have no check. Add a check kind that scans a reply or a document for bare identifiers (a DEC, REQ, FLD, PROC or similar identifier not inside parentheses) and, in Claude Code, returns the reply with the rule named. This is a regular-expression check: it catches the cited pattern and nothing subtler, and has no equivalent on chat surfaces, where the rule stays advisory. Raised when the plain-language rule was created.",
-      "executive_summary": "Make the plain-language writing rule enforceable in Claude Code with a prose check.",
+      "executive_summary": "Make the plain-language writing rule enforceable in Claude Code with a prose check. Add a check kind that scans a reply or a document for bare record identifiers not inside parentheses and returns the reply with the rule named. This is a regular-expression check: it catches the cited pattern and nothing subtler, and has no equivalent on chat surfaces, where the rule stays advisory. Raised when the plain-language rule was created.",
       "execution_mode": "interactive"
     }
   ],
   "decisions": [
     {
-      "identifier": "DEC-1053",
+      "identifier": "DEC-1054",
       "title": "CRM Builder holds the definition; an AI agent builds, tests, deploys and maintains the application; a technical user operates it",
       "decision_date": "2026-09-05",
       "status": "Active",
@@ -191,7 +194,7 @@
       "executive_summary": "The product owner ruled (2026-09-05) that CRM Builder holds the definition and an AI agent builds and maintains the application from it, with a technical user operating; the prototype proves the model."
     },
     {
-      "identifier": "DEC-1054",
+      "identifier": "DEC-1055",
       "title": "The application-generation test is run per process against the prototype and recorded as a gap register",
       "decision_date": "2026-09-05",
       "status": "Active",
@@ -200,10 +203,10 @@
       "rationale": "A per-process comparison against running code is the only measure that does not depend on opinion. The prototype is the ground truth for what the application must do.",
       "alternatives_considered": "A general capability review of CRM Builder without a reference application (rejected: no ground truth).",
       "consequences": "The Mentor Application register v0.3 is the first record. Two items it raised are rulings for the Cleveland Business Mentors engagement, not this one: whether a person or the application moves a candidate to Provisional, and the fill policy for a repeat applicant's existing record. The next process registers reuse the same three layers.",
-      "executive_summary": "The product owner set the method (2026-09-05): compare each defined process against the prototype that runs it and record the gaps in a three-layer register, each gap becoming a planning item."
+      "executive_summary": "The product owner set the method (2026-09-05): compare each fully defined process against the prototype that runs it and record the gaps in a three-layer register, each gap becoming a planning item in this engagement. The Mentor Application register is the first record."
     },
     {
-      "identifier": "DEC-1055",
+      "identifier": "DEC-1056",
       "title": "The writing standards live in CRM Builder as system-scope governance rules; a person named in a rule is named as a role",
       "decision_date": "2026-09-05",
       "status": "Active",
@@ -216,23 +219,135 @@
     }
   ],
   "references": [
-    { "source_type": "decision", "source_id": "DEC-1053", "target_type": "session", "target_id": "SES-405", "relationship": "decided_in" },
-    { "source_type": "decision", "source_id": "DEC-1054", "target_type": "session", "target_id": "SES-405", "relationship": "decided_in" },
-    { "source_type": "decision", "source_id": "DEC-1055", "target_type": "session", "target_id": "SES-405", "relationship": "decided_in" },
-    { "source_type": "planning_item", "source_id": "PI-471", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-472", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-473", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-474", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-475", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-476", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-477", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-478", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-479", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-480", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-481", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-482", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-483", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-484", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" },
-    { "source_type": "planning_item", "source_id": "PI-485", "target_type": "project", "target_id": "PRJ-023", "relationship": "planning_item_belongs_to_project" }
-  ]
+    {
+      "source_type": "decision",
+      "source_id": "DEC-1054",
+      "target_type": "session",
+      "target_id": "SES-405",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-1055",
+      "target_type": "session",
+      "target_id": "SES-405",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "decision",
+      "source_id": "DEC-1056",
+      "target_type": "session",
+      "target_id": "SES-405",
+      "relationship": "decided_in"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-471",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-472",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-473",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-474",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-475",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-476",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-477",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-478",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-479",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-480",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-481",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-482",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-483",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-484",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    },
+    {
+      "source_type": "planning_item",
+      "source_id": "PI-485",
+      "target_type": "project",
+      "target_id": "PRJ-023",
+      "relationship": "planning_item_belongs_to_project"
+    }
+  ],
+  "work_tickets": [],
+  "commits": [],
+  "resolves_planning_items": [],
+  "addresses_planning_items": []
 }

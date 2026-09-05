@@ -1,0 +1,67 @@
+=== Applying close-out payload ===
+Source: PRDs/product/crmbuilder-v2/close-out-payloads/ses_405.json
+Label:  SES-405 — Application generation test: Mentor Application against the prototype; writing standards move into the system
+Deposit event: DEP-162
+
+=== conversation (1 record) ===
+  ✓ POST conversation  CNV-379 (HTTP 201)
+
+=== session (1 record) ===
+  ✓ POST session  <unidentified record> (HTTP 201)
+
+=== planning_items (15 records) ===
+  ✓ POST planning_items  PI-471 (HTTP 201)
+  ✓ POST planning_items  PI-472 (HTTP 201)
+  ✓ POST planning_items  PI-473 (HTTP 201)
+  ✓ POST planning_items  PI-474 (HTTP 201)
+  ✓ POST planning_items  PI-475 (HTTP 201)
+  ✓ POST planning_items  PI-476 (HTTP 201)
+  ✓ POST planning_items  PI-477 (HTTP 201)
+  ✓ POST planning_items  PI-478 (HTTP 201)
+  ✓ POST planning_items  PI-479 (HTTP 201)
+  ✓ POST planning_items  PI-480 (HTTP 201)
+  ✓ POST planning_items  PI-481 (HTTP 201)
+  ✓ POST planning_items  PI-482 (HTTP 201)
+  ✓ POST planning_items  PI-483 (HTTP 201)
+  ✓ POST planning_items  PI-484 (HTTP 201)
+  ✓ POST planning_items  PI-485 (HTTP 201)
+
+=== decisions (3 records) ===
+
+=== references (18 records) ===
+  ✓ POST references  DEC-1054 decided_in SES-405 (HTTP 201)
+  ✓ POST references  DEC-1055 decided_in SES-405 (HTTP 201)
+  ✓ POST references  DEC-1056 decided_in SES-405 (HTTP 201)
+  ✓ POST references  PI-471 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-472 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-473 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-474 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-475 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-476 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-477 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-478 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-479 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-480 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-481 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-482 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-483 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-484 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+  ✓ POST references  PI-485 planning_item_belongs_to_project PRJ-023 (HTTP 201)
+
+
+✓ Recorded apply as deposit_event DEP-162 (HTTP 201).
+
+=== Follow-on (same session, after DEP-162 was recorded) ===
+The three decisions failed above because the decisions repository accepts an explicit identifier only when it has three digits (^DEC-\d{3}$); the sequence passed DEC-999 long ago. They were re-posted without an identifier so the server assigned the next ones, which landed on the identifiers the payload and its decided_in references already named:
+POST decision (wanted DEC-1054): HTTP 201 -> DEC-1054 
+POST decision (wanted DEC-1055): HTTP 201 -> DEC-1055 
+POST decision (wanted DEC-1056): HTTP 201 -> DEC-1056 
+all three decisions created on the expected identifiers
+
+=== Governance rules (step 2 of the SES-405 apply prompt) ===
+POST writing_plain_language_for_reader: HTTP 201 -> GVR-242
+POST writing_executive_register: HTTP 201 -> GVR-243
+POST writing_terminology_precision: HTTP 201 -> GVR-244
+POST writing_reply_format: HTTP 201 -> GVR-245
+PATCH GVR-232: HTTP 200
+PATCH GVR-237: HTTP 200
