@@ -153,6 +153,30 @@ class SessionPatchIn(_Base):
     references: list[GovernanceEdgeIn] | None = None
 
 
+class SessionOpenIn(_Base):
+    """POST /sessions/open body — the session-open operation (PI-488, REQ-570).
+
+    ``opening_answer`` is the user's verbatim reply to the opening question;
+    empty (or omitted) opens a session that loads only the cross-cutting rules
+    (REQ-571). ``project_identifier`` names the project the session belongs
+    to; when omitted the latest project in flight (else planned) is used.
+    """
+
+    opening_answer: str | None = None
+    medium: str = "claude_code"
+    project_identifier: str | None = None
+    title: str | None = None
+    participants: list | None = None
+    medium_metadata: dict | None = None
+    engagement: str | None = None
+
+
+class SessionAdvanceSegmentIn(_Base):
+    """POST /sessions/{identifier}/advance-segment body (PI-488, REQ-573)."""
+
+    engagement: str | None = None
+
+
 # ---------- Risks ----------
 
 

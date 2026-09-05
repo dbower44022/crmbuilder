@@ -14,14 +14,17 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.repositories import commits as commits_repo
 from crmbuilder_v2.access.repositories import conversations as conversations_repo
-from crmbuilder_v2.access.repositories import sessions
+from crmbuilder_v2.access.repositories import session_opening, sessions
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.schemas import (
+    SessionAdvanceSegmentIn,
     SessionCreateIn,
+    SessionOpenIn,
     SessionPatchIn,
     SessionReplaceIn,
 )
@@ -58,6 +61,52 @@ def next_identifier():
     """Return the next available ``SES-NNN`` identifier (DEC-043)."""
     with readonly_session() as s:
         return ok({"next": sessions.next_session_identifier(s)})
+
+
+@router.get("/opening")
+def opening(engagement: str | None = None):
+    """The opening question, its examples, the catalogue of kinds of work and
+    the cross-cutting contract (PI-488). No write — what a surface needs before
+    the user answers. Registered above ``/{identifier}`` so it is reachable."""
+    active = engagement if engagement is not None else get_active_engagement()
+    with readonly_session() as s:
+        return ok(session_opening.opening(s, active))
+
+
+@router.post("/open", status_code=201)
+def open_session(body: SessionOpenIn):
+    """The session-open operation (REQ-570..572): classify the opening answer
+    against the catalogue, create the session record carrying the answer and
+    the kind of work, and return the confirmation line and the first segment's
+    contract merged with the cross-cutting rules. An empty answer or no
+    confident match returns the cross-cutting contract only and says so; a
+    miss also records a planning item."""
+    active = body.engagement if body.engagement is not None else get_active_engagement()
+    with writable_session() as s:
+        return ok(
+            session_opening.open_session(
+                s,
+                engagement_id=active,
+                opening_answer=body.opening_answer,
+                medium=body.medium,
+                project_identifier=body.project_identifier,
+                title=body.title,
+                participants=body.participants,
+                medium_metadata=body.medium_metadata,
+            )
+        )
+
+
+@router.post("/{identifier}/advance-segment")
+def advance_segment(identifier: str, body: SessionAdvanceSegmentIn | None = None):
+    """The segment-advance operation (REQ-573): close the current phase segment
+    with its leaving moment, open the next with its entering moment, and return
+    the next segment's contract merged with the cross-cutting rules; after the
+    last segment return the completed state and no contract."""
+    engagement = body.engagement if body is not None else None
+    active = engagement if engagement is not None else get_active_engagement()
+    with writable_session() as s:
+        return ok(session_opening.advance_segment(s, identifier, engagement_id=active))
 
 
 @router.get("/{identifier}")
