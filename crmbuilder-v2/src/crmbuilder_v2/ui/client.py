@@ -2635,6 +2635,9 @@ class StorageClient:
         identifier: str,
         scope: list[str] | None = None,
         allow_no_backup: bool = False,
+        *,
+        expected_plan_fingerprint: str | None = None,
+        confirm_access_removal: bool = False,
     ) -> dict[str, Any]:
         """POST /instances/{id}/publish — back up, validate, and deploy.
 
@@ -2644,12 +2647,17 @@ class StorageClient:
         only a subset (REQ-290); ``allow_no_backup`` overrides the backup gate.
         Returns the same serialized publish result shape as
         :meth:`publish_validate_instance`, plus ``aborted`` / ``backup_captured``
-        / ``publish_run``.
+        / ``publish_run`` and the ``access`` section (REQ-521 / PI-466). A
+        run that takes access away is refused (409) unless it carries the
+        preview's ``expected_plan_fingerprint`` and ``confirm_access_removal``
+        together.
         """
         return self._publish_request(
             f"/instances/{identifier}/publish",
             scope,
             allow_no_backup=allow_no_backup,
+            expected_plan_fingerprint=expected_plan_fingerprint,
+            confirm_access_removal=confirm_access_removal,
         )
 
     def list_publish_runs(
@@ -2792,12 +2800,18 @@ class StorageClient:
         scope: list[str] | None = None,
         *,
         allow_no_backup: bool = False,
+        expected_plan_fingerprint: str | None = None,
+        confirm_access_removal: bool = False,
     ) -> dict[str, Any]:
         body: dict[str, Any] = {}
         if scope:
             body["scope"] = scope
         if allow_no_backup:
             body["allow_no_backup"] = True
+        if expected_plan_fingerprint is not None:
+            body["expected_plan_fingerprint"] = expected_plan_fingerprint
+        if confirm_access_removal:
+            body["confirm_access_removal"] = True
         result = self._request(
             "POST", path, json_body=body or None
         )

@@ -24,6 +24,7 @@ from crmbuilder_v2.access import conformance as conformance_eval
 from crmbuilder_v2.access import reconcile_apply
 from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.exceptions import (
+    ConflictError,
     FieldError,
     NotFoundError,
     UnprocessableError,
@@ -703,6 +704,10 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         # REQ-497 / DEC-982: the changes an automatic apply declined, each
         # carrying its kind and reason.
         "declined_changes": result.declined_changes,
+        # REQ-521 / PI-466: what this publish does to access on the target —
+        # each declared role and team against the live roles, the removals
+        # named, or ``known: false`` when the target could not be read.
+        "access": result.access,
         # PI-406 / REQ-485: the governed-settings apply outcome, when the
         # instance has declared per-instance values.
         "settings": (
@@ -874,14 +879,43 @@ def _run_publish(
     allow_no_backup: bool = False,
     expected_plan_fingerprint: str | None = None,
     release_identifier: str | None = None,
+    confirm_access_removal: bool = False,
 ):
     """Resolve the target + active-engagement design source, then publish.
 
     A real publish (not validate-only / preview) captures a pre-publish backup
     of the target (REQ-292) and records a ``publish_run`` row with the outcome
     (REQ-293); the run identifier is returned in the response.
+
+    A publish that takes access away is refused with 409 unless it carries
+    ``confirm_access_removal`` (REQ-521 / PI-466), the same word and the same
+    error shape as ``POST /reconcile/publish``. The refusal happens before the
+    backup and before any write; the only thing that reached the instance was
+    the read of its roles.
     """
     rec, api_key, secret_key = _resolve_publish_target(identifier)
+    # REQ-521 / DEC-982 / DEC-924: the removal word only means something on a
+    # reviewed run. Without the plan fingerprint the run is automatic and
+    # additive-only, and a flag that let it revoke access is exactly the
+    # incident-time switch DEC-924 rejected.
+    if (
+        confirm_access_removal
+        and expected_plan_fingerprint is None
+        and not preview
+        and not validate_only
+    ):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "confirm_access_removal",
+                    "removal_needs_reviewed_run",
+                    "a removal is confirmed on a reviewed run only: run a "
+                    "publish preview, review its access section, and "
+                    "resubmit with the approved plan fingerprint and "
+                    "confirm_access_removal together",
+                )
+            ]
+        )
     # REQ-495 / DEC-980: the stamp's version only means something the release
     # train pinned, so a named release must exist and be frozen (its status in
     # the amend_window or locked band) before the run may claim it.
@@ -954,7 +988,13 @@ def _run_publish(
         allow_no_backup=allow_no_backup,
         expected_plan_fingerprint=expected_plan_fingerprint,
         release_identifier=release_identifier,
+        confirm_access_removal=confirm_access_removal,
     )
+    # REQ-521: a reviewed run that takes access away without the separate
+    # word is a conflict, not an outcome — nothing was written and no run is
+    # recorded, exactly as the reconcile route's gate behaves.
+    if result.access_removal_unconfirmed:
+        raise ConflictError(result.abort_reason or "access removal unconfirmed")
     payload = _serialize_publish_result(result)
     payload["scope_source"] = scope_source
     if selection_info is not None:
@@ -994,6 +1034,15 @@ class PublishScopeIn(BaseModel):
     # successful run then writes the design-version stamp to the instance; a
     # publish outside a frozen release never writes it (DEC-980).
     release_identifier: str | None = None
+    # REQ-521 / PI-466: the reconcile route's two words, accepted here in the
+    # same names. On this route the approved plan fingerprint is the change
+    # confirmation — the preview stated the access effect and the fingerprint
+    # identifies that exact plan — so ``confirm_access_change`` is accepted
+    # for a caller speaking the reconcile vocabulary but is not required.
+    # ``confirm_access_removal`` is required whenever the run lowers a level
+    # the instance currently grants; the change word never stands in for it.
+    confirm_access_change: bool = False
+    confirm_access_removal: bool = False
 
 
 @router.get("/{identifier}/conformance")
@@ -1078,6 +1127,9 @@ def publish_instance(identifier: str, body: PublishScopeIn | None = None):
             body.expected_plan_fingerprint if body else None
         ),
         release_identifier=body.release_identifier if body else None,
+        confirm_access_removal=(
+            body.confirm_access_removal if body else False
+        ),
     )
 
 
