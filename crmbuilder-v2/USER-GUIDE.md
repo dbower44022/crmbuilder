@@ -714,6 +714,36 @@ takes your approval of the plan as agreement to the changes it showed you,
 but taking access away still needs its own separate confirmation
 (`confirm_access_removal`), exactly as in the Reconcile grid.
 
+In the Publish dialog (Instances → Publish) this is three steps (PI-468):
+
+1. **Preview.** Click **Preview**. Below the per-program plan, an **Access**
+   section states the effect: a summary line, then each role with every
+   setting that would change in the API's words (`Mentor: Contact.delete all
+   → no`), a removal marked in red as *removes access*, and each team. When
+   the instance could not be read the section says *Access effect unknown —
+   the target could not be read* and claims nothing either way. The preview
+   also hands the dialog the plan fingerprint; the status line says
+   *Publish now runs the reviewed plan*. Changing the scope checklist or
+   clicking Re-validate drops it — preview again.
+2. **Publish — the first question.** Click **Publish ▶**. The confirmation
+   names the target, the plan and every access change the preview showed;
+   OK is agreement to those changes, not to a removal.
+3. **The removal — a second, separate question.** Only when the preview
+   showed a removal, a warning titled *This removes access* lists each
+   removal and asks *Remove this access on <target>?* Cancel sends nothing
+   (the previewed plan still stands, so you can Publish again); Yes sends
+   `confirm_access_removal` together with the fingerprint. The dialog never
+   sends that word on its own.
+
+A **Publish** without a preview behind it is an automatic run: the
+confirmation says so, and if the run carries a removal the API declines it by
+name. The report then lists each declined change with its reason under *Not
+applied — an automatic publish may only add or widen* and the status line
+points you to Preview, then Publish, for the reviewed run. If the API refuses
+a reviewed run with 409 (a removal the preview did not show — the instance
+changed after it), the report shows the refusal in the API's words; Preview
+again, then Publish and confirm the removal when asked.
+
 ### Publishing layouts
 
 A screen layout — the detail and edit views, the list views, the filter and
