@@ -77,6 +77,11 @@ _PATCHABLE_FIELDS = frozenset(
         "participants",
         "medium_metadata",
         "executive_summary",  # PI-074
+        # PI-488 / REQ-568: the opening answer and what followed from it.
+        "opening_answer",
+        "kind_of_work",
+        "confirmation_line",
+        "phase_segments",
     }
 )
 
@@ -242,6 +247,10 @@ def _new_row(
     participants: list,
     medium_metadata: dict,
     executive_summary: str,
+    opening_answer: str | None = None,
+    kind_of_work: str | None = None,
+    confirmation_line: str | None = None,
+    phase_segments: list | None = None,
 ) -> SessionModel:
     return SessionModel(
         session_identifier=identifier,
@@ -256,6 +265,10 @@ def _new_row(
         session_participants=participants,
         session_medium_metadata=medium_metadata,
         session_executive_summary=executive_summary,
+        session_opening_answer=opening_answer,
+        session_kind_of_work=kind_of_work,
+        session_confirmation_line=confirmation_line,
+        session_phase_segments=list(phase_segments or []),
     )
 
 
@@ -272,6 +285,10 @@ def _insert_with_autoassign(
     participants: list,
     medium_metadata: dict,
     executive_summary: str,
+    opening_answer: str | None = None,
+    kind_of_work: str | None = None,
+    confirmation_line: str | None = None,
+    phase_segments: list | None = None,
 ) -> SessionModel:
     # REQ-446 / PI-384: serialize per-prefix assignment so concurrent
     # Postgres writers don't race the read-then-probe loop (no-op on SQLite).
@@ -293,6 +310,10 @@ def _insert_with_autoassign(
             participants,
             medium_metadata,
             executive_summary,
+            opening_answer,
+            kind_of_work,
+            confirmation_line,
+            phase_segments,
         )
         session.add(row)
         try:
@@ -348,6 +369,23 @@ def _coerce_medium_metadata(value: object) -> dict:
     return value
 
 
+def _coerce_phase_segments(value: object) -> list:
+    """The ordered phase-segment list (PI-488 / REQ-568): a JSON array."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "session_phase_segments",
+                    "invalid_type",
+                    "must be a JSON array",
+                )
+            ]
+        )
+    return value
+
+
 def create_session(
     session: DbSession,
     *,
@@ -365,6 +403,10 @@ def create_session(
     identifier: str | None = None,
     references: list[dict] | None = None,
     timestamps: dict | None = None,
+    opening_answer: str | None = None,
+    kind_of_work: str | None = None,
+    confirmation_line: str | None = None,
+    phase_segments: object = None,
 ) -> dict:
     """Create a session.
 
@@ -393,6 +435,7 @@ def create_session(
     ended_at_dt = _coerce_datetime_optional(ended_at, "session_ended_at")
     participants_list = _coerce_participants(participants)
     medium_metadata_dict = _coerce_medium_metadata(medium_metadata)
+    phase_segments_list = _coerce_phase_segments(phase_segments)
 
     # Identifier-collision check before duplicate-title check, so a re-apply
     # of the same payload SKIPs cleanly rather than 422-ing on title.
@@ -422,6 +465,10 @@ def create_session(
             participants_list,
             medium_metadata_dict,
             executive_summary,
+            opening_answer,
+            kind_of_work,
+            confirmation_line,
+            phase_segments_list,
         )
     else:
         row = _new_row(
@@ -437,6 +484,10 @@ def create_session(
             participants_list,
             medium_metadata_dict,
             executive_summary,
+            opening_answer,
+            kind_of_work,
+            confirmation_line,
+            phase_segments_list,
         )
         session.add(row)
         session.flush()
@@ -478,6 +529,10 @@ def update_session(
     medium_metadata: object = None,
     executive_summary: str,
     references: list[dict] | None = None,
+    opening_answer: str | None = None,
+    kind_of_work: str | None = None,
+    confirmation_line: str | None = None,
+    phase_segments: object = None,
 ) -> dict:
     row = _get_row(session, identifier)
     if session_identifier is not None and session_identifier != identifier:
@@ -524,6 +579,17 @@ def update_session(
     row.session_participants = _coerce_participants(participants)
     row.session_medium_metadata = _coerce_medium_metadata(medium_metadata)
     row.session_executive_summary = executive_summary
+    # PI-488 / REQ-568: the opening fields are kept unless a value is supplied
+    # — a full replace of the communication fields must not erase what the
+    # session-open operation recorded.
+    if opening_answer is not None:
+        row.session_opening_answer = opening_answer
+    if kind_of_work is not None:
+        row.session_kind_of_work = kind_of_work
+    if confirmation_line is not None:
+        row.session_confirmation_line = confirmation_line
+    if phase_segments is not None:
+        row.session_phase_segments = _coerce_phase_segments(phase_segments)
     session.flush()
     _validate_edges(session, identifier, row.session_status)
 
@@ -600,6 +666,14 @@ def patch_session(
             min_len=_EXECUTIVE_SUMMARY_MIN,
             max_len=_EXECUTIVE_SUMMARY_MAX,
         )
+    if "opening_answer" in fields:
+        row.session_opening_answer = fields["opening_answer"]
+    if "kind_of_work" in fields:
+        row.session_kind_of_work = fields["kind_of_work"]
+    if "confirmation_line" in fields:
+        row.session_confirmation_line = fields["confirmation_line"]
+    if "phase_segments" in fields:
+        row.session_phase_segments = _coerce_phase_segments(fields["phase_segments"])
     if "status" in fields:
         status = _require_status(fields["status"])
         if status != row.session_status:

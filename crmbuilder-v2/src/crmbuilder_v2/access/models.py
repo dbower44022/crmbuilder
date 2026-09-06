@@ -553,6 +553,25 @@ class Session(EngagementScopedPKMixin, Base):
     session_medium_metadata: Mapped[dict] = mapped_column(
         JSONColumn, nullable=False, default=dict
     )
+    # PI-488 / REQ-568 (DEC-1060..1063): the opening answer and what followed
+    # from it. ``session_opening_answer`` is the user's verbatim reply to the
+    # opening question; ``session_kind_of_work`` names the catalogue entry
+    # (a PROC-NNN process record) the answer was classified into, or NULL when
+    # no kind of work was chosen; ``session_confirmation_line`` is what the
+    # system said back; ``session_phase_segments`` is the ordered list of
+    # phase segments run, each ``{position, domain, profile, label, status,
+    # entered_at, left_at}``. Empty list when the session opened without an
+    # answer. Migration 0139 (SQLite) / 0096 (PG).
+    session_opening_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    session_kind_of_work: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    session_confirmation_line: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    session_phase_segments: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False, default=list, server_default=text("'[]'")
+    )
     session_created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )

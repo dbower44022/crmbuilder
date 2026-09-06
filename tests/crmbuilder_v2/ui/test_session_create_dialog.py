@@ -23,8 +23,13 @@ from crmbuilder_v2.ui.dialogs.session_create import (
     SessionDeleteDialog,
     SessionEditDialog,
 )
-from crmbuilder_v2.ui.exceptions import ConflictError, NotFoundError, ValidationError
-from PySide6.QtWidgets import QComboBox, QLineEdit, QPlainTextEdit
+from crmbuilder_v2.ui.exceptions import (
+    ConflictError,
+    NotFoundError,
+    StorageConnectionError,
+    ValidationError,
+)
+from PySide6.QtWidgets import QComboBox, QLabel, QLineEdit, QPlainTextEdit
 
 # A valid 200-800 character executive summary reused across the suite.
 _VALID_EXEC_SUMMARY = (
@@ -468,3 +473,123 @@ def test_delete_successful_accepts(qtbot):
         dialog._on_delete_clicked()
 
     client.delete_session.assert_called_once_with("SES-001")
+
+
+# ---------------------------------------------------------------------------
+# The opening question (PI-488 / REQ-576)
+# ---------------------------------------------------------------------------
+
+
+def _stub_opening_client(**kwargs) -> MagicMock:
+    client = _stub_client(**kwargs)
+    client.get_session_opening.return_value = {
+        "question": "What do you want to do today?",
+        "examples": ["Define new business processes", "Upgrade the platform to the latest version",
+                     "Ask a question about the system or its records"],
+        "catalogue": [],
+        "cross_cutting": {},
+        "preview": None,
+    }
+    client.open_session.return_value = {
+        "session": {"session_identifier": "SES-410", "session_title": "Title",
+                    "session_opening_answer": "define new business processes",
+                    "session_kind_of_work": "PROC-013"},
+        "kind_of_work": "PROC-013",
+        "confirmation_line": "It sounds like you want to define new business processes; I will start with the Requirements Interviewer.",
+        "first_line": "It sounds like you want to define new business processes; I will start with the Requirements Interviewer.",
+        "follow_up_question": None,
+        "contract": {},
+    }
+    return client
+
+
+def test_opening_question_row_comes_first_with_catalogue_examples(qtbot):
+    client = _stub_opening_client()
+    dialog = SessionCreateDialog(client)
+    qtbot.addWidget(dialog)
+    label = dialog._form.itemAt(0, dialog._form.ItemRole.LabelRole).widget()
+    assert any("What do you want to do today?" in child.text() for child in label.findChildren(QLabel))
+    assert dialog._form.itemAt(0, dialog._form.ItemRole.FieldRole).widget() is dialog._opening_answer_edit
+    placeholder = dialog._opening_answer_edit.placeholderText()
+    assert "Define new business processes" in placeholder
+    assert "Upgrade the platform to the latest version" in placeholder
+    assert placeholder.count(";") == 2  # three examples
+    assert dialog._say_back_btn.text() == "Say it back"
+
+
+def test_examples_fall_back_when_the_store_is_unreachable(qtbot):
+    client = _stub_client()
+    client.get_session_opening.side_effect = StorageConnectionError("down")
+    dialog = SessionCreateDialog(client)
+    qtbot.addWidget(dialog)
+    assert "Define new business processes" in dialog._opening_answer_edit.placeholderText()
+
+
+def test_say_it_back_previews_the_confirmation_line_without_creating(qtbot):
+    client = _stub_opening_client()
+    client.get_session_opening.return_value = {
+        **client.get_session_opening.return_value,
+        "preview": {"kind_of_work": "PROC-013",
+                    "confirmation_line": "It sounds like you want to define new business processes; I will start with the Requirements Interviewer."},
+    }
+    dialog = SessionCreateDialog(client)
+    qtbot.addWidget(dialog)
+    dialog._opening_answer_edit.setText("define new business processes")
+    dialog._say_back_btn.click()
+    client.get_session_opening.assert_called_with(answer="define new business processes")
+    assert dialog._confirmation_label.text().startswith("It sounds like you want to define new business processes")
+    client.open_session.assert_not_called()
+    client.create_session.assert_not_called()
+
+
+def test_say_it_back_with_empty_answer_prompts_for_one(qtbot):
+    client = _stub_opening_client()
+    dialog = SessionCreateDialog(client)
+    qtbot.addWidget(dialog)
+    dialog._say_back_btn.click()
+    assert "Type what you want to do today" in dialog._confirmation_label.text()
+    assert client.get_session_opening.call_count == 1  # only the construction-time read
+
+
+def test_answered_question_creates_through_the_operation(qtbot):
+    client = _stub_opening_client()
+    dialog = SessionCreateDialog(client)
+    qtbot.addWidget(dialog)
+    _fill_required(dialog)
+    dialog._opening_answer_edit.setText("define new business processes")
+    dialog._widgets.session_notes.setPlainText("notes")
+
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_save_clicked()
+
+    client.create_session.assert_not_called()
+    client.next_session_identifier.assert_not_called()
+    body = client.open_session.call_args[0][0]
+    assert body == {
+        "opening_answer": "define new business processes",
+        "project_identifier": "PRJ-001",
+        "medium": "chat",
+        "title": "Title",
+        "description": "Description body",
+        "executive_summary": _VALID_EXEC_SUMMARY,
+        "notes": "notes",
+    }
+    assert dialog.created_identifier() == "SES-410"
+    assert dialog.confirmation_line().startswith("It sounds like you want to define new business processes")
+
+
+def test_unanswered_question_creates_a_plain_session(qtbot):
+    client = _stub_opening_client()
+    client.create_session.return_value = {"session_identifier": "SES-009", "session_title": "Title"}
+    dialog = SessionCreateDialog(client)
+    qtbot.addWidget(dialog)
+    _fill_required(dialog)
+
+    with qtbot.waitSignal(dialog.accepted, timeout=2000):
+        dialog._on_save_clicked()
+
+    client.open_session.assert_not_called()
+    body = client.create_session.call_args[0][0]
+    assert body["session_identifier"] == "SES-009"
+    assert "opening_answer" not in body
+    assert dialog.confirmation_line() is None

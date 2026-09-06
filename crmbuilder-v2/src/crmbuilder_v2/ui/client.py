@@ -293,6 +293,39 @@ class StorageClient:
             )
         return result
 
+    def get_session_opening(self, *, answer: str | None = None) -> dict[str, Any]:
+        """GET /sessions/opening — the opening question, its examples, the
+        catalogue of kinds of work and the cross-cutting contract (PI-488).
+        With ``answer`` the result carries ``preview``: the kind of work and
+        the confirmation line the session-open operation would say back,
+        without a write."""
+        path = "/sessions/opening" + self._query(
+            {"answer": quote(answer) if answer else None}
+        )
+        return self._expect_dict(self._request("GET", path), op="get_session_opening")
+
+    def open_session(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /sessions/open — the session-open operation (PI-488).
+
+        Body: ``opening_answer`` (the user's words), optional
+        ``project_identifier``, ``medium``, ``title``, ``description``,
+        ``executive_summary``, ``notes``, ``participants``, ``medium_metadata``.
+        Returns ``{session, kind_of_work, confirmation_line, first_line,
+        follow_up_question, segment, contract, planning_item}``.
+        """
+        return self._expect_dict(
+            self._request("POST", "/sessions/open", json_body=body), op="open_session"
+        )
+
+    def advance_session_segment(self, identifier: str) -> dict[str, Any]:
+        """POST /sessions/{identifier}/advance-segment — the segment-advance
+        operation (PI-488): close the current phase segment, open the next,
+        return its contract; ``completed`` after the last."""
+        return self._expect_dict(
+            self._request("POST", f"/sessions/{identifier}/advance-segment", json_body={}),
+            op="advance_session_segment",
+        )
+
     def patch_session(
         self, identifier: str, body: dict[str, Any]
     ) -> dict[str, Any]:

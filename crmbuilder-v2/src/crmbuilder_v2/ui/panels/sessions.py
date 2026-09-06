@@ -211,6 +211,15 @@ class SessionsPanel(ListDetailPanel):
             required_label("Description"),
             read_only_text(record.get("session_description") or ""),
         )
+        # PI-488 / REQ-568: the opening answer and what followed from it.
+        opening_answer = record.get("session_opening_answer")
+        if opening_answer or record.get("session_kind_of_work"):
+            form.addRow("Opening answer", read_only_line(opening_answer or "—"))
+            form.addRow("Kind of work", read_only_line(record.get("session_kind_of_work") or "—"))
+            form.addRow(
+                "Confirmation line",
+                read_only_text(record.get("session_confirmation_line") or "—"),
+            )
         outer.addLayout(form)
 
         # Status (read-only summary; transitions happen via Edit dialog)
@@ -232,6 +241,13 @@ class SessionsPanel(ListDetailPanel):
             outer.addWidget(CollapsibleSection(
                 "Participants",
                 read_only_text(participants_text),
+                expanded=False,
+            ))
+        segments_text = _format_json_value(record.get("session_phase_segments"))
+        if segments_text != "—":
+            outer.addWidget(CollapsibleSection(
+                "Phase segments",
+                read_only_text(segments_text),
                 expanded=False,
             ))
         metadata_text = _format_json_value(record.get("session_medium_metadata"))

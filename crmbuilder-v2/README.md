@@ -520,12 +520,22 @@ Each tool wraps a single REST call. To add a tool, add a wrapper in
 > `protected_path` (TERM-044) — except an `ado_agent` rule, whose gate is the
 > agent contract's hard-gates section verified by the Tester tier (DEC-972).
 > In Claude Code the repo's `.claude/settings.json` wires the mechanism: a
-> `SessionStart` hook (`session_context.py`) injects the effective
-> session-audience rules and active preferences into every session (such a
+> `SessionStart` hook (`session_context.py`) injects the cross-cutting rules
+> (the system-scope profile whose area is `cross-cutting`), the active
+> preferences and the opening question *What do you want to do today?*; a
+> `UserPromptSubmit` hook (`session_open.py`) takes the first prompt as the
+> opening answer and calls the session-open operation (`POST /sessions/open`,
+> PI-488 / REQ-575), which classifies the answer against the catalogue of
+> kinds of work (process records whose steps field carries the phase
+> segments), creates the session record carrying the answer, the kind of
+> work, the confirmation line and the segments, and returns the first
+> segment's profile contract merged with the cross-cutting rules (such a
 > session, run with the live store reachable, records `session_medium =
 > claude_code`; a claude.ai sandbox conversation records `chat` — REQ-561 /
-> DEC-1035, PI-462), and a
-> `PreToolUse` hook (`rule_check.py`) evaluates the enforced checks before
+> DEC-1035, PI-462); segments advance with
+> `POST /sessions/{id}/advance-segment`; and a
+> `PreToolUse` hook (`rule_check.py`) evaluates the enforced checks — read
+> from the contract the session received — before
 > each Bash command, denying with the rule named; an `enforced_with_override`
 > failure can be waved through with `GVR_OVERRIDE='GVR-NNN: <reason>'`, the
 > waiver recorded via `POST /governance-rules/{id}/enforcement-overrides`.

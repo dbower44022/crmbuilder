@@ -93,6 +93,13 @@ class SessionCreateIn(_Base):
     session_ended_at: datetime | None = None
     session_participants: list | None = None
     session_medium_metadata: dict | None = None
+    # PI-488 / REQ-568: the opening answer and what followed from it. Normally
+    # written by the session-open and segment-advance operations; accepted
+    # here so a record can be repaired or imported with the values in hand.
+    session_opening_answer: str | None = None
+    session_kind_of_work: str | None = None
+    session_confirmation_line: str | None = None
+    session_phase_segments: list | None = None
     references: list[GovernanceEdgeIn] | None = None
     timestamps: dict[str, Any] | None = None
 
@@ -112,6 +119,13 @@ class SessionReplaceIn(_Base):
     session_ended_at: datetime | None = None
     session_participants: list | None = None
     session_medium_metadata: dict | None = None
+    # PI-488 / REQ-568: the opening answer and what followed from it. Normally
+    # written by the session-open and segment-advance operations; accepted
+    # here so a record can be repaired or imported with the values in hand.
+    session_opening_answer: str | None = None
+    session_kind_of_work: str | None = None
+    session_confirmation_line: str | None = None
+    session_phase_segments: list | None = None
     references: list[GovernanceEdgeIn] | None = None
 
 
@@ -129,7 +143,41 @@ class SessionPatchIn(_Base):
     session_ended_at: datetime | None = None
     session_participants: list | None = None
     session_medium_metadata: dict | None = None
+    # PI-488 / REQ-568: the opening answer and what followed from it. Normally
+    # written by the session-open and segment-advance operations; accepted
+    # here so a record can be repaired or imported with the values in hand.
+    session_opening_answer: str | None = None
+    session_kind_of_work: str | None = None
+    session_confirmation_line: str | None = None
+    session_phase_segments: list | None = None
     references: list[GovernanceEdgeIn] | None = None
+
+
+class SessionOpenIn(_Base):
+    """POST /sessions/open body — the session-open operation (PI-488, REQ-570).
+
+    ``opening_answer`` is the user's verbatim reply to the opening question;
+    empty (or omitted) opens a session that loads only the cross-cutting rules
+    (REQ-571). ``project_identifier`` names the project the session belongs
+    to; when omitted the latest project in flight (else planned) is used.
+    """
+
+    opening_answer: str | None = None
+    medium: str = "claude_code"
+    project_identifier: str | None = None
+    title: str | None = None
+    participants: list | None = None
+    medium_metadata: dict | None = None
+    description: str | None = None
+    executive_summary: str | None = None
+    notes: str | None = None
+    engagement: str | None = None
+
+
+class SessionAdvanceSegmentIn(_Base):
+    """POST /sessions/{identifier}/advance-segment body (PI-488, REQ-573)."""
+
+    engagement: str | None = None
 
 
 # ---------- Risks ----------

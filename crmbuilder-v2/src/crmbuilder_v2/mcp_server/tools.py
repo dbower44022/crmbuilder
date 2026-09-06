@@ -22,7 +22,7 @@ from mcp.server.fastmcp import FastMCP
 
 # Name-prefix → write classification (design §4). Consumed by the chat
 # tool dispatcher's mode toggle (Full / Read-only / Ask before write).
-_WRITE_PREFIXES = ("create_", "update_", "delete_", "add_", "replace_")
+_WRITE_PREFIXES = ("create_", "update_", "delete_", "add_", "replace_", "open_", "advance_")
 
 
 def _is_write(name: str) -> bool:
@@ -335,6 +335,68 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
     async def delete_session(identifier: str) -> Any:
         """Soft-delete a session record."""
         return await _unwrap(await http.delete(f"/sessions/{identifier}"))
+
+    async def open_session(
+        opening_answer: str = "",
+        project_identifier: str | None = None,
+        medium: str = "chat",
+        title: str | None = None,
+        participants: list | None = None,
+        medium_metadata: dict | None = None,
+    ) -> Any:
+        """Open a session from the user's plain-language answer to "What do you
+        want to do today?" (the session-open operation, PI-488).
+
+        Pass the user's words as ``opening_answer`` exactly as given. The server
+        matches them against the catalogue of kinds of work, creates the session
+        record (in flight, carrying the answer, the kind of work chosen, the
+        confirmation line and the phase segments), and returns:
+
+        - ``confirmation_line`` — say this back to the user before doing
+          anything else; or, when ``follow_up_question`` is set, the answer
+          was not recognised: ask that one question in the user's words and
+          call this tool again with their reply (a planning item records the
+          miss so the catalogue can grow).
+        - ``contract`` — the rules in force for the first phase segment merged
+          with the cross-cutting rules; apply ``advisory_rules`` as standing
+          instructions and never break an ``enforced_ruleset`` entry.
+        - ``session`` — the record; note its ``session_identifier`` for the
+          close-out and for ``advance_session_segment``.
+
+        An empty ``opening_answer`` opens a session that loads only the
+        cross-cutting rules and says so. ``medium`` is ``chat`` for a claude.ai
+        conversation and ``claude_code`` for Claude Code. ``project_identifier``
+        names the project the session belongs to; when omitted the latest
+        project in flight is used.
+        """
+        body = {
+            k: v
+            for k, v in {
+                "opening_answer": opening_answer,
+                "project_identifier": project_identifier,
+                "medium": medium,
+                "title": title,
+                "participants": participants,
+                "medium_metadata": medium_metadata,
+            }.items()
+            if v is not None
+        }
+        return await _unwrap(await http.post("/sessions/open", json=body))
+
+    async def advance_session_segment(identifier: str) -> Any:
+        """Move a session opened with ``open_session`` to its next phase
+        segment (the segment-advance operation, PI-488).
+
+        Call it when the current segment's work is done — its decision or
+        planning item is recorded — and before starting the next phase's
+        work. The server closes the current segment with the leaving moment,
+        opens the next with the entering moment, and returns the next
+        segment's ``contract`` (its rules merged with the cross-cutting rules)
+        and a ``first_line`` to say. After the last segment the result has
+        ``completed: true`` and no contract. A session opened without a kind
+        of work has no segments and cannot be advanced.
+        """
+        return await _unwrap(await http.post(f"/sessions/{identifier}/advance-segment", json={}))
 
     async def list_conversations_for_session(identifier: str) -> Any:
         """List every conversation (topical sub-unit) belonging to a session.
@@ -2334,6 +2396,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         create_session,
         update_session,
         delete_session,
+        open_session,
+        advance_session_segment,
         list_conversations_for_session,
         list_decisions_for_session,
         get_conversation,
