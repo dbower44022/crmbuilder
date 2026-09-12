@@ -2192,6 +2192,142 @@ class StorageClient:
         )
 
     # ------------------------------------------------------------------
+    # Design records a transition may name as an automatic consequence
+    # (PI-471). Read-only: the desktop offers them as choices, it does not
+    # author them here.
+    # ------------------------------------------------------------------
+
+    def list_automations(self) -> list[dict[str, Any]]:
+        """Return all live automations (``AUT-NNN``)."""
+        result = self._request("GET", "/automations")
+        return result if isinstance(result, list) else []
+
+    def list_views(self) -> list[dict[str, Any]]:
+        """Return all live views (``VEW-NNN``)."""
+        result = self._request("GET", "/views")
+        return result if isinstance(result, list) else []
+
+    def list_message_templates(self) -> list[dict[str, Any]]:
+        """Return all live message templates (``MSG-NNN``)."""
+        result = self._request("GET", "/message-templates")
+        return result if isinstance(result, list) else []
+
+    # ------------------------------------------------------------------
+    # Transitions — the allowed status moves of a process (PI-471)
+    # ------------------------------------------------------------------
+
+    def list_transitions(
+        self,
+        *,
+        process_identifier: str | None = None,
+        include_deleted: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Return transitions in process order.
+
+        With ``process_identifier`` supplied this is one process's status
+        lifecycle as a single ordered list, the shape the process detail view
+        shows (REQ-577 / REQ-585).
+        """
+        params = []
+        if process_identifier is not None:
+            params.append(f"process={process_identifier}")
+        if include_deleted:
+            params.append("include_deleted=true")
+        path = "/transitions"
+        if params:
+            path = path + "?" + "&".join(params)
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def get_transition(self, identifier: str) -> dict[str, Any]:
+        """Return a single transition by identifier (e.g. ``"TRN-001"``)."""
+        result = self._request("GET", f"/transitions/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for get_transition",
+            )
+        return result
+
+    def create_transition(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /transitions. Returns the created record dict.
+
+        The body uses the parent-prefixed field names. A body that fails one
+        of the store's checks raises ``RequestShapeError`` on 422, carrying
+        the name of the check that failed.
+        """
+        result = self._request("POST", "/transitions", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for create_transition",
+            )
+        return result
+
+    def update_transition(
+        self, identifier: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /transitions/{identifier} — partial update.
+
+        Only the supplied keys are touched; a change to either end of the move
+        is re-checked against the record as it will be after the change.
+        """
+        result = self._request(
+            "PATCH", f"/transitions/{identifier}", json_body=body
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200,
+                errors=[],
+                message="Expected dict body for update_transition",
+            )
+        return result
+
+    def delete_transition(self, identifier: str) -> dict[str, Any]:
+        """DELETE /transitions/{identifier} — soft-delete, idempotent."""
+        result = self._request("DELETE", f"/transitions/{identifier}")
+        return result if isinstance(result, dict) else {}
+
+    def restore_transition(self, identifier: str) -> dict[str, Any]:
+        """POST /transitions/{identifier}/restore."""
+        result = self._request("POST", f"/transitions/{identifier}/restore")
+        return result if isinstance(result, dict) else {}
+
+    def reorder_transitions(
+        self, process_identifier: str, ordered_identifiers: list[str]
+    ) -> list[dict[str, Any]]:
+        """Set the order of a process's transitions (REQ-585).
+
+        ``ordered_identifiers`` must name every live transition of the process
+        exactly once; anything else is refused rather than partly applied.
+        """
+        result = self._request(
+            "POST",
+            f"/processes/{process_identifier}/transitions/order",
+            json_body={"ordered_identifiers": list(ordered_identifiers)},
+        )
+        if not isinstance(result, list):
+            return []
+        return result
+
+    def list_incomplete_transitions(
+        self, *, process_identifier: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Return the transitions whose automatic consequences are still words
+        rather than records (REQ-581)."""
+        path = "/transitions/incomplete"
+        if process_identifier is not None:
+            path = f"{path}?process={process_identifier}"
+        result = self._request("GET", path)
+        if not isinstance(result, list):
+            return []
+        return result
+
+    # ------------------------------------------------------------------
     # Source mapping model — candidate review (PI-255/256 / PRJ-027)
     # ------------------------------------------------------------------
 

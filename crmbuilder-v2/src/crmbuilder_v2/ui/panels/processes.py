@@ -72,6 +72,7 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
+from crmbuilder_v2.ui.widgets.transitions_section import TransitionsSection
 from crmbuilder_v2.ui.widgets.warning_callout import WarningCallout
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.processes")
@@ -417,6 +418,16 @@ class ProcessesPanel(ListDetailPanel):
             )
             section.setObjectName(f"{field_key}_section")
             outer.addWidget(section)
+
+        # PI-471 (REQ-585): the process's status lifecycle, shown as it is
+        # stored — one row per allowed move, in order — and edited here.
+        outer.addWidget(_separator())
+        transitions_section = TransitionsSection(
+            identifier, client=self._client
+        )
+        transitions_section.setObjectName("process_transitions_section")
+        transitions_section.transitions_changed.connect(self.refresh)
+        outer.addWidget(transitions_section)
 
         # Field 7: process_notes under a collapsible "Internal notes"
         # header, collapsed by default. v0.6 slice C: replaces the flat
