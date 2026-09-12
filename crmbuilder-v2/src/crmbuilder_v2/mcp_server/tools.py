@@ -46,11 +46,23 @@ class ToolDefinition:
 
 
 async def _unwrap(response: httpx.Response) -> Any:
-    """Pull the envelope's ``data`` field, or raise on error envelopes."""
-    response.raise_for_status()
-    body = response.json()
-    if body.get("errors"):
+    """Pull the envelope's ``data`` field, or raise on error envelopes.
+
+    A refused write must reach the caller saying which check it failed
+    (REQ-586), so the error envelope is read before the status is raised on:
+    the store answers a failed check with 422 and a list of field errors, and
+    a bare "422 Unprocessable Entity" would throw that list away. A response
+    that carries no readable envelope still raises the status error.
+    """
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    if isinstance(body, dict) and body.get("errors"):
         raise RuntimeError(body["errors"])
+    response.raise_for_status()
+    if not isinstance(body, dict):
+        return body
     return body.get("data")
 
 
@@ -2229,6 +2241,151 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
             )
         )
 
+    # ---------- Transitions (PI-471 / REQ-586) ----------
+    # A transition (TRN-NNN) is one allowed move of a status field on an
+    # entity within a process. Two read tools and one create tool: the create
+    # tool exists so an engagement can enter an approved transition table
+    # through the connector, under the same checks any other write meets
+    # (DEC-1070).
+
+    async def get_transition(
+        identifier: str, include_deleted: bool = False
+    ) -> Any:
+        """Return one transition record (``TRN-NNN``) — the values it moves
+        from, the value it moves to, who may make the move, the fields that
+        must hold a value and the condition stated in words before it, what
+        happens automatically after it, and what a person does by hand.
+
+        Pass ``include_deleted=true`` to read a soft-deleted record.
+        """
+        return await _unwrap(
+            await http.get(
+                f"/transitions/{identifier}",
+                params=_read_params(include_deleted=include_deleted),
+            )
+        )
+
+    async def list_transitions(
+        process: str | None = None,
+        status: str | None = None,
+        include_deleted: bool = False,
+    ) -> Any:
+        """List transition records in process order.
+
+        Pass ``process`` (a ``PROC-NNN``) to read one process's status
+        lifecycle as a single ordered list, ``status`` to filter by the design
+        lifecycle (candidate / confirmed / deferred / rejected), and
+        ``include_deleted=true`` to include soft-deleted rows.
+        """
+        return await _unwrap(
+            await http.get(
+                "/transitions",
+                params=_read_params(
+                    process=process,
+                    status=status,
+                    include_deleted=include_deleted,
+                ),
+            )
+        )
+
+    async def list_incomplete_transitions(process: str | None = None) -> Any:
+        """List the transitions whose automatic consequences are still
+        described in words rather than naming a record.
+
+        Pass ``process`` to narrow to one process. What a person does by hand
+        after a move is not counted here.
+        """
+        return await _unwrap(
+            await http.get(
+                "/transitions/incomplete", params=_read_params(process=process)
+            )
+        )
+
+    async def create_transition(
+        process: str,
+        field: str,
+        to_value: str,
+        from_kind: str | None = None,
+        from_values: list | None = None,
+        actor_kind: str | None = None,
+        actor_persona: str | None = None,
+        actor_occasion: str | None = None,
+        required_fields: list | None = None,
+        precondition: str | None = None,
+        consequences: list | None = None,
+        consequence_notes: str | None = None,
+        manual_follow_up: str | None = None,
+        order: int | None = None,
+        description: str | None = None,
+        notes: str | None = None,
+        status: str | None = None,
+        identifier: str | None = None,
+    ) -> Any:
+        """Create one allowed status move on a process.
+
+        Required: ``process`` (the ``PROC-NNN`` that owns the move),
+        ``field`` (the ``FLD-NNN`` status field, which must be a choice field
+        on an entity the process touches) and ``to_value`` (one option of that
+        field).
+
+        The move's other end: ``from_kind`` is ``values`` (the default) with
+        ``from_values`` naming one option or an explicit set of options, or
+        ``record_creation`` for the move that brings the record into being, in
+        which case ``from_values`` is left empty. The value moved to may not
+        also appear among the values moved from.
+
+        Who makes the move: ``actor_kind`` is ``system`` (the default) or
+        ``persona``, in which case ``actor_persona`` names the ``PER-NNN``.
+        ``actor_occasion`` is a short phrase telling two moves by the same
+        persona apart ("first vote") or naming which system acts.
+
+        Before the move: ``required_fields`` lists the ``FLD-NNN`` that must
+        hold a value, each on an entity the process touches; ``precondition``
+        states any further condition in words.
+
+        After the move: ``consequences`` lists the records that follow
+        automatically — an automation (``AUT-``), a message template
+        (``MSG-``), a view (``VEW-``), another transition (``TRN-``) or a
+        process hand-off (``PROC-``); ``consequence_notes`` describes in words
+        an automatic action that has no record yet, and a transition carrying
+        such words is reported as incomplete; ``manual_follow_up`` records
+        what a person does by hand and is never counted as incomplete.
+
+        ``order`` defaults to the end of the process's list, ``status`` to
+        ``candidate``, and the identifier is server-assigned (``TRN-NNN``)
+        when omitted. Every check the store applies to any other write applies
+        here, and a refusal names the check that failed.
+        """
+        body: dict[str, Any] = {
+            "transition_process": process,
+            "transition_field": field,
+            "transition_to_value": to_value,
+        }
+        body.update(
+            {
+                k: v
+                for k, v in {
+                    "transition_from_kind": from_kind,
+                    "transition_from_values": from_values,
+                    "transition_actor_kind": actor_kind,
+                    "transition_actor_persona": actor_persona,
+                    "transition_actor_occasion": actor_occasion,
+                    "transition_required_fields": required_fields,
+                    "transition_precondition": precondition,
+                    "transition_consequences": consequences,
+                    "transition_consequence_notes": consequence_notes,
+                    "transition_manual_follow_up": manual_follow_up,
+                    "transition_order": order,
+                    "transition_description": description,
+                    "transition_notes": notes,
+                    "transition_status": status,
+                    "transition_identifier": identifier,
+                }.items()
+                if v is not None
+            }
+        )
+        return await _unwrap(await http.post("/transitions", json=body))
+
     async def get_requirement(
         identifier: str, include_deleted: bool = False
     ) -> Any:
@@ -2486,6 +2643,10 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         restore_message_template,
         get_process,
         list_processes,
+        get_transition,
+        list_transitions,
+        list_incomplete_transitions,
+        create_transition,
         get_requirement,
         list_requirements,
         get_domain,
