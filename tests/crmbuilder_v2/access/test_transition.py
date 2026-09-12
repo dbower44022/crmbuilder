@@ -652,7 +652,7 @@ def test_next_identifier_skips_used_numbers(v2_env):
 
 def test_a_view_may_reference_a_transition_and_a_domain_may_not(v2_env):
     """REQ-583: the access layer enforces the pairs, not only the dialog."""
-    from crmbuilder_v2.access.repositories import domain, references, view
+    from crmbuilder_v2.access.repositories import domain, references
 
     with session_scope() as s:
         seed = seed_mentor_application(s)
