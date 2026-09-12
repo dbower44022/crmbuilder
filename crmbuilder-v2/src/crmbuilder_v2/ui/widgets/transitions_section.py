@@ -79,6 +79,7 @@ class TransitionsSection(QWidget):
         self._rows: list[dict[str, Any]] = []
         self._field_names: dict[str, str] = {}
         self._persona_names: dict[str, str] = {}
+        self._consequence_labels: dict[str, str] = {}
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -144,6 +145,12 @@ class TransitionsSection(QWidget):
     # -- reads -------------------------------------------------------------
 
     def _load_names(self) -> None:
+        """Read the names behind every identifier a row shows.
+
+        A row that printed ``AUT-004`` would send the reader to another record
+        to learn what happens after the move, so each consequence is shown as
+        what it is, with the identifier in brackets after it.
+        """
         try:
             self._field_names = {
                 row["field_identifier"]: row["field_name"]
@@ -153,9 +160,39 @@ class TransitionsSection(QWidget):
                 row["persona_identifier"]: row["persona_name"]
                 for row in self._client.list_personas()
             }
+            self._consequence_labels = self._read_consequence_labels()
         except (StorageClientError, StorageConnectionError):
             self._field_names = {}
             self._persona_names = {}
+            self._consequence_labels = {}
+
+    def _read_consequence_labels(self) -> dict[str, str]:
+        labels: dict[str, str] = {}
+        for row in self._client.list_automations():
+            labels[row["automation_identifier"]] = (
+                f"the {row['automation_name']} routine "
+                f"({row['automation_identifier']})"
+            )
+        for row in self._client.list_message_templates():
+            labels[row["message_template_identifier"]] = (
+                f"the {row['message_template_name']} message "
+                f"({row['message_template_identifier']})"
+            )
+        for row in self._client.list_views():
+            labels[row["view_identifier"]] = (
+                f"the {row['view_name']} view ({row['view_identifier']})"
+            )
+        for row in self._client.list_processes():
+            labels[row["process_identifier"]] = (
+                f"hand-off to the {row['process_name']} process "
+                f"({row['process_identifier']})"
+            )
+        for row in self._client.list_transitions():
+            labels[row["transition_identifier"]] = (
+                f"the move to {row['transition_to_value']} "
+                f"({row['transition_identifier']})"
+            )
+        return labels
 
     def reload(self) -> None:
         """Re-read the process's transitions and redraw the table."""
@@ -221,7 +258,10 @@ class TransitionsSection(QWidget):
         condition = record.get("transition_precondition")
         if condition:
             before_parts.append(condition)
-        after_parts = list(record["transition_consequences"])
+        after_parts = [
+            self._consequence_labels.get(identifier, identifier)
+            for identifier in record["transition_consequences"]
+        ]
         words = record.get("transition_consequence_notes")
         if words:
             after_parts.append(f"{words} (no record yet)")

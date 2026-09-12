@@ -386,3 +386,38 @@ def test_the_section_appears_on_the_process_detail_view(
     detail = panel.render_detail(record, extras)
     found = detail.findChild(TransitionsSection, "process_transitions_section")
     assert found is not None
+
+
+def test_consequences_are_shown_as_what_they_are_not_as_identifiers(
+    transition_client, seeded, qtbot
+):
+    """A row says what happens after the move in words, with the identifier in
+    brackets — not a bare identifier the reader would have to look up."""
+    view = _post(
+        transition_client,
+        "/views",
+        {
+            "view_name": "Mentor candidates",
+            "view_entity": seeded["profile"],
+            "view_columns": ["mentorStatus"],
+        },
+    )["view_identifier"]
+    dialog = TransitionDialog(
+        transition_client, process_identifier=seeded["process"]
+    )
+    qtbot.addWidget(dialog)
+    _enter_move(
+        dialog,
+        from_values=None,
+        to_value="Candidate",
+        actor="system",
+    )
+    _tick(dialog.consequences_list, [view])
+    dialog._on_save()
+    assert dialog.saved_record is not None, dialog.message.text()
+
+    section = TransitionsSection(seeded["process"], client=transition_client)
+    qtbot.addWidget(section)
+    assert section.table.item(0, 4).text() == (
+        f"the Mentor candidates view ({view})"
+    )
