@@ -174,6 +174,9 @@ from crmbuilder_v2.access.vocab import (
     TERM_STATUSES,
     TEST_SPEC_RUN_OUTCOMES,
     TEST_SPEC_STATUSES,
+    TRANSITION_ACTOR_KINDS,
+    TRANSITION_FROM_KINDS,
+    TRANSITION_STATUSES,
     VALUE_MAPPING_DECISION_TYPES,
     VERSIONED_ARTIFACT_TYPES,
     VIEW_STATUSES,
@@ -1548,6 +1551,145 @@ class Process(EngagementScopedPKMixin, Base):
             "process_domain_identifier",
         ),
         Index("ix_processes_process_deleted_at", "process_deleted_at"),
+    )
+
+
+class Transition(EngagementScopedPKMixin, Base):
+    """Methodology entity — one allowed move of a status field in a process.
+
+    PI-471 (REQ-577 to REQ-586, approved by DEC-1071). A ``transition``
+    (``TRN-NNN``) says that within one process a record may move from one value
+    of a status field — or from a set of its values, or from the creation of
+    the record — to one other value, and states who may make the move, what
+    must be recorded before it, and what happens automatically after it. The
+    thirteen rows of the Mentor Application status-transition table are the
+    shape this record type was drawn from.
+
+    Parent-prefix field naming (DEC-046); the primary key is the
+    prefixed-string identifier ``transition_identifier``. ``transition_process``
+    (the owning ``PROC-NNN``) and ``transition_field`` (the status field's
+    ``FLD-NNN``) are plain string columns validated live at write time, the
+    ``automation_entity`` precedent — not ``refs`` edges. The four *inbound*
+    kinds of REQ-583 (a view, an automation, a test specification or a
+    requirement naming an individual move) do live in ``refs``, as do the
+    decisions that settled a transition (``decision --is_about--> transition``).
+
+    The from side (DEC-1065): ``transition_from_kind`` is ``record_creation``
+    (the move that brings the record into being, with no prior value) or
+    ``values``, in which case ``transition_from_values`` holds one option of the
+    status field or an explicit set of its options. The to side is always
+    exactly one option, and it may not appear among the from values.
+
+    The actor (DEC-1066): ``transition_actor_kind`` is ``persona`` — with
+    ``transition_actor_persona`` naming one persona record — or ``system``.
+    ``transition_actor_occasion`` is free text that tells two moves by the same
+    persona apart ("first vote") or names which system performs a system move.
+
+    Preconditions and consequences (DEC-1067, amended by DEC-1070):
+    ``transition_required_fields`` lists the ``FLD-NNN`` that must hold a value
+    before the move and ``transition_precondition`` states any further
+    condition in words; ``transition_consequences`` lists the automation,
+    message template, view, transition and process records that follow
+    automatically and ``transition_consequence_notes`` describes in words an
+    automatic action that has no record yet — a transition carrying such words
+    is reported as incomplete. ``transition_manual_follow_up`` records what a
+    person does by hand afterwards and is never counted as incomplete.
+
+    ``transition_order`` is the position within the owning process, so reading
+    a process returns its transitions as one ordered list (REQ-577). The
+    standard four-status propose-verify lifecycle gates it (REQ-582).
+    """
+
+    __tablename__ = "transitions"
+
+    transition_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    transition_process: Mapped[str] = mapped_column(String(32), nullable=False)
+    transition_field: Mapped[str] = mapped_column(String(32), nullable=False)
+    transition_from_kind: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    transition_from_values: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False, default=list
+    )
+    transition_to_value: Mapped[str] = mapped_column(Text, nullable=False)
+    transition_actor_kind: Mapped[str] = mapped_column(
+        String(16), nullable=False
+    )
+    transition_actor_persona: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    transition_actor_occasion: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    transition_required_fields: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False, default=list
+    )
+    transition_precondition: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    transition_consequences: Mapped[list] = mapped_column(
+        JSONColumn, nullable=False, default=list
+    )
+    transition_consequence_notes: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    transition_manual_follow_up: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    transition_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    transition_description: Mapped[str | None] = mapped_column(
+        Text, nullable=True
+    )
+    transition_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    transition_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="candidate"
+    )
+    transition_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    transition_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    transition_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("transition_identifier", ["TRN"]),
+            name="ck_transition_identifier_format",
+        ),
+        CheckConstraint(
+            _IdentifierFormatCheck("transition_process", ["PROC"]),
+            name="ck_transition_process_format",
+        ),
+        CheckConstraint(
+            _IdentifierFormatCheck("transition_field", ["FLD"]),
+            name="ck_transition_field_format",
+        ),
+        CheckConstraint(
+            _check_in("transition_from_kind", TRANSITION_FROM_KINDS),
+            name="ck_transition_from_kind",
+        ),
+        CheckConstraint(
+            _check_in("transition_actor_kind", TRANSITION_ACTOR_KINDS),
+            name="ck_transition_actor_kind",
+        ),
+        CheckConstraint(
+            _check_in("transition_status", TRANSITION_STATUSES),
+            name="ck_transition_status",
+        ),
+        Index("ix_transitions_transition_process", "transition_process"),
+        Index("ix_transitions_transition_field", "transition_field"),
+        Index("ix_transitions_transition_status", "transition_status"),
+        Index("ix_transitions_transition_deleted_at", "transition_deleted_at"),
     )
 
 
