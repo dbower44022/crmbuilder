@@ -484,6 +484,34 @@ Each tool wraps a single REST call. To add a tool, add a wrapper in
 > until a requirement names them. Tests:
 > `tests/crmbuilder_v2/mcp_server/test_workflow_record_read_tools.py`.
 >
+> **Transitions — the allowed status moves of a process (09-12-26, REQ-577 to
+> REQ-586, DEC-1071 / PI-471):** a process's status lifecycle is now stated
+> once, as records, instead of being reassembled from its prose steps and
+> several decisions. A transition (`TRN-NNN`) is one allowed move of a status
+> field on an entity within that process: from one value, from an explicit set
+> of values, or from the creation of the record, to one value, with who may
+> make the move (one persona or the system, with an optional occasion in
+> words), the fields that must hold a value and any further condition before
+> it, the automations, message templates, views, transitions and processes that
+> follow automatically, words for an automatic action that has no record yet,
+> and, kept separate and never counted as incomplete, what a person does by
+> hand. Reading a process returns its transitions as one ordered list
+> (`GET /processes/{id}/transitions`); `GET /transitions/incomplete` is the
+> report of the moves still owed a record. Connector tools: `get_transition`,
+> `list_transitions`, `list_incomplete_transitions` and `create_transition` —
+> the create tool exists so an engagement can enter an approved transition
+> table through the connector. The desktop edits them on the process detail
+> view, choosing every identifier and status value from lists drawn from the
+> store. A view, an automation, a test specification or a requirement can name
+> an individual move through the four new reference kinds. Tests:
+> `tests/crmbuilder_v2/access/test_transition.py`,
+> `tests/crmbuilder_v2/api/test_transitions_api.py`,
+> `tests/crmbuilder_v2/render/test_process_transitions.py`,
+> `tests/crmbuilder_v2/mcp_server/test_transition_tools.py`,
+> `tests/crmbuilder_v2/ui/test_transitions_section.py`; the approved
+> thirteen-row Mentor Application table is the acceptance content, held in
+> `tests/crmbuilder_v2/access/_mentor_application.py`.
+
 > **Connector token (same session):** the HTTP MCP server behind
 > `mcp.crmbuilder.ai` forwards `CRMBUILDER_V2_MCP_TOKEN` as its bearer on
 > every REST call. When principal auth is on at the API and that setting is
