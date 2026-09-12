@@ -42,6 +42,7 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
     destructive_button,
     primary_button,
 )
+from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
 
 _log = logging.getLogger("crmbuilder_v2.ui.widgets.transitions_section")
 
@@ -344,7 +345,7 @@ class TransitionsSection(QWidget):
             self.summary.setText("Select one move to delete it.")
             return
         identifier = record["transition_identifier"]
-        confirmed = QMessageBox.question(
+        confirmed = CopyableMessageBox.question(
             self,
             "Delete this status move?",
             f"The move to {record['transition_to_value']} ({identifier}) "
