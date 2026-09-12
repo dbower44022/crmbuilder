@@ -39,6 +39,16 @@ from crmbuilder_v2.access.vocab import (
 _ENTITY_TYPE = "reference"
 
 
+#: PI-471 (REQ-583). The four kinds that name an individual transition, and the
+#: source record type each runs from. Read by the pair check in :func:`create`.
+_TRANSITION_KINDS: dict[str, str] = {
+    "view_offers_transition": "view",
+    "automation_triggered_by_transition": "automation",
+    "test_spec_exercises_transition": "test specification",
+    "requirement_touches_transition": "requirement",
+}
+
+
 def _guard_field_belongs_to_entity_delete(
     session: Session,
     row: Reference,
@@ -301,6 +311,27 @@ def create(
                     "relationship",
                     "pair_not_allowed",
                     "withdraws runs from a decision to a governed record; "
+                    f"({source_type}, {target_type}) is not such a pair",
+                )
+            ]
+        )
+
+    # PI-471 (REQ-583): the four kinds that name an individual transition run
+    # from exactly one source type to a transition. The pair rule lives in
+    # ``RELATIONSHIP_RULES``, which the reference dialogs already read; it is
+    # enforced here as well, so an edge built through the API or the access
+    # layer cannot claim that, say, a domain offers a transition. Same shape as
+    # the ``withdraws`` check above.
+    if relationship in _TRANSITION_KINDS and relationship not in (
+        RELATIONSHIP_RULES.get((source_type, target_type), frozenset())
+    ):
+        allowed = _TRANSITION_KINDS[relationship]
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "relationship",
+                    "pair_not_allowed",
+                    f"{relationship} runs from a {allowed} to a transition; "
                     f"({source_type}, {target_type}) is not such a pair",
                 )
             ]

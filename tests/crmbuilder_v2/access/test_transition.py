@@ -648,3 +648,55 @@ def test_next_identifier_skips_used_numbers(v2_env):
         assert transition.next_transition_identifier(s) == "TRN-001"
         transition.create_transition(s, **_base_row(seed))
         assert transition.next_transition_identifier(s) == "TRN-002"
+
+
+def test_a_view_may_reference_a_transition_and_a_domain_may_not(v2_env):
+    """REQ-583: the access layer enforces the pairs, not only the dialog."""
+    from crmbuilder_v2.access.repositories import domain, references, view
+
+    with session_scope() as s:
+        seed = seed_mentor_application(s)
+        identifier = transition.create_transition(s, **_base_row(seed))[
+            "transition_identifier"
+        ]
+        edge = references.create(
+            s,
+            source_type="view",
+            source_id=seed["candidates_view"],
+            target_type="transition",
+            target_id=identifier,
+            relationship="view_offers_transition",
+        )
+        assert edge["relationship"] == "view_offers_transition"
+
+        other = domain.create_domain(
+            s,
+            name="Finance",
+            purpose="Money.",
+            description="Not a view.",
+        )["domain_identifier"]
+        with pytest.raises(UnprocessableError) as exc:
+            references.create(
+                s,
+                source_type="domain",
+                source_id=other,
+                target_type="transition",
+                target_id=identifier,
+                relationship="view_offers_transition",
+            )
+    assert "pair_not_allowed" in _error_codes(exc)
+
+
+def test_the_reference_dialog_offers_the_four_kinds(v2_env):
+    """REQ-583: the New Reference dialog's cascading filters are driven by the
+    same rules, so the kinds appear there without a second registration."""
+    from crmbuilder_v2.access.vocab import kinds_for_source, target_types_for
+
+    for source_type, kind in (
+        ("view", "view_offers_transition"),
+        ("automation", "automation_triggered_by_transition"),
+        ("test_spec", "test_spec_exercises_transition"),
+        ("requirement", "requirement_touches_transition"),
+    ):
+        assert kind in kinds_for_source(source_type)
+        assert "transition" in target_types_for(source_type, kind)
