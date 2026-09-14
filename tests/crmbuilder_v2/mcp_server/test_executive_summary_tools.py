@@ -20,6 +20,8 @@ from crmbuilder_v2.access.repositories import projects as wr
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.mcp_server.server import build_server
 
+from tests.crmbuilder_v2._records import ensure
+
 _EXEC = "PI-105 end-to-end executive summary padding. " * 6  # ~270 chars
 _EXEC2 = "PI-105 refreshed executive summary padding. " * 6
 
@@ -109,6 +111,7 @@ async def test_update_conversation_sets_executive_summary(mcp_server):
     # Conversations need a parent-session membership edge the create tool
     # can't author yet, so seed via the access layer, then refresh via MCP.
     with session_scope() as s:
+        ensure(s, "session", "SES-049")
         cr.create_conversation(
             s,
             title="Seed conv",
@@ -119,7 +122,7 @@ async def test_update_conversation_sets_executive_summary(mcp_server):
                 "source_type": "conversation",
                 "source_id": "CNV-001",
                 "target_type": "session",
-                "target_id": "CONV-049",
+                "target_id": "SES-049",
                 "relationship": "conversation_belongs_to_session",
             }],
         )
