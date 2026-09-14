@@ -185,7 +185,7 @@ def _ensure_db_dir(db_path: Path) -> None:
 
 
 def bootstrap_database(settings: Settings | None = None) -> None:
-    """Bring the unified DB up to the migration chain head (PI-308 / REQ-343).
+    """Bring the unified DB up to every migration head (PI-308 / REQ-343).
 
     Closes the gap that left the live DB silently behind head: ``create_all``
     only creates *absent tables* and never ``ALTER``s existing ones, so a
@@ -195,15 +195,24 @@ def bootstrap_database(settings: Settings | None = None) -> None:
     Two paths, chosen by whether the DB is stamped (``alembic_version``):
 
     * **Un-stamped DB** (fresh/empty, or an old ``create_all`` DB never stamped)
-      → ``create_all`` then ``stamp head``. We deliberately do **not**
+      → ``create_all`` then ``stamp heads``. We deliberately do **not**
       ``upgrade`` from base here: the from-base chain runs the ``0004``
       catalog-seed migration, which requires the gitignored base-entity-catalog
       directory and would fail on a clean checkout. ``create_all`` materialises
       the head schema catalog-independently; the catalog *data* seed is a
       separate concern.
-    * **Stamped DB** (behind or at head) → ``alembic upgrade head`` applies only
+    * **Stamped DB** (behind or at head) → ``alembic upgrade heads`` applies only
       the pending delta. This skips the already-applied ``0004`` (no catalog
-      needed) and is a no-op when already at head (idempotent).
+      needed) and is a no-op when already at every head (idempotent).
+
+    **One head per branch** (PI-507 / REQ-592): the tree forks after the trunk
+    into one labelled branch per owner of the record-type-to-segment map, so
+    the target is the *set* of heads (``heads``), never the single ``head``,
+    which Alembic refuses as ambiguous. Both paths first make the
+    ``alembic_version`` table wide enough for every revision identifier
+    (:func:`ensure_version_table_wide`); Alembic's own default is too narrow
+    for forty of the trunk's identifiers and the live store already carries the
+    wide column.
 
     **Postgres only** (PI-503 / REQ-593 / DEC-1082): the SQLite store was
     retired as a source of truth and its migration chain removed, so a SQLite
@@ -214,7 +223,8 @@ def bootstrap_database(settings: Settings | None = None) -> None:
     from alembic import command
 
     from crmbuilder_v2.migration.version_info import (
-        _current_revision,
+        _current_revisions,
+        ensure_version_table_wide,
         make_alembic_config,
         refuse_sqlite,
     )
@@ -222,8 +232,9 @@ def bootstrap_database(settings: Settings | None = None) -> None:
     s = settings or get_settings()
     refuse_sqlite(s.db_url, "crmbuilder-v2-bootstrap-db (bootstrap_database)")
     cfg = make_alembic_config(s.db_url)
-    if _current_revision(s.db_url) is None:
+    ensure_version_table_wide(s.db_url)
+    if not _current_revisions(s.db_url):
         Base.metadata.create_all(get_engine(s))
-        command.stamp(cfg, "head")
+        command.stamp(cfg, "heads")
     else:
-        command.upgrade(cfg, "head")
+        command.upgrade(cfg, "heads")

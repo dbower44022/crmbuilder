@@ -16,7 +16,7 @@
 #   1. Local preflight  — on main, clean tree, main == origin/main
 #   2. Remote preflight — SSH up, service active, uv.lock unchanged
 #   3. Copy             — rsync the committed tree (config never touched)
-#   4. Migrate          — alembic (pg) upgrade head, before serving
+#   4. Migrate          — alembic (pg) upgrade heads (one head per branch), before serving
 #   5. Restart          — systemctl restart crmbuilder-v2-api
 #   6. Verify           — service, health, public endpoint, migration head
 #   7. Publish check    — validate-only publish against CBMTEST (advisory)
@@ -90,7 +90,7 @@ echo "    deploying commit $commit"
 say "2/7 Remote preflight"
 rssh true || die "cannot reach $HOST over SSH"
 [ "$(rssh systemctl is-active "$UNIT")" = "active" ] || die "$UNIT is not active on the droplet"
-head_before=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI current 2>/dev/null | tail -1")
+head_before=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI current 2>/dev/null" | grep -v '^INFO' | sort | tr '\n' ' ')
 echo "    remote alembic: $head_before"
 rssh "curl -sf -m 5 http://127.0.0.1:8765/health >/dev/null" || die "remote /health not ok before deploy"
 
@@ -116,8 +116,8 @@ git ls-files -z | rsync -az --files-from=- --from0 . "$HOST:$DEST/" \
     || die "rsync failed"
 
 # --- 4. Migrate (before serving) -------------------------------------------
-say "4/7 Migrate the live store (alembic pg upgrade head)"
-rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI upgrade head" \
+say "4/7 Migrate the live store (alembic pg upgrade heads — one head per branch, PI-507)"
+rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI upgrade heads" \
     || die "alembic upgrade failed — service NOT restarted; investigate before retrying"
 
 # --- 5. Restart ------------------------------------------------------------
@@ -143,12 +143,18 @@ poll_until curl -sf -m 10 -o /dev/null "$PUBLIC_URL/" \
 version=$(curl -sf -m 10 "$PUBLIC_URL/" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])') \
     || die "public endpoint $PUBLIC_URL served an unreadable response"
 echo "    public endpoint: serving version $version"
-head_after=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI current 2>/dev/null | tail -1")
-heads=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI heads 2>/dev/null | tail -1")
-case "$head_after" in
-    "${heads%% *}"*) echo "    alembic: $head_after" ;;
-    *) die "alembic current ($head_after) != head ($heads) after upgrade" ;;
-esac
+# One head per branch (PI-507): the store is current when the set of stamped
+# revisions equals the set of heads the tree defines — every branch, no extras.
+head_after=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI current 2>/dev/null" | grep -v '^INFO' | sed 's/ (head)//' | sort)
+heads=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI heads 2>/dev/null" | grep -v '^INFO' | sed 's/ (head)//' | sort)
+if [ -n "$heads" ] && [ "$head_after" = "$heads" ]; then
+    echo "    alembic heads ($(printf '%s\n' "$heads" | wc -l | tr -d ' ')):"
+    printf '%s\n' "$heads" | sed 's/^/      /'
+else
+    die "alembic current does not equal the head set after upgrade
+    current: $(printf '%s' "$head_after" | tr '\n' ' ')
+    heads:   $(printf '%s' "$heads" | tr '\n' ' ')"
+fi
 
 # --- 7. Publish check ------------------------------------------------------
 # A healthy /health says the process is serving. It says nothing about whether

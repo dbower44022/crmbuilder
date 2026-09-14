@@ -118,7 +118,7 @@ snapshots in `PRDs/product/crmbuilder-v2/db-export/` mirror that state.
 |---|---|---|
 | `crmbuilder-v2-api` | `crmbuilder_v2.cli:run_api` | Start FastAPI under uvicorn |
 | `crmbuilder-v2-mcp` | `crmbuilder_v2.cli:run_mcp` | Start the MCP stdio server |
-| `crmbuilder-v2-bootstrap-db` | `crmbuilder_v2.cli:bootstrap_db` | Bring the configured Postgres DB to the migration head (create_all + stamp on a fresh DB, `upgrade head` on a stamped one). Refuses a SQLite URL. |
+| `crmbuilder-v2-bootstrap-db` | `crmbuilder_v2.cli:bootstrap_db` | Bring the configured Postgres DB to every migration head (create_all + stamp heads on a fresh DB, `upgrade heads` on a stamped one; one head per owner branch since PI-507). Refuses a SQLite URL. |
 | `crmbuilder-v2-bootstrap` | `crmbuilder_v2.cli:bootstrap_content` | Import the four governance markdown files (only useful if they exist on disk; the live system retired them at commit `12b96bc`) |
 
 ### Configuration
@@ -149,12 +149,15 @@ container and point the store at it:
 cd crmbuilder-v2
 docker compose -f docker-compose.dev.yml up -d      # container crmb_pg_dev, port 55432
 export CRMBUILDER_V2_DATABASE_URL='postgresql+psycopg://crmb:crmb@localhost:55432/crmbuilder_v2'
-uv run crmbuilder-v2-bootstrap-db                    # create_all + stamp head on a fresh DB
+uv run crmbuilder-v2-bootstrap-db                    # create_all + stamp heads on a fresh DB
 ```
 
 `bootstrap_database` builds the head schema with `Base.metadata.create_all`
-and stamps it; on a DB that is already stamped it runs `alembic upgrade head`
-instead, so it is safe to re-run. The SQLite store that used to live at
+and stamps it at every branch head; on a DB that is already stamped it runs
+`alembic upgrade heads` instead, so it is safe to re-run. It also makes the
+`alembic_version.version_num` column 255 characters wide (Alembic's own
+default of 32 is too short for forty of the trunk's revision identifiers; the
+live store already carries 255). The SQLite store that used to live at
 `crmbuilder-v2/data/v2.db` was retired as a source of truth by the 2026-07-01
 cloud cutover and its migration chain was removed (PI-503 / REQ-593 /
 DEC-1082): the API and the bootstrap command now refuse a SQLite URL and
@@ -989,25 +992,50 @@ baselines at `ui-PRD-v0.2.md` and `ui-PRD-v0.1.md`.
 
 ### Schema migrations (Alembic)
 
-There is one Alembic chain, for Postgres, at `crmbuilder-v2/migrations/pg/`.
+There is one Alembic tree, for Postgres, at `crmbuilder-v2/migrations/pg/`.
 Run it from `crmbuilder-v2/` with `-c migrations/pg/alembic.ini` and
-`CRMBUILDER_V2_DATABASE_URL` set (for local work, the dev container above):
+`CRMBUILDER_V2_DATABASE_URL` set (for local work, the dev container above).
+
+**One migration sequence per owner (PI-507 / REQ-592 / DEC-1079).** The trunk
+`0001_pg_baseline` .. `0097_pi_471_transitions` is shared history. After it the
+tree forks into seven labelled branches, one per owner of the approved
+record-type-to-segment map (`specifications/re-architecture/record-type-segment-map.md`):
+`client_management`, `discovery`, `solution_design`, `build`, `operate`,
+`delivery`, `shared_core`. Each branch starts with an empty fork revision
+`<owner>_0001_branch` that carries the label. The rules:
+
+- A revision on a branch touches **only the tables that branch's owner
+  creates** in the map. Plumbing tables (`refs`, `identifier_reservations`,
+  `change_log`, `secret_values`) and the governance records are `shared_core`.
+- Revisions are named `<owner>_<nnnn>_<slug>`, numbered **per branch**
+  (`build_0002_...`, `operate_0002_...`). Two lanes that each add a migration
+  on different branches never take the same identifier and merge without
+  renumbering; two lanes on the *same* branch that take the same parent still
+  fork it, and `tests/crmbuilder_v2/migration/test_single_head.py` catches
+  that in seconds (one head per branch is the invariant).
+- The database is current when its stamped set equals the set of heads —
+  every branch head present, nothing else. So the target is always `heads`,
+  never `head` (Alembic refuses `head` as ambiguous with several branches).
+  `crmbuilder-v2-bootstrap-db`, the API's start-up drift gate and
+  `scripts/deploy-production.sh` all work on the head set.
 
 ```bash
 cd crmbuilder-v2
 
-# Create a new revision after editing models.py.
+# Create a new revision on the owner's branch after editing models.py.
+# --head names the branch; --rev-id gives the file its per-branch name.
 uv run alembic -c migrations/pg/alembic.ini revision --autogenerate \
-  -m "add personas table"
+  --head build@head --rev-id build_0002_add_manual_config_owner \
+  -m "add owner to manual configs"
 
-# Review the generated file in migrations/pg/versions/ and rename it to a
-# stable form like 00NN_pi_NNN_add_personas.py.
+# Review the generated file in migrations/pg/versions/<rev-id>.py.
 
-# Apply pending migrations.
-uv run alembic -c migrations/pg/alembic.ini upgrade head
+# Apply pending migrations on every branch.
+uv run alembic -c migrations/pg/alembic.ini upgrade heads
 
-# Inspect current schema version.
+# Inspect the stamped set (one line per branch) and the head set.
 uv run alembic -c migrations/pg/alembic.ini current
+uv run alembic -c migrations/pg/alembic.ini heads
 ```
 
 Notes:
@@ -1188,7 +1216,8 @@ for example:
    on `refs.relationship_kind` with the expanded set.
 3. Update the operator-facing documentation (this README, MCP tool
    descriptions in `tools.py`).
-4. Apply the migration: `alembic -c migrations/pg/alembic.ini upgrade head`.
+4. Apply the migration (it belongs on the `shared_core` branch, since
+   `refs` is a plumbing table): `alembic -c migrations/pg/alembic.ini upgrade heads`.
 
 The deliberate gate is the point — DEC-006 asks for the vocabulary
 to grow consciously, not by accident.
@@ -1273,8 +1302,9 @@ Then:
    `_EXPORT_TABLES` in `crmbuilder_v2/access/exporter.py`.
 7. **Tests**: add fixtures under `tests/crmbuilder_v2/access/`,
    `api/`, and `mcp_server/` matching the existing patterns.
-8. **Migration**: `alembic -c migrations/pg/alembic.ini revision --autogenerate -m "add <entity>"`,
-   review, rename to `00NN_pi_NNN_add_<entity>.py`, `alembic -c migrations/pg/alembic.ini upgrade head`.
+8. **Migration**: on the owner's branch —
+   `alembic -c migrations/pg/alembic.ini revision --autogenerate --head <owner>@head --rev-id <owner>_<nnnn>_add_<entity> -m "add <entity>"`,
+   review, `alembic -c migrations/pg/alembic.ini upgrade heads`.
 
 ### File map (for orientation)
 
