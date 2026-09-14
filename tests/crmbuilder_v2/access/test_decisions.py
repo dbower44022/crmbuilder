@@ -362,3 +362,32 @@ def test_update_with_malformed_precondition_is_422(v2_env):
             decisions.update(
                 s, "DEC-013", title="x", expected_updated_at="not-a-timestamp"
             )
+
+
+# --- REQ-599 / PI-493: identifiers past DEC-999 ------------------------------------
+
+
+def test_explicit_identifier_with_four_digits_is_accepted(v2_env):
+    with session_scope() as s:
+        row = _make(s, identifier="DEC-1234")
+    assert row["identifier"] == "DEC-1234"
+
+
+def test_explicit_identifier_with_too_few_digits_is_a_wrong_format(v2_env):
+    with session_scope() as s, pytest.raises(UnprocessableError) as exc:
+        _make(s, identifier="DEC-12")
+    assert {e.code for e in exc.value.errors} == {"invalid_format"}
+
+
+def test_explicit_identifier_already_held_is_a_conflict(v2_env):
+    with session_scope() as s:
+        _make(s, identifier="DEC-1234")
+    with session_scope() as s, pytest.raises(ConflictError):
+        _make(s, identifier="DEC-1234")
+
+
+def test_assigned_identifier_continues_past_999(v2_env):
+    with session_scope() as s:
+        _make(s, identifier="DEC-999")
+        row = _make(s, identifier=None)
+    assert row["identifier"] == "DEC-1000"
