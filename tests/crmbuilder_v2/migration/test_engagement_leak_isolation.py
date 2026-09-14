@@ -23,12 +23,12 @@ from datetime import UTC, datetime
 import pytest
 from crmbuilder_v2.access import engagement_scope as es
 from crmbuilder_v2.access.db import (
-    bootstrap_database,
+    get_engine,
     get_session_factory,
     reset_engine_cache,
     session_scope,
 )
-from crmbuilder_v2.access.models import EngagementRow
+from crmbuilder_v2.access.models import Base, EngagementRow
 from crmbuilder_v2.access.repositories import decisions as dec_repo
 from crmbuilder_v2.access.repositories import projects as prj_repo
 from crmbuilder_v2.config import reset_settings_cache
@@ -65,7 +65,7 @@ def two_engagements(tmp_path, monkeypatch) -> Iterator[None]:
     monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "true")
     reset_settings_cache()
     reset_engine_cache()
-    bootstrap_database()
+    Base.metadata.create_all(get_engine())  # PI-503: per-test SQLite is built from the models
     _seed_engagement("ENG-001", "ALPHA")
     _seed_engagement("ENG-002", "BETA")
     prev = es.set_enforcement(True)

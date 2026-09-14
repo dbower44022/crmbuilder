@@ -1,80 +1,134 @@
 """PI-308 / REQ-343 — migration-drift detection + honest schema-apply.
 
-Covers: dialect-aware head resolution (the SQLite vs PG chain), the honest
-``bootstrap_database`` (un-stamped DB -> create_all+stamp; stamped DB ->
-upgrade), the ``assert_schema_current`` drift gate, and ``run_api``'s
-refuse-to-serve-on-drift behaviour.
+Covers the honest ``bootstrap_database`` (un-stamped DB -> create_all+stamp;
+stamped DB -> upgrade), the ``assert_schema_current`` drift gate, and
+``run_api``'s refuse-to-serve-on-drift behaviour — against Postgres, the one
+migration chain since PI-503 (REQ-593 / DEC-1082). The SQLite-facing parts
+now assert the refusal: bootstrap and the API start path turn a SQLite URL
+away with a message naming the local dev container.
 """
 
 from __future__ import annotations
 
-import sqlite3
-from pathlib import Path
+from collections.abc import Iterator
 
 import pytest
 from alembic import command
-from crmbuilder_v2.access.db import bootstrap_database
+from alembic.script import ScriptDirectory
+from crmbuilder_v2.access.db import (
+    bootstrap_database,
+    reset_engine_cache,
+)
 from crmbuilder_v2.access.models import Base
+from crmbuilder_v2.config import reset_settings_cache
 from crmbuilder_v2.migration.version_info import (
+    LOCAL_POSTGRES_CONTAINER,
     SchemaDriftError,
-    _head_revision,
+    SqliteRefusedError,
     assert_schema_current,
     make_alembic_config,
+    refuse_sqlite,
     schema_version,
 )
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
+
+from tests.crmbuilder_v2.migration._pg_chain import (
+    fresh_db,
+    plain_url,
+    requires_postgres,
+)
 
 
-def _point_settings(monkeypatch, db: Path) -> None:
-    """Force the configured unified DB at ``db`` for this test."""
-    monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(db))
-    from crmbuilder_v2 import config
-
-    config.get_settings.cache_clear()
-
-
-# --------------------------------------------------------------------------
-# Part 0 — dialect-aware head resolution
-# --------------------------------------------------------------------------
+def _point_settings(monkeypatch: pytest.MonkeyPatch, url: str) -> None:
+    """Force the configured unified DB at ``url`` for this test."""
+    monkeypatch.setenv("CRMBUILDER_V2_DATABASE_URL", url)
+    reset_settings_cache()
+    reset_engine_cache()
 
 
-def test_make_alembic_config_dialect_aware_script_location() -> None:
-    sq = make_alembic_config("sqlite:////tmp/x.db")
-    pg = make_alembic_config("postgresql+psycopg://u@h/d")
-    assert sq.get_main_option("script_location").endswith("migrations")
-    assert pg.get_main_option("script_location").endswith("migrations/pg")
-
-
-def test_sqlite_and_pg_heads_are_distinct() -> None:
-    # The two chains stamp the same alembic_version table; resolving head from
-    # the wrong chain was the latent bug PI-308 §3 fixes.
-    sq_head = _head_revision(make_alembic_config("sqlite:////tmp/x.db"))
-    pg_head = _head_revision(make_alembic_config("postgresql+psycopg://u@h/d"))
-    assert sq_head and pg_head and sq_head != pg_head
+@pytest.fixture
+def pg_db(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
+    """A wiped migrations database, configured as the unified DB."""
+    url = plain_url(fresh_db())
+    _point_settings(monkeypatch, url)
+    try:
+        yield url
+    finally:
+        reset_engine_cache()
+        reset_settings_cache()
 
 
 # --------------------------------------------------------------------------
-# Part 1 — honest bootstrap_database
+# Part 0 — one chain, and the SQLite refusal
 # --------------------------------------------------------------------------
 
 
-def test_bootstrap_fresh_db_creates_and_stamps_head(tmp_path, monkeypatch) -> None:
-    db = tmp_path / "fresh.db"
-    _point_settings(monkeypatch, db)
+def test_make_alembic_config_points_at_the_postgres_tree() -> None:
+    # Whatever the URL, the environment is the Postgres tree: there is no
+    # other chain to resolve a head from (the PI-308 dialect switch is gone).
+    for url in ("sqlite:////tmp/x.db", "postgresql+psycopg://u@h/d"):
+        cfg = make_alembic_config(url)
+        assert cfg.get_main_option("script_location").endswith("migrations/pg")
+
+
+def test_refuse_sqlite_names_the_dev_container() -> None:
+    with pytest.raises(SqliteRefusedError) as ei:
+        refuse_sqlite("sqlite:////tmp/x.db", "probe")
+    message = str(ei.value)
+    assert "probe" in message
+    assert LOCAL_POSTGRES_CONTAINER in message
+    assert "docker compose -f crmbuilder-v2/docker-compose.dev.yml up -d" in message
+    refuse_sqlite("postgresql+psycopg://u@h/d", "probe")  # no raise
+
+
+def test_bootstrap_refuses_a_sqlite_url(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("CRMBUILDER_V2_DATABASE_URL", "")
+    monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(tmp_path / "v2.db"))
+    reset_settings_cache()
+    reset_engine_cache()
+    try:
+        with pytest.raises(SqliteRefusedError):
+            bootstrap_database()
+        assert not (tmp_path / "v2.db").exists()
+    finally:
+        reset_engine_cache()
+        reset_settings_cache()
+
+
+def test_run_api_refuses_a_sqlite_url(tmp_path, monkeypatch, capsys) -> None:
+    monkeypatch.setenv("CRMBUILDER_V2_DATABASE_URL", "")
+    monkeypatch.setenv("CRMBUILDER_V2_DB_PATH", str(tmp_path / "v2.db"))
+    reset_settings_cache()
+    monkeypatch.setattr("sys.argv", ["crmbuilder-v2-api", "--check-only"])
+    from crmbuilder_v2 import cli
+
+    try:
+        with pytest.raises(SystemExit) as ei:
+            cli.run_api()
+    finally:
+        reset_settings_cache()
+    assert ei.value.code == 2  # _fail_loud exits 2 before any uvicorn start
+    assert LOCAL_POSTGRES_CONTAINER in capsys.readouterr().err
+
+
+# --------------------------------------------------------------------------
+# Part 1 — honest bootstrap_database (Postgres)
+# --------------------------------------------------------------------------
+
+
+@requires_postgres
+def test_bootstrap_fresh_db_creates_and_stamps_head(pg_db) -> None:
     bootstrap_database()
     sv = schema_version()
     assert sv.is_up_to_date, (sv.current, sv.head)
     # A head-only table materialised (not just stamped).
-    c = sqlite3.connect(db)
-    tabs = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    c.close()
-    assert "field_permission_rules" in tabs  # from migration 0086
+    tabs = set(inspect(create_engine(pg_db)).get_table_names())
+    assert "field_permission_rules" in tabs  # from migration 0043 on this chain
     assert "alembic_version" in tabs
 
 
-def test_bootstrap_at_head_is_idempotent_noop(tmp_path, monkeypatch) -> None:
-    db = tmp_path / "athead.db"
-    _point_settings(monkeypatch, db)
+@requires_postgres
+def test_bootstrap_at_head_is_idempotent_noop(pg_db) -> None:
     bootstrap_database()
     assert schema_version().is_up_to_date
     # Second call is a no-op upgrade (stamped DB -> upgrade head), still at head.
@@ -82,17 +136,14 @@ def test_bootstrap_at_head_is_idempotent_noop(tmp_path, monkeypatch) -> None:
     assert schema_version().is_up_to_date
 
 
-def test_bootstrap_stamped_behind_upgrades_to_head(tmp_path, monkeypatch) -> None:
+@requires_postgres
+def test_bootstrap_stamped_behind_upgrades_to_head(pg_db) -> None:
     # create_all gives the head schema; stamp it one revision behind head so
     # bootstrap takes the upgrade branch and applies the trailing migration.
-    db = tmp_path / "behind.db"
-    _point_settings(monkeypatch, db)
-    engine = create_engine(f"sqlite:///{db}")
+    engine = create_engine(pg_db)
     Base.metadata.create_all(engine)
     engine.dispose()
-    cfg = make_alembic_config(f"sqlite:///{db}")
-    from alembic.script import ScriptDirectory
-
+    cfg = make_alembic_config(pg_db)
     head = ScriptDirectory.from_config(cfg)
     down = head.get_revision(head.get_current_head()).down_revision
     command.stamp(cfg, down)
@@ -106,31 +157,28 @@ def test_bootstrap_stamped_behind_upgrades_to_head(tmp_path, monkeypatch) -> Non
 # --------------------------------------------------------------------------
 
 
-def test_assert_schema_current_passes_at_head(tmp_path, monkeypatch) -> None:
-    db = tmp_path / "head.db"
-    _point_settings(monkeypatch, db)
+@requires_postgres
+def test_assert_schema_current_passes_at_head(pg_db) -> None:
     bootstrap_database()
     assert_schema_current()  # no raise
 
 
-def test_assert_schema_current_raises_when_unstamped(tmp_path, monkeypatch) -> None:
-    db = tmp_path / "unstamped.db"
-    _point_settings(monkeypatch, db)
-    create_engine(f"sqlite:///{db}").connect().close()  # empty, no alembic_version
+@requires_postgres
+def test_assert_schema_current_raises_when_unstamped(pg_db) -> None:
+    # fresh_db leaves an empty version table: no row, no revision.
     with pytest.raises(SchemaDriftError) as ei:
         assert_schema_current()
     assert ei.value.current is None and ei.value.head is not None
 
 
-def test_assert_schema_current_raises_when_behind(tmp_path, monkeypatch) -> None:
-    db = tmp_path / "behind2.db"
-    _point_settings(monkeypatch, db)
+@requires_postgres
+def test_assert_schema_current_raises_when_behind(pg_db) -> None:
     bootstrap_database()
     # Re-stamp to a value that merely differs from head (drift = current != head).
-    c = sqlite3.connect(db)
-    c.execute("UPDATE alembic_version SET version_num='0001_initial'")
-    c.commit()
-    c.close()
+    engine = create_engine(pg_db)
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE alembic_version SET version_num='0001_pg_baseline'"))
+    engine.dispose()
     with pytest.raises(SchemaDriftError):
         assert_schema_current()
 
@@ -140,10 +188,9 @@ def test_assert_schema_current_raises_when_behind(tmp_path, monkeypatch) -> None
 # --------------------------------------------------------------------------
 
 
-def test_run_api_refuses_to_start_on_drift(tmp_path, monkeypatch) -> None:
-    db = tmp_path / "drift.db"
-    _point_settings(monkeypatch, db)
-    create_engine(f"sqlite:///{db}").connect().close()  # un-stamped -> drift
+@requires_postgres
+def test_run_api_refuses_to_start_on_drift(pg_db, monkeypatch) -> None:
+    # un-stamped -> drift; the SQLite refusal does not fire on a Postgres URL.
     monkeypatch.setattr("sys.argv", ["crmbuilder-v2-api", "--check-only"])
     from crmbuilder_v2 import cli
 

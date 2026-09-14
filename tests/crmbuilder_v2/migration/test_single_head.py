@@ -1,4 +1,4 @@
-"""Every migration chain has exactly one head — a commit-time fork guard.
+"""The migration chain has exactly one head — a commit-time fork guard.
 
 Three chain forks arose in one day, each from a session computing its
 ``down_revision`` against a head that moved before it committed, and each
@@ -16,8 +16,8 @@ from pathlib import Path
 import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+# One chain since PI-503 (REQ-593 / DEC-1082): the SQLite chain is gone.
 _CHAINS = {
-    "sqlite": _REPO_ROOT / "crmbuilder-v2" / "migrations" / "versions",
     "postgres": _REPO_ROOT / "crmbuilder-v2" / "migrations" / "pg" / "versions",
 }
 
