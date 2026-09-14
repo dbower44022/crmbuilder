@@ -212,17 +212,15 @@ PERSONA_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "rejected": frozenset(),
 }
 
-# Methodology entity `participant` lifecycle (REL-040 / PI-094).
-# A participant is the real engagement person/role a Persona is backed
-# by; its lifecycle is a simple active/inactive toggle (no candidate /
-# confirmed / rejected propose-verify gate — that governs the abstract
-# Persona, not the concrete participant record).
-PARTICIPANT_STATUSES: frozenset[str] = frozenset({"active", "inactive"})
-
-PARTICIPANT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "active": frozenset({"inactive"}),
-    "inactive": frozenset({"active"}),
-}
+# Client Management vocabulary lives in its segment package (PI-508);
+# re-exported here for the import paths that predate the package.
+from crmbuilder_v2.segments.client_management.vocab import (  # noqa: E402, F401
+    PARTICIPANT_STATUS_TRANSITIONS,
+    PARTICIPANT_STATUSES,
+    PRINCIPAL_KINDS,
+    PRINCIPAL_STATUSES,
+    RBAC_ROLES,
+)
 
 # Methodology entity `field` lifecycle (v0.5+, PI-004 first slice).
 # Mirrors `domain` / `entity` exactly — three-status propose-verify
@@ -2809,26 +2807,6 @@ CHANGE_LOG_ACTORS: frozenset[str] = frozenset(
 # ---------------------------------------------------------------------------
 # Identity / authentication / RBAC (PI-γ — PRJ-019 / PI-127).
 # ---------------------------------------------------------------------------
-
-# A principal is an authenticated actor — a human user or an AI service agent.
-PRINCIPAL_KINDS: frozenset[str] = frozenset({"human", "service_agent"})
-
-PRINCIPAL_STATUSES: frozenset[str] = frozenset({"active", "disabled"})
-
-# Roles are a small fixed set rather than a table (PI-γ D-γ3): three
-# human-facing roles plus four agent-tier roles aligned to the ADO tiers. A
-# ``role_assignment`` row's ``role`` is CHECK-constrained to this set.
-RBAC_ROLES: frozenset[str] = frozenset(
-    {
-        "owner",
-        "editor",
-        "viewer",
-        "orchestrator",
-        "pi_lead",
-        "phase_specialist",
-        "area_specialist",
-    }
-)
 
 # Coarse permission verbs (PI-γ §5: start coarse; finer per-entity perms only
 # if a real need appears). ``claim`` is the ADO claim/release action perm;
