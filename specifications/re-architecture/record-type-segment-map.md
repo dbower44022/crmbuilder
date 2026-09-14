@@ -2,16 +2,16 @@
 | Field | Value |
 |---|---|
 | Title | Record-type-to-segment map |
-| Last Updated | 09-14-26 01:17 |
-| Revision | 0.1 |
+| Last Updated | 09-14-26 17:08 |
+| Revision | 0.2 |
 | Status | Draft, awaiting product-owner approval |
-| Source | PI-504 / REQ-588 / DEC-1077 |
+| Source | PI-504 / REQ-588 / DEC-1077 / DEC-1086 |
 
 ## Purpose
 
-Every record type in the V2 store is assigned to exactly one of the seven functional segments approved in DEC-1077, or to the shared core plumbing. The seven segments are Client Management; Discovery and Requirements; Solution Design; Build; Operate; CRMBuilder Delivery; and Governance Core. The shared core plumbing is the engagement-scope filter and base table shape, identifier reservation, the reference graph and its vocabulary, the change log, secrets, and the authentication check.
+Every record type in the V2 store is assigned to exactly one of the seven functional segments approved in DEC-1077, or to the shared core plumbing. The seven segments are Client Management; Discovery and Requirements; Solution Design; Build; Operate; CRMBuilder Delivery; and Shared Core. The shared core plumbing is the engagement-scope filter and base table shape, identifier reservation, the reference graph and its vocabulary, the change log, secrets, and the authentication check.
 
-The ownership rule is fixed: the segment whose operation creates a record owns it. Other segments read it. Where a record is read by other segments, the Readers column names them, so a later package move knows which contracts it must keep.
+The ownership rule is fixed: the segment whose operation creates a record owns it. Other segments read it. Addendum approved in DEC-1086: a record type that more than one segment creates is cross-segment and lives in the Shared Core; reading alone does not make a record cross-segment. The Shared Core holds three families: the shared plumbing, the governance records, and the cross-segment filing concepts (topics, terms). Where a record is read by other segments, the Readers column names them, so a later package move knows which contracts it must keep.
 
 This document is the work order for every move of code into a segment package. Until the product owner approves it, no record type moves.
 
@@ -28,12 +28,12 @@ Confidence is `verified` when the creating operation was read and its statement 
 | Segment | Record types |
 |---|---|
 | Client Management | 5 |
-| Discovery and Requirements | 9 |
+| Discovery and Requirements | 8 |
 | Solution Design | 31 |
 | Build | 16 |
 | Operate | 4 |
 | CRMBuilder Delivery | 23 |
-| Governance Core | 19 |
+| Shared Core | 20 |
 | Shared core plumbing | 4 |
 | Total | 111 |
 
@@ -53,15 +53,14 @@ Confidence is `verified` when the creating operation was read and its statement 
 
 | Class | Table name | Owning segment | Creating operation | Evidence | Confidence | Readers |
 |---|---|---|---|---|---|---|
-| Charter | charter | Discovery and Requirements | access/repositories/charter.py:replace | The engagement's charter document, versioned; the Project Definition deliverable. | verified | Governance Core |
+| Charter | charter | Discovery and Requirements | access/repositories/charter.py:replace | The engagement's charter document, versioned; the Project Definition deliverable. | verified | Shared Core |
 | Domain | domains | Discovery and Requirements | access/repositories/domain.py:_new_domain_row | A Phase 1 domain inventory member, the first methodology entity type. | verified | Solution Design |
 | Persona | personas | Discovery and Requirements | access/repositories/persona.py:_new_persona_row | A methodology persona captured during discovery. | verified | Solution Design |
-| Process | processes | Discovery and Requirements | access/repositories/process.py:_new_process_row | A business process captured one conversation at a time (kind of work: define new business processes). | verified | Solution Design, Governance Core (catalogue of kinds of work) |
+| Process | processes | Discovery and Requirements | access/repositories/process.py:_new_process_row | A business process captured one conversation at a time (kind of work: define new business processes). | verified | Solution Design, Shared Core (catalogue of kinds of work) |
 | Transition | transitions | Discovery and Requirements | access/repositories/transition.py:_new_row | One allowed status move within a process; created with the process. | verified | Solution Design |
-| Requirement | requirements | Discovery and Requirements | access/repositories/requirement.py:_new_requirement_row | A requirement elicited from the client; confirmed only through an approving decision. | verified | Solution Design, Governance Core, CRMBuilder Delivery (release scope) |
-| ReviewSignoff | review_signoffs | Discovery and Requirements | access/repositories/review_signoffs.py:create | The recorded attestation that a topic's requirements were reviewed; snapshots the requirement set. | verified | Governance Core |
+| Requirement | requirements | Discovery and Requirements | access/repositories/requirement.py:_new_requirement_row | A requirement elicited from the client; confirmed only through an approving decision. | verified | Solution Design, Shared Core, CRMBuilder Delivery (release scope) |
+| ReviewSignoff | review_signoffs | Discovery and Requirements | access/repositories/review_signoffs.py:create | The recorded attestation that a topic's requirements were reviewed; snapshots the requirement set. | verified | Shared Core |
 | ReferenceEntry | reference_entries | Discovery and Requirements | access/repositories/reference_entries.py:_new_row | Cross-engagement client-industry knowledge for the discovery phase (domain knowledge, organisation structure, inventory items). | verified | none |
-| Topic | topics | Discovery and Requirements | access/repositories/topics.py:_new_topic_row | Free-floating concept records; the requirement approval gate requires a topic, and review is topic-first. Topics also organise the governance corpus. | inferred | Governance Core |
 
 ### Solution Design
 
@@ -133,53 +132,54 @@ Confidence is `verified` when the creating operation was read and its statement 
 
 | Class | Table name | Owning segment | Creating operation | Evidence | Confidence | Readers |
 |---|---|---|---|---|---|---|
-| Workstream | workstreams | CRMBuilder Delivery | access/repositories/workstreams.py:_new_row | A single delivery phase of one planning item in the agent delivery organisation. | verified | Governance Core |
-| WorkTask | work_tasks | CRMBuilder Delivery | access/repositories/work_tasks.py:_new_row | The single-area, agent-claimable unit of execution within a workstream. | verified | Governance Core |
+| Workstream | workstreams | CRMBuilder Delivery | access/repositories/workstreams.py:_new_row | A single delivery phase of one planning item in the agent delivery organisation. | verified | Shared Core |
+| WorkTask | work_tasks | CRMBuilder Delivery | access/repositories/work_tasks.py:_new_row | The single-area, agent-claimable unit of execution within a workstream. | verified | Shared Core |
 | TaskTransitionRow | task_transitions | CRMBuilder Delivery | access/repositories/task_transitions.py:record | Append-only log of every work task status change; the scheduler is the sole writer. | verified | none |
 | EngagementArea | engagement_areas | CRMBuilder Delivery | access/repositories/engagement_areas.py:create_engagement_area | A user-defined work-area label; the engagement tier of the two-tier area model that work tasks carry. | verified | none |
 | AreaSpec | area_specs | CRMBuilder Delivery | access/repositories/area_specs.py:author_spec | The per-release, per-area implementation and testable specification an area architect authors. | verified | none |
 | AreaReopen | area_reopens | CRMBuilder Delivery | access/reopen.py:reopen_area | The in-lane reopen of a frozen area during a release. | verified | none |
 | PlanningAreaClaim | planning_area_claims | CRMBuilder Delivery | access/repositories/planning_claims.py:claim_area | A single-threaded-by-area planning claim within a frozen release. | verified | none |
 | ResourceLock | resource_locks | CRMBuilder Delivery | access/locks.py:acquire | A named-resource check-out lock for sub-agent fan-out. | verified | none |
-| Release | releases | CRMBuilder Delivery | api/routers/releases.py via access/repositories/releases.py:_new_row | The release pipeline keystone: a container of release-scoped projects, in-scope requirements and planning items whose status is its pipeline stage. It references no instance, deploy run or publish. | verified | Governance Core |
+| Release | releases | CRMBuilder Delivery | api/routers/releases.py via access/repositories/releases.py:_new_row | The release pipeline keystone: a container of release-scoped projects, in-scope requirements and planning items whose status is its pipeline stage. It references no instance, deploy run or publish. | verified | Shared Core |
 | ReleaseChangeSet | release_change_sets | CRMBuilder Delivery | access/release_orchestration.py via access/repositories/release_change_sets.py:persist_change_set | The stored merged result of a release's reconciliation stage. | verified | none |
 | ReleaseSignoff | release_signoffs | CRMBuilder Delivery | access/repositories/release_signoffs.py:create_signoff | A human sign-off gating a release's front-half transitions. | verified | none |
 | ReleaseDemand | release_demands | CRMBuilder Delivery | scheduler/release_scheduler.py via access/repositories/release_demands.py:add_demands | The structured requirement-to-design deltas a reconciliation agent authors for a release. | verified | none |
 | ReleaseRunRow | release_runs | CRMBuilder Delivery | access/repositories/release_runs.py:record | Born-terminal record of one release run's outcome. | verified | none |
 | ArtifactVersion | artifact_versions | CRMBuilder Delivery | access/planning.py via access/repositories/artifact_versions.py:snapshot | A complete snapshot of one design artifact at one version, tied to the release that introduced it; written by the release pipeline's planning step. | verified | Solution Design |
 | ReconciliationConflict | reconciliation_conflicts | CRMBuilder Delivery | access/repositories/reconciliation.py:_upsert_artifact_conflicts | A conflict found when the release reconciliation engine runs a frozen release's demanded deltas against artifact versions. Not the CRM instance reconcile. | verified | none |
-| Finding | findings | CRMBuilder Delivery | access/repositories/findings.py:_new_row | A cross-area coherence problem found when a planning item's area specifications are checked against each other at the end of the release pipeline's design stage. | verified | Governance Core |
-| AgentProfileRow | agent_profiles | CRMBuilder Delivery | access/repositories/agent_profiles.py:_new_row | The skill-and-rule definition for one agent role in the registry. | verified | Governance Core (session opening contract) |
-| AgentProfileBindingRow | agent_profile_bindings | CRMBuilder Delivery | access/repositories/agent_profile_bindings.py:create | Binds a profile to skills and rules, system baseline or engagement overlay. | verified | Governance Core |
+| Finding | findings | CRMBuilder Delivery | access/repositories/findings.py:_new_row | A cross-area coherence problem found when a planning item's area specifications are checked against each other at the end of the release pipeline's design stage. | verified | Shared Core |
+| AgentProfileRow | agent_profiles | CRMBuilder Delivery | access/repositories/agent_profiles.py:_new_row | The skill-and-rule definition for one agent role in the registry. | verified | Shared Core (session opening contract) |
+| AgentProfileBindingRow | agent_profile_bindings | CRMBuilder Delivery | access/repositories/agent_profile_bindings.py:create | Binds a profile to skills and rules, system baseline or engagement overlay. | verified | Shared Core |
 | SkillRow | skills | CRMBuilder Delivery | access/repositories/skills.py:_new_row | A reusable agent capability in the registry. | verified | none |
 | LearningRow | learnings | CRMBuilder Delivery | access/repositories/learnings.py:_new_row | An evidence-tagged observation written by area experts; the registry's living memory. | verified | none |
 | CostEvent | cost_events | CRMBuilder Delivery | access/repositories/cost_events.py:record | One model call's cost. | verified | none |
 | BudgetApproval | budget_approvals | CRMBuilder Delivery | access/budget_gate.py:record_decision | An operator's pre-launch budget decision for an autonomous run. | verified | none |
 | PipelineEvent | pipeline_events | CRMBuilder Delivery | access/repositories/pipeline_events.py:record | One pipeline step or agent invocation, for progress display. | verified | none |
 
-### Governance Core
+### Shared Core
 
 | Class | Table name | Owning segment | Creating operation | Evidence | Confidence | Readers |
 |---|---|---|---|---|---|---|
-| Session | sessions | Governance Core | access/repositories/sessions.py:_new_row | One unit of communication in any medium; the governance container every kind of work opens. | verified | all segments |
-| Conversation | conversations | Governance Core | access/repositories/conversations.py:_new_row | A topical sub-unit of a session; the provenance root of every requirement. | verified | Discovery and Requirements |
-| Decision | decisions | Governance Core | access/repositories/decisions.py:_new_decision_row | A recorded decision; the only path by which a requirement is confirmed. | verified | all segments |
-| PlanningItem | planning_items | Governance Core | access/repositories/planning_items.py:_new_planning_item_row | The unit of governed work that implements a requirement. | verified | CRMBuilder Delivery |
-| Project | projects | Governance Core | access/repositories/projects.py:_new_row | The first governance entity type, the container of planning items; the delivery pipeline reads it as its backlog but does not create it. | verified | CRMBuilder Delivery |
-| Risk | risks | Governance Core | access/repositories/risks.py:_new_risk_row | A risk record from the original governance set; no docstring states its scope. | inferred | Discovery and Requirements |
-| Status | status | Governance Core | access/repositories/status.py:replace | The engagement's versioned status document, generated from its records. | inferred | all segments |
-| WorkTicket | work_tickets | Governance Core | access/repositories/work_tickets.py:_new_row | A single-use seed document a conversation consumes at kickoff. | inferred | CRMBuilder Delivery |
-| CloseOutPayload | close_out_payloads | Governance Core | access/repositories/close_out_payloads.py:_new_row | The close-out record a conversation produces. | verified | none |
-| DepositEvent | deposit_events | Governance Core | access/repositories/deposit_events.py:create_deposit_event | The born-terminal record that a close-out was applied. | verified | none |
-| Commit | commits | Governance Core | access/repositories/commits.py:_new_row | A documentary record of a code commit produced by a conversation. | verified | CRMBuilder Delivery |
-| ReferenceBook | reference_books | Governance Core | api/routers/reference_books.py via access/repositories/reference_books.py:_new_row | The third governance entity type, a documentary reference with a versioned sibling. | verified | none |
-| ReferenceBookVersion | reference_book_versions | Governance Core | access/repositories/reference_books.py:create_reference_book_version | One version of a reference book. | verified | none |
-| GovernanceRuleRow | governance_rules | Governance Core | access/repositories/governance_rules.py:_new_row | A binding operating rule, system default or engagement override. | verified | all segments |
-| RuleEnforcementOverrideRow | rule_enforcement_overrides | Governance Core | access/repositories/governance_rules.py:record_enforcement_override | A recorded wave-through of an enforced rule. | verified | none |
-| PreferenceRow | preferences | Governance Core | access/repositories/preferences.py:_new_row | An advisory working-style preference. | verified | all segments |
-| LessonRow | lessons | Governance Core | access/repositories/lessons.py:_new_row | One operational lesson. | verified | all segments |
-| ReferencePointerRow | reference_pointers | Governance Core | access/repositories/reference_pointers.py:_new_row | One external addressable target: server, dashboard, document, credential location. | verified | all segments |
-| TermRow | terms | Governance Core | access/repositories/terms.py:_new_row | One glossary definition. | verified | all segments |
+| Session | sessions | Shared Core | access/repositories/sessions.py:_new_row | One unit of communication in any medium; the governance container every kind of work opens. | verified | all segments |
+| Conversation | conversations | Shared Core | access/repositories/conversations.py:_new_row | A topical sub-unit of a session; the provenance root of every requirement. | verified | Discovery and Requirements |
+| Decision | decisions | Shared Core | access/repositories/decisions.py:_new_decision_row | A recorded decision; the only path by which a requirement is confirmed. | verified | all segments |
+| PlanningItem | planning_items | Shared Core | access/repositories/planning_items.py:_new_planning_item_row | The unit of governed work that implements a requirement. | verified | CRMBuilder Delivery |
+| Project | projects | Shared Core | access/repositories/projects.py:_new_row | The first governance entity type, the container of planning items; the delivery pipeline reads it as its backlog but does not create it. | verified | CRMBuilder Delivery |
+| Risk | risks | Shared Core | access/repositories/risks.py:_new_risk_row | A risk record from the original governance set; no docstring states its scope. | inferred | Discovery and Requirements |
+| Status | status | Shared Core | access/repositories/status.py:replace | The engagement's versioned status document, generated from its records. | inferred | all segments |
+| WorkTicket | work_tickets | Shared Core | access/repositories/work_tickets.py:_new_row | A single-use seed document a conversation consumes at kickoff. | inferred | CRMBuilder Delivery |
+| CloseOutPayload | close_out_payloads | Shared Core | access/repositories/close_out_payloads.py:_new_row | The close-out record a conversation produces. | verified | none |
+| DepositEvent | deposit_events | Shared Core | access/repositories/deposit_events.py:create_deposit_event | The born-terminal record that a close-out was applied. | verified | none |
+| Commit | commits | Shared Core | access/repositories/commits.py:_new_row | A documentary record of a code commit produced by a conversation. | verified | CRMBuilder Delivery |
+| ReferenceBook | reference_books | Shared Core | api/routers/reference_books.py via access/repositories/reference_books.py:_new_row | The third governance entity type, a documentary reference with a versioned sibling. | verified | none |
+| ReferenceBookVersion | reference_book_versions | Shared Core | access/repositories/reference_books.py:create_reference_book_version | One version of a reference book. | verified | none |
+| GovernanceRuleRow | governance_rules | Shared Core | access/repositories/governance_rules.py:_new_row | A binding operating rule, system default or engagement override. | verified | all segments |
+| RuleEnforcementOverrideRow | rule_enforcement_overrides | Shared Core | access/repositories/governance_rules.py:record_enforcement_override | A recorded wave-through of an enforced rule. | verified | none |
+| PreferenceRow | preferences | Shared Core | access/repositories/preferences.py:_new_row | An advisory working-style preference. | verified | all segments |
+| LessonRow | lessons | Shared Core | access/repositories/lessons.py:_new_row | One operational lesson. | verified | all segments |
+| ReferencePointerRow | reference_pointers | Shared Core | access/repositories/reference_pointers.py:_new_row | One external addressable target: server, dashboard, document, credential location. | verified | all segments |
+| TermRow | terms | Shared Core | access/repositories/terms.py:_new_row | One glossary definition. | verified | all segments |
+| Topic | topics | Shared Core | access/repositories/topics.py:_new_topic_row | A filing concept created by Discovery (for requirements) and by governance (for its own corpus); cross-segment under the DEC-1086 addendum. | verified | Shared Core |
 
 ### Shared core plumbing
 
@@ -200,36 +200,36 @@ Confidence is `verified` when the creating operation was read and its statement 
 
 **Finding.** Recorded when a planning item's area specifications are checked against each other at the end of the release pipeline's design stage. The design here is the pipeline's design phase, not the client's solution design. It is CRMBuilder Delivery. The rough sort had it under Build.
 
-**ReferenceBook, ReferenceBookVersion, ReferenceEntry.** The reference book is the third governance entity type, a documentary record with versions; it is Governance Core. The reference entry is a different thing: cross-engagement client-industry knowledge for the discovery phase, seeded and extended for the consultant. It is Discovery and Requirements.
+**ReferenceBook, ReferenceBookVersion, ReferenceEntry.** The reference book is the third governance entity type, a documentary record with versions; it is Shared Core. The reference entry is a different thing: cross-engagement client-industry knowledge for the discovery phase, seeded and extended for the consultant. It is Discovery and Requirements.
 
 **EngagementArea, AreaSpec, AreaReopen, PlanningAreaClaim.** All four belong to the two-tier area model of the agent delivery organisation: the engagement area is the user-defined work-area label that work tasks carry, the area specification is what an area architect authors for a release, and the reopen and claim records are the release pipeline's area mechanics. All four are CRMBuilder Delivery. The engagement area has no link to a client business domain.
 
-**Project.** The first governance entity type and the container of planning items. The delivery pipeline's project-manager substrate reads a project's backlog but does not create projects. Governance Core owns it; CRMBuilder Delivery reads it.
+**Project.** The first governance entity type and the container of planning items. The delivery pipeline's project-manager substrate reads a project's backlog but does not create projects. Shared Core owns it; CRMBuilder Delivery reads it.
 
 **TestSpec.** Authored against the design through the test-specification endpoints; the same repository offers a record_run helper that Build uses to record an execution. Solution Design creates it and owns it. Build records runs against it, so any move must keep that write path.
 
 **Participant.** The real engagement person or role that a persona is backed by. It is created by its own repository and is the people half of a client engagement. It is Client Management, as DEC-1077 stated.
 
-**CloseOutPayload, DepositEvent.** The close-out a conversation produces and the born-terminal record that it was applied. Both are governance bookkeeping and are Governance Core.
+**CloseOutPayload, DepositEvent.** The close-out a conversation produces and the born-terminal record that it was applied. Both are governance bookkeeping and are Shared Core.
 
 **MigrationMapping and the SourceMapping, FieldMapping, AssociationMapping, ValueMapping family.** These are two families. The source-mapping family records a human's resolution of a mapping candidate that an audit surfaced: how a discovered source entity, field, relationship or value relates to the design. The creating operations are the candidate-resolve dialog on the reconcile screens and the mapping endpoints. By the creating-operation rule they are Build. The counter-argument is that the kind of work they serve, describing a system the client already uses, belongs to the Requirements Capture domain, which would make them Discovery and Requirements. They are placed in Build and listed as open. The migration mapping is different: it states a data-migration obligation from a source to target fields with transform rules, a design-time statement a compiler consumes. It is placed in Solution Design and listed as open.
 
 **SystemSetting and SystemSettingValue.** The setting is a design construct and is Solution Design. The value is what one instance is declared to hold, set through the settings endpoints and compared by the audit; it is placed in Build and listed as open because Operate, which owns the instance, is the alternative.
 
-**Topic, Risk, Status, WorkTicket.** Four records from the earliest governance set with thin or no statements of purpose. Topics gate requirement approval and organise review, so they are placed with Discovery and Requirements, but they also organise the governance corpus. Risks, the status document and work tickets are placed with Governance Core. All four are listed as open.
+**Topic, Risk, Status, WorkTicket.** Four records from the earliest governance set with thin or no statements of purpose. Topics gate requirement approval and organise review, so they are placed with Discovery and Requirements, but they also organise the governance corpus. Risks, the status document and work tickets are placed with Shared Core. All four are listed as open.
 
 **Service, SourceMappingJoin, FieldMappingTranslation.** Three tables have a model but no creating operation anywhere in the code. They are placed with their parents (the service with the design records, the join and translation with the mapping family) and listed as open. Each is a candidate for removal in the package move.
 
 ## Changes from the rough sort
 
-The rough sort recorded on DEC-1079 had Solution Design 40, CRMBuilder Delivery 22, Governance Core 15, Discovery and Requirements 13, Build 7, Operate 5, Client Management 5, shared core 4. The checked mapping differs as follows.
+The rough sort recorded on DEC-1079 had Solution Design 40, CRMBuilder Delivery 22, Shared Core 15, Discovery and Requirements 13, Build 7, Operate 5, Client Management 5, shared core 4. The checked mapping differs as follows.
 
 - Finding moved from Build to CRMBuilder Delivery.
 - ReconciliationConflict moved from Build to CRMBuilder Delivery; ReconcileTransaction stays in Build.
-- Conversation moved from Discovery and Requirements to Governance Core: it is the governance sub-unit of a session, created by the governance repositories.
-- Risk and Status moved from Discovery and Requirements to Governance Core.
+- Conversation moved from Discovery and Requirements to Shared Core: it is the governance sub-unit of a session, created by the governance repositories.
+- Risk and Status moved from Discovery and Requirements to Shared Core.
 - Charter stays in Discovery and Requirements as the Project Definition deliverable.
-- ReferenceEntry moved from Governance Core to Discovery and Requirements.
+- ReferenceEntry moved from Shared Core to Discovery and Requirements.
 - The nine mapping-family records (source, target, join, field, translation, association, value mappings and the migration mapping) moved from Solution Design: eight to Build, the migration mapping stays in Solution Design.
 - InstanceMembership moved from Operate to Build: the audit and reconcile apply write it.
 - ManualConfig, SystemSettingValue and ConformanceOverride are placed in Build.
@@ -254,7 +254,6 @@ Every row marked inferred, for the product owner to settle. Each names the place
 
 | Class | Placed in | Alternative | Reason it is open |
 |---|---|---|---|
-| Topic | Discovery and Requirements | Governance Core | Gates requirement approval, and also organises the governance corpus. |
 | Service | Solution Design | remove | No creating operation exists. |
 | MigrationMapping | Solution Design | Build | A design-time statement of a data-migration obligation; the migration itself runs at cutover. |
 | ManualConfig | Build | Operate | Created after publish for the operator to act on by hand. |
@@ -267,9 +266,9 @@ Every row marked inferred, for the product owner to settle. Each names the place
 | FieldMappingTranslation | Build | remove | No creating operation exists. |
 | AssociationMapping | Build | Discovery and Requirements | Follows the source-mapping family. |
 | ValueMapping | Build | Discovery and Requirements | Follows its parent. |
-| Risk | Governance Core | Discovery and Requirements | No statement of purpose; could be a client engagement risk rather than a governance risk. |
-| Status | Governance Core | Discovery and Requirements | A generated engagement status document; who its reader is decides its owner. |
-| WorkTicket | Governance Core | CRMBuilder Delivery | A kickoff seed document consumed by a conversation; the delivery pipeline also hands off with it. |
+| Risk | Shared Core | Discovery and Requirements | No statement of purpose; could be a client engagement risk rather than a governance risk. |
+| Status | Shared Core | Discovery and Requirements | A generated engagement status document; who its reader is decides its owner. |
+| WorkTicket | Shared Core | CRMBuilder Delivery | A kickoff seed document consumed by a conversation; the delivery pipeline also hands off with it. |
 
 ## Appendix: non-record classes in the models module
 
@@ -287,3 +286,4 @@ Every row marked inferred, for the product owner to settle. Each names the place
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
 | 0.1 | 09-14-26 01:17 | Claude (Claude Code, PI-504 lane) | First draft: 111 record types mapped from their creating operations; 16 placements left open for the product owner. |
+| 0.2 | 09-14-26 17:08 | Claude (Claude Code, SES-414) | Ownership addendum DEC-1086: the group Governance Core is renamed Shared Core; Topic moves from Discovery and Requirements to the Shared Core and is no longer open; counts updated. Client Management approved by the product owner. |
