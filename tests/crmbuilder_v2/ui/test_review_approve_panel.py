@@ -16,14 +16,72 @@ from crmbuilder_v2.ui.panels.review import ReviewPanel, _ApproveDialog
 from fastapi.testclient import TestClient
 from PySide6.QtWidgets import QAbstractItemView, QDialog, QPushButton
 
+
 _EXEC_SUMMARY = "Change decision for the requirements-review end-to-end test. " * 4
+
+
+@pytest.fixture(autouse=True)
+def _one_worker_at_a_time(v2_env, qtbot, monkeypatch):
+    """Run each approval on its single worker thread and let it finish before
+    the test ends.
+
+    These tests drive the panel against an in-process API client, which is not
+    safe to use from two threads at once. An approval ends by reloading the
+    queues on further worker threads that share that client, and the test then
+    tears the panel down while they may still be running; either overlap
+    crashes the process. No test here reads a reloaded queue — each fills the
+    queue it needs by hand and checks the store directly — so the reload is
+    switched off, and teardown waits for the approval's own worker. The race
+    existed before (this file crashed about one run in two); the reference
+    existence check (PI-502) adds a little work to each approval and made it
+    near certain. The fixture asks for the test store so it is torn down first.
+    """
+    panels: list[ReviewPanel] = []
+    original_init = ReviewPanel.__init__
+
+    def tracking_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        panels.append(self)
+
+    monkeypatch.setattr(ReviewPanel, "__init__", tracking_init)
+    monkeypatch.setattr(ReviewPanel, "refresh", lambda self: None)
+    yield
+    for panel in panels:
+        qtbot.waitUntil(lambda p=panel: not p._in_flight_workers, timeout=5000)
+        panel.drain_workers()
 
 
 @pytest.fixture
 def review_client(v2_env) -> StorageClient:
     sc = StorageClient(base_url="http://testserver", client=TestClient(create_app()))
     sc.set_active_engagement("ENG-001")
+    _seed_provenance_records(sc)
     return sc
+
+
+def _seed_provenance_records(client) -> None:
+    """The conversation and topic a rooted requirement names. A reference may
+    only name records that exist (PI-502), so they are created here, through
+    the same client the panel uses."""
+    client._request("POST", "/topics", json_body={"identifier": "TOP-001", "name": "Review topic"})
+    project = client._request("POST", "/projects", json_body={
+        "project_name": "Review project", "project_purpose": "p", "project_description": "d",
+    })["project_identifier"]
+    client._request("POST", "/sessions", json_body={
+        "session_identifier": "SES-001", "session_title": "Review session",
+        "session_description": "d", "session_medium": "chat",
+        "session_executive_summary": _EXEC_SUMMARY,
+        "references": [{"source_type": "session", "source_id": "SES-001",
+                        "target_type": "project", "target_id": project,
+                        "relationship": "session_belongs_to_project"}],
+    })
+    client._request("POST", "/conversations", json_body={
+        "conversation_identifier": "CNV-001", "conversation_title": "Review conversation",
+        "conversation_purpose": "p", "conversation_description": "d",
+        "references": [{"source_type": "conversation", "source_id": "CNV-001",
+                        "target_type": "session", "target_id": "SES-001",
+                        "relationship": "conversation_belongs_to_session"}],
+    })
 
 
 def _make(client, name) -> str:
@@ -245,6 +303,8 @@ def test_post_reopen_approval_returns_review_state_to_current(review_client, qtb
         timeout=3000,
     )
     assert _requirement(review_client, rid)["requirement_review_state"] == "current"
+    # The approval's worker shares this test's client; let it finish first.
+    qtbot.waitUntil(lambda: not panel._in_flight_workers, timeout=5000)
 
     # A change decision reopens it: back to candidate and flagged needs_review.
     _reopen(review_client, rid)
