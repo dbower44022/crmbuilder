@@ -17,11 +17,20 @@ A pasted prompt file supplies its answer on a line beginning ``Opening
 answer:`` (any case, colon or dash); when no line is marked, the first
 non-empty line is the answer, with heading and bullet marks stripped.
 
-When the operation cannot be reached the hook prints a visible notice, marks
-the attempt so the next prompt is not mistaken for the answer, and names the
+When the operation cannot be reached the hook prints a notice, marks the
+attempt so the next prompt is not mistaken for the answer, and names the
 manual fallback: the model asks the question and calls the connector's
 ``open_session`` tool. The hook never blocks a prompt. Stdlib-only, like the
 other two hooks.
+
+**What the user sees (REQ-594 / PI-500, DEC-1080).** Plain text a
+``UserPromptSubmit`` hook prints reaches the model only; Claude Code shows the
+user none of it. So the hook answers in Claude Code's JSON hook output: the
+rules go in ``hookSpecificOutput.additionalContext`` for the model, and the
+line the user must be able to check — the confirmation line, the follow-up
+question for an unrecognised answer, or the notice that the session could not
+be opened — goes in ``systemMessage``, which Claude Code displays to the user
+before the model replies.
 """
 
 from __future__ import annotations
@@ -95,6 +104,8 @@ def render_opened(result: dict, already_in_context: set[str]) -> str:
         lines.append(result["confirmation_line"])
     elif result.get("first_line"):
         lines.append(result["first_line"])
+    if contract.get("first_reply_instruction"):
+        lines += ["", contract["first_reply_instruction"]]
     if result.get("follow_up_question"):
         lines += [
             "",
@@ -135,6 +146,44 @@ def render_failure(answer: str, reason: str) -> str:
     )
 
 
+def user_message_opened(result: dict) -> str:
+    """The line the user sees when the operation answered (REQ-594).
+
+    The operation's first line already carries the confirmation line, or the
+    no-kind-of-work line with the follow-up question; the question is added when
+    a caller supplied it separately.
+    """
+    session = result.get("session") or {}
+    said = result.get("first_line") or result.get("confirmation_line") or ""
+    question = result.get("follow_up_question")
+    if question and question not in said:
+        said = f"{said} {question}".strip()
+    identifier = session.get("session_identifier")
+    return f"Session {identifier} opened. {said}".strip() if identifier else said
+
+
+def user_message_failure(reason: str) -> str:
+    """The notice the user sees when the operation could not be reached."""
+    return (
+        f"Session not opened: the session-open operation could not be reached "
+        f"({reason}). Only the cross-cutting rules are loaded. Ask Claude to open "
+        "the session with the connector tool open_session."
+    )
+
+
+def hook_output(context: str, user_message: str) -> str:
+    """Claude Code's JSON hook output: the rules for the model, a line for the user."""
+    return json.dumps(
+        {
+            "systemMessage": user_message,
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": context,
+            },
+        }
+    )
+
+
 # --- the hook ---------------------------------------------------------------------
 
 
@@ -146,10 +195,32 @@ def open_from_prompt(
     call: Caller | None = None,
     cwd: str | None = None,
 ) -> str:
-    """Open the session for the first prompt; empty text for later prompts."""
+    """Open the session for the first prompt; empty text for later prompts.
+
+    Returns the text for the model's context; :func:`open_from_prompt_with_message`
+    also returns the line shown to the user.
+    """
+    return open_from_prompt_with_message(
+        project_dir, session_id, prompt, call=call, cwd=cwd
+    )[0]
+
+
+def open_from_prompt_with_message(
+    project_dir: Path,
+    session_id: str | None,
+    prompt: str,
+    *,
+    call: Caller | None = None,
+    cwd: str | None = None,
+) -> tuple[str, str]:
+    """Open the session for the first prompt.
+
+    Returns ``(context, user_message)``: the text the model reads and the line
+    the user sees. Both are empty for a later prompt.
+    """
     marker = read_marker(project_dir, session_id) or {}
     if marker.get("session_identifier") or marker.get("open_failed_at"):
-        return ""
+        return "", ""
     answer = extract_opening_answer(prompt)
     base, token, engagement = resolve_config(project_dir)
     metadata = {"claude_session_id": session_id, "cwd": cwd or str(project_dir)}
@@ -174,7 +245,7 @@ def open_from_prompt(
             {**marker, "opened": False, "open_failed_at": datetime.now(UTC).isoformat(timespec="seconds"),
              "opening_answer": answer, "failure": reason},
         )
-        return render_failure(answer, reason)
+        return render_failure(answer, reason), user_message_failure(reason)
     session = result["session"]
     write_marker(
         project_dir,
@@ -194,7 +265,10 @@ def open_from_prompt(
             "opened_at": datetime.now(UTC).isoformat(timespec="seconds"),
         },
     )
-    return render_opened(result, set(marker.get("cross_cutting_rule_ids") or []))
+    return (
+        render_opened(result, set(marker.get("cross_cutting_rule_ids") or [])),
+        user_message_opened(result),
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -212,12 +286,16 @@ def main(argv: list[str] | None = None) -> int:
     prompt = str(payload.get("prompt") or "")
     session_id = payload.get("session_id")
     try:
-        text = open_from_prompt(project_dir, session_id, prompt, cwd=payload.get("cwd"))
+        text, message = open_from_prompt_with_message(
+            project_dir, session_id, prompt, cwd=payload.get("cwd")
+        )
     except Exception as exc:  # noqa: BLE001 — a hook defect must never block work
         sys.stderr.write(f"[session-open] internal error ({exc}) — continuing\n")
         return 0
     if text:
-        sys.stdout.write(text)
+        # JSON so Claude Code shows the user the line to check (REQ-594) and
+        # gives the model the rules; plain text would reach the model only.
+        sys.stdout.write(hook_output(text, message))
         sys.stdout.flush()
     return 0
 

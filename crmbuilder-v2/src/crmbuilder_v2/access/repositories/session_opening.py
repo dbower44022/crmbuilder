@@ -75,6 +75,43 @@ NO_KIND_OF_WORK_LINE = (
     "No kind of work was chosen for this session; only the cross-cutting rules "
     "are loaded."
 )
+
+# REQ-595 / PI-500 (DEC-1080): when an opening loads a kind of work, the rules
+# returned tell the model to begin its first reply with the confirmation line,
+# word for word, so the user sees what the session understood on every surface
+# that opens a session — Claude Code, the connector, the desktop. The line is
+# carried inside the instruction, so a surface that shows the model only the
+# rules still has the exact words. An opening with no kind of work carries no
+# such instruction: there is no classification for the user to check.
+FIRST_REPLY_INSTRUCTION = (
+    "Begin your first reply to the user with this confirmation line, word for "
+    "word, on its own line, so they can correct the kind of work if it is "
+    "wrong: \"{line}\""
+)
+
+
+def first_reply_instruction(confirmation_line: str | None) -> str | None:
+    """The instruction to restate the confirmation line, or ``None`` without one."""
+    if not confirmation_line:
+        return None
+    return FIRST_REPLY_INSTRUCTION.format(line=confirmation_line)
+
+
+def _with_first_reply_instruction(contract: dict, confirmation_line: str | None) -> dict:
+    """Return the contract carrying the restatement instruction (REQ-595).
+
+    The instruction is placed both as its own key, for a surface that reads the
+    contract as data, and at the head of the system prompt, for one that hands
+    the model the prompt text alone.
+    """
+    instruction = first_reply_instruction(confirmation_line)
+    if instruction is None:
+        return contract
+    out = dict(contract)
+    out["first_reply_instruction"] = instruction
+    prompt = out.get("system_prompt") or ""
+    out["system_prompt"] = f"{instruction}\n\n{prompt}" if prompt else instruction
+    return out
 #: Catalogue entries offered as examples with the opening question (three or
 #: four, plan Part 4), by entry name; the first four that exist are used.
 EXAMPLE_NAMES = (
@@ -594,7 +631,9 @@ def open_session(
         "first_line": first_line,
         "follow_up_question": follow_up,
         "segment": segments[0] if segments else None,
-        "contract": merge_contracts(segment_contract, cross),
+        "contract": _with_first_reply_instruction(
+            merge_contracts(segment_contract, cross), confirmation
+        ),
         "planning_item": planning_item,
     }
 
