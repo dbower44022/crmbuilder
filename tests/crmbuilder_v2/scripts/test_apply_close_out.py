@@ -398,7 +398,7 @@ class TestPI030NewSections:
     ):
         payload = {
             "label": "WT addresses PI",
-            "session": _session_block("SES-204"),
+            "session": _session_block("SES-204", ws_id=_create_project(routed)),
             "planning_items": [{
                 "identifier": "PI-204",
                 "title": "Test PI",
@@ -534,15 +534,16 @@ class TestPI030NewSections:
 
         captured = capsys.readouterr()
         out = captured.out
-        # PI-099 order: conversation → session → work_tickets →
-        # planning_items → ... → decisions → ...
+        # PI-502 order: session → conversation → planning_items →
+        # work_tickets → ... → decisions → ... (every record a reference names
+        # is written before the reference).
         idx_conv = out.find("=== conversation ")
         idx_session = out.find("=== session ")
         idx_wt = out.find("=== work_tickets ")
         idx_pi = out.find("=== planning_items ")
         idx_dec = out.find("=== decisions ")
         assert idx_conv != -1
-        assert idx_conv < idx_session < idx_wt < idx_pi < idx_dec
+        assert idx_session < idx_conv < idx_pi < idx_wt < idx_dec
 
     def test_409_skip_idempotent_on_re_run_all_sections(
         self, routed, tmp_path, monkeypatch
@@ -727,19 +728,21 @@ class TestPI030NewSections:
 
 
 class TestPI099SectionOrdering:
-    """PI-099: every close-out's first apply was failing because the
-    apply script POSTed the session before the conversation, but the
-    post-PI-073 ``complete_session_requires_conversation`` validation
-    rule needs the inbound ``conversation_belongs_to_session`` edge to
-    exist at session-create time. The fix swaps the section order so
-    the conversation (and its inline membership edge) lands first.
+    """PI-099 made a finished session and its conversation apply in one pass:
+    the ``complete_session_requires_conversation`` rule needs the inbound
+    ``conversation_belongs_to_session`` edge at session-create time. PI-099
+    posted the conversation first; since PI-502 a reference to a missing
+    session is refused, so the session posts first in flight, the
+    conversation follows, and the session then moves to its payload status.
+    The single-pass guarantee below is unchanged.
     """
 
-    def test_section_order_has_conversation_before_session(self):
-        """Regression guard: the swap can't quietly drift back."""
+    def test_section_order_has_session_before_conversation(self):
+        """Regression guard: the conversation's edge must name a session that
+        exists, so the session section comes first."""
         sections = apply_close_out._SECTIONS
-        assert sections[0].name == "conversation"
-        assert sections[1].name == "session"
+        assert sections[0].name == "session"
+        assert sections[1].name == "conversation"
 
     def test_single_pass_apply_succeeds_for_complete_session_with_conversation(
         self, routed, tmp_path, monkeypatch

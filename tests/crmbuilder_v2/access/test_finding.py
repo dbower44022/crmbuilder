@@ -20,6 +20,8 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.repositories import findings
 from sqlalchemy import inspect
 
+from tests.crmbuilder_v2._records import ensure
+
 _EXPECTED_COLUMNS = {
     "finding_identifier",
     "finding_type",
@@ -138,8 +140,9 @@ def test_list_filters_by_status_and_severity(v2_env):
 
 def test_relates_to_edge_inline(v2_env):
     with session_scope() as s:
-        # The edge target need not pre-exist for the refs table; the vocab pair
-        # (finding, planning_item, finding_relates_to) must be admitted.
+        # The vocab pair (finding, planning_item, finding_relates_to) must be
+        # admitted, and the target must exist (PI-502).
+        ensure(s, "planning_item", "PI-999")
         row = findings.create_finding(
             s, type="conflict", severity="blocking", summary="fk mismatch",
             references=[

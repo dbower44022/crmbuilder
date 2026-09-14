@@ -2258,6 +2258,27 @@ ENTITY_TYPES: frozenset[str] = frozenset(
 )
 
 
+# PI-502 (REQ-596, DEC-1081). Record types a reference may name without the
+# store confirming the record exists. Creating a reference otherwise requires
+# both of its records to exist in the active engagement (or, for the system and
+# shared registry types, in the store). These types are exempt because their
+# identifiers are not held as a string identifier in a table of their own, so
+# there is nothing to look the identifier up in: the charter and the status
+# report are version-keyed singletons, catalogue rows and mapping candidates
+# carry integer keys, and a reference row is addressed by its integer key or a
+# nullable assigned identifier. A type joins this list only by name, here.
+REFERENCE_EXISTENCE_EXEMPT_TYPES: frozenset[str] = frozenset(
+    {
+        "charter",
+        "status",
+        "catalog_entity",
+        "catalog_attribute",
+        "mapping_candidate",
+        "reference",
+    }
+)
+
+
 # PI-462 (REQ-560 / DEC-1034). The governed record types a decision can
 # withdraw without replacing: the ones whose lifecycle a decision rules and
 # that carry a withdrawn / cancelled / retired / rejected terminal. Read by the

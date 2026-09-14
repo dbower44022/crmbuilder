@@ -52,6 +52,17 @@ def list_all(
         )
 
 
+@router.get("/dangling")
+def dangling():
+    """References in the active engagement whose source or target record does
+    not exist, each with the missing end (REQ-598 / PI-502). Read-only;
+    declared before the parameterised routes so it is reachable."""
+    from crmbuilder_v2.access.reference_integrity import dangling_references
+
+    with readonly_session() as s:
+        return ok(dangling_references(s))
+
+
 @router.get("/next-identifier")
 def next_identifier():
     """Return the next reference primary-key ``id`` (DEC-043).

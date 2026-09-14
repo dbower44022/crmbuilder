@@ -7,6 +7,8 @@ requirement with no planned work below it is flagged unbuilt.
 
 from __future__ import annotations
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 _EXEC = "Coverage report test executive summary line. " * 6  # ~270 chars
 
 
@@ -38,6 +40,7 @@ def _req(client, name="A capability"):
 
 
 def _ref(client, st, si, tt, ti, rel):
+    ensure_ends(st, si, tt, ti)
     return client.post(
         "/references",
         json={

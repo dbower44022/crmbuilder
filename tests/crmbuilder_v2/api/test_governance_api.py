@@ -8,6 +8,8 @@ deposit_event POST, and the GET /references server-side filter fix.
 
 from __future__ import annotations
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 
 def _envelope(resp):
     body = resp.json()
@@ -124,6 +126,7 @@ def test_workstream_validation_failure_envelope(client):
 
 def test_finding_crud_lifecycle_and_filters(client):
     # Create an open blocking finding with an inline relates-to edge to a PI.
+    ensure_ends("planning_item", "PI-999", "planning_item", "PI-999")
     r = client.post(
         "/findings",
         json={
@@ -288,6 +291,7 @@ def _ready_cop(client, identifier="COP-001"):
 
 def test_deposit_event_success_drives_applied(client):
     cop = _ready_cop(client)
+    ensure_ends("session", "SES-049", "session", "SES-049")
     r = client.post(
         "/deposit-events",
         json={

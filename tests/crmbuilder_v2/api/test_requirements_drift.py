@@ -10,6 +10,8 @@ from __future__ import annotations
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories.requirement import _get_row
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 
 def _make(client, name):
     r = client.post(
@@ -25,6 +27,7 @@ def _make(client, name):
 
 
 def _ref(client, st, si, tt, ti, rel):
+    ensure_ends(st, si, tt, ti)
     r = client.post(
         "/references",
         json={

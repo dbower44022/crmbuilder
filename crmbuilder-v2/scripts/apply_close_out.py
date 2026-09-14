@@ -9,9 +9,13 @@ v0.8 (PI-030 slice B) extends the script to handle five new top-level
 payload sections introduced by the Code Change Lifecycle methodology and
 DEC-223 (close-out payload format gains a conversation block):
 
-  conversation → session → work_tickets → planning_items → commits
+  session → conversation → planning_items → work_tickets → commits
               → decisions → references → resolves_planning_items
               → addresses_planning_items
+
+  Every record a reference names is written before the reference (PI-502):
+  the session before the conversation that belongs to it, and planning items
+  before the work tickets that address them.
 
 Per-section shape transforms translate payload entries into POST bodies:
   - work_tickets[].addresses_planning_item becomes an embedded addresses
@@ -268,25 +272,37 @@ def _inline_membership_edges(
     block["references"] = list(inline_refs) + matched
 
 
-# Section descriptors in apply order. PI-099 swapped session and
-# conversation so the conversation POSTs first — its mandatory inline
-# ``conversation_belongs_to_session`` edge must exist before the
-# session create runs validate_edges (the ``complete_session_requires_
-# conversation`` rule looks for that inbound edge at create-time). The
-# rest of the order is fixed: conversation → session → work_tickets →
-# planning_items → commits → decisions → references →
-# resolves_planning_items → addresses_planning_items.
+# Section descriptors in apply order: session → conversation →
+# planning_items → work_tickets → commits → decisions → references →
+# resolves_planning_items → addresses_planning_items. Planning items precede
+# work tickets because a work ticket's addresses edge names its planning item.
+#
+# A finished session and its conversation depend on each other: the session's
+# ``complete_session_requires_conversation`` rule wants the inbound
+# ``conversation_belongs_to_session`` edge at create time, and that edge names
+# the session. PI-099 met this by posting the conversation first, so its edge
+# briefly named a session that did not exist yet. A reference to a missing
+# record is refused since PI-502 (REQ-596), so the session now goes first in a
+# status that needs no conversation (in flight), the conversation follows with
+# its edge to a session that exists, and the session is then moved to the
+# status the payload gives it. See ``_TERMINAL_SESSION_STATUSES``.
 _SECTIONS: list[_Section] = [
-    _Section("conversation",             "/conversations",  True,  "conversation",   "conversations"),
     _Section("session",                  "/sessions",       True,  "session",        "sessions"),
-    _Section("work_tickets",             "/work-tickets",   False, "work_ticket",    "work_tickets", _shape_work_ticket),
+    _Section("conversation",             "/conversations",  True,  "conversation",   "conversations"),
     _Section("planning_items",           "/planning-items", False, "planning_item",  "planning_items"),
+    _Section("work_tickets",             "/work-tickets",   False, "work_ticket",    "work_tickets", _shape_work_ticket),
     _Section("commits",                  "/commits",        False, "commit",         "commits",       _shape_commit),
     _Section("decisions",                "/decisions",      False, "decision",       "decisions"),
     _Section("references",               "/references",     False, "reference",      "references"),
     _Section("resolves_planning_items",  "/references",     False, "reference",      "references",    _shape_resolves_pi),
     _Section("addresses_planning_items", "/references",     False, "reference",      "references",    _shape_addresses_pi),
 ]
+
+
+#: Session statuses whose create-time rules need a conversation (or, for
+#: superseded, a supersedes edge) already in place. A session in one of these
+#: is posted in flight and moved to it after the conversation section.
+_TERMINAL_SESSION_STATUSES = frozenset({"complete", "cancelled", "superseded"})
 
 
 def _request(method: str, path: str, body: dict | None = None) -> tuple[int, dict]:
@@ -712,6 +728,7 @@ def main() -> int:
         for section in _SECTIONS:
             records_summary.setdefault(section.summary_key, 0)
         first_error: dict | None = None
+        deferred_session_status: tuple[str, str] | None = None
 
         # Cross-section values that per-entry shape functions need.
         #
@@ -778,6 +795,17 @@ def main() -> int:
                             "http_status": 0,
                         }
                     continue
+                if (
+                    section_name == "session"
+                    and isinstance(body, dict)
+                    and body.get("session_status") in _TERMINAL_SESSION_STATUSES
+                    and payload.get("conversation")
+                ):
+                    deferred_session_status = (
+                        body.get("session_identifier") or body.get("identifier"),
+                        body["session_status"],
+                    )
+                    body = {**body, "session_status": "in_flight"}
                 status, response = _request("POST", section.endpoint, body)
                 rec_ok = _log(_record_label(section_name, record), status, response)
                 ok &= rec_ok
@@ -813,6 +841,23 @@ def main() -> int:
                         "http_status": status,
                     }
             print()
+            if section_name == "conversation" and deferred_session_status is not None:
+                session_id, final_status = deferred_session_status
+                deferred_session_status = None
+                print(f"=== session status ({session_id} -> {final_status}) ===")
+                status, response = _request(
+                    "PATCH", f"/sessions/{session_id}", {"session_status": final_status}
+                )
+                ok &= _log(f"session {session_id} status", status, response)
+                if status not in (200, 201) and first_error is None:
+                    errors = response.get("errors") if isinstance(response, dict) else None
+                    first_error = {
+                        "kind": "http_error" if status > 0 else "connection_failure",
+                        "message": (json.dumps(errors) if errors else str(response))[:300],
+                        "step": "session_status",
+                        "http_status": status,
+                    }
+                print()
 
         if ok:
             print(f"✓ All {total_processed} operations complete.")

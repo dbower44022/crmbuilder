@@ -19,6 +19,8 @@ from __future__ import annotations
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 _LABEL = "espocrm @ crm.test"
 
 
@@ -28,6 +30,7 @@ _LABEL = "espocrm @ crm.test"
 
 
 def _ref(client, source_type, source_id, target_type, target_id, relationship):
+    ensure_ends(source_type, source_id, target_type, target_id)
     response = client.post(
         "/references",
         json={

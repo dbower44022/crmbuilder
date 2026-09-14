@@ -9,6 +9,8 @@ others); idempotent already-confirmed; reviewer required.
 
 from __future__ import annotations
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 
 def _make(client, **overrides) -> str:
     body = {
@@ -28,6 +30,7 @@ def _make(client, **overrides) -> str:
 
 
 def _ref(client, src, rel, tgt_type, tgt):
+    ensure_ends("requirement", src, tgt_type, tgt)
     return client.post(
         "/references",
         json={"source_type": "requirement", "source_id": src,

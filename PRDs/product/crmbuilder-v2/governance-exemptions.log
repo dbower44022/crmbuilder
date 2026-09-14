@@ -4,3 +4,4 @@
 2026-08-31T21:18:20+00:00	trivial	'v2: the agent-contract exemplar rules carry the ado_agent audience'	test-only fixture update aligning a stale exemplar with the PI-439 rule shape already on main
 2026-09-02T03:39:30+00:00	trivial	"v2: register PI-448's audit_runs table in the scoped inventory"	test-only registration of another PI's already-merged table, caught by the inventory guard
 2026-09-12T16:56:34+00:00	trivial	'v2: drop an unused import in the transition tests (PI-471)'	removing one unused test import flagged by the linter
+2026-09-14T15:05:28+00:00	trivial	'v2: tidy the review test imports (PI-502)'	removes one blank line left in an import block by the previous commit

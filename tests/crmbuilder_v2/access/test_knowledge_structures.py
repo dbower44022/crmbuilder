@@ -26,6 +26,8 @@ from crmbuilder_v2.access.repositories import (
     references,
 )
 
+from tests.crmbuilder_v2._records import ensure
+
 # --------------------------------------------------------------------------
 # preference
 # --------------------------------------------------------------------------
@@ -177,7 +179,7 @@ def test_lesson_derived_from_and_supersedes_edges(v2_env):
         # lesson_derived_from -> decision (the DB record the memory was welded to)
         edge = references.create(
             s, source_type="lesson", source_id=l1["identifier"],
-            target_type="decision", target_id="DEC-001",
+            target_type="decision", target_id=ensure(s, "decision", "DEC-001"),
             relationship="lesson_derived_from",
         )
         assert edge["relationship"] == "lesson_derived_from"

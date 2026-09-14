@@ -14,6 +14,8 @@ from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.models import Entity
 from crmbuilder_v2.access.repositories import references
 
+from tests.crmbuilder_v2._records import ensure
+
 
 def _entity(s, ident, name):
     s.add(Entity(entity_identifier=ident, entity_name=name, entity_description="d"))
@@ -22,7 +24,7 @@ def _entity(s, ident, name):
 
 def _provenance(s, target_id):
     references.create(
-        s, source_type="deposit_event", source_id="DEP-001",
+        s, source_type="deposit_event", source_id=ensure(s, "deposit_event", "DEP-001"),
         target_type="entity", target_id=target_id,
         relationship="deposit_event_wrote_record",
     )
