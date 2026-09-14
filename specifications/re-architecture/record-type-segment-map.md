@@ -2,9 +2,9 @@
 | Field | Value |
 |---|---|
 | Title | Record-type-to-segment map |
-| Last Updated | 09-14-26 17:08 |
-| Revision | 0.2 |
-| Status | Draft, awaiting product-owner approval |
+| Last Updated | 09-14-26 17:33 |
+| Revision | 1.0 |
+| Status | Approved by the product owner, 09-14-26, segment by segment in session SES-414 |
 | Source | PI-504 / REQ-588 / DEC-1077 / DEC-1086 |
 
 ## Purpose
@@ -85,8 +85,8 @@ Confidence is `verified` when the creating operation was read and its statement 
 | SystemSetting | system_settings | Solution Design | access/repositories/system_settings.py:_new_row | The one design construct whose value is per instance; the setting itself is design. | verified | Build |
 | TestSpec | test_specs | Solution Design | access/repositories/test_spec.py:_new_test_spec_row | A test specification authored against the design; Build records runs against it through the record_run helper. | verified | Build (records runs) |
 | CrmCandidate | crm_candidates | Solution Design | access/repositories/crm_candidate.py:_new_crm_candidate_row | A Phase 1 CRM candidate: the buy, adopt or build analysis input. | verified | Discovery and Requirements |
-| Service | services | Solution Design | none found | A cross-domain service in the target system (document storage, notification). No repository, router or other writer constructs this row today. | inferred | none |
-| MigrationMapping | migration_mappings | Solution Design | access/repositories/migration_mapping.py:_new_row | One keep or transform disposition's data-migration obligation from a source entity or field to target fields, with transform rules; a design-time statement consumed by a compiler. | inferred | Build |
+| Service | services | Solution Design | none found | A cross-domain service in the target system (document storage, notification). No repository, router or other writer constructs this row today. | removal candidate (approved) | none |
+| MigrationMapping | migration_mappings | Solution Design | access/repositories/migration_mapping.py:_new_row | One keep or transform disposition's data-migration obligation from a source entity or field to target fields, with transform rules; a design-time statement consumed by a compiler. | approved | Build |
 | CatalogEntity | catalog_entity | Solution Design | access/repositories/catalog/write.py:create_entity | The base-entity catalogue used by the design gap check; system-wide, seeded by the bootstrap loader. | verified | none |
 | CatalogEntitySynonym | catalog_entity_synonym | Solution Design | access/repositories/catalog/write.py:_replace_entity_children | Child of a catalogue entity, written with it. | verified | none |
 | CatalogEntitySystem | catalog_entity_system | Solution Design | access/repositories/catalog/write.py:_replace_entity_children | Child of a catalogue entity, written with it. | verified | none |
@@ -108,16 +108,16 @@ Confidence is `verified` when the creating operation was read and its statement 
 | InstanceMembership | instance_memberships | Build | introspect/entity_audit.py and access/reconcile_apply.py via access/repositories/instance_membership.py:upsert_membership | Whether a design object is present on an instance; written by the audit and by reconcile apply. | verified | Operate, Solution Design |
 | UtilizationEvidence | utilization_evidence | Build | access/repositories/utilization_evidence.py:create_utilization_evidence | One profiling measurement from the audit's record-utilization profiler. | verified | Discovery and Requirements |
 | MappingCandidate | mapping_candidates | Build | access/repositories/mapping_candidate.py:_new_row | An unmatched source object surfaced by an audit; the reconciler writes here, never to the mapping tables. | verified | none |
-| ManualConfig | manual_configs | Build | api/routers/manual_configs.py via access/repositories/manual_config.py:_new_manual_config_row | One item the operator must configure by hand in the live CRM platform after publish. | inferred | Operate |
-| SystemSettingValue | system_setting_values | Build | api/routers/system_settings.py:set_value via access/repositories/system_settings.py:set_value | The value one instance is declared to hold for a setting; the audit compares its reading against it. | inferred | Operate, Solution Design |
-| ConformanceOverride | conformance_overrides | Build | api/routers/instances.py via access/repositories/conformance_overrides.py:create_override | An operator authorisation for one publish to proceed past a blocking conformance result; consumed once. | inferred | none |
-| SourceMapping | source_mappings | Build | ui/dialogs/candidate_resolve.py via access/repositories/source_mapping.py:create_source_mapping | A human resolves a mapping candidate into an entity-level mapping from a discovered source entity to the design; created from the reconcile screens. | inferred | Solution Design |
-| SourceMappingTarget | source_mapping_targets | Build | access/repositories/source_mapping_targets.py:add_target | A design-entity target of a source mapping; written with it. | inferred | Solution Design |
-| SourceMappingJoin | source_mapping_joins | Build | none found | Child of a source mapping. No writer constructs this row today; placement follows its parent. | inferred | Solution Design |
-| FieldMapping | field_mappings | Build | ui/dialogs/candidate_resolve.py via access/repositories/field_mapping.py:create_field_mapping | A field-level mapping decision under a source mapping. | inferred | Solution Design |
-| FieldMappingTranslation | field_mapping_translations | Build | none found | Child of a field mapping. No writer constructs this row today; placement follows its parent. | inferred | Solution Design |
-| AssociationMapping | association_mappings | Build | access/repositories/association_mapping.py:create_association_mapping | A relationship-level mapping from a discovered source relationship to a design association. | inferred | Solution Design |
-| ValueMapping | value_mappings | Build | access/repositories/value_mapping.py:create_value_mapping | A value-level mapping decision for one source enumeration value. | inferred | Solution Design |
+| ManualConfig | manual_configs | Build | api/routers/manual_configs.py via access/repositories/manual_config.py:_new_manual_config_row | One item the operator must configure by hand in the live CRM platform after publish. | approved | Operate |
+| SystemSettingValue | system_setting_values | Build | api/routers/system_settings.py:set_value via access/repositories/system_settings.py:set_value | The value one instance is declared to hold for a setting; the audit compares its reading against it. | approved | Operate, Solution Design |
+| ConformanceOverride | conformance_overrides | Build | api/routers/instances.py via access/repositories/conformance_overrides.py:create_override | An operator authorisation for one publish to proceed past a blocking conformance result; consumed once. | approved | none |
+| SourceMapping | source_mappings | Build | ui/dialogs/candidate_resolve.py via access/repositories/source_mapping.py:create_source_mapping | A human resolves a mapping candidate into an entity-level mapping from a discovered source entity to the design; created from the reconcile screens. | approved | Solution Design |
+| SourceMappingTarget | source_mapping_targets | Build | access/repositories/source_mapping_targets.py:add_target | A design-entity target of a source mapping; written with it. | approved | Solution Design |
+| SourceMappingJoin | source_mapping_joins | Build | none found | Child of a source mapping. No writer constructs this row today; placement follows its parent. | removal candidate (approved) | Solution Design |
+| FieldMapping | field_mappings | Build | ui/dialogs/candidate_resolve.py via access/repositories/field_mapping.py:create_field_mapping | A field-level mapping decision under a source mapping. | approved | Solution Design |
+| FieldMappingTranslation | field_mapping_translations | Build | none found | Child of a field mapping. No writer constructs this row today; placement follows its parent. | removal candidate (approved) | Solution Design |
+| AssociationMapping | association_mappings | Build | access/repositories/association_mapping.py:create_association_mapping | A relationship-level mapping from a discovered source relationship to a design association. | approved | Solution Design |
+| ValueMapping | value_mappings | Build | access/repositories/value_mapping.py:create_value_mapping | A value-level mapping decision for one source enumeration value. | approved | Solution Design |
 
 ### Operate
 
@@ -165,9 +165,9 @@ Confidence is `verified` when the creating operation was read and its statement 
 | Decision | decisions | Shared Core | access/repositories/decisions.py:_new_decision_row | A recorded decision; the only path by which a requirement is confirmed. | verified | all segments |
 | PlanningItem | planning_items | Shared Core | access/repositories/planning_items.py:_new_planning_item_row | The unit of governed work that implements a requirement. | verified | CRMBuilder Delivery |
 | Project | projects | Shared Core | access/repositories/projects.py:_new_row | The first governance entity type, the container of planning items; the delivery pipeline reads it as its backlog but does not create it. | verified | CRMBuilder Delivery |
-| Risk | risks | Shared Core | access/repositories/risks.py:_new_risk_row | A risk record from the original governance set; no docstring states its scope. | inferred | Discovery and Requirements |
-| Status | status | Shared Core | access/repositories/status.py:replace | The engagement's versioned status document, generated from its records. | inferred | all segments |
-| WorkTicket | work_tickets | Shared Core | access/repositories/work_tickets.py:_new_row | A single-use seed document a conversation consumes at kickoff. | inferred | CRMBuilder Delivery |
+| Risk | risks | Shared Core | access/repositories/risks.py:_new_risk_row | A risk record from the original governance set; no docstring states its scope. | approved | Discovery and Requirements |
+| Status | status | Shared Core | access/repositories/status.py:replace | The engagement's versioned status document, generated from its records. | approved | all segments |
+| WorkTicket | work_tickets | Shared Core | access/repositories/work_tickets.py:_new_row | A single-use seed document a conversation consumes at kickoff. | approved | CRMBuilder Delivery |
 | CloseOutPayload | close_out_payloads | Shared Core | access/repositories/close_out_payloads.py:_new_row | The close-out record a conversation produces. | verified | none |
 | DepositEvent | deposit_events | Shared Core | access/repositories/deposit_events.py:create_deposit_event | The born-terminal record that a close-out was applied. | verified | none |
 | Commit | commits | Shared Core | access/repositories/commits.py:_new_row | A documentary record of a code commit produced by a conversation. | verified | CRMBuilder Delivery |
@@ -250,25 +250,17 @@ The source-mapping family, if it stays in Build, is a second candidate for a sub
 
 ## Open placements
 
-Every row marked inferred, for the product owner to settle. Each names the placement made and the alternative.
+None. Every placement that was open in revision 0.1 was settled by the product owner on 09-14-26, one segment at a time:
 
-| Class | Placed in | Alternative | Reason it is open |
-|---|---|---|---|
-| Service | Solution Design | remove | No creating operation exists. |
-| MigrationMapping | Solution Design | Build | A design-time statement of a data-migration obligation; the migration itself runs at cutover. |
-| ManualConfig | Build | Operate | Created after publish for the operator to act on by hand. |
-| SystemSettingValue | Build | Operate | Declares what an instance should hold; the instance belongs to Operate. |
-| ConformanceOverride | Build | Operate | Authorises one publish past a blocking check; created from the instances endpoints. |
-| SourceMapping | Build | Discovery and Requirements | Serves the kind of work 'describe a system you already use', whose domain is Requirements Capture. |
-| SourceMappingTarget | Build | Discovery and Requirements | Follows its parent. |
-| SourceMappingJoin | Build | remove | No creating operation exists. |
-| FieldMapping | Build | Discovery and Requirements | Follows its parent. |
-| FieldMappingTranslation | Build | remove | No creating operation exists. |
-| AssociationMapping | Build | Discovery and Requirements | Follows the source-mapping family. |
-| ValueMapping | Build | Discovery and Requirements | Follows its parent. |
-| Risk | Shared Core | Discovery and Requirements | No statement of purpose; could be a client engagement risk rather than a governance risk. |
-| Status | Shared Core | Discovery and Requirements | A generated engagement status document; who its reader is decides its owner. |
-| WorkTicket | Shared Core | CRMBuilder Delivery | A kickoff seed document consumed by a conversation; the delivery pipeline also hands off with it. |
+| Class | Settled placement | Ruling |
+|---|---|---|
+| Service | removal candidate | No creating operation exists; not assigned an owner. A later requirement may reintroduce it with an owner. |
+| MigrationMapping | Solution Design | A design-time statement of intent, not the product of a run. |
+| ManualConfig, SystemSettingValue, ConformanceOverride | Build | Created by Build operations; Operate reads them. |
+| SourceMapping, SourceMappingTarget, FieldMapping, AssociationMapping, ValueMapping | Build | Created on the reconcile screens. The audit engine's dual use (baselining an existing system is discovery work; verifying a publish is build work) is a seam for the lane plan, not for this mapping. |
+| SourceMappingJoin, FieldMappingTranslation | removal candidates | No creating operation exists. |
+| Risk, Status, WorkTicket | Shared Core | More than one segment creates them (the DEC-1086 addendum). |
+| Topic | Shared Core | Settled in revision 0.2 under the DEC-1086 addendum. |
 
 ## Appendix: non-record classes in the models module
 
@@ -287,3 +279,4 @@ Every row marked inferred, for the product owner to settle. Each names the place
 |---|---|---|---|
 | 0.1 | 09-14-26 01:17 | Claude (Claude Code, PI-504 lane) | First draft: 111 record types mapped from their creating operations; 16 placements left open for the product owner. |
 | 0.2 | 09-14-26 17:08 | Claude (Claude Code, SES-414) | Ownership addendum DEC-1086: the group Governance Core is renamed Shared Core; Topic moves from Discovery and Requirements to the Shared Core and is no longer open; counts updated. Client Management approved by the product owner. |
+| 1.0 | 09-14-26 17:33 | Claude (Claude Code, SES-414) | Approved by the product owner segment by segment: Discovery and Requirements, Solution Design, Build, Operate, CRMBuilder Delivery, Shared Core. All open placements settled; Service, SourceMappingJoin and FieldMappingTranslation marked removal candidates. Status set to Approved. |
