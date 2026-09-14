@@ -209,3 +209,28 @@ async def test_validation_error_propagates(mcp_server):
                 "status": "BogusStatus",
             },
         )
+
+
+# --- REQ-600 / PI-493: the connector creates a decision without an identifier ----
+
+
+async def test_create_decision_without_identifier_is_assigned_past_999(mcp_server):
+    summary = "PI-493 connector test executive summary. " * 6
+    await _call(mcp_server, "create_decision", {
+        "identifier": "DEC-999", "title": "Last three-digit decision",
+        "decision_date": "2026-09-14", "status": "Active", "executive_summary": summary,
+    })
+    out = await _call(mcp_server, "create_decision", {
+        "title": "Assigned by the store", "decision_date": "2026-09-14",
+        "status": "Active", "executive_summary": summary,
+    })
+    assert out["identifier"] == "DEC-1000"
+
+
+async def test_create_decision_with_a_four_digit_identifier(mcp_server):
+    out = await _call(mcp_server, "create_decision", {
+        "identifier": "DEC-1234", "title": "Explicit four-digit decision",
+        "decision_date": "2026-09-14", "status": "Active",
+        "executive_summary": "PI-493 connector test executive summary. " * 6,
+    })
+    assert out["identifier"] == "DEC-1234"

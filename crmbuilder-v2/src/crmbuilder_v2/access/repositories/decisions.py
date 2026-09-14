@@ -36,7 +36,9 @@ from crmbuilder_v2.access.vocab import DECISION_STATUSES
 
 _ENTITY_TYPE = "decision"
 _IDENTIFIER_PREFIX = "DEC"
-_IDENTIFIER_RE = re.compile(r"^DEC-\d{3}$")
+# REQ-599 / PI-493: three or more digits. Assigned identifiers passed DEC-999,
+# so an explicit identifier must be allowed to grow past three digits too.
+_IDENTIFIER_RE = re.compile(r"^DEC-\d{3,}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
 
 
@@ -57,7 +59,7 @@ def _require_identifier_format(identifier: str) -> str:
                 FieldError(
                     "identifier",
                     "invalid_format",
-                    r"must match ^DEC-\d{3}$ (e.g. DEC-001)",
+                    r"must match ^DEC-\d{3,}$ (e.g. DEC-001 or DEC-1234)",
                 )
             ]
         )

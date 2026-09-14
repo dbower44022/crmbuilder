@@ -137,11 +137,11 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         return await _unwrap(await http.get("/decisions"))
 
     async def create_decision(
-        identifier: str,
         title: str,
         decision_date: str,
         status: str,
         executive_summary: str,
+        identifier: str | None = None,
         context: str = "",
         decision: str = "",
         rationale: str = "",
@@ -152,9 +152,12 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
     ) -> Any:
         """Create a decision record. Status must be one of Active, Superseded,
         Withdrawn. ``executive_summary`` is required (PI-075): a 200-800
-        character audience-facing summary."""
+        character audience-facing summary.
+
+        Leave ``identifier`` out and the store assigns the next free DEC
+        identifier (REQ-600); pass one only to create the decision under that
+        exact identifier, three or more digits (e.g. DEC-1234)."""
         body = {
-            "identifier": identifier,
             "title": title,
             "decision_date": decision_date,
             "status": status,
@@ -167,6 +170,8 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
             "supersedes": supersedes,
             "superseded_by": superseded_by,
         }
+        if identifier is not None:
+            body["identifier"] = identifier
         return await _unwrap(await http.post("/decisions", json=body))
 
     async def update_decision(
