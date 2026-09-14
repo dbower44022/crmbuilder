@@ -50,7 +50,6 @@ from crmbuilder_v2.api.routers import (
     deploy_runs,
     deposit_events,
     domains,
-    engagements,
     engine_overrides,
     entities,
     field,
@@ -71,10 +70,8 @@ from crmbuilder_v2.api.routers import (
     migration_mappings,
     orchestration,
     orientation,
-    participant,
     persona,
     planning_items,
-    principals,
     processes,
     projects,
     provider_credentials,
@@ -111,6 +108,7 @@ from crmbuilder_v2.api.routers import (
 )
 from crmbuilder_v2.api.scope_middleware import EngagementScopeMiddleware
 from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.segments import router_lists
 
 
 @asynccontextmanager
@@ -205,8 +203,10 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(admin.router)
     app.include_router(audit_runs.router)
-    app.include_router(principals.router)
-    app.include_router(engagements.router)
+    # Segment packages declare their routers; the registry finds them (PI-508).
+    for segment_routers in router_lists():
+        for segment_router in segment_routers:
+            app.include_router(segment_router)
     app.include_router(charter.router)
     app.include_router(status.router)
     app.include_router(decisions.router)
@@ -221,7 +221,6 @@ def create_app() -> FastAPI:
     app.include_router(processes.router)
     app.include_router(crm_candidates.router)
     app.include_router(persona.router)
-    app.include_router(participant.router)
     app.include_router(reference_entries.router)
     app.include_router(field.router)
     # PI-004 methodology cohort (v0.5+).

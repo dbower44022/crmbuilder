@@ -14,56 +14,18 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-# Name-prefix → write classification (design §4). Consumed by the chat
-# tool dispatcher's mode toggle (Full / Read-only / Ask before write).
-_WRITE_PREFIXES = ("create_", "update_", "delete_", "add_", "replace_", "open_", "advance_")
-
-
-def _is_write(name: str) -> bool:
-    return name.startswith(_WRITE_PREFIXES)
-
-
-@dataclass(frozen=True)
-class ToolDefinition:
-    """One governance tool: name, async callable, cleaned docstring, and
-    read/write classification.
-
-    The single source of truth shared by the MCP stdio/HTTP server
-    (:func:`register_tools`) and the chat UI's ``ChatToolDispatcher``
-    (Anthropic Messages API), so the two surfaces never drift.
-    """
-
-    name: str
-    func: Callable[..., Any]
-    description: str
-    is_write: bool
-
-
-async def _unwrap(response: httpx.Response) -> Any:
-    """Pull the envelope's ``data`` field, or raise on error envelopes.
-
-    A refused write must reach the caller saying which check it failed
-    (REQ-586), so the error envelope is read before the status is raised on:
-    the store answers a failed check with 422 and a list of field errors, and
-    a bare "422 Unprocessable Entity" would throw that list away. A response
-    that carries no readable envelope still raises the status error.
-    """
-    try:
-        body = response.json()
-    except ValueError:
-        body = None
-    if isinstance(body, dict) and body.get("errors"):
-        raise RuntimeError(body["errors"])
-    response.raise_for_status()
-    if not isinstance(body, dict):
-        return body
-    return body.get("data")
+from crmbuilder_v2.mcp_server._tooling import (  # noqa: F401 — re-exported
+    _WRITE_PREFIXES,
+    ToolDefinition,
+    _is_write,
+    _unwrap,
+)
+from crmbuilder_v2.segments import tool_factories
 
 
 def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
@@ -862,32 +824,6 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
             "min_systems": min_systems,
         }
         return await _unwrap(await http.post("/catalog/gap-check", json=body))
-
-    # ---------- Engagement selection (PI-β follow-on A1) ----------
-
-    async def select_engagement(engagement: str) -> Any:
-        """Scope all subsequent tool calls to an engagement.
-
-        ``engagement`` is an engagement identifier (``ENG-NNN``) or code
-        (e.g. ``CRMBUILDER``). It is sent as the ``X-Engagement`` header on
-        every following REST call until changed, mirroring the desktop's
-        active-engagement context. Pass an empty string to clear it (leaving
-        subsequent calls unscoped). The default comes from
-        ``CRMBUILDER_V2_MCP_ENGAGEMENT``.
-        """
-        if engagement:
-            http.headers["X-Engagement"] = engagement
-        else:
-            http.headers.pop("X-Engagement", None)
-        return {"active_engagement": engagement or None}
-
-    async def get_active_engagement() -> Any:
-        """Return the engagement currently scoping tool calls.
-
-        The value of the ``X-Engagement`` header sent on every REST call,
-        or ``None`` when unscoped.
-        """
-        return {"active_engagement": http.headers.get("X-Engagement")}
 
     # ---------- Agent Profile Registry (PI-122) ----------
 
@@ -2530,8 +2466,6 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
     # append it here; both the MCP server and the chat dispatcher pick it
     # up automatically.
     funcs: list[Callable[..., Any]] = [
-        select_engagement,
-        get_active_engagement,
         resolve_agent_profile_contract,
         list_agent_profiles,
         create_agent_profile,
@@ -2665,7 +2599,7 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         get_term,
         list_terms,
     ]
-    return [
+    definitions = [
         ToolDefinition(
             name=f.__name__,
             func=f,
@@ -2674,6 +2608,10 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         )
         for f in funcs
     ]
+    # Segment packages declare their tools; the registry finds them (PI-508).
+    for factory in tool_factories():
+        definitions.extend(factory(http))
+    return definitions
 
 
 def register_tools(server: FastMCP, http: httpx.AsyncClient) -> None:
