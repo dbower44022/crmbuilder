@@ -319,8 +319,13 @@ def test_add_learning_evidence_raises_confidence(qtbot, registry_client):
     )
     lid = learning["identifier"]
     assert registry_client.get_learning(lid)["confidence"] == 0
+    # Evidence must name a record that exists (PI-502).
+    decision = registry_client._request("POST", "/decisions", json_body={
+        "title": "Evidence ruling", "decision_date": "2026-01-01", "status": "Active",
+        "executive_summary": "A ruling that exists so the learning's evidence names a real record. " * 3,
+    })["identifier"]
     updated = registry_client.add_learning_evidence(
-        lid, target_type="decision", target_id="DEC-001", contradicts=False
+        lid, target_type="decision", target_id=decision, contradicts=False
     )
     assert updated["confidence"] == 1
     assert registry_client.get_learning(lid)["confidence"] == 1
@@ -415,8 +420,12 @@ def test_curate_retires_contradicted_zero_confidence(qtbot, registry_client):
     )
     lid = learning["identifier"]
     # Contradicting evidence (work_task) — confidence stays floored at 0, adds the edge.
+    # The work task must exist (PI-502).
+    task = registry_client._request("POST", "/work-tasks", json_body={
+        "work_task_title": "t", "work_task_area": "storage",
+    })["work_task_identifier"]
     registry_client.add_learning_evidence(
-        lid, target_type="work_task", target_id="WTK-001", contradicts=True
+        lid, target_type="work_task", target_id=task, contradicts=True
     )
     result = registry_client.curate_learnings(area="ui", scope=None)
     assert lid in result["retired"]
