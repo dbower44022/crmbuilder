@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
 )
 
 from crmbuilder_v2.config import api_log_path, get_settings
+from crmbuilder_v2.segments import entity_type_labels
 from crmbuilder_v2.ui.about_dialog import AboutDialog
 from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
@@ -120,16 +121,12 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "process": "Processes",
     "crm_candidate": "CRM Candidates",
     "persona": "Personas",
-    # REL-069 / PI-391: engagement participants that back personas.
-    "participant": "Participants",
     "field": "Fields",
     # PI-004 methodology cohort (v0.5+).
     "requirement": "Requirements",
     "manual_config": "Manual Configs",
     # PI-004 cohort closer (v0.5+, resolves PI-004).
     "test_spec": "Test Specs",
-    # v0.5 slice C: meta-DB engagement registry.
-    "engagement": "Engagements",
     # v0.7 governance entities.
     "project": "Projects",
     "conversation": "Conversations",
@@ -156,6 +153,10 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     # REL-016 / PI-067: cross-engagement reference libraries.
     "reference_entry": "Reference Entries",
 }
+
+# Segment packages declare the record types their screens open (PI-508).
+for _segment_labels in entity_type_labels():
+    ENTITY_TYPE_TO_SIDEBAR_LABEL.update(_segment_labels)
 
 
 
