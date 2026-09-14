@@ -683,27 +683,36 @@ section):
 
 ## Schema migrations
 
-Alembic environment lives at `crmbuilder-v2/migrations/`. Always run
-from the repo root with `-c crmbuilder-v2/alembic.ini`:
+There is one Alembic chain, for Postgres, at `crmbuilder-v2/migrations/pg/`
+(PI-503 / REQ-593 / DEC-1082 removed the SQLite chain that used to live at
+`crmbuilder-v2/migrations/`). Run it from `crmbuilder-v2/` against a Postgres
+URL — for local work the dev container from `docker-compose.dev.yml`:
 
 ```bash
-uv run alembic -c crmbuilder-v2/alembic.ini revision --autogenerate \
+cd crmbuilder-v2
+docker compose -f docker-compose.dev.yml up -d
+export CRMBUILDER_V2_DATABASE_URL='postgresql+psycopg://crmb:crmb@localhost:55432/crmbuilder_v2'
+uv run alembic -c migrations/pg/alembic.ini revision --autogenerate \
   -m "add personas table"
-# review crmbuilder-v2/migrations/versions/<id>_add_personas_table.py
-# rename to 0002_add_personas.py for stable ordering
-uv run alembic -c crmbuilder-v2/alembic.ini upgrade head
+# review migrations/pg/versions/<id>_add_personas_table.py
+# rename to 00NN_<topic>.py for stable ordering
+uv run alembic -c migrations/pg/alembic.ini upgrade head
 ```
 
 Conventions:
 
-- The Alembic env reads the DB URL from
-  `config.get_settings()`, not `alembic.ini`. Set
-  `CRMBUILDER_V2_DB_PATH` to migrate against an alternate DB.
-- `render_as_batch=True` is enabled so SQLite-style ALTER works.
-- Don't edit the baseline (`0001_initial_schema.py`); add a new
-  migration instead.
+- The Alembic env reads the DB URL from `config.get_settings()`, not
+  `alembic.ini`; it refuses a SQLite URL. Set `CRMBUILDER_V2_DATABASE_URL`
+  to migrate against an alternate Postgres.
+- Postgres does in-place `ALTER`; there is no batch mode.
+- Don't edit the baseline (`0001_pg_baseline.py`); add a
+  new migration instead.
 - The autogenerate diff is approximate. Review it. Renames look like
   drop+create unless you provide a hint.
+- The migration tests (`tests/crmbuilder_v2/migration/`) run only against
+  Postgres: set `CRMBUILDER_V2_TEST_PG_URL` to the dev container's URL first.
+  The everyday suite builds per-test SQLite files from the models and needs
+  no container.
 
 ---
 
