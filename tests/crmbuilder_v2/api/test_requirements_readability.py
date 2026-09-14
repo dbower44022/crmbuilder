@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 
 def _make(client, **over):
     body = {
@@ -32,6 +34,7 @@ def _ok_make(client, **over):
 
 
 def _ref(client, st, si, tt, ti, rel):
+    ensure_ends(st, si, tt, ti)
     return client.post(
         "/references",
         json={

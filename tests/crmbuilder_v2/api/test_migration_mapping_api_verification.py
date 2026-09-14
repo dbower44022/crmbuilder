@@ -45,6 +45,8 @@ from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.models import ChangeLog, MigrationMapping, Reference
 from sqlalchemy import select
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 _LABEL = "espocrm @ crm.cbmentors.org"
 
 
@@ -54,6 +56,7 @@ _LABEL = "espocrm @ crm.cbmentors.org"
 
 
 def _ref(client, source_type, source_id, target_type, target_id, kind):
+    ensure_ends(source_type, source_id, target_type, target_id)
     response = client.post(
         "/references",
         json={

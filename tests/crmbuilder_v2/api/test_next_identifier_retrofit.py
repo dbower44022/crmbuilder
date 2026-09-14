@@ -8,6 +8,8 @@ charter and status return their next integer version.
 
 from __future__ import annotations
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 _VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
 
 # (path, repository plural prefix) for the six prefix-NNN style endpoints.
@@ -137,6 +139,8 @@ def test_planning_items_next_increments_after_create(client):
 
 
 def test_references_next_increments_after_create(client):
+    ensure_ends("decision", "DEC-001", "session", "SES-001")
+    before = client.get("/references/next-identifier").json()["data"]["next"]
     body = {
         "source_type": "decision",
         "source_id": "DEC-001",
@@ -146,7 +150,7 @@ def test_references_next_increments_after_create(client):
     }
     assert client.post("/references", json=body).status_code == 201
     r = client.get("/references/next-identifier")
-    assert r.json()["data"]["next"] == 2
+    assert r.json()["data"]["next"] == before + 1
 
 
 def test_charter_next_increments_after_replace(client):

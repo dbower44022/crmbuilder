@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 _VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
 
 
 def _add_session_decision_ref(client, sid="SES-001", did="DEC-001"):
+    ensure_ends("session", sid, "decision", did)
     return client.post(
         "/references",
         json={
@@ -22,11 +25,14 @@ def test_create_and_list(client):
     r = _add_session_decision_ref(client)
     assert r.status_code == 201
     r = client.get("/references")
-    rows = r.json()["data"]
+    # The session's own project-membership edge is also listed (PI-502: the
+    # session must exist, so the test creates it).
+    rows = [e for e in r.json()["data"] if e["relationship"] == "decided_in"]
     assert len(rows) == 1
 
 
 def _add_conversation_topic_ref(client, cid="CNV-001", tid="TOP-001"):
+    ensure_ends("conversation", cid, "topic", tid)
     return client.post(
         "/references",
         json={
@@ -57,14 +63,14 @@ def test_list_from_to_touching(client):
     _add_session_decision_ref(client, did="DEC-002")
 
     r = client.get("/references/from/session/SES-001")
-    assert len(r.json()["data"]) == 2
+    assert len([e for e in r.json()["data"] if e["relationship"] == "decided_in"]) == 2
 
     r = client.get("/references/to/decision/DEC-001")
     assert len(r.json()["data"]) == 1
 
     r = client.get("/references/touching/session/SES-001")
     body = r.json()["data"]
-    assert len(body["as_source"]) == 2
+    assert len([e for e in body["as_source"] if e["relationship"] == "decided_in"]) == 2
     assert len(body["as_target"]) == 0
 
 
@@ -102,7 +108,7 @@ def test_delete_via_post(client):
     )
     assert r.status_code == 200
     r = client.get("/references")
-    assert r.json()["data"] == []
+    assert [e for e in r.json()["data"] if e["relationship"] == "decided_in"] == []
 
 
 def test_delete_by_id(client):
@@ -113,7 +119,7 @@ def test_delete_by_id(client):
     r = client.delete(f"/references/{ref_id}")
     assert r.status_code == 200
     r = client.get("/references")
-    assert r.json()["data"] == []
+    assert [e for e in r.json()["data"] if e["relationship"] == "decided_in"] == []
 
 
 def test_delete_by_id_unknown_returns_404(client):
@@ -123,9 +129,9 @@ def test_delete_by_id_unknown_returns_404(client):
 
 def test_post_references_conversation_orchestrates_conversation(client):
     """PI-080: ``conversation_orchestrates_conversation`` round-trips
-    through POST /references. Source and target are both conversations;
-    no entity rows are needed (references are soft pointers per the
-    DEC-006 universal pattern)."""
+    through POST /references. Source and target are both conversations,
+    and both must exist (PI-502)."""
+    ensure_ends("conversation", "CNV-901", "conversation", "CNV-902")
     r = client.post(
         "/references",
         json={
@@ -163,6 +169,7 @@ def test_post_references_resolves_flips_status(client):
             "relationship": "conversation_belongs_to_project",
         }],
     })
+    ensure_ends("conversation", "CNV-995", "planning_item", "PI-994")
     client.post("/planning-items", json={
         "identifier": "PI-995",
         "title": "Test PI for resolves",
@@ -173,7 +180,7 @@ def test_post_references_resolves_flips_status(client):
 
     r = client.post("/references", json={
         "source_type": "conversation",
-        "source_id": "CONV-995",
+        "source_id": "CNV-995",
         "target_type": "planning_item",
         "target_id": "PI-995",
         "relationship": "resolves",
@@ -195,6 +202,8 @@ def test_relationship_query_param_aliases_relationship_kind(client):
     scheduler run.
     """
     # Two different-kind edges from the same source.
+    ensure_ends("session", "SES-001", "decision", "DEC-001")
+    ensure_ends("session", "SES-001", "decision", "DEC-002")
     client.post("/references", json={
         "source_type": "session", "source_id": "SES-001",
         "target_type": "decision", "target_id": "DEC-001",
@@ -206,9 +215,11 @@ def test_relationship_query_param_aliases_relationship_kind(client):
         "relationship": "supersedes",
     })
 
-    # No filter → both.
+    # No filter → both, beside the session's own project-membership edge.
     both = client.get("/references?source_id=SES-001").json()["data"]
-    assert len(both) == 2
+    assert sorted(e["relationship"] for e in both) == [
+        "decided_in", "session_belongs_to_project", "supersedes"
+    ]
 
     # ``relationship=`` (alias) narrows to one.
     aliased = client.get(
@@ -232,6 +243,7 @@ def test_relationship_query_param_aliases_relationship_kind(client):
 
 def test_withdraws_edge_posts(client):
     """PI-462 (REQ-560): a decision's withdrawal of a requirement is an edge."""
+    ensure_ends("decision", "DEC-001", "requirement", "REQ-001")
     r = client.post(
         "/references",
         json={

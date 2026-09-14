@@ -90,3 +90,23 @@ def ensure(s, entity_type: str, identifier: str) -> str:
     else:
         raise ValueError(f"ensure() does not create {entity_type!r} records")
     return identifier
+
+
+#: The record types :func:`ensure` knows how to create.
+CREATABLE = frozenset(
+    {"decision", "session", "conversation", "planning_item", "requirement",
+     "topic", "deposit_event"}
+)
+
+
+def ensure_ends(source_type: str, source_id: str, target_type: str, target_id: str) -> None:
+    """For a test driving the REST API: create either end of a reference that is
+    missing, when its type is one :func:`ensure` creates. Other types are left
+    alone, so a test that means to name a missing record of those types still
+    can."""
+    from crmbuilder_v2.access.db import session_scope
+
+    with session_scope() as s:
+        for entity_type, identifier in ((source_type, source_id), (target_type, target_id)):
+            if entity_type in CREATABLE:
+                ensure(s, entity_type, identifier)

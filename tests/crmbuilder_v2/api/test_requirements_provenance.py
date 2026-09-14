@@ -12,6 +12,8 @@ covered by the existing rejected_by_decision tests):
 
 from __future__ import annotations
 
+from tests.crmbuilder_v2._records import ensure_ends
+
 
 def _make(client, **overrides) -> dict:
     body = {
@@ -30,6 +32,7 @@ def _make(client, **overrides) -> dict:
 
 
 def _ref(client, src_type, src_id, tgt_type, tgt_id, rel):
+    ensure_ends(src_type, src_id, tgt_type, tgt_id)
     return client.post(
         "/references",
         json={
