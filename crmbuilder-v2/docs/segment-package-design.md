@@ -3,10 +3,10 @@
 | Field | Value |
 |---|---|
 | Title | Segment package design: Client Management first |
-| Last Updated | 09-14-26 17:55 |
-| Revision | 0.1 |
-| Status | Draft, for product-owner review before any code moves |
-| Source | PI-508 / REQ-591 / DEC-1079 / DEC-1089 |
+| Last Updated | 09-14-26 17:57 |
+| Revision | 1.0 |
+| Status | Approved by the product owner (DEC-1090), all seven recommendations accepted |
+| Source | PI-508 / REQ-591 / DEC-1079 / DEC-1089 / DEC-1090 |
 
 ## 1. Purpose
 
@@ -197,3 +197,4 @@ Acceptance for the whole item, from PI-508: all tests pass; the five classes are
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
 | 0.1 | 09-14-26 17:55 | Claude (Claude Code, PI-508 lane) | First draft from reading the five record types' code paths, the router inclusion, the Alembic environment, the connector tool list, the desktop client and panel registry, and the approved mapping. |
+| 1.0 | 09-14-26 17:57 | Claude (Claude Code, PI-508 lane) | Approved by the product owner as DEC-1090 with all seven recommendations of section 6 accepted. Status set to Approved; the code phase (section 7) begins. |
