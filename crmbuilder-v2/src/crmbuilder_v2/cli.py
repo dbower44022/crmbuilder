@@ -4,7 +4,8 @@ These are wired into ``[project.scripts]`` in ``pyproject.toml``:
 
 * ``crmbuilder-v2-api`` — start the FastAPI REST server
 * ``crmbuilder-v2-mcp`` — start the MCP server over stdio
-* ``crmbuilder-v2-bootstrap-db`` — apply Alembic migrations to the configured DB
+* ``crmbuilder-v2-bootstrap-db`` — apply Alembic migrations to the configured
+  (Postgres-only) DB
 * ``crmbuilder-v2-bootstrap`` — import the four bootstrap markdown files
 * ``crmbuilder-v2-ui`` — launch the v2 desktop UI (PySide6)
 """
@@ -87,6 +88,7 @@ def run_api() -> None:
     import argparse
 
     import uvicorn
+    from sqlalchemy.engine import make_url
 
     from crmbuilder_v2.api.main import create_app
     from crmbuilder_v2.config import get_settings
@@ -103,13 +105,28 @@ def run_api() -> None:
         "--check-only",
         action="store_true",
         help=(
-            "Print the resolved unified DB path, then exit 0 without starting "
-            "uvicorn."
+            "Print the resolved unified DB URL (password hidden), then exit 0 "
+            "without starting uvicorn."
         ),
     )
     args = parser.parse_args()
 
     settings = get_settings()
+
+    # PI-503 / REQ-593 / DEC-1082 — the API serves Postgres only. The SQLite
+    # store was retired as a source of truth by the 2026-07-01 cloud cutover
+    # and its migration chain is gone, so a SQLite URL (the default when
+    # CRMBUILDER_V2_DATABASE_URL is unset) is refused before the drift gate,
+    # with the local dev container named in the message.
+    from crmbuilder_v2.migration.version_info import (
+        SqliteRefusedError,
+        refuse_sqlite,
+    )
+
+    try:
+        refuse_sqlite(settings.db_url, "crmbuilder-v2-api")
+    except SqliteRefusedError as exc:
+        _fail_loud(f"REFUSING TO START: {exc}")
 
     # PI-308 / REQ-343 — active startup drift gate. Refuse to serve a DB whose
     # schema is behind the code (or un-stamped): silently serving it risks a
@@ -135,7 +152,7 @@ def run_api() -> None:
         )
 
     if args.check_only:
-        print(f"OK: unified DB at db_path={settings.db_path}")
+        print(f"OK: unified DB at {make_url(settings.db_url).render_as_string(hide_password=True)}")
         return
 
     log_path, log_config = _build_api_log_config()

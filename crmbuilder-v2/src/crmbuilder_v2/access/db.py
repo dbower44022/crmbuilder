@@ -205,16 +205,22 @@ def bootstrap_database(settings: Settings | None = None) -> None:
       the pending delta. This skips the already-applied ``0004`` (no catalog
       needed) and is a no-op when already at head (idempotent).
 
-    Dialect-aware via :func:`make_alembic_config` (the SQLite vs PG chain head).
+    **Postgres only** (PI-503 / REQ-593 / DEC-1082): the SQLite store was
+    retired as a source of truth and its migration chain removed, so a SQLite
+    URL is refused with a message naming the local dev container. The test
+    suite builds its per-test SQLite files with ``Base.metadata.create_all``
+    directly and never comes through here.
     """
     from alembic import command
 
     from crmbuilder_v2.migration.version_info import (
         _current_revision,
         make_alembic_config,
+        refuse_sqlite,
     )
 
     s = settings or get_settings()
+    refuse_sqlite(s.db_url, "crmbuilder-v2-bootstrap-db (bootstrap_database)")
     cfg = make_alembic_config(s.db_url)
     if _current_revision(s.db_url) is None:
         Base.metadata.create_all(get_engine(s))

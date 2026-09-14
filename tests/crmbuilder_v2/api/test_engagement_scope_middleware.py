@@ -14,12 +14,12 @@ from pathlib import Path
 import pytest
 from crmbuilder_v2.access import engagement_scope
 from crmbuilder_v2.access.db import (
-    bootstrap_database,
+    get_engine,
     get_session_factory,
     reset_engine_cache,
 )
 from crmbuilder_v2.access.engagement_scope import get_active_engagement
-from crmbuilder_v2.access.models import EngagementRow, Reference
+from crmbuilder_v2.access.models import Base, EngagementRow, Reference
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.api.scope_middleware import (
     EngagementScopeMiddleware,
@@ -70,7 +70,7 @@ def scoped_env(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("CRMBUILDER_V2_ENGAGEMENT_SCOPING_ENABLED", "true")
     reset_settings_cache()
     reset_engine_cache()
-    bootstrap_database()
+    Base.metadata.create_all(get_engine())  # PI-503: per-test SQLite is built from the models
     _seed_two_engagements()
     # No active engagement and enforcement off: these tests drive resolution
     # explicitly and rely on the dormant (no-active) behaviour for the

@@ -19,10 +19,11 @@ application are deliberately separate):
 ``infer_areas`` is a deterministic keyword/path heuristic — a *starting
 point* for Doug's review, not an oracle. Items it cannot classify are
 emitted with an empty ``area`` and ``needs_review: true`` so they stand
-out in the proposal. After every Open item carries an area, the NOT NULL
-tightening migration (authored under
-``crmbuilder-v2/migrations/deferred/``) is moved into ``versions/`` and
-applied — that step is gated on this backfill completing.
+out in the proposal. After every Open item carries an area, a NOT NULL
+tightening migration is authored on the Postgres chain
+(``crmbuilder-v2/migrations/pg/versions/``) and applied — that step is gated
+on this backfill completing. (The pre-authored SQLite-chain version of that
+migration went with the SQLite chain in PI-503.)
 """
 
 from __future__ import annotations
@@ -150,9 +151,9 @@ def cmd_apply(args: argparse.Namespace) -> int:
         applied += 1
     print(f"applied {applied}, skipped {skipped}")
     print(
-        "Once every Open planning item carries an area, move "
-        "migrations/deferred/0027_pi_083_planning_item_area_not_null.py "
-        "into migrations/versions/ and run `alembic upgrade head`."
+        "Once every Open planning item carries an area, author the NOT NULL "
+        "tightening migration on the Postgres chain (migrations/pg/versions/) "
+        "and run `alembic -c migrations/pg/alembic.ini upgrade head`."
     )
     return 0 if skipped == 0 else 1
 
