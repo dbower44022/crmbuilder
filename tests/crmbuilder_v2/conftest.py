@@ -1,8 +1,10 @@
 """Shared pytest fixtures for crmbuilder_v2.
 
-Each test gets a fresh SQLite database file and an isolated JSON-export
-directory. Settings and engine caches are reset so that environment
-variables set by the fixture propagate.
+Each test gets a fresh SQLite database file (built straight from the ORM
+models with ``create_all`` — never stamped, never migrated; the one migration
+chain is Postgres-only since PI-503) and an isolated JSON-export directory.
+Settings and engine caches are reset so that environment variables set by the
+fixture propagate.
 
 **PI-123 Stage 2 — active engagement scoping.** The unified multi-engagement
 DB makes ``engagement_id`` ``NOT NULL`` on every scoped row, so the test
@@ -207,7 +209,11 @@ def v2_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     else:
         reset_settings_cache()
         reset_engine_cache()
-        bootstrap_database()
+        # The per-test SQLite file is built straight from the ORM models. It
+        # is never stamped and never migrated: the one migration chain is
+        # Postgres-only (PI-503 / REQ-593 / DEC-1082) and bootstrap_database
+        # refuses a SQLite URL.
+        Base.metadata.create_all(get_engine())
     _seed_default_engagement()
     # Activate scoping for the test body: the write-stamp fills engagement_id
     # on every insert; enforcement fails loud on an unscoped scoped op.

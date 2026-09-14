@@ -6,9 +6,16 @@ module reports, for the unified DB, the revision it is currently stamped
 at (read from its ``alembic_version`` table) versus the head its
 migration chain defines, plus whether the two agree.
 
-PI-β collapsed the per-engagement + meta two-chain world into one: there
-is a single unified DB at ``Settings.db_url`` migrated by the chain at
-``crmbuilder-v2/migrations/``. :func:`schema_version` reports it.
+PI-β collapsed the per-engagement + meta two-chain world into one unified
+DB at ``Settings.db_url``. PI-503 (REQ-593 / DEC-1082) then retired the SQLite
+Alembic chain, so there is exactly one migration chain — the Postgres tree at
+``crmbuilder-v2/migrations/pg/`` — and it is the only chain this module knows.
+:func:`schema_version` reports the unified DB against that head.
+
+The everyday test suite still builds per-test SQLite files straight from the
+ORM models (``Base.metadata.create_all``) and never runs a migration; that is
+a test-isolation device, not a served store. Anything that *serves* or
+*migrates* a store is Postgres-only — see :func:`refuse_sqlite`.
 """
 
 from __future__ import annotations
@@ -23,6 +30,43 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 
 from crmbuilder_v2.config import get_settings
+
+#: Where the local development Postgres lives (``crmbuilder-v2/docker-compose.dev.yml``).
+LOCAL_POSTGRES_CONTAINER = "crmb_pg_dev"
+LOCAL_POSTGRES_URL = "postgresql+psycopg://crmb:crmb@localhost:55432/crmbuilder_v2"
+
+
+class SqliteRefusedError(RuntimeError):
+    """A Postgres-only entry point was pointed at a SQLite URL.
+
+    Raised by :func:`refuse_sqlite` from the two entry points that serve or
+    migrate a store (``crmbuilder-v2-api`` and ``crmbuilder-v2-bootstrap-db``).
+    The SQLite store was retired as a source of truth by the 2026-07-01 cloud
+    cutover and its migration chain was removed (PI-503); the message names the
+    local Postgres container to use instead.
+    """
+
+    def __init__(self, url: str, what: str) -> None:
+        self.url = url
+        self.what = what
+        super().__init__(
+            f"{what} targets Postgres only; refusing the SQLite URL {url!r}.\n"
+            "  The SQLite store was retired on 2026-07-01 and its migration chain "
+            "removed (PI-503).\n"
+            "  For local work start the dev Postgres container "
+            f"({LOCAL_POSTGRES_CONTAINER}):\n"
+            "    docker compose -f crmbuilder-v2/docker-compose.dev.yml up -d\n"
+            f"  then set CRMBUILDER_V2_DATABASE_URL='{LOCAL_POSTGRES_URL}'."
+        )
+
+
+def refuse_sqlite(url: str, what: str) -> None:
+    """Raise :class:`SqliteRefusedError` if ``url`` is a SQLite URL.
+
+    ``what`` names the caller for the message (e.g. ``"crmbuilder-v2-api"``).
+    """
+    if make_url(url).get_backend_name() == "sqlite":
+        raise SqliteRefusedError(url, what)
 
 
 class SchemaDriftError(RuntimeError):
@@ -62,25 +106,26 @@ class SchemaVersion:
 
 
 def _migrations_dir() -> Path:
+    """The one migration chain: the Postgres tree at ``crmbuilder-v2/migrations/pg``."""
     # version_info.py is at <repo>/crmbuilder-v2/src/crmbuilder_v2/migration/
-    return Path(__file__).resolve().parents[3] / "migrations"
+    return Path(__file__).resolve().parents[3] / "migrations" / "pg"
 
 
 def make_alembic_config(url: str | None = None) -> Config:
-    """Build an Alembic Config pointed at the unified DB, dialect-aware.
+    """Build an Alembic Config for the (single, Postgres) migration chain.
 
-    The SQLite and Postgres chains are two separate Alembic environments that
-    stamp the same ``alembic_version`` table (PI-α dual-head). The head must be
-    resolved from the chain that matches the DB's dialect, or a Postgres DB
-    would be compared against the SQLite head (PI-308). ``url`` defaults to the
-    configured unified DB.
+    Until PI-503 the SQLite and Postgres chains were two Alembic environments
+    stamping the same ``alembic_version`` table, and the head had to be resolved
+    from the chain matching the DB's dialect (PI-308). There is one chain now,
+    so the head is the same whatever ``url`` is; ``url`` defaults to the
+    configured unified DB and is only used to point the environment at it.
+    This function does not refuse a SQLite URL — reading ``alembic_version``
+    off a SQLite test file is harmless — the two entry points that serve or
+    migrate a store refuse it themselves via :func:`refuse_sqlite`.
     """
     url = url or get_settings().db_url
-    is_pg = make_url(url).get_backend_name().startswith("postgresql")
-    base = _migrations_dir()
-    script = base / "pg" if is_pg else base
-    ini = (base / "pg" / "alembic.ini") if is_pg else (base.parent / "alembic.ini")
-    cfg = Config(str(ini))
+    script = _migrations_dir()
+    cfg = Config(str(script / "alembic.ini"))
     cfg.set_main_option("script_location", str(script))
     cfg.set_main_option("sqlalchemy.url", url)
     return cfg

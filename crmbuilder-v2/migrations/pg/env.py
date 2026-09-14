@@ -1,10 +1,12 @@
 """Alembic environment for the Postgres store (PI-alpha, D1/D5).
 
-A **separate** Alembic chain from the SQLite per-engagement chain at
-``crmbuilder-v2/migrations/``. The SQLite chain (0001-0039) is batch-mode DDL
-encoding SQLite-shaped intermediate states and is **not** replayed on Postgres;
-Postgres starts from a single baseline materialised directly from the ORM models
-(``pi-alpha-postgres-foundation-architecture.md`` §5) and grows its own chain.
+The **only** Alembic chain since PI-503 (REQ-593 / DEC-1082). It began as a
+separate chain from the SQLite per-engagement chain that lived at
+``crmbuilder-v2/migrations/``: that chain was batch-mode DDL encoding
+SQLite-shaped intermediate states and was never replayed on Postgres, which
+starts from a single baseline materialised directly from the ORM models
+(``pi-alpha-postgres-foundation-architecture.md`` §5) and grows this chain.
+The SQLite chain was removed once the SQLite store was retired.
 
 The DB URL comes from ``crmbuilder_v2.config`` (set
 ``CRMBUILDER_V2_DATABASE_URL`` to the Postgres URL), so:
@@ -29,9 +31,11 @@ if config.config_file_name is not None:
 url = get_settings().db_url
 if make_url(url).get_backend_name() == "sqlite":
     raise RuntimeError(
-        "the Postgres Alembic tree requires a Postgres URL; set "
-        "CRMBUILDER_V2_DATABASE_URL (the SQLite chain lives at "
-        "crmbuilder-v2/migrations/)."
+        "the Alembic tree requires a Postgres URL; set "
+        "CRMBUILDER_V2_DATABASE_URL (for local work: docker compose -f "
+        "crmbuilder-v2/docker-compose.dev.yml up -d, then "
+        "postgresql+psycopg://crmb:crmb@localhost:55432/crmbuilder_v2). "
+        "There is no SQLite chain (PI-503)."
     )
 config.set_main_option("sqlalchemy.url", url)
 
