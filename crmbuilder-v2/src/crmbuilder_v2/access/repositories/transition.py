@@ -462,7 +462,9 @@ _CONSEQUENCE_LOOKUP = {
 }
 
 
-def _require_consequences(value: object, *, session: Session) -> list[str]:
+def _require_consequences(
+    value: object, *, session: Session, own_identifier: str | None = None
+) -> list[str]:
     """Check what happens automatically after the move (REQ-581).
 
     Each entry names an automation, a message template, a view, another
@@ -486,6 +488,13 @@ def _require_consequences(value: object, *, session: Session) -> list[str]:
                 f"consequence[{index}] must be a non-empty string",
             )
         identifier = raw.strip()
+        if own_identifier is not None and identifier == own_identifier:
+            _fail(
+                "transition_consequences",
+                "invalid_consequence",
+                f"transition {identifier!r} cannot follow automatically from "
+                "itself",
+            )
         prefix = identifier.split("-", 1)[0]
         record_type = TRANSITION_CONSEQUENCE_PREFIXES.get(prefix)
         if record_type is None:
@@ -669,8 +678,13 @@ def _validated_columns(
     manual_follow_up: object,
     description: object,
     notes: object,
+    own_identifier: str | None = None,
 ) -> dict:
-    """Run every check of REQ-578 to REQ-581 and return the stored columns."""
+    """Run every check of REQ-578 to REQ-581 and return the stored columns.
+
+    ``own_identifier`` is the transition being written, when it already has
+    one, so a move cannot name itself as its own automatic consequence.
+    """
     process_id = _require_live_process(process, session=session)
     field_id, options = _require_status_field(
         field, session=session, process=process_id
@@ -702,7 +716,9 @@ def _validated_columns(
         "precondition": _optional_text(
             precondition, field="transition_precondition"
         ),
-        "consequences": _require_consequences(consequences, session=session),
+        "consequences": _require_consequences(
+            consequences, session=session, own_identifier=own_identifier
+        ),
         "consequence_notes": _optional_text(
             consequence_notes, field="transition_consequence_notes"
         ),
@@ -761,6 +777,7 @@ def create_transition(
         manual_follow_up=manual_follow_up,
         description=description,
         notes=notes,
+        own_identifier=identifier,
     )
     columns["status"] = _require_status(
         "candidate" if status is None else status
@@ -854,6 +871,7 @@ def update_transition(
         manual_follow_up=manual_follow_up,
         description=description,
         notes=notes,
+        own_identifier=identifier,
     )
     status_v = _require_status(status)
     if status_v != row.transition_status:
@@ -926,7 +944,9 @@ def patch_transition(session: Session, identifier: str, **fields) -> dict:
     if fields.get("actor_kind") == "system" and "actor_persona" not in fields:
         merged["actor_persona"] = None
 
-    columns = _validated_columns(session, **merged)  # type: ignore[arg-type]
+    columns = _validated_columns(
+        session, own_identifier=identifier, **merged  # type: ignore[arg-type]
+    )
     for key, value in columns.items():
         setattr(row, f"transition_{key}", value)
 

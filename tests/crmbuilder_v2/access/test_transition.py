@@ -700,3 +700,14 @@ def test_the_reference_dialog_offers_the_four_kinds(v2_env):
     ):
         assert kind in kinds_for_source(source_type)
         assert "transition" in target_types_for(source_type, kind)
+
+
+def test_a_transition_cannot_follow_automatically_from_itself(v2_env):
+    with session_scope() as s:
+        seed = seed_mentor_application(s)
+        identifier = transition.create_transition(s, **_base_row(seed))[
+            "transition_identifier"
+        ]
+        with pytest.raises(UnprocessableError) as exc:
+            transition.patch_transition(s, identifier, consequences=[identifier])
+    assert "invalid_consequence" in _error_codes(exc)
