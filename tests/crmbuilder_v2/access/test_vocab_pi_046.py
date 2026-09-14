@@ -14,6 +14,8 @@ from crmbuilder_v2.access import vocab
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import references
 
+from tests.crmbuilder_v2._records import ensure
+
 
 def test_reference_is_a_declared_entity_type():
     assert "reference" in vocab.ENTITY_TYPES
@@ -42,12 +44,13 @@ def test_every_relationship_rule_uses_declared_entity_types():
 def test_create_deposit_event_wrote_record_edge_to_reference(v2_env):
     # The acceptance criterion: a wrote-record edge from a deposit event to a
     # reference record is now created instead of being rejected at the
-    # entity-type gate. (references.create validates types, not row existence.)
+    # entity-type gate. The deposit event must exist (PI-502); a reference
+    # record is on the exemption list, so REF-0001 is not looked up.
     with session_scope() as s:
         ref = references.create(
             s,
             source_type="deposit_event",
-            source_id="DEP-001",
+            source_id=ensure(s, "deposit_event", "DEP-001"),
             target_type="reference",
             target_id="REF-0001",
             relationship="deposit_event_wrote_record",

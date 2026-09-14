@@ -20,13 +20,16 @@ from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import projects as ws
 from sqlalchemy import inspect
 
+from tests.crmbuilder_v2._records import ensure
+
 # A session identifier the conversations are nested within. The references
 # layer does not require the target row to exist, so a stable literal is
 # sufficient to satisfy the mandatory membership edge.
-_SESSION_ID = "CONV-049"
+_SESSION_ID = "SES-049"
 
 
 def _ws(s):
+    ensure(s, "session", _SESSION_ID)
     return ws.create_project(s, name="WS", purpose="p", description="d")[
         "project_identifier"
     ]

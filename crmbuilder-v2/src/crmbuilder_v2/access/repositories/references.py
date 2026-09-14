@@ -537,6 +537,23 @@ def create(
                 ]
             )
 
+    # PI-502 (REQ-596 / REQ-597, DEC-1081): both records must exist before the
+    # row is written — and so before any change a reference makes to another
+    # record below (the resolves flip, the work-ticket consumption). It runs
+    # after the rules above so a reference that is wrong in shape (a duplicate,
+    # a disallowed pair, a cardinality breach) is refused for that reason first.
+    # A reference supplied with a new record reaches here after that record's
+    # own flush, so it is found.
+    from crmbuilder_v2.access.reference_integrity import require_both_ends
+
+    require_both_ends(
+        session,
+        source_type=source_type,
+        source_id=source_id,
+        target_type=target_type,
+        target_id=target_id,
+    )
+
     # REQ-446 / PI-384: REF-NNNN is read-max-then-inserted with no retry loop, so
     # a concurrent Postgres collision would hard-fail. Serialize per-prefix so
     # writers assign a unique identifier (a no-op on SQLite). References are the

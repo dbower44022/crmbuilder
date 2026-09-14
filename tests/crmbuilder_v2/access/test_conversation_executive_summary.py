@@ -14,11 +14,13 @@ from crmbuilder_v2.access.exceptions import ValidationError
 from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import projects as ws
 
+from tests.crmbuilder_v2._records import ensure
+
 _EXEC = "x" * 250
 _EXEC2 = "y" * 300
 _SHORT = "z" * 150
 _LONG = "w" * 801
-_SESSION_ID = "CONV-049"
+_SESSION_ID = "SES-049"
 
 
 def _member_edge(conv_id: str) -> dict:
@@ -32,6 +34,7 @@ def _member_edge(conv_id: str) -> dict:
 
 
 def _make_ws(s):
+    ensure(s, "session", _SESSION_ID)
     ws.create_project(s, name="WS", purpose="p", description="d")
 
 

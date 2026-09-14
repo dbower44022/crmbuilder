@@ -18,6 +18,8 @@ from crmbuilder_v2.access.repositories import references as refs
 from crmbuilder_v2.access.repositories import sessions as sess
 from sqlalchemy import inspect
 
+from tests.crmbuilder_v2._records import ensure
+
 _EXEC_SUMMARY = (
     "This planning item reconciles stale test fixtures with the current "
     "governance schema so the suite validates real behavior; it carries no "
@@ -82,6 +84,7 @@ def test_table_omits_updated_and_deleted(v2_env):
 def test_success_drives_first_transition_and_back_references(v2_env):
     with session_scope() as s:
         cid = _ready_cop(s)
+        ensure(s, "session", "SES-049")
         d = dep.create_deposit_event(
             s, title="Apply", description="ok", outcome="success",
             records_summary={"sessions": 1}, apply_context={"runner": "test"},

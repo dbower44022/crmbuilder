@@ -74,6 +74,30 @@ def _decision(s) -> str:
     )["identifier"]
 
 
+def _baseline_deposit(s) -> str:
+    """The audit deposit that stands as the baseline (PI-502: a reference may
+    only name a deposit event that exists, so the fixture creates one)."""
+    from crmbuilder_v2.access.repositories import deposit_events
+
+    if deposit_events.get_deposit_event(s, "DEP-001") is None:
+        deposit_events.create_deposit_event(
+            s,
+            identifier="DEP-001",
+            title="Audit deposit: baseline",
+            description="Baseline deposit for the verification fixture.",
+            kind="audit_deposit",
+            outcome="success",
+            records_summary={},
+            apply_context={
+                "source_system": "espocrm",
+                "source_instance": "https://crm.example.org",
+                "snapshot_at": "2026-06-11T18:00:00Z",
+            },
+            log_file_path="PRDs/product/crmbuilder-v2/deposit-event-logs/dep_test.log",
+        )
+    return "DEP-001"
+
+
 def _entity(s, name, *, status="confirmed", baseline=True) -> str:
     identifier = entity.create_entity(s, name=name, description="seed")[
         "entity_identifier"
@@ -82,7 +106,7 @@ def _entity(s, name, *, status="confirmed", baseline=True) -> str:
         references.create(
             s,
             source_type="deposit_event",
-            source_id="DEP-001",
+            source_id=_baseline_deposit(s),
             target_type="entity",
             target_id=identifier,
             relationship="deposit_event_wrote_record",
@@ -104,7 +128,7 @@ def _field(s, entity_identifier, name, *, status="confirmed", baseline=True) -> 
         references.create(
             s,
             source_type="deposit_event",
-            source_id="DEP-001",
+            source_id=_baseline_deposit(s),
             target_type="field",
             target_id=identifier,
             relationship="deposit_event_wrote_record",
@@ -273,18 +297,23 @@ def test_post_insert_edge_failure_rolls_back_the_row(v2_env):
     """A failure *after* the row insert (edge creation) leaves no orphan —
     the spec §7 criterion-4 mid-transaction posture. Forced by pre-creating
     the exact from-edge the create would write, so ``references.create``
-    raises on the duplicate tuple."""
+    raises on the duplicate tuple. The edge is written straight into the
+    table: its source mapping does not exist yet, which the reference
+    repository now refuses (PI-502), and that absence is the point of the
+    setup."""
     with session_scope() as s:
         _ent, old, new = _transform_pair(s)
         nxt = mm.next_migration_mapping_identifier(s)
-        references.create(
-            s,
-            source_type="migration_mapping",
-            source_id=nxt,
-            target_type="field",
-            target_id=old,
-            relationship=_FROM,
+        s.add(
+            Reference(
+                source_type="migration_mapping",
+                source_id=nxt,
+                target_type="field",
+                target_id=old,
+                relationship_kind=_FROM,
+            )
         )
+        s.flush()
     with pytest.raises(ConflictError):
         with session_scope() as s:
             _mapping(

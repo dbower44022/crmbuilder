@@ -19,6 +19,8 @@ from crmbuilder_v2.access.repositories import (
     projects as ws,
 )
 
+from tests.crmbuilder_v2._records import ensure
+
 # A 200-800 character audience-facing executive summary, required on
 # planning_items (PI-102) and sessions (PI-073/PI-075).
 _EXEC_SUMMARY = (
@@ -30,6 +32,8 @@ _EXEC_SUMMARY = (
 
 
 def _add(s, **kw):
+    ensure(s, "session", "SES-001")
+    ensure(s, "decision", "DEC-001")
     return references.create(
         s,
         source_type="session",
@@ -45,7 +49,10 @@ def test_create_and_list_from(v2_env):
     with session_scope() as s:
         _add(s)
     with session_scope() as s:
-        rows = references.list_from(s, source_type="session", source_id="SES-001")
+        rows = [
+            r for r in references.list_from(s, source_type="session", source_id="SES-001")
+            if r["relationship"] == "decided_in"
+        ]
     assert len(rows) == 1
     assert rows[0]["target_id"] == "DEC-001"
     assert rows[0]["relationship"] == "decided_in"
@@ -90,7 +97,7 @@ def test_list_to_and_touching(v2_env):
             source_type="session",
             source_id="SES-001",
             target_type="decision",
-            target_id="DEC-002",
+            target_id=ensure(s, "decision", "DEC-002"),
             relationship="decided_in",
         )
         references.create(
@@ -98,7 +105,7 @@ def test_list_to_and_touching(v2_env):
             source_type="decision",
             source_id="DEC-001",
             target_type="topic",
-            target_id="TOPIC-001",
+            target_id=ensure(s, "topic", "TOP-001"),
             relationship="is_about",
         )
     with session_scope() as s:
@@ -480,12 +487,18 @@ class TestOpensAgainstStatusFlip:
 
 
 def _withdraws(s, source_type="decision", source_id="DEC-001", target_type="requirement"):
+    # The pair rule is checked before record existence, so the records are only
+    # created for the one pair the vocabulary allows.
+    target_id = "X-001"
+    if (source_type, target_type) == ("decision", "requirement"):
+        ensure(s, "decision", source_id)
+        target_id = ensure(s, "requirement", "REQ-001")
     return references.create(
         s,
         source_type=source_type,
         source_id=source_id,
         target_type=target_type,
-        target_id="X-001",
+        target_id=target_id,
         relationship="withdraws",
     )
 
