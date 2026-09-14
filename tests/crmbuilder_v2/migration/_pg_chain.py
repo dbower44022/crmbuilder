@@ -1,8 +1,11 @@
 """Shared helpers for the migration tests — Postgres only (PI-503 / REQ-593 / DEC-1082).
 
-There is one migration chain, the Postgres tree at ``crmbuilder-v2/migrations/pg``,
+There is one migration tree, the Postgres tree at ``crmbuilder-v2/migrations/pg``,
 so the tests that exercise a revision's real ``downgrade`` / ``upgrade`` code run
-only against Postgres. Set ``CRMBUILDER_V2_TEST_PG_URL`` (for local work the dev
+only against Postgres. Since PI-507 (REQ-592) the tree has one head per owner
+branch after the trunk: a database is current when it carries every branch
+head (``upgrade heads``); :func:`all_heads` lists them and
+:func:`stamp_heads` puts a fresh schema at all of them. Set ``CRMBUILDER_V2_TEST_PG_URL`` (for local work the dev
 container from ``crmbuilder-v2/docker-compose.dev.yml``:
 ``postgresql+psycopg://crmb:crmb@localhost:55432/crmbuilder_v2``); without it every
 test in this package is skipped, and the everyday suite — which builds per-test
@@ -114,6 +117,19 @@ def plain_url(db_url: str) -> str:
     config parser cannot take the ``%``-encoded option string anyway.
     """
     return make_url(db_url).difference_update_query(["options"]).render_as_string(hide_password=False)
+
+
+def all_heads() -> tuple[str, ...]:
+    """Every head the tree defines, one per branch, sorted."""
+    from alembic.script import ScriptDirectory
+    from crmbuilder_v2.migration.version_info import make_alembic_config
+
+    return tuple(sorted(ScriptDirectory.from_config(make_alembic_config()).get_heads()))
+
+
+def stamp_heads(db_url: str) -> subprocess.CompletedProcess:
+    """Stamp ``db_url`` at every branch head (the shape ``upgrade heads`` leaves)."""
+    return alembic(["stamp", "heads"], db_url)
 
 
 def alembic(args: list[str], db_url: str) -> subprocess.CompletedProcess:
