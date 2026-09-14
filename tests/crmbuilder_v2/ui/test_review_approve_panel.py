@@ -16,7 +16,6 @@ from crmbuilder_v2.ui.panels.review import ReviewPanel, _ApproveDialog
 from fastapi.testclient import TestClient
 from PySide6.QtWidgets import QAbstractItemView, QDialog, QPushButton
 
-
 _EXEC_SUMMARY = "Change decision for the requirements-review end-to-end test. " * 4
 
 
