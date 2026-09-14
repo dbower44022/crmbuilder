@@ -144,10 +144,12 @@ def run_api() -> None:
     except SchemaDriftError as exc:
         _fail_loud(
             "REFUSING TO START: database schema is behind the code.\n"
-            f"  applied revision: {exc.current or '(un-stamped / empty DB)'}\n"
-            f"  code expects head: {exc.head}\n"
+            f"  applied revisions: {exc.current or '(un-stamped / empty DB)'}\n"
+            f"  code expects heads: {exc.head}\n"
+            f"  missing heads:     {', '.join(exc.missing) or '(none)'}\n"
+            f"  stale revisions:   {', '.join(exc.stale) or '(none)'}\n"
             "  remedy: run  crmbuilder-v2-bootstrap-db  to apply pending "
-            "migrations,\n"
+            "migrations (alembic upgrade heads),\n"
             "          then relaunch."
         )
 
