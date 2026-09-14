@@ -346,3 +346,24 @@ def test_open_accepts_form_overrides(client, seeded):
     assert rec["session_executive_summary"] == summary and rec["session_notes"] == "My notes"
     assert rec["session_participants"] == ["Doug Bower"]
     assert rec["session_kind_of_work"] == seeded["upgrade"]
+
+
+# --- REQ-595: the model restates the confirmation line ------------------------------
+
+
+def test_opened_contract_tells_the_model_to_restate_the_confirmation_line(client, seeded):
+    d = client.post("/sessions/open", json={"opening_answer": "define new business processes"}).json()["data"]
+    line = d["confirmation_line"]
+    instruction = d["contract"]["first_reply_instruction"]
+    assert instruction == so.first_reply_instruction(line)
+    assert f'"{line}"' in instruction and "word for word" in instruction
+    # A surface that hands the model only the prompt text still carries it.
+    assert d["contract"]["system_prompt"].startswith(instruction)
+
+
+def test_opening_without_a_kind_of_work_carries_no_restatement_instruction(client, seeded):
+    empty = client.post("/sessions/open", json={}).json()["data"]
+    miss = client.post("/sessions/open", json={"opening_answer": "send birthday cards"}).json()["data"]
+    for d in (empty, miss):
+        assert "first_reply_instruction" not in d["contract"]
+        assert "word for word" not in (d["contract"].get("system_prompt") or "")

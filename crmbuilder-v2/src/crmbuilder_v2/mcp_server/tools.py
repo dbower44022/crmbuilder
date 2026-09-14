@@ -365,7 +365,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         confirmation line and the phase segments), and returns:
 
         - ``confirmation_line`` — say this back to the user before doing
-          anything else; or, when ``follow_up_question`` is set, the answer
+          anything else: ``contract.first_reply_instruction`` carries the
+          exact words to begin the first reply with, so the user can correct
+          the kind of work if it is wrong; or, when ``follow_up_question`` is set, the answer
           was not recognised: ask that one question in the user's words and
           call this tool again with their reply (a planning item records the
           miss so the catalogue can grow).

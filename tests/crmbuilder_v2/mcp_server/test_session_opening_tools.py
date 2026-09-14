@@ -129,3 +129,15 @@ async def test_open_without_answer_and_miss(mcp_env):
     miss = await _call(server, "open_session", {"opening_answer": "send birthday cards"})
     assert miss["follow_up_question"] == so.FOLLOW_UP_QUESTION
     assert miss["planning_item"]["title"].startswith("Catalogue miss:")
+
+
+async def test_connector_open_returns_the_restatement_instruction(mcp_env):
+    """REQ-595: the connector's session-open tool carries the same instruction."""
+    server, http = mcp_env
+    seed = await _seed(http)
+    out = await _call(server, "open_session", {"opening_answer": "define new business processes",
+                                               "medium": "chat", "project_identifier": seed["project"]})
+    line = out["confirmation_line"]
+    assert out["contract"]["first_reply_instruction"] == so.first_reply_instruction(line)
+    miss = await _call(server, "open_session", {"opening_answer": "send birthday cards"})
+    assert "first_reply_instruction" not in miss["contract"]

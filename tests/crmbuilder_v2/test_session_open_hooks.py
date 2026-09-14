@@ -269,3 +269,72 @@ def test_main_never_fails(tmp_path: Path, monkeypatch, capsys):
     assert "SESSION NOT OPENED" in out
     marker = sc.read_marker(tmp_path, "s1")
     assert marker["open_failed_at"] and marker["opening_answer"] == "hello"
+
+
+# --- REQ-594: what the user sees -------------------------------------------------------
+
+
+def _run_main(tmp_path: Path, monkeypatch, capsys, store: FakeStore, prompt: str) -> dict:
+    monkeypatch.setattr(so, "make_caller", lambda *a, **k: store.call)
+    monkeypatch.setattr("sys.stdin", __import__("io").StringIO(
+        json.dumps({"session_id": "abc-123", "prompt": prompt})))
+    assert so.main([str(tmp_path)]) == 0
+    return json.loads(capsys.readouterr().out)
+
+
+def test_hook_shows_the_confirmation_line_to_the_user(tmp_path: Path, monkeypatch, capsys):
+    store = FakeStore()
+    _start(tmp_path, store)
+    out = _run_main(tmp_path, monkeypatch, capsys, store, "define new business processes")
+    assert out["systemMessage"] == (
+        "Session SES-410 opened. It sounds like you want to define new business processes; "
+        "I will start with the Requirements Interviewer."
+    )
+    context = out["hookSpecificOutput"]["additionalContext"]
+    assert out["hookSpecificOutput"]["hookEventName"] == "UserPromptSubmit"
+    assert "# Session opened — SES-410" in context and "**GVR-240**" in context
+
+
+def test_hook_shows_the_follow_up_question_to_the_user(tmp_path: Path, monkeypatch, capsys):
+    store = FakeStore()
+    _start(tmp_path, store)
+    out = _run_main(tmp_path, monkeypatch, capsys, store, "send birthday cards")
+    assert "What would you like done by the end of this session?" in out["systemMessage"]
+    assert "ask the user this one question" in out["hookSpecificOutput"]["additionalContext"]
+
+
+def test_hook_shows_the_could_not_open_notice_to_the_user(tmp_path: Path, monkeypatch, capsys):
+    store = FakeStore(open_fails=True)
+    _start(tmp_path, store)
+    out = _run_main(tmp_path, monkeypatch, capsys, store, "define new business processes")
+    assert out["systemMessage"].startswith("Session not opened:")
+    assert "ConnectionError: dns failed" in out["systemMessage"]
+    assert "open_session" in out["systemMessage"]
+    assert out["hookSpecificOutput"]["additionalContext"].startswith("> **SESSION NOT OPENED")
+
+
+def test_hook_passes_the_restatement_instruction_to_the_model(tmp_path: Path):
+    store = FakeStore()
+    _start(tmp_path, store)
+    original = store.call
+
+    def with_instruction(method, path, body):
+        result = original(method, path, body)
+        if path == so.OPEN_PATH and result.get("confirmation_line"):
+            result["contract"]["first_reply_instruction"] = (
+                f"Begin your first reply with: \"{result['confirmation_line']}\""
+            )
+        return result
+
+    text = so.open_from_prompt(tmp_path, "abc-123", "define new business processes", call=with_instruction)
+    assert 'Begin your first reply with: "It sounds like' in text
+
+
+def test_a_later_prompt_prints_nothing(tmp_path: Path, monkeypatch, capsys):
+    store = FakeStore()
+    _start(tmp_path, store)
+    _run_main(tmp_path, monkeypatch, capsys, store, "define new business processes")
+    monkeypatch.setattr("sys.stdin", __import__("io").StringIO(
+        json.dumps({"session_id": "abc-123", "prompt": "next"})))
+    assert so.main([str(tmp_path)]) == 0
+    assert capsys.readouterr().out == ""
