@@ -48,7 +48,8 @@ Four-layer stack, plus a JSON-export side channel:
 └────────────────────┬─────────────────────────┘
                      │ SQLAlchemy 2.0 / SQL
 ┌────────────────────▼─────────────────────────┐
-│  SQLite database — crmbuilder-v2/data/v2.db  │
+│  Postgres database (managed in production;   │
+│  crmb_pg_dev container for local work)       │
 └──────────────────────────────────────────────┘
                      │
                      │ on every successful write
@@ -62,7 +63,7 @@ Four-layer stack, plus a JSON-export side channel:
 
 | Layer | Module | Responsibility |
 |---|---|---|
-| SQLite | (file on disk) | Storage; ACID transactions |
+| Postgres | (server) | Storage; ACID transactions. The everyday test suite alone still uses per-test SQLite files built from the models. |
 | Access layer | `crmbuilder_v2.access` | Validation, transactions, change_log emission, JSON export hook. The only code that touches SQLAlchemy directly. |
 | REST API | `crmbuilder_v2.api` | Stable client interface. Pydantic request validation; envelope responses; OpenAPI auto-generated. |
 | MCP server | `crmbuilder_v2.mcp_server` | Thin protocol adapter from MCP tool calls to REST. No business logic. |
@@ -104,8 +105,10 @@ snapshots in `PRDs/product/crmbuilder-v2/db-export/` mirror that state.
 
 - Python 3.12+ (matches the root `pyproject.toml` pin)
 - `uv` for dependency resolution
-- Optional: a SQLite browser (`sqlitebrowser`, DB Browser for SQLite,
-  `sqlite3` CLI, or VS Code's SQLite extension) for ad-hoc inspection
+- Docker, for the local Postgres container (`docker-compose.dev.yml`) that
+  the local API, the migration commands and the migration tests use. The
+  everyday test suite needs no container.
+- Optional: `psql` or a Postgres browser for ad-hoc inspection
 
 ### Console scripts
 
@@ -115,7 +118,7 @@ snapshots in `PRDs/product/crmbuilder-v2/db-export/` mirror that state.
 |---|---|---|
 | `crmbuilder-v2-api` | `crmbuilder_v2.cli:run_api` | Start FastAPI under uvicorn |
 | `crmbuilder-v2-mcp` | `crmbuilder_v2.cli:run_mcp` | Start the MCP stdio server |
-| `crmbuilder-v2-bootstrap-db` | `crmbuilder_v2.cli:bootstrap_db` | Materialise the schema on a fresh DB file |
+| `crmbuilder-v2-bootstrap-db` | `crmbuilder_v2.cli:bootstrap_db` | Bring the configured Postgres DB to the migration head (create_all + stamp on a fresh DB, `upgrade head` on a stamped one). Refuses a SQLite URL. |
 | `crmbuilder-v2-bootstrap` | `crmbuilder_v2.cli:bootstrap_content` | Import the four governance markdown files (only useful if they exist on disk; the live system retired them at commit `12b96bc`) |
 
 ### Configuration
@@ -126,7 +129,8 @@ rooted at the repo. Defaults are live in
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `CRMBUILDER_V2_DB_PATH` | `<repo>/crmbuilder-v2/data/v2.db` | SQLite file |
+| `CRMBUILDER_V2_DATABASE_URL` | (unset) | The store's Postgres URL. **Required** by the API, the bootstrap command and every Alembic command; when unset the URL falls back to a SQLite file, which those entry points refuse (PI-503). Local work: `postgresql+psycopg://crmb:crmb@localhost:55432/crmbuilder_v2` |
+| `CRMBUILDER_V2_DB_PATH` | `<repo>/crmbuilder-v2/data/v2.db` | SQLite file used only by the test fixtures (per-test files built from the models) |
 | `CRMBUILDER_V2_EXPORT_DIR` | `<repo>/PRDs/product/crmbuilder-v2/db-export/` | JSON snapshot directory |
 | `CRMBUILDER_V2_API_HOST` | `127.0.0.1` | REST API bind host |
 | `CRMBUILDER_V2_API_PORT` | `8765` | REST API port |
@@ -135,19 +139,26 @@ rooted at the repo. Defaults are live in
 A `.env` file is **not** loaded automatically — set vars in your
 shell or invocation if you need to override defaults.
 
-### Initial database bootstrap
+### Local development database
 
-The repo ships with the JSON snapshots of the v0.1 state, but the
-SQLite file itself is gitignored (`*.db` in the root `.gitignore`).
-Materialise it from a fresh checkout with:
+The store is Postgres. The shared production store lives in the cloud
+(see [Session bootstrap](../CLAUDE.md)); for local work start the dev
+container and point the store at it:
 
 ```bash
-uv run crmbuilder-v2-bootstrap-db
+cd crmbuilder-v2
+docker compose -f docker-compose.dev.yml up -d      # container crmb_pg_dev, port 55432
+export CRMBUILDER_V2_DATABASE_URL='postgresql+psycopg://crmb:crmb@localhost:55432/crmbuilder_v2'
+uv run crmbuilder-v2-bootstrap-db                    # create_all + stamp head on a fresh DB
 ```
 
-This calls `Base.metadata.create_all` on the configured DB path. The
-schema is identical to what the Alembic baseline (`0001_initial_schema`)
-produces, so subsequent Alembic migrations apply normally.
+`bootstrap_database` builds the head schema with `Base.metadata.create_all`
+and stamps it; on a DB that is already stamped it runs `alembic upgrade head`
+instead, so it is safe to re-run. The SQLite store that used to live at
+`crmbuilder-v2/data/v2.db` was retired as a source of truth by the 2026-07-01
+cloud cutover and its migration chain was removed (PI-503 / REQ-593 /
+DEC-1082): the API and the bootstrap command now refuse a SQLite URL and
+name the container above. Only the test fixtures still create SQLite files.
 
 To reproduce the live state, see [Restoring from JSON snapshots](#restoring-from-json-snapshots).
 
@@ -978,35 +989,40 @@ baselines at `ui-PRD-v0.2.md` and `ui-PRD-v0.1.md`.
 
 ### Schema migrations (Alembic)
 
-The Alembic environment lives at `crmbuilder-v2/migrations/`. Always
-run from the repo root with `-c crmbuilder-v2/alembic.ini`:
+There is one Alembic chain, for Postgres, at `crmbuilder-v2/migrations/pg/`.
+Run it from `crmbuilder-v2/` with `-c migrations/pg/alembic.ini` and
+`CRMBUILDER_V2_DATABASE_URL` set (for local work, the dev container above):
 
 ```bash
+cd crmbuilder-v2
+
 # Create a new revision after editing models.py.
-uv run alembic -c crmbuilder-v2/alembic.ini revision --autogenerate \
+uv run alembic -c migrations/pg/alembic.ini revision --autogenerate \
   -m "add personas table"
 
-# Review the generated file in crmbuilder-v2/migrations/versions/
-# and rename it to a stable form like 0002_add_personas.py.
+# Review the generated file in migrations/pg/versions/ and rename it to a
+# stable form like 00NN_pi_NNN_add_personas.py.
 
 # Apply pending migrations.
-uv run alembic -c crmbuilder-v2/alembic.ini upgrade head
+uv run alembic -c migrations/pg/alembic.ini upgrade head
 
 # Inspect current schema version.
-uv run alembic -c crmbuilder-v2/alembic.ini current
+uv run alembic -c migrations/pg/alembic.ini current
 ```
 
 Notes:
 
 - The Alembic env reads the DB URL from `crmbuilder_v2.config.get_settings()`,
-  not from `alembic.ini`. To migrate against an alternate DB, set
-  `CRMBUILDER_V2_DB_PATH` before invoking Alembic.
+  not from `alembic.ini`, and refuses a SQLite URL. To migrate against an
+  alternate Postgres, set `CRMBUILDER_V2_DATABASE_URL` before invoking Alembic.
 - The autogenerate diff is approximate: review it. Renames are detected
   as drop+create unless you provide a hint.
-- `render_as_batch=True` is enabled in `migrations/env.py` so SQLite
-  ALTER-style migrations work.
-- Don't edit the baseline (`0001_initial_schema.py`) after the fact —
+- Postgres does in-place `ALTER`; there is no batch mode.
+- Don't edit the baseline (`0001_pg_baseline.py`) after the fact —
   add a new migration that does the schema change you need.
+- Until PI-503 a second, SQLite chain at `crmbuilder-v2/migrations/` had to be
+  written for every schema change although nothing deployed it. It is gone;
+  a schema change is one migration.
 
 ### Planning-item record drift
 
@@ -1076,16 +1092,16 @@ are the durable backup. Every successful write produces a snapshot
 delta; commit those alongside any related work and you have full
 history through `git log`.
 
-The SQLite file at `crmbuilder-v2/data/v2.db` is a derived artifact —
-it is gitignored. Treat it as cache: deletable, recoverable from
-the snapshots.
+A local dev database is a derived artifact — the container is ephemeral.
+Treat it as cache: deletable, recoverable from the snapshots.
 
 ### Restoring from JSON snapshots
 
-If `data/v2.db` is lost or corrupted:
+If the local dev database is lost or corrupted:
 
 ```bash
-rm -f crmbuilder-v2/data/v2.db
+cd crmbuilder-v2
+docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d
 uv run crmbuilder-v2-bootstrap-db
 ```
 
@@ -1127,8 +1143,8 @@ with session_scope(export=False) as s:
 ```
 
 This is a recovery path, not a routine operation. Most often you'll
-restore by `git checkout` of the SQLite file from a recent state, or
-just rebootstrap and let normal Tier 2 reads work off the JSON snapshots.
+just rebootstrap the dev database and let normal Tier 2 reads work off the
+JSON snapshots.
 
 ### Restoring the original markdown governance files
 
@@ -1158,7 +1174,8 @@ existing rows are upserted in place, no duplicates).
 | FK constraint failure | Referenced row missing or pragma off | Engine should set `PRAGMA foreign_keys=ON` automatically; if you see this, your shell session lost the connect listener — recreate the engine |
 | `db-export/*.json.tmp` files accumulating | Crash mid-export-promotion | Delete them; next successful write self-heals |
 | Tests fail with `database is locked` | Stale connection | `crmbuilder_v2.access.db.reset_engine_cache()` or drop the test DB and rerun |
-| `alembic current` shows blank | DB never had Alembic stamps applied (e.g., created via `bootstrap_database`) | Run `alembic stamp head` once, then future migrations work |
+| `alembic current` shows blank | DB never had Alembic stamps applied | Run `crmbuilder-v2-bootstrap-db` (it stamps a fresh DB) |
+| `REFUSING TO START: crmbuilder-v2-api targets Postgres only` | `CRMBUILDER_V2_DATABASE_URL` is unset, so the URL fell back to a SQLite file | Start the dev container and export the URL (see *Local development database*) |
 
 ### Adding a new vocabulary value
 
@@ -1171,17 +1188,19 @@ for example:
    on `refs.relationship_kind` with the expanded set.
 3. Update the operator-facing documentation (this README, MCP tool
    descriptions in `tools.py`).
-4. Apply the migration: `alembic upgrade head`.
+4. Apply the migration: `alembic -c migrations/pg/alembic.ini upgrade head`.
 
 The deliberate gate is the point — DEC-006 asks for the vocabulary
 to grow consciously, not by accident.
 
 ### Re-bootstrapping
 
-To completely wipe and reload from scratch (loses change_log history):
+To completely wipe and reload the local dev database from scratch (loses
+change_log history):
 
 ```bash
-rm -f crmbuilder-v2/data/v2.db
+cd crmbuilder-v2
+docker compose -f docker-compose.dev.yml down -v && docker compose -f docker-compose.dev.yml up -d
 uv run crmbuilder-v2-bootstrap-db
 # Then either:
 #  (a) run the recovery loader above to restore from JSON snapshots, or
@@ -1206,8 +1225,24 @@ uv run pytest tests/crmbuilder_v2/ --cov=crmbuilder_v2
 ```
 
 The v2 fixtures (`tests/crmbuilder_v2/conftest.py`) provision a fresh
-SQLite DB and JSON-export directory per test. They do not touch
-`crmbuilder-v2/data/v2.db` or `PRDs/product/crmbuilder-v2/db-export/`.
+SQLite DB (built straight from the models with `create_all`, never migrated)
+and a JSON-export directory per test. They need no database server and do
+not touch any real store or `PRDs/product/crmbuilder-v2/db-export/`. Setting
+`CRMBUILDER_V2_TEST_PG_URL` runs the same suite against a throwaway Postgres,
+as CI does.
+
+The **migration tests** (`tests/crmbuilder_v2/migration/`) are the exception:
+they run a revision's real `downgrade` / `upgrade` code, and since PI-503
+(DEC-1082) they run only against Postgres — without `CRMBUILDER_V2_TEST_PG_URL`
+they are skipped. They work in a sibling database `<name>_migrations` on the
+same server, created on demand, so they never disturb the suite's shared
+schema:
+
+```bash
+cd crmbuilder-v2 && docker compose -f docker-compose.dev.yml up -d && cd ..
+CRMBUILDER_V2_TEST_PG_URL='postgresql+psycopg://crmb:crmb@localhost:55432/crmbuilder_v2' \
+  uv run pytest tests/crmbuilder_v2/migration/
+```
 
 ---
 
@@ -1238,20 +1273,21 @@ Then:
    `_EXPORT_TABLES` in `crmbuilder_v2/access/exporter.py`.
 7. **Tests**: add fixtures under `tests/crmbuilder_v2/access/`,
    `api/`, and `mcp_server/` matching the existing patterns.
-8. **Migration**: `alembic revision --autogenerate -m "add <entity>"`,
-   review, rename to `00NN_add_<entity>.py`, `alembic upgrade head`.
+8. **Migration**: `alembic -c migrations/pg/alembic.ini revision --autogenerate -m "add <entity>"`,
+   review, rename to `00NN_pi_NNN_add_<entity>.py`, `alembic -c migrations/pg/alembic.ini upgrade head`.
 
 ### File map (for orientation)
 
 ```
 crmbuilder-v2/
-├── alembic.ini                       # Alembic config (read by all alembic commands)
-├── data/                             # gitignored; runtime SQLite file
-├── migrations/                       # Alembic env + versions
+├── docker-compose.dev.yml            # local dev Postgres (crmb_pg_dev, port 55432)
+├── data/                             # gitignored; crmbuilder.env, session markers
+├── migrations/pg/                    # the one Alembic chain (Postgres)
+│   ├── alembic.ini
 │   ├── env.py
 │   ├── script.py.mako
 │   └── versions/
-│       └── 0001_initial_schema.py
+│       └── 0001_pg_baseline.py
 └── src/crmbuilder_v2/
     ├── __init__.py
     ├── cli.py                        # console-script entry points
