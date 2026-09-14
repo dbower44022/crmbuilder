@@ -90,6 +90,10 @@ _SPECS: dict[str, _Spec] = {
     "rule": _Spec(models.Rule, "rule_identifier", "rule_name", "rule_status", "rule_created_at", "rule_updated_at"),
     "view": _Spec(models.View, "view_identifier", "view_name", "view_status", "view_created_at", "view_updated_at"),
     "automation": _Spec(models.Automation, "automation_identifier", "automation_name", "automation_status", "automation_created_at", "automation_updated_at"),
+    # PI-471. A transition has no name of its own — the move is what names it —
+    # so the value it moves to stands as the title, which with the identifier
+    # is enough to recognise the row in the references grid.
+    "transition": _Spec(models.Transition, "transition_identifier", "transition_to_value", "transition_status", "transition_created_at", "transition_updated_at"),
     # PRJ-025 PI-189 slice 3: dedup-and-template design records. Each carries a
     # name and the four-status propose-verify lifecycle.
     "dedup_rule": _Spec(models.DedupRule, "dedup_rule_identifier", "dedup_rule_name", "dedup_rule_status", "dedup_rule_created_at", "dedup_rule_updated_at"),

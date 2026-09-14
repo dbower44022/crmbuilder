@@ -817,6 +817,59 @@ MESSAGE_TEMPLATE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
 }
 
 # ---------------------------------------------------------------------------
+# Transitions (PI-471 — REQ-577 to REQ-586, approved by DEC-1071). A
+# ``transition`` (TRN-NNN) is one allowed move of a status field on an entity
+# within a process: from one value of the field, from a set of its values, or
+# from the creation of the record, to one value of the field, together with who
+# may make the move, what must be recorded before it, and what happens
+# automatically after it. Owned by exactly one process; the term and the prefix
+# are DEC-1068 (glossary term TERM-061).
+# ---------------------------------------------------------------------------
+
+# What the ``from`` side of a transition names (DEC-1065). ``record_creation``
+# is the move that brings the record into being — there is no prior value.
+# ``values`` names one option of the status field or an explicit set of its
+# options; membership is always stored explicitly, never as a rule such as
+# "any but these", so adding an option to the field cannot silently widen a
+# transition.
+TRANSITION_FROM_KINDS: frozenset[str] = frozenset({"record_creation", "values"})
+
+# Who makes the move (DEC-1066). ``persona`` names exactly one persona record
+# of the engagement; ``system`` is the application itself. A persona-made
+# transition may carry a free-text occasion (``transition_actor_occasion``)
+# that tells two moves by the same persona apart — "first vote" against
+# "second vote". For a system move the occasion may say which system performs
+# it (DEC-1070). The occasion is descriptive and is not checked.
+TRANSITION_ACTOR_KINDS: frozenset[str] = frozenset({"persona", "system"})
+
+# The record types a transition's automatic consequences may reference
+# (DEC-1067 as amended by DEC-1070), keyed by identifier prefix. An automation
+# or a message template is a routine that runs; a view is a list the record
+# appears in; a transition is a further move that follows automatically; a
+# process is a hand-off. A consequence with no record yet is carried in
+# ``transition_consequence_notes`` instead and reported as incomplete.
+TRANSITION_CONSEQUENCE_PREFIXES: dict[str, str] = {
+    "AUT": "automation",
+    "MSG": "message_template",
+    "VEW": "view",
+    "TRN": "transition",
+    "PROC": "process",
+}
+
+# Methodology entity ``transition`` lifecycle (REQ-582) — the same four-status
+# propose-verify lifecycle the other design records carry.
+TRANSITION_STATUSES: frozenset[str] = frozenset(
+    {"candidate", "confirmed", "deferred", "rejected"}
+)
+
+TRANSITION_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
+    "confirmed": frozenset({"deferred"}),
+    "deferred": frozenset({"confirmed", "rejected"}),
+    "rejected": frozenset(),
+}
+
+# ---------------------------------------------------------------------------
 # Security design records (PI-051 — REQ-128 role-aware visibility + REQ-129
 # field-level permissions). Two sibling entities — ``field_permission_rule``
 # (FPR-) and ``field_visibility_rule`` (FVR-) — each declare one unconditional
@@ -1845,6 +1898,14 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         "process_performed_by_persona",
         "process_touches_field",
         "process_touches_entity",
+        # PI-471 (REQ-583, DEC-1064). Four inbound kinds naming an individual
+        # transition, so a screen's action buttons, an automation's trigger, a
+        # test case and a requirement each point at the move they concern
+        # rather than reassembling the lifecycle from prose.
+        "view_offers_transition",
+        "automation_triggered_by_transition",
+        "test_spec_exercises_transition",
+        "requirement_touches_transition",
         # PI-073 / DEC-314 additions (session-conversation redesign).
         # Six new kinds aggregated across session-v2.md §3.3.4 and
         # conversation-v2.md §3.3.4. The v0.7-era kinds
@@ -2187,6 +2248,12 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         "preference",
         "lesson",
         "reference_pointer",
+        # PI-471 (REQ-577 to REQ-586, DEC-1064 / DEC-1068). One allowed move of
+        # a status field on an entity within a process (TRN-). Owned by exactly
+        # one process; a first-class record so a view, an automation, a test
+        # specification and a requirement can each name the individual move
+        # they concern (REQ-583).
+        "transition",
     }
 )
 
@@ -2298,6 +2365,17 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
       must be an entity (v0.8, PI-005, process-v2.md §3.3.2; promotes
       the v0.5+ anticipation from process.md §3.3.2 to a live
       registration; many-to-many).
+    * ``view_offers_transition`` — source must be a view, target must be
+      a transition (PI-471, REQ-583; the screen offers the move as an
+      action; many-to-many).
+    * ``automation_triggered_by_transition`` — source must be an
+      automation, target must be a transition (PI-471, REQ-583; the move
+      is what fires the routine; many-to-many).
+    * ``test_spec_exercises_transition`` — source must be a test_spec,
+      target must be a transition (PI-471, REQ-583; one case per move;
+      many-to-many).
+    * ``requirement_touches_transition`` — source must be a requirement,
+      target must be a transition (PI-471, REQ-583; many-to-many).
 
     The ruleset is permissive by design: every pair has at least the
     two generic kinds, so the dialog never produces an empty kind list
@@ -2472,6 +2550,17 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         kinds.add("process_touches_field")
     if source_type == "process" and target_type == "entity":
         kinds.add("process_touches_entity")
+    # PI-471 additions (REQ-583, DEC-1064). Four inbound kinds naming an
+    # individual transition. ``transition`` is live in ENTITY_TYPES and so are
+    # the four source types, so every clause activates unconditionally.
+    if source_type == "view" and target_type == "transition":
+        kinds.add("view_offers_transition")
+    if source_type == "automation" and target_type == "transition":
+        kinds.add("automation_triggered_by_transition")
+    if source_type == "test_spec" and target_type == "transition":
+        kinds.add("test_spec_exercises_transition")
+    if source_type == "requirement" and target_type == "transition":
+        kinds.add("requirement_touches_transition")
     # PI-073 / DEC-314 additions (session-conversation redesign). The
     # legacy `conversation_records_session`, `conversation_opens_against_work_ticket`,
     # `conversation_succeeds_conversation`, `close_out_payload_produced_by_conversation`

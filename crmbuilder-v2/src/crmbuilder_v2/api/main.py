@@ -101,6 +101,7 @@ from crmbuilder_v2.api.routers import (
     terms,
     test_specs,
     topics,
+    transitions,
     utilization_evidence,
     value_mappings,
     views,
@@ -261,6 +262,8 @@ def create_app() -> FastAPI:
     app.include_router(field_visibility_rules.router)
     app.include_router(views.router)
     app.include_router(automations.router)
+    app.include_router(transitions.router)
+    app.include_router(transitions.process_scoped_router)
     app.include_router(dedup_rules.router)
     app.include_router(message_templates.router)
     app.include_router(commits.router)

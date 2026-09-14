@@ -1604,6 +1604,96 @@ class AutomationPatchIn(_Base):
     automation_status: str | None = None
 
 
+# -------- Transitions (one allowed status move in a process, PI-471) ---------
+
+
+class TransitionCreateIn(_Base):
+    """POST /transitions body (REQ-577 to REQ-581).
+
+    ``transition_identifier`` is server-assigned when omitted;
+    ``transition_status`` defaults to ``candidate`` and ``transition_order`` to
+    the end of the owning process's list. ``transition_process`` (a PROC-NNN)
+    and ``transition_field`` (an FLD-NNN, which must be a choice field on an
+    entity the process touches) are validated live, as are the persona, the
+    required fields and every consequence."""
+
+    transition_process: str
+    transition_field: str
+    transition_to_value: str
+    transition_from_kind: str | None = None
+    transition_from_values: list | None = None
+    transition_actor_kind: str | None = None
+    transition_actor_persona: str | None = None
+    transition_actor_occasion: str | None = None
+    transition_required_fields: list | None = None
+    transition_precondition: str | None = None
+    transition_consequences: list | None = None
+    transition_consequence_notes: str | None = None
+    transition_manual_follow_up: str | None = None
+    transition_order: int | None = None
+    transition_description: str | None = None
+    transition_notes: str | None = None
+    transition_status: str | None = None
+    transition_identifier: str | None = None
+
+
+class TransitionReplaceIn(_Base):
+    """PUT /transitions/{identifier} body — full replace."""
+
+    transition_identifier: str | None = None
+    transition_process: str
+    transition_field: str
+    transition_to_value: str
+    transition_status: str
+    transition_from_kind: str | None = None
+    transition_from_values: list | None = None
+    transition_actor_kind: str | None = None
+    transition_actor_persona: str | None = None
+    transition_actor_occasion: str | None = None
+    transition_required_fields: list | None = None
+    transition_precondition: str | None = None
+    transition_consequences: list | None = None
+    transition_consequence_notes: str | None = None
+    transition_manual_follow_up: str | None = None
+    transition_order: int | None = None
+    transition_description: str | None = None
+    transition_notes: str | None = None
+
+
+class TransitionPatchIn(_Base):
+    """PATCH /transitions/{identifier} body — partial update.
+
+    Routers consume this with ``model_dump(exclude_unset=True)`` so an explicit
+    null (clear) is distinguished from an omitted key (leave unchanged)."""
+
+    transition_process: str | None = None
+    transition_field: str | None = None
+    transition_from_kind: str | None = None
+    transition_from_values: list | None = None
+    transition_to_value: str | None = None
+    transition_actor_kind: str | None = None
+    transition_actor_persona: str | None = None
+    transition_actor_occasion: str | None = None
+    transition_required_fields: list | None = None
+    transition_precondition: str | None = None
+    transition_consequences: list | None = None
+    transition_consequence_notes: str | None = None
+    transition_manual_follow_up: str | None = None
+    transition_order: int | None = None
+    transition_description: str | None = None
+    transition_notes: str | None = None
+    transition_status: str | None = None
+
+
+class TransitionReorderIn(_Base):
+    """POST /processes/{identifier}/transitions/order body (REQ-585).
+
+    Names every live transition of the process exactly once, in the order the
+    process should return them."""
+
+    ordered_identifiers: list[str]
+
+
 # -------- Dedup rules (dedup-and-template design record, PRJ-025 PI-189) ------
 
 

@@ -157,6 +157,8 @@ _POST_0038_SCOPED_TABLES: frozenset[str] = frozenset(
         # NOT NULL VARCHAR(32) in the live store; it was simply never recorded
         # here, which failed both tests on main until 2026-08-10.
         "participants",
+        # PI-471 (REQ-577) one allowed status move of a process (migration 0140).
+        "transitions",
     }
 )
 
