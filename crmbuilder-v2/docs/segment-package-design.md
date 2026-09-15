@@ -4,7 +4,7 @@
 |---|---|
 | Title | Segment package design: Client Management first |
 | Last Updated | 09-14-26 17:57 |
-| Revision | 1.0 |
+| Revision | 1.1 |
 | Status | Approved by the product owner (DEC-1090), all seven recommendations accepted |
 | Source | PI-508 / REQ-591 / DEC-1079 / DEC-1089 / DEC-1090 |
 
@@ -141,6 +141,8 @@ Every existing import path keeps working for one release through re-export shims
 
 Name references to the five classes across source and tests: EngagementRow 51, Participant 29, PrincipalRow 21, ApiTokenRow 15, RoleAssignmentRow 13.
 
+PI-513 added the Operate shims on the same terms: `access/models.py`, `access/vocab.py` and `api/schemas.py` re-export the four classes, eleven vocabulary sets and six schemas; `access/repositories/instances.py`, `instance_deploy_config.py`, `deploy_runs.py` and `provider_credentials.py`, `api/routers/instances.py`, `deploy_runs.py` and `provider_credentials.py`, `ui/panels/instances.py` and `deploy_history.py`, and five `ui/dialogs` modules are module-replacement shims. The `access/vocab.py` re-export of the Operate sets must outlive the shims: Postgres revisions 0031 and 0080 import them by that path (question 4).
+
 The shims: `access/models.py` re-exports the five classes; `access/engagement.py`, `access/principal.py` and `access/repositories/participant.py` become one-line modules that re-export everything from the package repositories; `api/routers/engagements.py`, `principals.py` and `participant.py` re-export `router`; `api/schemas.py` re-exports the schemas; `access/vocab.py` re-exports the three sets; `ui/panels/engagements.py` and `ui/panels/participant.py` re-export the panel classes. Each shim carries a one-line comment naming PI-508 and the release in which it is removed. The Alembic environment is not touched.
 
 ## 5. The throwaway-type proof
@@ -198,3 +200,4 @@ Acceptance for the whole item, from PI-508: all tests pass; the five classes are
 |---|---|---|---|
 | 0.1 | 09-14-26 17:55 | Claude (Claude Code, PI-508 lane) | First draft from reading the five record types' code paths, the router inclusion, the Alembic environment, the connector tool list, the desktop client and panel registry, and the approved mapping. |
 | 1.0 | 09-14-26 17:57 | Claude (Claude Code, PI-508 lane) | Approved by the product owner as DEC-1090 with all seven recommendations of section 6 accepted. Status set to Approved; the code phase (section 7) begins. |
+| 1.1 | 09-15-26 00:40 | Claude (Claude Code, PI-513 lane) | §4: the Operate shims added on the same terms, with the vocabulary re-export that must outlive them. |
