@@ -141,8 +141,6 @@ ENTITY_TYPE_TO_SIDEBAR_LABEL: dict[str, str] = {
     "work_task": "Work Tasks",
     # PI-061: glossary term entity.
     "term": "Glossary",
-    # PI-186 (PRJ-027): CRM-connection instance.
-    "instance": "Instances",
     # PI-224: the release-pipeline staged-delivery container.
     "release": "Releases",
     # PI-330 (REL-026): Agent Profile Registry entities.

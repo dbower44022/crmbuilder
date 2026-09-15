@@ -60,7 +60,6 @@ from crmbuilder_v2.api.routers import (
     findings,
     health,
     identifiers,
-    instances,
     knowledge,
     layouts,
     locks,
@@ -74,7 +73,6 @@ from crmbuilder_v2.api.routers import (
     planning_items,
     processes,
     projects,
-    provider_credentials,
     publish_runs,
     reconcile,
     reconciliation_conflicts,
@@ -266,9 +264,6 @@ def create_app() -> FastAPI:
     app.include_router(dedup_rules.router)
     app.include_router(message_templates.router)
     app.include_router(commits.router)
-    app.include_router(instances.router)
-    app.include_router(provider_credentials.router)
-    app.include_router(deploy_runs.router)
     app.include_router(publish_runs.router)
     app.include_router(layouts.router)
     app.include_router(filtered_tabs.router)

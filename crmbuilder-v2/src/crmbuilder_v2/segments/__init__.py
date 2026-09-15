@@ -25,7 +25,10 @@ from collections.abc import Iterator
 from typing import Any
 
 # The one list. Order is the order contributions are assembled in.
-PACKAGES: tuple[str, ...] = ("crmbuilder_v2.segments.client_management",)
+PACKAGES: tuple[str, ...] = (
+    "crmbuilder_v2.segments.client_management",
+    "crmbuilder_v2.segments.operate",
+)
 
 
 def _attribute(submodule: str, name: str) -> Iterator[Any]:
