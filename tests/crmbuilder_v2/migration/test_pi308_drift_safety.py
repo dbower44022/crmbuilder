@@ -256,14 +256,17 @@ def test_assert_schema_current_raises_when_unstamped(pg_db) -> None:
 def test_assert_schema_current_raises_when_behind(pg_db) -> None:
     bootstrap_database()
     # Re-stamp to a value that merely differs from the heads (stale, not a head).
+    # Whichever revision heads the build branch today (PI-509 moved it past
+    # the fork revision); the test must not pin a head that lanes advance.
+    build_head = next(h for h in all_heads() if h.startswith("build_"))
     engine = create_engine(pg_db)
     with engine.begin() as conn:
         conn.execute(text("UPDATE alembic_version SET version_num='0001_pg_baseline' "
-                          "WHERE version_num = 'build_0001_branch'"))
+                          "WHERE version_num = :h"), {"h": build_head})
     engine.dispose()
     with pytest.raises(SchemaDriftError) as ei:
         assert_schema_current()
-    assert ei.value.missing == ("build_0001_branch",)
+    assert ei.value.missing == (build_head,)
     assert ei.value.stale == ("0001_pg_baseline",)
 
 
@@ -302,18 +305,22 @@ def _tree_copy_with_two_lanes(tmp_path: Path) -> Config:
     """A copy of the migration tree with one new revision on each of two branches.
 
     Models what two worktrees each produce and what main holds after both merge:
-    ``build_0002_widen_x`` on the build branch and ``operate_0002_add_y`` on the
+    ``build_9999_widen_x`` on the build branch and ``operate_9999_add_y`` on the
     operate branch. Neither knew about the other; neither is renumbered.
     """
     src = ALEMBIC_INI.parent
     dst = tmp_path / "pg"
     shutil.copytree(src, dst, ignore=shutil.ignore_patterns("__pycache__"))
-    for label, rev, slug in (("build", "build_0002_widen_x", "lane A"), ("operate", "operate_0002_add_y", "lane B")):
+    # Each lane appends to whatever heads its branch today, not to the fork
+    # revision: the branches have moved on since PI-507 (build has, from PI-509).
+    heads_now = all_heads()
+    for label, rev, slug in (("build", "build_9999_widen_x", "lane A"), ("operate", "operate_9999_add_y", "lane B")):
+        parent = next(h for h in heads_now if h.startswith(f"{label}_"))
         (dst / "versions" / f"{rev}.py").write_text(
             f'"""{slug}: a throwaway revision on the {label} branch (test only)."""\n'
             "from __future__ import annotations\n\n"
             f'revision = "{rev}"\n'
-            f'down_revision = "{label}_0001_branch"\n'
+            f'down_revision = "{parent}"\n'
             "branch_labels = None\n"
             "depends_on = None\n\n\n"
             "def upgrade() -> None:\n    pass\n\n\n"
@@ -330,8 +337,8 @@ def test_two_lanes_on_different_branches_merge_without_renumbering(tmp_path) -> 
     # Still one head per branch: the two new revisions replaced their branch
     # heads and nothing forked.
     assert len(heads) == len(BRANCH_LABELS)
-    assert "build_0002_widen_x" in heads and "operate_0002_add_y" in heads
-    assert "build_0001_branch" not in heads and "operate_0001_branch" not in heads
+    assert "build_9999_widen_x" in heads and "operate_9999_add_y" in heads
+    assert not any(h.startswith(("build_", "operate_")) and not h.endswith(("_widen_x", "_add_y")) for h in heads)
 
 
 @requires_postgres
@@ -350,7 +357,7 @@ def test_two_lanes_upgrade_heads_applies_both(pg_db, tmp_path, monkeypatch) -> N
     finally:
         engine.dispose()
     assert stamped == sorted(ScriptDirectory.from_config(cfg).get_heads())
-    assert "build_0002_widen_x" in stamped and "operate_0002_add_y" in stamped
+    assert "build_9999_widen_x" in stamped and "operate_9999_add_y" in stamped
 
 
 # --------------------------------------------------------------------------

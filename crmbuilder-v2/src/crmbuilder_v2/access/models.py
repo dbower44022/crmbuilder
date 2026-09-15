@@ -84,7 +84,6 @@ from crmbuilder_v2.access.vocab import (
     EVIDENCE_SUBJECT_TYPES,
     EXECUTION_MODES,
     FIELD_MAPPING_DECISION_TYPES,
-    FIELD_MAPPING_TRANSLATION_TYPES,
     FIELD_PERMISSION_LEVELS,
     FIELD_RULE_DEPLOYMENT_STATUSES,
     FIELD_RULE_STATUSES,
@@ -154,7 +153,6 @@ from crmbuilder_v2.access.vocab import (
     RULE_MOMENTS,
     RULE_STATUSES,
     RULE_SUBJECT_TYPES,
-    SERVICE_STATUSES,
     SESSION_MEDIUMS,
     SESSION_STATUSES,
     SKILL_KINDS,
@@ -1729,76 +1727,6 @@ class MigrationMapping(EngagementScopedPKMixin, Base):
     )
 
 
-class Service(EngagementScopedPKMixin, Base):
-    """Methodology entity — one cross-domain service in the target system.
-
-    PI-161 storage layer per the WTK-132 design spec
-    (``methodology-schema-specs/service.md`` §3.2). A cross-domain service is
-    a capability the CRM system provides that is not owned by any single
-    business domain (document storage, notifications, user accounts, AI agent
-    orchestration — the four surfaced by the first dogfood run, SES-166).
-    Parent-prefix field naming (DEC-046); the primary key is the
-    prefixed-string identifier ``service_identifier`` (format ``SVC-NNN``) —
-    no integer surrogate ``id`` column, matching ``persona`` /
-    ``migration_mapping``.
-
-    No FK column. Both relationship kinds live in ``refs`` as references-entity
-    edges (DEC-006), mirroring ``persona`` exactly: inbound
-    ``process_consumes_service`` (process → service — which business processes
-    depend on the service, the empirical content of "cross-domain") and
-    outbound ``service_owns_entity`` (service → entity — the entities the
-    service owns, per the PRD's Phase 1 capture item). Neither edge is
-    mandatory, so a plain create suffices — no atomic row+edges POST machinery.
-    Deliberately there is **no** ``service_scopes_to_domain`` kind (spec
-    §3.3.2): a cross-domain service is not domain-bound and its effective
-    domain coverage is derivable by joining its consuming processes to their
-    parent domains.
-
-    "Any entities it may own" is relational data, not prose — there is no
-    ``service_owned_entities`` text column. At Phase 1 capture time, before
-    any entity records exist, ownership intent is prose in ``service_notes``;
-    the ``service_owns_entity`` edge is attached when Phase 2/3 surfaces the
-    candidate entity (spec §3.2.2).
-    """
-
-    __tablename__ = "services"
-
-    service_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
-    service_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    service_purpose: Mapped[str] = mapped_column(Text, nullable=False)
-    service_capabilities: Mapped[str | None] = mapped_column(Text, nullable=True)
-    service_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    service_status: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="candidate"
-    )
-    service_created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow
-    )
-    service_updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=_utcnow,
-        onupdate=_utcnow,
-    )
-    service_deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    __table_args__ = (
-        # ``^SVC-\d{3}$`` expressed as a SQLite GLOB / PG regex pattern.
-        CheckConstraint(
-            _IdentifierFormatCheck("service_identifier", ["SVC"]),
-            name="ck_service_identifier_format",
-        ),
-        CheckConstraint(
-            _check_in("service_status", SERVICE_STATUSES),
-            name="ck_service_status",
-        ),
-        Index("ix_services_service_status", "service_status"),
-        Index("ix_services_service_deleted_at", "service_deleted_at"),
-    )
-
-
 class Association(EngagementScopedPKMixin, Base):
     """Composite design record — one engine-neutral entity-to-entity link.
 
@@ -3237,38 +3165,6 @@ class SourceMappingTarget(EngagementScopedMixin, Base):
     )
 
 
-class SourceMappingJoin(EngagementScopedMixin, Base):
-    """PI-255 (PRJ-027) — the join key declared at the entity-mapping level.
-
-    One row per source mapping (DEC-577). It names the source join field and the
-    design entity + field that locates the matching design record; every field
-    mapping beneath the source mapping inherits this key rather than restating
-    it. Structured as a table to admit future multi-column joins.
-    """
-
-    __tablename__ = "source_mapping_joins"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    source_mapping_identifier: Mapped[str] = mapped_column(
-        String(32), nullable=False
-    )
-    source_field_name: Mapped[str] = mapped_column(Text, nullable=False)
-    design_entity_identifier: Mapped[str] = mapped_column(
-        String(32), nullable=False
-    )
-    design_field_identifier: Mapped[str] = mapped_column(
-        String(32), nullable=False
-    )
-
-    __table_args__ = (
-        UniqueConstraint(
-            "engagement_id",
-            "source_mapping_identifier",
-            name="uq_source_mapping_join",
-        ),
-    )
-
-
 class FieldMapping(EngagementScopedPKMixin, Base):
     """PI-255 (PRJ-027) — one field-level source mapping decision (``FMP-NNN``).
 
@@ -3416,37 +3312,6 @@ class AssociationMapping(EngagementScopedPKMixin, Base):
         ),
         Index("ix_association_mappings_status", "status"),
         Index("ix_association_mappings_deleted_at", "deleted_at"),
-    )
-
-
-class FieldMappingTranslation(EngagementScopedMixin, Base):
-    """PI-255 (PRJ-027) — the translation rule for an interpreted field mapping.
-
-    Present only when ``field_mapping.decision_type == 'referential_interpreted'``
-    (DEC-576). ``value_map`` translations apply per-value substitution (carried
-    by the ``value_mappings`` rows); ``expression`` translations apply a formula.
-    One row per field mapping.
-    """
-
-    __tablename__ = "field_mapping_translations"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    field_mapping_identifier: Mapped[str] = mapped_column(
-        String(32), nullable=False
-    )
-    translation_type: Mapped[str] = mapped_column(String(32), nullable=False)
-    expression: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    __table_args__ = (
-        UniqueConstraint(
-            "engagement_id",
-            "field_mapping_identifier",
-            name="uq_field_mapping_translation",
-        ),
-        CheckConstraint(
-            _check_in("translation_type", FIELD_MAPPING_TRANSLATION_TYPES),
-            name="ck_field_mapping_translation_type",
-        ),
     )
 
 

@@ -79,7 +79,6 @@ _SPECS: dict[str, _Spec] = {
     "migration_mapping": _Spec(models.MigrationMapping, "migration_mapping_identifier", "migration_mapping_source_entity_name", "migration_mapping_status", "migration_mapping_created_at", "migration_mapping_updated_at"),
     # PI-161 (service.md): one cross-domain service; client-language name in
     # the title slot.
-    "service": _Spec(models.Service, "service_identifier", "service_name", "service_status", "service_created_at", "service_updated_at"),
     # PRJ-025 PI-189: composite design records. ``association`` carries a name;
     # ``engine_override`` has no name or status — the overridden attribute is
     # the most informative single column for the title slot.
