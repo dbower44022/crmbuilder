@@ -145,8 +145,8 @@ version=$(curl -sf -m 10 "$PUBLIC_URL/" | python3 -c 'import json,sys; print(jso
 echo "    public endpoint: serving version $version"
 # One head per branch (PI-507): the store is current when the set of stamped
 # revisions equals the set of heads the tree defines — every branch, no extras.
-head_after=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI current 2>/dev/null" | grep -v '^INFO' | sed 's/ (head)//' | sort)
-heads=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI heads 2>/dev/null" | grep -v '^INFO' | sed 's/ (head)//' | sort)
+head_after=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI current 2>/dev/null" | grep -v '^INFO' | sed -E 's/ \([^)]*\)//g' | sort)
+heads=$(rssh "cd $DEST && $REMOTE_PY -m alembic -c $ALEMBIC_INI heads 2>/dev/null" | grep -v '^INFO' | sed -E 's/ \([^)]*\)//g' | sort)
 if [ -n "$heads" ] && [ "$head_after" = "$heads" ]; then
     echo "    alembic heads ($(printf '%s\n' "$heads" | wc -l | tr -d ' ')):"
     printf '%s\n' "$heads" | sed 's/^/      /'
