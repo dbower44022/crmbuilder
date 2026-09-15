@@ -28,13 +28,11 @@ from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
 from crmbuilder_v2.ui.panels.cost import CostPanel
 from crmbuilder_v2.ui.panels.crm_candidates import CrmCandidatesPanel
 from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
-from crmbuilder_v2.ui.panels.deploy_history import DeployHistoryPanel
 from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
 from crmbuilder_v2.ui.panels.domains import DomainsPanel
 from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
 from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
-from crmbuilder_v2.ui.panels.instances import InstancesPanel
 from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
@@ -82,14 +80,12 @@ PANEL_REGISTRY: dict[str, PanelFactory] = {
     "Cost": _simple(CostPanel),
     "CRM Candidates": _simple(CrmCandidatesPanel),
     "Decisions": _simple(DecisionsPanel),
-    "Deploy History": _simple(DeployHistoryPanel),
     "Deposit Events": _simple(DepositEventsPanel),
     "Domains": _simple(DomainsPanel),
     "Entities": _simple(EntitiesPanel),
     "Fields": _simple(FieldsPanel),
     "Glossary": _simple(GlossaryPanel),
     "Governance Rules": _simple(GovernanceRulesPanel),
-    "Instances": _simple(InstancesPanel),
     "Learnings": _simple(LearningsPanel),
     "Manual Configs": _simple(ManualConfigPanel),
     "Personas": _simple(PersonasPanel),
