@@ -2,10 +2,10 @@
 | Field | Value |
 |---|---|
 | Title | Record-type-to-segment map |
-| Last Updated | 09-14-26 17:33 |
-| Revision | 1.0 |
+| Last Updated | 09-15-26 00:39 |
+| Revision | 1.1 |
 | Status | Approved by the product owner, 09-14-26, segment by segment in session SES-414 |
-| Source | PI-504 / REQ-588 / DEC-1077 / DEC-1086 |
+| Source | PI-504 / REQ-588 / DEC-1077 / DEC-1086; removals PI-509 / REQ-601 |
 
 ## Purpose
 
@@ -29,13 +29,13 @@ Confidence is `verified` when the creating operation was read and its statement 
 |---|---|
 | Client Management | 5 |
 | Discovery and Requirements | 8 |
-| Solution Design | 31 |
-| Build | 16 |
+| Solution Design | 30 |
+| Build | 14 |
 | Operate | 4 |
 | CRMBuilder Delivery | 23 |
 | Shared Core | 20 |
 | Shared core plumbing | 4 |
-| Total | 111 |
+| Total | 108 |
 
 ## The mapping
 
@@ -85,7 +85,7 @@ Confidence is `verified` when the creating operation was read and its statement 
 | SystemSetting | system_settings | Solution Design | access/repositories/system_settings.py:_new_row | The one design construct whose value is per instance; the setting itself is design. | verified | Build |
 | TestSpec | test_specs | Solution Design | access/repositories/test_spec.py:_new_test_spec_row | A test specification authored against the design; Build records runs against it through the record_run helper. | verified | Build (records runs) |
 | CrmCandidate | crm_candidates | Solution Design | access/repositories/crm_candidate.py:_new_crm_candidate_row | A Phase 1 CRM candidate: the buy, adopt or build analysis input. | verified | Discovery and Requirements |
-| Service | services | Solution Design | none found | A cross-domain service in the target system (document storage, notification). No repository, router or other writer constructs this row today. | removal candidate (approved) | none |
+| Service | services | Solution Design | none found | A cross-domain service in the target system (document storage, notification). No repository, router or other writer constructs this row today. | removed (PI-509) | none |
 | MigrationMapping | migration_mappings | Solution Design | access/repositories/migration_mapping.py:_new_row | One keep or transform disposition's data-migration obligation from a source entity or field to target fields, with transform rules; a design-time statement consumed by a compiler. | approved | Build |
 | CatalogEntity | catalog_entity | Solution Design | access/repositories/catalog/write.py:create_entity | The base-entity catalogue used by the design gap check; system-wide, seeded by the bootstrap loader. | verified | none |
 | CatalogEntitySynonym | catalog_entity_synonym | Solution Design | access/repositories/catalog/write.py:_replace_entity_children | Child of a catalogue entity, written with it. | verified | none |
@@ -113,9 +113,9 @@ Confidence is `verified` when the creating operation was read and its statement 
 | ConformanceOverride | conformance_overrides | Build | api/routers/instances.py via access/repositories/conformance_overrides.py:create_override | An operator authorisation for one publish to proceed past a blocking conformance result; consumed once. | approved | none |
 | SourceMapping | source_mappings | Build | ui/dialogs/candidate_resolve.py via access/repositories/source_mapping.py:create_source_mapping | A human resolves a mapping candidate into an entity-level mapping from a discovered source entity to the design; created from the reconcile screens. | approved | Solution Design |
 | SourceMappingTarget | source_mapping_targets | Build | access/repositories/source_mapping_targets.py:add_target | A design-entity target of a source mapping; written with it. | approved | Solution Design |
-| SourceMappingJoin | source_mapping_joins | Build | none found | Child of a source mapping. No writer constructs this row today; placement follows its parent. | removal candidate (approved) | Solution Design |
+| SourceMappingJoin | source_mapping_joins | Build | none found | Child of a source mapping. No writer constructs this row today; placement follows its parent. | removed (PI-509) | Solution Design |
 | FieldMapping | field_mappings | Build | ui/dialogs/candidate_resolve.py via access/repositories/field_mapping.py:create_field_mapping | A field-level mapping decision under a source mapping. | approved | Solution Design |
-| FieldMappingTranslation | field_mapping_translations | Build | none found | Child of a field mapping. No writer constructs this row today; placement follows its parent. | removal candidate (approved) | Solution Design |
+| FieldMappingTranslation | field_mapping_translations | Build | none found | Child of a field mapping. No writer constructs this row today; placement follows its parent. | removed (PI-509) | Solution Design |
 | AssociationMapping | association_mappings | Build | access/repositories/association_mapping.py:create_association_mapping | A relationship-level mapping from a discovered source relationship to a design association. | approved | Solution Design |
 | ValueMapping | value_mappings | Build | access/repositories/value_mapping.py:create_value_mapping | A value-level mapping decision for one source enumeration value. | approved | Solution Design |
 
@@ -250,7 +250,7 @@ The source-mapping family, if it stays in Build, is a second candidate for a sub
 
 ## Open placements
 
-None. Every placement that was open in revision 0.1 was settled by the product owner on 09-14-26, one segment at a time:
+None. Every placement that was open in revision 0.1 was settled by the product owner on 09-14-26, one segment at a time. The three removal candidates were removed by PI-509 (REQ-601) on 09-15-26: their tables are dropped by branch revisions solution_design_0002 and build_0002, the reference type service and its two kinds are retired by shared_core_0002, and their rows stay listed below as history.
 
 | Class | Settled placement | Ruling |
 |---|---|---|
@@ -280,3 +280,4 @@ None. Every placement that was open in revision 0.1 was settled by the product o
 | 0.1 | 09-14-26 01:17 | Claude (Claude Code, PI-504 lane) | First draft: 111 record types mapped from their creating operations; 16 placements left open for the product owner. |
 | 0.2 | 09-14-26 17:08 | Claude (Claude Code, SES-414) | Ownership addendum DEC-1086: the group Governance Core is renamed Shared Core; Topic moves from Discovery and Requirements to the Shared Core and is no longer open; counts updated. Client Management approved by the product owner. |
 | 1.0 | 09-14-26 17:33 | Claude (Claude Code, SES-414) | Approved by the product owner segment by segment: Discovery and Requirements, Solution Design, Build, Operate, CRMBuilder Delivery, Shared Core. All open placements settled; Service, SourceMappingJoin and FieldMappingTranslation marked removal candidates. Status set to Approved. |
+| 1.1 | 09-15-26 00:39 | Claude (Claude Code, PI-509 lane) | The three removal candidates are removed (PI-509 / REQ-601): services, source_mapping_joins and field_mapping_translations dropped on their owners' branches; the service reference type and kinds retired on the shared_core branch. Counts 108; Solution Design 30, Build 14. |
