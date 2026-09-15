@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy import JSON, Boolean, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql.expression import ColumnElement
@@ -227,3 +228,16 @@ class EngagementScopedPKMixin(EngagementScopedMixin):
         primary_key=True,
         nullable=False,
     )
+
+
+# PI-alpha (D1): JSON columns use JSONB on Postgres and plain JSON everywhere
+# else (the still-SQLite meta DB, legacy SQLite installs, and the unified-DB
+# migration source). A single shared ``TypeEngine`` instance per variant is
+# safe — SQLAlchemy type objects are immutable descriptors reused across
+# columns. ``none_as_null`` is load-bearing on the work-area-labels column (a
+# Python ``None`` must persist as SQL NULL, not the JSON text ``'null'``); it is
+# preserved on both sides of the variant.
+JSONColumn = JSON().with_variant(JSONB(), "postgresql")
+JSONColumnNoneAsNull = JSON(none_as_null=True).with_variant(
+    JSONB(none_as_null=True), "postgresql"
+)
