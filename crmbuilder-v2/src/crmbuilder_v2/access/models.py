@@ -7,7 +7,7 @@ topics) plus the universal references table (DEC-006) and change log.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import (
     JSON,
@@ -27,15 +27,22 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import (
-    DeclarativeBase,
     Mapped,
     mapped_column,
     relationship,
 )
-from sqlalchemy.sql.expression import ColumnElement
 
+from crmbuilder_v2.access.base import (  # noqa: F401 — re-exported (PI-508)
+    Base,
+    EngagementScopedMixin,
+    EngagementScopedPKMixin,
+    _BooleanDomainCheck,
+    _IdentifierFormatCheck,
+    _LowerHexCheck,
+    _NonEmptyJsonArrayCheck,
+    _utcnow,
+)
 from crmbuilder_v2.access.vocab import (
     AGENT_PROFILE_TIERS,
     AREA_REOPEN_STATUSES,
@@ -43,6 +50,8 @@ from crmbuilder_v2.access.vocab import (
     ASSOCIATION_CARDINALITIES,
     ASSOCIATION_MAPPING_DECISION_TYPES,
     ASSOCIATION_STATUSES,
+    AUDIT_RUN_AREAS,
+    AUDIT_RUN_STATUSES,
     AUTOMATION_STATUSES,
     AUTOMATION_TRIGGERS,
     BINDING_MODES,
@@ -68,8 +77,6 @@ from crmbuilder_v2.access.vocab import (
     DEDUP_RULE_STATUSES,
     DEPLOY_CONFIG_SCENARIOS,
     DEPLOY_CONFIG_SSH_AUTH_TYPES,
-    AUDIT_RUN_AREAS,
-    AUDIT_RUN_STATUSES,
     DEPLOY_RUN_PHASES,
     DEPLOY_RUN_STATUSES,
     DEPOSIT_EVENT_KINDS,
@@ -115,7 +122,6 @@ from crmbuilder_v2.access.vocab import (
     MIGRATION_MAPPING_LEVELS,
     MIGRATION_MAPPING_STATUSES,
     OVERRIDE_SUBJECT_TYPES,
-    PARTICIPANT_STATUSES,
     PERSONA_STATUSES,
     PLANNING_ITEM_STATUSES,
     PLANNING_ITEM_TYPES,
@@ -199,219 +205,6 @@ JSONColumn = JSON().with_variant(JSONB(), "postgresql")
 JSONColumnNoneAsNull = JSON(none_as_null=True).with_variant(
     JSONB(none_as_null=True), "postgresql"
 )
-
-
-# --- PI-alpha (D1): dialect-aware identifier-format CHECK constraints ---
-#
-# The identifier-format CHECKs were hand-written as SQLite ``GLOB`` predicates
-# (e.g. ``session_identifier GLOB 'SES-[0-9][0-9][0-9]'``). ``GLOB`` is a
-# SQLite-only operator — Postgres has no GLOB, so ``create_all`` against PG
-# fails. These two custom constructs render the **byte-identical GLOB form on
-# SQLite** (so create_all on SQLite is unchanged and existing SQLite DBs, whose
-# CHECK text is already baked in, are untouched) and the equivalent **POSIX
-# regex (``~``) form on Postgres**.
-
-
-class _IdentifierFormatCheck(ColumnElement):
-    """An identifier-format CHECK predicate, dialect-rendered.
-
-    ``prefixes`` are OR'd together (the session/conversation rows admit two);
-    ``digits`` is the trailing digit count (3 for most, 4 for ``CM-``/``REF-``).
-    """
-
-    inherit_cache = True
-    type = Boolean()
-
-    def __init__(
-        self, column_name: str, prefixes, digits: int = 3, allow_null: bool = False
-    ) -> None:
-        self.column_name = column_name
-        self.prefixes = tuple(prefixes)
-        self.digits = digits
-        # ``allow_null`` prepends ``<col> IS NULL OR`` (e.g. server-assigned
-        # REF-NNNN, NULL before assignment). Folded into the rendered predicate
-        # — rather than wrapping the element in ``sql.or_`` — because nesting a
-        # boolean custom element inside ``and_``/``or_`` makes SQLAlchemy's
-        # SQLite compiler append a spurious ``= 1`` boolean coercion.
-        self.allow_null = allow_null
-
-
-@compiles(_IdentifierFormatCheck, "sqlite")
-def _render_ident_sqlite(element, compiler, **kw) -> str:
-    cls = "[0-9]" * element.digits
-    pred = " OR ".join(
-        f"{element.column_name} GLOB '{p}-{cls}'" for p in element.prefixes
-    )
-    if element.allow_null:
-        pred = f"{element.column_name} IS NULL OR {pred}"
-    return pred
-
-
-@compiles(_IdentifierFormatCheck)
-def _render_ident_default(element, compiler, **kw) -> str:
-    # POSIX regex (Postgres ``~``): anchored, exact trailing digit count.
-    pred = " OR ".join(
-        f"{element.column_name} ~ '^{p}-[0-9]{{{element.digits}}}$'"
-        for p in element.prefixes
-    )
-    if element.allow_null:
-        pred = f"{element.column_name} IS NULL OR {pred}"
-    return pred
-
-
-class _LowerHexCheck(ColumnElement):
-    """A "value is all lowercase hex (or empty)" CHECK, dialect-rendered.
-
-    The git-commit-SHA guard: SQLite ``col NOT GLOB '*[^0-9a-f]*'`` (no char
-    outside ``0-9a-f``) ⇔ Postgres ``col ~ '^[0-9a-f]*$'``. ``length`` prepends
-    an exact-length predicate (``LENGTH`` is portable across both dialects).
-    """
-
-    inherit_cache = True
-    type = Boolean()
-
-    def __init__(self, column_name: str, length: int | None = None) -> None:
-        self.column_name = column_name
-        self.length = length
-
-
-@compiles(_LowerHexCheck, "sqlite")
-def _render_hex_sqlite(element, compiler, **kw) -> str:
-    pred = f"{element.column_name} NOT GLOB '*[^0-9a-f]*'"
-    if element.length is not None:
-        pred = f"LENGTH({element.column_name}) = {element.length} AND {pred}"
-    return pred
-
-
-@compiles(_LowerHexCheck)
-def _render_hex_default(element, compiler, **kw) -> str:
-    pred = f"{element.column_name} ~ '^[0-9a-f]*$'"
-    if element.length is not None:
-        pred = f"LENGTH({element.column_name}) = {element.length} AND {pred}"
-    return pred
-
-
-class _NonEmptyJsonArrayCheck(ColumnElement):
-    """A "column is NULL or a non-empty JSON array" CHECK, dialect-rendered.
-
-    SQLite uses ``json_valid``/``json_type``/``json_array_length``; Postgres
-    JSONB uses ``jsonb_typeof``/``jsonb_array_length`` (and is always valid
-    JSON, so no validity guard is needed).
-    """
-
-    inherit_cache = True
-    type = Boolean()
-
-    def __init__(self, column_name: str) -> None:
-        self.column_name = column_name
-
-
-@compiles(_NonEmptyJsonArrayCheck, "sqlite")
-def _render_jsonarr_sqlite(element, compiler, **kw) -> str:
-    c = element.column_name
-    return (
-        f"{c} IS NULL OR (json_valid({c}) AND json_type({c}) = 'array' "
-        f"AND json_array_length({c}) >= 1)"
-    )
-
-
-@compiles(_NonEmptyJsonArrayCheck)
-def _render_jsonarr_default(element, compiler, **kw) -> str:
-    c = element.column_name
-    return (
-        f"{c} IS NULL OR (jsonb_typeof({c}) = 'array' "
-        f"AND jsonb_array_length({c}) >= 1)"
-    )
-
-
-class _BooleanDomainCheck(ColumnElement):
-    """A boolean-domain CHECK, dialect-rendered.
-
-    SQLite stores Boolean as the integers ``0``/``1`` (``IN (0, 1)``); Postgres
-    has a native boolean type, so the literals are ``true``/``false``. NULL
-    satisfies the CHECK on both (``NULL IN (...)`` is unknown ⇒ passes).
-    """
-
-    inherit_cache = True
-    type = Boolean()
-
-    def __init__(self, column_name: str) -> None:
-        self.column_name = column_name
-
-
-@compiles(_BooleanDomainCheck, "sqlite")
-def _render_booldomain_sqlite(element, compiler, **kw) -> str:
-    return f"{element.column_name} IN (0, 1)"
-
-
-@compiles(_BooleanDomainCheck)
-def _render_booldomain_default(element, compiler, **kw) -> str:
-    return f"{element.column_name} IN (true, false)"
-
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class EngagementScopedMixin:
-    """Row-level tenant discriminator for the unified multi-engagement DB.
-
-    PI-123 Slice 2 (DEC-375 / D2, D5). ``engagement_id`` holds the owning
-    engagement's **stable identifier** (``engagements.engagement_identifier``,
-    ``ENG-NNN``) — the durable key (never renamed, unlike ``engagement_code``),
-    so no separate integer surrogate is needed and the discriminator stays
-    consistent with v2's identifier-keyed model (refs, etc.).
-
-    **Strict (cutover) schema** — PI-123 Stage 2. ``engagement_id`` is now
-    ``NOT NULL`` with a FK to ``engagements.engagement_identifier``. Every
-    scoped row belongs to exactly one engagement. Identifier uniqueness is
-    composite ``(engagement_id, <identifier>)`` per the three constraint classes
-    in ``pi-123-slice3-enforce-plan.md`` §1: identifier-as-PK tables (Class A)
-    make ``engagement_id`` a PK member (redeclared per-class with
-    ``primary_key=True``); surrogate-PK tables (Class B) swap
-    ``UNIQUE(identifier)`` for ``UNIQUE(engagement_id, identifier)``; the two
-    un-keyed tables (Class C) take only NOT NULL + FK + an index.
-
-    This is the *target* schema that ``Base.metadata.create_all`` materialises
-    for the unified DB (D9 builds fresh + copies rows in). The central
-    read-filter (``do_orm_execute`` → ``with_loader_criteria``) and the
-    write-stamp (``before_flush``) in ``engagement_scope.py`` key on this column
-    and are activated at the cutover (and in the test fixtures, which seed an
-    engagement and set it active so the stamp fills every insert).
-    """
-
-    engagement_id: Mapped[str] = mapped_column(
-        String(32),
-        ForeignKey("engagements.engagement_identifier"),
-        nullable=False,
-    )
-
-
-class EngagementScopedPKMixin(EngagementScopedMixin):
-    """Class A scoping: ``engagement_id`` is also part of the composite PK.
-
-    The 19 identifier-as-PK governance/methodology tables (plus
-    ``engagement_areas``, whose PK is a name) make ``engagement_id`` the leading
-    member of a composite primary key ``(engagement_id, <entity>_identifier)``,
-    so the same prefixed identifier can coexist across engagements while an
-    intra-engagement duplicate is still rejected (DEC-375 / D3). Subclasses keep
-    their existing ``<entity>_identifier`` / name column with
-    ``primary_key=True``; this override supplies the second PK column.
-    ``isinstance(obj, EngagementScopedMixin)`` still holds, so the central
-    read-filter / write-stamp cover these tables unchanged.
-    """
-
-    engagement_id: Mapped[str] = mapped_column(
-        String(32),
-        ForeignKey("engagements.engagement_identifier"),
-        primary_key=True,
-        nullable=False,
-    )
 
 
 class Charter(EngagementScopedMixin, Base):
@@ -1389,77 +1182,6 @@ class Persona(EngagementScopedPKMixin, Base):
         ),
         Index("ix_personas_persona_status", "persona_status"),
         Index("ix_personas_persona_deleted_at", "persona_deleted_at"),
-    )
-
-
-class Participant(EngagementScopedPKMixin, Base):
-    """Methodology entity — the real engagement participant a Persona backs.
-
-    REL-040 / PI-094 (REQ-412). Domain discovery surfaces real engagement
-    participants (Implementation Consultant, Client Administrator, Client
-    SME, Technical Administrator, Methodology Author, CRM Researcher,
-    Custom Developer, …) that a methodology ``Persona`` (the abstract role
-    in requirements) can be *backed by*. This is distinct from a
-    ``principal`` (an authenticated actor with tokens/RBAC) and a ``role``
-    (an engine-neutral CRM security role) — a participant is a governance-
-    layer record of the person/role in the engagement.
-
-    Follows the parent-prefix field-naming convention: every column is
-    prefixed ``participant_``. The primary key is the prefixed-string
-    identifier ``participant_identifier`` (format ``PTC-NNN``) with the
-    engagement discriminator, per :class:`EngagementScopedPKMixin`.
-
-    The persona-backing link lives in the ``refs`` table as
-    ``persona_backed_by_participant`` (source persona → target
-    participant); there is no FK column here.
-    """
-
-    __tablename__ = "participants"
-
-    participant_identifier: Mapped[str] = mapped_column(
-        String(32), primary_key=True
-    )
-    participant_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    participant_role_kind: Mapped[str] = mapped_column(
-        String(255), nullable=False
-    )
-    participant_affiliation: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
-    participant_contact: Mapped[str | None] = mapped_column(
-        String(255), nullable=True
-    )
-    participant_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    participant_status: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="active"
-    )
-    participant_created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow
-    )
-    participant_updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=_utcnow,
-        onupdate=_utcnow,
-    )
-    participant_deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    __table_args__ = (
-        # ``^PTC-\d{3}$`` expressed as a SQLite GLOB pattern.
-        CheckConstraint(
-            _IdentifierFormatCheck("participant_identifier", ["PTC"]),
-            name="ck_participant_identifier_format",
-        ),
-        CheckConstraint(
-            _check_in("participant_status", PARTICIPANT_STATUSES),
-            name="ck_participant_status",
-        ),
-        Index("ix_participants_participant_status", "participant_status"),
-        Index(
-            "ix_participants_participant_deleted_at", "participant_deleted_at"
-        ),
     )
 
 
@@ -6708,219 +6430,6 @@ class IdentifierReservation(EngagementScopedMixin, Base):
 
 
 # ---------------------------------------------------------------------------
-# Engagement registry — the tenant table (PI-123 Slice 1, DEC-375 / D1).
-#
-# The unified multi-engagement DB holds the engagements registry as an in-DB
-# table on this one ``Base`` so the scoped tables' ``engagement_id`` columns
-# can FK to it. The ``/engagements`` REST API serves this table directly (PI-β
-# removed the former separate "meta DB" and its parallel ``EngagementRow`` /
-# Alembic chain). It is what ``Base.metadata.create_all`` and the main Alembic
-# chain (migration ``0037``) materialise.
-# ---------------------------------------------------------------------------
-
-
-class EngagementRow(Base):
-    """Row in the unified DB's ``engagements`` tenant table.
-
-    Named ``EngagementRow`` to stay distinct from the access-layer dataclass
-    ``Engagement`` in ``engagement_models.py``.
-    """
-
-    __tablename__ = "engagements"
-
-    engagement_identifier: Mapped[str] = mapped_column(
-        String(32), primary_key=True
-    )
-    engagement_code: Mapped[str] = mapped_column(String(16), nullable=False)
-    engagement_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    engagement_purpose: Mapped[str] = mapped_column(Text, nullable=False)
-    engagement_status: Mapped[str] = mapped_column(String(16), nullable=False)
-    engagement_last_opened_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    engagement_created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow
-    )
-    engagement_updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=_utcnow,
-        onupdate=_utcnow,
-    )
-    engagement_deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    __table_args__ = (
-        CheckConstraint(
-            _IdentifierFormatCheck("engagement_identifier", ["ENG"]),
-            name="ck_engagement_identifier_format",
-        ),
-        CheckConstraint(
-            "engagement_status IN ('active', 'paused', 'archived')",
-            name="ck_engagement_status",
-        ),
-        Index(
-            "ux_engagements_code_lower",
-            text("LOWER(engagement_code)"),
-            unique=True,
-        ),
-        Index(
-            "ux_engagements_name_lower",
-            text("LOWER(engagement_name)"),
-            unique=True,
-        ),
-        Index("ix_engagements_status", "engagement_status"),
-        Index("ix_engagements_last_opened_at", "engagement_last_opened_at"),
-        Index("ix_engagements_deleted_at", "engagement_deleted_at"),
-    )
-
-
-# ---------------------------------------------------------------------------
-# Identity / authentication / RBAC (PI-γ — PRJ-019 / PI-127).
-#
-# System/shared tables (NOT engagement-scoped): a principal spans engagements,
-# and its per-engagement rights live in ``role_assignments``. These plain
-# ``Base`` tables carry no ``engagement_id`` discriminator, so the row-level
-# scope filter/stamp never touches them.
-# ---------------------------------------------------------------------------
-
-
-class PrincipalRow(Base):
-    """An authenticated actor — a human user or an AI service agent (PI-γ D-γ1)."""
-
-    __tablename__ = "principals"
-
-    principal_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    kind: Mapped[str] = mapped_column(String(16), nullable=False)
-    display_name: Mapped[str] = mapped_column(Text, nullable=False)
-    # Email for humans / agent label for service agents.
-    identity: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(
-        String(16), nullable=False, default="active"
-    )
-    # Service agents note their ADO tier/area for the registry (PI-122).
-    agent_tier: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    agent_area: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=_utcnow,
-        onupdate=_utcnow,
-    )
-    disabled_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    __table_args__ = (
-        CheckConstraint(
-            _IdentifierFormatCheck("principal_id", ["PRN"]),
-            name="ck_principal_identifier_format",
-        ),
-        CheckConstraint(
-            "kind IN ('human', 'service_agent')",
-            name="ck_principal_kind",
-        ),
-        CheckConstraint(
-            "status IN ('active', 'disabled')",
-            name="ck_principal_status",
-        ),
-        Index("ix_principals_status", "status"),
-        Index("ix_principals_kind", "kind"),
-    )
-
-
-class ApiTokenRow(Base):
-    """A hashed bearer token for a principal (PI-γ D-γ1).
-
-    Only the SHA-256 hash of the high-entropy token is stored; the plaintext is
-    shown once at mint time. Lookup hashes the presented bearer and matches on
-    ``token_hash`` (deterministic, O(1) — appropriate for high-entropy machine
-    tokens; KDF stretching would break the lookup and buys nothing here).
-    """
-
-    __tablename__ = "api_tokens"
-
-    token_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    principal_id: Mapped[str] = mapped_column(
-        ForeignKey("principals.principal_id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    label: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow
-    )
-    expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    revoked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    last_used_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-
-    __table_args__ = (
-        CheckConstraint(
-            _IdentifierFormatCheck("token_id", ["TOK"], digits=4),
-            name="ck_api_token_identifier_format",
-        ),
-        CheckConstraint(
-            _LowerHexCheck("token_hash", length=64),
-            name="ck_api_token_hash_hex",
-        ),
-        UniqueConstraint("token_hash", name="ux_api_tokens_hash"),
-        Index("ix_api_tokens_principal", "principal_id"),
-    )
-
-
-class RoleAssignmentRow(Base):
-    """A principal's role on one engagement (PI-γ D-γ3).
-
-    Rights are per-engagement: ``(principal_id, engagement_id, role)`` is unique.
-    ``role`` is CHECK-constrained to ``RBAC_ROLES``.
-    """
-
-    __tablename__ = "role_assignments"
-
-    role_assignment_id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
-    principal_id: Mapped[str] = mapped_column(
-        ForeignKey("principals.principal_id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    engagement_id: Mapped[str] = mapped_column(
-        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
-        nullable=False,
-    )
-    role: Mapped[str] = mapped_column(String(32), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow
-    )
-
-    __table_args__ = (
-        CheckConstraint(
-            "role IN ('owner', 'editor', 'viewer', 'orchestrator', "
-            "'pi_lead', 'phase_specialist', 'area_specialist')",
-            name="ck_role_assignment_role",
-        ),
-        UniqueConstraint(
-            "principal_id",
-            "engagement_id",
-            "role",
-            name="ux_role_assignments_principal_engagement_role",
-        ),
-        Index("ix_role_assignments_principal", "principal_id"),
-        Index("ix_role_assignments_engagement", "engagement_id"),
-    )
-
-
-# ---------------------------------------------------------------------------
 # Agent Profile Registry (PI-122 — the ADO §10 follow-on).
 #
 # System/shared tables with a NULLABLE engagement_id (D-δ2): NULL = a system
@@ -7664,3 +7173,23 @@ class SecretValue(Base):
     secret_updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
     )
+
+
+# ---------------------------------------------------------------------------
+# Segment packages (PI-508 / REQ-591, DEC-1079). Every package's tables
+# register on ``Base.metadata`` here, so any import of this module sees the
+# whole schema. The Client Management names are re-exported for the import
+# paths that predate the package; the shims are removed with the next
+# release (segment-package-design.md §4).
+# ---------------------------------------------------------------------------
+from crmbuilder_v2.segments import load_models as _load_segment_models  # noqa: E402
+
+_load_segment_models()
+
+from crmbuilder_v2.segments.client_management.models import (  # noqa: E402, F401
+    ApiTokenRow,
+    EngagementRow,
+    Participant,
+    PrincipalRow,
+    RoleAssignmentRow,
+)

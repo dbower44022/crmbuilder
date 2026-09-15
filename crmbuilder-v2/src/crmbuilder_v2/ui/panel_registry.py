@@ -15,6 +15,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QWidget
 
 from crmbuilder_v2.config import get_settings
+from crmbuilder_v2.segments import panel_registries
 from crmbuilder_v2.ui.base.list_detail_panel import ListDetailPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.panels.agent_profiles import AgentProfilesPanel
@@ -30,13 +31,11 @@ from crmbuilder_v2.ui.panels.decisions import DecisionsPanel
 from crmbuilder_v2.ui.panels.deploy_history import DeployHistoryPanel
 from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
 from crmbuilder_v2.ui.panels.domains import DomainsPanel
-from crmbuilder_v2.ui.panels.engagements import EngagementsPanel
 from crmbuilder_v2.ui.panels.entities import EntitiesPanel
 from crmbuilder_v2.ui.panels.field import FieldsPanel
 from crmbuilder_v2.ui.panels.glossary import GlossaryPanel
 from crmbuilder_v2.ui.panels.instances import InstancesPanel
 from crmbuilder_v2.ui.panels.manual_config import ManualConfigPanel
-from crmbuilder_v2.ui.panels.participant import ParticipantsPanel
 from crmbuilder_v2.ui.panels.persona import PersonasPanel
 from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
 from crmbuilder_v2.ui.panels.processes import ProcessesPanel
@@ -86,7 +85,6 @@ PANEL_REGISTRY: dict[str, PanelFactory] = {
     "Deploy History": _simple(DeployHistoryPanel),
     "Deposit Events": _simple(DepositEventsPanel),
     "Domains": _simple(DomainsPanel),
-    "Engagements": lambda client, ctx: EngagementsPanel(client, active_context=ctx),
     "Entities": _simple(EntitiesPanel),
     "Fields": _simple(FieldsPanel),
     "Glossary": _simple(GlossaryPanel),
@@ -94,7 +92,6 @@ PANEL_REGISTRY: dict[str, PanelFactory] = {
     "Instances": _simple(InstancesPanel),
     "Learnings": _simple(LearningsPanel),
     "Manual Configs": _simple(ManualConfigPanel),
-    "Participants": _simple(ParticipantsPanel),
     "Personas": _simple(PersonasPanel),
     "Planning Items": _simple(PlanningItemsPanel),
     "Processes": _simple(ProcessesPanel),
@@ -118,6 +115,10 @@ PANEL_REGISTRY: dict[str, PanelFactory] = {
     "Work Tickets": _simple(WorkTicketsPanel),
     "Workstreams": _simple(WorkstreamsPanel),
 }
+
+# Segment packages declare their panels; the registry finds them (PI-508).
+for _segment_panels in panel_registries():
+    PANEL_REGISTRY.update(_segment_panels)
 
 # Alphabetical index of every registered panel — the "All panels" group.
 ALL_PANEL_LABELS: tuple[str, ...] = tuple(sorted(PANEL_REGISTRY))
