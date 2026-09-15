@@ -61,17 +61,18 @@ def test_vocab_nonempty_frozensets(vocab):
 # --- schema shape -----------------------------------------------------------
 
 
-def test_seven_tables_present(v2_env):
+def test_five_tables_present(v2_env):
+    # PI-509 retired source_mapping_joins and field_mapping_translations: no
+    # code ever created a row in either, so the models are gone.
     names = set(inspect(get_engine()).get_table_names())
     assert {
         "source_mappings",
         "source_mapping_targets",
-        "source_mapping_joins",
         "field_mappings",
-        "field_mapping_translations",
         "value_mappings",
         "mapping_candidates",
     } <= names
+    assert not {"source_mapping_joins", "field_mapping_translations"} & names
 
 
 # --- source_mapping ---------------------------------------------------------

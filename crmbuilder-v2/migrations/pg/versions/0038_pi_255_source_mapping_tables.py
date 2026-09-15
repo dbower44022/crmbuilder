@@ -12,12 +12,14 @@ from collections.abc import Sequence
 from alembic import op
 from crmbuilder_v2.access.models import (
     FieldMapping,
-    FieldMappingTranslation,
     MappingCandidate,
     SourceMapping,
-    SourceMappingJoin,
     SourceMappingTarget,
     ValueMapping,
+)
+from crmbuilder_v2.migration.retired_tables import (
+    field_mapping_translations_table,
+    source_mapping_joins_table,
 )
 
 revision: str = "0038_pi_255_source_mapping_tables"
@@ -25,21 +27,24 @@ down_revision: str | None = "0037_pi_263_cost_events"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-_MODELS = (
-    SourceMapping,
-    SourceMappingTarget,
-    SourceMappingJoin,
-    FieldMapping,
-    FieldMappingTranslation,
-    ValueMapping,
-    MappingCandidate,
+# PI-509 retired ``source_mapping_joins`` and ``field_mapping_translations`` (no
+# code ever created a row); their definitions are frozen in ``retired_tables`` so
+# this revision still creates the seven tables it always did.
+_TABLES = (
+    SourceMapping.__table__,
+    SourceMappingTarget.__table__,
+    source_mapping_joins_table(),
+    FieldMapping.__table__,
+    field_mapping_translations_table(),
+    ValueMapping.__table__,
+    MappingCandidate.__table__,
 )
 
 
 def upgrade() -> None:
     bind = op.get_bind()
-    for model in _MODELS:
-        model.__table__.create(bind, checkfirst=True)
+    for table in _TABLES:
+        table.create(bind, checkfirst=True)
 
 
 def downgrade() -> None:
@@ -47,6 +52,6 @@ def downgrade() -> None:
     from sqlalchemy import inspect
 
     existing = set(inspect(bind).get_table_names())
-    for model in reversed(_MODELS):
-        if model.__tablename__ in existing:
-            model.__table__.drop(bind)
+    for table in reversed(_TABLES):
+        if table.name in existing:
+            table.drop(bind)
