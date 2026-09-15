@@ -20,13 +20,13 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from crmbuilder_v2.access.models import Service
 from crmbuilder_v2.access.vocab import (
     CHANGE_LOG_ENTITY_TYPES,
     ENTITY_TYPES,
     REFERENCE_RELATIONSHIPS,
     _check_in,
 )
+from crmbuilder_v2.migration.retired_tables import services_table
 
 revision: str = "0014_pi_161_service_entity"
 down_revision: str | None = "0013_review_signoffs"
@@ -41,12 +41,18 @@ _NEW_KINDS = frozenset(
     }
 )
 
-_TYPES_NEW = ENTITY_TYPES
+# PI-509 retired the ``service`` type and its two kinds from the live vocabulary
+# (and dropped the table on the ``solution_design`` branch). This revision keeps
+# admitting them as it did on the day it shipped (lesson LSN-062: freeze the set
+# as it stood at the revision), so a store walked through the trunk behaves the
+# same; ``shared_core_0002_retire_service_reference_type`` narrows them later.
+_TYPES_NEW = ENTITY_TYPES | {_NEW_TYPE}
 _TYPES_OLD = ENTITY_TYPES - {_NEW_TYPE}
-_LOG_TYPES_NEW = CHANGE_LOG_ENTITY_TYPES
+_LOG_TYPES_NEW = CHANGE_LOG_ENTITY_TYPES | {_NEW_TYPE}
 _LOG_TYPES_OLD = CHANGE_LOG_ENTITY_TYPES - {_NEW_TYPE}
-_KINDS_NEW = REFERENCE_RELATIONSHIPS
+_KINDS_NEW = REFERENCE_RELATIONSHIPS | _NEW_KINDS
 _KINDS_OLD = REFERENCE_RELATIONSHIPS - _NEW_KINDS
+_SERVICES = services_table()
 
 
 def _tables() -> set[str]:
@@ -81,8 +87,8 @@ def _rebuild_relationship_check(kinds: frozenset[str]) -> None:
 
 def upgrade() -> None:
     bind = op.get_bind()
-    if Service.__tablename__ not in _tables():
-        Service.__table__.create(bind)
+    if _SERVICES.name not in _tables():
+        _SERVICES.create(bind)
     _rebuild_entity_type_checks(_TYPES_NEW, _LOG_TYPES_NEW)
     _rebuild_relationship_check(_KINDS_NEW)
 
@@ -98,5 +104,5 @@ def downgrade() -> None:
     op.execute("DELETE FROM change_log WHERE entity_type = 'service'")
     _rebuild_entity_type_checks(_TYPES_OLD, _LOG_TYPES_OLD)
     _rebuild_relationship_check(_KINDS_OLD)
-    if Service.__tablename__ in _tables():
-        Service.__table__.drop(bind)
+    if _SERVICES.name in _tables():
+        _SERVICES.drop(bind)

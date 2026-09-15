@@ -582,26 +582,6 @@ MIGRATION_MAPPING_LEVELS: frozenset[str] = frozenset({"entity", "field"})
 # so declared-vs-observable agreement is verifiable (spec invariants I7/I8).
 MIGRATION_MAPPING_DISPOSITIONS: frozenset[str] = frozenset({"keep", "transform"})
 
-# Methodology entity `service` lifecycle (PI-161, service.md §3.4). One
-# cross-domain service record; standard four-status propose-verify lifecycle
-# exactly as the other status-bearing methodology types — no per-type
-# variation. Services captured live with the stakeholder present (the SES-166
-# backfill case, spec §3.2.3) legitimately POST directly at `confirmed`.
-SERVICE_STATUSES: frozenset[str] = frozenset(
-    {"candidate", "confirmed", "deferred", "rejected"}
-)
-
-# ``rejected`` arcs mirror ``domain`` (PI-153 / WTK-088 §3.2): one-way gate
-# out of ``candidate``; ``confirmed ⇄ deferred`` free movement; ``rejected``
-# reachable from ``candidate`` and ``deferred`` only (two-step demotion from
-# ``confirmed`` via ``deferred``); terminal ``rejected``.
-SERVICE_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
-    "candidate": frozenset({"confirmed", "deferred", "rejected"}),
-    "confirmed": frozenset({"deferred"}),
-    "deferred": frozenset({"confirmed", "rejected"}),
-    "rejected": frozenset(),
-}
-
 # ---------------------------------------------------------------------------
 # Composite design-record vocab (PRJ-025 PI-189 slice 1). The engine-neutral
 # ``association`` (an entity-to-entity link, driving the EspoCRM
@@ -1137,12 +1117,6 @@ ASSOCIATION_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
 # values when field_mapping.decision_type is referential_interpreted.
 VALUE_MAPPING_DECISION_TYPES: frozenset[str] = frozenset(
     {"direct", "interpreted", "rejected"}
-)
-
-# Translation types for field_mapping_translation (DEC-452). value_map applies
-# per-value substitution; expression applies a formula/transformation.
-FIELD_MAPPING_TRANSLATION_TYPES: frozenset[str] = frozenset(
-    {"value_map", "expression"}
 )
 
 # Candidate types surfaced by the reconciler (DEC-451, DEC-654). Entity-level
@@ -2015,17 +1989,6 @@ REFERENCE_RELATIONSHIPS: frozenset[str] = frozenset(
         # A planning item with no such edge is planned/built work with no
         # requirement above it (the coverage report's orphan check).
         "planning_item_implements_requirement",
-        # PI-161 (service.md §3.3.1). The cross-domain service's two edge
-        # kinds: the inbound `process_consumes_service` (process → service —
-        # the process is the actor doing the consuming, per the PI-005
-        # process-as-source precedent — making cross-domain-ness empirically
-        # derivable) and the outbound `service_owns_entity` (service → entity
-        # — the PRD's "any entities it may own" capture item). No
-        # `service_scopes_to_domain` kind by design (§3.3.2): a cross-domain
-        # service is not domain-bound; its effective coverage is derived by
-        # joining its consuming processes to their parent domains.
-        "process_consumes_service",
-        "service_owns_entity",
         # PI-205 release pipeline (PRJ-031, REQ-211/213). A Project is
         # release-scoped — it belongs to exactly one Release (single-membership
         # enforced at the access layer). Release→Release lane ordering reuses the
@@ -2150,10 +2113,6 @@ ENTITY_TYPES: frozenset[str] = frozenset(
         # Phase 3 keep/transform disposition's data-migration obligation
         # (MIG-). See methodology-schema-specs/migration_mapping.md.
         "migration_mapping",
-        # PI-161 methodology entity (per the WTK-132 design spec). One
-        # cross-domain service — a capability not owned by any single
-        # business domain (SVC-). See methodology-schema-specs/service.md.
-        "service",
         # PRJ-025 PI-189 slice 1 composite design records. ``association``
         # (ASN-) models an entity-to-entity link (the EspoCRM
         # ``relationships:`` block); ``engine_override`` (OVR-) is the sparse
@@ -2649,19 +2608,9 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
     if source_type == "migration_mapping" and target_type in ("entity", "field"):
         kinds.add("migration_mapping_migrates_from_record")
         kinds.add("migration_mapping_migrates_to_record")
-    # PI-161 (service.md §3.3.1). Both target types are live in ENTITY_TYPES
-    # (`process` v0.4, `entity` v0.4), so each clause activates
-    # unconditionally — no dormant TODOs. `process_consumes_service` makes the
-    # process the source (the actor doing the consuming, per the PI-005
-    # `process_touches_entity` precedent); `service_owns_entity` is the
-    # service's outbound ownership edge.
-    if source_type == "process" and target_type == "service":
-        kinds.add("process_consumes_service")
-    if source_type == "service" and target_type == "entity":
-        kinds.add("service_owns_entity")
     # PI-153 (WTK-088 §3.4): the status-bearing methodology entity types
-    # (the original seven, plus `migration_mapping` per WTK-106 and `service`
-    # per PI-161 — spec §10, extending the source set to nine) link their
+    # (the original seven, plus `migration_mapping` per WTK-106; `service`
+    # was retired by PI-509) link their
     # terminal `rejected` flip to the rejecting Decision.
     if source_type in (
         "domain",
@@ -2672,7 +2621,6 @@ def _kinds_for_pair(source_type: str, target_type: str) -> frozenset[str]:
         "test_spec",
         "manual_config",
         "migration_mapping",
-        "service",
     ) and target_type == "decision":
         kinds.add("rejected_by_decision")
     # Requirements-provenance model (Phase 1). Hierarchy, provenance, topic
@@ -2794,6 +2742,11 @@ CHANGE_LOG_OPERATIONS: frozenset[str] = frozenset({"insert", "update", "delete"}
 # CHECK cannot drift from the models.
 CHANGE_LOG_ENTITY_TYPES: frozenset[str] = ENTITY_TYPES | frozenset(
     {"reference", "utilization_evidence", "review_signoff"}
+) | frozenset(
+    # Retired record types stay admissible in the change log: it is history,
+    # and rows written while the type existed are never deleted (PI-509
+    # retired ``service``; the ``services`` table is gone).
+    {"service"}
 )
 
 CHANGE_LOG_ACTORS: frozenset[str] = frozenset(
