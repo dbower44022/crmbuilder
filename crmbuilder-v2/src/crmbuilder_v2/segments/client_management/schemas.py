@@ -142,3 +142,45 @@ class AgentMintIn(_Base):
     agent_area: str | None = None
     display_name: str | None = None
     label: str = ""
+
+
+# ---------- Clients (PI-512 / REQ-589, DEC-1092) ----------
+
+
+class ClientCreateIn(_Base):
+    """POST /clients body. ``client_identifier`` is server-assigned when
+    omitted; ``client_status`` defaults to ``active`` server-side."""
+
+    client_name: str
+    client_notes: str | None = None
+    client_status: str | None = None
+    client_identifier: str | None = None
+
+
+class ClientReplaceIn(_Base):
+    """PUT /clients/{identifier} body, a full replace. ``client_identifier``
+    is optional and must match the path when present."""
+
+    client_identifier: str | None = None
+    client_name: str
+    client_notes: str | None = None
+    client_status: str
+
+
+class ClientPatchIn(_Base):
+    """PATCH /clients/{identifier} body, a partial update; consumed with
+    ``model_dump(exclude_unset=True)`` so an omitted field is unchanged."""
+
+    client_name: str | None = None
+    client_notes: str | None = None
+    client_status: str | None = None
+
+
+class EngagementClientsIn(_Base):
+    """PUT /engagements/{identifier}/clients body: the whole set of clients
+    the engagement serves, with one of them primary. An empty list means the
+    engagement belongs to no client. ``primary`` must be one of ``clients``
+    when the list is not empty; it defaults to the first."""
+
+    clients: list[str]
+    primary: str | None = None

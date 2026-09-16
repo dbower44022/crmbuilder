@@ -21,9 +21,13 @@ from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.segments.client_management.repositories import (
+    client as client_repo,
+)
+from crmbuilder_v2.segments.client_management.repositories import (
     engagement as engagement_repo,
 )
 from crmbuilder_v2.segments.client_management.schemas import (
+    EngagementClientsIn,
     EngagementCreateIn,
     EngagementPatchIn,
     EngagementReplaceIn,
@@ -127,3 +131,26 @@ def restore(identifier: str):
     with writable_session() as s:
         engagement = engagement_repo.restore_engagement(s, identifier)
     return ok(engagement.to_dict())
+
+
+# ---------- The clients an engagement serves (PI-512 / REQ-589) ----------
+
+
+@router.get("/{identifier}/clients")
+def clients_of(identifier: str):
+    """The clients this engagement serves: ``clients`` (records, primary
+    first) and ``primary`` (an identifier or null)."""
+    with readonly_session() as s:
+        return ok(client_repo.get_engagement_clients(s, identifier))
+
+
+@router.put("/{identifier}/clients")
+def set_clients(identifier: str, body: EngagementClientsIn):
+    """Replace the set of clients this engagement serves. An empty list
+    means the engagement belongs to no client."""
+    with writable_session() as s:
+        return ok(
+            client_repo.set_engagement_clients(
+                s, identifier, clients=body.clients, primary=body.primary
+            )
+        )

@@ -5,9 +5,15 @@
 from __future__ import annotations
 
 from crmbuilder_v2.segments.client_management.routers import (
+    clients,
     engagements,
     participant,
     principals,
 )
 
-routers = (principals.router, engagements.router, participant.router)
+routers = (
+    principals.router,
+    engagements.router,
+    participant.router,
+    clients.router,
+)
