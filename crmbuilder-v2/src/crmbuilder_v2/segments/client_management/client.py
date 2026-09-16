@@ -14,7 +14,7 @@ from crmbuilder_v2.ui.exceptions import (
 
 
 class ClientManagementMethods:
-    """Engagement and participant calls; mixed into ``StorageClient``."""
+    """Engagement, participant and client calls; mixed into ``StorageClient``."""
 
     _request: Any  # supplied by the transport base
 
@@ -278,6 +278,95 @@ class ClientManagementMethods:
                 "Expected {'next': str} body for next_participant_identifier"
             ),
         )
+
+    # Clients (PI-512 / REQ-589): the organisation above the engagement
+    # ------------------------------------------------------------------
+
+    def list_clients(self, *, include_deleted: bool = False) -> list[dict[str, Any]]:
+        """GET /clients. Each record carries its engagement identifiers."""
+        path = "/clients?include_deleted=true" if include_deleted else "/clients"
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_client(self, identifier: str) -> dict[str, Any]:
+        """GET /clients/{identifier}. Raises ``NotFoundError`` when absent."""
+        result = self._request("GET", f"/clients/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[], message="Expected dict body for get_client"
+            )
+        return result
+
+    def next_client_identifier(self) -> str:
+        """GET /clients/next-identifier."""
+        result = self._request("GET", "/clients/next-identifier")
+        if isinstance(result, dict) and isinstance(result.get("next"), str):
+            return result["next"]
+        raise ServerError(
+            status_code=200, errors=[], message="Expected {next: str} body"
+        )
+
+    def create_client(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /clients with the ``client_*`` field names."""
+        result = self._request("POST", "/clients", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=201, errors=[], message="Expected dict body for create_client"
+            )
+        return result
+
+    def update_client(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """PUT /clients/{identifier}, a full replace."""
+        result = self._request("PUT", f"/clients/{identifier}", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[], message="Expected dict body for update_client"
+            )
+        return result
+
+    def patch_client(self, identifier: str, body: dict[str, Any]) -> dict[str, Any]:
+        """PATCH /clients/{identifier}, a partial update."""
+        result = self._request("PATCH", f"/clients/{identifier}", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[], message="Expected dict body for patch_client"
+            )
+        return result
+
+    def delete_client(self, identifier: str) -> dict[str, Any]:
+        """DELETE /clients/{identifier}; refused while it holds engagements."""
+        result = self._request("DELETE", f"/clients/{identifier}")
+        return result if isinstance(result, dict) else {}
+
+    def restore_client(self, identifier: str) -> dict[str, Any]:
+        """POST /clients/{identifier}/restore."""
+        result = self._request("POST", f"/clients/{identifier}/restore")
+        return result if isinstance(result, dict) else {}
+
+    def list_client_engagements(self, identifier: str) -> list[dict[str, Any]]:
+        """GET /clients/{identifier}/engagements."""
+        result = self._request("GET", f"/clients/{identifier}/engagements")
+        return result if isinstance(result, list) else []
+
+    def get_engagement_clients(self, engagement_identifier: str) -> dict[str, Any]:
+        """GET /engagements/{identifier}/clients: ``clients`` and ``primary``."""
+        result = self._request("GET", f"/engagements/{engagement_identifier}/clients")
+        return result if isinstance(result, dict) else {"clients": [], "primary": None}
+
+    def set_engagement_clients(
+        self,
+        engagement_identifier: str,
+        clients: list[str],
+        *,
+        primary: str | None = None,
+    ) -> dict[str, Any]:
+        """PUT /engagements/{identifier}/clients, replacing the whole set."""
+        result = self._request(
+            "PUT",
+            f"/engagements/{engagement_identifier}/clients",
+            json_body={"clients": clients, "primary": primary},
+        )
+        return result if isinstance(result, dict) else {"clients": [], "primary": None}
 
 
 MIXIN = ClientManagementMethods

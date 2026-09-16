@@ -43,3 +43,16 @@ RBAC_ROLES: frozenset[str] = frozenset(
         "area_specialist",
     }
 )
+
+
+# ---------------------------------------------------------------------------
+# Client (PI-512 / REQ-589, DEC-1092): the organisation above the engagement.
+# ---------------------------------------------------------------------------
+
+CLIENT_STATUSES: frozenset[str] = frozenset({"active", "inactive"})
+
+# A free toggle, as for participants: each value admits the other.
+CLIENT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
+    "active": frozenset({"inactive"}),
+    "inactive": frozenset({"active"}),
+}

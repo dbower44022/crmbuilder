@@ -308,7 +308,10 @@ class MainWindow(QMainWindow):
                 EngagementTopStrip,
             )
 
-            self._top_strip = EngagementTopStrip(self._active_context)
+            self._top_strip = EngagementTopStrip(
+                self._active_context,
+                client_name_lookup=self._primary_client_name_for,
+            )
             self._top_strip.clicked.connect(self._on_top_strip_clicked)
             header_layout.addWidget(self._top_strip)
         header_layout.addStretch(1)
@@ -986,7 +989,12 @@ class MainWindow(QMainWindow):
             if self._active_context is not None
             else None
         )
-        picker = EngagementPicker(engagements, active_id, parent=self)
+        try:
+            clients = self._client.list_clients()
+        except Exception:
+            _log.exception("Failed to list clients for picker; rendering flat")
+            clients = None
+        picker = EngagementPicker(engagements, active_id, parent=self, clients=clients)
         picker.activation_requested.connect(self._on_picker_activation_requested)
         picker.manage_requested.connect(self._on_picker_manage_requested)
         if self._top_strip is not None:
@@ -994,6 +1002,15 @@ class MainWindow(QMainWindow):
         else:
             picker.show()
         self._picker = picker
+
+    def _primary_client_name_for(self, engagement_identifier: str) -> str | None:
+        """The name of the engagement's primary client, for the top strip
+        (PI-512); ``None`` when it belongs to no client."""
+        answer = self._client.get_engagement_clients(engagement_identifier)
+        for record in answer.get("clients") or []:
+            if record.get("is_primary"):
+                return record.get("client_name") or None
+        return None
 
     def _on_picker_activation_requested(self, identifier: str) -> None:
         """Picker row clicked: switch the active engagement (client-side).

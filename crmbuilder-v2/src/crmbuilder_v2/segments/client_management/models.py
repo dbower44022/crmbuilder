@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -32,10 +33,15 @@ from crmbuilder_v2.access.base import (
     _utcnow,
 )
 from crmbuilder_v2.access.vocab import _check_in
-from crmbuilder_v2.segments.client_management.vocab import PARTICIPANT_STATUSES
+from crmbuilder_v2.segments.client_management.vocab import (
+    CLIENT_STATUSES,
+    PARTICIPANT_STATUSES,
+)
 
 __all__ = [
     "ApiTokenRow",
+    "ClientRow",
+    "EngagementClientRow",
     "EngagementRow",
     "Participant",
     "PrincipalRow",
@@ -324,4 +330,91 @@ class RoleAssignmentRow(Base):
         ),
         Index("ix_role_assignments_principal", "principal_id"),
         Index("ix_role_assignments_engagement", "engagement_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Client (PI-512 / REQ-589, DEC-1092): the organisation above the engagement.
+#
+# System-wide like the principal: the table is not engagement-scoped and the
+# scope filter (which acts only on ``EngagementScopedMixin`` tables) leaves it
+# alone. One client holds many engagements; a chapter engagement serves
+# several clients. The link is one table, ``engagement_clients``, with one
+# primary row per engagement (design note, shape A). The client repository
+# emits no change-log rows in this planning item, matching the engagement
+# record (DEC-1092, question 4).
+# ---------------------------------------------------------------------------
+
+
+class ClientRow(Base):
+    """Row in the system-wide ``clients`` table."""
+
+    __tablename__ = "clients"
+
+    client_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
+    client_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    client_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    client_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    client_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    client_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    client_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("client_identifier", ["CLI"]),
+            name="ck_client_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("client_status", CLIENT_STATUSES),
+            name="ck_client_status",
+        ),
+        Index("ux_clients_name_lower", text("LOWER(client_name)"), unique=True),
+        Index("ix_clients_status", "client_status"),
+        Index("ix_clients_deleted_at", "client_deleted_at"),
+    )
+
+
+class EngagementClientRow(Base):
+    """One row per (engagement, client) pair in ``engagement_clients``.
+
+    An ordinary engagement has one row, marked primary. A chapter engagement
+    has one row per member client, one of them primary for display. An
+    engagement with no client has no rows.
+    """
+
+    __tablename__ = "engagement_clients"
+
+    engagement_id: Mapped[str] = mapped_column(
+        ForeignKey("engagements.engagement_identifier", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    client_id: Mapped[str] = mapped_column(
+        ForeignKey("clients.client_identifier", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    is_primary: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+
+    __table_args__ = (
+        Index(
+            "ux_engagement_clients_one_primary",
+            "engagement_id",
+            unique=True,
+            postgresql_where=text("is_primary"),
+            sqlite_where=text("is_primary"),
+        ),
+        Index("ix_engagement_clients_client", "client_id"),
     )
