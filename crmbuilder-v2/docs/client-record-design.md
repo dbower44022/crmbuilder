@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | The client record above the engagement: design note |
-| Last Updated | 09-15-26 23:53 |
-| Revision | 0.1 |
-| Status | Draft, for product-owner review |
+| Last Updated | 09-16-26 00:08 |
+| Revision | 1.0 |
+| Status | Approved by the product owner, DEC-1092, all seven recommendations accepted |
 | Source | PI-512 / REQ-589 / DEC-1077 (segments), DEC-1086 (ownership addendum), DEC-1090 (package shape) |
 
 ## 1. Purpose
@@ -98,3 +98,4 @@ Principals, tokens and role assignments stay per engagement. No client-level rig
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
 | 0.1 | 09-15-26 23:53 | Claude (Claude Code, PI-512 lane) | First draft for product-owner review: record shape, link-table recommendation, scope selection, migration and data step, surface, seven open questions. |
+| 1.0 | 09-16-26 00:08 | Claude (Claude Code, PI-512 lane) | Approved by the product owner (DEC-1092) with all seven recommendations: the assignment list, shape A, the narrowed acceptance wording, no change-log rows, unique names, refuse-delete-with-engagements, the header stays an engagement. |
