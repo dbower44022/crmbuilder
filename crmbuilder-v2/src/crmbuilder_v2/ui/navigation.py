@@ -84,6 +84,7 @@ OPERATE_PANELS: tuple[str, ...] = tuple(
     sorted(
         (
             "Agent Profiles",
+            "Clients",
             "Close-Out Payloads",
             "Commits",
             "Conversations",

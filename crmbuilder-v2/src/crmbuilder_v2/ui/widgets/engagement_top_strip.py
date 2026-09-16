@@ -4,9 +4,17 @@ Lives above the sidebar groups inside the sidebar container. Always
 visible. Subscribes to :class:`ActiveEngagementContext.active_engagement_changed`
 and re-renders on every change. Clicking anywhere on the strip opens
 the picker dropdown (slice D step 2).
+
+PI-512 (REQ-589, DEC-1092): when a ``client_name_lookup`` is supplied, the
+strip shows the engagement's primary client before the engagement name,
+"Client, then engagement (code)", and the engagement alone when it belongs to
+no client. The lookup takes the engagement identifier and returns the client
+name or ``None``; a failing lookup renders the engagement alone.
 """
 
 from __future__ import annotations
+
+from collections.abc import Callable
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QMouseEvent
@@ -36,9 +44,11 @@ class EngagementTopStrip(QWidget):
         self,
         active_context: ActiveEngagementContext,
         parent: QWidget | None = None,
+        client_name_lookup: Callable[[str], str | None] | None = None,
     ) -> None:
         super().__init__(parent)
         self._active_context = active_context
+        self._client_name_lookup = client_name_lookup
         self.setObjectName("engagement_top_strip")
         self.setFixedHeight(_STRIP_HEIGHT)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -80,11 +90,23 @@ class EngagementTopStrip(QWidget):
             return
         name = engagement.engagement_name or "(unnamed)"
         code = engagement.engagement_code or ""
+        client_name = self._primary_client_name(engagement.engagement_identifier)
+        prefix = f"<span>{_escape(client_name)}, then </span>" if client_name else ""
         self._label.setText(
+            f"{prefix}"
             f'<span>{_escape(name)}</span> '
             f'<span style="color:{_CODE_COLOR}; font-size:90%;">'
             f"({_escape(code)})</span>"
         )
+
+    def _primary_client_name(self, engagement_identifier: str | None) -> str | None:
+        if self._client_name_lookup is None or not engagement_identifier:
+            return None
+        try:
+            value = self._client_name_lookup(engagement_identifier)
+        except Exception:  # noqa: BLE001 - the strip must render whatever the store says
+            return None
+        return value or None
 
     def _on_engagement_changed(self, engagement) -> None:
         self._render(engagement)

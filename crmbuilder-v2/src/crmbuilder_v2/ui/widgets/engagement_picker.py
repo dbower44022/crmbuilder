@@ -9,6 +9,12 @@ row opens the management panel.
 
 Emits :pyattr:`activation_requested(identifier)` when a non-active live
 row is clicked, and :pyattr:`manage_requested` when the footer is clicked.
+
+PI-512 (REQ-589, DEC-1092): when ``clients`` is given, rows are grouped
+under a heading per client (the client's engagements indented beneath it,
+each tier's ordering kept within the group) with a final "No client"
+heading for engagements no client holds. Clicking a heading does nothing.
+Without ``clients`` the picker renders the flat list it always did.
 """
 
 from __future__ import annotations
@@ -19,6 +25,7 @@ from typing import Any
 from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
+    QLabel,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -29,10 +36,13 @@ from crmbuilder_v2.ui.panels.engagements import (
     format_relative_date,
 )
 
+NO_CLIENT_HEADING = "No client"
+
 _POPUP_BACKGROUND = "#FFFFFF"
 _POPUP_BORDER = "#D7DBE3"  # color.neutral.200
 _HOVER_BACKGROUND = "#F2F4F8"  # color.neutral.100
 _MUTED_COLOR = "#888888"  # color.neutral.500
+_HEADING_COLOR = "#555555"
 
 
 class EngagementPicker(QWidget):
@@ -46,6 +56,7 @@ class EngagementPicker(QWidget):
         engagements: list[dict[str, Any]],
         active_identifier: str | None,
         parent: QWidget | None = None,
+        clients: list[dict[str, Any]] | None = None,
     ) -> None:
         super().__init__(parent, Qt.WindowType.Popup)
         self.setObjectName("engagement_picker")
@@ -58,6 +69,7 @@ class EngagementPicker(QWidget):
 
         self._active_identifier = active_identifier
         self._rows: list[QPushButton] = []
+        self._headings: list[QLabel] = []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -70,18 +82,10 @@ class EngagementPicker(QWidget):
         # Soft-deleted are filtered out entirely.
         live, non_live = _partition_engagements(engagements, active_identifier)
 
-        for record in live:
-            row = self._build_row(record, muted=False)
-            layout.addWidget(row)
-            self._rows.append(row)
-
-        if live and non_live:
-            layout.addWidget(_hairline())
-
-        for record in non_live:
-            row = self._build_row(record, muted=True)
-            layout.addWidget(row)
-            self._rows.append(row)
+        if clients is None:
+            self._add_flat(layout, live, non_live)
+        else:
+            self._add_grouped(layout, live, non_live, clients)
 
         # Footer divider + Manage engagements row.
         if live or non_live:
@@ -95,8 +99,47 @@ class EngagementPicker(QWidget):
         layout.addWidget(footer)
         self._footer_button = footer
 
+    def _add_flat(
+        self,
+        layout: QVBoxLayout,
+        live: list[dict[str, Any]],
+        non_live: list[dict[str, Any]],
+    ) -> None:
+        for record in live:
+            row = self._build_row(record, muted=False)
+            layout.addWidget(row)
+            self._rows.append(row)
+        if live and non_live:
+            layout.addWidget(_hairline())
+        for record in non_live:
+            row = self._build_row(record, muted=True)
+            layout.addWidget(row)
+            self._rows.append(row)
+
+    def _add_grouped(
+        self,
+        layout: QVBoxLayout,
+        live: list[dict[str, Any]],
+        non_live: list[dict[str, Any]],
+        clients: list[dict[str, Any]],
+    ) -> None:
+        """One heading per client, its engagements beneath, "No client" last."""
+        groups = group_engagements_by_client(live, non_live, clients)
+        first = True
+        for heading, members in groups:
+            if not first:
+                layout.addWidget(_hairline())
+            first = False
+            label = _heading(heading)
+            layout.addWidget(label)
+            self._headings.append(label)
+            for record, muted in members:
+                row = self._build_row(record, muted=muted, indent=True)
+                layout.addWidget(row)
+                self._rows.append(row)
+
     def _build_row(
-        self, record: dict[str, Any], *, muted: bool
+        self, record: dict[str, Any], *, muted: bool, indent: bool = False
     ) -> QPushButton:
         identifier = record.get("engagement_identifier") or ""
         code = record.get("engagement_code") or ""
@@ -108,7 +151,7 @@ class EngagementPicker(QWidget):
         button.setProperty("engagement_identifier", identifier)
         button.setFlat(True)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.setStyleSheet(_row_style(muted=muted))
+        button.setStyleSheet(_row_style(muted=muted, indent=indent))
         button.clicked.connect(
             lambda _checked=False, ident=identifier: self._on_row_clicked(ident)
         )
@@ -191,6 +234,57 @@ def _partition_engagements(
     return live, non_live
 
 
+def group_engagements_by_client(
+    live: list[dict[str, Any]],
+    non_live: list[dict[str, Any]],
+    clients: list[dict[str, Any]],
+) -> list[tuple[str, list[tuple[dict[str, Any], bool]]]]:
+    """``[(heading, [(record, muted), ...]), ...]`` grouped by client.
+
+    ``clients`` is the ``/clients`` list: each carries ``client_name`` and the
+    identifiers it holds under ``engagements``. An engagement held by several
+    clients (a chapter) appears once, under the first client that lists it in
+    client-name order. Engagements no client holds go under "No client",
+    last. Within a group live rows keep their order, then non-live rows.
+    Empty groups are omitted.
+    """
+    ordered = sorted(
+        (c for c in clients if c.get("client_deleted_at") is None),
+        key=lambda c: (str(c.get("client_name") or "").lower(), str(c.get("client_identifier") or "")),
+    )
+    placed: set[str] = set()
+    tiers: list[tuple[dict[str, Any], bool]] = [(r, False) for r in live] + [
+        (r, True) for r in non_live
+    ]
+    groups: list[tuple[str, list[tuple[dict[str, Any], bool]]]] = []
+    for client in ordered:
+        held = {str(e) for e in (client.get("engagements") or [])}
+        members = [
+            (r, muted)
+            for r, muted in tiers
+            if r.get("engagement_identifier") in held
+            and r.get("engagement_identifier") not in placed
+        ]
+        if not members:
+            continue
+        placed.update(str(r.get("engagement_identifier")) for r, _ in members)
+        groups.append((str(client.get("client_name") or "(unnamed client)"), members))
+    rest = [(r, muted) for r, muted in tiers if r.get("engagement_identifier") not in placed]
+    if rest:
+        groups.append((NO_CLIENT_HEADING, rest))
+    return groups
+
+
+def _heading(text: str) -> QLabel:
+    label = QLabel(text)
+    label.setObjectName(f"engagement_group_{text}")
+    label.setProperty("group_heading", text)
+    label.setStyleSheet(
+        f"color: {_HEADING_COLOR}; padding: 6px 10px 2px 10px; font-weight: bold;"
+    )
+    return label
+
+
 def _hairline() -> QFrame:
     frame = QFrame()
     frame.setFrameShape(QFrame.Shape.HLine)
@@ -199,13 +293,14 @@ def _hairline() -> QFrame:
     return frame
 
 
-def _row_style(*, muted: bool) -> str:
+def _row_style(*, muted: bool, indent: bool = False) -> str:
     color = _MUTED_COLOR if muted else "#222222"
+    left = 24 if indent else 10
     return (
         "QPushButton {"
         f"  color: {color};"
         "  text-align: left;"
-        "  padding: 6px 10px;"
+        f"  padding: 6px 10px 6px {left}px;"
         "  border: none;"
         "  background-color: transparent;"
         "}"
