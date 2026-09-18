@@ -5346,7 +5346,7 @@ class Reference(EngagementScopedMixin, Base):
         CheckConstraint(
             # REF-NNNN is nullable before server assignment.
             _IdentifierFormatCheck(
-                "reference_identifier", ["REF"], 4, allow_null=True
+                "reference_identifier", ["REF"], 4, allow_null=True, at_least=True
             ),
             name="ck_ref_reference_identifier_format",
         ),

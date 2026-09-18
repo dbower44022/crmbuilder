@@ -33,17 +33,34 @@ class _IdentifierFormatCheck(ColumnElement):
 
     ``prefixes`` are OR'd together (the session/conversation rows admit two);
     ``digits`` is the trailing digit count (3 for most, 4 for ``CM-``/``REF-``).
+
+    ``at_least`` makes ``digits`` a floor rather than an exact count, for a
+    series that outgrows its width. ``REF-`` did: the four-digit CHECK
+    rejected REF-10000 and every reference write in the store failed until
+    the constraint was widened (shared_core_0003). A series whose rows are
+    written by the machine rather than named by a person will reach its
+    ceiling eventually, so the floor is the safer shape for those.
     """
 
     inherit_cache = True
     type = Boolean()
 
+    #: SQLite has no bounded-repetition GLOB, so an open-ended check is
+    #: rendered there as an OR over widths up to this many digits.
+    _SQLITE_MAX_DIGITS = 8
+
     def __init__(
-        self, column_name: str, prefixes, digits: int = 3, allow_null: bool = False
+        self,
+        column_name: str,
+        prefixes,
+        digits: int = 3,
+        allow_null: bool = False,
+        at_least: bool = False,
     ) -> None:
         self.column_name = column_name
         self.prefixes = tuple(prefixes)
         self.digits = digits
+        self.at_least = at_least
         # ``allow_null`` prepends ``<col> IS NULL OR`` (e.g. server-assigned
         # REF-NNNN, NULL before assignment). Folded into the rendered predicate
         # — rather than wrapping the element in ``sql.or_`` — because nesting a
@@ -54,9 +71,15 @@ class _IdentifierFormatCheck(ColumnElement):
 
 @compiles(_IdentifierFormatCheck, "sqlite")
 def _render_ident_sqlite(element, compiler, **kw) -> str:
-    cls = "[0-9]" * element.digits
+    widths = (
+        range(element.digits, element._SQLITE_MAX_DIGITS + 1)
+        if element.at_least
+        else (element.digits,)
+    )
     pred = " OR ".join(
-        f"{element.column_name} GLOB '{p}-{cls}'" for p in element.prefixes
+        f"{element.column_name} GLOB '{p}-{'[0-9]' * n}'"
+        for p in element.prefixes
+        for n in widths
     )
     if element.allow_null:
         pred = f"{element.column_name} IS NULL OR {pred}"
@@ -65,10 +88,11 @@ def _render_ident_sqlite(element, compiler, **kw) -> str:
 
 @compiles(_IdentifierFormatCheck)
 def _render_ident_default(element, compiler, **kw) -> str:
-    # POSIX regex (Postgres ``~``): anchored, exact trailing digit count.
+    # POSIX regex (Postgres ``~``): anchored, exact trailing digit count,
+    # or a floor when ``at_least`` is set.
+    count = f"{element.digits}," if element.at_least else str(element.digits)
     pred = " OR ".join(
-        f"{element.column_name} ~ '^{p}-[0-9]{{{element.digits}}}$'"
-        for p in element.prefixes
+        f"{element.column_name} ~ '^{p}-[0-9]{{{count}}}$'" for p in element.prefixes
     )
     if element.allow_null:
         pred = f"{element.column_name} IS NULL OR {pred}"
