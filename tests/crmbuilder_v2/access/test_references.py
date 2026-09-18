@@ -520,3 +520,28 @@ def test_withdraws_decision_to_session_refused(v2_env):
 def test_withdraws_from_a_non_decision_refused(v2_env):
     with session_scope() as s, pytest.raises(UnprocessableError):
         _withdraws(s, source_type="requirement", source_id="REQ-001")
+
+
+def test_reference_identifier_may_pass_nine_thousand_nine_hundred_and_ninety_nine(
+    v2_env,
+):
+    """REF-10000 is accepted.
+
+    The identifier CHECK was an exact four digits, so the store's first
+    ten-thousandth reference was rejected by the database and every reference
+    write failed until the constraint was widened to a floor
+    (shared_core_0003). This holds the floor in place.
+    """
+    with session_scope() as s:
+        row = _add(s)
+        s.flush()
+        row["reference_identifier"] = None
+        from crmbuilder_v2.access.models import Reference
+
+        stored = s.get(Reference, row["id"])
+        stored.reference_identifier = "REF-10000"
+        s.flush()
+
+    with session_scope() as s:
+        rows = references.list_from(s, source_type="session", source_id="SES-001")
+    assert "REF-10000" in [r["reference_identifier"] for r in rows]
