@@ -14,7 +14,6 @@ from crmbuilder_v2.adapters.base import GenerationResult, ProgramArtifact
 from crmbuilder_v2.publish import service
 
 from espo_impl.core.deploy_pipeline import DeployOutcome
-from espo_impl.core.models import InstanceRole
 
 # A clean one-entity program.
 _CLEAN_YAML = """\
@@ -77,7 +76,9 @@ def test_build_target_profile_maps_fields():
     assert profile.api_key == "K"
     assert profile.secret_key == "S"
     assert profile.auth_method == "hmac"
-    assert profile.role == InstanceRole.TARGET
+    # The role is the profile's own default; version 2 stopped passing it
+    # (REQ-604) and keeps its own notion of the role on the instance record.
+    assert profile.role.value == "target"
 
 
 def test_build_target_profile_defaults():
