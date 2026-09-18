@@ -37,6 +37,7 @@ from crmbuilder_v2.access.apply_plan import (
 from crmbuilder_v2.adapters.base import GenerationResult
 from crmbuilder_v2.adapters.espocrm.adapter import EspoCrmAdapter
 from crmbuilder_v2.adapters.espocrm.client import DesignClient
+from crmbuilder_v2.introspect.utilization import wire_entity_name
 from crmbuilder_v2.publish.access import assess_publish_access, describe_removals
 from crmbuilder_v2.publish.backup import BackupCaptureError, capture_target_backup
 from crmbuilder_v2.publish.live_state import gather_server_fields
@@ -48,7 +49,6 @@ from espo_impl.core.field_manager import FieldManager
 from espo_impl.core.models import (
     EntityAction,
     InstanceProfile,
-    InstanceRole,
     ProgramContext,
     ProgramFile,
     RunReport,
@@ -59,7 +59,6 @@ from espo_impl.core.system_settings_manager import (
     SystemSettingsManager,
     SystemSettingsManagerError,
 )
-from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
 
 OutputFn = Callable[[str, str], None]
 
@@ -248,7 +247,6 @@ def build_target_profile(
         api_key=api_key,
         auth_method=instance_record.get("instance_auth_method") or "api_key",
         secret_key=secret_key,
-        role=InstanceRole.TARGET,
     )
 
 
@@ -463,7 +461,7 @@ def automatic_apply_declines(
                     "instance": entity.name,
                 })
             status, defs = client.get_entity_field_list(
-                get_espo_entity_name(entity.name)
+                wire_entity_name(entity.name)
             )
             if status != 200 or not isinstance(defs, dict):
                 continue  # absent or unreadable: deploys as new — additive
