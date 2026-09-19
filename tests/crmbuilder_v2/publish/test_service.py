@@ -1120,3 +1120,40 @@ def test_generate_design_yaml_renders_the_security_program_and_filtered_tabs():
     assert "- name: Mentor" in by_name["security.yaml"]
     assert "filteredTabs:" in by_name["Mentor-Application.yaml"]
     assert "scope: Approved" in by_name["Mentor-Application.yaml"]
+
+
+# --- the shape the response has always carried -------------------------------
+
+
+def test_the_settings_outcome_maps_into_the_response_shape() -> None:
+    """The response keys are what every caller knows; version 2's outcome
+    names its parts differently, so the mapping is checked here rather than
+    discovered after a real publish has already written."""
+    from crmbuilder_v2.publish import governed_settings
+    from crmbuilder_v2.segments.operate.routers.instances import (
+        _settings_response,
+    )
+
+    applied = governed_settings.SettingsOutcome(
+        "values", governed_settings.UPDATED, changed=["orgName"], detail="changed"
+    )
+    body = _settings_response(applied, [("a line", "gray")])
+    assert body == {
+        "entity": governed_settings.CARRIER_RECORD,
+        "status": "updated",
+        "changes": ["orgName"],
+        "error": None,
+        "log": [["a line", "gray"]],
+    }
+
+
+def test_a_failed_settings_outcome_reports_its_reason_as_the_error() -> None:
+    from crmbuilder_v2.publish import governed_settings
+    from crmbuilder_v2.segments.operate.routers.instances import (
+        _settings_response,
+    )
+
+    failed = governed_settings.SettingsOutcome(
+        "values", governed_settings.FAILED, detail="the instance refused it"
+    )
+    assert _settings_response(failed, [])["error"] == "the instance refused it"

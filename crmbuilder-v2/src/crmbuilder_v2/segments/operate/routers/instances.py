@@ -66,6 +66,7 @@ from crmbuilder_v2.introspect.reconcile import (
 )
 from crmbuilder_v2.introspect.record_export import export_records
 from crmbuilder_v2.introspect.utilization import reconcile_utilization
+from crmbuilder_v2.publish import governed_settings
 from crmbuilder_v2.publish import run as publish_run
 from crmbuilder_v2.publish import service as publish_service
 from crmbuilder_v2.segments.operate.repositories import (
@@ -714,26 +715,14 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         # PI-406 / REQ-485: the governed-settings apply outcome, when the
         # instance has declared per-instance values.
         "settings": (
-            {
-                "entity": result.settings.entity,
-                "status": result.settings.status.value,
-                "changes": result.settings.changes,
-                "error": result.settings.error,
-                "log": [list(line) for line in result.settings_log],
-            }
+            _settings_response(result.settings, result.settings_log)
             if result.settings is not None
             else None
         ),
         # REQ-495: the design-version stamp write outcome, when the run
         # qualified to write one.
         "stamp": (
-            {
-                "entity": result.stamp.entity,
-                "status": result.stamp.status.value,
-                "changes": result.stamp.changes,
-                "error": result.stamp.error,
-                "log": [list(line) for line in result.stamp_log],
-            }
+            _settings_response(result.stamp, result.stamp_log)
             if result.stamp is not None
             else None
         ),
@@ -753,6 +742,24 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
             }
             for p in result.programs
         ],
+    }
+
+
+def _settings_response(outcome, log) -> dict:
+    """One governed-settings or stamp outcome, in the shape the response has
+    always carried.
+
+    Version 2's outcome names its parts differently — what changed is
+    ``changed``, and a failure explains itself in ``detail`` rather than in a
+    separate error field — so the mapping happens here and the response keys
+    stay as every caller knows them.
+    """
+    return {
+        "entity": governed_settings.CARRIER_RECORD,
+        "status": outcome.status,
+        "changes": outcome.changed,
+        "error": outcome.detail if outcome.failed else None,
+        "log": [list(line) for line in log],
     }
 
 
