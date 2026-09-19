@@ -937,3 +937,23 @@ def test_adapter_defers_derived_field_without_formula(v2_env, tmp_path):
     manual = (tmp_path / "MANUAL-CONFIG.md").read_text(encoding="utf-8")
     assert "Derived / formula fields" in manual
     assert any(d.kind == "derived_field" for d in result.deferrals)
+
+
+def test_what_the_emitter_writes_passes_version_2s_own_checks(v2_env, tmp_path):
+    """The emitter and the declaration parser must agree on a real design.
+
+    Every other check of the parser uses a declaration written by hand for
+    the test. This one takes what the emitter actually produces, which is the
+    only thing a publish will ever hand it (REQ-606 / REQ-618).
+    """
+    from crmbuilder_v2.publish.declaration import parse, validate_batch
+
+    _seed()
+    result = EspoCrmAdapter().run(
+        AccessDesignClient(), tmp_path, rendered_at=RENDERED_AT, engagement="ENG-001"
+    )
+    declarations = [
+        parse((tmp_path / program.filename).read_text(encoding="utf-8"), program.filename)
+        for program in result.programs
+    ]
+    assert validate_batch(declarations) == {}

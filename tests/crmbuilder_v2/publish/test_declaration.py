@@ -384,6 +384,15 @@ def test_the_parser_knows_every_block_the_emitter_can_produce() -> None:
     emitted_entity_blocks = set(
         re.findall(r'entity_block\[\s*"([a-zA-Z_]+)"\s*\]', source)
     )
+    emitted_entity_blocks |= set(
+        re.findall(r'entity_block\.setdefault\(\s*"([a-zA-Z_]+)"', source)
+    )
+    # The block the emitter builds as a literal, which the two patterns above
+    # cannot see. Missing it let the parser reject every generated
+    # declaration over its description key.
+    literal = re.search(r"entity_block: dict = \{(.*?)\n    \}", source, re.S)
+    assert literal, "the emitter no longer builds its entity block as a literal"
+    emitted_entity_blocks |= set(re.findall(r'"([a-zA-Z_]+)":', literal.group(1)))
     # Blocks whose writer exists but which nothing calls are not emitted; the
     # two unsupported ones are exactly those.
     emitted_entity_blocks -= set(UNSUPPORTED_BLOCKS)

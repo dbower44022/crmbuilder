@@ -35,6 +35,7 @@ import yaml
 #: The blocks an object type may carry.
 ENTITY_BLOCKS = frozenset(
     {
+        "description",
         "fields",
         "layout",
         "settings",
