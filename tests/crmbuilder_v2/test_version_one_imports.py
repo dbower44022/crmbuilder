@@ -35,9 +35,6 @@ _PERMITTED: frozenset[tuple[str, str]] = frozenset(
         # REQ-608 — declared fields land, with the comparison REQ-609 covers.
         ("publish/service.py", "espo_impl.core.field_manager"),
         ("publish/service.py", "espo_impl.core.comparator"),
-        # REQ-611 — declared layouts land; the layout-kind registry goes with
-        # them.
-        ("adapters/espocrm/layouts.py", "espo_impl.core.layout_types"),
         # REQ-615 — the governed setting values and the design-version stamp.
         ("publish/service.py", "espo_impl.core.system_settings_manager"),
         # REQ-616 — the run report, step isolation and the manual-config list.

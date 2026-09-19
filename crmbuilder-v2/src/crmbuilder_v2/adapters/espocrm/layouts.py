@@ -29,13 +29,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from crmbuilder_v2.adapters.espocrm.layout_types import (
+    LayoutClass,
+    structure_class,
+)
 from crmbuilder_v2.introspect.audit_utils import (
     SYSTEM_FIELDS,
     get_native_fields_for_type,
     strip_field_c_prefix,
 )
 from crmbuilder_v2.introspect.native_entity_types import NATIVE_ENTITY_BASE_TYPE
-from espo_impl.core.layout_types import LayoutClass, structure_class
 
 #: Neutral ``layout_type`` (the store's vocabulary) → the EspoCRM layout name
 #: the engine reads under ``layout:`` and the audit fetches by. The eighteen
