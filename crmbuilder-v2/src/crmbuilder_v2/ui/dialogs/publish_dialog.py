@@ -532,6 +532,16 @@ def _preview_counts(summary: dict | None) -> str:
     )
     if unchanged:
         bits.append(f"{unchanged} unchanged")
+    # A refusal is not an unchanged object: both leave the instance alone, but
+    # this one means the design and the instance disagree and the publish will
+    # not write it. Counting them together read as "nothing to see here".
+    refused = (
+        (s.get("refused") or 0)
+        + (s.get("layouts_refused") or 0)
+        + (s.get("relationships_refused") or 0)
+    )
+    if refused:
+        bits.append(f"{refused} left alone — the design and the instance differ")
     return ", ".join(bits) or "no changes"
 
 
