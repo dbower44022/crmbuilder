@@ -13,12 +13,14 @@ than by the design, and the mark that says something outside the system fills
 it in. Version 1 was careful about these because sending them creates a field
 the platform will not let an administrator edit afterwards.
 
-**A layout is unwrapped and its cells are renamed.** The declaration writes a
-record view as a named list of panels and a list view as a named list of
-columns, because that reads better in a file; the platform wants the list
-itself. And on an object type the platform ships, a field this design adds
-carries the platform's prefix — a layout cell naming it unprefixed shows
-nothing at all, which is the quietest possible failure.
+**A layout is translated by its shape.** The declaration writes a record view
+as a named list of panels, a list view as a named list of columns naming the
+field each shows, and a filter list as bare names; the platform wants the
+list itself, and it calls a column's field its name. Getting this wrong is
+quiet: a column whose field did not survive the translation is a column with
+no heading and nothing in it. And on an object type the platform ships, a
+field this design adds carries the platform's prefix — a cell naming it
+unprefixed shows nothing at all.
 
 **The name field is placed if the design did not place it.** The platform
 treats a record's name as required, and a design that arranges its screens by
@@ -26,6 +28,12 @@ grouping fields has no reason to mention a field with no group — so the
 record view comes out with no place to type the one value the platform
 insists on, and the form cannot be saved. The design can say it means it, by
 turning the automatic placement off.
+
+**A panel is given the shape the platform stores.** The declaration writes a
+panel as a title and some rows; the platform keeps a title under a different
+key and expects every other property to be present, so a panel is filled out
+to that shape before it is sent. Sending the declaration's own spelling
+would quietly lose the panel's title.
 
 **Two keys are renamed, not translated.** A rule about when a field is
 required or visible is written in the declaration under a readable name and
@@ -69,6 +77,10 @@ RENAMED: dict[str, str] = {
 #: How the declaration wraps each layout shape, and what the platform wants.
 _LAYOUT_WRAPPERS = ("panels", "columns")
 
+#: What the declaration calls the field a column shows, and what the platform
+#: calls it.
+_COLUMN_FIELD = ("field", "name")
+
 #: The layouts a record is typed into, where the name field must have a place.
 _RECORD_VIEWS = frozenset({"detail", "edit", "detailSmall", "detailConvert"})
 
@@ -77,6 +89,24 @@ AUTO_PLACE_NAME = "autoPlaceName"
 
 #: What the platform calls a record's name.
 NAME_FIELD = "name"
+
+#: A panel as the platform stores one: the title under its own key, and every
+#: other property present rather than assumed.
+_PANEL_DEFAULTS: dict[str, Any] = {
+    "customLabel": None,
+    "tabBreak": False,
+    "tabLabel": None,
+    "style": "default",
+    "hidden": False,
+    "noteText": None,
+    "noteStyle": "info",
+    "dynamicLogicVisible": None,
+    "dynamicLogicStyled": None,
+    "rows": [],
+}
+
+#: What the declaration calls a panel's title, and what the platform calls it.
+_PANEL_TITLE = ("label", "customLabel")
 
 #: What a declaration may ask for an object type, in the appliers' words.
 ACTIONS: dict[str, str] = {
@@ -137,24 +167,61 @@ def _prefixed(name: str) -> str:
 def layout_body(
     body: Any,
     *,
+    layout_type: str = "",
     entity_is_native: bool = False,
     declared_fields: frozenset[str] = frozenset(),
 ) -> Any:
     """One layout as the platform wants it.
 
     :param body: The layout as the declaration writes it.
+    :param layout_type: Which layout it is, which decides its shape.
     :param entity_is_native: Whether the platform ships this object type, in
         which case a field this design adds to it carries the prefix.
     :param declared_fields: The fields this design declares on that object
         type. A cell naming anything else is a field the platform ships, and
         its name is already its own.
     """
+    from crmbuilder_v2.adapters.espocrm.layout_types import LayoutClass, structure_class
+
     unwrapped = body
     if isinstance(body, Mapping):
         for wrapper in _LAYOUT_WRAPPERS:
             if wrapper in body:
                 unwrapped = body[wrapper]
                 break
+
+    def on_platform(name: str) -> str:
+        if entity_is_native and name in declared_fields:
+            return _prefixed(name)
+        return name
+
+    shape = structure_class(layout_type) if layout_type else None
+
+    if shape is LayoutClass.COLUMNS and isinstance(unwrapped, list):
+        declared_key, platform_key = _COLUMN_FIELD
+        columns: list[Any] = []
+        for column in unwrapped:
+            if not isinstance(column, Mapping):
+                columns.append(column)
+                continue
+            translated = {
+                platform_key if key == declared_key else key: value
+                for key, value in column.items()
+            }
+            if isinstance(translated.get(platform_key), str):
+                translated[platform_key] = on_platform(translated[platform_key])
+            columns.append(translated)
+        return columns
+
+    if shape is LayoutClass.FIELD_LIST and isinstance(unwrapped, list):
+        return [
+            on_platform(name) if isinstance(name, str) else name
+            for name in unwrapped
+        ]
+
+    if shape is LayoutClass.PANEL_MAP:
+        return unwrapped
+
     if not entity_is_native:
         return unwrapped
     return _rename_cells(unwrapped, declared_fields)
@@ -178,6 +245,31 @@ def _rename_cells(body: Any, declared_fields: frozenset[str]) -> Any:
             for item in body
         ]
     return body
+
+
+def panel_payload(panel: Mapping[str, Any]) -> dict[str, Any]:
+    """One panel as the platform stores one.
+
+    The declaration's title key becomes the platform's, every property the
+    platform expects is present, and anything else the panel carries — the
+    attributes an audit read back and the design kept — passes through
+    untouched.
+    """
+    declared_title, platform_title = _PANEL_TITLE
+    payload: dict[str, Any] = dict(_PANEL_DEFAULTS)
+    for key, value in panel.items():
+        payload[platform_title if key == declared_title else key] = value
+    return payload
+
+
+def _panelled(body: Any) -> Any:
+    """Every panel in a record view, as the platform stores them."""
+    if not isinstance(body, list):
+        return body
+    return [
+        panel_payload(panel) if isinstance(panel, Mapping) else panel
+        for panel in body
+    ]
 
 
 def place_name_field(body: Any) -> Any:
@@ -232,11 +324,14 @@ def _layout_intents(
         kind = str(layout_type)
         translated = layout_body(
             body,
+            layout_type=kind,
             entity_is_native=entity_is_native,
             declared_fields=declared_fields,
         )
-        if place_name and kind in _RECORD_VIEWS:
-            translated = place_name_field(translated)
+        if kind in _RECORD_VIEWS:
+            if place_name:
+                translated = place_name_field(translated)
+            translated = _panelled(translated)
         intents.append(LayoutIntent(layout_type=kind, body=translated))
     return intents
 

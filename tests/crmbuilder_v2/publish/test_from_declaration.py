@@ -160,11 +160,15 @@ def test_fields_arrive_as_payloads() -> None:
     assert "description" not in field.payload
 
 
-def test_layouts_arrive_by_kind() -> None:
+def test_layouts_arrive_by_kind_in_the_platform_s_shape() -> None:
     plan = _plan(_ENTITY)
     [layout] = plan.entities[0].layouts
     assert layout.layout_type == "detail"
-    assert layout.body[0]["label"] == "Overview"
+    # The platform keeps a panel's title under its own key, and expects every
+    # other property to be present rather than assumed.
+    assert layout.body[0]["customLabel"] == "Overview"
+    assert layout.body[0]["style"] == "default"
+    assert "label" not in layout.body[0]
 
 
 def test_templates_and_tabs_are_named_the_platform_s_way() -> None:
@@ -253,10 +257,22 @@ def test_a_record_view_is_unwrapped_to_the_list_the_platform_wants() -> None:
     assert body == [{"label": "Overview", "rows": []}]
 
 
-def test_a_list_view_is_unwrapped_too() -> None:
+def test_a_list_view_names_each_column_s_field_the_platform_s_way() -> None:
+    """The declaration says which field a column shows; the platform calls
+    that the column's name. A column that loses it has no heading and
+    nothing in it."""
     from crmbuilder_v2.publish.from_declaration import layout_body
 
-    assert layout_body({"columns": [{"name": "stage"}]}) == [{"name": "stage"}]
+    body = layout_body(
+        {"columns": [{"field": "stage", "width": 30}]}, layout_type="list"
+    )
+    assert body == [{"name": "stage", "width": 30}]
+
+
+def test_a_filter_list_is_a_list_of_names() -> None:
+    from crmbuilder_v2.publish.from_declaration import layout_body
+
+    assert layout_body(["stage"], layout_type="filters") == ["stage"]
 
 
 def test_a_bare_list_and_a_panel_map_are_left_as_they_are() -> None:
@@ -312,6 +328,7 @@ def test_a_cell_written_as_a_bare_name_is_prefixed_too() -> None:
 
     body = layout_body(
         ["mentorStatus", "lastName"],
+        layout_type="filters",
         entity_is_native=True,
         declared_fields=frozenset({"mentorStatus"}),
     )
