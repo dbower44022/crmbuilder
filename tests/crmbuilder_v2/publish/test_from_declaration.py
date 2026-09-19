@@ -418,3 +418,63 @@ entities:
     )
     [layout] = plan.entities[0].layouts
     assert layout.body == [{"name": "stage"}]
+
+
+# --- a template's body, which lives in its own file --------------------------
+
+
+def test_a_template_body_is_read_from_the_file_beside_the_declaration() -> None:
+    """Published without it, the template is an empty message — and the
+    instance accepts that quite happily."""
+    from crmbuilder_v2.publish.from_declaration import plan_for as build
+
+    declaration = parse(
+        """
+entities:
+  Engagement:
+    emailTemplates:
+      - name: welcome
+        subject: Welcome
+        bodyFile: templates/welcome.html
+""",
+        "e.yaml",
+    )
+    plan = build(
+        [declaration], companions={"templates/welcome.html": "<p>Hello</p>"}
+    )
+    [template] = plan.entities[0].templates
+    assert template.body == "<p>Hello</p>"
+
+
+def test_a_body_written_inline_still_wins() -> None:
+    from crmbuilder_v2.publish.from_declaration import plan_for as build
+
+    declaration = parse(
+        """
+entities:
+  Engagement:
+    emailTemplates:
+      - name: welcome
+        body: inline
+        bodyFile: templates/welcome.html
+""",
+        "e.yaml",
+    )
+    plan = build([declaration], companions={"templates/welcome.html": "file"})
+    assert plan.entities[0].templates[0].body == "inline"
+
+
+def test_a_missing_companion_does_not_break_the_publish() -> None:
+    from crmbuilder_v2.publish.from_declaration import plan_for as build
+
+    declaration = parse(
+        """
+entities:
+  Engagement:
+    emailTemplates:
+      - name: welcome
+        bodyFile: gone.html
+""",
+        "e.yaml",
+    )
+    assert build([declaration]).entities[0].templates[0].body == ""

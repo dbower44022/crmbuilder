@@ -151,6 +151,7 @@ def test_the_security_program_passes_the_pre_publish_validation_gate():
     """REQ-288 refuses a publish whose programs do not validate, and it validates
     the whole scoped set — so a security program the gate rejected would block
     the entities beside it, not just itself."""
+    from crmbuilder_v2.publish.declaration import parse
     from crmbuilder_v2.publish.service import validate_programs
 
     prog = _security_program(
@@ -159,8 +160,7 @@ def test_the_security_program_passes_the_pre_publish_validation_gate():
         [_team()],
         [],
     )
-    path = pathlib.Path(tempfile.mkdtemp()) / SECURITY_FILENAME
-    path.write_text(emit_program_yaml(prog, rendered_at="2026-09-02T00:00:00Z"))
-    loaded = ConfigLoader().load_program(path)
+    written = emit_program_yaml(prog, rendered_at="2026-09-02T00:00:00Z")
+    declaration = parse(written, SECURITY_FILENAME)
 
-    assert validate_programs([(SECURITY_FILENAME, loaded)], {}) == {}
+    assert validate_programs([(SECURITY_FILENAME, declaration)], {}) == {}

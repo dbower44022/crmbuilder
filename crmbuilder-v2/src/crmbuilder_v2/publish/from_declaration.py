@@ -35,6 +35,12 @@ key and expects every other property to be present, so a panel is filled out
 to that shape before it is sent. Sending the declaration's own spelling
 would quietly lose the panel's title.
 
+**A message template's body lives in its own file.** The emitter writes the
+body beside the declaration and references it by name, because a long block
+of markup inside the declaration would drown everything else in it. The body
+has to be read back here: a template published without it is an empty
+message, and the instance accepts that quite happily.
+
 **Two keys are renamed, not translated.** A rule about when a field is
 required or visible is written in the declaration under a readable name and
 sent under the platform's. The rule's own shape is the platform's already:
@@ -336,15 +342,30 @@ def _layout_intents(
     return intents
 
 
+def _template_body(
+    template: Mapping[str, Any], companions: Mapping[str, str]
+) -> str:
+    """A template's body, from the declaration or from the file beside it."""
+    body = template.get("body")
+    if body:
+        return str(body)
+    body_file = template.get("bodyFile")
+    if body_file:
+        return companions.get(str(body_file), "")
+    return ""
+
+
 def _template_intents(
-    entity_wire_name: str, block: Mapping[str, Any]
+    entity_wire_name: str,
+    block: Mapping[str, Any],
+    companions: Mapping[str, str],
 ) -> list[TemplateIntent]:
     return [
         TemplateIntent(
             name=str(template.get("name") or ""),
             entity=entity_wire_name,
             subject=str(template.get("subject") or ""),
-            body=str(template.get("body") or ""),
+            body=_template_body(template, companions),
         )
         for template in block.get("emailTemplates") or []
         if isinstance(template, Mapping) and template.get("name")
@@ -434,18 +455,22 @@ def _role_intents(
 def plan_for(
     declarations: Sequence[Declaration],
     *,
+    companions: Mapping[str, str] | None = None,
     wire_name: Any = None,
 ) -> ApplyPlan:
     """Turn checked declarations into one plan the appliers can carry out.
 
     :param declarations: Every declaration in the publish, already parsed and
         checked.
+    :param companions: The files written beside the declarations, by name —
+        a message template's body is one of these.
     :param wire_name: How an object type's design name becomes its name on
         the platform. Injected so a caller can supply another engine's rule;
         the CRM's own is the default.
     :returns: The plan, with the object types in the order they were
         declared.
     """
+    companions = companions or {}
     if wire_name is None:
         from crmbuilder_v2.introspect.utilization import wire_entity_name
 
@@ -473,7 +498,7 @@ def plan_for(
                     name=name,
                     entity=_entity_intent(name, block),
                     settings=_settings_intent(name, block),
-                    templates=_template_intents(on_platform, block),
+                    templates=_template_intents(on_platform, block, companions),
                     fields=[
                         FieldIntent(
                             name=str(declared.get("name") or ""),

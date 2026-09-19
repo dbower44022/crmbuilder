@@ -284,6 +284,12 @@ def _check_layout(
                 )
 
 
+#: How each layout shape names the field it places: a panel cell says
+#: ``name``, a list column says ``field``. Missing the second meant a list
+#: view could name a field nothing declares and nobody would hear about it.
+_PLACED_FIELD_KEYS = ("name", "field")
+
+
 def _layout_field_names(body: Any) -> list[str]:
     """Every field a layout places, whatever shape the layout takes."""
     names: list[str] = []
@@ -291,7 +297,7 @@ def _layout_field_names(body: Any) -> list[str]:
         for key, value in body.items():
             if key in {"panels", "rows", "columns"}:
                 names.extend(_layout_field_names(value))
-            elif key == "name" and isinstance(value, str):
+            elif key in _PLACED_FIELD_KEYS and isinstance(value, str):
                 names.append(value)
             elif isinstance(value, (list, Mapping)):
                 names.extend(_layout_field_names(value))

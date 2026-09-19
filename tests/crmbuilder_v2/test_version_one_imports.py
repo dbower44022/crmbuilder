@@ -23,25 +23,12 @@ _VERSION_ONE_ROOTS = frozenset({"espo_impl", "automation"})
 #: with the requirement that will remove it. Ordered by that requirement.
 _PERMITTED: frozenset[tuple[str, str]] = frozenset(
     {
-        # REQ-606 — version 2 parses and validates a declaration itself.
+        # The emitter's own self-check still reads a generated declaration
+        # back with version 1's parser. Version 2 has its own parser now
+        # (REQ-606); pointing the self-check at it is what removes this.
         ("adapters/espocrm/adapter.py", "espo_impl.core.config_loader"),
-        ("publish/service.py", "espo_impl.core.config_loader"),
-        ("publish/access.py", "espo_impl.core.models"),
-        ("publish/service.py", "espo_impl.core.models"),
-        # REQ-605 — version 2 writes to a live CRM system through its own
-        # client. The write client exists; the publish path adopts it when the
-        # managers below are absorbed.
-        ("publish/service.py", "espo_impl.core.api_client"),
-        # REQ-608 — declared fields land, with the comparison REQ-609 covers.
-        ("publish/service.py", "espo_impl.core.field_manager"),
-        ("publish/service.py", "espo_impl.core.comparator"),
-        # REQ-615 — the governed setting values and the design-version stamp.
-        ("publish/service.py", "espo_impl.core.system_settings_manager"),
-        # REQ-616 — the run report, step isolation and the manual-config list.
-        ("publish/service.py", "espo_impl.core.deploy_pipeline"),
-        # Area 4a of the inventory — the five provisioning phases, which the
-        # deploy runner calls until upgrade and recovery are absorbed. Not yet
-        # carried by a requirement; it is in the approved inventory.
+        # The five provisioning phases the deploy runner calls, which go when
+        # upgrade and recovery are absorbed — area 4a of the inventory.
         ("deploy/runner.py", "automation.core.deployment"),
     }
 )

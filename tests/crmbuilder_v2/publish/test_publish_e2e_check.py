@@ -24,7 +24,7 @@ absence of an exception. A check that only asserted "publish returned 200" would
 have missed the third defect entirely.
 
 What this does **not** cover, stated rather than implied: the real write path.
-``deploy_pipeline`` against a real EspoCRM, pre-publish backup capture and
+applying against a real EspoCRM, pre-publish backup capture and
 post-publish verification are exercised only against the fake here. Closing that
 needs a full publish to a disposable instance, deferred by DEC-915.
 """
@@ -185,7 +185,7 @@ def target(client, monkeypatch):
     monkeypatch.setenv(secrets.DISABLE_ENV_VAR, "1")
     secrets._reset_in_memory_store_for_tests()
     crm = FakeTargetCrm()
-    monkeypatch.setattr(publish_service, "EspoAdminClient", lambda profile: crm)
+    monkeypatch.setattr(publish_service, "EspoWriteClient", lambda *a, **k: crm)
     resp = client.post(
         "/instances",
         json={
@@ -339,7 +339,7 @@ def test_publish_resolves_credentials_from_the_encrypted_store(
 
         ref = secrets.put_secret("api-key-value")
         crm = FakeTargetCrm()
-        monkeypatch.setattr(publish_service, "EspoAdminClient", lambda profile: crm)
+        monkeypatch.setattr(publish_service, "EspoWriteClient", lambda *a, **k: crm)
         with session_scope() as s:
             identifier = instances_repo.create_instance(
                 s, name="Keyringless target", url="https://target.example.org",
@@ -366,8 +366,8 @@ def test_validate_only_touches_nothing_on_the_target(
     _seed_design()
     identifier, _crm = target
     monkeypatch.setattr(
-        publish_service, "deploy_pipeline",
-        lambda *a, **k: pytest.fail("validate_only reached the deploy pipeline"),
+        publish_service.run_engine, "apply_plan",
+        lambda *a, **k: pytest.fail("a validate-only run reached the appliers"),
     )
     monkeypatch.setattr(
         publish_service, "capture_target_backup",
@@ -418,22 +418,22 @@ def test_a_real_publish_reports_the_same_census_and_records_a_run(
 ):
     """The deploy path carries the census too, and records the run.
 
-    The pipeline itself is stubbed: what the deploy actually does to a real
+    The appliers themselves are stubbed: what applying actually does to a real
     EspoCRM is the disposable-instance layer's question (DEC-915). What is
     checked here is that the handler composes — backup gate, deploy, post-publish
     verification, publish_run row — over a design that generated real content.
     """
-    from espo_impl.core.deploy_pipeline import DeployOutcome
-
     _seed_design()
     identifier, _crm = target
     deployed: list[str] = []
 
-    def _fake_deploy(program, client_, field_mgr, output_fn, **kw):
-        deployed.extend(e.name for e in program.entities)
-        return DeployOutcome(report=None)
+    def _fake_apply(client_, plan, **kw):
+        deployed.extend(entity.name for entity in plan.entities)
+        from crmbuilder_v2.publish.run import RunReport
 
-    monkeypatch.setattr(publish_service, "deploy_pipeline", _fake_deploy)
+        return RunReport()
+
+    monkeypatch.setattr(publish_service.run_engine, "apply_plan", _fake_apply)
 
     resp = client.post(f"/instances/{identifier}/publish")
     assert resp.status_code == 200, resp.text
