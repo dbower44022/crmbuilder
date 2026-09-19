@@ -196,8 +196,10 @@ class PublishResult:
     #: any outcome short of full success).
     stamp: governed_settings.SettingsOutcome | None = None
     stamp_log: list = field(default_factory=list)
-    #: REQ-497 / DEC-982 — the changes an automatic apply declined, each
-    #: carrying its kind and reason. Non-empty only on a refused run.
+    #: REQ-497 / DEC-982 — the changes an automatic apply will not make, each
+    #: carrying its kind and reason. A refused run reports what it declined; a
+    #: preview reports the same list in advance, so an operator reads it
+    #: before running the apply rather than after it refuses.
     declined_changes: list = field(default_factory=list)
     #: REQ-521 / PI-466 — what this publish does to access on the target:
     #: each declared role and team against the target's live roles, in the
@@ -774,6 +776,18 @@ def publish(
     # security program would lower is a removal (PI-466), and an effect the
     # target would not let us read is not proven additive, so it is refused
     # too — unless the removal was confirmed in so many words.
+    # A preview answers "what would happen", and what would happen includes
+    # what an automatic apply would refuse. Reporting it only on the apply —
+    # after an operator has read a clean-looking preview — is how a publish
+    # surprises somebody (CBMTEST, 2026-09-19: a preview reporting four
+    # unchanged fields, an apply refusing all four).
+    if preview and expected_plan_fingerprint is None:
+        pub.declined_changes = automatic_apply_declines(
+            programs,
+            client,
+            access=None if confirm_access_removal else pub.access,
+        )
+
     if not preview and expected_plan_fingerprint is None:
         access_unknown = (
             pub.access["assessed"]

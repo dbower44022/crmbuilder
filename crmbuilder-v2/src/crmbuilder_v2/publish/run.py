@@ -424,20 +424,26 @@ def _wait_outcomes(
 #: 2 unchanged" from them, and a run that stopped naming them would silently
 #: show "no changes" for a publish that changed plenty.
 _COUNTED: dict[str, tuple[str, tuple[str, ...]]] = {
-    "fields": ("", ("created", "updated", "skipped")),
-    "layouts": ("layouts_", ("updated", "skipped", "failed")),
-    "links": ("relationships_", ("created", "skipped", "failed")),
+    "fields": ("", ("created", "updated", "skipped", "refused")),
+    "layouts": ("layouts_", ("updated", "skipped", "refused", "failed")),
+    "links": ("relationships_", ("created", "skipped", "refused", "failed")),
 }
 
 #: What each applier calls the outcome the screen counts under that name.
+#:
+#: A refusal is counted apart from a match, and the distinction is the point:
+#: both leave the instance alone, but one means "already as declared" and the
+#: other means "the design and the instance disagree and this will not be
+#: written". Folding the second into the first told an operator that four
+#: fields were unchanged when one of them conflicted.
 _COUNTS_AS: dict[str, str] = {
     "created": "created",
     "updated": "updated",
     "skipped": "skipped",
-    "kind_conflict": "skipped",
-    "differs": "skipped",
-    "refused": "skipped",
-    "unavailable": "skipped",
+    "kind_conflict": "refused",
+    "differs": "refused",
+    "refused": "refused",
+    "unavailable": "refused",
     "previewed": "created",
     "failed": "failed",
 }
@@ -454,12 +460,15 @@ def summary(report: RunReport) -> dict[str, int]:
         "created": 0,
         "updated": 0,
         "skipped": 0,
+        "refused": 0,
         "errors": 0,
         "layouts_updated": 0,
         "layouts_skipped": 0,
+        "layouts_refused": 0,
         "layouts_failed": 0,
         "relationships_created": 0,
         "relationships_skipped": 0,
+        "relationships_refused": 0,
         "relationships_failed": 0,
     }
     for step in report.steps:

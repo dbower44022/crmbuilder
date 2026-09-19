@@ -402,3 +402,24 @@ def test_a_preview_counts_what_it_would_do() -> None:
     """That is the question a preview answers."""
     counts = runner.summary(apply_plan(FakeInstance(), _full_plan(), preview=True))
     assert counts["created"] >= 1
+
+
+def test_a_refusal_is_counted_apart_from_a_match() -> None:
+    """Both leave the instance alone; one means "already as declared" and the
+    other means "the design and the instance disagree". Counting them together
+    told an operator four fields were unchanged when one conflicted."""
+    instance = FakeInstance()
+    instance.existing_entities.add("CEngagement")
+    # The field exists with a different type: a conflict, not a match.
+    instance.fields["cStage"] = {"type": "varchar", "label": "Stage"}
+    counts = runner.summary(apply_plan(instance, _full_plan()))
+    assert counts["refused"] == 1
+    assert counts["skipped"] == 0
+
+
+def test_a_refused_layout_is_counted_as_refused() -> None:
+    plan = ApplyPlan(
+        entities=[EntityPlan(name="Engagement", layouts=[LayoutIntent("detailPortal", [])])]
+    )
+    counts = runner.summary(apply_plan(FakeInstance(), plan))
+    assert counts["layouts_refused"] == 1

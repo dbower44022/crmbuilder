@@ -531,10 +531,60 @@ def test_publish_preview_dry_runs(monkeypatch, _stub_live):
         rendered_at="2026-06-21T00:00:00",
         preview=True,
     )
-    # Preview runs the deploy engine in dry-run, and marks nothing deployed.
+    # Preview runs the appliers in preview, and marks nothing deployed.
     assert captured["dry_run"] is True
     assert res.preview is True
     assert all(not p.deployed for p in res.programs)
+
+
+def test_a_preview_says_what_an_apply_would_refuse(monkeypatch, _stub_live):
+    """Reporting a refusal only on the apply — after the operator has read a
+    clean-looking preview — is how a publish surprises somebody. CBMTEST on
+    2026-09-19: a preview showing four unchanged fields, an apply refusing all
+    four."""
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service.run_engine, "apply_plan", lambda *a, **k: _applied()
+    )
+    # The target holds nickName as a different kind of value than the design
+    # declares: a type change, which an automatic apply refuses.
+    _stub_live["entity_defs"]["Contact"] = {
+        "nickName": {"type": "enum", "options": ["a", "b"]}
+    }
+
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+        preview=True,
+    )
+    assert res.preview is True
+    assert res.aborted is False, "a preview reports the refusal, it does not abort"
+    assert [d["kind"] for d in res.declined_changes] == ["type_change"]
+    assert "nickName" in res.declined_changes[0]["construct"]
+
+
+def test_a_preview_of_an_approved_plan_reports_no_refusals(monkeypatch, _stub_live):
+    """The reviewed path may carry removals and narrowings — that is what
+    approving a plan means — so the automatic fence does not apply to it."""
+    _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
+    monkeypatch.setattr(
+        service.run_engine, "apply_plan", lambda *a, **k: _applied()
+    )
+    _stub_live["entity_defs"]["Contact"] = {
+        "nickName": {"type": "enum", "options": ["a", "b"]}
+    }
+
+    res = service.publish(
+        {"instance_identifier": "INST-001", "instance_url": "https://x"},
+        _FakeDesignClient(),
+        api_key="K",
+        rendered_at="2026-06-21T00:00:00",
+        preview=True,
+        expected_plan_fingerprint="whatever-the-operator-approved",
+    )
+    assert res.declined_changes == []
 
 
 # -- governed per-instance settings (PI-406 / REQ-485) ------------------------
