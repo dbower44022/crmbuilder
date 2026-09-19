@@ -366,3 +366,39 @@ def test_a_timed_out_wait_is_not_a_failure() -> None:
     )
     assert not wait_step.failed
     assert report.succeeded
+
+
+# --- the counts a screen reads ----------------------------------------------
+
+
+def test_the_counts_name_what_the_screen_shows() -> None:
+    """The publish screen turns these into "3 create, 1 update, 2 unchanged".
+    A run that stopped naming them would show "no changes" for a publish that
+    changed plenty."""
+    report = apply_plan(FakeInstance(), _full_plan())
+    counts = runner.summary(report)
+    assert counts["created"] == 1  # the one declared field
+    assert counts["layouts_updated"] == 1
+    assert counts["relationships_created"] == 1
+    assert counts["errors"] == 0
+
+
+def test_what_was_already_as_declared_counts_as_unchanged() -> None:
+    instance = FakeInstance()
+    instance.existing_entities.add("CEngagement")
+    instance.fields["cStage"] = {"type": "enum", "label": "Stage"}
+    counts = runner.summary(apply_plan(instance, _full_plan()))
+    assert counts["skipped"] >= 1
+
+
+def test_a_failure_is_counted_as_an_error() -> None:
+    instance = FakeInstance()
+    instance.field_create_status = 400
+    counts = runner.summary(apply_plan(instance, _full_plan()))
+    assert counts["errors"] == 1
+
+
+def test_a_preview_counts_what_it_would_do() -> None:
+    """That is the question a preview answers."""
+    counts = runner.summary(apply_plan(FakeInstance(), _full_plan(), preview=True))
+    assert counts["created"] >= 1

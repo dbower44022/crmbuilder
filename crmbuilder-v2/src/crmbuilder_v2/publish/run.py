@@ -419,6 +419,66 @@ def _wait_outcomes(
     ]
 
 
+#: The counts the publish screen reads off a run, and what each one counts.
+#: Kept because a screen depends on these names: it shows "3 create, 1 update,
+#: 2 unchanged" from them, and a run that stopped naming them would silently
+#: show "no changes" for a publish that changed plenty.
+_COUNTED: dict[str, tuple[str, tuple[str, ...]]] = {
+    "fields": ("", ("created", "updated", "skipped")),
+    "layouts": ("layouts_", ("updated", "skipped", "failed")),
+    "links": ("relationships_", ("created", "skipped", "failed")),
+}
+
+#: What each applier calls the outcome the screen counts under that name.
+_COUNTS_AS: dict[str, str] = {
+    "created": "created",
+    "updated": "updated",
+    "skipped": "skipped",
+    "kind_conflict": "skipped",
+    "differs": "skipped",
+    "refused": "skipped",
+    "unavailable": "skipped",
+    "previewed": "created",
+    "failed": "failed",
+}
+
+
+def summary(report: RunReport) -> dict[str, int]:
+    """The run as the counts a screen reads.
+
+    A preview counts what it would do, because that is the question a preview
+    answers; an applied run counts what it did.
+    """
+    counts: dict[str, int] = {
+        "total": 0,
+        "created": 0,
+        "updated": 0,
+        "skipped": 0,
+        "errors": 0,
+        "layouts_updated": 0,
+        "layouts_skipped": 0,
+        "layouts_failed": 0,
+        "relationships_created": 0,
+        "relationships_skipped": 0,
+        "relationships_failed": 0,
+    }
+    for step in report.steps:
+        prefix, wanted = _COUNTED.get(step.name, (None, ()))
+        for outcome in step.outcomes:
+            status = getattr(outcome, "status", "")
+            counted = _COUNTS_AS.get(status)
+            if prefix is None:
+                if counted == "failed":
+                    counts["errors"] += 1
+                continue
+            counts["total"] += 1
+            if counted == "failed":
+                counts["errors" if not prefix else f"{prefix}failed"] += 1
+            elif counted in wanted:
+                counts[f"{prefix}{counted}"] += 1
+    return counts
+
+
 def describe(report: RunReport) -> list[str]:
     """The run as lines a person can read.
 
