@@ -20,6 +20,13 @@ itself. And on an object type the platform ships, a field this design adds
 carries the platform's prefix — a layout cell naming it unprefixed shows
 nothing at all, which is the quietest possible failure.
 
+**The name field is placed if the design did not place it.** The platform
+treats a record's name as required, and a design that arranges its screens by
+grouping fields has no reason to mention a field with no group — so the
+record view comes out with no place to type the one value the platform
+insists on, and the form cannot be saved. The design can say it means it, by
+turning the automatic placement off.
+
 **Two keys are renamed, not translated.** A rule about when a field is
 required or visible is written in the declaration under a readable name and
 sent under the platform's. The rule's own shape is the platform's already:
@@ -61,6 +68,15 @@ RENAMED: dict[str, str] = {
 
 #: How the declaration wraps each layout shape, and what the platform wants.
 _LAYOUT_WRAPPERS = ("panels", "columns")
+
+#: The layouts a record is typed into, where the name field must have a place.
+_RECORD_VIEWS = frozenset({"detail", "edit", "detailSmall", "detailConvert"})
+
+#: The setting a design uses to say it left the name field out on purpose.
+AUTO_PLACE_NAME = "autoPlaceName"
+
+#: What the platform calls a record's name.
+NAME_FIELD = "name"
 
 #: What a declaration may ask for an object type, in the appliers' words.
 ACTIONS: dict[str, str] = {
@@ -164,6 +180,41 @@ def _rename_cells(body: Any, declared_fields: frozenset[str]) -> Any:
     return body
 
 
+def place_name_field(body: Any) -> Any:
+    """Put the name field on a record view that does not already carry it.
+
+    The platform requires a record's name, so a view without it is a form
+    nobody can save. It goes at the top of the first panel that is always
+    shown — never one that appears only under a condition, where it would be
+    just as absent when the condition is false.
+    """
+    if not isinstance(body, list) or not body:
+        return body
+    for panel in body:
+        if not isinstance(panel, Mapping):
+            continue
+        for row in panel.get("rows") or []:
+            if not isinstance(row, list):
+                continue
+            for cell in row:
+                cell_name = cell.get("name") if isinstance(cell, Mapping) else cell
+                if cell_name == NAME_FIELD:
+                    return body
+
+    placed = [dict(panel) if isinstance(panel, Mapping) else panel for panel in body]
+    target = next(
+        (
+            panel
+            for panel in placed
+            if isinstance(panel, Mapping) and not panel.get("dynamicLogicVisible")
+        ),
+        placed[0],
+    )
+    if isinstance(target, Mapping):
+        target["rows"] = [[{"name": NAME_FIELD}], *(target.get("rows") or [])]
+    return placed
+
+
 def _layout_intents(
     block: Mapping[str, Any],
     *,
@@ -173,17 +224,21 @@ def _layout_intents(
     layouts = block.get("layout") or {}
     if not isinstance(layouts, Mapping):
         return []
-    return [
-        LayoutIntent(
-            layout_type=str(layout_type),
-            body=layout_body(
-                body,
-                entity_is_native=entity_is_native,
-                declared_fields=declared_fields,
-            ),
+    settings = block.get("settings") or {}
+    place_name = settings.get(AUTO_PLACE_NAME, True)
+
+    intents: list[LayoutIntent] = []
+    for layout_type, body in layouts.items():
+        kind = str(layout_type)
+        translated = layout_body(
+            body,
+            entity_is_native=entity_is_native,
+            declared_fields=declared_fields,
         )
-        for layout_type, body in layouts.items()
-    ]
+        if place_name and kind in _RECORD_VIEWS:
+            translated = place_name_field(translated)
+        intents.append(LayoutIntent(layout_type=kind, body=translated))
+    return intents
 
 
 def _template_intents(

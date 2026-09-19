@@ -282,7 +282,8 @@ entities:
 """
     )
     [layout] = plan.entities[0].layouts
-    cells = layout.body[0]["rows"][0]
+    # The name field is placed first, so the declared row is the one after it.
+    cells = layout.body[0]["rows"][-1]
     assert cells[0]["name"] == "cMentorStatus"
     # A field the platform ships keeps its own name.
     assert cells[1]["name"] == "lastName"
@@ -303,7 +304,7 @@ entities:
 """
     )
     [layout] = plan.entities[0].layouts
-    assert layout.body[0]["rows"][0][0]["name"] == "stage"
+    assert layout.body[0]["rows"][-1][0]["name"] == "stage"
 
 
 def test_a_cell_written_as_a_bare_name_is_prefixed_too() -> None:
@@ -315,3 +316,88 @@ def test_a_cell_written_as_a_bare_name_is_prefixed_too() -> None:
         declared_fields=frozenset({"mentorStatus"}),
     )
     assert body == ["cMentorStatus", "lastName"]
+
+
+# --- the field the platform insists on ---------------------------------------
+
+
+def test_a_record_view_gets_the_name_field_when_the_design_left_it_out() -> None:
+    """Without it the create form has nowhere to type the one value the
+    platform requires, and nothing can be saved."""
+    plan = _plan(
+        """
+entities:
+  Engagement:
+    fields:
+      - name: stage
+        type: varchar
+    layout:
+      detail:
+        panels:
+          - label: Overview
+            rows: [[{name: stage}]]
+"""
+    )
+    [layout] = plan.entities[0].layouts
+    assert layout.body[0]["rows"][0] == [{"name": "name"}]
+
+
+def test_a_design_that_places_the_name_field_itself_is_left_alone() -> None:
+    plan = _plan(
+        """
+entities:
+  Engagement:
+    layout:
+      detail:
+        panels:
+          - rows: [[{name: name}, {name: stage}]]
+"""
+    )
+    [layout] = plan.entities[0].layouts
+    assert len(layout.body[0]["rows"]) == 1
+
+
+def test_a_design_can_say_it_left_the_name_field_out_on_purpose() -> None:
+    plan = _plan(
+        """
+entities:
+  Engagement:
+    settings:
+      autoPlaceName: false
+    layout:
+      detail:
+        panels:
+          - rows: [[{name: stage}]]
+"""
+    )
+    [layout] = plan.entities[0].layouts
+    assert layout.body[0]["rows"] == [[{"name": "stage"}]]
+
+
+def test_the_name_field_never_lands_on_a_panel_that_may_be_hidden() -> None:
+    """A conditional panel is just as absent as no panel when the condition
+    is false."""
+    from crmbuilder_v2.publish.from_declaration import place_name_field
+
+    body = place_name_field(
+        [
+            {"label": "Only sometimes", "dynamicLogicVisible": {"all": []}, "rows": []},
+            {"label": "Always", "rows": []},
+        ]
+    )
+    assert body[0]["rows"] == []
+    assert body[1]["rows"] == [[{"name": "name"}]]
+
+
+def test_a_list_view_is_not_given_a_name_field() -> None:
+    plan = _plan(
+        """
+entities:
+  Engagement:
+    layout:
+      list:
+        columns: [{name: stage}]
+"""
+    )
+    [layout] = plan.entities[0].layouts
+    assert layout.body == [{"name": "stage"}]
