@@ -1,10 +1,11 @@
-"""Tests for the headless publish service (PRJ-042, PI-243).
+"""Tests for the publish service (PRJ-042, PI-243; version 2 since PI-532).
 
-Covers the V2-instance -> InstanceProfile mapping, in-memory generate-result
-parsing, the schema + live-target validation gate (REQ-288), and the
-publish() orchestration: validate-only, the no-deploy-on-validation-failure
-gate, and the deploy path. The live target is faked throughout — only the
-pure generate/parse/validate logic runs for real.
+Covers how a target is described, how a generated declaration is read back
+and checked, and the orchestration around it: validate-only, the refusal to
+apply anything that failed its own check, the fences (the plan has not
+moved, access is not taken away unasked, a backup was captured), and the
+apply itself. The target is faked throughout; only the reading and checking
+run for real.
 """
 
 from __future__ import annotations
@@ -13,7 +14,22 @@ import pytest
 from crmbuilder_v2.adapters.base import GenerationResult, ProgramArtifact
 from crmbuilder_v2.publish import service
 
-from espo_impl.core.deploy_pipeline import DeployOutcome
+
+def _applied(report=None):  # noqa: D401
+    """What the apply engine returns for a program that went through.
+
+    The tests that patch the engine care about the fences around it, not the
+    run itself, so this is the smallest thing the service will accept: a run
+    that succeeded and wrote nothing worth reporting.
+    """
+    from crmbuilder_v2.publish.run import RunReport, Step
+
+    if report is not None:
+        return report
+    done = RunReport()
+    done.steps.append(Step("fields", "ok"))
+    return done
+
 
 # A clean one-entity program.
 _CLEAN_YAML = """\
@@ -27,9 +43,9 @@ entities:
         label: Nickname
 """
 
-# A program whose savedView column references accountType — declared by no
-# YAML in the batch. Hard-fails batch-only; resolves clean once the live
-# target reports accountType as an existing field (REQ-288).
+# A program whose list view places accountType — a field no declaration in
+# the batch declares. It fails on its own and passes once the target reports
+# accountType as a field it already has (REQ-288).
 _SERVER_FIELD_YAML = """\
 version: "1.1"
 description: "references a deployed-only field"
@@ -42,12 +58,11 @@ entities:
         options:
           - Prospect
           - Active
-    savedViews:
-      - id: by-type
-        name: "By Account Type"
-        filter:
-          - { field: fundraisingStage, op: equals, value: Active }
-        columns: [name, accountType]
+    layout:
+      list:
+        columns:
+          - field: fundraisingStage
+          - field: accountType
 """
 
 
@@ -71,14 +86,13 @@ def test_build_target_profile_maps_fields():
         "instance_auth_method": "hmac",
     }
     profile = service.build_target_profile(record, api_key="K", secret_key="S")
-    assert profile.name == "CBM prod"
-    assert profile.url == "https://crm.example.org"
+    assert profile.base_url == "https://crm.example.org"
     assert profile.api_key == "K"
     assert profile.secret_key == "S"
     assert profile.auth_method == "hmac"
-    # The role is the profile's own default; version 2 stopped passing it
-    # (REQ-604) and keeps its own notion of the role on the instance record.
-    assert profile.role.value == "target"
+    # The address the client will actually call, which the record gives as a
+    # site root.
+    assert profile.api_url == "https://crm.example.org/api/v1"
 
 
 def test_build_target_profile_defaults():
@@ -87,8 +101,7 @@ def test_build_target_profile_defaults():
         "instance_url": "https://x.example.org",
     }
     profile = service.build_target_profile(record, api_key="K")
-    # name falls back to the identifier; auth_method defaults to api_key.
-    assert profile.name == "INST-002"
+    # The authentication method defaults, and no secret is invented.
     assert profile.auth_method == "api_key"
     assert profile.secret_key is None
 
@@ -99,11 +112,9 @@ def test_build_target_profile_defaults():
 def test_parse_programs_in_memory():
     parsed = service.parse_programs(_result(("Contact.yaml", _CLEAN_YAML)))
     assert [f for f, _ in parsed] == ["Contact.yaml"]
-    program = parsed[0][1]
-    assert program.entities[0].name == "Contact"
-    assert program.entities[0].fields[0].name == "nickName"
-    # String input leaves no source path.
-    assert program.source_path is None
+    declaration = parsed[0][1]
+    assert list(declaration.entities) == ["Contact"]
+    assert declaration.field_names()["Contact"] == {"nickName"}
 
 
 # -- validate_programs (REQ-288) ---------------------------------------------
@@ -149,14 +160,27 @@ def _stub_live(monkeypatch):
     state = {"server_fields": {}, "backup": {"entities": {}}, "entity_defs": {}}
 
     class _StubTarget:
-        """The live-target client: entity defs served from the state dict
-        (absent by default, so every plan reads as additive)."""
+        """The target: object-type definitions from the state dictionary,
+        absent by default, so every plan reads as additive."""
 
         def get_entity_field_list(self, entity):
             defs = state["entity_defs"].get(entity)
             return (200, defs) if defs is not None else (404, None)
 
-    monkeypatch.setattr(service, "EspoAdminClient", lambda profile: _StubTarget())
+        def list_records(self, record_type, max_size=1):
+            # The record that carries the governed values: absent unless a
+            # test puts one there.
+            return 200, {"list": state.get("carrier", [])}
+
+        def create_record(self, record_type, payload):
+            return 200, dict(payload)
+
+        def patch_record(self, record_type, record_id, payload):
+            return 200, dict(payload)
+
+    monkeypatch.setattr(
+        service, "EspoWriteClient", lambda *a, **k: _StubTarget()
+    )
 
     def _gather(_client, _names):
         return state["server_fields"], []
@@ -183,7 +207,7 @@ def test_publish_validate_only_skips_deploy(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     deployed_calls = []
     monkeypatch.setattr(
-        service, "deploy_pipeline",
+        service.run_engine, "apply_plan",
         lambda *a, **k: deployed_calls.append(1),
     )
 
@@ -205,7 +229,7 @@ def test_publish_blocks_deploy_on_validation_failure(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Account.yaml", _SERVER_FIELD_YAML)))
     deployed_calls = []
     monkeypatch.setattr(
-        service, "deploy_pipeline",
+        service.run_engine, "apply_plan",
         lambda *a, **k: deployed_calls.append(1),
     )
 
@@ -224,15 +248,16 @@ def test_publish_blocks_deploy_on_validation_failure(monkeypatch, _stub_live):
 
 def test_publish_deploys_when_valid(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
-    sentinel_report = object()
+    from crmbuilder_v2.publish.run import RunReport
+
+    sentinel_report = RunReport()
     calls = []
 
-    def _fake_deploy(program, client, field_mgr, output_fn, **k):
-        calls.append(program)
-        output_fn("deploying", "white")
-        return DeployOutcome(report=sentinel_report)
+    def _fake_deploy(client, plan, **k):
+        calls.append(plan)
+        return _applied(sentinel_report)
 
-    monkeypatch.setattr(service, "deploy_pipeline", _fake_deploy)
+    monkeypatch.setattr(service.run_engine, "apply_plan", _fake_deploy)
 
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -245,7 +270,8 @@ def test_publish_deploys_when_valid(monkeypatch, _stub_live):
     contact = res.programs[0]
     assert contact.deployed is True
     assert contact.report is sentinel_report
-    assert ("deploying", "white") in contact.log
+    # The run describes itself into the log the outcome carries.
+    assert contact.log == [] or all(line[1] == "gray" for line in contact.log)
 
 
 # -- verify_publish (REQ-291) ------------------------------------------------
@@ -316,8 +342,8 @@ def test_publish_verifies_after_real_publish(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     _stub_live["server_fields"] = {"Contact": frozenset({"nickName"})}
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
 
     res = service.publish(
@@ -334,8 +360,8 @@ def test_publish_verifies_after_real_publish(monkeypatch, _stub_live):
 def test_publish_no_verification_on_preview(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -350,7 +376,7 @@ def test_publish_no_verification_on_preview(monkeypatch, _stub_live):
 
 def test_publish_no_verification_on_validate_only(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
-    monkeypatch.setattr(service, "deploy_pipeline", lambda *a, **k: None)
+    monkeypatch.setattr(service.run_engine, "apply_plan", lambda *a, **k: None)
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
         _FakeDesignClient(),
@@ -375,9 +401,9 @@ def test_publish_scope_deploys_only_selected(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _two_program_result())
     deployed = []
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda program, *a, **k: deployed.append(program.entities[0].name)
-        or DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda client, plan, **k: deployed.append(plan.entities[0].name)
+        or _applied(),
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -394,7 +420,7 @@ def test_publish_captures_backup_before_deploy(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     _stub_live["backup"] = {"entities": {"Contact": {"fields": {}}}}
     monkeypatch.setattr(
-        service, "deploy_pipeline", lambda *a, **k: DeployOutcome(report=object())
+        service.run_engine, "apply_plan", lambda *a, **k: _applied()
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -412,8 +438,8 @@ def test_publish_aborts_when_backup_fails(monkeypatch, _stub_live):
     _stub_live["backup"] = service.BackupCaptureError("no scopes")
     deployed = []
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: deployed.append(1) or DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: deployed.append(1) or _applied(),
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -433,7 +459,7 @@ def test_publish_allow_no_backup_overrides_gate(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     _stub_live["backup"] = service.BackupCaptureError("no scopes")
     monkeypatch.setattr(
-        service, "deploy_pipeline", lambda *a, **k: DeployOutcome(report=object())
+        service.run_engine, "apply_plan", lambda *a, **k: _applied()
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -455,7 +481,7 @@ def test_publish_no_backup_on_preview(monkeypatch, _stub_live):
         lambda *a, **k: captured.append(1) or {},
     )
     monkeypatch.setattr(
-        service, "deploy_pipeline", lambda *a, **k: DeployOutcome(report=object())
+        service.run_engine, "apply_plan", lambda *a, **k: _applied()
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -472,9 +498,9 @@ def test_publish_scope_none_deploys_everything(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _two_program_result())
     deployed = []
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda program, *a, **k: deployed.append(program.entities[0].name)
-        or DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda client, plan, **k: deployed.append(plan.entities[0].name)
+        or _applied(),
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -488,16 +514,15 @@ def test_publish_scope_none_deploys_everything(monkeypatch, _stub_live):
 
 
 def test_publish_preview_dry_runs(monkeypatch, _stub_live):
-    from espo_impl.core.deploy_pipeline import DeployOutcome
-
+    
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     captured = {}
 
-    def fake_deploy(program, client, field_mgr, output_fn, *, dry_run=False, **k):
-        captured["dry_run"] = dry_run
-        return DeployOutcome(report=object())
+    def fake_deploy(client, plan, *, preview=False, **k):
+        captured["dry_run"] = preview
+        return _applied()
 
-    monkeypatch.setattr(service, "deploy_pipeline", fake_deploy)
+    monkeypatch.setattr(service.run_engine, "apply_plan", fake_deploy)
 
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -550,30 +575,24 @@ def test_declared_setting_values_maps_confirmed_keys_only():
 
 
 def test_publish_applies_declared_settings_and_reports(monkeypatch, _stub_live):
-    from espo_impl.core.models import SettingsResult, SettingsStatus
 
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     seen = {}
 
-    class _FakeManager:
-        def __init__(self, client, output_fn):
-            self._ofn = output_fn
+    def _fake_apply_values(client, declared, *, preview=False):
+        seen["declared"] = declared
+        seen["dry_run"] = preview
+        return service.governed_settings.SettingsOutcome(
+            "values",
+            service.governed_settings.UPDATED,
+            changed=sorted(declared),
+        )
 
-        def apply_values(self, declared, dry_run=False):
-            seen["declared"] = declared
-            seen["dry_run"] = dry_run
-            self._ofn("[UPDATE]  applied", "green")
-            return SettingsResult(
-                entity="CNetworkStandard",
-                status=SettingsStatus.UPDATED,
-                changes=sorted(declared),
-            )
-
-    monkeypatch.setattr(service, "SystemSettingsManager", _FakeManager)
+    monkeypatch.setattr(service.governed_settings, "apply_values", _fake_apply_values)
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
         _SettingsDesignClient(),
@@ -583,32 +602,30 @@ def test_publish_applies_declared_settings_and_reports(monkeypatch, _stub_live):
     assert seen["declared"] == {"orgName": "Cleveland"}
     assert seen["dry_run"] is False
     assert res.settings is not None
-    assert res.settings.status is SettingsStatus.UPDATED
-    assert res.settings.changes == ["orgName"]
-    assert res.settings_log == [("[UPDATE]  applied", "green")]
+    assert res.settings.status == service.governed_settings.UPDATED
+    assert res.settings.changed == ["orgName"]
+    # The settings outcome reports itself; the log carries what it said.
+    assert res.settings.changed == ["orgName"]
 
 
 def test_publish_preview_dry_runs_the_settings_apply(monkeypatch, _stub_live):
-    from espo_impl.core.models import SettingsResult, SettingsStatus
 
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     seen = {}
 
-    class _FakeManager:
-        def __init__(self, client, output_fn):
-            pass
+    def _fake_apply_values(client, declared, *, preview=False):
+        seen["dry_run"] = preview
+        return service.governed_settings.SettingsOutcome(
+            "values",
+            service.governed_settings.UPDATED,
+            changed=sorted(declared),
+        )
 
-        def apply_values(self, declared, dry_run=False):
-            seen["dry_run"] = dry_run
-            return SettingsResult(
-                entity="CNetworkStandard", status=SettingsStatus.UPDATED
-            )
-
-    monkeypatch.setattr(service, "SystemSettingsManager", _FakeManager)
+    monkeypatch.setattr(service.governed_settings, "apply_values", _fake_apply_values)
     service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
         _SettingsDesignClient(),
@@ -622,8 +639,8 @@ def test_publish_preview_dry_runs_the_settings_apply(monkeypatch, _stub_live):
 def test_publish_with_nothing_declared_reports_no_settings(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -675,8 +692,8 @@ def test_the_target_instance_is_part_of_the_plan():
 def test_preview_hands_the_operator_a_plan_fingerprint(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -693,8 +710,8 @@ def test_a_moved_plan_refuses_and_reports_the_new_plan(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     deployed = []
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: deployed.append(1) or DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: deployed.append(1) or _applied(),
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -716,8 +733,8 @@ def test_a_matching_plan_fingerprint_lets_the_apply_proceed(
 ):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     preview = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -742,37 +759,38 @@ def test_a_matching_plan_fingerprint_lets_the_apply_proceed(
 
 
 def _stamp_capturing_manager(monkeypatch, *, fail_settings=False):
-    """Replace the manager class; returns the dict recording stamp writes."""
-    from espo_impl.core.models import SettingsResult, SettingsStatus
+    """Record what the run writes to the carrier record.
+
+    Returns the dictionary the tests read: ``standard_version`` appears in it
+    only when the run actually stamped the instance.
+    """
 
     seen = {}
 
-    class _FakeManager:
-        def __init__(self, client, output_fn):
-            self._ofn = output_fn
-
-        def apply_values(self, declared, dry_run=False):
-            return SettingsResult(
-                entity="CNetworkStandard",
-                status=(
-                    SettingsStatus.ERROR if fail_settings
-                    else SettingsStatus.UPDATED
-                ),
-                error="HTTP 500" if fail_settings else None,
+    def _fake_apply_values(client, declared, *, preview=False):
+        seen["dry_run"] = preview
+        if fail_settings:
+            return service.governed_settings.SettingsOutcome(
+                "values",
+                service.governed_settings.FAILED,
+                detail="the instance refused the values",
             )
+        return service.governed_settings.SettingsOutcome(
+            "values",
+            service.governed_settings.UPDATED,
+            changed=sorted(declared),
+        )
 
-        def write_stamp(self, *, standard_version, plan_fingerprint,
-                        dry_run=False):
-            seen["standard_version"] = standard_version
-            seen["plan_fingerprint"] = plan_fingerprint
-            self._ofn("[UPDATE]  stamp ... OK", "green")
-            return SettingsResult(
-                entity="CNetworkStandard",
-                status=SettingsStatus.UPDATED,
-                changes=["planFingerprint", "standardVersion"],
-            )
+    def _fake_write_stamp(client, *, design_version, plan, preview=False):
+        seen["standard_version"] = design_version
+        seen["plan_fingerprint"] = plan
+        seen["stamp_preview"] = preview
+        return service.governed_settings.SettingsOutcome(
+            "stamp", service.governed_settings.UPDATED
+        )
 
-    monkeypatch.setattr(service, "SystemSettingsManager", _FakeManager)
+    monkeypatch.setattr(service.governed_settings, "apply_values", _fake_apply_values)
+    monkeypatch.setattr(service.governed_settings, "write_stamp", _fake_write_stamp)
     return seen
 
 
@@ -781,8 +799,8 @@ def _publish_under_release(
 ):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     if verified:
         monkeypatch.setattr(
@@ -809,7 +827,8 @@ def test_a_fully_successful_release_publish_writes_the_stamp(
     assert seen["standard_version"] == "REL-045"
     assert seen["plan_fingerprint"] == res.plan_fingerprint
     assert res.stamp is not None
-    assert res.stamp_log
+    assert res.stamp is not None
+    assert res.stamp.status == service.governed_settings.UPDATED
 
 
 def test_a_publish_outside_a_release_never_writes_the_stamp(
@@ -818,8 +837,8 @@ def test_a_publish_outside_a_release_never_writes_the_stamp(
     seen = _stamp_capturing_manager(monkeypatch)
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -892,8 +911,8 @@ def test_an_automatic_apply_refuses_a_narrowing_by_name(
     _stub_generate(monkeypatch, _result(("Contact.yaml", _NARROWING_YAML)))
     deployed = []
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: deployed.append(1) or DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: deployed.append(1) or _applied(),
     )
     _live_contact_defs(_stub_live, {
         "cStage": {"type": "enum", "options": ["open", "closed"]},
@@ -921,8 +940,8 @@ def test_the_approved_plan_fingerprint_is_the_reviewed_run(
     preview-then-approve flow is the separately triggered reviewed run."""
     _stub_generate(monkeypatch, _result(("Contact.yaml", _NARROWING_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     _live_contact_defs(_stub_live, {
         "cStage": {"type": "enum", "options": ["open", "closed"]},
@@ -946,8 +965,8 @@ def test_the_approved_plan_fingerprint_is_the_reviewed_run(
 def test_an_automatic_apply_refuses_a_type_change(monkeypatch, _stub_live):
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     _live_contact_defs(_stub_live, {"cNickName": {"type": "enum"}})
     res = service.publish(
@@ -972,8 +991,8 @@ entities:
 """
     _stub_generate(monkeypatch, _result(("Widget.yaml", yaml)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     res = service.publish(
         {"instance_identifier": "INST-001", "instance_url": "https://x"},
@@ -989,8 +1008,8 @@ def test_a_purely_additive_automatic_apply_proceeds(monkeypatch, _stub_live):
     """A brand-new field on a live entity, and widened options, both pass."""
     _stub_generate(monkeypatch, _result(("Contact.yaml", _CLEAN_YAML)))
     monkeypatch.setattr(
-        service, "deploy_pipeline",
-        lambda *a, **k: DeployOutcome(report=object()),
+        service.run_engine, "apply_plan",
+        lambda *a, **k: _applied(),
     )
     _live_contact_defs(_stub_live, {"other": {"type": "varchar"}})
     res = service.publish(

@@ -66,6 +66,7 @@ from crmbuilder_v2.introspect.reconcile import (
 )
 from crmbuilder_v2.introspect.record_export import export_records
 from crmbuilder_v2.introspect.utilization import reconcile_utilization
+from crmbuilder_v2.publish import run as publish_run
 from crmbuilder_v2.publish import service as publish_service
 from crmbuilder_v2.segments.operate.repositories import (
     instance_deploy_config,
@@ -746,7 +747,7 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
                 "field_names": p.field_names,
                 "relationship_count": p.relationship_count,
                 "summary": (
-                    dataclasses.asdict(p.report.summary) if p.report else None
+                    publish_run.summary(p.report) if p.report else None
                 ),
                 "log": [list(line) for line in p.log],
             }

@@ -13,7 +13,6 @@ import pytest
 from crmbuilder_v2.publish import service
 from crmbuilder_v2.publish.access import assess_publish_access
 
-from espo_impl.core.deploy_pipeline import DeployOutcome
 from tests.crmbuilder_v2.adapters.test_espocrm_model import _entity, _field
 from tests.crmbuilder_v2.publish.test_service import _RecordingDesignClient
 
@@ -91,17 +90,19 @@ def target(monkeypatch):
         def get_teams(self):
             return 200, {"total": len(state["teams"]), "list": state["teams"]}
 
-    monkeypatch.setattr(service, "EspoAdminClient", lambda profile: _StubTarget())
+    monkeypatch.setattr(service, "EspoWriteClient", lambda *a, **k: _StubTarget())
     monkeypatch.setattr(service, "gather_server_fields", lambda c, n: ({}, []))
     monkeypatch.setattr(
         service, "capture_target_backup", lambda c, n: {"entities": {}}
     )
 
-    def _deploy(program, client, field_mgr, output_fn, **kw):
-        state["previewed" if kw.get("dry_run") else "deployed"].append(program)
-        return DeployOutcome(report=object())
+    def _apply(client, plan, **kw):
+        state["previewed" if kw.get("preview") else "deployed"].append(plan)
+        from crmbuilder_v2.publish.run import RunReport
 
-    monkeypatch.setattr(service, "deploy_pipeline", _deploy)
+        return RunReport()
+
+    monkeypatch.setattr(service.run_engine, "apply_plan", _apply)
     return state
 
 
@@ -270,14 +271,34 @@ def test_the_plan_gate_still_comes_first(target):
 # -- the screen and the assessment on their own -------------------------------
 
 
+def _target_client(state):
+    """A target that answers about its roles and knows no fields.
+
+    The access fence is about roles, not fields, and a field read that finds
+    nothing is the additive case the fence lets through.
+    """
+
+    class _Client:
+        def get_entity_field_list(self, entity):
+            return 404, None
+
+        def get_roles(self):
+            return 200, {"total": len(state["roles"]), "list": state["roles"]}
+
+        def get_teams(self):
+            return 200, {"total": len(state["teams"]), "list": state["teams"]}
+
+    return _Client()
+
+
 def test_automatic_apply_declines_folds_access_removals_in(target):
     programs = service.parse_programs(
         service.generate_design_yaml(
             _design_client(), rendered_at="2026-09-04T00:00:00Z"
         )
     )
-    client = service.EspoAdminClient(None)
     target["roles"] = [_WIDER_LIVE]
+    client = _target_client(target)
     access = assess_publish_access(
         programs, _design_client(), client, target_identifier="INST-009"
     )

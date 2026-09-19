@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import Any
 
 from crmbuilder_v2.access import reconcile_access
-from espo_impl.core.models import ProgramFile
+from crmbuilder_v2.publish.declaration import Declaration
 
 #: The words the section uses for how the target holds a member right now.
 LIVE_PRESENT = "present"
@@ -79,7 +79,7 @@ def _live_role_sides(live: dict | None) -> tuple[dict | None, dict | None]:
 
 
 def assess_publish_access(
-    programs: list[tuple[str, ProgramFile]],
+    programs: list[tuple[str, Declaration]],
     design_client,
     client,
     *,
@@ -102,8 +102,22 @@ def assess_publish_access(
         ``live_state``; each change carries ``member_name`` so a refusal can
         name the role it belongs to.
     """
-    role_names = sorted({r.name for _, p in programs for r in p.roles})
-    team_names = sorted({t.name for _, p in programs for t in p.teams})
+    role_names = sorted(
+        {
+            str(role["name"])
+            for _, declaration in programs
+            for role in declaration.content.get("roles") or []
+            if isinstance(role, dict) and role.get("name")
+        }
+    )
+    team_names = sorted(
+        {
+            str(team["name"])
+            for _, declaration in programs
+            for team in declaration.content.get("teams") or []
+            if isinstance(team, dict) and team.get("name")
+        }
+    )
     section: dict[str, Any] = {
         "target": target_identifier,
         "assessed": bool(role_names or team_names),
