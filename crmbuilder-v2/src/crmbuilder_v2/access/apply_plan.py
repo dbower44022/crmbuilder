@@ -80,17 +80,27 @@ def _canonical(value: Any) -> Any:
 
 
 def _option_values(value: Any) -> frozenset[str] | None:
-    """The bare permitted values of an option set, or ``None`` if not one."""
+    """The bare permitted values of an option set, or ``None`` if not one.
+
+    An option whose value is empty is left out (REQ-626). A live choice field
+    that does not have to be answered carries one, and it is how the platform
+    says no value chosen rather than a value anybody picked. A design has no
+    way to declare it and the emitter never writes one, so counting it would
+    mark every such field as narrowed however faithfully the design matched —
+    a refusal no design could ever satisfy.
+    """
     if not isinstance(value, (list, tuple)):
         return None
     out: set[str] = set()
     for item in value:
         if isinstance(item, dict) and "option_value" in item:
-            out.add(str(item["option_value"]))
+            bare = str(item["option_value"])
         elif isinstance(item, (str, int)):
-            out.add(str(item))
+            bare = str(item)
         else:
             return None
+        if bare:
+            out.add(bare)
     return frozenset(out)
 
 

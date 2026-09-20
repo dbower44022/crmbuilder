@@ -71,6 +71,49 @@ def test_taking_an_option_away_is_a_narrowing():
     assert classify_change(change) == NARROWING
 
 
+def test_the_platform_blank_option_is_not_a_value_being_taken_away():
+    """REQ-626, and the real case that found it.
+
+    ``Contact.suffix`` on CBMTEST permits an empty string plus six titles; the
+    design declares exactly those six. The empty option is how the platform
+    says no value chosen on a field that need not be answered, and no design
+    can declare it — so counting it refused a field on which the design and
+    the instance agreed, and would have refused it for ever.
+
+    Bare strings, because that is the shape both sides arrive in on the real
+    path: the declared list off the generated program, the live list off the
+    platform's own metadata.
+    """
+    change = {
+        "attribute": "field_options",
+        "design": ["Jr", "Sr", "PhD", "MD", "Esq", "CPA"],
+        "instance": ["", "Jr", "Sr", "PhD", "MD", "Esq", "CPA"],
+    }
+    assert classify_change(change) == ADDITIVE
+
+
+def test_a_real_value_is_still_a_narrowing_when_a_blank_is_also_present():
+    """The blank is ignored; ``b`` is not. Ignoring the one must not blunt the
+    fence on the other, which is the whole reason the refusal exists."""
+    change = {
+        "attribute": "field_options",
+        "design": _opts("a"),
+        "instance": _opts("", "a", "b"),
+    }
+    assert classify_change(change) == NARROWING
+
+
+def test_a_design_that_alone_carries_a_blank_option_is_additive():
+    """Symmetry: the empty value is dropped from both sides, so a design that
+    somehow carries one does not read as widening the instance either."""
+    change = {
+        "attribute": "field_options",
+        "design": _opts("", "a"),
+        "instance": _opts("a"),
+    }
+    assert classify_change(change) == ADDITIVE
+
+
 def test_changing_a_type_is_refused():
     change = {"attribute": "field_type", "design": "number", "instance": "text"}
     assert classify_change(change) == TYPE_CHANGE
