@@ -156,16 +156,47 @@ def _raise_if_unauthenticated(status: int) -> None:
         )
 
 
+def platform_prefixed(name: str) -> str:
+    """The name the platform gives a link added to an object type it ships.
+
+    The inverse of :func:`strip_platform_prefix`, and applied for the same
+    reason: on an object type the platform ships, it is the platform that
+    names the link, not the design.
+    """
+    if not name:
+        return name
+    return "c" + name[0].upper() + name[1:]
+
+
 def find_link(
     client: EspoWriteClient, entity_wire: str, link: str
 ) -> dict[str, Any] | None:
-    """The link's metadata on the instance, or ``None`` if it is not there."""
+    """The link's metadata on the instance, or ``None`` if it is not there.
+
+    On an object type the platform ships, a custom link is stored under a
+    prefixed name (REQ-628): the design declares ``intakeSubmissions`` and the
+    instance holds ``cIntakeSubmissions``. The prefixed name is tried first,
+    because on such an object type it is the platform's own name and therefore
+    the authoritative one; the declared name is tried after it, for a link the
+    platform did not rename.
+
+    Looking only for the declared name reported every such link as absent, so
+    the publish asked the platform to create a link it already had and the
+    create failed — on every run, for ever. Version 1 tried both names and the
+    version 2 port dropped the fallback.
+    """
     status, links = client.get_all_links(entity_wire)
     _raise_if_unauthenticated(status)
     if status != 200 or not isinstance(links, Mapping):
         return None
-    found = links.get(link)
-    return dict(found) if isinstance(found, Mapping) else None
+    candidates = [link]
+    if entity_wire in NATIVE_ENTITIES:
+        candidates.insert(0, platform_prefixed(link))
+    for name in candidates:
+        found = links.get(name)
+        if isinstance(found, Mapping):
+            return dict(found)
+    return None
 
 
 def link_matches(live: Mapping[str, Any], intent: LinkIntent) -> bool:

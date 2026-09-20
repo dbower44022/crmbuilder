@@ -488,11 +488,40 @@ def summary(report: RunReport) -> dict[str, int]:
     return counts
 
 
+#: Where an outcome keeps the name of the thing it concerns, most specific
+#: first. Each applier names its own construct, so there is no one attribute.
+_NAMES = ("name", "link", "label", "layout_type", "entity")
+
+#: The outcomes whose own words are worth a line of their own (REQ-629). A
+#: success is counted; anything else raises the question "which one, and why",
+#: and the answer is already sitting on the outcome.
+_WORTH_A_LINE = frozenset(
+    {"failed", "refused", "differs", "kind_conflict", "unavailable"}
+)
+
+
+def _construct_of(outcome: Any) -> str:
+    """What the outcome is about, qualified by its object type where it has one."""
+    for attribute in _NAMES:
+        name = getattr(outcome, attribute, None)
+        if name:
+            entity = getattr(outcome, "entity", None)
+            if entity and attribute != "entity":
+                return f"{entity}.{name}"
+            return str(name)
+    return "?"
+
+
 def describe(report: RunReport) -> list[str]:
     """The run as lines a person can read.
 
     Each step, then what the platform could not do. Nothing here decides
     anything; it is the report put into words.
+
+    An outcome that did not succeed gets its own line carrying the sentence
+    the applier wrote for it (REQ-629). Counting alone answers how many and
+    never which or why, and a failure raises no other question: ``links: 1
+    failed`` cost a direct read of a live instance to turn into an answer.
     """
     lines: list[str] = []
     for step in report.steps:
@@ -511,6 +540,14 @@ def describe(report: RunReport) -> list[str]:
             f"{step.name}: {summary or 'nothing to do'}"
             + (f" — {step.error}" if step.error else "")
         )
+        for outcome in step.outcomes:
+            if getattr(outcome, "status", "") not in _WORTH_A_LINE:
+                continue
+            detail = getattr(outcome, "detail", "") or "no reason given"
+            lines.append(
+                f"  {_construct_of(outcome)}: "
+                f"{getattr(outcome, 'status', '?')} — {detail}"
+            )
     if report.manual_config:
         lines.append("")
         lines.append("To be configured by hand:")

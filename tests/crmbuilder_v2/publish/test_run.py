@@ -321,6 +321,35 @@ def test_the_report_reads_as_sentences() -> None:
     assert any("failed" in line for line in lines)
 
 
+def _reason_lines(lines: list[str]) -> list[str]:
+    """The per-outcome lines, which are indented under their step. The
+    hand-configuration list is indented too and is a different thing, so it is
+    kept out by its bullet."""
+    return [
+        line
+        for line in lines
+        if line.startswith("  ") and not line.startswith("  - ")
+    ]
+
+
+def test_a_failure_carries_its_reason_and_names_the_construct() -> None:
+    """REQ-629. The count answers how many; the operator asks which and why,
+    and the applier has already written the answer. Discarding it cost a
+    direct read of a live instance to diagnose one refused link on CBMTEST."""
+    instance = FakeInstance()
+    instance.field_create_status = 400
+    lines = describe(apply_plan(instance, _full_plan()))
+    reasons = _reason_lines(lines)
+    assert reasons, "a failed outcome contributed no line of its own"
+    assert any("400" in line for line in reasons), reasons
+
+
+def test_the_outcomes_that_succeeded_are_counted_not_listed() -> None:
+    """A line per success would bury the one line that matters."""
+    lines = describe(apply_plan(FakeInstance(), _full_plan()))
+    assert not _reason_lines(lines)
+
+
 def test_the_manual_configuration_list_is_gathered_from_every_step() -> None:
     plan = ApplyPlan(
         entities=[
