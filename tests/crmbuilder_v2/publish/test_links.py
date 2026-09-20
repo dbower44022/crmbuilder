@@ -239,3 +239,82 @@ def test_one_link_s_failure_does_not_stop_the_others() -> None:
         client, [_intent(link="missing"), _intent()]
     )
     assert [o.status for o in outcomes] == [lnk.FAILED, lnk.CREATED]
+
+
+# --- a link the platform renamed (REQ-628 / PI-538) -------------------------
+
+
+#: Contact reaching IntakeSubmission, exactly as CBMTEST holds it on
+#: 2026-09-20 — read from the live instance, not invented for the test.
+CBMTEST_CONTACT_LINK = {
+    "cIntakeSubmissions": {
+        "type": "hasMany",
+        "entity": "CIntakeSubmission",
+        "foreign": "contact",
+        "isCustom": True,
+        "audited": False,
+    }
+}
+
+
+def _intake_intent() -> LinkIntent:
+    """The intent the emitter produces for that link.
+
+    The emitter names a link after the object type it reaches, so the declared
+    name is ``intakeSubmissions`` — never the prefixed name the platform gave
+    the link when it was added to Contact.
+    """
+    return _intent(
+        entity="Contact",
+        entity_foreign="IntakeSubmission",
+        link="intakeSubmissions",
+        link_foreign="contact",
+        kind="oneToMany",
+    )
+
+
+def test_a_link_the_platform_renamed_is_found() -> None:
+    client = FakeClient(dict(CBMTEST_CONTACT_LINK))
+    assert lnk.find_link(client, "Contact", "intakeSubmissions") is not None
+
+
+def test_publishing_that_link_leaves_the_instance_alone() -> None:
+    """The whole point. Before this, the lookup missed, the preview said the
+    link would be created, and the apply asked the platform for a link it
+    already had — every run, for ever."""
+    client = FakeClient(dict(CBMTEST_CONTACT_LINK))
+    outcome = apply_link(client, _intake_intent())
+    assert outcome.status == lnk.SKIPPED
+    assert "create" not in client.kinds
+
+
+def test_a_preview_of_that_link_does_not_claim_it_would_be_created() -> None:
+    client = FakeClient(dict(CBMTEST_CONTACT_LINK))
+    outcome = apply_link(client, _intake_intent(), preview=True)
+    assert outcome.status == lnk.SKIPPED
+
+
+def test_the_declared_name_still_wins_where_the_platform_renamed_nothing() -> None:
+    """An object type the design defines gets no prefix, so nothing changes
+    there — and a native object type that happens to hold the plain name is
+    found under it too."""
+    client = FakeClient({
+        "intakeSubmissions": {
+            "type": "hasMany",
+            "entity": "CIntakeSubmission",
+            "foreign": "contact",
+        }
+    })
+    assert lnk.find_link(client, "Contact", "intakeSubmissions") is not None
+    assert lnk.find_link(client, "CEngagement", "intakeSubmissions") is not None
+
+
+def test_a_link_that_is_genuinely_absent_is_still_absent() -> None:
+    """Trying a second name must not turn a miss into a hit."""
+    client = FakeClient(dict(CBMTEST_CONTACT_LINK))
+    assert lnk.find_link(client, "Contact", "informationRequests") is None
+
+
+def test_the_prefixed_form_is_the_platforms_own_spelling() -> None:
+    assert lnk.platform_prefixed("intakeSubmissions") == "cIntakeSubmissions"
+    assert lnk.strip_platform_prefix(lnk.platform_prefixed("events")) == "events"
