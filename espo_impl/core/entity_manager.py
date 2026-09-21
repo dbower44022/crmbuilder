@@ -20,7 +20,7 @@ from collections.abc import Callable
 from typing import Any
 
 from espo_impl.core.api_client import EspoAdminClient, _format_error_detail
-from espo_impl.core.models import EntityAction, EntityDefinition
+from espo_impl.core.models import EntityDefinition
 from espo_impl.ui.confirm_delete_dialog import get_espo_entity_name
 
 logger = logging.getLogger(__name__)
@@ -46,24 +46,6 @@ class EntityManager:
     ) -> None:
         self.client = client
         self.output_fn = output_fn
-
-    def process_entity(self, entity_def: EntityDefinition) -> bool:
-        """Process a single entity definition.
-
-        :param entity_def: Entity definition with an action.
-        :returns: True if successful, False if an error occurred.
-        """
-        if entity_def.action == EntityAction.DELETE:
-            return self._delete_entity(entity_def)
-        elif entity_def.action == EntityAction.CREATE:
-            return self._create_entity(entity_def)
-        elif entity_def.action == EntityAction.DELETE_AND_CREATE:
-            deleted = self._delete_entity(entity_def)
-            if not deleted:
-                # Delete failed for a reason other than "not found" — abort
-                return False
-            return self._create_entity(entity_def)
-        return True
 
     def rebuild_cache(self) -> bool:
         """Trigger a cache rebuild on the instance.
