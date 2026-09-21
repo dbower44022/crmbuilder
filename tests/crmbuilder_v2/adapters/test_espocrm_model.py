@@ -15,6 +15,7 @@ from crmbuilder_v2.adapters.espocrm.emit import (
 )
 from crmbuilder_v2.adapters.espocrm.model import (
     build_program_model,
+    camel_plural,
     derive_internal_name,
     derive_label,
     pluralize,
@@ -143,6 +144,17 @@ def _program_for(model, entity_name):
         ("Date of Birth", "dateOfBirth"),
         ("amount", "amount"),
         ("EIN", "ein"),
+        # REQ-630 — a name already written as one run of camel case. Every
+        # case above is snake_case, spaced, or a single word, which is exactly
+        # why flattening these went unnoticed until a publish created
+        # submitteremail beside submitterEmail on a live instance.
+        ("IntakeSubmission", "intakeSubmission"),
+        ("submitterEmail", "submitterEmail"),
+        ("FundraisingCampaign", "fundraisingCampaign"),
+        # A run of capitals is an abbreviation while nothing follows it, and
+        # ends where a capitalised word begins.
+        ("URLTarget", "urlTarget"),
+        ("EINNumber", "einNumber"),
     ],
 )
 def test_derive_internal_name(raw, expected):
@@ -1499,3 +1511,22 @@ def test_view_on_unconfirmed_entity_is_captured_with_raw_parent():
     assert not any(d.kind == "view" for d in model.deferrals)
     (c,) = [c for c in model.captured_only if c.kind == "view"]
     assert c.parent is None or c.parent == "ENT-002"
+
+
+def test_a_camel_case_object_type_yields_the_link_name_the_platform_holds():
+    """REQ-630, and the case that found it.
+
+    The emitter names a link after the object type it reaches. Contact reaching
+    IntakeSubmission must yield ``intakeSubmissions``, because the platform
+    holds that link on Contact as ``cIntakeSubmissions`` — read from CBMTEST on
+    2026-09-20. Flattened to ``intakesubmissions`` it could never match under
+    any prefixing rule, so the publish asked for a link that was already there
+    and the platform refused it, on every run.
+    """
+    assert camel_plural("IntakeSubmission") == "intakeSubmissions"
+
+
+def test_a_spaced_name_is_unchanged_by_the_camel_case_split():
+    """The split must not disturb the names that already worked."""
+    assert camel_plural("Mentor Application") == "mentorApplications"
+    assert derive_label("mentor_status") == "Mentor Status"
