@@ -54,6 +54,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from crmbuilder_v2.publish.declaration import Declaration
+from crmbuilder_v2.publish.duplicate_checks import intents_for
 from crmbuilder_v2.publish.entities import (
     CREATE,
     REMOVE,
@@ -512,6 +513,7 @@ def plan_for(
                         entity_is_native=is_native_entity(name),
                         declared_fields=declared_fields,
                     ),
+                    duplicate_checks=intents_for(name, block),
                 )
             )
             tabs.extend(_tab_intents(on_platform, block))

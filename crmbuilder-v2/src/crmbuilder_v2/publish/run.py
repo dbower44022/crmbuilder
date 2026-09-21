@@ -32,6 +32,7 @@ from dataclasses import field as dataclass_field
 from typing import Any
 
 from crmbuilder_v2.introspect.utilization import wire_entity_name
+from crmbuilder_v2.publish import duplicate_checks as dedup_applier
 from crmbuilder_v2.publish import entities as entities_applier
 from crmbuilder_v2.publish import entity_settings as settings_applier
 from crmbuilder_v2.publish import fields as fields_applier
@@ -72,6 +73,8 @@ class EntityPlan:
     :ivar templates: Its message templates.
     :ivar fields: Its fields.
     :ivar layouts: Its screen layouts.
+    :ivar duplicate_checks: Its duplicate-detection rules, which no publish
+        can write — reported so they are not dropped in silence (REQ-635).
     """
 
     name: str
@@ -80,6 +83,7 @@ class EntityPlan:
     templates: Sequence[templates_applier.TemplateIntent] = ()
     fields: Sequence[fields_applier.FieldIntent] = ()
     layouts: Sequence[layouts_applier.LayoutIntent] = ()
+    duplicate_checks: Sequence[dedup_applier.DuplicateCheckIntent] = ()
 
 
 @dataclass
@@ -322,6 +326,24 @@ def _apply(
             )
         ],
         declared=bool(template_work),
+    )
+
+    # Reported rather than applied, and deliberately before the fields: a
+    # duplicate-detection rule is about which records count as the same, so
+    # an operator wants it named beside the object type it guards rather than
+    # at the end of a long run (REQ-635).
+    dedup_work = [entity for entity in plan.entities if entity.duplicate_checks]
+    _run_step(
+        report,
+        "duplicate checks",
+        lambda: [
+            outcome
+            for entity in dedup_work
+            for outcome in dedup_applier.report_duplicate_checks(
+                entity.duplicate_checks
+            )
+        ],
+        declared=bool(dedup_work),
     )
 
     field_work = [entity for entity in plan.entities if entity.fields]

@@ -172,6 +172,9 @@ def test_every_declared_step_runs() -> None:
         "waiting for new object types",
         "object settings",
         "message templates",
+        # Reported before the fields, so a rule about which records count as
+        # the same is named beside the object type it guards (REQ-635).
+        "duplicate checks",
         "fields",
         "layouts",
         "links",
