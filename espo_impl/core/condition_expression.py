@@ -11,7 +11,7 @@ import datetime
 from dataclasses import dataclass, field
 from typing import Any, Final
 
-from espo_impl.core.relative_date import is_relative_date, resolve_relative_date
+from espo_impl.core.relative_date import is_relative_date
 
 OPERATORS: Final[set[str]] = {
     "equals",
@@ -531,89 +531,6 @@ def _is_valid_comparison_value(value: Any) -> bool:
 
 # ---------------------------------------------------------------------------
 # Evaluator
-# ---------------------------------------------------------------------------
-
-def evaluate_condition(
-    parsed: ConditionNode,
-    record: dict[str, Any],
-    today: datetime.date | None = None,
-) -> bool:
-    """Evaluate a parsed condition against a record dict.
-
-    :param parsed: Root of the parsed AST.
-    :param record: Record to evaluate against (field name → value).
-    :param today: Override for the current date (for testability).
-    :returns: True if the condition holds.
-    """
-    if isinstance(parsed, AllNode):
-        return all(
-            evaluate_condition(child, record, today)
-            for child in parsed.children
-        )
-    if isinstance(parsed, AnyNode):
-        return any(
-            evaluate_condition(child, record, today)
-            for child in parsed.children
-        )
-    if isinstance(parsed, LeafClause):
-        return _evaluate_leaf(parsed, record, today)
-    raise TypeError(f"Unexpected node type: {type(parsed)}")  # pragma: no cover
-
-
-def _evaluate_leaf(
-    leaf: LeafClause,
-    record: dict[str, Any],
-    today: datetime.date | None,
-) -> bool:
-    """Evaluate a single leaf clause against a record."""
-    field_value = record.get(leaf.field)
-    op = leaf.op
-
-    if op == "isNull":
-        return field_value is None
-    if op == "isNotNull":
-        return field_value is not None
-
-    # Resolve the comparison value (handle relative dates)
-    compare_value = leaf.value
-    if isinstance(compare_value, str) and is_relative_date(compare_value):
-        compare_value = resolve_relative_date(compare_value, today)
-
-    if op == "equals":
-        return field_value == compare_value
-    if op == "notEquals":
-        return field_value != compare_value
-    if op == "contains":
-        # value is a member of the field's list
-        if isinstance(field_value, list):
-            return compare_value in field_value
-        return False
-    if op == "in":
-        return field_value in compare_value
-    if op == "notIn":
-        return field_value not in compare_value
-    if op == "lessThan":
-        if field_value is None:
-            return False
-        return field_value < compare_value
-    if op == "greaterThan":
-        if field_value is None:
-            return False
-        return field_value > compare_value
-    if op == "lessThanOrEqual":
-        if field_value is None:
-            return False
-        return field_value <= compare_value
-    if op == "greaterThanOrEqual":
-        if field_value is None:
-            return False
-        return field_value >= compare_value
-
-    return False  # pragma: no cover
-
-
-# ---------------------------------------------------------------------------
-# Renderer
 # ---------------------------------------------------------------------------
 
 def render_condition(parsed: ConditionNode) -> list | dict:
