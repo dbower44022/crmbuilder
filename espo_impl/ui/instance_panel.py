@@ -19,13 +19,13 @@ from PySide6.QtWidgets import (
 
 from espo_impl.core.models import InstanceProfile, InstanceRole
 from espo_impl.ui.grid_helpers import enhance_list
+from espo_impl.ui.instance_dialog import InstanceDialog
 
 _ROLE_BADGES: dict[InstanceRole, str] = {
     InstanceRole.SOURCE: "[SRC]",
     InstanceRole.TARGET: "[TGT]",
     InstanceRole.BOTH: "[S+T]",
 }
-from espo_impl.ui.instance_dialog import InstanceDialog
 
 logger = logging.getLogger(__name__)
 

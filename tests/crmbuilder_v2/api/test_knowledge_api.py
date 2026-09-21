@@ -50,7 +50,7 @@ def test_lesson_crud_and_signal(client):
     assert r.status_code == 201
     assert r.json()["data"]["identifier"] == "LSN-001"
     hazards = client.get("/lessons", params={"signal": "hazard"}).json()["data"]
-    assert [l["identifier"] for l in hazards] == ["LSN-001"]
+    assert [lesson["identifier"] for lesson in hazards] == ["LSN-001"]
 
 
 def test_reference_pointer_crud_and_scope(client):

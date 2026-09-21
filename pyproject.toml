@@ -100,6 +100,10 @@ markers = [
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+# Illustrative code inside an archived product document is documentation, not
+# a module the repository builds on. Editing an archived document to satisfy a
+# linter would change the record to suit the tool (REQ-633 / PI-547).
+extend-exclude = ["PRDs/**"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "C4", "UP"]

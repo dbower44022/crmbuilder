@@ -15,6 +15,7 @@ import httpx
 import pytest
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.mcp_server.server import build_server
+from mcp.server.fastmcp.exceptions import ToolError
 
 
 @pytest.fixture
@@ -198,7 +199,7 @@ async def test_orientation_decisions_for_session(mcp_env):
 
 
 async def test_validation_error_propagates(mcp_server):
-    with pytest.raises(Exception):
+    with pytest.raises(ToolError):
         await _call(
             mcp_server,
             "create_decision",

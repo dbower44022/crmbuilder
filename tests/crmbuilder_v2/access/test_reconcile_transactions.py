@@ -13,17 +13,17 @@ from crmbuilder_v2.access.repositories import reconcile_transactions as rt
 
 
 def _record(s, **over):
-    base = dict(
-        direction="capture",
-        source_ref="INST-001",
-        target_ref="design",
-        member_type="field",
-        member_identifier="FLD-001",
-        actor="Doug",
-        attribute="field_type",
-        before_value="text",
-        after_value="varchar",
-    )
+    base = {
+        "direction": "capture",
+        "source_ref": "INST-001",
+        "target_ref": "design",
+        "member_type": "field",
+        "member_identifier": "FLD-001",
+        "actor": "Doug",
+        "attribute": "field_type",
+        "before_value": "text",
+        "after_value": "varchar",
+    }
     base.update(over)
     return rt.record(s, **base)
 

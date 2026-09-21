@@ -52,7 +52,7 @@ import json
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -377,12 +377,12 @@ def create_deposit_events(
         ok &= _log_result(f"deposit_event {entry['dep']} (for {entry['cop']})", status, payload)
 
     print()
-    print(f"Reference resolution totals across all 24 close-outs:")
+    print("Reference resolution totals across all 24 close-outs:")
     print(f"  forward-resolved: {total_forward}")
     print(f"  reverse-resolved: {total_reverse}")
     print(f"  skipped (unresolvable in either direction): {total_skip}")
     if skip_log:
-        print(f"\nSkipped references (data-quality exceptions, per DEC-208):")
+        print("\nSkipped references (data-quality exceptions, per DEC-208):")
         for payload_name, pref in skip_log:
             print(
                 f"  {payload_name}: {pref['source_type']}:{pref['source_id']} -> "
@@ -394,7 +394,7 @@ def create_deposit_events(
     print()
     print(f"Expected per DEC-208 / DEC-210: forward={expected_forward}, reverse={expected_reverse}, skip={expected_skip}")
     if (total_forward, total_reverse, total_skip) != (expected_forward, expected_reverse, expected_skip):
-        print(f"⚠ Reference resolution counts diverged from expected; investigate data drift.", file=sys.stderr)
+        print("⚠ Reference resolution counts diverged from expected; investigate data drift.", file=sys.stderr)
 
     return ok
 
@@ -501,7 +501,7 @@ def main() -> int:
     BASE = args.base
 
     print("=" * 72)
-    print(f"PI-026 Phase 4 backfill — historical applies as deposit_events")
+    print("PI-026 Phase 4 backfill — historical applies as deposit_events")
     print(f"  Base URL: {BASE}")
     print(f"  Payloads root: {args.payloads_root}")
     print(f"  Logs root: {args.logs_root}")

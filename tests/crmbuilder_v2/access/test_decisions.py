@@ -15,13 +15,13 @@ _VALID_EXEC_SUMMARY = "PI-102 test executive summary. " * 7
 
 
 def _make(s, identifier="DEC-001", **kw):
-    payload = dict(
-        identifier=identifier,
-        title=f"{identifier} title",
-        decision_date="05-07-26",
-        status="Active",
-        executive_summary=_VALID_EXEC_SUMMARY,
-    )
+    payload = {
+        "identifier": identifier,
+        "title": f"{identifier} title",
+        "decision_date": "05-07-26",
+        "status": "Active",
+        "executive_summary": _VALID_EXEC_SUMMARY,
+    }
     payload.update(kw)
     return decisions.create(s, **payload)
 

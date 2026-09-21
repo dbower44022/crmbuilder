@@ -126,7 +126,7 @@ def test_multi_line_commit_message_parsed_correctly(tmp_path):
         "- item one\n"
         "- item two\n"
     )
-    shas = _init_git_repo(repo, ("subject with no body", ""), ("multi-line subject", body))
+    _init_git_repo(repo, ("subject with no body", ""), ("multi-line subject", body))
     records = enumerate_commits._enumerate_repo(
         repo_name="testrepo",
         repo_root=repo,

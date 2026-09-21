@@ -87,9 +87,15 @@ def test_unmanaged_sections_not_flagged():
 
 
 def test_matching_role_no_diffs():
-    role = lambda: _role("Mentor", description="x",
-                         scope_access={"Contact": ScopeAccess(read="team", create=True)},
-                         system_permissions=SystemPermissions(export=True, assignment_permission="team"))
+    def role():
+        return _role(
+            "Mentor",
+            description="x",
+            scope_access={"Contact": ScopeAccess(read="team", create=True)},
+            system_permissions=SystemPermissions(
+                export=True, assignment_permission="team"
+            ),
+        )
     assert diff_roles({"Mentor": role()}, {"Mentor": role()}) == []
 
 

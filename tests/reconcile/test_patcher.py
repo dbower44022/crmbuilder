@@ -46,7 +46,7 @@ def _changed_line_indices(before: str, after: str) -> list[int]:
     b = before.splitlines()
     a = after.splitlines()
     assert len(b) == len(a), "splice must not add or remove lines for a scalar set"
-    return [i for i, (x, y) in enumerate(zip(b, a)) if x != y]
+    return [i for i, (x, y) in enumerate(zip(b, a, strict=True)) if x != y]
 
 
 def test_set_label_changes_only_target_line():

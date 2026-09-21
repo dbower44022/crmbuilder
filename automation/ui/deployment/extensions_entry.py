@@ -452,7 +452,7 @@ class ExtensionsEntry(QWidget):
 
         # Validate manifest before opening the heavyweight dialog
         try:
-            manifest = parse_extension_manifest(zip_path)
+            parse_extension_manifest(zip_path)
         except (FileNotFoundError, ValueError) as exc:
             QMessageBox.critical(
                 self, "Invalid extension zip",

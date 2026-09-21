@@ -7,9 +7,8 @@ Client database: cbm_client.db         (25 tables across 5 layers)
 Schema source: L2 PRD Sections 2-8, with changes from 9.9, 10.10, 12.11, 13.13.
 """
 
-import sqlite3
 import os
-import sys
+import sqlite3
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 MASTER_DB = os.path.join(SCRIPT_DIR, "crmbuilder_master.db")

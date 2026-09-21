@@ -360,7 +360,7 @@ def test_entity_detail_lists_fields_with_type(qtbot, api_client):
 
 def test_field_detail_shows_entity_name_and_identifier(qtbot, api_client):
     ent_id = _seed_entity(api_client, "Contact")
-    field = _seed_field(api_client, ent_id, "email")
+    _seed_field(api_client, ent_id, "email")
     panel = FieldsPanel(api_client)
     qtbot.addWidget(panel)
     panel.refresh()

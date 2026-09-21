@@ -378,7 +378,7 @@ def test_list_orders_by_last_opened_desc_nulls_last(meta_db):
         b = create_engagement(
             s, engagement_code="BB", engagement_name="B", engagement_purpose="p"
         )
-        c = create_engagement(
+        create_engagement(
             s, engagement_code="CC", engagement_name="C", engagement_purpose="p"
         )
         # B opened most recently; A opened earlier; C never opened.

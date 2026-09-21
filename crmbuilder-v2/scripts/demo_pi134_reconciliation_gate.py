@@ -52,14 +52,13 @@ def main() -> int:
     engagement_scope.set_active_engagement("ENG-001")
     engagement_scope.set_enforcement(True)
 
-    from fastapi.testclient import TestClient
-
     from crmbuilder_v2.api.main import create_app
     from crmbuilder_v2.scheduler import dispatcher, reconciliation
     from crmbuilder_v2.scheduler.parallel_scheduler import (
         ParallelCoordinatingScheduler,
         ParallelSchedulerConfig,
     )
+    from fastapi.testclient import TestClient
 
     client = TestClient(create_app())
     client.headers.update({"X-Engagement": "ENG-001"})

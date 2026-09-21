@@ -14,13 +14,13 @@ from crmbuilder_v2.access.repositories import risks
 
 
 def _make(s, identifier="RSK-001", **kw):
-    payload = dict(
-        identifier=identifier,
-        title="t",
-        probability="Medium",
-        impact="High",
-        status="Open",
-    )
+    payload = {
+        "identifier": identifier,
+        "title": "t",
+        "probability": "Medium",
+        "impact": "High",
+        "status": "Open",
+    }
     payload.update(kw)
     return risks.create(s, **payload)
 

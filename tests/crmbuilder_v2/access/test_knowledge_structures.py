@@ -122,7 +122,7 @@ def test_lesson_create_and_signal(v2_env):
         )
         assert howto["signal"] == "howto"
         assert lessons.list_all(s, signal="hazard") == [
-            l for l in lessons.list_all(s) if l["signal"] == "hazard"
+            lesson for lesson in lessons.list_all(s) if lesson["signal"] == "hazard"
         ]
 
 

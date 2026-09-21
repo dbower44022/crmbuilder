@@ -53,14 +53,14 @@ def _make(s, ws_id, identifier="SES-001", **kw):
     using ``identifier`` so callers only override what each test cares about.
     """
     extra_refs = kw.pop("references", [])
-    payload = dict(
-        identifier=identifier,
-        title=kw.pop("title", f"{identifier} title"),
-        description="d",
-        medium="chat",
-        status="planned",
-        executive_summary=_EXEC_SUMMARY,
-    )
+    payload = {
+        "identifier": identifier,
+        "title": kw.pop("title", f"{identifier} title"),
+        "description": "d",
+        "medium": "chat",
+        "status": "planned",
+        "executive_summary": _EXEC_SUMMARY,
+    }
     payload.update(kw)
     references = [_member_edge(payload["identifier"], ws_id)] + list(extra_refs)
     return sessions.create_session(s, references=references, **payload)

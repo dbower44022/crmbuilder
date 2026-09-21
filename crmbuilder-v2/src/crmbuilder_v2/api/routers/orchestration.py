@@ -13,7 +13,9 @@ router = APIRouter(prefix="/orchestration", tags=["orchestration"])
 
 @router.get("/ready-batches")
 def ready_batches(
-    area: list[str] | None = Query(
+    # The call in the default is this framework's way of declaring a query
+    # parameter — a declaration read once, not a value computed per call.
+    area: list[str] | None = Query(  # noqa: B008
         default=None,
         description="Filter to items whose area set intersects these areas "
         "(repeat the param for multiple areas).",

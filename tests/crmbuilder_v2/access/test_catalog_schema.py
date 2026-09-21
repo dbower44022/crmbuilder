@@ -399,37 +399,37 @@ def test_mechanism_admits_null(v2_env):
 
 
 def _make_entity(catalog_id: str, **overrides) -> CatalogEntity:
-    base = dict(
-        catalog_id=catalog_id,
-        name=catalog_id.capitalize(),
-        display_name=catalog_id.capitalize(),
-        tier=1,
-        entry_kind="universal",
-        purpose="p",
-        business_context="bc",
-        data_model_role="anchor",
-        typically_required=False,
-        is_deleted=False,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
-    )
+    base = {
+        "catalog_id": catalog_id,
+        "name": catalog_id.capitalize(),
+        "display_name": catalog_id.capitalize(),
+        "tier": 1,
+        "entry_kind": "universal",
+        "purpose": "p",
+        "business_context": "bc",
+        "data_model_role": "anchor",
+        "typically_required": False,
+        "is_deleted": False,
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
+    }
     base.update(overrides)
     return CatalogEntity(**base)
 
 
 def _make_attribute(entity_id: int, name: str, **overrides) -> CatalogAttribute:
-    base = dict(
-        catalog_entity_id=entity_id,
-        name=name,
-        display_name=name.replace("_", " ").title(),
-        type="string",
-        required=False,
-        description="d",
-        usage="u",
-        order_index=0,
-        is_deleted=False,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
-    )
+    base = {
+        "catalog_entity_id": entity_id,
+        "name": name,
+        "display_name": name.replace("_", " ").title(),
+        "type": "string",
+        "required": False,
+        "description": "d",
+        "usage": "u",
+        "order_index": 0,
+        "is_deleted": False,
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
+    }
     base.update(overrides)
     return CatalogAttribute(**base)

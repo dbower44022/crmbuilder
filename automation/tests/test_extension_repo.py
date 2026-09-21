@@ -133,7 +133,7 @@ class TestLicenseCrud:
         save_license(conn, ExtensionLicense(
             extension_name="other-pack", license_key="K2",
         ))
-        names = [l.extension_name for l in list_licenses(conn)]
+        names = [licence.extension_name for licence in list_licenses(conn)]
         assert names == ["advanced-pack", "other-pack"]
 
     def test_unique_constraint(self, conn):

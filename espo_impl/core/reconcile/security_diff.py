@@ -170,8 +170,9 @@ def diff_teams(
         src = source_files.get(name)
 
         if in_yaml and in_crm:
-            d, l = desired[name], live[name]
-            if _norm_desc(d.description) != _norm_desc(getattr(l, "description", None)):
+            declared, actual = desired[name], live[name]
+            actual_description = getattr(actual, "description", None)
+            if _norm_desc(declared.description) != _norm_desc(actual_description):
                 diffs.append(
                     Difference(
                         config_type=ConfigType.TEAM,
@@ -179,8 +180,8 @@ def diff_teams(
                         entity=name,
                         locator=TeamLocator(name, part="description"),
                         property="description",
-                        yaml_value=d.description,
-                        crm_value=getattr(l, "description", None),
+                        yaml_value=declared.description,
+                        crm_value=actual_description,
                         source_file=src,
                     )
                 )

@@ -812,9 +812,8 @@ def create_conversations() -> bool:
 
 def consume_work_tickets() -> bool:
     ok = True
-    for i, item in enumerate(_ITEMS):
+    for i in range(len(_ITEMS)):
         wt_id = f"WT-{i + 9:03d}"
-        ses_date = _SES_DATE.get(item["ses"], "2026-05-23")
         # Drafted -> ready
         ok &= _patch_status_with_skip(
             f"/work-tickets/{wt_id}",
