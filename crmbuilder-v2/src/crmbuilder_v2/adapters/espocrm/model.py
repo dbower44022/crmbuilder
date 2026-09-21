@@ -211,9 +211,31 @@ class GenerationModel:
 # ---------------------------------------------------------------------------
 
 
+#: Where one word ends and the next begins inside a run of camel case
+#: (REQ-630). Two boundaries: after a lowercase letter or a digit when a
+#: capital follows — ``submitterEmail`` — and inside a run of capitals when a
+#: capitalised word starts, so ``URLTarget`` is ``URL`` and ``Target`` rather
+#: than one word. A run of capitals with nothing after it is an abbreviation
+#: and stays whole, which is why ``EIN`` still yields ``ein``.
+_CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
+
+
 def _words(raw: str) -> list[str]:
-    """Split a business name into alphanumeric words (drop punctuation)."""
-    return [w for w in re.split(r"[^A-Za-z0-9]+", raw or "") if w]
+    """Split a business name into alphanumeric words (drop punctuation).
+
+    A name already written as one run of camel case carries no space and no
+    punctuation, so splitting on those alone read it as a single word and the
+    caller then flattened it: ``IntakeSubmission`` became ``intakesubmission``
+    and ``submitterEmail`` became ``submitteremail``. The instance received a
+    name nobody had written, a publish asked for a construct that could never
+    match the one already there, and one such field was created beside its
+    properly-named twin (REQ-630, found on CBMTEST 2026-09-20).
+    """
+    pieces = [w for w in re.split(r"[^A-Za-z0-9]+", raw or "") if w]
+    words: list[str] = []
+    for piece in pieces:
+        words.extend(part for part in _CAMEL_BOUNDARY.split(piece) if part)
+    return words
 
 
 def derive_internal_name(field_name: str) -> str:

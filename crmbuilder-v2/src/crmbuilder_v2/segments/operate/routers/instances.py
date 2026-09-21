@@ -708,6 +708,9 @@ def _serialize_publish_result(result: publish_service.PublishResult) -> dict:
         # REQ-497 / DEC-982: the changes an automatic apply declined, each
         # carrying its kind and reason.
         "declined_changes": result.declined_changes,
+        # REQ-630: field names on the target differing only by case — one
+        # thing written twice, left by a run that flattened a name.
+        "name_clashes": result.name_clashes,
         # REQ-521 / PI-466: what this publish does to access on the target —
         # each declared role and team against the live roles, the removals
         # named, or ``known: false`` when the target could not be read.

@@ -144,3 +144,38 @@ def gather_server_fields(
     server_fields, capture_warnings = _capture_field_names(client, specs)
     warnings.extend(capture_warnings)
     return server_fields, warnings
+
+
+def name_clashes(
+    server_fields: dict[str, frozenset[str]],
+) -> list[dict[str, Any]]:
+    """Field names on the instance that differ from each other only by case.
+
+    Two fields whose names match when lowercased are almost never two things.
+    They are one thing written twice, which is what happens when something
+    asks for a name it has flattened: a publish created ``submitteremail``
+    beside the ``submitterEmail`` already there (REQ-630, CBMTEST 2026-09-20).
+
+    The cause is fixed in the word splitter, so nothing new lands this way.
+    This reports what earlier runs already left behind, on whichever instance
+    is being published to, because one instance having none proves nothing
+    about the others. It reads nothing: the names have already been gathered.
+
+    Never removes anything. Which of the pair is the real one, and whether the
+    other holds data, is a judgement for a person.
+
+    :param server_fields: the live field names per object type, as
+        :func:`gather_server_fields` returns them.
+    :returns: one entry per clash, each naming the object type and the names
+        that collide, in a stable order.
+    """
+    found: list[dict[str, Any]] = []
+    for entity in sorted(server_fields):
+        buckets: dict[str, list[str]] = {}
+        for name in server_fields[entity]:
+            buckets.setdefault(name.lower(), []).append(name)
+        for lowered in sorted(buckets):
+            names = sorted(buckets[lowered])
+            if len(names) > 1:
+                found.append({"entity": entity, "names": names})
+    return found
