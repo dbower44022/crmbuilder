@@ -739,7 +739,6 @@ class TestWorkflowManager:
 
         assert len(results) == 2
         assert all(r.status == WorkflowStatus.NOT_SUPPORTED for r in results)
-        client.put_metadata.assert_not_called()
         client.get_client_defs.assert_not_called()
 
     def test_emits_not_supported_lines(self):
@@ -792,7 +791,6 @@ class TestWorkflowManager:
         results = mgr.process_workflows(program)
 
         assert results == []
-        client.put_metadata.assert_not_called()
 
     def test_no_workflows_returns_empty(self):
         """An entity with no workflows produces no results."""
@@ -802,4 +800,3 @@ class TestWorkflowManager:
         results = mgr.process_workflows(program)
 
         assert results == []
-        client.put_metadata.assert_not_called()

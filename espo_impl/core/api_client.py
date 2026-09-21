@@ -347,17 +347,6 @@ class EspoAdminClient:
         url = f"{self.profile.api_url}/Metadata?key=clientDefs.{entity}"
         return self._request("GET", url)
 
-    def put_metadata(
-        self, payload: dict[str, Any]
-    ) -> tuple[int, dict[str, Any] | None]:
-        """Write arbitrary metadata via the Metadata API.
-
-        :param payload: Metadata payload (nested dict matching Metadata structure).
-        :returns: Tuple of (status_code, response_json or None).
-        """
-        url = f"{self.profile.api_url}/Metadata"
-        return self._request("PUT", url, json=payload)
-
     # --- Report Filter endpoints (Advanced Pack) ---
     #
     # Report Filters are a record entity contributed by the Advanced Pack
