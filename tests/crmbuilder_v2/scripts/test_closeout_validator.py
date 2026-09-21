@@ -197,13 +197,27 @@ def test_session_block_valid_passes():
     assert cv.check_session_block(_valid_payload()) == []
 
 
-def test_session_medium_claude_code_rejected_ses101_case():
+def test_session_medium_claude_code_is_accepted_since_dec_1035():
+    """SES-101 carried ``claude_code`` when no such medium existed, and this
+    test was written to refuse it. DEC-1035 added it on 2026-09-04, so a
+    session run in Claude Code against the live store can be told from a
+    sandbox conversation. The check reads the shared vocabulary, so it followed
+    that day; this assertion did not, and failed for a fortnight."""
     payload = _valid_payload()
     payload["session"]["session_medium"] = "claude_code"
+    assert cv.check_session_block(payload) == []
+
+
+def test_a_medium_outside_the_vocabulary_is_still_refused():
+    """The check the SES-101 case was really about. A platform name that is not
+    a medium belongs in the chat-platform metadata, and the message says so
+    without naming a value that is now valid."""
+    payload = _valid_payload()
+    payload["session"]["session_medium"] = "cursor"
     violations = cv.check_session_block(payload)
     assert len(_errors(violations)) == 1
-    assert "claude_code" in violations[0].message
-    assert "SES-101" in violations[0].message
+    assert "cursor" in violations[0].message
+    assert "chat_platform" in violations[0].message
 
 
 def test_session_bad_identifier_rejected():
@@ -563,7 +577,9 @@ def test_offline_mode_skips_head_check_runs_shape_checks():
     assert cv.validate_payload(payload, api_base=None) == []
 
     # Break a shape check; offline still catches it (no API needed).
-    payload["session"]["session_medium"] = "claude_code"
+    # ``cursor`` rather than ``claude_code``: the latter is a real medium
+    # since DEC-1035, so it breaks nothing.
+    payload["session"]["session_medium"] = "cursor"
     violations = cv.validate_payload(payload, api_base=None)
     errs = _errors(violations)
     assert len(errs) == 1
@@ -579,7 +595,7 @@ def test_offline_mode_skips_head_check_runs_shape_checks():
 
 def test_multiple_violations_aggregate_across_checks():
     payload = _valid_payload()
-    payload["session"]["session_medium"] = "claude_code"  # check 2
+    payload["session"]["session_medium"] = "cursor"  # check 2 (a real miss)
     payload["decisions"][0]["status"] = "Final"  # check 4
     payload["planning_items"][0]["item_type"] = "open_question"  # check 6
     violations = cv.validate_payload(payload, api_base=None)
