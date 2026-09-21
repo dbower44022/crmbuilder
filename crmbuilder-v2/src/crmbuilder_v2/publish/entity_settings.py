@@ -34,6 +34,8 @@ UPDATED = "updated"
 SKIPPED = "skipped"
 FAILED = "failed"
 PREVIEWED = "previewed"
+#: Something only a person can do on the server, reported rather than applied.
+UNAVAILABLE = "unavailable"
 
 #: Where the platform keeps a setting when it reports one back.
 IN_ENTITY = "entity"
@@ -306,6 +308,12 @@ def activity_parent_registration(
     registration is already there and, when it is not, says what must be done
     by hand.
 
+    Read once rather than polled, deliberately. Version 1 polled here because
+    version 1 *wrote* the registration and then verified it, and the platform
+    can serve stale definition metadata straight after a cache rebuild. This
+    writes nothing, so there is nothing to wait for: a registration absent now
+    will be absent in twenty seconds.
+
     :param client: A client for the target instance.
     :param entity: The design's name for the object type.
     :param holder: The activity to check the registration against.
@@ -322,3 +330,53 @@ def activity_parent_registration(
     if registered:
         return []
     return [f"{entity}: {_ACTIVITY_PARENT_REASON}"]
+
+
+@dataclass
+class ActivityRegistrationOutcome:
+    """Whether one object type may yet receive meetings, calls and tasks.
+
+    :ivar name: The object type, as a person would say it.
+    :ivar status: :data:`SKIPPED` when it already may, :data:`UNAVAILABLE`
+        when somebody must change the server first.
+    :ivar detail: Which, in words.
+    :ivar manual_config: What that somebody must do.
+    """
+
+    name: str
+    status: str = SKIPPED
+    detail: str = "meetings, calls and tasks may already be filed against it"
+    manual_config: list[str] = dataclass_field(default_factory=list)
+
+    @property
+    def failed(self) -> bool:
+        """Never. A change only a person can make is not a failed run."""
+        return False
+
+
+def check_activity_registration(
+    client: EspoWriteClient, entities: Iterable[str]
+) -> list[ActivityRegistrationOutcome]:
+    """Report, per object type, whether it may yet receive activities.
+
+    Called for every object type the design builds on the base kind that
+    carries activities. That base kind is necessary and not sufficient:
+    on the client's test instance five object types had it and only three
+    were listed as permitted parents, so nobody could file a meeting against
+    a contribution — and no publish had ever mentioned it (REQ-636).
+    """
+    outcomes: list[ActivityRegistrationOutcome] = []
+    for entity in entities:
+        steps = activity_parent_registration(client, entity)
+        if not steps:
+            outcomes.append(ActivityRegistrationOutcome(name=entity))
+            continue
+        outcomes.append(
+            ActivityRegistrationOutcome(
+                name=entity,
+                status=UNAVAILABLE,
+                detail=_ACTIVITY_PARENT_REASON,
+                manual_config=steps,
+            )
+        )
+    return outcomes

@@ -514,6 +514,7 @@ def plan_for(
                         declared_fields=declared_fields,
                     ),
                     duplicate_checks=intents_for(name, block),
+                    tracks_activities=str(block.get("type") or "") == "BasePlus",
                 )
             )
             tabs.extend(_tab_intents(on_platform, block))
