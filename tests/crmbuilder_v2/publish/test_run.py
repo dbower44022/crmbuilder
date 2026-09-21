@@ -175,6 +175,9 @@ def test_every_declared_step_runs() -> None:
         # Reported before the fields, so a rule about which records count as
         # the same is named beside the object type it guards (REQ-635).
         "duplicate checks",
+        # Reported before the fields for the same reason: what an object type
+        # can and cannot receive belongs beside the object type (REQ-636).
+        "activity registration",
         "fields",
         "layouts",
         "links",

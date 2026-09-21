@@ -84,6 +84,10 @@ class EntityPlan:
     fields: Sequence[fields_applier.FieldIntent] = ()
     layouts: Sequence[layouts_applier.LayoutIntent] = ()
     duplicate_checks: Sequence[dedup_applier.DuplicateCheckIntent] = ()
+    #: Whether the design builds this object type on the base kind that
+    #: carries activities. Necessary for a meeting to be filed against it,
+    #: and not sufficient — the server must list it too (REQ-636).
+    tracks_activities: bool = False
 
 
 @dataclass
@@ -344,6 +348,21 @@ def _apply(
             )
         ],
         declared=bool(dedup_work),
+    )
+
+    # Reported, never applied: listing an object type as somewhere a meeting
+    # may be filed is a change to the platform's own definition files, which
+    # its interface does not expose (REQ-636).
+    activity_work = [
+        entity.name for entity in plan.entities if entity.tracks_activities
+    ]
+    _run_step(
+        report,
+        "activity registration",
+        lambda: settings_applier.check_activity_registration(
+            client, activity_work
+        ),
+        declared=bool(activity_work),
     )
 
     field_work = [entity for entity in plan.entities if entity.fields]
