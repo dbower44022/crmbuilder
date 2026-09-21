@@ -147,3 +147,18 @@ def test_every_qualifying_property_is_covered_not_only_the_two_that_bit() -> Non
         "format": "url",
         "holds": "several",
     }
+
+
+# --- the audit says what it wrote (REQ-627 / PI-541) ------------------------
+
+
+def test_the_backfill_reports_what_it_filled_so_a_summary_can_count_it() -> None:
+    """The backfill writes to design records nobody has watched it write. It
+    returns what it filled so the fields area can say so, rather than leaving
+    an operator to discover the writes afterwards — which is the shape of
+    defect this path has already been corrected for three times."""
+    repo = FakeFieldRepo()
+    filled = _backfill_qualifiers(
+        None, repo, _canonical(), _audited_field_attrs({"type": "urlMultiple"})
+    )
+    assert len(filled) == len(repo.patches)

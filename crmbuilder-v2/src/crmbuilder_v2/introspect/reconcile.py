@@ -1176,7 +1176,19 @@ def _reconcile_fields_drift(
         return _global_field_labels.get(field) if isinstance(_global_field_labels, dict) else None
 
     stamp = datetime.now(UTC)
-    summary = {"seen": 0, "created": 0, "present": 0, "drifted": 0, "absent": 0}
+    # ``qualifiers_filled`` counts the properties the backfill wrote (REQ-627 /
+    # PI-541). It writes to design records nobody has watched it write, and a
+    # summary that did not mention it would be the same defect this path has
+    # already been corrected for three times: the run knows and the report
+    # does not say.
+    summary = {
+        "seen": 0,
+        "created": 0,
+        "present": 0,
+        "drifted": 0,
+        "absent": 0,
+        "qualifiers_filled": 0,
+    }
     writer = _AreaMembershipWriter(
         session,
         instance_identifier=instance_identifier,
@@ -1372,7 +1384,9 @@ def _reconcile_fields_drift(
                 state, override = "present", None
             else:
                 member_id = match["field_identifier"]
-                _backfill_qualifiers(session, field_repo, match, audited)
+                summary["qualifiers_filled"] += len(
+                    _backfill_qualifiers(session, field_repo, match, audited)
+                )
                 diff = _field_override(match, audited)
                 state = "drifted" if diff else "present"
                 override = diff or None
