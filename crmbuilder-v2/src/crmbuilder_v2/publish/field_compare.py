@@ -34,6 +34,9 @@ MIRROR_KIND = "foreign"
 #: Compared for every field kind.
 COMMON_PROPERTIES: tuple[str, ...] = (
     "label",
+    # The hover help, compared like any other property so that changing it on
+    # either side is reported rather than silently kept (REQ-634).
+    "tooltip",
     "required",
     "default",
     "readOnly",
