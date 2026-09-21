@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from crmbuilder_v2.publish import live_state
 from crmbuilder_v2.publish.live_state import (
     gather_server_fields,
     map_entity_specs,
@@ -118,3 +119,32 @@ def test_no_v2_module_imports_the_v1_audit():
         if forbidden.search(path.read_text(encoding="utf-8"))
     ]
     assert offenders == [], f"V1 audit imports remain in: {offenders}"
+
+
+# --- names that differ only by case (REQ-630 / PI-540) ----------------------
+
+
+def test_two_names_differing_only_by_case_are_reported() -> None:
+    """The trace a flattened name leaves behind. A publish created
+    ``submitteremail`` beside the ``submitterEmail`` already on CBMTEST."""
+    clashes = live_state.name_clashes({
+        "IntakeSubmission": frozenset({"form", "submitterEmail", "submitteremail"}),
+    })
+    assert clashes == [
+        {"entity": "IntakeSubmission", "names": ["submitterEmail", "submitteremail"]}
+    ]
+
+
+def test_an_instance_with_no_clash_reports_nothing() -> None:
+    assert live_state.name_clashes({"Contact": frozenset({"suffix", "title"})}) == []
+
+
+def test_every_object_type_is_checked_not_only_the_first() -> None:
+    """One object type being clean proves nothing about the next, which is the
+    same reason the check runs against whichever instance is being published
+    to rather than trusting the one it was found on."""
+    clashes = live_state.name_clashes({
+        "Contact": frozenset({"suffix"}),
+        "Resource": frozenset({"url", "URL"}),
+    })
+    assert [c["entity"] for c in clashes] == ["Resource"]

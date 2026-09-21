@@ -45,7 +45,7 @@ from crmbuilder_v2.publish.declaration import (
 from crmbuilder_v2.publish.declaration import parse as parse_declaration
 from crmbuilder_v2.publish.espo_write_client import EspoWriteClient
 from crmbuilder_v2.publish.from_declaration import plan_for
-from crmbuilder_v2.publish.live_state import gather_server_fields
+from crmbuilder_v2.publish.live_state import gather_server_fields, name_clashes
 
 OutputFn = Callable[[str, str], None]
 
@@ -180,6 +180,11 @@ class PublishResult:
     #: What the platform will not do, gathered from every applied program —
     #: the list a person works through by hand after a publish.
     manual_config_items: list[str] = field(default_factory=list)
+    #: REQ-630 — field names on the target that differ only by case. One thing
+    #: written twice, left behind by a run that flattened a name before the
+    #: word splitter was corrected. Reported, never removed: which of the pair
+    #: is the real one is a judgement for a person.
+    name_clashes: list[dict] = field(default_factory=list)
     verification: VerificationResult | None = None
     backup: dict | None = None
     aborted: bool = False
@@ -681,6 +686,9 @@ def publish(
     server_fields, _warnings = gather_server_fields(
         client, _entity_names(programs)
     )
+    # Costs nothing: the names are already in hand, and a clash is the trace a
+    # flattened name leaves on an instance (REQ-630).
+    clashes = name_clashes(server_fields)
     failures = validate_programs(programs, server_fields)
     validation_failed = bool(failures)
 
@@ -690,6 +698,7 @@ def publish(
         validate_only=validate_only,
         preview=preview,
         validation_failed=validation_failed,
+        name_clashes=clashes,
         plan_fingerprint=plan_fingerprint_for(
             scoped_artifacts,
             target_identifier=target_identifier,
