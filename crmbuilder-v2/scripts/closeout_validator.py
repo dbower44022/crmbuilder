@@ -193,11 +193,13 @@ def check_session_block(payload: dict) -> list[Violation]:
     session_description, session_medium, session_status — and session_medium
     must be in SESSION_MEDIUMS.
 
-    This is the check that would have caught SES-101's
-    ``session_medium="claude_code"`` failure (``claude_code`` is a
-    chat-platform value belonging in ``session_medium_metadata.chat_platform``,
-    not in the ``session_medium`` enum, which is one of
-    chat/email/phone/zoom/in_person/slack/other).
+    The check reads the shared vocabulary rather than a list of its own, so it
+    follows the vocabulary wherever it goes. It was written for SES-101, whose
+    close-out carried ``session_medium="claude_code"`` when that value did not
+    exist. It does exist now: DEC-1035 added it on 2026-09-04 so a session run
+    in Claude Code against the live store can be told from a sandbox
+    conversation, which records ``chat``. This text said otherwise for a
+    fortnight, and three of this module's tests asserted it (REQ-561 / PI-542).
     """
     out: list[Violation] = []
     block = payload.get("session")
@@ -237,9 +239,8 @@ def check_session_block(payload: dict) -> list[Violation]:
                 SEVERITY_ERROR,
                 "session_block",
                 f"session.session_medium={medium!r} is not in SESSION_MEDIUMS "
-                f"{sorted(SESSION_MEDIUMS)}. (This is the SES-101 case — "
-                f"'claude_code' is a chat-platform value for "
-                f"session_medium_metadata.chat_platform, not a session_medium.)",
+                f"{sorted(SESSION_MEDIUMS)}. A platform name that is not one "
+                f"of these belongs in session_medium_metadata.chat_platform.",
             )
         )
     return out
