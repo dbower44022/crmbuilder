@@ -12,8 +12,8 @@ from typing import Any
 import httpx
 from crmbuilder_v2.ui.panels._governance_helpers import created_updated_section
 from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
-from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.panels.projects import ProjectsPanel
+from crmbuilder_v2.ui.panels.sessions import SessionsPanel
 from crmbuilder_v2.ui.widgets.datetime_format import format_timestamp
 from PySide6.QtWidgets import QLabel
 

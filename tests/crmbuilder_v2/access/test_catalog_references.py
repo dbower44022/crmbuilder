@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import catalog, decisions, references
 from crmbuilder_v2.access.vocab import ENTITY_TYPES

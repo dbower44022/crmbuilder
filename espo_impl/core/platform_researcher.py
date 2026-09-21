@@ -8,10 +8,10 @@ conforming to the platform comparison schema.
 import datetime
 import logging
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Callable
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -138,7 +138,7 @@ class PlatformResearcher:
                 web_content[api_docs_url] = self._extract_text(docs_html)
                 pages_fetched += 1
             else:
-                self._log(f"Could not fetch API docs URL, continuing.", "warn")
+                self._log("Could not fetch API docs URL, continuing.", "warn")
 
         # 2. Discover related pages
         self._log("Discovering documentation and pricing links...", "info")

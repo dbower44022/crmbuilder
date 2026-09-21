@@ -247,7 +247,7 @@ class ExtensionLicenseDialog(QDialog):
                 save_license(conn, license_obj)
             finally:
                 conn.close()
-        except sqlite3.IntegrityError as exc:
+        except sqlite3.IntegrityError:
             QMessageBox.warning(
                 self, "Duplicate license",
                 f"A license for {name!r} with this purchaser label already "

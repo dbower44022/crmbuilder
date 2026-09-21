@@ -25,7 +25,6 @@ from crmbuilder_v2.access.models import (
 from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import IntegrityError
 
-
 _CATALOG_TABLES = (
     "catalog_entity",
     "catalog_entity_synonym",

@@ -12,7 +12,6 @@ import pytest
 from automation.core.deployment.deploy_config_repo import InstanceDeployConfig
 from automation.core.deployment.extension_ssh import (
     ExtensionManifest,
-    InstallResult,
     _safe_filename,
     install_extension,
     parse_extension_manifest,
@@ -20,7 +19,6 @@ from automation.core.deployment.extension_ssh import (
     phase_pre_check,
     phase_verify,
 )
-
 
 # ── Helpers ────────────────────────────────────────────────────────────
 

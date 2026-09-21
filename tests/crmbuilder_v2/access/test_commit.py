@@ -11,13 +11,11 @@ import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
-    NotFoundError,
     UnprocessableError,
 )
 from crmbuilder_v2.access.repositories import commits as cm
-from crmbuilder_v2.access.repositories import sessions as sr
 from crmbuilder_v2.access.repositories import projects as ws
-
+from crmbuilder_v2.access.repositories import sessions as sr
 
 SHA_A = "a" * 40
 SHA_B = "b" * 40

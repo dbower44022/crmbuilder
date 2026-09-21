@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-
+from crmbuilder_v2.access.db import session_scope as meta_session_scope
 from crmbuilder_v2.access.engagement import (
     create_engagement,
     delete_engagement,
@@ -17,11 +17,9 @@ from crmbuilder_v2.access.engagement import (
     restore_engagement,
     update_engagement,
 )
-from crmbuilder_v2.access.db import session_scope as meta_session_scope
 from crmbuilder_v2.access.engagement_models import EngagementStatus
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
-    NotFoundError,
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import EngagementRow

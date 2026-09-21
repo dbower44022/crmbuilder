@@ -96,7 +96,10 @@ def test_personas_is_fifth_methodology_entry():
 def test_sidebar_renders_personas_under_methodology(qtbot):
     # REQ-526 / PI-432: the sidebar is phase-scoped; Personas renders as a
     # numbered step in the Phase 1 checklist (position 2, after Charter).
-    from crmbuilder_v2.ui.navigation import ALL_PANELS_GROUP_TITLE, PhaseMap  # noqa: PLC0415
+    from crmbuilder_v2.ui.navigation import (  # noqa: PLC0415
+        ALL_PANELS_GROUP_TITLE,
+        PhaseMap,
+    )
     from crmbuilder_v2.ui.panel_registry import ALL_PANEL_LABELS  # noqa: PLC0415
 
     groups = PhaseMap().sidebar_groups("1", ALL_PANEL_LABELS)

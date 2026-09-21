@@ -9,7 +9,6 @@ import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.bootstrap.catalog_loader import load_catalog
 
-
 _FIXTURE_CATALOG = (
     Path(__file__).resolve().parents[1] / "bootstrap" / "fixtures" / "catalog"
 )

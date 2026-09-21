@@ -19,6 +19,10 @@ from crmbuilder_v2.ui.dialogs.close_out_payload_crud import (
 from crmbuilder_v2.ui.dialogs.conversation_crud import (
     ConversationCreateDialog,
 )
+from crmbuilder_v2.ui.dialogs.project_crud import (
+    ProjectCreateDialog,
+    ProjectEditDialog,
+)
 from crmbuilder_v2.ui.dialogs.reference_book_crud import (
     ReferenceBookCreateDialog,
     ReferenceBookEditDialog,
@@ -27,17 +31,13 @@ from crmbuilder_v2.ui.dialogs.work_ticket_crud import (
     WorkTicketCreateDialog,
     WorkTicketEditDialog,
 )
-from crmbuilder_v2.ui.dialogs.project_crud import (
-    ProjectCreateDialog,
-    ProjectEditDialog,
-)
 from crmbuilder_v2.ui.main_window import ENTITY_TYPE_TO_SIDEBAR_LABEL
 from crmbuilder_v2.ui.panels.close_out_payloads import CloseOutPayloadsPanel
 from crmbuilder_v2.ui.panels.conversations import ConversationsPanel
 from crmbuilder_v2.ui.panels.deposit_events import DepositEventsPanel
+from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.panels.reference_books import ReferenceBooksPanel
 from crmbuilder_v2.ui.panels.work_tickets import WorkTicketsPanel
-from crmbuilder_v2.ui.panels.projects import ProjectsPanel
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
 from fastapi.testclient import TestClient
 

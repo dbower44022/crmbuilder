@@ -11,7 +11,6 @@ from pathlib import Path
 
 from ruamel.yaml import YAML
 
-from espo_impl.core.reconcile.document import YamlDocument
 from espo_impl.core.reconcile.layout_reverse import reverse_layout_payload
 from espo_impl.core.reconcile.locators import LayoutLocator
 from espo_impl.core.reconcile.models import ConfigType, DiffCategory, Difference

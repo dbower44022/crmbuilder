@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from crmbuilder_v2.access import compared_set as cs
 
-
 # --- declaration shape -------------------------------------------------------
 
 

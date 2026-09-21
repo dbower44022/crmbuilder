@@ -17,8 +17,8 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     UnprocessableError,
 )
-from crmbuilder_v2.access.repositories import sessions
 from crmbuilder_v2.access.repositories import projects as ws
+from crmbuilder_v2.access.repositories import sessions
 
 # A valid 200-800 char executive summary reused across fixtures.
 _EXEC_SUMMARY = (

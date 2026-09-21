@@ -179,9 +179,8 @@ def test_session_status_spec(qtbot, client_stub):
 
 
 def test_planning_item_status_menu_present(qtbot, client_stub):
-    from PySide6.QtCore import QModelIndex
-
     from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
+    from PySide6.QtCore import QModelIndex
 
     panel = PlanningItemsPanel(client_stub)
     qtbot.addWidget(panel)

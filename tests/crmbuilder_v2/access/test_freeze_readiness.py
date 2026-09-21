@@ -13,7 +13,7 @@ import pytest
 from crmbuilder_v2.access._helpers import get_by_identifier
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import ConflictError
-from crmbuilder_v2.access.models import PlanningItem, Release, Requirement
+from crmbuilder_v2.access.models import PlanningItem, Requirement
 from crmbuilder_v2.access.repositories import (
     planning_items,
     projects,

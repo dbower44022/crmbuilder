@@ -17,7 +17,6 @@ that library's ``rgb()`` helper.
 from __future__ import annotations
 
 import pytest
-
 from crmbuilder_v2.ui.styling import TOKENS
 
 _LIGHT = TOKENS["light"]

@@ -18,6 +18,8 @@ from crmbuilder_v2.access import entity_summary as es
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import (
     planning_items as pi,
+)
+from crmbuilder_v2.access.repositories import (
     references,
 )
 from crmbuilder_v2.access.vocab import ENTITY_TYPES

@@ -285,13 +285,12 @@ def test_matches_keeps_its_deploy_meaning_while_conclusive_says_the_truth():
 
 
 def test_a_fully_answered_comparison_is_conclusive():
-    from espo_impl.core.comparator import FieldComparator
-    from espo_impl.core.comparator import COMMON_PROPERTIES
+    from espo_impl.core.comparator import COMMON_PROPERTIES, FieldComparator
 
     spec = _spec(
         **{p: "x" for p in COMMON_PROPERTIES if p not in ("type",)}
     )
-    current = {"type": "varchar", **{p: "x" for p in COMMON_PROPERTIES}}
+    current = {"type": "varchar", **dict.fromkeys(COMMON_PROPERTIES, "x")}
     result = FieldComparator().compare(spec, current)
     assert result.conclusive is True
     assert result.matches is True

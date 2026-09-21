@@ -17,7 +17,6 @@ from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.bootstrap.catalog_loader import load_catalog
 from crmbuilder_v2.mcp_server.server import build_server
 
-
 _FIXTURE_CATALOG = (
     Path(__file__).resolve().parents[1] / "bootstrap" / "fixtures" / "catalog"
 )
