@@ -9,7 +9,6 @@ to ``/sessions/{id}/commits`` accordingly.
 
 from __future__ import annotations
 
-
 SHA_A = "a" * 40
 SHA_B = "b" * 40
 

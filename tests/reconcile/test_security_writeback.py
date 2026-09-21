@@ -39,7 +39,7 @@ teams:
 def _changed(before, after):
     b, a = before.splitlines(), after.splitlines()
     assert len(b) == len(a)
-    return [i for i, (x, y) in enumerate(zip(b, a)) if x != y]
+    return [i for i, (x, y) in enumerate(zip(b, a, strict=True)) if x != y]
 
 
 def test_scope_string_change():

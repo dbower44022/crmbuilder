@@ -8,14 +8,11 @@ surface.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from _common import (
-    SPIKE_DIR,
-    Attempt,
-    BOOL_FILTER_NAMES,
     ENUM_VALUES,
     PRIMARY_FILTER_NAMES,
+    SPIKE_DIR,
+    Attempt,
     append_attempt,
     make_client,
     print_attempt,
@@ -32,7 +29,7 @@ def primary_filter_block_array_any_of() -> dict:
     ``equals`` would return zero rows when matching list-valued fields.
     """
     block = {}
-    for name, value in zip(PRIMARY_FILTER_NAMES, ENUM_VALUES):
+    for name, value in zip(PRIMARY_FILTER_NAMES, ENUM_VALUES, strict=True):
         block[name] = {
             "where": [
                 {
@@ -52,7 +49,7 @@ def primary_filter_block_equals() -> dict:
     but the schema may still accept the structure.
     """
     block = {}
-    for name, value in zip(PRIMARY_FILTER_NAMES, ENUM_VALUES):
+    for name, value in zip(PRIMARY_FILTER_NAMES, ENUM_VALUES, strict=True):
         block[name] = {
             "where": [
                 {

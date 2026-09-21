@@ -57,7 +57,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-
 # Status mapping for old conversations (v0.7) → new sessions
 _CONV_STATUS_MAP = {
     "planned": "planned",
@@ -86,7 +85,7 @@ _KIND_RENAMES = {
 
 
 def _row_to_dict(cursor: sqlite3.Cursor, row: tuple) -> dict:
-    return {col[0]: val for col, val in zip(cursor.description, row)}
+    return {col[0]: val for col, val in zip(cursor.description, row, strict=True)}
 
 
 def verify_state(conn: sqlite3.Connection) -> tuple[int, int]:
@@ -368,8 +367,8 @@ def write_audit_report(
     lines.append("# PI-073 Phase F — Data Migration Audit Report")
     lines.append("")
     lines.append(f"**Generated:** {now}")
-    lines.append(f"**Phase:** F (data migration)")
-    lines.append(f"**Source DB:** branch isolation copy at `crmbuilder-v2/data/branch-pi-073/CRMBUILDER.db`")
+    lines.append("**Phase:** F (data migration)")
+    lines.append("**Source DB:** branch isolation copy at `crmbuilder-v2/data/branch-pi-073/CRMBUILDER.db`")
     lines.append("")
     lines.append("## Row counts")
     lines.append("")
@@ -423,7 +422,7 @@ def main() -> int:
 
     repo_root = Path(__file__).resolve().parents[2]
 
-    print(f"=== PI-073 Phase F data migration ===")
+    print("=== PI-073 Phase F data migration ===")
     print(f"DB: {db_path}")
     print(f"Dry run: {args.dry_run}")
     print()

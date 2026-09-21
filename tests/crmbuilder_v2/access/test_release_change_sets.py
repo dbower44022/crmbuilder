@@ -9,20 +9,18 @@ resolution fold), and that ``run_reconciliation`` persists as a side effect.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 import pytest
 from crmbuilder_v2.access import release_orchestration as orch
 from crmbuilder_v2.access._helpers import get_by_identifier
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import NotFoundError
 from crmbuilder_v2.access.models import Release
+from crmbuilder_v2.access.repositories import reconciliation as recon
 from crmbuilder_v2.access.repositories import (
     release_change_sets,
     release_demands,
     releases,
 )
-from crmbuilder_v2.access.repositories import reconciliation as recon
 
 
 def _set_status(s, rel, status):

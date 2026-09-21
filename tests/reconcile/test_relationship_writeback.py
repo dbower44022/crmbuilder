@@ -1,8 +1,6 @@
 """Relationship write-back: surgical property sets in the relationships: block."""
 from __future__ import annotations
 
-from pathlib import Path
-
 from ruamel.yaml import YAML
 
 from espo_impl.core.reconcile.document import YamlDocument

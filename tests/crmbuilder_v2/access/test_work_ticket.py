@@ -9,9 +9,9 @@ from crmbuilder_v2.access.exceptions import (
     UnprocessableError,
 )
 from crmbuilder_v2.access.repositories import conversations as cr
+from crmbuilder_v2.access.repositories import projects as ws
 from crmbuilder_v2.access.repositories import sessions as sr
 from crmbuilder_v2.access.repositories import work_tickets as wt
-from crmbuilder_v2.access.repositories import projects as ws
 
 _EXEC_SUMMARY = (
     "This planning item reconciles stale test fixtures with the current "

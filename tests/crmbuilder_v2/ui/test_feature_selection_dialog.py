@@ -101,9 +101,8 @@ def test_clear_patches_null(qtbot):
 
 
 def test_save_with_nothing_checked_does_not_patch(qtbot, monkeypatch):
-    from PySide6.QtWidgets import QMessageBox
-
     from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
+    from PySide6.QtWidgets import QMessageBox
 
     monkeypatch.setattr(
         CopyableMessageBox,

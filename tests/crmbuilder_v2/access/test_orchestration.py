@@ -8,7 +8,6 @@ from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import ValidationError
 from crmbuilder_v2.access.repositories import planning_items, references
 
-
 _EXEC_SUMMARY = (
     "This planning item reconciles stale test fixtures with the current governance "
     "schema so the suite validates real behavior; it carries no production code change "

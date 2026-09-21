@@ -120,14 +120,14 @@ def test_extra_field_rejected():
 
 def test_entity_update_in_same_shape_as_create():
     """PUT (full replace) accepts the same body as POST (create)."""
-    payload = dict(
-        catalog_id="account",
-        name="Account",
-        display_name="Account",
-        tier=1,
-        entry_kind="universal",
-        data_model_role="anchor",
-    )
+    payload = {
+        "catalog_id": "account",
+        "name": "Account",
+        "display_name": "Account",
+        "tier": 1,
+        "entry_kind": "universal",
+        "data_model_role": "anchor",
+    }
     create = CatalogEntityCreateIn(**payload)
     update = CatalogEntityUpdateIn(**payload)
     assert create.model_dump() == update.model_dump()

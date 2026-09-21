@@ -7,16 +7,26 @@ from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
     NotFoundError,
+    UnprocessableError,
     ValidationError,
 )
-from crmbuilder_v2.access.exceptions import UnprocessableError
 from crmbuilder_v2.access.repositories import (
     conversations as cr,
+)
+from crmbuilder_v2.access.repositories import (
     planning_items as pi,
-    references,
-    sessions as se,
-    work_tickets as wt,
+)
+from crmbuilder_v2.access.repositories import (
     projects as ws,
+)
+from crmbuilder_v2.access.repositories import (
+    references,
+)
+from crmbuilder_v2.access.repositories import (
+    sessions as se,
+)
+from crmbuilder_v2.access.repositories import (
+    work_tickets as wt,
 )
 
 from tests.crmbuilder_v2._records import ensure

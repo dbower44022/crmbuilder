@@ -11,13 +11,11 @@ import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
-    NotFoundError,
     UnprocessableError,
 )
 from crmbuilder_v2.access.repositories import commits as cm
-from crmbuilder_v2.access.repositories import sessions as sr
 from crmbuilder_v2.access.repositories import projects as ws
-
+from crmbuilder_v2.access.repositories import sessions as sr
 
 SHA_A = "a" * 40
 SHA_B = "b" * 40
@@ -60,18 +58,18 @@ def _session(s, identifier="SES-001"):
 
 def _make(s, sha=SHA_A, session_id="SES-001", **overrides):
     """Create a commit with sensible defaults; overrides win."""
-    defaults = dict(
-        sha=sha,
-        message_first_line="first line",
-        message_full="first line\n\nfull body",
-        author_name="Doug Bower",
-        author_email="doug@dougbower.com",
-        committed_at="2026-05-23T20:45:12-04:00",
-        repository="crmbuilder",
-        parent_shas=["1" * 40],
-        files_changed_count=3,
-        session_id=session_id,
-    )
+    defaults = {
+        "sha": sha,
+        "message_first_line": "first line",
+        "message_full": "first line\n\nfull body",
+        "author_name": "Doug Bower",
+        "author_email": "doug@dougbower.com",
+        "committed_at": "2026-05-23T20:45:12-04:00",
+        "repository": "crmbuilder",
+        "parent_shas": ["1" * 40],
+        "files_changed_count": 3,
+        "session_id": session_id,
+    }
     defaults.update(overrides)
     return cm.create_commit(s, **defaults)
 

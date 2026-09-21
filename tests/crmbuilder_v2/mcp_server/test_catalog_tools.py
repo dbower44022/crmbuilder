@@ -16,7 +16,7 @@ from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.bootstrap.catalog_loader import load_catalog
 from crmbuilder_v2.mcp_server.server import build_server
-
+from mcp.server.fastmcp.exceptions import ToolError
 
 _FIXTURE_CATALOG = (
     Path(__file__).resolve().parents[1] / "bootstrap" / "fixtures" / "catalog"
@@ -172,12 +172,12 @@ async def test_catalog_gap_check_excludes_drafted(mcp_server):
 
 
 async def test_catalog_get_entity_not_found_raises(mcp_server):
-    with pytest.raises(Exception):
+    with pytest.raises(ToolError):
         await _call(mcp_server, "catalog_get_entity", {"catalog_id": "ghost"})
 
 
 async def test_catalog_search_empty_query_raises(mcp_server):
     """min_length=1 on the REST layer rejects empty strings — surfaces as
     httpx error → tool error."""
-    with pytest.raises(Exception):
+    with pytest.raises(ToolError):
         await _call(mcp_server, "catalog_search", {"query": ""})

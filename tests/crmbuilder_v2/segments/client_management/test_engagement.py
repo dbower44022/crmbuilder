@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-
+from crmbuilder_v2.access.db import session_scope as meta_session_scope
 from crmbuilder_v2.access.engagement import (
     create_engagement,
     delete_engagement,
@@ -17,11 +17,9 @@ from crmbuilder_v2.access.engagement import (
     restore_engagement,
     update_engagement,
 )
-from crmbuilder_v2.access.db import session_scope as meta_session_scope
 from crmbuilder_v2.access.engagement_models import EngagementStatus
 from crmbuilder_v2.access.exceptions import (
     ConflictError,
-    NotFoundError,
     UnprocessableError,
 )
 from crmbuilder_v2.access.models import EngagementRow
@@ -380,7 +378,7 @@ def test_list_orders_by_last_opened_desc_nulls_last(meta_db):
         b = create_engagement(
             s, engagement_code="BB", engagement_name="B", engagement_purpose="p"
         )
-        c = create_engagement(
+        create_engagement(
             s, engagement_code="CC", engagement_name="C", engagement_purpose="p"
         )
         # B opened most recently; A opened earlier; C never opened.

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 _EXEC_SUMMARY = (
     "This planning item reconciles stale test fixtures with the current "
     "governance schema so the suite validates real behavior; it carries no "

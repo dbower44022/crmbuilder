@@ -7,10 +7,9 @@ native style (Linux+GTK is the surfaced case; macOS native style
 similarly affected).
 """
 
-from PySide6.QtGui import QPalette, QColor
-
 from crmbuilder_v2.ui.app import build_application
 from crmbuilder_v2.ui.styling import TOKENS
+from PySide6.QtGui import QColor, QPalette
 
 
 def test_style_is_fusion(qapp):

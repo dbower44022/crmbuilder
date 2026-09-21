@@ -247,7 +247,7 @@ class ExtensionLicenseDialog(QDialog):
                 save_license(conn, license_obj)
             finally:
                 conn.close()
-        except sqlite3.IntegrityError as exc:
+        except sqlite3.IntegrityError:
             QMessageBox.warning(
                 self, "Duplicate license",
                 f"A license for {name!r} with this purchaser label already "
@@ -452,7 +452,7 @@ class ExtensionsEntry(QWidget):
 
         # Validate manifest before opening the heavyweight dialog
         try:
-            manifest = parse_extension_manifest(zip_path)
+            parse_extension_manifest(zip_path)
         except (FileNotFoundError, ValueError) as exc:
             QMessageBox.critical(
                 self, "Invalid extension zip",

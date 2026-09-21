@@ -29,7 +29,6 @@ from crmbuilder_v2.bootstrap.catalog_loader import (
 )
 from sqlalchemy import func, select
 
-
 _FIXTURES = Path(__file__).parent / "fixtures" / "catalog"
 
 

@@ -20,23 +20,18 @@ the place where that distinction is made explicit.
 
 from __future__ import annotations
 
-import json
 import secrets
 import sys
-from pathlib import Path
 
 from _common import (
+    ENUM_VALUES,
     SPIKE_DIR,
     Attempt,
-    ENUM_VALUES,
-    PRIMARY_FILTER_NAMES,
     append_attempt,
-    load_json,
     make_client,
     print_attempt,
     save_json,
 )
-
 
 ADMIN_USER_ID = "69f8a18e429456e87"
 ATTEMPT_LOG = SPIKE_DIR / "task9-attempts.jsonl"
@@ -116,7 +111,7 @@ def main() -> int:
     new_entries = []
     spike_ids = []
     labels = ["Spike: Client", "Spike: Partner", "Spike: Donor/Sponsor"]
-    for label, value in zip(labels, ENUM_VALUES):
+    for label, value in zip(labels, ENUM_VALUES, strict=True):
         fid = _short_id()
         spike_ids.append(fid)
         new_entries.append(build_account_type_filter(fid, label, value))
@@ -206,9 +201,7 @@ def main() -> int:
     )
     if a.status != 200:
         print(
-            "WARNING: restore PUT returned {}. Manual cleanup may be required.".format(
-                a.status
-            )
+            f"WARNING: restore PUT returned {a.status}. Manual cleanup may be required."
         )
         return 1
 

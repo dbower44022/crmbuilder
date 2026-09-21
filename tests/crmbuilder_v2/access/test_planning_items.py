@@ -250,9 +250,8 @@ def test_update_with_unknown_area_value_rejected(v2_env):
 def test_db_check_rejects_empty_array_directly(v2_env):
     """Belt-and-braces: the structural CHECK rejects an empty array even
     when the access-layer validator is bypassed (direct ORM insert)."""
-    from sqlalchemy.exc import IntegrityError
-
     from crmbuilder_v2.access.models import PlanningItem
+    from sqlalchemy.exc import IntegrityError
 
     with pytest.raises(IntegrityError):
         with session_scope() as s:
@@ -340,9 +339,8 @@ def test_db_check_rejects_half_claim(v2_env):
     claimed_at when the access layer is bypassed (direct ORM insert)."""
     from datetime import UTC, datetime
 
-    from sqlalchemy.exc import IntegrityError
-
     from crmbuilder_v2.access.models import PlanningItem
+    from sqlalchemy.exc import IntegrityError
 
     with pytest.raises(IntegrityError):
         with session_scope() as s:

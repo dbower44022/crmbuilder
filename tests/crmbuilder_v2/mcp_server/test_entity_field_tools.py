@@ -14,6 +14,7 @@ import httpx
 import pytest
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.mcp_server.server import build_server
+from mcp.server.fastmcp.exceptions import ToolError
 
 
 @pytest.fixture
@@ -173,7 +174,7 @@ async def test_field_lifecycle(mcp_server):
 async def test_create_field_missing_parent_raises(mcp_server):
     # field_belongs_to_entity_identifier is REQUIRED by the REST layer;
     # omitting entity_identifier surfaces as a tool error.
-    with pytest.raises(Exception):
+    with pytest.raises(ToolError):
         await _call(
             mcp_server,
             "create_field",
@@ -186,7 +187,7 @@ async def test_create_field_missing_parent_raises(mcp_server):
 
 
 async def test_create_field_unknown_parent_raises(mcp_server):
-    with pytest.raises(Exception):
+    with pytest.raises(ToolError):
         await _call(
             mcp_server,
             "create_field",

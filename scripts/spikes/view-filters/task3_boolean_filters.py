@@ -7,16 +7,15 @@ plus ``clientDefs.Account.boolFilterList``.
 from __future__ import annotations
 
 from _common import (
-    SPIKE_DIR,
-    Attempt,
     BOOL_FILTER_NAMES,
     ENUM_VALUES,
+    SPIKE_DIR,
+    Attempt,
     append_attempt,
     make_client,
     print_attempt,
     save_json,
 )
-
 
 ATTEMPT_LOG = SPIKE_DIR / "task3-attempts.jsonl"
 
@@ -24,7 +23,7 @@ ATTEMPT_LOG = SPIKE_DIR / "task3-attempts.jsonl"
 def bool_filter_block() -> dict:
     """Build the selectDefs.Account.boolFilters payload."""
     block = {}
-    for name, value in zip(BOOL_FILTER_NAMES, ENUM_VALUES):
+    for name, value in zip(BOOL_FILTER_NAMES, ENUM_VALUES, strict=True):
         block[name] = {
             "where": [
                 {

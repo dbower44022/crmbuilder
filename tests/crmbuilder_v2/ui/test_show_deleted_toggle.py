@@ -105,9 +105,7 @@ def test_default_refresh_does_not_include_deleted(qtbot, qapp):
     panel.refresh()
     qtbot.waitUntil(lambda: panel._model.rowCount() > 0)
     # Last GET /decisions had no include_deleted query.
-    decisions_queries = [
-        q for q in captured["queries"]
-    ]
+    decisions_queries = list(captured["queries"])
     assert decisions_queries, "no /decisions calls observed"
     assert "include_deleted" not in decisions_queries[-1]
     # Only the active decision is rendered.

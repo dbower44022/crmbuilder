@@ -17,7 +17,6 @@ from typing import Any
 from espo_impl.core.api_client import EspoAdminClient
 from espo_impl.core.models import InstanceProfile
 
-
 SPIKE_DIR = Path(__file__).resolve().parent
 CLIENT_DB = (
     Path(__file__).resolve().parents[3] / "automation" / "data" / "cbm-client.db"

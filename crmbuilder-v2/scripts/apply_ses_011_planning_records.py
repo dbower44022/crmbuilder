@@ -627,7 +627,7 @@ def main() -> int:
         status, payload = _request("POST", "/decisions", body)
         ok &= _log(f"POST /decisions  {dec['identifier']}", status, payload)
 
-    print(f"\n=== Patching PI-001 (fourth deferral) ===")
+    print("\n=== Patching PI-001 (fourth deferral) ===")
     status, payload = _request("PATCH", "/planning-items/PI-001", PI_001_PATCH)
     ok &= _log("PATCH /planning-items/PI-001", status, payload)
 

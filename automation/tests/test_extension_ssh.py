@@ -12,7 +12,6 @@ import pytest
 from automation.core.deployment.deploy_config_repo import InstanceDeployConfig
 from automation.core.deployment.extension_ssh import (
     ExtensionManifest,
-    InstallResult,
     _safe_filename,
     install_extension,
     parse_extension_manifest,
@@ -20,7 +19,6 @@ from automation.core.deployment.extension_ssh import (
     phase_pre_check,
     phase_verify,
 )
-
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
@@ -170,7 +168,7 @@ class TestPhasePreCheck:
             side_effect=fake,
         ):
             ok, err = phase_pre_check(
-                MagicMock(), config, manifest, lambda m, l: None,
+                MagicMock(), config, manifest, lambda m, level: None,
             )
         assert ok is True
         assert err == ""
@@ -186,7 +184,7 @@ class TestPhasePreCheck:
             side_effect=fake,
         ):
             ok, err = phase_pre_check(
-                MagicMock(), config, manifest, lambda m, l: None,
+                MagicMock(), config, manifest, lambda m, level: None,
             )
         assert ok is False
         assert "not running" in err
@@ -202,7 +200,7 @@ class TestPhasePreCheck:
             side_effect=fake,
         ):
             ok, err = phase_pre_check(
-                MagicMock(), config, manifest, lambda m, l: None,
+                MagicMock(), config, manifest, lambda m, level: None,
             )
         assert ok is False
         assert "compose" in err.lower()
@@ -229,7 +227,7 @@ class TestPhaseInstall:
             side_effect=fake,
         ):
             ok, err = phase_install(
-                mock_ssh, config, manifest, zip_path, lambda m, l: None,
+                mock_ssh, config, manifest, zip_path, lambda m, level: None,
             )
 
         assert ok is True
@@ -264,7 +262,7 @@ class TestPhaseInstall:
             "automation.core.deployment.extension_ssh.run_remote",
         ) as mock_run:
             ok, err = phase_install(
-                mock_ssh, config, manifest, zip_path, lambda m, l: None,
+                mock_ssh, config, manifest, zip_path, lambda m, level: None,
             )
             mock_run.assert_not_called()
 
@@ -291,7 +289,7 @@ class TestPhaseInstall:
             side_effect=fake,
         ):
             ok, err = phase_install(
-                mock_ssh, config, manifest, zip_path, lambda m, l: None,
+                mock_ssh, config, manifest, zip_path, lambda m, level: None,
             )
 
         assert ok is False
@@ -314,7 +312,7 @@ class TestPhaseInstall:
             side_effect=fake,
         ):
             ok, _ = phase_install(
-                mock_ssh, config, manifest, zip_path, lambda m, l: None,
+                mock_ssh, config, manifest, zip_path, lambda m, level: None,
             )
 
         assert ok is False
@@ -329,7 +327,7 @@ class TestPhaseInstall:
         ) as mock_run:
             ok, err = phase_install(
                 MagicMock(), config, manifest,
-                tmp_path / "nope.zip", lambda m, l: None,
+                tmp_path / "nope.zip", lambda m, level: None,
             )
             mock_run.assert_not_called()
         assert ok is False
@@ -349,7 +347,7 @@ class TestPhaseVerify:
             side_effect=fake,
         ):
             ok, err = phase_verify(
-                MagicMock(), config, manifest, lambda m, l: None,
+                MagicMock(), config, manifest, lambda m, level: None,
             )
         assert ok is True
 
@@ -364,7 +362,7 @@ class TestPhaseVerify:
             side_effect=fake,
         ):
             ok, err = phase_verify(
-                MagicMock(), config, manifest, lambda m, l: None,
+                MagicMock(), config, manifest, lambda m, level: None,
             )
         assert ok is False
         assert "smoke check failed" in err
@@ -377,7 +375,7 @@ class TestInstallExtension:
     def test_invalid_zip_returns_phase0(self, tmp_path):
         bad = _make_zip(tmp_path, omit_manifest=True)
         result = install_extension(
-            MagicMock(), _make_config(), bad, lambda m, l: None,
+            MagicMock(), _make_config(), bad, lambda m, level: None,
         )
         assert result.success is False
         assert result.failed_phase == 0
@@ -405,7 +403,7 @@ class TestInstallExtension:
                 "automation.core.deployment.extension_ssh.phase_backup",
             ) as backup:
                 result = install_extension(
-                    mock_ssh, config, zip_path, lambda m, l: None,
+                    mock_ssh, config, zip_path, lambda m, level: None,
                     skip_backup=True,
                 )
                 backup.assert_not_called()
@@ -436,7 +434,7 @@ class TestInstallExtension:
                 return_value=(True, ""),
             ):
                 result = install_extension(
-                    mock_ssh, config, zip_path, lambda m, l: None,
+                    mock_ssh, config, zip_path, lambda m, level: None,
                 )
 
         assert result.success is False
@@ -459,7 +457,7 @@ class TestInstallExtension:
                 "automation.core.deployment.extension_ssh.phase_backup",
             ) as backup:
                 result = install_extension(
-                    MagicMock(), config, zip_path, lambda m, l: None,
+                    MagicMock(), config, zip_path, lambda m, level: None,
                 )
                 backup.assert_not_called()
 

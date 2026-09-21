@@ -17,9 +17,9 @@ from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import close_out_payloads as cop
 from crmbuilder_v2.access.repositories import conversations as cr
 from crmbuilder_v2.access.repositories import deposit_events as dep
+from crmbuilder_v2.access.repositories import projects as ws
 from crmbuilder_v2.access.repositories import sessions as se
 from crmbuilder_v2.access.repositories import work_tickets as wt
-from crmbuilder_v2.access.repositories import projects as ws
 
 # A valid 200-800 char executive summary reused across the session creates.
 _EXEC_SUMMARY = (

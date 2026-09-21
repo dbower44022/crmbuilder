@@ -15,8 +15,8 @@ import httpx
 import pytest
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import conversations as cr
-from crmbuilder_v2.access.repositories import sessions as sr
 from crmbuilder_v2.access.repositories import projects as wr
+from crmbuilder_v2.access.repositories import sessions as sr
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.mcp_server.server import build_server
 

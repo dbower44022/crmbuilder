@@ -179,9 +179,8 @@ def test_session_status_spec(qtbot, client_stub):
 
 
 def test_planning_item_status_menu_present(qtbot, client_stub):
-    from PySide6.QtCore import QModelIndex
-
     from crmbuilder_v2.ui.panels.planning_items import PlanningItemsPanel
+    from PySide6.QtCore import QModelIndex
 
     panel = PlanningItemsPanel(client_stub)
     qtbot.addWidget(panel)
@@ -361,7 +360,7 @@ def test_entity_detail_lists_fields_with_type(qtbot, api_client):
 
 def test_field_detail_shows_entity_name_and_identifier(qtbot, api_client):
     ent_id = _seed_entity(api_client, "Contact")
-    field = _seed_field(api_client, ent_id, "email")
+    _seed_field(api_client, ent_id, "email")
     panel = FieldsPanel(api_client)
     qtbot.addWidget(panel)
     panel.refresh()
