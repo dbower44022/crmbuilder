@@ -1020,6 +1020,53 @@ def _audited_option_set(field_meta: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
+def _backfill_qualifiers(
+    session: Any, field_repo: Any, canonical: dict[str, Any], audited: dict[str, Any]
+) -> list[str]:
+    """Fill a qualifying property the design record has never carried (REQ-627).
+
+    The create path has recorded these since PI-414 and PI-430, so a field
+    discovered today knows it holds a web address or is shown as rich text. A
+    field discovered before that has carried ``None`` ever since, and nothing
+    filled it in: :func:`_field_override` compares under forward asymmetry, so
+    a canonical ``None`` never produces a deviation and therefore never
+    produces a correction either. The property stayed empty for ever.
+
+    What that costs is not abstract. The emitter renders such a field as the
+    plain kind — a web address becomes ordinary text, a rich-text box becomes
+    plain — so a publish proposes replacing the refined field with a flattened
+    one, and the additive-only fence refuses it as a type change on a field
+    nobody has touched. Two of CBMTEST's four refusals on 2026-09-19 were
+    exactly this, and the same would happen on every instance, on every refined
+    field, for ever. DEC-933 named the gap on 2026-08-23 and left it open.
+
+    Only an absent property is filled. A property the design does carry is
+    left alone even when the instance disagrees, because that is drift, and
+    drift is reported for a person to judge rather than quietly overwritten.
+
+    The cost, named rather than hidden: an absent property is read as never
+    read, not as deliberately cleared. Nothing distinguishes the two, and the
+    design has no way to say "no format" as a decision — DEC-933 recorded both
+    properties as empty on all 254 design fields, so there is no such decision
+    to lose today. Should the design gain a way to declare an absence, this
+    must learn to respect it.
+
+    :returns: the canonical attribute names filled, for the caller's summary.
+    """
+    filled: list[str] = []
+    for attribute in _FIELD_QUALIFIER_ATTRS:
+        if canonical.get(attribute) is not None:
+            continue
+        value = audited.get(attribute)
+        if value is None:
+            continue
+        field_repo.patch_field(
+            session, canonical["field_identifier"], **{attribute[len("field_") :]: value}
+        )
+        filled.append(attribute)
+    return filled
+
+
 def _field_override(canonical: dict[str, Any], audited: dict[str, Any]) -> dict:
     """Return the sparse per-attribute field deviation (DEC-432), or ``{}``.
 
@@ -1325,6 +1372,7 @@ def _reconcile_fields_drift(
                 state, override = "present", None
             else:
                 member_id = match["field_identifier"]
+                _backfill_qualifiers(session, field_repo, match, audited)
                 diff = _field_override(match, audited)
                 state = "drifted" if diff else "present"
                 override = diff or None
