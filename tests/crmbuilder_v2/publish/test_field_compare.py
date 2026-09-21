@@ -130,9 +130,15 @@ def test_matching_and_conclusive_are_different_answers() -> None:
             "maxLength": 100,
         },
     )
-    # ``default``, ``min`` and ``max`` are undeclared, so still not conclusive.
+    # ``default``, ``min``, ``max`` and ``tooltip`` are undeclared, so still
+    # not conclusive.
     assert fully_known.matches and not fully_known.conclusive
-    assert {u.property for u in fully_known.unknowns} == {"default", "min", "max"}
+    assert {u.property for u in fully_known.unknowns} == {
+        "default",
+        "min",
+        "max",
+        "tooltip",
+    }
 
 
 def test_an_unknown_is_never_reported_as_a_difference() -> None:
@@ -160,3 +166,24 @@ def test_a_mirrored_field_compares_its_link_and_the_field_it_mirrors() -> None:
     )
     assert result.differences == ["field"]
     assert "'name'" in result.detail_text
+
+
+def test_help_text_is_compared_like_any_other_property() -> None:
+    """REQ-634. Publishing the help text without comparing it would apply a
+    change and then call the field unchanged on the next run."""
+    result = compare_field(
+        {"type": "varchar", "tooltip": "What this is for"},
+        {"type": "varchar", "tooltip": "Something else"},
+    )
+    assert "tooltip" in result.differences
+    assert not result.matches
+
+
+def test_help_text_the_design_does_not_declare_is_not_a_difference() -> None:
+    """An instance may carry help text nobody has put in the design yet.
+    Declaring nothing must leave it alone rather than read as a removal."""
+    result = compare_field(
+        {"type": "varchar"}, {"type": "varchar", "tooltip": "Set by hand once"}
+    )
+    assert result.differences == []
+    assert "tooltip" in {u.property for u in result.unknowns}

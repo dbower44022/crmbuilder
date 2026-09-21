@@ -124,6 +124,16 @@ def _only_entity_block(model):
     return program["entities"][name]
 
 
+def _emitted_field(model, field_name, entity_name="Mentor Application"):
+    """One emitted field block, by its declared name."""
+    for program in model.programs:
+        for entity in (program.program.get("entities") or {}).values():
+            for field in entity.get("fields") or []:
+                if field.get("name") == field_name:
+                    return field
+    raise AssertionError(f"no emitted field {field_name}")
+
+
 def _program_for(model, entity_name):
     for p in model.programs:
         if p.entity_name == entity_name:
@@ -776,7 +786,9 @@ def test_field_attribute_deferred():
         rendered_at=RENDERED_AT,
     )
     attr_kinds = [d.detail for d in model.deferrals if d.kind == "field_attribute"]
-    assert any("tooltip" in d for d in attr_kinds)
+    # REQ-634: the hover help is no longer handed back to the operator. It is
+    # an ordinary field property and is emitted with the rest of the field.
+    assert not any("tooltip" in d for d in attr_kinds)
     assert any("unique" in d for d in attr_kinds)
     # REQ-340 / PI-300: the default-sort intent now emits to settings:
     # (v1.3.2 §5.4), so it is no longer deferred.
@@ -1530,3 +1542,26 @@ def test_a_spaced_name_is_unchanged_by_the_camel_case_split():
     """The split must not disturb the names that already worked."""
     assert camel_plural("Mentor Application") == "mentorApplications"
     assert derive_label("mentor_status") == "Mentor Status"
+
+
+def test_field_help_text_is_emitted_rather_than_deferred():
+    """REQ-634. The hover help travels on the same call as the label, so
+    reporting it as a manual step charged an operator for nothing — once per
+    field, on every publish."""
+    model = build_program_model(
+        [_entity()],
+        [_field(name="note", type="text", field_tooltip="What this note is for")],
+        [],
+        rendered_at=RENDERED_AT,
+    )
+    field = _emitted_field(model, "note")
+    assert field["tooltip"] == "What this note is for"
+
+
+def test_a_field_without_help_text_declares_none():
+    """Declaring an empty help text would overwrite whatever the instance
+    holds; saying nothing leaves it alone."""
+    model = build_program_model(
+        [_entity()], [_field(name="note", type="text")], [], rendered_at=RENDERED_AT
+    )
+    assert "tooltip" not in _emitted_field(model, "note")

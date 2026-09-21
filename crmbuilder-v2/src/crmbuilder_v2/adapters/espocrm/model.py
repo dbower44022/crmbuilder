@@ -791,18 +791,14 @@ def _build_field(
         else:
             payload["optionsDeferred"] = True
 
+    # The hover help a field shows is an ordinary property of that field, sent
+    # on the same call as its label (REQ-634). It was deferred to the operator
+    # for years because nobody wired it, not because the platform made it hard.
+    if field_row.get("field_tooltip"):
+        payload["tooltip"] = field_row["field_tooltip"]
+
     # Neutral attributes with no first-class, deploy-validated EspoCRM
     # field key in scope → deferred (never emitted into the YAML).
-    if field_row.get("field_tooltip"):
-        deferrals.append(
-            Deferral(
-                kind="field_attribute",
-                identifier=fid,
-                name=fname,
-                parent=parent_name,
-                detail="tooltip — configure via the EspoCRM admin UI",
-            )
-        )
     if field_row.get("field_unique"):
         deferrals.append(
             Deferral(
