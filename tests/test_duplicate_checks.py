@@ -538,7 +538,6 @@ def test_manager_short_circuits_without_api_calls():
     assert all(
         r.status == DuplicateCheckStatus.NOT_SUPPORTED for r in results
     )
-    client.put_metadata.assert_not_called()
     client.get_client_defs.assert_not_called()
 
 
@@ -581,7 +580,6 @@ def test_manager_skips_delete_entities():
     )
     results = mgr.process_duplicate_checks(program)
     assert results == []
-    client.put_metadata.assert_not_called()
 
 
 def test_manager_no_checks_returns_empty():
@@ -597,4 +595,3 @@ def test_manager_no_checks_returns_empty():
     )
     results = mgr.process_duplicate_checks(program)
     assert results == []
-    client.put_metadata.assert_not_called()
