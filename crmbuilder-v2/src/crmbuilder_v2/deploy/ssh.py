@@ -152,6 +152,21 @@ def mask_credentials(command: str, config: SelfHostedConfig) -> str:
     return safe
 
 
+def mask_secrets(command: str, secret_values: list[str]) -> str:
+    """Replace each given value in ``command`` with ``[secret]`` before logging.
+
+    The same rule as :func:`mask_credentials`, for callers that hold loose
+    values rather than a whole configuration — the upgrade and recovery steps,
+    which carry one password each. Longest first, empty values skipped.
+    """
+    pairs = [(value, "[secret]") for value in secret_values if value]
+    pairs.sort(key=lambda pair: len(pair[0]), reverse=True)
+    safe = command
+    for value, label in pairs:
+        safe = safe.replace(value, label)
+    return safe
+
+
 # ---------------------------------------------------------------------------
 # The five steps
 # ---------------------------------------------------------------------------
