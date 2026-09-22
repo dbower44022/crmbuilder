@@ -27,9 +27,6 @@ _PERMITTED: frozenset[tuple[str, str]] = frozenset(
         # back with version 1's parser. Version 2 has its own parser now
         # (REQ-606); pointing the self-check at it is what removes this.
         ("adapters/espocrm/adapter.py", "espo_impl.core.config_loader"),
-        # The five provisioning phases the deploy runner calls, which go when
-        # upgrade and recovery are absorbed — area 4a of the inventory.
-        ("deploy/runner.py", "automation.core.deployment"),
     }
 )
 
