@@ -13,7 +13,9 @@ complete. Each phase is idempotent against the checkpoint:
 * ``wait_droplet`` / ``create_dns`` / ``wait_dns`` — poll to active + IP,
   upsert the DNS-only A record, wait for the name to resolve.
 * ``server_prep`` / ``install_espocrm`` / ``post_install`` / ``verify`` — the
-  v1 SSH phases from ``automation.core.deployment.ssh_deploy``, unchanged.
+  SSH phases in :mod:`crmbuilder_v2.deploy.ssh` (PI-556 / REQ-638 / DEC-1140
+  moved them out of version 1, which is what lets version 1's deployment layer
+  be deleted).
 * ``create_instance`` — register the instance and its deploy config in one
   transaction with the terminal status.
 
@@ -106,7 +108,7 @@ class RunnerDeps:
 
     do_client: Callable[[str], Any] = DigitalOceanClient
     cf_client: Callable[[str], Any] = CloudflareClient
-    #: Module exposing the v1 SSH phase functions (``ssh_deploy`` by default).
+    #: Module exposing the SSH phase functions (:mod:`crmbuilder_v2.deploy.ssh`).
     ssh: Any = None
     resolve_secret: Callable[[str], str] = secrets.get_secret
     store_secret: Callable[[str], str] = secrets.put_secret
@@ -122,9 +124,9 @@ class RunnerDeps:
 
     def __post_init__(self) -> None:
         if self.ssh is None:
-            from automation.core.deployment import ssh_deploy
+            from crmbuilder_v2.deploy import ssh as ssh_phases
 
-            self.ssh = ssh_deploy
+            self.ssh = ssh_phases
         if self.resolve_a is None:
             self.resolve_a = resolve_a_public
 

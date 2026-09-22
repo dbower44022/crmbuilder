@@ -102,7 +102,7 @@ class FakeCF:
 
 
 class FakeSSHModule:
-    """Stands in for ``automation.core.deployment.ssh_deploy``."""
+    """Stands in for :mod:`crmbuilder_v2.deploy.ssh`."""
 
     class SelfHostedConfig:
         def __init__(self, **kw):

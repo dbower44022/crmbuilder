@@ -1,8 +1,8 @@
 """Customer CRM instance provisioning — PI-419 (REQ-522, PRJ-111).
 
 Service-side, Qt-free. Creates a server through a provider API, points DNS at
-it, installs and verifies the CRM over SSH (reusing the v1 phases in
-``automation.core.deployment.ssh_deploy`` unchanged), and registers the
+it, installs and verifies the CRM over SSH (:mod:`crmbuilder_v2.deploy.ssh`,
+absorbed from version 1 by PI-556 / REQ-638 / DEC-1140), and registers the
 resulting instance — executed as a *deploy run* by a *deploy worker*.
 
 This package provisions **customers'** servers from an engagement's provider
