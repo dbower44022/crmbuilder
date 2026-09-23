@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import shlex
 import time
 from collections.abc import Callable
 from datetime import datetime
@@ -109,6 +110,7 @@ def run_remote(
     log: Log | None = None,
     *,
     get_pty: bool = False,
+    input_text: str | None = None,
 ) -> tuple[int, str]:
     """Run one command on the server and read its output back.
 
@@ -119,9 +121,16 @@ def run_remote(
     :param log: Written to line by line as output arrives; omitted where the
         caller judges the output itself rather than showing it.
     :param get_pty: Ask for a terminal. The platform's installer needs one.
+    :param input_text: Written to the command's standard input, which is then
+        closed. This is how a password reaches a command without appearing on
+        any command line a process listing could show.
     :returns: ``(exit_code, the two streams joined by newlines)``.
     """
-    _stdin, stdout, stderr = ssh.exec_command(command, timeout=600, get_pty=get_pty)
+    stdin, stdout, stderr = ssh.exec_command(command, timeout=600, get_pty=get_pty)
+    if input_text is not None:
+        stdin.write(input_text)
+        stdin.flush()
+        stdin.channel.shutdown_write()
     lines: list[str] = []
     for stream in (stdout, stderr):
         for line in stream:
@@ -228,17 +237,32 @@ def phase_install_espocrm(
     if exit_code != 0:
         return False, "Failed to download EspoCRM installer"
 
-    install = (
-        f"sudo bash install.sh -y --clean --ssl --letsencrypt "
-        f"--domain={config.domain} "
-        f"--email={config.letsencrypt_email} "
-        f"--admin-username={config.admin_username} "
-        f"--admin-password={config.admin_password} "
-        f"--db-password={config.db_password} "
-        f"--db-root-password={config.db_root_password}"
+    # Every value is quoted for the shell, so a quote or a space in one cannot
+    # break the command or change it (PI-563, REQ-641).
+    options = [
+        ("domain", config.domain, None),
+        ("email", config.letsencrypt_email, None),
+        ("admin-username", config.admin_username, None),
+        ("admin-password", config.admin_password, "[admin_password]"),
+        ("db-password", config.db_password, "[db_password]"),
+        ("db-root-password", config.db_root_password, "[db_root_password]"),
+    ]
+    prefix = "sudo bash install.sh -y --clean --ssl --letsencrypt"
+    install = " ".join(
+        [prefix] + [f"--{name}={shlex.quote(value)}" for name, value, _ in options]
     )
     # The command carries three passwords; what reaches the log carries none.
-    log(f"$ {mask_credentials(install, config)}", "info")
+    # The logged line is built with the names in place of the passwords rather
+    # than by replacing them, because quoting can split a password that holds a
+    # quote into pieces a replacement would not find.
+    shown = " ".join(
+        [prefix]
+        + [
+            f"--{name}={label if label else shlex.quote(value)}"
+            for name, value, label in options
+        ]
+    )
+    log(f"$ {shown}", "info")
     exit_code, _ = run_remote(ssh, install, log, get_pty=True)
     if exit_code != 0:
         return False, f"EspoCRM installer failed (exit {exit_code})"
@@ -297,14 +321,20 @@ def phase_post_install(
     run_remote(ssh, "crontab -l 2>/dev/null | grep espocrm", log)
 
     # Read the certificate from the file rather than through the web server.
-    # The path is the same for every certificate this installer obtains, and
-    # reading it does not wait on the web server coming up — the live-port
+    # Reading it does not wait on the web server coming up — the live-port
     # approach met the same warm-up race the verification step polls around.
+    # The installer keeps the certificate inside its own installation folder;
+    # the system certificate folder is kept as a fallback for older layouts.
+    # Looking only in the second had found no certificate on any instance this
+    # installer built (read off the CBM test instance, PI-563).
     log("Reading SSL certificate expiry...", "info")
-    cert_path = f"/etc/letsencrypt/live/{config.domain}/fullchain.pem"
-    exit_code, cert_output = run_remote(
-        ssh, f"openssl x509 -in {cert_path} -noout -enddate", log
-    )
+    exit_code, cert_output, cert_path = 1, "", ""
+    for cert_path in certificate_paths(config.domain):
+        exit_code, cert_output = run_remote(
+            ssh, f"openssl x509 -in {cert_path} -noout -enddate", log
+        )
+        if exit_code == 0:
+            break
     cert_expiry: str | None = None
     if exit_code == 0 and "notAfter=" in cert_output:
         expiry_text = cert_output.split("notAfter=")[-1].strip()
@@ -317,12 +347,21 @@ def phase_post_install(
             log(f"WARNING: Could not parse cert expiry: {expiry_text}", "warning")
     else:
         log(
-            f"WARNING: Could not read SSL certificate expiry from {cert_path} "
+            "WARNING: Could not read SSL certificate expiry from "
+            f"{' or '.join(certificate_paths(config.domain))} "
             f"(exit code {exit_code})",
             "warning",
         )
 
     return True, "", cert_expiry
+
+
+def certificate_paths(domain: str) -> tuple[str, ...]:
+    """Where the certificate for ``domain`` may be kept, most likely first."""
+    return (
+        f"/var/www/espocrm/data/nginx/ssl/live/{domain}/fullchain.pem",
+        f"/etc/letsencrypt/live/{domain}/fullchain.pem",
+    )
 
 
 #: How long to keep polling one network-dependent check before calling it failed.
