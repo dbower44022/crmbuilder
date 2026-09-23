@@ -228,3 +228,62 @@ def test_instances_panel_has_deploy_button(qtbot, ui_client):
     panel = InstancesPanel(ui_client)
     qtbot.addWidget(panel)
     assert panel.findChild(type(panel._deploy_button), "deploy_new_instance_button") is not None
+
+
+# --- Manual DNS (PI-566 / REQ-642) ------------------------------------------
+
+
+def test_wizard_manual_dns_needs_no_cloudflare_and_asks_for_the_full_address(qtbot, ui_client):
+    ui_client.put_provider_credential("digitalocean", "do")
+    wizard = DeployWizardDialog(ui_client)
+    qtbot.addWidget(wizard)
+    qtbot.waitUntil(lambda: wizard.region.count() == 2, timeout=5000)
+    wizard._next_btn.click()
+    assert wizard.page == PAGE_PROVIDERS and "Cloudflare" in wizard._notice.text()
+
+    wizard.dns_mode.setCurrentIndex(wizard.dns_mode.findData("manual"))
+    assert wizard.manual_dns
+    wizard._next_btn.click()
+    assert wizard.page == PAGE_SERVER
+    wizard.instance_name.setText("Boston CRM")
+    wizard._next_btn.click()
+    assert wizard.page == PAGE_DOMAIN
+    form = wizard._domain_form
+    assert form.isRowVisible(wizard.full_address) and not form.isRowVisible(wizard.zone)
+    assert "Manual DNS" in wizard._domain_hint.text()
+
+    wizard.letsencrypt_email.setText("ops@example.org")
+    wizard._next_btn.click()
+    assert wizard.page == PAGE_DOMAIN and "full address" in wizard._notice.text()
+    wizard.full_address.setText("CRM.bbmentors.org")
+    wizard._next_btn.click()
+    assert wizard.page == PAGE_ACCOUNTS
+    wizard.admin_email.setText("admin@example.org")
+    wizard.admin_password.setText("long-enough-pw")
+    wizard._next_btn.click()
+    assert wizard.page == PAGE_REVIEW
+    review = wizard.review.toPlainText()
+    assert "https://crm.bbmentors.org" in review and "manual DNS" in review
+    body = wizard.build_body()
+    assert body["dns_mode"] == "manual" and body["domain"] == "crm.bbmentors.org"
+    assert "zone_id" not in body and "subdomain" not in body
+
+    queued: list[str] = []
+    wizard.run_queued.connect(queued.append)
+    wizard._next_btn.click()
+    qtbot.waitUntil(lambda: bool(queued), timeout=5000)
+    spec = ui_client.get_deploy_run(queued[0])["deploy_run_spec"]
+    assert spec["dns_mode"] == "manual" and spec["domain"] == "crm.bbmentors.org"
+
+
+def test_describe_run_shows_the_manual_dns_record_while_waiting():
+    state = {"manual_dns_record": {"type": "A", "name": "crm.bbmentors.org", "value": "203.0.113.7"}}
+    waiting = {"deploy_run_status": "running", "deploy_run_phase": "wait_dns", "deploy_run_state": state}
+    text = describe_run(waiting)
+    assert text.startswith("Running — Waiting for DNS")
+    assert "type A, name crm.bbmentors.org, value 203.0.113.7" in text
+    failed = {**waiting, "deploy_run_status": "failed",
+              "deploy_run_state": {**state, "droplet_id": "4242", "droplet_ip": "203.0.113.7"}}
+    assert "value 203.0.113.7" in describe_run(failed) and "still exists" in describe_run(failed)
+    later = {**waiting, "deploy_run_phase": "install_espocrm"}
+    assert "Add this DNS record" not in describe_run(later)

@@ -359,3 +359,91 @@ def test_wait_dns_uses_public_resolvers_and_times_out_with_detail(v2_env):
     assert run_deploy(ident2, engagement_id="ENG-001", worker_id="w1", deps=deps) == "failed"
     err = _run(ident2)["deploy_run_error"]
     assert "did not resolve to 203.0.113.7" in err and "returned nothing" in err
+
+
+# --- Manual DNS (PI-566 / REQ-642) ------------------------------------------
+
+MANUAL_SPEC = {
+    **{k: v for k, v in SPEC.items() if k not in ("zone_id", "zone_name", "subdomain")},
+    "domain": "crm.bbmentors.org",
+    "dns_mode": "manual",
+}
+
+
+def _queue_manual_without_cloudflare() -> str:
+    with session_scope() as s:
+        provider_credentials.upsert_provider_credential(s, "digitalocean", token_ref=secrets.put_secret("do-tok"))
+        row = deploy_runs.create_deploy_run(
+            s, spec=MANUAL_SPEC,
+            secret_refs={"admin_password": secrets.put_secret("Adm1n!"),
+                         "db_password": secrets.put_secret("dbpw"),
+                         "db_root_password": secrets.put_secret("rootpw")},
+        )
+        deploy_runs.claim_next_run(s, worker_id="w1")
+        return row["deploy_run_identifier"]
+
+
+def test_manual_dns_shows_the_record_and_never_touches_cloudflare(v2_env):
+    ident = _queue_manual_without_cloudflare()
+    deps = _deps(resolve_a=lambda _d: {"203.0.113.7"})
+    status = run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps)
+    assert status == "succeeded"
+    assert "cf" not in deps.holder  # no Cloudflare client was ever built
+    run = _run(ident)
+    st = run["deploy_run_state"]
+    assert st["manual_dns_record"] == {"type": "A", "name": "crm.bbmentors.org", "value": "203.0.113.7"}
+    assert "dns_record_id" not in st
+    log = [(e[1], e[2]) for e in run["deploy_run_log"]]
+    assert (
+        "warning",
+        "Add this DNS record at the domain's DNS provider: type A, name crm.bbmentors.org, "
+        "value 203.0.113.7. Leave any proxy or forwarding off.",
+    ) in log
+    with session_scope() as s:
+        cfg_row = instance_deploy_config.get_deploy_config(s, run["instance_identifier"])
+    assert cfg_row["dns_provider"] == "manual"
+    assert cfg_row["dns_record_id"] is None
+    assert cfg_row["domain"] == "crm.bbmentors.org"
+
+
+def test_manual_dns_waits_longer_then_retry_resumes_the_wait(v2_env):
+    ident = _queue_manual_without_cloudflare()
+    clock = iter(range(0, 100_000, 300))
+    do = FakeDO("t")
+    deps = _deps(do=do, resolve_a=lambda _d: set(), clock=lambda: next(clock),
+                 manual_dns_wait_seconds=1800)
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps) == "failed"
+    run = _run(ident)
+    assert run["deploy_run_phase"] == "wait_dns"
+    err = run["deploy_run_error"]
+    assert "within 1800s" in err and "type A, name crm.bbmentors.org, value 203.0.113.7" in err
+    assert "Retry" in err
+
+    with session_scope() as s:
+        deploy_runs.requeue(s, ident)
+        deploy_runs.claim_next_run(s, worker_id="w2")
+    ssh = FakeSSHModule()
+    deps2 = _deps(do=do, ssh=ssh, resolve_a=lambda _d: {"203.0.113.7"})
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w2", deps=deps2) == "succeeded"
+    assert do.created == 1  # the same server
+    assert "server_prep" in ssh.calls
+
+
+def test_manual_dns_wait_limit_comes_from_the_environment(monkeypatch):
+    from crmbuilder_v2.deploy import runner
+
+    monkeypatch.delenv(runner.MANUAL_DNS_WAIT_ENV, raising=False)
+    assert RunnerDeps(resolve_a=lambda _d: set()).manual_dns_wait_seconds == 1800
+    monkeypatch.setenv(runner.MANUAL_DNS_WAIT_ENV, "2700")
+    assert RunnerDeps(resolve_a=lambda _d: set()).manual_dns_wait_seconds == 2700
+    monkeypatch.setenv(runner.MANUAL_DNS_WAIT_ENV, "soon")
+    assert RunnerDeps(resolve_a=lambda _d: set()).manual_dns_wait_seconds == 1800
+
+
+def test_cloudflare_mode_ignores_the_manual_wait_limit(v2_env):
+    ident = _queue()
+    clock = iter(range(0, 100_000, 200))
+    deps = _deps(resolve_a=lambda _d: set(), clock=lambda: next(clock), manual_dns_wait_seconds=99_999)
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps) == "failed"
+    err = _run(ident)["deploy_run_error"]
+    assert "within 600s" in err and "Add this DNS record" not in err

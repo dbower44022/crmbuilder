@@ -160,3 +160,47 @@ def test_admin_only_when_auth_on(client, monkeypatch):
     r = client.post("/deploy-runs", json=BODY, headers=oh)
     assert r.status_code == 202
     assert r.json()["data"]["deploy_run_requested_by"] == owner.principal_id
+
+
+# --- Manual DNS (PI-566 / REQ-642) ------------------------------------------
+
+MANUAL_BODY = {
+    **{k: v for k, v in BODY.items() if k not in ("zone_id", "zone_name", "subdomain")},
+    "dns_mode": "manual",
+    "domain": "CRM.bbmentors.org.",
+}
+
+
+def test_manual_dns_queues_with_only_the_digitalocean_credential(client):
+    client.put("/provider-credentials/digitalocean", json={"token": "do"})
+    r = client.post("/deploy-runs", json=MANUAL_BODY)
+    assert r.status_code == 202, r.text
+    spec = r.json()["data"]["deploy_run_spec"]
+    assert spec["dns_mode"] == "manual"
+    assert spec["domain"] == "crm.bbmentors.org"
+    assert spec["zone_id"] == "" and spec["zone_name"] == "" and spec["subdomain"] == ""
+
+
+def test_manual_dns_still_needs_digitalocean_and_a_full_address(client):
+    r = client.post("/deploy-runs", json=MANUAL_BODY)
+    assert r.status_code == 422
+    assert {(e["field"], e["code"]) for e in r.json()["errors"]} == {
+        ("digitalocean", "missing_provider_credential")
+    }
+    client.put("/provider-credentials/digitalocean", json={"token": "do"})
+    for domain, code in (("", "required"), ("crm", "invalid"), ("api.crmbuilder.ai", "protected_host")):
+        r = client.post("/deploy-runs", json={**MANUAL_BODY, "domain": domain})
+        assert r.status_code == 422, domain
+        assert ("domain", code) in {(e["field"], e["code"]) for e in r.json()["errors"]}
+    r = client.post("/deploy-runs", json={**MANUAL_BODY, "dns_mode": "route53"})
+    assert r.status_code == 422
+    assert "dns_mode" in {e["field"] for e in r.json()["errors"]}
+
+
+def test_cloudflare_mode_still_requires_the_cloudflare_credential(client):
+    client.put("/provider-credentials/digitalocean", json={"token": "do"})
+    r = client.post("/deploy-runs", json=BODY)
+    assert r.status_code == 422
+    assert {(e["field"], e["code"]) for e in r.json()["errors"]} == {
+        ("cloudflare", "missing_provider_credential")
+    }
