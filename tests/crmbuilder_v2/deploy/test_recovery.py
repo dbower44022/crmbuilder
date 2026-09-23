@@ -557,45 +557,87 @@ def test_a_failed_install_keeps_the_old_credentials_and_names_the_copy(
     )
 
 
-def test_a_failed_dump_is_a_warning_not_a_refusal(provisioned_instance, fake_login):
+def _run_rebuild(provisioned_instance, runner, **kwargs):
     log, lines = _capture_log()
-    runner = _rebuild_runner(dump_exit=2)
     with patch.object(recovery, "run_remote", side_effect=runner), \
             patch.object(upgrade_module, "run_remote", side_effect=runner), \
             patch("crmbuilder_v2.deploy.ssh.run_remote", side_effect=runner), \
             patch("crmbuilder_v2.deploy.ssh.time.sleep"):
         outcome = recovery.rebuild_instance(
             provisioned_instance, "crm.example.com", "newadmin", "new-admin-password",
-            log, new_password=_passwords(),
+            log, new_password=_passwords(), **kwargs,
         )
-
-    assert outcome.succeeded is True, outcome.error
-    assert "The portable dump failed" in _logged(lines)
+    return outcome, lines
 
 
-def test_with_no_recorded_database_password_the_installer_copy_is_the_backup(
+def _assert_nothing_destroyed(provisioned_instance, outcome, seen):
+    assert outcome.succeeded is False
+    assert outcome.installed is False
+    assert "Nothing has been destroyed" in outcome.error
+    assert "skip_backup=True" in outcome.error
+    assert not any("install.sh -y" in c for c in seen), (
+        "a rebuild without version 2's own dump must stop before the installer"
+    )
+    config = _config(provisioned_instance)
+    assert config["admin_username"] == "admin"
+    assert secrets.get_secret(config["admin_password_ref"]) == "old-password"
+
+
+def test_a_failed_dump_stops_the_rebuild_before_anything_is_destroyed(
+    provisioned_instance, fake_login
+):
+    seen: list[str] = []
+    outcome, _lines = _run_rebuild(
+        provisioned_instance, _rebuild_runner(dump_exit=2, seen=seen)
+    )
+
+    _assert_nothing_destroyed(provisioned_instance, outcome, seen)
+    assert "own dump failed" in outcome.error
+
+
+def test_with_no_recorded_database_password_the_rebuild_stops(
     provisioned_instance, fake_login
 ):
     with session_scope() as session:
         instance_deploy_config.upsert_deploy_config(
             session, provisioned_instance, db_root_password_ref=None
         )
-    log, lines = _capture_log()
     seen: list[str] = []
-    runner = _rebuild_runner(seen=seen)
-    with patch.object(recovery, "run_remote", side_effect=runner), \
-            patch.object(upgrade_module, "run_remote", side_effect=runner), \
-            patch("crmbuilder_v2.deploy.ssh.run_remote", side_effect=runner), \
-            patch("crmbuilder_v2.deploy.ssh.time.sleep"):
-        outcome = recovery.rebuild_instance(
-            provisioned_instance, "crm.example.com", "newadmin", "new-admin-password",
-            log, new_password=_passwords(),
+    outcome, _lines = _run_rebuild(provisioned_instance, _rebuild_runner(seen=seen))
+
+    _assert_nothing_destroyed(provisioned_instance, outcome, seen)
+    assert not any("mariadb-dump" in c for c in seen)
+    assert "No database administrator password is recorded" in outcome.error
+
+
+def test_skip_backup_rebuilds_with_the_installer_copy_as_the_only_backup(
+    provisioned_instance, fake_login
+):
+    with session_scope() as session:
+        instance_deploy_config.upsert_deploy_config(
+            session, provisioned_instance, db_root_password_ref=None
         )
+    seen: list[str] = []
+    outcome, lines = _run_rebuild(
+        provisioned_instance, _rebuild_runner(seen=seen), skip_backup=True
+    )
 
     assert outcome.succeeded is True, outcome.error
     assert not any("mariadb-dump" in c for c in seen)
-    assert "no portable dump is taken" in _logged(lines)
+    assert "No portable dump is taken before this rebuild" in _logged(lines)
     assert outcome.backup_paths == ["/root/espocrm-backup/2026-09-23_101500"]
+
+
+def test_skip_backup_does_not_attempt_the_dump_even_when_it_could(
+    provisioned_instance, fake_login
+):
+    seen: list[str] = []
+    outcome, _lines = _run_rebuild(
+        provisioned_instance, _rebuild_runner(seen=seen), skip_backup=True
+    )
+
+    assert outcome.succeeded is True, outcome.error
+    assert not any("mariadb-dump" in c for c in seen)
 
 
 def test_a_rebuild_refuses_a_password_the_installer_would_alter(provisioned_instance):
