@@ -134,9 +134,13 @@ class DeployRunCreateIn(_Base):
     size: str
     image: str
     ssh_key_ids: list[int | str] | None = None
-    zone_id: str
-    zone_name: str
-    subdomain: str
+    # PI-566 (REQ-642): ``cloudflare`` needs zone_id + zone_name + subdomain;
+    # ``manual`` (manual DNS) needs the full address in ``domain`` instead.
+    dns_mode: str = "cloudflare"
+    zone_id: str | None = None
+    zone_name: str | None = None
+    subdomain: str | None = None
+    domain: str | None = None
     letsencrypt_email: str
     admin_username: str = "admin"
     admin_email: str

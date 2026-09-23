@@ -19,6 +19,13 @@ complete. Each phase is idempotent against the checkpoint:
 * ``create_instance`` — register the instance and its deploy config in one
   transaction with the terminal status.
 
+Manual DNS (PI-566 / REQ-642, DEC-1146): when the spec's DNS mode is
+``manual`` no Cloudflare credential is read, ``create_dns`` shows the A record
+for the operator to add at the domain's own DNS provider instead of writing
+it, ``wait_dns`` allows ``manual_dns_wait_seconds`` (default 30 minutes, set
+by ``CRMBUILDER_V2_MANUAL_DNS_WAIT_SECONDS``), and the instance records its DNS
+provider as ``manual`` with no record identifier.
+
 A phase failure lands ``failed`` with everything built kept in the checkpoint
 and named in the log — nothing is destroyed (DEC-945). Cancellation is
 honoured between phases only.
@@ -31,6 +38,7 @@ the secret resolver, the clock.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -78,6 +86,29 @@ class CancelledRun(Exception):
 #: within seconds of Cloudflare publishing it.
 PUBLIC_RESOLVERS: tuple[str, ...] = ("1.1.1.1", "8.8.8.8", "9.9.9.9")
 
+#: Environment variable that sets how long a manual DNS run waits for the
+#: operator's record to go live (PI-566 / REQ-642).
+MANUAL_DNS_WAIT_ENV = "CRMBUILDER_V2_MANUAL_DNS_WAIT_SECONDS"
+MANUAL_DNS_WAIT_DEFAULT = 1800
+
+
+def manual_dns_wait_seconds() -> int:
+    """The manual DNS wait limit from the service's environment, else 30 minutes."""
+    raw = os.environ.get(MANUAL_DNS_WAIT_ENV, "").strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        return MANUAL_DNS_WAIT_DEFAULT
+    return value if value > 0 else MANUAL_DNS_WAIT_DEFAULT
+
+
+def manual_dns_record_text(domain: str, ip: str) -> str:
+    """The record an operator adds by hand in manual DNS, in one line."""
+    return (
+        f"Add this DNS record at the domain's DNS provider: type A, name {domain}, "
+        f"value {ip}. Leave any proxy or forwarding off."
+    )
+
 
 def resolve_a_public(name: str) -> set[str]:
     """Return the A addresses for ``name`` as seen by the public resolvers.
@@ -120,6 +151,8 @@ class RunnerDeps:
     droplet_wait_seconds: int = 600
     droplet_poll_seconds: int = 10
     dns_wait_seconds: int = 600
+    #: The wait for manual DNS, where a person adds the record by hand.
+    manual_dns_wait_seconds: int = field(default_factory=manual_dns_wait_seconds)
     dns_poll_seconds: int = 30
 
     def __post_init__(self) -> None:
@@ -335,15 +368,24 @@ def _phase_validate(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
         raise DeployPhaseError(
             "validate", f"{run.spec.domain} is CRMBuilder's production host (GVR-240)"
         )
+    manual = run.spec.manual_dns
     with session_scope() as s:
         do_row = provider_credentials.get_provider_credential(s, "digitalocean")
-        cf_row = provider_credentials.get_provider_credential(s, "cloudflare")
-    for name, row in (("digitalocean", do_row), ("cloudflare", cf_row)):
+        cf_row = (
+            None if manual else provider_credentials.get_provider_credential(s, "cloudflare")
+        )
+    needed = (("digitalocean", do_row),) if manual else (
+        ("digitalocean", do_row), ("cloudflare", cf_row)
+    )
+    for name, row in needed:
         if not row:
             raise DeployPhaseError("validate", f"no {name} credential configured")
     do_token = deps.resolve_secret(do_row["token_ref"])
-    cf_token = deps.resolve_secret(cf_row["token_ref"])
-    log.masks.extend([do_token, cf_token])
+    log.masks.append(do_token)
+    cf_token = None
+    if not manual:
+        cf_token = deps.resolve_secret(cf_row["token_ref"])
+        log.masks.append(cf_token)
     for name in ("admin_password", "db_password", "db_root_password"):
         ref = run.secret_refs.get(name)
         if not ref:
@@ -351,15 +393,22 @@ def _phase_validate(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
         run.secrets[name] = deps.resolve_secret(ref)
         log.masks.append(run.secrets[name])
     run.do = deps.do_client(do_token)
-    run.cf = deps.cf_client(cf_token)
     account = run.do.verify_token()
     log(f"DigitalOcean token ok ({account.get('email', 'account')})", "success")
-    zone = run.cf.get_zone(run.spec.zone_id)
-    if zone.get("name") and zone["name"] != run.spec.zone_name:
-        raise DeployPhaseError(
-            "validate", f"zone {run.spec.zone_id} is {zone['name']}, not {run.spec.zone_name}"
+    if manual:
+        log(
+            f"Manual DNS: you will add the record for {run.spec.domain} at its DNS "
+            "provider once the server has its IP address.",
+            "info",
         )
-    log(f"Cloudflare token ok (zone {run.spec.zone_name})", "success")
+    else:
+        run.cf = deps.cf_client(cf_token)
+        zone = run.cf.get_zone(run.spec.zone_id)
+        if zone.get("name") and zone["name"] != run.spec.zone_name:
+            raise DeployPhaseError(
+                "validate", f"zone {run.spec.zone_id} is {zone['name']}, not {run.spec.zone_name}"
+            )
+        log(f"Cloudflare token ok (zone {run.spec.zone_name})", "success")
 
     # PI-442 (REQ-544): keep the provider account identity for the
     # deploy-config write-back at instance registration.
@@ -427,6 +476,12 @@ def _phase_wait_droplet(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
 
 
 def _phase_create_dns(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
+    if run.spec.manual_dns:
+        # Manual DNS: show the record; the operator adds it by hand. Re-run on
+        # Retry, so the record is shown again.
+        ip = run.state["droplet_ip"]
+        log(manual_dns_record_text(run.spec.domain, ip), "warning")
+        return {"manual_dns_record": {"type": "A", "name": run.spec.domain, "value": ip}}
     rec = run.cf.upsert_a_record(
         run.spec.zone_id, name=run.spec.domain, ip=run.state["droplet_ip"], proxied=False
     )
@@ -441,7 +496,8 @@ def _phase_wait_dns(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
     reason given at :data:`PUBLIC_RESOLVERS`.
     """
     domain, ip = run.spec.domain, run.state["droplet_ip"]
-    deadline = deps.clock() + deps.dns_wait_seconds
+    limit = deps.manual_dns_wait_seconds if run.spec.manual_dns else deps.dns_wait_seconds
+    deadline = deps.clock() + limit
     while True:
         seen = deps.resolve_a(domain)
         if ip in seen:
@@ -449,10 +505,15 @@ def _phase_wait_dns(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
             return {}
         remaining = int(deadline - deps.clock())
         if remaining <= 0:
+            hint = (
+                f". {manual_dns_record_text(domain, ip)} Then Retry; the run resumes here."
+                if run.spec.manual_dns
+                else ""
+            )
             raise DeployPhaseError(
                 "wait_dns",
-                f"{domain} did not resolve to {ip} within {deps.dns_wait_seconds}s "
-                f"(public resolvers returned {sorted(seen) or 'nothing'})",
+                f"{domain} did not resolve to {ip} within {limit}s "
+                f"(public resolvers returned {sorted(seen) or 'nothing'}){hint}",
             )
         what = f"resolves to {sorted(seen)}" if seen else "does not resolve yet"
         log(f"DNS not ready: {domain} {what}. Retrying in {deps.dns_poll_seconds}s ({remaining}s remaining)…", "info")
@@ -566,12 +627,12 @@ def _phase_create_instance(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
             admin_password_ref=run.secret_refs.get("admin_password"),
             admin_email=run.spec.admin_email,
             cert_expiry_date=run.state.get("cert_expiry"),
-            dns_provider="cloudflare",
+            dns_provider="manual" if run.spec.manual_dns else "cloudflare",
             droplet_id=run.state.get("droplet_id"),
             droplet_ip=run.state.get("droplet_ip"),
             droplet_region=run.state.get("droplet_region") or run.spec.region,
             droplet_size=run.state.get("droplet_size") or run.spec.size,
-            dns_record_id=run.state.get("dns_record_id"),
+            dns_record_id=None if run.spec.manual_dns else run.state.get("dns_record_id"),
             last_deploy_run_identifier=run.identifier,
             # PI-442 (REQ-544): the server-management facts known at
             # registration — provider identity, console, SSH-key identity,

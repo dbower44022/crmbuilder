@@ -71,6 +71,17 @@ def describe_run(run: dict[str, Any]) -> str:
         phase = run.get("deploy_run_phase")
         text = f"Running — {PHASE_LABELS.get(phase, phase or '…')}"
     state = run.get("deploy_run_state") or {}
+    record = state.get("manual_dns_record")
+    if (
+        record
+        and status in ("queued", "running", "failed")
+        and run.get("deploy_run_phase") in ("create_dns", "wait_dns")
+    ):
+        # Manual DNS (PI-566 / REQ-642): the record the operator must add.
+        text += (
+            f" Add this DNS record at the domain's DNS provider: type A, name "
+            f"{record.get('name')}, value {record.get('value')}. Leave any proxy off."
+        )
     if status in ("failed", "cancelled") and state.get("droplet_id"):
         text += f" Server {state['droplet_id']}"
         if state.get("droplet_ip"):

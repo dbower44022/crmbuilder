@@ -104,7 +104,9 @@ def create(body: DeployRunCreateIn):
     with readonly_session() as s:
         have = {r["provider"] for r in provider_credentials.list_provider_credentials(s)}
         active = deploy_runs.active_run_for_domain(s, spec.domain)
-    missing = sorted({"digitalocean", "cloudflare"} - have)
+    # Manual DNS (PI-566 / REQ-642) never touches Cloudflare.
+    needed = {"digitalocean"} if spec.manual_dns else {"digitalocean", "cloudflare"}
+    missing = sorted(needed - have)
     if missing:
         raise UnprocessableError(
             [
@@ -118,7 +120,7 @@ def create(body: DeployRunCreateIn):
         raise UnprocessableError(
             [
                 FieldError(
-                    "subdomain",
+                    "domain" if spec.manual_dns else "subdomain",
                     "run_in_progress",
                     f"{active['deploy_run_identifier']} is already "
                     f"{active['deploy_run_status']} for {spec.domain}",
