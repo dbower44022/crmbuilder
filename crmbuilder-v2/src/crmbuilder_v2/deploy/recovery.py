@@ -22,8 +22,11 @@ password on standard input, then signs in with the new password to prove it.
 instance. Version 1 deleted the installation folder and then ran the installer,
 so a failed install left nothing to restore. Here the platform's installer does
 the clean itself: it stops the containers, copies the whole installation aside,
-deletes it, and copies it back if its install fails (DEC-1142). The caller must
-pass the instance's domain name as confirmation (DEC-1143).
+deletes it, and copies it back if its install fails (DEC-1142). Version 2's own
+database dump is taken first, and a rebuild that cannot take it stops before
+anything is destroyed unless the caller passes ``skip_backup`` (DEC-1149,
+REQ-647). The caller must pass the instance's domain name as confirmation
+(DEC-1143).
 
 * :func:`confirmation_matches` — does the confirmation name this instance?
 * :func:`list_installer_copies` — the copies the installer has left.
@@ -408,6 +411,7 @@ def rebuild_instance(
     resolve_secret: Callable[[str], str] = secrets.get_secret,
     store_secret: Callable[..., str] = secrets.put_secret,
     new_password: Callable[[], str] = generate_password,
+    skip_backup: bool = False,
 ) -> RebuildOutcome:
     """Reinstall the platform on a registered instance's server, from clean.
 
@@ -426,6 +430,10 @@ def rebuild_instance(
     :param admin_password: Its password.
     :param new_password: How the two database passwords are made; replaced in
         tests.
+    :param skip_backup: Go ahead without version 2's own dump, for a database
+        too broken to dump or with no recorded administrator password. Without
+        it, a dump that cannot be taken stops the rebuild before anything is
+        destroyed (DEC-1149).
     """
     config = _require_deploy_config(instance_identifier)
     domain = config.get("domain") or ""
@@ -464,8 +472,26 @@ def rebuild_instance(
     backups = decode_backup_paths(config.get("last_backup_paths"))
 
     with _connected(config, resolve_secret) as client:
-        backups = _portable_dump(client, config, backups, resolve_secret, log)
-        _record(instance_identifier, last_backup_paths=encode_backup_paths(backups))
+        if skip_backup:
+            log(
+                "Skipping version 2's own dump, as the caller asked. No portable "
+                "dump is taken before this rebuild; the installer's copy of the "
+                "installation will be its only backup.",
+                "warning",
+            )
+        else:
+            dumped, error, backups = _portable_dump(
+                client, config, backups, resolve_secret, log
+            )
+            _record(instance_identifier, last_backup_paths=encode_backup_paths(backups))
+            if not dumped:
+                outcome.backup_paths = backups
+                outcome.error = (
+                    f"{error} Nothing has been destroyed and the stored "
+                    "credentials are unchanged. To rebuild without version 2's "
+                    "own dump, pass skip_backup=True."
+                )
+                return outcome
         outcome.backup_paths = backups
         copies_before = set(list_installer_copies(client))
 
@@ -541,39 +567,33 @@ def _portable_dump(
     backups: list[str],
     resolve_secret: Callable[[str], str],
     log: Log,
-) -> list[str]:
-    """Take version 2's own database dump when it can be taken.
+) -> tuple[bool, str, list[str]]:
+    """Take version 2's own database dump and data archive.
 
     It needs the database administrator password and a database that answers.
-    Without either the rebuild goes ahead, because the installer's own copy of
-    the installation is the backup that is always taken (DEC-1142).
+    Without either, no dump is taken and the caller stops the rebuild, unless
+    it was told to go ahead without one (DEC-1149).
+
+    :returns: ``(the dump was taken, why it was not, the backup folders now on
+        the server — newest last)``.
     """
     ref = config.get("db_root_password_ref")
     if not ref:
-        log(
-            "No database administrator password is recorded, so no portable "
-            "dump is taken; the installer's copy of the installation is the "
-            "backup.",
-            "warning",
-        )
-        return backups
+        return False, (
+            "No database administrator password is recorded, so version 2 "
+            "cannot take its own dump before the rebuild."
+        ), backups
     try:
         db_root_password = resolve_secret(ref)
     except (KeyError, ValueError):
-        log(
+        return False, (
             "The recorded database administrator password could not be read, "
-            "so no portable dump is taken; the installer's copy is the backup.",
-            "warning",
-        )
-        return backups
+            "so version 2 cannot take its own dump before the rebuild."
+        ), backups
     dumped, error, remaining = phase2_backup(client, db_root_password, backups, log)
     if not dumped:
-        log(
-            f"The portable dump failed ({error}); going ahead, because the "
-            "installer's copy of the installation is the backup.",
-            "warning",
-        )
-    return remaining
+        return False, f"Version 2's own dump failed ({error}).", remaining
+    return True, "", remaining
 
 
 def _find_new_copy(
