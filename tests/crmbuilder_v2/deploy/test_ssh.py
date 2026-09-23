@@ -261,10 +261,59 @@ def test_post_install_reads_the_certificate_from_disk_not_through_the_web_server
 
     assert (succeeded, error, expiry) == (True, "", "2026-08-02")
     assert any(
-        "openssl x509 -in /etc/letsencrypt/live/crm.example.com/fullchain.pem" in c
+        "openssl x509 -in /var/www/espocrm/data/nginx/ssl/live/crm.example.com/"
+        "fullchain.pem" in c
         for c in seen
     ), seen
     assert not any("openssl s_client" in c for c in seen), seen
+
+
+def test_post_install_falls_back_to_the_system_certificate_folder():
+    """The installer keeps the certificate inside its own installation folder
+    (read off the CBM test instance); an older layout used the system folder."""
+    config = _config()
+    log, _lines = _capture_log()
+    seen: list[str] = []
+    responses = {
+        "/var/www/espocrm/data/nginx/ssl": (1, "No such file"),
+        "/etc/letsencrypt/live": (0, "notAfter=Aug  2 12:00:00 2026 GMT"),
+    }
+    responses.update(_post_install_responses())
+    del responses["openssl x509 -in"]
+
+    with patch.object(
+        ssh_module, "run_remote", side_effect=_post_install_runner(responses, seen)
+    ):
+        succeeded, error, expiry = ssh_module.phase_post_install(
+            MagicMock(), config, log
+        )
+
+    assert (succeeded, error, expiry) == (True, "", "2026-08-02")
+    tried = [c for c in seen if "openssl x509 -in" in c]
+    assert "/var/www/espocrm/data/nginx/ssl" in tried[0]
+    assert "/etc/letsencrypt/live" in tried[1]
+
+
+def test_install_quotes_every_value_for_the_shell():
+    """A quote or a space in a value cannot break or change the command, and
+    a password holding a quote still never reaches the log."""
+    config = _config()
+    config.admin_password = "it's; rm -rf /"
+    log, lines = _capture_log()
+    seen: list[str] = []
+
+    def fake_run_remote(_ssh, command, *_args, **_kwargs):
+        seen.append(command)
+        return 0, ""
+
+    with patch.object(ssh_module, "run_remote", side_effect=fake_run_remote):
+        ssh_module.phase_install_espocrm(MagicMock(), config, log)
+
+    install = seen[1]
+    assert "--admin-password='it'\"'\"'s; rm -rf /'" in install
+    logged = "\n".join(_messages(lines))
+    assert "rm -rf" not in logged
+    assert "[admin_password]" in logged
 
 
 def test_post_install_gives_the_custom_metadata_tree_to_the_web_server_user():
@@ -492,3 +541,20 @@ def test_verify_never_shows_the_checks_own_output_in_the_log(instant_clock):
         "a verification check must not be given the log callback"
     )
     assert not any("<html>" in m for m in _messages(lines))
+
+
+def test_run_remote_writes_input_to_standard_input_and_closes_it():
+    """How a password reaches a command without being on its command line."""
+    ssh = MagicMock()
+    stdin, stdout, stderr = MagicMock(), MagicMock(), MagicMock()
+    stdout.__iter__.return_value = iter(["done\n"])
+    stderr.__iter__.return_value = iter([])
+    stdout.channel.recv_exit_status.return_value = 0
+    ssh.exec_command.return_value = (stdin, stdout, stderr)
+
+    exit_code, output = ssh_module.run_remote(ssh, "cmd", input_text="pw\n")
+
+    assert (exit_code, output) == (0, "done")
+    stdin.write.assert_called_once_with("pw\n")
+    stdin.channel.shutdown_write.assert_called_once()
+    assert "pw" not in ssh.exec_command.call_args.args[0]
