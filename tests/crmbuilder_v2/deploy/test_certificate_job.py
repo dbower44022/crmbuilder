@@ -74,3 +74,10 @@ def test_apply_domain_rewrites_both_values_then_uses_the_installers_command():
     cmd = seen[0]
     assert r"NGINX_HOST: crm\.bbmentor\.org$/NGINX_HOST: crm.bbmentors.org/" in cmd
     assert "ESPOCRM_CONFIG_SITE_URL" in cmd and cmd.endswith("/var/www/espocrm/command.sh apply-domain")
+
+
+def test_the_job_asks_the_dns_host_before_public_dns_when_the_zone_is_known():
+    script = job.render_script("crm.example.org", "ops@example.org", "203.0.113.7", "example.org")
+    assert "ZONE=example.org" in script
+    assert script.index('dig +short +time=5 +tries=1 NS "$ZONE"') < script.index("@\"$resolver\"")
+    assert "ZONE=''" in job.render_script("crm.example.org", "ops@example.org", "203.0.113.7")

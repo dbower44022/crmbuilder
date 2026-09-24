@@ -50,8 +50,8 @@ class FakeSSH:
 
 
 class FakeJob:
-    def __init__(self, status=None, expiry=None):
-        self.status, self.expiry = status, expiry
+    def __init__(self, status=None, expiry=None, installed=True):
+        self.status, self.expiry, self.installed = status, expiry, installed
         self.started: list[bool] = []
 
     def read_certificate_expiry(self, ssh, domain):
@@ -62,6 +62,9 @@ class FakeJob:
 
     def run_job_now(self, ssh, log=None, *, background=False):
         self.started.append(background)
+
+    def job_installed(self, ssh):
+        return self.installed
 
 
 def _instance(open_items=None) -> str:
@@ -151,3 +154,10 @@ def test_an_instance_without_a_deploy_config_is_refused(v2_env):
         )["instance_identifier"]
     with pytest.raises(UnprocessableError):
         check_instance_dns(ident, lookup=_lookup(True), ssh_module=FakeSSH(), cert_job=FakeJob())
+
+
+def test_the_job_is_not_started_where_it_was_never_installed(v2_env):
+    ident = _instance()
+    job = FakeJob(status=None, installed=False)
+    out = check_instance_dns(ident, lookup=_lookup(True), ssh_module=FakeSSH(), cert_job=job)
+    assert out["certificate_job_started"] is False and job.started == []

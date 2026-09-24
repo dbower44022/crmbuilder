@@ -113,3 +113,16 @@ def test_describe_address_reports_the_host_and_existing_records():
     assert info["dns_host"] == "GoDaddy" and info["uses_cloudflare"] is False
     assert info["existing_records"] == {"A": ["198.51.100.9"]}
     assert describe_address("crm.nowhere.test", lookup=lookup)["zone"] is None
+
+
+def test_public_dns_is_not_asked_about_a_record_the_dns_host_does_not_have():
+    """Asking would make public resolvers cache "no such name" (DEP-001)."""
+    asked = []
+    lookup = FakeDnsLookup(name_servers=GODADDY)
+    real = lookup.public
+    lookup.public = lambda name, rdtype="A": asked.append((name, rdtype)) or real(name, rdtype)
+    assert diagnose("crm.example.org", IP, lookup=lookup).code == "record_missing"
+    assert asked == []
+    lookup.records[("crm.example.org", "A")] = [IP]
+    assert diagnose("crm.example.org", IP, lookup=lookup).is_correct
+    assert asked == [("crm.example.org", "A")]

@@ -367,12 +367,12 @@ def diagnose(
     )
 
     def result(state: str, code: str, title: str, found: str, meaning: str,
-               action: str, who_acts: str = who, wait: int = 0) -> DnsDiagnosis:
-        public = sorted(lookup.public(domain, "A")) if code != "no_name_servers" else []
+               action: str, who_acts: str = who, wait: int = 0,
+               public: set[str] | None = None) -> DnsDiagnosis:
         return DnsDiagnosis(
             state=state, code=code, title=title, found=found, meaning=meaning,
-            action=action, who=who_acts, wait_seconds=wait, public_addresses=public,
-            **base,
+            action=action, who=who_acts, wait_seconds=wait,
+            public_addresses=sorted(public or ()), **base,
         )
 
     # 1. Which name servers answer?
@@ -399,7 +399,11 @@ def diagnose(
             WHO_OPERATOR,
         )
 
-    # 2 and 3. What do the name servers hold?
+    # 2 and 3. What do the name servers hold? The public resolvers are not
+    # asked until the name servers hold the right record: asking them about a
+    # name that does not exist yet makes them remember "no such name" for the
+    # zone's negative lifetime, which delays the record once it is created —
+    # the trap behind the slow waits this diagnostic replaces (DEP-001).
     a = lookup.authoritative(name_servers, domain, "A")
     if a is None:
         public = lookup.public(domain, "A")
@@ -407,7 +411,7 @@ def diagnose(
             return result(
                 CORRECT, "correct", "DNS is correct",
                 f"{domain} points at {expected_ip}.", "", "",
-                WHO_NOBODY,
+                WHO_NOBODY, public=public,
             )
         return result(
             WILL_FIX_ITSELF, "name_servers_unreachable",
@@ -416,7 +420,7 @@ def diagnose(
             "This is usually brief. CRMBuilder will ask again.",
             "Nothing yet. If this keeps happening, check the domain's status with its "
             "registrar.",
-            WHO_NOBODY, DEFAULT_WAIT_SECONDS,
+            WHO_NOBODY, DEFAULT_WAIT_SECONDS, public,
         )
 
     if a.cname:
@@ -492,7 +496,7 @@ def diagnose(
         return result(
             CORRECT, "correct", "DNS is correct",
             f"{domain} points at {expected_ip}, and public DNS sees it.", "", "",
-            WHO_NOBODY,
+            WHO_NOBODY, public=public,
         )
     negative = lookup.negative_ttl(name_servers, zone) or 0
     wait = min(max(a.ttl or 0, negative, 60), MAX_WAIT_SECONDS)
@@ -504,7 +508,7 @@ def diagnose(
         f"{host} has the right record ({domain} → {expected_ip}), but {seen}.",
         f"This fixes itself as caches expire, usually within {_minutes(wait)}.",
         "Nothing. Wait, then check again.",
-        WHO_NOBODY, wait,
+        WHO_NOBODY, wait, public,
     )
 
 

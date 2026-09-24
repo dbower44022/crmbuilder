@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Title | Deploy wizard — deploying without DNS access, and a clearer wizard |
-| Last Updated | 09-23-26 21:10 |
-| Revision | 1.1 |
+| Last Updated | 09-23-26 21:25 |
+| Revision | 1.2 |
 | Status | Approved for build by the product owner on 09-23-26 ("Let's try this and see if it is much better. Complete the specs, and let's build it"). |
 | Source | Design discussion in session SES-432 (conversation CNV-401), 09-23-26. Requirements REQ-648..REQ-652, approved by DEC-1151. Built under PI-571 in PRJ-127. |
 | Replaces | Nothing. Extends the version 2 deploy run (the original provisioning requirement, REQ-522) and the manual DNS mode added earlier the same day (REQ-642, DEC-1146). |
@@ -45,6 +45,8 @@ One diagnostic serves the run, the Check DNS now button, the handover sheet and 
 3. **Does it hold the right value?** Name the wrong value: an old address, a Cloudflare proxy address (the proxy is switched on), or a conflicting AAAA or CNAME record.
 4. **Is it only a delay?** The name servers are right but public resolvers do not see it yet. Say it will fix itself and roughly when, from the record's cache lifetime.
 
+Public resolvers are asked only once the domain's own name servers hold the right record. Asking them about a name that does not exist yet makes them remember "no such name" for the zone's negative lifetime, which delays the record after it is created. That delay is what made the earlier waits so long.
+
 Each result carries: a short title, what was found, what it means, what to do and who does it (the operator or the client), and how to confirm it is fixed. A result is one of **correct**, **will fix itself** (with an expected time) or **needs action**.
 
 ### 3.3 A problem blocks only what depends on it, and the run tells you
@@ -59,7 +61,7 @@ Each result carries: a short title, what was found, what it means, what to do an
 ### 3.4 The certificate finishes itself, and the operator can check at any time
 
 - When DNS is not correct by the end of the run, the run installs a **self-healing job on the server**. Every fifteen minutes the job:
-  1. checks that public resolvers return the server's own address for the web address, and stops there if not;
+  1. checks that the domain's own DNS host holds the record, then that public resolvers return the server's own address for the web address, and stops there if not;
   2. asks Let's Encrypt for a test certificate (a dry run that issues nothing), and stops there if that fails, keeping the reason;
   3. only then switches the installed CRM to its secure mode with a real certificate, using the EspoCRM installer's own reinstall path that keeps the data;
   4. removes itself once the certificate is in place.
@@ -118,5 +120,6 @@ These were used and agreed in the design discussion. Each needs a glossary entry
 
 | Revision | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.2 | 09-23-26 21:25 | Claude (Claude Code) | The diagnostic and the self-healing job ask the domain's own DNS host before public resolvers, so they never cause the delay they report. |
 | 1.1 | 09-23-26 21:10 | Claude (Claude Code) | Record identifiers added. The two DNS modes use the existing terms Cloudflare DNS mode and manual DNS. Added section 6, decisions made while building. |
 | 1.0 | 09-23-26 20:40 | Claude (Claude Code), with Doug Bower | First version, from the SES-432 discussion. |

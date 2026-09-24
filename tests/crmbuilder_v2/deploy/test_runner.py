@@ -164,8 +164,9 @@ class FakeCertJob:
         self.calls: list[tuple] = []
         self.outcome = outcome
 
-    def install_job(self, ssh, domain, email, ip, log):
+    def install_job(self, ssh, domain, email, ip, log, *, zone=None):
         self.calls.append(("install_job", domain, ip))
+        self.zone = zone
         return True, ""
 
     def run_job_now(self, ssh, log=None, *, background=False):
@@ -424,6 +425,7 @@ def test_missing_dns_record_installs_anyway_and_ends_needing_action(v2_env):
     # Installed without a certificate, verified in the matching mode.
     assert ssh.secure == {"install": False, "post_install": False, "verify": False}
     assert job.calls == [("install_job", "crm.bbmentors.org", "203.0.113.7")]
+    assert job.zone == "bbmentors.org"  # the job asks the DNS host before public DNS
     run = _run(ident)
     phases = run["deploy_run_state"]["phases"]
     assert phases["check_dns"]["status"] == "needs_action"

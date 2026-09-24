@@ -124,8 +124,11 @@ def check_instance_dns(
             try:
                 expiry = cert_job.read_certificate_expiry(client, domain)
                 job_status = cert_job.read_status(client)
-                if expiry is None and diag.is_correct and (job_status or {}).get("state") not in (
-                    "installing", "gave_up",
+                if (
+                    expiry is None
+                    and diag.is_correct
+                    and (job_status or {}).get("state") not in ("installing", "gave_up")
+                    and cert_job.job_installed(client)
                 ):
                     cert_job.run_job_now(client, background=True)
                     job_started = True

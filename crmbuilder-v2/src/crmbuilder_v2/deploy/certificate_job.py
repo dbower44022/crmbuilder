@@ -4,8 +4,10 @@ When a deploy ends before the web address points at the server, the CRM is
 installed in the EspoCRM installer's plain web mode and this job is left on
 the server. Every fifteen minutes it:
 
-1. checks that public resolvers return the server's own address for the web
-   address, and stops there if not;
+1. checks that the domain's own DNS host holds the record, then that public
+   resolvers return the server's own address for the web address, and stops
+   there if not. Public resolvers are asked only once the DNS host has the
+   record, so they never learn to remember "no such name" for it;
 2. asks Let's Encrypt for a *test* certificate (a dry run that issues nothing),
    answering the challenge from the running CRM's public folder, and stops
    there if that fails, keeping the reason;
@@ -54,6 +56,7 @@ _SCRIPT = r"""#!/bin/bash
 # run; removes its own schedule once the certificate is in place.
 set -u
 DOMAIN=__DOMAIN__
+ZONE=__ZONE__
 EMAIL=__EMAIL__
 EXPECTED_IP=__IP__
 HOME_DIR=__HOME__
@@ -104,7 +107,19 @@ if [ "$attempts" -ge 3 ]; then
   exit 1
 fi
 
-# 1. Does public DNS return this server's address?
+# 1. Does the domain's own DNS host hold the record? Public resolvers are not
+# asked before it does, so they never cache "no such name" for it.
+if [ -n "$ZONE" ]; then
+  ns=$(dig +short +time=5 +tries=1 NS "$ZONE" @1.1.1.1 | head -1)
+  if [ -n "$ns" ]; then
+    held=$(dig +short +time=5 +tries=1 A "$DOMAIN" @"$ns" | sort -u | tr '\n' ' ')
+    if ! echo " $held " | grep -q " $EXPECTED_IP "; then
+      status waiting_dns "The DNS host ($ns) holds ${held:-no record }for $DOMAIN; it must hold $EXPECTED_IP."
+      exit 0
+    fi
+  fi
+fi
+# ... and do public resolvers return this server's address yet?
 seen=$(for resolver in 1.1.1.1 8.8.8.8; do
   dig +short +time=5 +tries=1 A "$DOMAIN" @"$resolver"
 done | sort -u | tr '\n' ' ')
@@ -148,10 +163,15 @@ exit 1
 """
 
 
-def render_script(domain: str, email: str, expected_ip: str) -> str:
-    """The job's shell script, with every value quoted for the shell."""
+def render_script(domain: str, email: str, expected_ip: str, zone: str | None = None) -> str:
+    """The job's shell script, with every value quoted for the shell.
+
+    ``zone`` is the DNS zone holding the address, when the diagnosis found
+    it; without it the job checks public resolvers only.
+    """
     values = {
         "__DOMAIN__": domain,
+        "__ZONE__": zone or "",
         "__EMAIL__": email,
         "__IP__": expected_ip,
         "__HOME__": HOME_DIRECTORY,
@@ -168,7 +188,8 @@ def cron_line() -> str:
     return f"*/15 * * * * root {SCRIPT_PATH} >> {JOB_LOG} 2>&1\n"
 
 
-def install_job(ssh, domain: str, email: str, expected_ip: str, log: Log) -> tuple[bool, str]:
+def install_job(ssh, domain: str, email: str, expected_ip: str, log: Log, *,
+                zone: str | None = None) -> tuple[bool, str]:
     """Put the job and its fifteen-minute schedule on the server.
 
     The script and schedule go in through standard input, so no value is
@@ -185,7 +206,7 @@ def install_job(ssh, domain: str, email: str, expected_ip: str, log: Log) -> tup
     code, _ = run_remote(
         ssh,
         f"mkdir -p /var/lib/crmbuilder && cat > {SCRIPT_PATH} && chmod 0755 {SCRIPT_PATH}",
-        input_text=render_script(domain, email, expected_ip),
+        input_text=render_script(domain, email, expected_ip, zone),
     )
     if code != 0:
         return False, "could not write the certificate job"
@@ -194,6 +215,12 @@ def install_job(ssh, domain: str, email: str, expected_ip: str, log: Log) -> tup
         return False, "could not schedule the certificate job"
     log("Installed the self-healing certificate job; it checks every 15 minutes.", "info")
     return True, ""
+
+
+def job_installed(ssh) -> bool:
+    """Whether the job is on the server (installed by a deploy run)."""
+    code, _ = run_remote(ssh, f"test -x {SCRIPT_PATH}")
+    return code == 0
 
 
 def run_job_now(ssh, log: Log | None = None, *, background: bool = False) -> None:

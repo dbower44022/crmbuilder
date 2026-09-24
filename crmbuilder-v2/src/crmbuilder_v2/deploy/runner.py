@@ -718,7 +718,10 @@ def _phase_certificate(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
     )
 
     def go(client, config):
-        ok, err = deps.cert_job.install_job(client, domain, run.spec.letsencrypt_email, ip, log)
+        ok, err = deps.cert_job.install_job(
+            client, domain, run.spec.letsencrypt_email, ip, log,
+            zone=(run.state.get("dns") or {}).get("zone"),
+        )
         if not ok:
             raise DeployPhaseError("certificate", err)
         if not dns_ok:
