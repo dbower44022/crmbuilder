@@ -160,6 +160,10 @@ class RunnerDeps:
     droplet_poll_seconds: int = 10
     dns_wait_limit_seconds: int = DNS_WAIT_LIMIT_SECONDS
     dns_poll_seconds: int = 30
+    #: How long to keep trying to log in to a server that is not accepting
+    #: SSH yet — a new server reports "active" before its SSH service listens.
+    ssh_wait_seconds: int = 300
+    ssh_poll_seconds: int = 10
 
     def __post_init__(self) -> None:
         if self.ssh is None:
@@ -614,11 +618,42 @@ def _ssh_config(run: _Run, key_path: str):
     }
 
 
-def _with_ssh(run: _Run, deps: RunnerDeps, fn):
+def _connect_when_ready(run: _Run, deps: RunnerDeps, config, log: _Log | None):
+    """Log in to the server, waiting while it does not accept SSH yet.
+
+    DigitalOcean reports a new server active before its SSH service listens.
+    Until PI-571 the DNS wait sat between the two and hid the gap; with the
+    install ahead of DNS, the first login met "Unable to connect to port 22"
+    (DEP-002, 09-23-26). Every login now waits up to ``ssh_wait_seconds``.
+    """
+    deadline = deps.clock() + deps.ssh_wait_seconds
+    told = False
+    while True:
+        try:
+            client = deps.ssh.connect_ssh(config)
+        except Exception as exc:  # refused, reset, no banner or key not yet installed
+            if deps.clock() >= deadline:
+                raise DeployPhaseError(
+                    "ssh",
+                    f"the server at {config.ssh_host} did not accept an SSH login within "
+                    f"{deps.ssh_wait_seconds // 60} minutes ({type(exc).__name__}: {exc}). "
+                    "Press Try again; the run resumes on the same server.",
+                ) from exc
+            if log is not None and not told:
+                log("Waiting for the new server to accept SSH logins…", "info")
+                told = True
+            deps.sleep(deps.ssh_poll_seconds)
+            continue
+        if log is not None and told:
+            log("The server accepts SSH logins.", "success")
+        return client
+
+
+def _with_ssh(run: _Run, deps: RunnerDeps, fn, log: _Log | None = None):
     with private_key_file(run.secrets["ssh_private_key"]) as key_path:
         _, fields = _ssh_config(run, key_path)
         config = deps.ssh.SelfHostedConfig(**fields)
-        client = deps.ssh.connect_ssh(config)
+        client = _connect_when_ready(run, deps, config, log)
         try:
             return fn(client, config)
         finally:
@@ -635,7 +670,7 @@ def _phase_server_prep(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
             raise DeployPhaseError("server_prep", err)
         return {}
 
-    return _with_ssh(run, deps, go)
+    return _with_ssh(run, deps, go, log)
 
 
 def _secure(run: _Run) -> bool:

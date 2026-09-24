@@ -570,3 +570,40 @@ def test_happy_path_logs_a_plain_dns_verdict(v2_env):
     log = _log(ident)
     assert "DNS already points at the server, so the CRM is installed with its certificate." in log
     assert "DNS is correct: crm.example.org points at 203.0.113.7." in log
+
+
+
+def test_a_new_server_that_refuses_ssh_at_first_is_waited_for(v2_env):
+    """DEP-002 (09-23-26): the server was active but not yet listening on port 22."""
+    ident = _queue()
+
+    class SlowSSH(FakeSSHModule):
+        refusals = 2
+
+        def connect_ssh(self, config):
+            if SlowSSH.refusals:
+                SlowSSH.refusals -= 1
+                raise OSError("[Errno None] Unable to connect to port 22 on 203.0.113.7")
+            return super().connect_ssh(config)
+
+    deps = _deps(ssh=SlowSSH())
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps) == "succeeded"
+    assert deps.sleeps.count(10) == 2
+    log = _log(ident)
+    assert "Waiting for the new server to accept SSH logins…" in log
+    assert "The server accepts SSH logins." in log
+
+
+def test_a_server_that_never_accepts_ssh_fails_with_try_again(v2_env):
+    ident = _queue()
+
+    class DeadSSH(FakeSSHModule):
+        def connect_ssh(self, config):
+            raise OSError("Unable to connect to port 22")
+
+    clock = iter(range(0, 10_000, 60))
+    deps = _deps(ssh=DeadSSH(), clock=lambda: next(clock))
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps) == "failed"
+    err = _run(ident)["deploy_run_error"]
+    assert "did not accept an SSH login within 5 minutes" in err and "Try again" in err
+    assert _run(ident)["deploy_run_state"]["phases"]["server_prep"]["status"] == "failed"
