@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import re
 import shlex
 import time
 from collections.abc import Callable
@@ -132,13 +133,74 @@ def run_remote(
         stdin.flush()
         stdin.channel.shutdown_write()
     lines: list[str] = []
+    shown: set[str] = set()
+    hidden = 0
     for stream in (stdout, stderr):
         for line in stream:
             text = line.rstrip("\n")
             lines.append(text)
             if log:
-                log(text, "info")
+                readable = clean_terminal_line(text)
+                if is_progress_noise(readable, shown):
+                    hidden += 1
+                else:
+                    log(readable, "info")
+    if log and hidden:
+        log(f"({hidden} progress lines not shown)", "info")
     return stdout.channel.recv_exit_status(), "\n".join(lines)
+
+
+#: Progress output that floods the deploy log without saying anything: the
+#: container tool's redrawn download frames, apt's percentage counters, the
+#: restart checker's bars and wget's dot rows. Deploy run DEP-003 (09-23-26)
+#: wrote over 2,000 such lines during the install, reaching the log's cap and
+#: pushing out the start of the run. Only what is logged is filtered; the
+#: output a step reads to judge its command is untouched.
+_NOISE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^\s*[\u2800-\u28ff]"),  # a spinner frame: "⠋ Image nginx Pulling"
+    re.compile(r"^\[\+\] (up|Running|Pulling|Building) \d+/\d+"),  # frame header
+    re.compile(r"\(Reading database \.\.\. \d+%"),  # dpkg's database counter
+    re.compile(r"^\d+% \[(Working|Waiting|Connecting|Connected)"),  # apt's status line
+    re.compile(r"^Scanning (processes|candidates|linux images)\.\.\. \["),  # needrestart bars
+    re.compile(r"^\s*\d+K( \.{10})+"),  # wget's dot rows
+)
+
+
+_PERCENT = re.compile(r"\d+%")
+_TERMINAL_CODE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b[()][A-Za-z0-9]")
+
+
+def clean_terminal_line(line: str) -> str:
+    """``line`` as a person would read it: colour and cursor codes removed, and
+    only the last of the frames a carriage return drew over each other."""
+    text = _TERMINAL_CODE.sub("", line)
+    if "\r" in text:
+        parts = [part for part in text.split("\r") if part.strip()]
+        text = parts[-1] if parts else ""
+    return text.rstrip()
+
+
+
+def is_progress_noise(line: str, shown: set[str] | None = None) -> bool:
+    """Whether ``line`` is progress output not worth a line in the deploy log.
+
+    A completion mark the container tool redraws with every frame
+    ("✔ Image nginx:latest Pulled") is shown the first time only, which is
+    what ``shown`` remembers across one command's output.
+    """
+    text = line.strip()
+    if not text:
+        return False
+    if any(p.search(text) for p in _NOISE_PATTERNS):
+        return True
+    if len(_PERCENT.findall(text)) >= 4:  # a line of repeated percentage counters
+        return True
+    if text.startswith("\u2714") and shown is not None:
+        key = " ".join(text.split()[:4])  # "✔ Container espocrm-db Healthy": mark, subject, state
+        if key in shown:
+            return True
+        shown.add(key)
+    return False
 
 
 def mask_credentials(command: str, config: SelfHostedConfig) -> str:
