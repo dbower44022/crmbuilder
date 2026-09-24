@@ -52,6 +52,7 @@ _STATUS_BADGE = {
     "running": "▶ running",
     "succeeded": "✓ succeeded",
     "succeeded_with_issues": "⚠ succeeded (issues)",
+    "needs_action": "⚑ needs action",
     "failed": "✗ failed",
     "cancelled": "■ cancelled",
 }
@@ -151,13 +152,15 @@ class DeployHistoryPanel(ListDetailPanel):
         strip = QWidget()
         strip_layout = QHBoxLayout(strip)
         strip_layout.setContentsMargins(0, 0, 0, 0)
-        if status in ("queued", "running"):
+        # PI-571: a finished run's window still shows its open items and the
+        # handover sheet, so it opens for every status.
+        if status:
             follow = primary_button("Open progress…")
             follow.setObjectName("deploy_open_progress_button")
             follow.clicked.connect(lambda _c=False, i=identifier: self._open_progress(i))
             strip_layout.addWidget(follow)
-        if status in ("failed", "cancelled"):
-            retry = primary_button("Retry")
+        if status in ("failed", "cancelled", "needs_action"):
+            retry = primary_button("Try again")
             retry.setObjectName("deploy_retry_button")
             retry.clicked.connect(lambda _c=False, i=identifier: self._retry(i))
             strip_layout.addWidget(retry)
@@ -249,7 +252,7 @@ class DeployHistoryPanel(ListDetailPanel):
         try:
             self._client.retry_deploy_run(identifier)
         except StorageClientError as exc:
-            ErrorDialog(title="Retry failed", message=str(exc), parent=self).exec()
+            ErrorDialog(title="Try again failed", message=str(exc), parent=self).exec()
             return
         self._open_progress(identifier)
 
@@ -277,8 +280,8 @@ class DeployHistoryPanel(ListDetailPanel):
         if droplet:
             copy_srv = menu.addAction("Copy server id")
             copy_srv.triggered.connect(lambda _c=False, d=str(droplet): self._copy(d))
-        if record.get("deploy_run_status") in ("failed", "cancelled"):
-            retry = menu.addAction("Retry")
+        if record.get("deploy_run_status") in ("failed", "cancelled", "needs_action"):
+            retry = menu.addAction("Try again")
             retry.triggered.connect(
                 lambda _c=False, r=record: self._retry(r.get("deploy_run_identifier") or "")
             )

@@ -8,7 +8,7 @@ what to do in words that name the record to create.
 from __future__ import annotations
 
 from crmbuilder_v2.deploy import dns_check
-from crmbuilder_v2.deploy.dns_check import diagnose, describe_address
+from crmbuilder_v2.deploy.dns_check import describe_address, diagnose
 
 from tests.crmbuilder_v2.deploy.fakes import FakeDnsLookup
 

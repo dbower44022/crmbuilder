@@ -45,6 +45,7 @@ from crmbuilder_v2.segments.operate.ui.dialogs.instance_crud import (
     InstanceDeleteDialog,
     InstanceEditDialog,
 )
+from crmbuilder_v2.segments.operate.ui.handover import open_items_html
 from crmbuilder_v2.ui.base.list_detail_panel import ColumnSpec, ListDetailPanel
 from crmbuilder_v2.ui.dialogs.audit_progress_dialog import AuditProgressDialog
 from crmbuilder_v2.ui.dialogs.error import ErrorDialog
@@ -67,6 +68,7 @@ from crmbuilder_v2.ui.widgets.form_helpers import (
 )
 from crmbuilder_v2.ui.widgets.references_section import ReferencesSection
 from crmbuilder_v2.ui.widgets.selectable_text import CopyableMessageBox
+from crmbuilder_v2.ui.workers import run_in_thread
 
 _log = logging.getLogger("crmbuilder_v2.ui.panels.instances")
 
@@ -114,6 +116,7 @@ class InstancesPanel(ListDetailPanel):
 
     def __init__(self, client, parent=None):
         self._include_deleted = False
+        self._dns_checks: list = []
         super().__init__(client, parent)
         self._show_deleted_check = QCheckBox("Show deleted")
         self._show_deleted_check.setObjectName("show_deleted_check")
@@ -370,6 +373,7 @@ class InstancesPanel(ListDetailPanel):
                 "No deploy/provisioning config recorded for this instance."
             ))
             return box
+        lay.addWidget(self._open_items_block(cfg))
         form = QFormLayout()
         form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
 
@@ -426,6 +430,73 @@ class InstancesPanel(ListDetailPanel):
         _row("Notes", cfg.get("notes"))
         lay.addLayout(form)
         return box
+
+    def _open_items_block(self, cfg: dict[str, Any]) -> QWidget:
+        """What is still outstanding after the deploy, and Check DNS now (PI-571)."""
+        box = QWidget()
+        lay = QVBoxLayout(box)
+        lay.setContentsMargins(0, 0, 0, 0)
+        items = cfg.get("open_items") or []
+        summary = QLabel()
+        summary.setObjectName("instance_open_items")
+        summary.setWordWrap(True)
+        summary.setTextFormat(Qt.TextFormat.RichText)
+        summary.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        if items:
+            summary.setText("<b>Still outstanding from the deploy:</b>" + open_items_html(items))
+            summary.setStyleSheet("background: #FBF2E0; border-radius: 6px; padding: 8px;")
+        else:
+            summary.setText("Nothing outstanding from the deploy.")
+        lay.addWidget(summary)
+        if cfg.get("domain") and (cfg.get("droplet_ip") or cfg.get("ssh_host")):
+            btn = QPushButton("Check DNS now")
+            btn.setObjectName("check_dns_button")
+            btn.setToolTip(
+                "Checks the web address's DNS, reads the certificate job on the server, "
+                "starts it if DNS is ready, and updates the items above."
+            )
+            identifier = cfg.get("instance_identifier")
+            btn.clicked.connect(lambda _checked=False: self._on_check_dns_clicked(identifier, btn))
+            lay.addWidget(btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        return box
+
+    def _on_check_dns_clicked(self, identifier: str | None, button: QPushButton) -> None:
+        if not identifier:
+            return
+        button.setEnabled(False)
+        button.setText("Checking…")
+        self._dns_checks.append(
+            run_in_thread(
+                lambda: self._client.check_instance_dns(identifier),
+                on_success=self._dns_checked,
+                on_error=self._dns_check_failed,
+                parent=self,
+            )
+        )
+
+    def _dns_checked(self, result: dict[str, Any]) -> None:
+        dns = result.get("dns") or {}
+        lines = [f"{dns.get('title', 'DNS checked')}. {dns.get('found', '')}".strip()]
+        if dns.get("action") and dns.get("state") != "correct":
+            lines.append(f"What to do: {dns['action']}")
+        if result.get("certificate_expiry"):
+            lines.append(f"The certificate is in place; it expires {result['certificate_expiry']}.")
+        elif result.get("certificate_job_started"):
+            lines.append("DNS is correct, so the certificate is being installed now. "
+                         "Check again in a few minutes.")
+        if result.get("ssh_error"):
+            lines.append(result["ssh_error"])
+        box = CopyableMessageBox(self)
+        box.setWindowTitle("Check DNS now")
+        box.setText("\n\n".join(lines))
+        box.exec()
+        self.refresh()
+
+    def _dns_check_failed(self, exc: Exception) -> None:
+        if isinstance(exc, StorageConnectionError):
+            self.connection_lost.emit(str(exc))
+        ErrorDialog(title="Check DNS now", message=str(exc), parent=self).exec()
+        self.refresh()
 
     # ------------------------------------------------------------------
     # Identifier addressing
@@ -496,14 +567,18 @@ class InstancesPanel(ListDetailPanel):
         wizard.run_queued.connect(queued.append)
         try:
             wizard.exec()
+            # Kept only for this deploy's handover sheet (PI-571 / REQ-652).
+            password = wizard.admin_password.text() or None
         finally:
             wizard.deleteLater()
         if queued:
-            self.open_deploy_progress(queued[0])
+            self.open_deploy_progress(queued[0], admin_password=password)
 
-    def open_deploy_progress(self, identifier: str) -> None:
+    def open_deploy_progress(self, identifier: str, *, admin_password: str | None = None) -> None:
         """Follow deploy run ``identifier``; select the instance it registers."""
-        dialog = DeployProgressDialog(self._client, identifier, parent=self)
+        dialog = DeployProgressDialog(
+            self._client, identifier, parent=self, admin_password=admin_password
+        )
         dialog.connection_lost.connect(self.connection_lost)
         created: list[str] = []
         dialog.instance_created.connect(created.append)
