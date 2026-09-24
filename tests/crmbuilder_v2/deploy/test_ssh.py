@@ -699,3 +699,66 @@ def test_the_lock_wait_waits_while_a_lock_is_held_and_not_after(tmp_path):
     assert time.monotonic() - started >= 2, "the wait did not wait for the held lock"
     holder.wait()
     assert os.path.exists(locks[0]) and fcntl  # the lock files are left in place
+
+
+# ---------------------------------------------------------------------------
+# Keeping progress output out of the deploy log — PI-571 (REQ-652)
+# ---------------------------------------------------------------------------
+
+#: Raw lines from deploy run DEP-003's log (09-23-26), escape codes and all:
+#: a download spinner frame, a completion mark (twice, as the tool redraws
+#: it), and a frame header ending in a carriage return.
+_DEP003_RAW = [' \x1b[33m⠏\x1b[0m Image espocrm/espocrm:fpm [\x1b[32m⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\x1b[0m] Pulling                 \x1b[34m26.9s\x1b[0m\r', ' \x1b[32m✔\x1b[0m Image nginx:latest                              \x1b[32mPulled\x1b[0m                  \x1b[34m18.6s\x1b[0m\r', ' \x1b[32m✔\x1b[0m Image nginx:latest                              \x1b[32mPulled\x1b[0m                  \x1b[34m18.6s\x1b[0m\r', '\x1b[?25h\x1b[?25l\x1b[3A\x1b[0G[+] up 28/30\r']
+
+#: Lines from the same run's package steps, as they arrived.
+_APT_NOISE = (
+    "(Reading database ... (Reading database ... 5% (Reading database ... 10% "
+    "(Reading database ... 15% (Reading database ... 100% (Reading database ... 75083 files)",
+    "0% [Working] Hit:1 http://mirrors.digitalocean.com/ubuntu noble InRelease",
+    "Scanning processes... [======                    ] Scanning processes... [=======  ]",
+    "     0K .......... .......... ...... 100% 19.5M=0.001s",
+)
+
+
+def test_progress_frames_are_hidden_and_counted_once():
+    log, lines = _capture_log()
+    ssh = MagicMock()
+    stdout = MagicMock()
+    stdout.__iter__.return_value = iter(
+        [line + "\n" for line in _DEP003_RAW]
+        + [line + "\n" for line in _APT_NOISE]
+        + ["The installation has been successfully completed.\n"]
+    )
+    stdout.channel.recv_exit_status.return_value = 0
+    stderr = MagicMock()
+    stderr.__iter__.return_value = iter([])
+    ssh.exec_command.return_value = (MagicMock(), stdout, stderr)
+
+    code, output = ssh_module.run_remote(ssh, "bash install.sh", log)
+
+    shown = _messages(lines)
+    assert len(shown) == 3
+    assert shown[0].split() == ["\u2714", "Image", "nginx:latest", "Pulled", "18.6s"]  # codes gone, shown once
+    assert shown[1:] == [
+        "The installation has been successfully completed.",
+        "(7 progress lines not shown)",
+    ]
+    # What the step reads to judge its command is untouched.
+    assert code == 0 and output.split("\n")[0] == _DEP003_RAW[0]
+
+
+def test_real_output_is_never_taken_for_progress():
+    for line in (
+        "The installation has been successfully completed.",
+        "Get:1 http://mirrors.digitalocean.com/ubuntu noble-updates/main amd64 motd-news-config",
+        "Setting up docker-ce (5:29.8.1-1~ubuntu.24.04~noble) ...",
+        "E: Could not get lock /var/lib/apt/lists/lock. It is held by process 1230 (apt-get)",
+        "Fetched 124 MB in 4s (34.8 MB/s)",
+        "  PASS: Docker containers running",
+    ):
+        assert not ssh_module.is_progress_noise(line, set()), line
+
+
+def test_clean_terminal_line_keeps_the_last_frame_without_codes():
+    assert ssh_module.clean_terminal_line("\x1b[32mone\x1b[0m\rtwo\r") == "two"
+    assert ssh_module.clean_terminal_line("plain") == "plain"
