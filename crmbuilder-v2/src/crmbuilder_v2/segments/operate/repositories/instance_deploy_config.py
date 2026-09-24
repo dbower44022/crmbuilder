@@ -37,6 +37,8 @@ _FIELDS: frozenset[str] = frozenset({
     "ssh_key_name", "ssh_key_provider_id", "server_image", "provisioned_at",
     "last_verified_at", "backup_schedule", "backup_retention",
     "backup_destination", "monthly_cost_usd", "billing_note", "notes",
+    # PI-571 (REQ-650, REQ-651): what is still outstanding after the deploy.
+    "open_items",
 })
 
 

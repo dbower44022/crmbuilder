@@ -558,3 +558,54 @@ def test_run_remote_writes_input_to_standard_input_and_closes_it():
     stdin.write.assert_called_once_with("pw\n")
     stdin.channel.shutdown_write.assert_called_once()
     assert "pw" not in ssh.exec_command.call_args.args[0]
+
+
+# ---------------------------------------------------------------------------
+# Installing without a certificate — PI-571 (REQ-648)
+# ---------------------------------------------------------------------------
+
+def test_install_without_a_certificate_uses_the_plain_web_mode():
+    config = _config()
+    log, _lines = _capture_log()
+    seen: list[str] = []
+
+    def fake_run_remote(_ssh, command, *_args, **_kwargs):
+        seen.append(command)
+        return 0, ""
+
+    with patch.object(ssh_module, "run_remote", side_effect=fake_run_remote):
+        assert ssh_module.phase_install_espocrm(MagicMock(), config, log, secure=False) == (True, "")
+
+    install = seen[-1]
+    assert "--ssl" not in install and "--letsencrypt" not in install and "--email" not in install
+    assert "--domain=crm.example.com" in install and "--clean" in install
+
+
+def test_post_install_without_a_certificate_does_not_look_for_one():
+    config = _config()
+    log, lines = _capture_log()
+
+    with patch.object(ssh_module, "run_remote", side_effect=lambda *_a, **_k: (0, "espocrm Up")):
+        assert ssh_module.phase_post_install(MagicMock(), config, log, secure=False) == (True, "", None)
+    assert not any("certificate" in m.lower() for m in _messages(lines))
+
+
+def test_verify_without_a_certificate_checks_the_crm_on_the_server(instant_clock):
+    log, _lines = _capture_log()
+    seen: list[str] = []
+
+    def fake_run_remote(_ssh, command, *_args, **_kwargs):
+        seen.append(command)
+        if "127.0.0.1" in command:
+            return 0, "HTTP/1.1 200 OK"
+        return 0, "espocrm-db Up"
+
+    with patch.object(ssh_module, "run_remote", side_effect=fake_run_remote):
+        overall, results = ssh_module.phase_verify(MagicMock(), "crm.example.com", log, secure=False)
+
+    assert overall is True
+    assert [r["check"] for r in results] == [
+        "Docker containers running", "CRM answers on the server", "Database connectivity",
+    ]
+    assert not any("https://" in c or "s_client" in c for c in seen)
+    assert "-H 'Host: crm.example.com' http://127.0.0.1" in seen[1]

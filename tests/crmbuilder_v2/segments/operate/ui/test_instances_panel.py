@@ -267,3 +267,41 @@ def test_detail_reflects_full_inventory_audit_for_both(qtbot, instance_client):
         assert f"{counts['present']} present" in labels[key]
         assert f"{counts['drifted']} drifted" in labels[key]
         assert f"{counts['absent']} absent" in labels[key]
+
+
+def test_detail_shows_open_items_and_check_dns_now(qtbot, instance_client, monkeypatch):
+    """PI-571 (REQ-651): what is outstanding after a deploy, and the button that checks it."""
+    from crmbuilder_v2.segments.operate.ui.panels import instances as panel_module
+    from PySide6.QtWidgets import QLabel, QPushButton
+
+    row = _seed(instance_client, "Deployed")
+    ident = row["instance_identifier"]
+    cfg = {
+        "instance_identifier": ident, "domain": "crm.bbmentors.org", "droplet_ip": "203.0.113.7",
+        "open_items": [{"key": "dns", "state": "needs_action", "title": "The DNS record has not been created yet",
+                        "action": "At GoDaddy, create a DNS record.", "who": "client"}],
+    }
+    panel = InstancesPanel(instance_client)
+    qtbot.addWidget(panel)
+    detail = panel.render_detail(instance_client.get_instance(ident),
+                                 {"references": {"as_source": [], "as_target": []}, "deploy_config": cfg})
+    summary = detail.findChild(QLabel, "instance_open_items")
+    assert "Still outstanding from the deploy" in summary.text()
+    assert "At GoDaddy, create a DNS record." in summary.text()
+    button = detail.findChild(QPushButton, "check_dns_button")
+    assert button is not None
+
+    calls = []
+    monkeypatch.setattr(instance_client, "check_instance_dns",
+                        lambda i: calls.append(i) or {"dns": {"state": "correct", "title": "DNS is correct"},
+                                                      "open_items": []})
+    shown = []
+    monkeypatch.setattr(panel_module.CopyableMessageBox, "exec", lambda self: shown.append(self.text()))
+    button.click()
+    qtbot.waitUntil(lambda: bool(shown), timeout=5000)
+    assert calls == [ident] and shown[0].startswith("DNS is correct")
+
+    cfg_done = {**cfg, "open_items": []}
+    detail = panel.render_detail(instance_client.get_instance(ident),
+                                 {"references": {"as_source": [], "as_target": []}, "deploy_config": cfg_done})
+    assert detail.findChild(QLabel, "instance_open_items").text() == "Nothing outstanding from the deploy."

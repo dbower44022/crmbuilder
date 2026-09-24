@@ -149,6 +149,17 @@ class DeployRunCreateIn(_Base):
     db_root_password: str | None = None
 
 
+# POST body for /deploy-runs/{id}/retry (PI-571 / REQ-650): an optional
+# corrected web address. Manual DNS sends ``domain``; Cloudflare mode sends
+# ``subdomain`` (and may move to another zone with ``zone_id`` + ``zone_name``).
+# An empty body retries unchanged.
+class DeployRunRetryIn(_Base):
+    domain: str | None = None
+    subdomain: str | None = None
+    zone_id: str | None = None
+    zone_name: str | None = None
+
+
 # --- Provider credentials (PI-419 / REQ-522) --------------------------------
 # PUT body for /provider-credentials/{provider}: the write-only plaintext token
 # crosses the secret boundary and only its opaque reference is stored.

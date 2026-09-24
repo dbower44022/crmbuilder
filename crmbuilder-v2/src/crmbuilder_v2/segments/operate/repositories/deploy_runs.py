@@ -286,7 +286,8 @@ def set_phase(
     """Record that the run is in ``phase`` and merge ``state`` into the checkpoint.
 
     ``state`` is merged shallowly into ``deploy_run_state``; ``phase_status``
-    (``running`` / ``done`` / ``failed`` / ``skipped``) and ``error`` are stored
+    (``running`` / ``done`` / ``failed`` / ``skipped``, and since PI-571
+    ``needs_action`` / ``waiting``) and ``error`` are stored
     under ``state["phases"][phase]`` with timestamps so a resumed run can tell
     which phases already completed.
     """
@@ -302,7 +303,7 @@ def set_phase(
         entry["status"] = phase_status
         if phase_status == "running" and "started_at" not in entry:
             entry["started_at"] = now
-        if phase_status in ("done", "failed", "skipped"):
+        if phase_status in ("done", "failed", "skipped", "needs_action", "waiting"):
             entry["ended_at"] = now
     if error is not None:
         entry["error"] = error
@@ -362,27 +363,58 @@ def request_cancel(session: Session, identifier: str) -> dict:
     return to_dict(row)
 
 
-def requeue(session: Session, identifier: str) -> dict:
-    """Retry a ``failed`` or ``cancelled`` run in place, keeping its checkpoint.
+#: Statuses a run can be retried from. ``needs_action`` (PI-571 / REQ-650) is
+#: the usual one: the person has fixed what the run reported, and Try again
+#: resumes it.
+RETRYABLE_STATUSES: frozenset[str] = frozenset({"failed", "cancelled", "needs_action"})
+
+#: The steps that depend on the web address, redone when Try again corrects it.
+_ADDRESS_STEPS: tuple[str, ...] = ("create_dns", "check_dns", "certificate", "verify")
+
+
+def requeue(session: Session, identifier: str, *, spec: dict | None = None) -> dict:
+    """Try a ``failed``, ``cancelled`` or ``needs_action`` run again, in place.
 
     The run goes back to ``queued`` with its error, worker, heartbeat and end
     time cleared and the cancel flag dropped; completed phases stay marked
-    ``done`` so the worker resumes at the one that did not finish.
+    ``done`` so the worker resumes at the ones that did not finish.
+
+    :param spec: a corrected, already-validated request (PI-571 / REQ-650).
+        When it changes the web address, the steps that depend on the address
+        run again, and an installed CRM is pointed at the new address rather
+        than reinstalled. The server is never rebuilt.
     """
     row = _require(session, identifier)
-    if row.deploy_run_status not in ("failed", "cancelled"):
+    if row.deploy_run_status not in RETRYABLE_STATUSES:
         raise ConflictError(
-            f"{identifier} is {row.deploy_run_status}; only failed or cancelled "
-            "runs can be retried"
+            f"{identifier} is {row.deploy_run_status}; only failed, cancelled or "
+            "needs-action runs can be tried again"
         )
     current = dict(row.deploy_run_state or {})
     current.pop("cancel_requested", None)
     phases = dict(current.get("phases") or {})
     for name, entry in phases.items():
-        if isinstance(entry, dict) and entry.get("status") in ("failed", "running"):
+        if isinstance(entry, dict) and entry.get("status") in (
+            "failed", "running", "needs_action", "waiting"
+        ):
             phases[name] = {k: v for k, v in entry.items() if k != "error"} | {
                 "status": "retry"
             }
+    old_spec = dict(row.deploy_run_spec or {})
+    if spec is not None and spec.get("domain") != old_spec.get("domain"):
+        redo = list(_ADDRESS_STEPS)
+        if (phases.get("install_espocrm") or {}).get("status") == "done":
+            redo.append("install_espocrm")
+            # The installed CRM carries the old address; the install step
+            # changes it instead of reinstalling (which would wipe the CRM).
+            current.setdefault("installed_domain", old_spec.get("domain"))
+        for name in redo:
+            if name in phases:
+                phases[name] = dict(phases[name]) | {"status": "retry"}
+        current.pop("dns_record_id", None)
+        current.pop("manual_dns_record", None)
+    if spec is not None:
+        row.deploy_run_spec = {**old_spec, **spec}
     current["phases"] = phases
     row.deploy_run_state = current
     row.deploy_run_status = "queued"

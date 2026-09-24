@@ -222,10 +222,14 @@ def phase_server_prep(ssh: paramiko.SSHClient, log: Log) -> tuple[bool, str]:
 
 
 def phase_install_espocrm(
-    ssh: paramiko.SSHClient, config: SelfHostedConfig, log: Log
+    ssh: paramiko.SSHClient, config: SelfHostedConfig, log: Log, *, secure: bool = True
 ) -> tuple[bool, str]:
     """Fetch and run the platform's own installer.
 
+    :param secure: Install with a Let's Encrypt certificate. ``False`` installs
+        the installer's plain web mode for the same address, for a server whose
+        web address does not point at it yet; the self-healing certificate job
+        switches it to the secure mode later (PI-571 / REQ-648, REQ-651).
     :returns: ``(succeeded, why it did not)``.
     """
     download = (
@@ -241,13 +245,13 @@ def phase_install_espocrm(
     # break the command or change it (PI-563, REQ-641).
     options = [
         ("domain", config.domain, None),
-        ("email", config.letsencrypt_email, None),
+        *([("email", config.letsencrypt_email, None)] if secure else []),
         ("admin-username", config.admin_username, None),
         ("admin-password", config.admin_password, "[admin_password]"),
         ("db-password", config.db_password, "[db_password]"),
         ("db-root-password", config.db_root_password, "[db_root_password]"),
     ]
-    prefix = "sudo bash install.sh -y --clean --ssl --letsencrypt"
+    prefix = "sudo bash install.sh -y --clean" + (" --ssl --letsencrypt" if secure else "")
     install = " ".join(
         [prefix] + [f"--{name}={shlex.quote(value)}" for name, value, _ in options]
     )
@@ -270,7 +274,7 @@ def phase_install_espocrm(
 
 
 def phase_post_install(
-    ssh: paramiko.SSHClient, config: SelfHostedConfig, log: Log
+    ssh: paramiko.SSHClient, config: SelfHostedConfig, log: Log, *, secure: bool = True
 ) -> tuple[bool, str, str | None]:
     """Correct file ownership, prove it took, and read the certificate's expiry.
 
@@ -327,6 +331,10 @@ def phase_post_install(
     # the system certificate folder is kept as a fallback for older layouts.
     # Looking only in the second had found no certificate on any instance this
     # installer built (read off the CBM test instance, PI-563).
+    if not secure:
+        # Plain web mode: there is no certificate yet to read (PI-571).
+        return True, "", None
+
     log("Reading SSL certificate expiry...", "info")
     exit_code, cert_output, cert_path = 1, "", ""
     for cert_path in certificate_paths(config.domain):
@@ -372,9 +380,15 @@ VERIFY_BACKOFF: tuple[float, ...] = (1.0, 1.0, 2.0, 2.0, 3.0, 3.0) + (5.0,) * 20
 
 
 def phase_verify(
-    ssh: paramiko.SSHClient, domain: str, log: Log
+    ssh: paramiko.SSHClient, domain: str, log: Log, *, secure: bool = True
 ) -> tuple[bool, list[dict]]:
     """Check the built server answers, is secured, and keeps its schedule.
+
+    With ``secure=False`` — a server installed in plain web mode because its
+    web address does not point at it yet (PI-571) — the checks that need the
+    web address or the certificate are not run: they would fail for a reason
+    already reported as an open item. The CRM is checked on the server itself
+    instead, by asking its web server for the page under the right host name.
 
     A check that depends on the network is polled on a backoff to a deadline,
     because the web server needs a moment after the installer finishes. A check
@@ -452,6 +466,21 @@ def phase_verify(
         f"docker compose -f {COMPOSE_FILE} ps",
         lambda code, out: code == 0 and "espocrm" in out.lower(),
     )
+    if not secure:
+        run_check(
+            "CRM answers on the server",
+            f"curl -sI -H 'Host: {domain}' http://127.0.0.1 | head -1",
+            lambda code, out: any(s in out for s in ("200", "301", "302")),
+            poll=True,
+        )
+        run_check(
+            "Database connectivity",
+            f"docker compose -f {COMPOSE_FILE} ps "
+            "| grep -iE 'mysql|mariadb|espocrm-db'",
+            lambda code, out: code == 0 and "up" in out.lower(),
+        )
+        return all(result["passed"] for result in results), results
+
     run_check(
         "HTTP redirect to HTTPS",
         f"curl -sI http://{domain} | head -1",

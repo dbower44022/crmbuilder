@@ -27,12 +27,13 @@ from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
 from crmbuilder_v2.api.principal_deps import require_permission
 from crmbuilder_v2.api.secret_boundary import store_secret
-from crmbuilder_v2.deploy.spec import validate_spec
+from crmbuilder_v2.deploy import dns_check
+from crmbuilder_v2.deploy.spec import is_protected_host, validate_spec
 from crmbuilder_v2.segments.operate.repositories import (
     deploy_runs,
     provider_credentials,
 )
-from crmbuilder_v2.segments.operate.schemas import DeployRunCreateIn
+from crmbuilder_v2.segments.operate.schemas import DeployRunCreateIn, DeployRunRetryIn
 
 router = APIRouter(
     prefix="/deploy-runs",
@@ -73,6 +74,26 @@ def worker_status():
             "current_run": getattr(worker, "current_run", None),
         }
     )
+
+
+@router.get("/dns-lookup")
+def dns_lookup(domain: str):
+    """Who hosts DNS for ``domain`` and what records it already has (PI-571 / REQ-648).
+
+    The wizard asks this before any server exists, so the operator learns
+    whether CRMBuilder can create the record and whether the name is in use.
+    """
+    domain = (domain or "").strip().lower().rstrip(".")
+    if not domain or "." not in domain:
+        raise UnprocessableError(
+            [FieldError("domain", "invalid", "enter a full web address such as crm.example.org")]
+        )
+    if is_protected_host(domain):
+        raise UnprocessableError(
+            [FieldError("domain", "protected_host",
+                        f"{domain} is CRMBuilder's own production host (GVR-240)")]
+        )
+    return ok(dns_check.describe_address(domain))
 
 
 @router.get("")
@@ -161,9 +182,30 @@ def cancel(identifier: str):
 
 
 @router.post("/{identifier}/retry")
-def retry(identifier: str):
-    """Re-queue a failed or cancelled run; it resumes at the phase that did not finish."""
+def retry(identifier: str, body: DeployRunRetryIn | None = None):
+    """Try a run again; it resumes at the steps that did not finish.
+
+    A body may correct the web address (PI-571 / REQ-650). The corrected
+    request is validated exactly as a new one is, and the server is kept.
+    """
     with writable_session() as s:
-        if deploy_runs.get_deploy_run(s, identifier) is None:
+        row = deploy_runs.get_deploy_run(s, identifier)
+        if row is None:
             raise NotFoundError("deploy_run", identifier)
-        return ok(_public(deploy_runs.requeue(s, identifier)))
+        spec = None
+        changes = body.model_dump(exclude_none=True) if body else {}
+        if changes:
+            merged = dict(row.get("deploy_run_spec") or {})
+            merged.update(changes)
+            if merged.get("dns_mode") != "manual" and "domain" not in changes:
+                merged.pop("domain", None)  # rebuilt from subdomain + zone
+            validated = validate_spec(merged).to_dict()
+            other = deploy_runs.active_run_for_domain(s, validated["domain"])
+            if other and other["deploy_run_identifier"] != identifier:
+                raise UnprocessableError(
+                    [FieldError("domain", "run_in_progress",
+                                f"{other['deploy_run_identifier']} is already "
+                                f"{other['deploy_run_status']} for {validated['domain']}")]
+                )
+            spec = validated
+        return ok(_public(deploy_runs.requeue(s, identifier, spec=spec)))

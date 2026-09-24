@@ -45,3 +45,50 @@ class FakeSession(requests.Session):
         if callable(route):
             return route(params, json)
         return route
+
+
+class FakeDnsLookup:
+    """Stands in for :class:`crmbuilder_v2.deploy.dns_check.PublicDnsLookup` — PI-571.
+
+    ``records[(name, type)]`` is what the domain's own name servers hold: a
+    list of values; ``records[(name, "CNAME")]`` is an alias target instead.
+    ``public[(name, type)]`` is what
+    public resolvers return (defaults to the authoritative values).
+    ``unreachable`` makes every authoritative query fail.
+    """
+
+    def __init__(self, *, zone="example.org", name_servers=("ana.ns.cloudflare.com", "bob.ns.cloudflare.com"),
+                 records=None, public=None, negative_ttl=1800, ttl=300, unreachable=False):
+        self.zone = zone
+        self.name_servers = list(name_servers)
+        self.records = dict(records or {})
+        self.public_answers = dict(public or {})
+        self.neg = negative_ttl
+        self.ttl = ttl
+        self.unreachable = unreachable
+
+    def zone_and_name_servers(self, domain):
+        if self.zone and (domain == self.zone or domain.endswith("." + self.zone)):
+            return self.zone, list(self.name_servers)
+        return None, []
+
+    def authoritative(self, name_servers, name, rdtype):
+        from crmbuilder_v2.deploy.dns_check import AuthAnswer
+
+        if self.unreachable:
+            return None
+        value = self.records.get((name, rdtype))
+        cname = self.records.get((name, "CNAME"))
+        if cname:
+            return AuthAnswer(cname=cname, ttl=self.ttl)
+        if value is None:
+            return AuthAnswer()
+        return AuthAnswer(values=list(value), ttl=self.ttl)
+
+    def public(self, name, rdtype="A"):
+        if (name, rdtype) in self.public_answers:
+            return set(self.public_answers[(name, rdtype)])
+        return set(self.records.get((name, rdtype)) or [])
+
+    def negative_ttl(self, name_servers, zone):
+        return self.neg

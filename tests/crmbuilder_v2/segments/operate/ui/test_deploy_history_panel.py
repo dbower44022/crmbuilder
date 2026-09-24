@@ -66,7 +66,8 @@ def test_records_and_detail_show_kept_server(qtbot, ui_client):
     from PySide6.QtWidgets import QPushButton
     assert detail.findChild(QPushButton, "deploy_retry_button") is not None
     assert detail.findChild(QPushButton, "deploy_copy_droplet_button") is not None
-    assert detail.findChild(QPushButton, "deploy_open_progress_button") is None
+    # PI-571: every run opens its progress window, which shows its open items and handover sheet.
+    assert detail.findChild(QPushButton, "deploy_open_progress_button") is not None
 
 
 def test_kept_line_only_for_failed_or_cancelled():

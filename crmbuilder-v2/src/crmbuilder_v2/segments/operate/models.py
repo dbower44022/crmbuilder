@@ -257,6 +257,14 @@ class InstanceDeployConfig(EngagementScopedMixin, Base):
     last_verified_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # PI-571 (REQ-650, REQ-651): what is still outstanding on the instance
+    # after its deploy — typically the DNS record and the certificate. A list
+    # of objects, each with a key, a title, what was found, what to do, who
+    # acts, how to confirm, and whether it is open. Written by the deploy run
+    # and by Check DNS now; NULL on rows that predate the column.
+    open_items: Mapped[list | None] = mapped_column(
+        JSONColumnNoneAsNull, nullable=True
+    )
     backup_schedule: Mapped[str | None] = mapped_column(Text, nullable=True)
     backup_retention: Mapped[str | None] = mapped_column(Text, nullable=True)
     backup_destination: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -265,9 +265,30 @@ class OperateMethods:
         result = self._request("POST", f"/deploy-runs/{identifier}/cancel")
         return result if isinstance(result, dict) else {}
 
-    def retry_deploy_run(self, identifier: str) -> dict[str, Any]:
-        """POST /deploy-runs/{id}/retry."""
-        result = self._request("POST", f"/deploy-runs/{identifier}/retry")
+    def retry_deploy_run(
+        self, identifier: str, corrections: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """POST /deploy-runs/{id}/retry — Try again, optionally with a
+        corrected web address (PI-571 / REQ-650)."""
+        result = self._request(
+            "POST", f"/deploy-runs/{identifier}/retry", json_body=corrections or None
+        )
+        return result if isinstance(result, dict) else {}
+
+    def lookup_deploy_address(self, domain: str) -> dict[str, Any]:
+        """GET /deploy-runs/dns-lookup — who hosts DNS for ``domain`` and what
+        records it already has (PI-571 / REQ-648)."""
+        from urllib.parse import quote
+
+        result = self._request(
+            "GET", f"/deploy-runs/dns-lookup?domain={quote(domain)}", timeout=60
+        )
+        return result if isinstance(result, dict) else {}
+
+    def check_instance_dns(self, identifier: str) -> dict[str, Any]:
+        """POST /instances/{id}/check-dns — Check DNS now (PI-571 / REQ-651)."""
+        # DNS questions and an SSH login: allow longer than an ordinary call.
+        result = self._request("POST", f"/instances/{identifier}/check-dns", timeout=120)
         return result if isinstance(result, dict) else {}
 
     def get_deploy_worker_status(self) -> dict[str, Any]:
