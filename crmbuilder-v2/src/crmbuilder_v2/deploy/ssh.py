@@ -180,11 +180,103 @@ def mask_secrets(command: str, secret_values: list[str]) -> str:
 # The five steps
 # ---------------------------------------------------------------------------
 
+#: How long server preparation waits for a new server's first-boot setup,
+#: and then for any package activity still running, before it gives up.
+FIRST_BOOT_WAIT_SECONDS = 600
+
+#: Waits until first-boot setup (cloud-init) has finished, bounded, and prints
+#: its exit code. cloud-init on Ubuntu 24.04 returns 0 when setup finished and
+#: 2 when it finished with recoverable errors; ``timeout`` returns 124 when the
+#: limit passes, and 127 means cloud-init is not installed.
+_FIRST_BOOT_WAIT = (
+    f"timeout {FIRST_BOOT_WAIT_SECONDS} cloud-init status --wait >/dev/null 2>&1; "
+    'echo "first-boot:$?"'
+)
+
+#: The locks apt and dpkg take. cloud-init is not their only holder: Ubuntu's
+#: apt-daily timers start an update in a new server's first minutes. The
+#: apt-get option DPkg::Lock::Timeout makes apt wait for the installer locks but
+#: not for the package-list lock that ``apt-get update`` takes, which is how the
+#: 09-23-26 live proof failed at once with "Could not get lock
+#: /var/lib/apt/lists/lock" (PI-567 / REQ-644).
+PACKAGE_LOCKS: tuple[str, ...] = (
+    "/var/lib/dpkg/lock-frontend",
+    "/var/lib/dpkg/lock",
+    "/var/lib/apt/lists/lock",
+    "/var/cache/apt/archives/lock",
+)
+
+#: Waits until none of the lock files named on its command line is held, by
+#: trying each one the way apt does (an fcntl lock, not blocking) and letting it
+#: go at once. Matching process names instead is unreliable: a standard Ubuntu
+#: server keeps a helper named unattended-upgrade-shutdown running for good.
+#: Sent on standard input to ``python3 -``, which every Ubuntu image carries.
+PACKAGE_IDLE_SCRIPT = """
+import fcntl, os, sys, time
+
+def held(path):
+    try:
+        fd = os.open(path, os.O_RDWR)
+    except OSError:
+        return False  # no such lock file yet, or not ours to read: not held
+    try:
+        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        fcntl.lockf(fd, fcntl.LOCK_UN)
+        return False
+    except OSError:
+        return True
+    finally:
+        os.close(fd)
+
+while any(held(p) for p in sys.argv[1:]):
+    time.sleep(3)
+"""
+
+_PACKAGE_IDLE_WAIT = (
+    f"timeout {FIRST_BOOT_WAIT_SECONDS} python3 - " + " ".join(PACKAGE_LOCKS)
+)
+
+
+def wait_for_first_boot(ssh: paramiko.SSHClient, log: Log) -> tuple[bool, str]:
+    """Wait for a new server's first-boot setup and package activity to finish.
+
+    :returns: ``(finished, why it did not)``. The reason names first-boot setup
+        and Try again, never a package-manager error (REQ-644).
+    """
+    log("Waiting for the server's first-boot setup to finish...", "info")
+    started = time.monotonic()
+    _code, output = run_remote(ssh, _FIRST_BOOT_WAIT)
+    status = output.strip().rsplit("first-boot:", 1)[-1].strip() if "first-boot:" in output else ""
+    if status == "124":
+        return False, (
+            "The server's first-boot setup did not finish within "
+            f"{FIRST_BOOT_WAIT_SECONDS // 60} minutes. Press Try again; the run "
+            "resumes here on the same server."
+        )
+    if status == "1":
+        log("First-boot setup reported an error; continuing once package activity stops.", "warning")
+    code, _ = run_remote(ssh, _PACKAGE_IDLE_WAIT, input_text=PACKAGE_IDLE_SCRIPT)
+    if code == 124:
+        return False, (
+            "The server's first-boot package updates were still running after "
+            f"{FIRST_BOOT_WAIT_SECONDS // 60} minutes. Press Try again; the run "
+            "resumes here on the same server."
+        )
+    log(f"First-boot setup finished after {int(time.monotonic() - started)} seconds.", "info")
+    return True, ""
+
+
 def phase_server_prep(ssh: paramiko.SSHClient, log: Log) -> tuple[bool, str]:
     """Prepare the machine: packages, the container runtime, swap, the firewall.
 
+    It first waits for the server's own first-boot setup (PI-567 / REQ-644),
+    so no package command meets a lock that setup still holds.
+
     :returns: ``(succeeded, why it did not)``.
     """
+    finished, why = wait_for_first_boot(ssh, log)
+    if not finished:
+        return False, why
     commands = [
         # Wait for the package lock rather than fail against it: a freshly
         # created machine runs its own unattended upgrade for its first

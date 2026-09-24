@@ -121,24 +121,76 @@ def test_mask_credentials_ignores_an_empty_password():
 # Preparing the machine
 # ---------------------------------------------------------------------------
 
-def test_server_prep_waits_for_the_package_lock_rather_than_failing():
-    """A freshly created machine holds the package lock during its own first
-    upgrade, so every package command asks to wait for it."""
-    log, _lines = _capture_log()
+def _prep_runner(first_boot="0", idle=0, fail_at=None):
+    """A stand-in for ``run_remote`` shaped by the 09-23-26 live proof (CNV-398)."""
     seen: list[str] = []
 
     def fake_run_remote(_ssh, command, *_args, **_kwargs):
         seen.append(command)
+        if "cloud-init status --wait" in command:
+            return 0, f"first-boot:{first_boot}"
+        if "python3 -" in command:
+            return idle, ""
+        if fail_at is not None and "apt-get" in command and len(seen) - 2 == fail_at:
+            return 100, "E: Could not get lock /var/lib/apt/lists/lock. It is held by process 1230 (apt-get)"
         return 0, ""
 
-    with patch.object(ssh_module, "run_remote", side_effect=fake_run_remote):
-        succeeded, error = ssh_module.phase_server_prep(MagicMock(), log)
+    return fake_run_remote, seen
 
-    assert succeeded is True
-    assert error == ""
+
+def test_server_prep_waits_for_first_boot_setup_before_any_package_command():
+    """PI-567 (REQ-644): the live proof met apt-get update while first-boot
+    setup held the package-list lock. The wait comes first, then packages."""
+    log, lines = _capture_log()
+    runner, seen = _prep_runner()
+    with patch.object(ssh_module, "run_remote", side_effect=runner):
+        assert ssh_module.phase_server_prep(MagicMock(), log) == (True, "")
+    assert "cloud-init status --wait" in seen[0] and seen[0].startswith("timeout 600 ")
+    assert seen[1].startswith("timeout 600 python3 - ") and "/var/lib/apt/lists/lock" in seen[1]
+    first_apt = next(i for i, c in enumerate(seen) if "apt-get" in c)
+    assert first_apt == 2
+    messages = _messages(lines)
+    assert "Waiting for the server's first-boot setup to finish..." in messages
+    assert any(m.startswith("First-boot setup finished after ") for m in messages)
+
+
+def test_first_boot_setup_that_never_finishes_fails_naming_it_and_try_again():
+    log, _lines = _capture_log()
+    runner, seen = _prep_runner(first_boot="124")
+    with patch.object(ssh_module, "run_remote", side_effect=runner):
+        ok, error = ssh_module.phase_server_prep(MagicMock(), log)
+    assert ok is False and "first-boot setup did not finish within 10 minutes" in error
+    assert "Try again" in error and "lock" not in error
+    assert not any("apt-get update" in c for c in seen)
+
+
+def test_package_updates_still_running_fail_naming_first_boot_not_apt():
+    log, _lines = _capture_log()
+    runner, seen = _prep_runner(idle=124)
+    with patch.object(ssh_module, "run_remote", side_effect=runner):
+        ok, error = ssh_module.phase_server_prep(MagicMock(), log)
+    assert ok is False and "first-boot package updates were still running" in error
+    assert not any("apt-get update" in c for c in seen)
+
+
+def test_first_boot_finished_with_recoverable_errors_carries_on():
+    log, lines = _capture_log()
+    runner, _seen = _prep_runner(first_boot="2")
+    with patch.object(ssh_module, "run_remote", side_effect=runner):
+        assert ssh_module.phase_server_prep(MagicMock(), log) == (True, "")
+    runner, _seen = _prep_runner(first_boot="1")
+    with patch.object(ssh_module, "run_remote", side_effect=runner):
+        assert ssh_module.phase_server_prep(MagicMock(), log) == (True, "")
+    assert any("reported an error" in m for m in _messages(lines))
+
+
+def test_every_package_command_still_waits_for_the_installer_lock():
+    log, _lines = _capture_log()
+    runner, seen = _prep_runner()
+    with patch.object(ssh_module, "run_remote", side_effect=runner):
+        ssh_module.phase_server_prep(MagicMock(), log)
     package_commands = [c for c in seen if "apt-get" in c]
-    assert package_commands
-    assert all("DPkg::Lock::Timeout=600" in c for c in package_commands)
+    assert package_commands and all("DPkg::Lock::Timeout=600" in c for c in package_commands)
 
 
 def test_server_prep_stops_at_the_first_command_that_fails():
@@ -147,14 +199,16 @@ def test_server_prep_stops_at_the_first_command_that_fails():
 
     def fake_run_remote(_ssh, command, *_args, **_kwargs):
         seen.append(command)
-        return (0, "") if len(seen) == 1 else (100, "")
+        if "cloud-init" in command:
+            return 0, "first-boot:0"
+        return (0, "") if len(seen) <= 3 else (100, "")
 
     with patch.object(ssh_module, "run_remote", side_effect=fake_run_remote):
         succeeded, error = ssh_module.phase_server_prep(MagicMock(), log)
 
     assert succeeded is False
     assert "exit 100" in error
-    assert len(seen) == 2, "the step kept going after a command failed"
+    assert len(seen) == 4, "the step kept going after a command failed"
 
 
 # ---------------------------------------------------------------------------
@@ -609,3 +663,39 @@ def test_verify_without_a_certificate_checks_the_crm_on_the_server(instant_clock
     ]
     assert not any("https://" in c or "s_client" in c for c in seen)
     assert "-H 'Host: crm.example.com' http://127.0.0.1" in seen[1]
+
+
+def test_the_lock_wait_waits_while_a_lock_is_held_and_not_after(tmp_path):
+    """Run on this machine against lock files it creates: the wait returns at
+    once when nothing holds them, and waits while another process holds one."""
+    import fcntl
+    import os
+    import subprocess
+    import sys
+    import time
+
+    locks = [tmp_path / "lists-lock", tmp_path / "dpkg-lock"]
+    for lock in locks:
+        lock.touch()
+
+    def wait(limit: float) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [sys.executable, "-", *map(str, locks)], input=ssh_module.PACKAGE_IDLE_SCRIPT,
+            text=True, timeout=limit,
+        )
+
+    assert wait(5).returncode == 0
+
+    holder = subprocess.Popen(
+        [sys.executable, "-c",
+         "import fcntl,os,time,sys; fd=os.open(sys.argv[1],os.O_RDWR); "
+         "fcntl.lockf(fd,fcntl.LOCK_EX); print('held',flush=True); time.sleep(4)",
+         str(locks[0])],
+        stdout=subprocess.PIPE, text=True,
+    )
+    assert holder.stdout.readline().strip() == "held"
+    started = time.monotonic()
+    assert wait(15).returncode == 0
+    assert time.monotonic() - started >= 2, "the wait did not wait for the held lock"
+    holder.wait()
+    assert os.path.exists(locks[0]) and fcntl  # the lock files are left in place
