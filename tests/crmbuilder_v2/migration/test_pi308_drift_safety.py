@@ -223,10 +223,10 @@ def test_bootstrap_missing_one_branch_head_applies_only_that_branch(pg_db) -> No
     bootstrap_database()
     engine = create_engine(pg_db)
     with engine.begin() as conn:
-        conn.execute(text("DELETE FROM alembic_version WHERE version_num = 'operate_0001_branch'"))
+        conn.execute(text("DELETE FROM alembic_version WHERE version_num = 'operate_0002_deploy_needs_action'"))
     engine.dispose()
     sv = schema_version()
-    assert sv.missing == ("operate_0001_branch",)
+    assert sv.missing == ("operate_0002_deploy_needs_action",)
     assert not sv.is_up_to_date
     bootstrap_database()
     assert schema_version().is_up_to_date

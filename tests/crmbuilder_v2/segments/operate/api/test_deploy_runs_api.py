@@ -204,3 +204,74 @@ def test_cloudflare_mode_still_requires_the_cloudflare_credential(client):
     assert {(e["field"], e["code"]) for e in r.json()["errors"]} == {
         ("cloudflare", "missing_provider_credential")
     }
+
+
+# --- PI-571 (REQ-648, REQ-650): the address lookup and Try again with a
+# corrected address --------------------------------------------------------
+
+
+def test_dns_lookup_describes_the_address(client, monkeypatch):
+    from crmbuilder_v2.deploy import dns_check
+
+    from tests.crmbuilder_v2.deploy.fakes import FakeDnsLookup
+
+    lookup = FakeDnsLookup(zone="bbmentors.org", name_servers=("ns51.domaincontrol.com",),
+                           records={("crm.bbmentors.org", "A"): ["198.51.100.9"]})
+    monkeypatch.setattr(dns_check, "PublicDnsLookup", lambda: lookup)
+    r = client.get("/deploy-runs/dns-lookup?domain=CRM.bbmentors.org")
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["dns_host"] == "GoDaddy" and data["zone"] == "bbmentors.org"
+    assert data["record_name"] == "crm" and data["existing_records"] == {"A": ["198.51.100.9"]}
+    assert client.get("/deploy-runs/dns-lookup?domain=crm").status_code == 422
+    assert client.get("/deploy-runs/dns-lookup?domain=api.crmbuilder.ai").status_code == 422
+
+
+def test_try_again_accepts_a_corrected_address_and_validates_it(client):
+    client.put("/provider-credentials/digitalocean", json={"token": "do"})
+    client.post("/deploy-runs", json={**MANUAL_BODY, "domain": "crm.bbmentor.org"})
+    with session_scope() as s:
+        deploy_runs.set_phase(s, "DEP-001", "install_espocrm", phase_status="done")
+        deploy_runs.set_phase(s, "DEP-001", "check_dns", phase_status="needs_action")
+        deploy_runs.finish(s, "DEP-001", status="needs_action")
+
+    bad = client.post("/deploy-runs/DEP-001/retry", json={"domain": "crm"})
+    assert bad.status_code == 422
+    assert ("domain", "invalid") in {(e["field"], e["code"]) for e in bad.json()["errors"]}
+
+    r = client.post("/deploy-runs/DEP-001/retry", json={"domain": "CRM.bbmentors.org"})
+    assert r.status_code == 200, r.text
+    run = r.json()["data"]
+    assert run["deploy_run_status"] == "queued"
+    assert run["deploy_run_spec"]["domain"] == "crm.bbmentors.org"
+    state = run["deploy_run_state"]
+    assert state["installed_domain"] == "crm.bbmentor.org"  # the CRM is renamed, not reinstalled
+    assert state["phases"]["install_espocrm"]["status"] == "retry"
+    assert state["phases"]["check_dns"]["status"] == "retry"
+
+
+def test_try_again_without_a_body_keeps_the_request(client):
+    client.put("/provider-credentials/digitalocean", json={"token": "do"})
+    client.post("/deploy-runs", json=MANUAL_BODY)
+    with session_scope() as s:
+        deploy_runs.finish(s, "DEP-001", status="needs_action")
+    r = client.post("/deploy-runs/DEP-001/retry")
+    assert r.status_code == 200
+    assert r.json()["data"]["deploy_run_spec"]["domain"] == "crm.bbmentors.org"
+
+
+def test_check_dns_endpoint(client, monkeypatch):
+    from crmbuilder_v2.deploy import dns_followup
+
+    seen = []
+    monkeypatch.setattr(dns_followup, "check_instance_dns",
+                        lambda ident: seen.append(ident) or {"instance_identifier": ident, "open_items": []})
+    assert client.post("/instances/INST-404/check-dns").status_code == 404
+    created = client.post("/instances", json={
+        "instance_name": "Chapter CRM", "instance_url": "https://crm.example.org",
+        "instance_vendor": "espocrm", "instance_role": "both", "instance_auth_method": "basic",
+    })
+    assert created.status_code == 201, created.text
+    ident = created.json()["data"]["instance_identifier"]
+    r = client.post(f"/instances/{ident}/check-dns")
+    assert r.status_code == 200 and r.json()["data"]["open_items"] == [] and seen == [ident]

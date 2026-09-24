@@ -16,7 +16,7 @@ import dataclasses
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 
 from crmbuilder_v2 import secrets
@@ -41,6 +41,7 @@ from crmbuilder_v2.access.repositories import (
 from crmbuilder_v2.adapters.espocrm.client import AccessDesignClient
 from crmbuilder_v2.api.deps import readonly_session, writable_session
 from crmbuilder_v2.api.envelope import ok
+from crmbuilder_v2.api.principal_deps import require_permission
 from crmbuilder_v2.api.schemas import RecordExportIn
 from crmbuilder_v2.api.secret_boundary import (
     resolve_secret_or_none,
@@ -639,6 +640,25 @@ def put_deploy_config(identifier: str, body: InstanceDeployConfigIn):
     for old in stale_refs:
         secrets.delete_secret(old)
     return ok(result)
+
+
+@router.post(
+    "/{identifier}/check-dns",
+    dependencies=[Depends(require_permission("admin"))],
+)
+def check_dns(identifier: str):
+    """Check DNS now (PI-571 / REQ-651).
+
+    Diagnoses the instance's web address, reads the self-healing certificate
+    job's status from the server, starts the job when DNS is correct and the
+    certificate is missing, and returns the updated open items.
+    """
+    from crmbuilder_v2.deploy.dns_followup import check_instance_dns
+
+    with readonly_session() as s:
+        if instances.get_instance(s, identifier) is None:
+            raise NotFoundError("instance", identifier)
+    return ok(check_instance_dns(identifier))
 
 
 # ── Record-data export (PI-234 — REQ-130) ─────────────────────────────────

@@ -22,6 +22,8 @@ from crmbuilder_v2.access.repositories import (
 from crmbuilder_v2.deploy.errors import ProviderError
 from crmbuilder_v2.deploy.runner import RunnerDeps, run_deploy
 
+from tests.crmbuilder_v2.deploy.fakes import FakeDnsLookup
+
 SPEC = {
     "instance_name": "Chapter CRM",
     "region": "nyc3",
@@ -83,18 +85,24 @@ class FakeDO:
 
 
 class FakeCF:
-    def __init__(self, token, *, fail=False):
+    def __init__(self, token, *, fail=False, existing=None):
         self.token = token
-        self.records: dict[str, dict] = {}
+        self.records: dict[str, dict] = dict(existing or {})
         self.fail = fail
+        self.upserts = 0
 
     def get_zone(self, zone_id):
         return {"id": zone_id, "name": "example.org"}
+
+    def find_a_record(self, zone_id, name):
+        rec = self.records.get(name)
+        return dict(rec) if rec else None
 
     def upsert_a_record(self, zone_id, *, name, ip, ttl=60, proxied=False):
         if self.fail:
             raise ProviderError("cloudflare", "Authentication error", status=403)
         assert proxied is False
+        self.upserts += 1
         rec = self.records.get(name) or {"id": f"rec-{name}"}
         rec.update({"name": name, "content": ip, "proxied": proxied})
         self.records[name] = rec
@@ -113,11 +121,7 @@ class FakeSSHModule:
         self.verify_ok = verify_ok
         self.install_ok = install_ok
         self.configs: list[dict] = []
-
-    def wait_for_dns(self, domain, ip, log, *, timeout, interval):
-        self.calls.append("wait_for_dns")
-        log(f"{domain} resolves to {ip}", "info")
-        return True
+        self.secure: dict[str, bool] = {}
 
     def connect_ssh(self, config):
         self.configs.append(dict(config.__dict__))
@@ -134,20 +138,54 @@ class FakeSSHModule:
         log("$ apt-get update", "info")
         return True, ""
 
-    def phase_install_espocrm(self, ssh, config, log):
+    def phase_install_espocrm(self, ssh, config, log, *, secure=True):
         self.calls.append("install")
+        self.secure["install"] = secure
         log(f"$ install.sh --admin-password={config.admin_password}", "info")
         return (True, "") if self.install_ok else (False, "installer failed (exit 1)")
 
-    def phase_post_install(self, ssh, config, log):
+    def phase_post_install(self, ssh, config, log, *, secure=True):
         self.calls.append("post_install")
-        return True, "", "2026-11-28"
+        self.secure["post_install"] = secure
+        return True, "", ("2026-11-28" if secure else None)
 
-    def phase_verify(self, ssh, domain, log):
+    def phase_verify(self, ssh, domain, log, *, secure=True):
         self.calls.append("verify")
+        self.secure["verify"] = secure
         checks = [{"check": "https", "passed": True, "detail": ""},
                   {"check": "cron", "passed": self.verify_ok, "detail": "" if self.verify_ok else "no cron"}]
         return self.verify_ok, checks
+
+
+class FakeCertJob:
+    """Stands in for :mod:`crmbuilder_v2.deploy.certificate_job` (PI-571)."""
+
+    def __init__(self, *, outcome="done"):
+        self.calls: list[tuple] = []
+        self.outcome = outcome
+
+    def install_job(self, ssh, domain, email, ip, log):
+        self.calls.append(("install_job", domain, ip))
+        return True, ""
+
+    def run_job_now(self, ssh, log=None, *, background=False):
+        self.calls.append(("run_job_now", background))
+
+    def read_status(self, ssh):
+        return {"state": self.outcome, "detail": "Connection refused on port 80" if self.outcome != "done" else ""}
+
+    def read_certificate_expiry(self, ssh, domain):
+        return "2026-12-22" if self.outcome == "done" else None
+
+    def apply_domain(self, ssh, old, new, log):
+        self.calls.append(("apply_domain", old, new))
+        return True, ""
+
+
+def _dns(correct=True, domain="crm.example.org", **kw):
+    records = {(domain, "A"): ["203.0.113.7"]} if correct else {}
+    records.update(kw.pop("records", {}))
+    return FakeDnsLookup(records=records, **kw)
 
 
 def _deps(do=None, cf=None, ssh=None, **kw) -> RunnerDeps:
@@ -161,13 +199,16 @@ def _deps(do=None, cf=None, ssh=None, **kw) -> RunnerDeps:
         holder["cf"] = cf or FakeCF(token)
         return holder["cf"]
 
-    resolve = kw.pop("resolve_a", lambda _d: {"203.0.113.7"})
+    sleeps: list[float] = []
+    kw.setdefault("dns_lookup", _dns())
+    kw.setdefault("cert_job", FakeCertJob())
+    kw.setdefault("sleep", sleeps.append)
     deps = RunnerDeps(
         do_client=do_factory, cf_client=cf_factory, ssh=ssh or FakeSSHModule(),
-        sleep=lambda _s: None, keypair=lambda c: ("PRIVATE-PEM", f"ssh-ed25519 AAAA {c}"),
-        resolve_a=resolve, **kw,
+        keypair=lambda c: ("PRIVATE-PEM", f"ssh-ed25519 AAAA {c}"), **kw,
     )
     deps.holder = holder  # type: ignore[attr-defined]
+    deps.sleeps = sleeps  # type: ignore[attr-defined]
     return deps
 
 
@@ -334,47 +375,21 @@ def test_missing_provider_credential_fails_validate(v2_env):
     assert "no digitalocean credential" in _run(row["deploy_run_identifier"])["deploy_run_error"]
 
 
-def test_wait_dns_uses_public_resolvers_and_times_out_with_detail(v2_env):
-    """DEP-001 finding: the host resolver cached NXDOMAIN for 30 minutes while
-    public resolvers already had the record. The phase polls the injected
-    resolver until the IP appears, and names what it saw when it gives up."""
-    ident = _queue()
-    answers = iter([set(), {"198.51.100.9"}, {"198.51.100.9", "203.0.113.7"}])
-    seen = []
-
-    def resolve(domain):
-        seen.append(domain)
-        return next(answers)
-
-    status = run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=_deps(resolve_a=resolve))
-    assert status == "succeeded"
-    assert seen == ["crm.example.org"] * 3
-    log_text = "\n".join(e[2] for e in _run(ident)["deploy_run_log"])
-    assert "does not resolve yet" in log_text and "resolves to ['198.51.100.9']" in log_text
-    assert "resolves to 203.0.113.7 on public resolvers" in log_text
-
-    ident2 = _queue({**SPEC, "subdomain": "crm2", "domain": "crm2.example.org"})
-    clock = iter(range(0, 10_000, 200))
-    deps = _deps(resolve_a=lambda _d: set(), clock=lambda: next(clock))
-    assert run_deploy(ident2, engagement_id="ENG-001", worker_id="w1", deps=deps) == "failed"
-    err = _run(ident2)["deploy_run_error"]
-    assert "did not resolve to 203.0.113.7" in err and "returned nothing" in err
-
-
-# --- Manual DNS (PI-566 / REQ-642) ------------------------------------------
+# --- DNS never blocks the install (PI-571 / REQ-648, REQ-650, REQ-651) --------
 
 MANUAL_SPEC = {
     **{k: v for k, v in SPEC.items() if k not in ("zone_id", "zone_name", "subdomain")},
     "domain": "crm.bbmentors.org",
     "dns_mode": "manual",
 }
+GODADDY = ("ns51.domaincontrol.com", "ns52.domaincontrol.com")
 
 
-def _queue_manual_without_cloudflare() -> str:
+def _queue_manual(spec=MANUAL_SPEC) -> str:
     with session_scope() as s:
         provider_credentials.upsert_provider_credential(s, "digitalocean", token_ref=secrets.put_secret("do-tok"))
         row = deploy_runs.create_deploy_run(
-            s, spec=MANUAL_SPEC,
+            s, spec=spec,
             secret_refs={"admin_password": secrets.put_secret("Adm1n!"),
                          "db_password": secrets.put_secret("dbpw"),
                          "db_root_password": secrets.put_secret("rootpw")},
@@ -383,67 +398,173 @@ def _queue_manual_without_cloudflare() -> str:
         return row["deploy_run_identifier"]
 
 
-def test_manual_dns_shows_the_record_and_never_touches_cloudflare(v2_env):
-    ident = _queue_manual_without_cloudflare()
-    deps = _deps(resolve_a=lambda _d: {"203.0.113.7"})
-    status = run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps)
-    assert status == "succeeded"
-    assert "cf" not in deps.holder  # no Cloudflare client was ever built
-    run = _run(ident)
-    st = run["deploy_run_state"]
-    assert st["manual_dns_record"] == {"type": "A", "name": "crm.bbmentors.org", "value": "203.0.113.7"}
-    assert "dns_record_id" not in st
-    log = [(e[1], e[2]) for e in run["deploy_run_log"]]
-    assert (
-        "warning",
-        "Add this DNS record at the domain's DNS provider: type A, name crm.bbmentors.org, "
-        "value 203.0.113.7. Leave any proxy or forwarding off.",
-    ) in log
+def _manual_lookup(correct: bool, domain="crm.bbmentors.org"):
+    records = {(domain, "A"): ["203.0.113.7"]} if correct else {}
+    return FakeDnsLookup(zone="bbmentors.org", name_servers=GODADDY, records=records)
+
+
+def _log(ident):
+    return "\n".join(e[2] for e in _run(ident)["deploy_run_log"])
+
+
+def _config(ident):
     with session_scope() as s:
-        cfg_row = instance_deploy_config.get_deploy_config(s, run["instance_identifier"])
-    assert cfg_row["dns_provider"] == "manual"
-    assert cfg_row["dns_record_id"] is None
-    assert cfg_row["domain"] == "crm.bbmentors.org"
+        return instance_deploy_config.get_deploy_config(s, _run(ident)["instance_identifier"])
 
 
-def test_manual_dns_waits_longer_then_retry_resumes_the_wait(v2_env):
-    ident = _queue_manual_without_cloudflare()
-    clock = iter(range(0, 100_000, 300))
-    do = FakeDO("t")
-    deps = _deps(do=do, resolve_a=lambda _d: set(), clock=lambda: next(clock),
-                 manual_dns_wait_seconds=1800)
-    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps) == "failed"
+def test_missing_dns_record_installs_anyway_and_ends_needing_action(v2_env):
+    ident = _queue_manual()
+    ssh, job = FakeSSHModule(), FakeCertJob()
+    deps = _deps(ssh=ssh, cert_job=job, dns_lookup=_manual_lookup(False))
+    status = run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps)
+
+    assert status == "needs_action"
+    assert "cf" not in deps.holder  # manual DNS never builds a Cloudflare client
+    assert deps.sleeps == []  # a problem that will not fix itself is not waited on
+    # Installed without a certificate, verified in the matching mode.
+    assert ssh.secure == {"install": False, "post_install": False, "verify": False}
+    assert job.calls == [("install_job", "crm.bbmentors.org", "203.0.113.7")]
     run = _run(ident)
-    assert run["deploy_run_phase"] == "wait_dns"
-    err = run["deploy_run_error"]
-    assert "within 1800s" in err and "type A, name crm.bbmentors.org, value 203.0.113.7" in err
-    assert "Retry" in err
+    phases = run["deploy_run_state"]["phases"]
+    assert phases["check_dns"]["status"] == "needs_action"
+    assert phases["certificate"]["status"] == "waiting"
+    assert phases["create_instance"]["status"] == "done"
+    assert run["instance_identifier"]  # the instance is registered regardless
+
+    items = {i["key"]: i for i in _config(ident)["open_items"]}
+    assert items["dns"]["state"] == "needs_action" and items["dns"]["who"] == "client"
+    assert items["dns"]["title"] == "The DNS record has not been created yet"
+    assert "At GoDaddy, create a DNS record: type A, name crm, value 203.0.113.7" in items["dns"]["action"]
+    assert items["certificate"]["state"] == "waiting" and items["certificate"]["who"] == "nobody"
+    log = _log(ident)
+    assert "Add this DNS record at GoDaddy: type A, name crm, value 203.0.113.7" in log
+    assert "installed without a certificate for now" in log
+    assert "Still outstanding: The DNS record has not been created yet; The certificate is waiting for DNS" in log
+
+
+def test_try_again_after_dns_is_fixed_finishes_the_certificate_on_the_same_server(v2_env):
+    ident = _queue_manual()
+    do = FakeDO("t")
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1",
+                      deps=_deps(do=do, dns_lookup=_manual_lookup(False))) == "needs_action"
+    first_instance = _run(ident)["instance_identifier"]
 
     with session_scope() as s:
         deploy_runs.requeue(s, ident)
         deploy_runs.claim_next_run(s, worker_id="w2")
-    ssh = FakeSSHModule()
-    deps2 = _deps(do=do, ssh=ssh, resolve_a=lambda _d: {"203.0.113.7"})
-    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w2", deps=deps2) == "succeeded"
-    assert do.created == 1  # the same server
-    assert "server_prep" in ssh.calls
+    ssh, job = FakeSSHModule(), FakeCertJob(outcome="done")
+    status = run_deploy(ident, engagement_id="ENG-001", worker_id="w2",
+                        deps=_deps(do=do, ssh=ssh, cert_job=job, dns_lookup=_manual_lookup(True)))
+    assert status == "succeeded"
+    assert do.created == 1
+    assert "install" not in ssh.calls  # the CRM is not reinstalled
+    assert ("run_job_now", False) in job.calls  # DNS was correct, so the job ran at once
+    assert ssh.secure["verify"] is True  # verified as a secure site afterwards
+    run = _run(ident)
+    assert run["instance_identifier"] == first_instance
+    cfg = _config(ident)
+    assert cfg["open_items"] == [] and cfg["cert_expiry_date"] == "2026-12-22"
 
 
-def test_manual_dns_wait_limit_comes_from_the_environment(monkeypatch):
-    from crmbuilder_v2.deploy import runner
+def test_certificate_test_failure_is_reported_with_its_cause(v2_env):
+    ident = _queue_manual()
+    job = FakeCertJob(outcome="test_failed")
+    status = run_deploy(ident, engagement_id="ENG-001", worker_id="w1",
+                        deps=_deps(cert_job=job, dns_lookup=_manual_lookup(True)))
+    # DNS was already correct, so the CRM went in with its certificate: the job never ran.
+    assert status == "succeeded" and job.calls == []
 
-    monkeypatch.delenv(runner.MANUAL_DNS_WAIT_ENV, raising=False)
-    assert RunnerDeps(resolve_a=lambda _d: set()).manual_dns_wait_seconds == 1800
-    monkeypatch.setenv(runner.MANUAL_DNS_WAIT_ENV, "2700")
-    assert RunnerDeps(resolve_a=lambda _d: set()).manual_dns_wait_seconds == 2700
-    monkeypatch.setenv(runner.MANUAL_DNS_WAIT_ENV, "soon")
-    assert RunnerDeps(resolve_a=lambda _d: set()).manual_dns_wait_seconds == 1800
+    ident2 = _queue_manual({**MANUAL_SPEC, "domain": "crm2.bbmentors.org"})
+    lookups = iter([_manual_lookup(False, "crm2.bbmentors.org")])
+    deps = _deps(cert_job=job, dns_lookup=next(lookups))
+    # DNS is wrong at install time but correct by the check: install without, then the job fails its test.
+    deps.dns_lookup.records[("crm2.bbmentors.org", "A")] = []
+    real_diag = deps.dns_lookup.authoritative
+
+    calls = {"n": 0}
+
+    def flip(name_servers, name, rdtype):
+        calls["n"] += 1
+        if calls["n"] > 3:
+            deps.dns_lookup.records[("crm2.bbmentors.org", "A")] = ["203.0.113.7"]
+        return real_diag(name_servers, name, rdtype)
+
+    deps.dns_lookup.authoritative = flip
+    assert run_deploy(ident2, engagement_id="ENG-001", worker_id="w1", deps=deps) == "needs_action"
+    items = {i["key"]: i for i in _config(ident2)["open_items"]}
+    assert list(items) == ["certificate"]
+    assert items["certificate"]["state"] == "needs_action" and items["certificate"]["who"] == "operator"
+    assert "Connection refused on port 80" in items["certificate"]["found"]
 
 
-def test_cloudflare_mode_ignores_the_manual_wait_limit(v2_env):
+def test_dns_that_is_only_spreading_is_waited_on_then_passes(v2_env):
     ident = _queue()
-    clock = iter(range(0, 100_000, 200))
-    deps = _deps(resolve_a=lambda _d: set(), clock=lambda: next(clock), manual_dns_wait_seconds=99_999)
-    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps) == "failed"
-    err = _run(ident)["deploy_run_error"]
-    assert "within 600s" in err and "Add this DNS record" not in err
+    lookup = _dns(public={("crm.example.org", "A"): set()})
+    # Empty for the install's check and the first two checks of check_dns.
+    answers = iter([set()] * 5)
+
+    def public(name, rdtype="A"):
+        return next(answers, {"203.0.113.7"}) if name == "crm.example.org" and rdtype == "A" else set()
+
+    lookup.public = public
+    deps = _deps(dns_lookup=lookup)
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps) == "succeeded"
+    assert deps.sleeps  # it waited, because the diagnosis said the problem fixes itself
+    assert "DNS is correct and spreading" in _log(ident)
+
+
+def test_spreading_dns_is_not_waited_on_past_the_limit(v2_env):
+    ident = _queue()
+    clock = iter(range(0, 100_000, 120))
+    lookup = _dns(public={("crm.example.org", "A"): set()}, negative_ttl=3600)
+    deps = _deps(dns_lookup=lookup, clock=lambda: next(clock), dns_wait_limit_seconds=900)
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps) == "needs_action"
+    assert len(deps.sleeps) <= 900 // 120 + 1
+    items = {i["key"]: i for i in _config(ident)["open_items"]}
+    assert items["dns"]["state"] == "waiting" and items["dns"]["code"] == "propagating"
+
+
+def test_an_existing_cloudflare_record_pointing_elsewhere_is_never_overwritten(v2_env):
+    ident = _queue()
+    cf = FakeCF("t", existing={"crm.example.org": {"id": "old", "content": "198.51.100.9", "proxied": False}})
+    lookup = _dns(correct=False, records={("crm.example.org", "A"): ["198.51.100.9"]})
+    status = run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=_deps(cf=cf, dns_lookup=lookup))
+    assert status == "needs_action"
+    assert cf.upserts == 0 and cf.records["crm.example.org"]["content"] == "198.51.100.9"
+    items = {i["key"]: i for i in _config(ident)["open_items"]}
+    assert items["dns"]["code"] == "wrong_address"  # the diagnosis after the install replaced the first finding
+    phases = _run(ident)["deploy_run_state"]["phases"]
+    assert phases["create_dns"]["status"] == "needs_action"
+
+
+def test_try_again_with_a_corrected_address_changes_the_installed_crm(v2_env):
+    ident = _queue_manual({**MANUAL_SPEC, "domain": "crm.bbmentor.org"})  # typo
+    do = FakeDO("t")
+    wrong = FakeDnsLookup(zone=None)
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1",
+                      deps=_deps(do=do, dns_lookup=wrong)) == "needs_action"
+    items = {i["key"]: i for i in _config(ident)["open_items"]}
+    assert items["dns"]["code"] == "no_name_servers"
+
+    with session_scope() as s:
+        deploy_runs.requeue(s, ident, spec={**MANUAL_SPEC, "domain": "crm.bbmentors.org"})
+        deploy_runs.claim_next_run(s, worker_id="w2")
+    ssh, job = FakeSSHModule(), FakeCertJob(outcome="done")
+    status = run_deploy(ident, engagement_id="ENG-001", worker_id="w2",
+                        deps=_deps(do=do, ssh=ssh, cert_job=job, dns_lookup=_manual_lookup(True)))
+    assert status == "succeeded"
+    assert ("apply_domain", "crm.bbmentor.org", "crm.bbmentors.org") in job.calls
+    assert "install" not in ssh.calls and do.created == 1
+    run = _run(ident)
+    with session_scope() as s:
+        inst = instances.get_instance(s, run["instance_identifier"])
+    assert inst["instance_url"] == "https://crm.bbmentors.org"
+    assert _config(ident)["domain"] == "crm.bbmentors.org"
+
+
+def test_happy_path_logs_a_plain_dns_verdict(v2_env):
+    ident = _queue()
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=_deps()) == "succeeded"
+    log = _log(ident)
+    assert "DNS already points at the server, so the CRM is installed with its certificate." in log
+    assert "DNS is correct: crm.example.org points at 203.0.113.7." in log

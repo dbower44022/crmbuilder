@@ -33,7 +33,9 @@ INSTANCE_STATUSES: frozenset[str] = frozenset({"active", "disabled"})
 # publish_run it is NOT born terminal: a deploy worker claims a ``queued`` run,
 # holds it ``running`` with a heartbeat, and lands a terminal status —
 # succeeded, succeeded_with_issues (verification found gaps), failed (a phase
-# raised; everything built is kept and reported — DEC-945), or cancelled.
+# raised; everything built is kept and reported — DEC-945), cancelled, or
+# needs_action (PI-571 / REQ-650): the run went as far as it could, registered
+# the instance, and left open items a person must act on — typically DNS.
 # ---------------------------------------------------------------------------
 DEPLOY_RUN_STATUSES: frozenset[str] = frozenset(
     {
@@ -41,29 +43,36 @@ DEPLOY_RUN_STATUSES: frozenset[str] = frozenset(
         "running",
         "succeeded",
         "succeeded_with_issues",
+        "needs_action",
         "failed",
         "cancelled",
     }
 )
 DEPLOY_RUN_TERMINAL_STATUSES: frozenset[str] = frozenset(
-    {"succeeded", "succeeded_with_issues", "failed", "cancelled"}
+    {"succeeded", "succeeded_with_issues", "needs_action", "failed", "cancelled"}
 )
 # The ordered deploy phases (each idempotent so an interrupted run resumes at
 # the phase that did not complete). The tuple is the execution order; the
-# frozenset backs the CHECK.
+# frozenset backs the CHECK. PI-571 (REQ-650) puts every step that does not
+# need DNS before the ones that do, so a DNS problem never stops the install:
+# the DNS record is created (or shown) early, the CRM is installed, and only
+# then is DNS diagnosed and the certificate completed.
 DEPLOY_RUN_PHASE_ORDER: tuple[str, ...] = (
     "validate",
     "create_droplet",
     "wait_droplet",
     "create_dns",
-    "wait_dns",
     "server_prep",
     "install_espocrm",
     "post_install",
+    "check_dns",
+    "certificate",
     "verify",
     "create_instance",
 )
-DEPLOY_RUN_PHASES: frozenset[str] = frozenset(DEPLOY_RUN_PHASE_ORDER)
+#: Phases a run queued before PI-571 may still name in its checkpoint.
+DEPLOY_RUN_RETIRED_PHASES: frozenset[str] = frozenset({"wait_dns"})
+DEPLOY_RUN_PHASES: frozenset[str] = frozenset(DEPLOY_RUN_PHASE_ORDER) | DEPLOY_RUN_RETIRED_PHASES
 
 # provider_credential (PI-419): an engagement-scoped API token for an
 # infrastructure provider, stored as an opaque secret ref (REQ-157).
