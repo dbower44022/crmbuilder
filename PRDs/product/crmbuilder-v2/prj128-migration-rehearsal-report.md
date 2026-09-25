@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | PRJ-128 migration run — rehearsal report and the ruling it needs |
-| Last Updated | 09-25-26 13:19 |
-| Revision | 1.0 |
-| Status | AWAITING RULING. The migration run is built and rehearsed (PI-579); it has not been applied to production and will not apply itself until Doug rules on the differences in section 3. |
+| Last Updated | 09-25-26 15:52 |
+| Revision | 1.1 |
+| Status | RULED. Doug accepted both kinds of difference on 09-25-26 (DEC-1189); the module names the ruling and the nine associations, the run applied cleanly on the production copy through the ordinary Alembic path, and it applies in the next production rollout. Not yet applied to production. |
 | Source | PI-579; the approved mapping (`engagement-migration-mapping.md` revision 1.0, DEC-1176 to DEC-1182); rehearsal on a dump of production taken 09-25-26 at 13:10 and restored into the local Postgres as `crmb_rehearsal`. |
 | Read by | Doug, to rule; then whoever applies the run with the commands in section 5. |
 
@@ -29,7 +29,7 @@ Structural match (section 5 of the mapping): entities 29 of 29; fields 570 of 57
 
 Attribute differences on matched records: 32 entity attributes, 17 field attributes (all read-only flags), 26 field option sets, 20 role attributes, 15 layout contents.
 
-## 3. The ruling needed
+## 3. The ruling (recorded as DEC-1189)
 
 DEC-1181 accepted five type differences and said any other difference stops the run. The rehearsal found two kinds it did not foresee, and under DEC-1184 the assistant does not widen an approved rule; it records the choice for Doug.
 
@@ -37,7 +37,7 @@ DEC-1181 accepted five type differences and said any other difference stops the 
 
 **B. Attribute differences on matched records.** In every case the copy, captured from a server that was published from Cleveland's design, is more specific than the design: default sort fields the design leaves empty, six record types the server tracks activity on where the design says no, seventeen fields the server marks read-only, twenty-six option lists the design has never recorded, role scope entries the server has and the design lacks, fifteen layouts whose content differs. Options: (1) accept them as candidate corrections to Cleveland's design and archive the copy; (2) hold the run until each is reconciled by hand. Recommendation: (1), for the same reason: the copy stays readable, and the list below is the work order for a design session.
 
-If Doug rules (1) for both, the run is applied with the second command in section 5, naming the ruling's decision. If he rules (2) for either, the run waits.
+Doug ruled (1) for both on 09-25-26 (DEC-1189). The nine associations are named in the module's accepted set and the ruling is named for the attribute differences, so the run applies in the rollout; the list in section 4 is the work order for a Cleveland design session.
 
 ## 4. The differences in full (candidate corrections to Cleveland's design)
 
@@ -145,24 +145,13 @@ LAYOUT content differences: [['Campaign', 'list'], ['Account', 'detail'], ['Camp
 ASSOCIATIONS unmatched: [['Account', 'Engagement', 'engagements'], ['Account', 'SponsorProfile', 'sponsorProfiles'], ['Case', 'User', 'collaborators'], ['Contact', 'SponsorProfile', 'sponsorProfiles'], ['Contact', 'User', 'assignedUsers'], ['Conversation', 'PartnerProfile', 'partnerProfiles'], ['Conversation', 'SponsorProfile', 'sponsorProfiles'], ['Conversation', 'User', 'assignedUsers'], ['MentorProfile', 'User', 'assignedUsers']]
 ```
 
-## 5. How the run is applied after the ruling
+## 5. How the run is applied
 
-The schema revisions ship with the normal rollout. The data revision `operate_0005_prj128_migration_run` runs in that rollout, finds the comparison stopped, prints `PRJ-128 migration run NOT applied` in the migrate log, and leaves the store untouched. After the ruling is recorded as a decision, on the droplet:
-
-```bash
-cd /opt/crmbuilder && set -a && . crmbuilder-v2/data/crmbuilder.env && set +a
-```
-
-then a dry run that reports and rolls back:
-
-```bash
-.venv/bin/python -m crmbuilder_v2.segments.operate.prj128_migration --url "$CRMBUILDER_V2_DATABASE_URL" --accept-attribute-differences --ruling DEC-NNNN --report /opt/crmbuilder/backups/prj128-dryrun.json
-```
-
-and, when that reports every move as expected, the same command with `--apply`, after a `pg_dump` into `/opt/crmbuilder/backups/` as the rebuild rule requires. The nine unmatched associations are a structural stop, so if ruling A is (1) the accepted set in the module must be widened to name them before the apply; that is a one-line code change recorded against the ruling.
+With the ruling in the code, the data revision `operate_0005_prj128_migration_run` applies the run during the rollout's migrate step, after the backup the rollout steps in `prj128-test-plan.md` take first. The migrate log prints every move and ends with `PRJ-128 migration run applied: {...}`; a stop would print `PRJ-128 migration run NOT applied: ...` and leave the store untouched. The command line (`python -m crmbuilder_v2.segments.operate.prj128_migration --url ... --apply`) remains the fallback if the revision ever records itself without applying. Rehearsed through `alembic upgrade heads` on the production copy on 09-25-26: applied in full.
 
 ## Change log
 
 | Revision | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.1 | 09-25-26 15:52 | Claude (Claude Code) | Ruling recorded (DEC-1189); the run now applies in the rollout; rehearsed again through Alembic on the production copy. |
 | 1.0 | 09-25-26 13:19 | Claude (Claude Code), for Doug Bower | First version from the rehearsal of 09-25-26. |
