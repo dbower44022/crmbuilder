@@ -52,6 +52,15 @@ class Engagement:
     engagement_created_at: datetime
     engagement_updated_at: datetime
     engagement_deleted_at: datetime | None
+    # PI-575 / REQ-653 (DEC-1183): the application attributes. The
+    # visibility is a column; the defining client is the client marked
+    # primary in the ``engagement_clients`` holding, resolved by the
+    # repository when it hydrates the row, so it is ``None`` here for an
+    # engagement no client holds. Defaulted so callers that build the
+    # shape by hand (the desktop, tests) are unchanged.
+    engagement_visibility: str = "private"
+    engagement_defining_client: str | None = None
+    engagement_defining_client_name: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise to the API envelope's ``data`` payload shape.
@@ -77,11 +86,26 @@ class Engagement:
             "engagement_deleted_at": _maybe_iso(
                 self.engagement_deleted_at
             ),
+            "engagement_visibility": self.engagement_visibility,
+            "engagement_defining_client": self.engagement_defining_client,
+            "engagement_defining_client_name": (
+                self.engagement_defining_client_name
+            ),
         }
 
     @classmethod
-    def from_row(cls, row: Any) -> Engagement:
-        """Hydrate from a SQLAlchemy ORM row (``EngagementRow``)."""
+    def from_row(
+        cls,
+        row: Any,
+        *,
+        defining_client: tuple[str, str] | None = None,
+    ) -> Engagement:
+        """Hydrate from a SQLAlchemy ORM row (``EngagementRow``).
+
+        ``defining_client`` is the ``(identifier, name)`` of the client
+        marked primary in the engagement's holding, or ``None``; the
+        repository looks it up, since the row itself does not carry it.
+        """
         status_value = row.engagement_status
         if isinstance(status_value, str):
             status = EngagementStatus(status_value)
@@ -97,4 +121,13 @@ class Engagement:
             engagement_created_at=row.engagement_created_at,
             engagement_updated_at=row.engagement_updated_at,
             engagement_deleted_at=row.engagement_deleted_at,
+            engagement_visibility=getattr(
+                row, "engagement_visibility", "private"
+            ),
+            engagement_defining_client=(
+                defining_client[0] if defining_client else None
+            ),
+            engagement_defining_client_name=(
+                defining_client[1] if defining_client else None
+            ),
         )
