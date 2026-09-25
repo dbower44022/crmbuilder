@@ -58,6 +58,7 @@ def test_create_with_instance_secrets_and_read_back(seeded):
         "/deployments",
         json={
             "deployment_client": "CLI-001",
+            "deployment_purpose": "client_own",
             "deployment_name": "Cleveland production",
             "instance": {
                 "instance_name": "CBM Production",
@@ -99,18 +100,19 @@ def test_create_with_instance_secrets_and_read_back(seeded):
 
 def test_refusals_are_422_with_their_codes(seeded):
     r = seeded.post(
-        "/deployments", json={"deployment_client": "CLI-999", "deployment_name": "x"}
+        "/deployments", json={"deployment_client": "CLI-999", "deployment_purpose": "client_own", "deployment_name": "x"}
     )
     assert r.status_code == 422 and _codes(r) == ["client_not_found"]
     r = seeded.post(
         "/deployments",
-        json={"deployment_client": "CLI-002", "deployment_name": "x"},
+        json={"deployment_client": "CLI-002", "deployment_purpose": "client_own", "deployment_name": "x"},
     )
     assert r.status_code == 422 and _codes(r) == ["application_private"]
     r = seeded.post(
         "/deployments",
         json={
             "deployment_client": "CLI-001",
+            "deployment_purpose": "client_own",
             "deployment_name": "x",
             "deployment_application": "ENG-999",
         },
@@ -120,6 +122,7 @@ def test_refusals_are_422_with_their_codes(seeded):
         "/deployments",
         json={
             "deployment_client": "CLI-001",
+            "deployment_purpose": "client_own",
             "deployment_name": "x",
             "instance_identifier": "INST-777",
         },
@@ -130,6 +133,7 @@ def test_refusals_are_422_with_their_codes(seeded):
         "/deployments",
         json={
             "deployment_client": "CLI-002",
+            "deployment_purpose": "client_own",
             "deployment_name": "Other's own",
             "deployment_application": "ENG-002",
         },
@@ -138,7 +142,7 @@ def test_refusals_are_422_with_their_codes(seeded):
 
 
 def test_patch_delete_restore(seeded):
-    seeded.post("/deployments", json={"deployment_client": "CLI-001", "deployment_name": "A"})
+    seeded.post("/deployments", json={"deployment_client": "CLI-001", "deployment_purpose": "client_own", "deployment_name": "A"})
     r = seeded.patch(
         "/deployments/DPL-001",
         json={"deployment_name": "B", "deployment_status": "retired", "deployment_notes": "n"},
@@ -156,7 +160,7 @@ def test_patch_delete_restore(seeded):
 
 
 def test_deployment_credentials_never_echo_and_override_the_application(seeded):
-    seeded.post("/deployments", json={"deployment_client": "CLI-001", "deployment_name": "A"})
+    seeded.post("/deployments", json={"deployment_client": "CLI-001", "deployment_purpose": "client_own", "deployment_name": "A"})
     assert seeded.put(
         "/provider-credentials/digitalocean", json={"token": "app-token", "label": "app"}
     ).status_code == 200
@@ -194,7 +198,7 @@ def test_deployment_credentials_never_echo_and_override_the_application(seeded):
 
 
 def test_deploy_run_queued_for_a_deployment_carries_it(seeded, monkeypatch):
-    seeded.post("/deployments", json={"deployment_client": "CLI-001", "deployment_name": "Boston"})
+    seeded.post("/deployments", json={"deployment_client": "CLI-001", "deployment_purpose": "client_own", "deployment_name": "Boston"})
     # Only the deployment holds a DigitalOcean credential; manual DNS needs no Cloudflare.
     seeded.put(
         "/deployments/DPL-001/provider-credentials/digitalocean", json={"token": "dpl-do"}
@@ -224,3 +228,53 @@ def test_deploy_run_queued_for_a_deployment_carries_it(seeded, monkeypatch):
     # Without the deployment the application holds no DigitalOcean credential.
     r = seeded.post("/deploy-runs", json={k: v for k, v in body.items() if k != "deployment_identifier"} | {"domain": "c.example.org"})
     assert r.status_code == 422 and _codes(r) == ["missing_provider_credential"]
+
+
+def test_purpose_required_demo_test_gate_and_for_client_listing(seeded):
+    """PI-577 / REQ-654 at the API: no purpose is a 422, a demo/test
+    deployment for the wrong client is a 422 with its code, and
+    ``for_client`` returns what a client may see, purpose included."""
+    r = seeded.post("/deployments", json={"deployment_client": "CLI-001", "deployment_name": "x"})
+    assert r.status_code == 422
+    r = seeded.post(
+        "/deployments",
+        json={
+            "deployment_client": "CLI-001",
+            "deployment_name": "x",
+            "deployment_purpose": "staging",
+        },
+    )
+    assert r.status_code == 422 and _codes(r) == ["invalid_value"]
+    # ENG-002 is private to CLI-002: only CLI-002 may run its demo/test.
+    r = seeded.post(
+        "/deployments",
+        json={
+            "deployment_client": "CLI-002",
+            "deployment_name": "Other try",
+            "deployment_purpose": "demo_test",
+            "deployment_application": "ENG-002",
+        },
+    )
+    assert r.status_code == 201 and r.json()["data"]["deployment_purpose"] == "demo_test"
+    r = seeded.post(
+        "/deployments",
+        json={
+            "deployment_client": "CLI-001",
+            "deployment_name": "Cleveland own",
+            "deployment_purpose": "client_own",
+        },
+    )
+    assert r.status_code == 201
+    r = seeded.patch("/deployments/DPL-002", json={"deployment_purpose": "demo_test"})
+    assert r.status_code == 200 and r.json()["data"]["deployment_purpose"] == "demo_test"
+    # CLI-001 sees its own (now demo/test) and nothing of CLI-002's private application.
+    mine = seeded.get("/deployments?for_client=CLI-001").json()["data"]
+    assert [(d["deployment_identifier"], d["deployment_purpose"]) for d in mine] == [
+        ("DPL-002", "demo_test")
+    ]
+    theirs = seeded.get("/deployments?for_client=CLI-002").json()["data"]
+    assert [d["deployment_identifier"] for d in theirs] == ["DPL-001"]
+    assert seeded.get("/deployments?for_client=CLI-999").status_code == 404
+    # Every listing carries the purpose.
+    assert all("deployment_purpose" in d for d in seeded.get("/deployments").json()["data"])
+

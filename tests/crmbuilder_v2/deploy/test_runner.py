@@ -624,7 +624,7 @@ def test_a_run_for_a_deployment_uses_its_credentials_and_attaches_the_instance(v
             s, "ENG-001", clients=["CLI-001"], primary="CLI-001"
         )
         deployments.create_deployment(
-            s, client="CLI-001", application="ENG-001", name="Rochester"
+            s, purpose="client_own", client="CLI-001", application="ENG-001", name="Rochester"
         )
         provider_credentials.upsert_provider_credential(
             s, "digitalocean", token_ref=secrets.put_secret("app-do-tok")

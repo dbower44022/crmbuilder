@@ -76,6 +76,7 @@ def test_table_shape(db):
         "deployment_hosting_provider",
         "deployment_name",
         "deployment_status",
+        "deployment_purpose",
         "deployment_instance_identifier",
         "deployment_notes",
         "deployment_created_at",
@@ -88,6 +89,7 @@ def test_create_with_a_new_instance_composes_what_it_holds(db):
     with session_scope() as s:
         d = repo.create_deployment(
             s,
+            purpose="client_own",
             client="CLI-001",
             application="ENG-001",
             name="Cleveland production",
@@ -120,6 +122,7 @@ def test_create_holding_an_existing_instance_and_refusing_a_second_holder(db):
         instance_repo.create_instance(s, name="Existing", url="https://x.example.org")
         d = repo.create_deployment(
             s,
+            purpose="client_own",
             client="CLI-001",
             application="ENG-001",
             name="Existing",
@@ -129,6 +132,7 @@ def test_create_holding_an_existing_instance_and_refusing_a_second_holder(db):
         with pytest.raises(UnprocessableError) as excinfo:
             repo.create_deployment(
                 s,
+                purpose="client_own",
                 client="CLI-001",
                 application="ENG-001",
                 name="Second holder",
@@ -138,6 +142,7 @@ def test_create_holding_an_existing_instance_and_refusing_a_second_holder(db):
         with pytest.raises(UnprocessableError) as excinfo:
             repo.create_deployment(
                 s,
+                purpose="client_own",
                 client="CLI-001",
                 application="ENG-001",
                 name="Ghost",
@@ -147,6 +152,7 @@ def test_create_holding_an_existing_instance_and_refusing_a_second_holder(db):
         with pytest.raises(UnprocessableError) as excinfo:
             repo.create_deployment(
                 s,
+                purpose="client_own",
                 client="CLI-001",
                 application="ENG-001",
                 name="Both",
@@ -159,24 +165,20 @@ def test_create_holding_an_existing_instance_and_refusing_a_second_holder(db):
 def test_refusals_fire_before_any_row_is_written(db):
     with session_scope() as s:
         with pytest.raises(UnprocessableError) as excinfo:
-            repo.create_deployment(
-                s, client="CLI-999", application="ENG-001", name="x", instance=INSTANCE
+            repo.create_deployment(s, purpose="client_own", client="CLI-999", application="ENG-001", name="x", instance=INSTANCE
             )
         assert _codes(excinfo) == ["client_not_found"]
         with pytest.raises(UnprocessableError) as excinfo:
-            repo.create_deployment(
-                s, client="CLI-001", application="ENG-999", name="x", instance=INSTANCE
+            repo.create_deployment(s, purpose="client_own", client="CLI-001", application="ENG-999", name="x", instance=INSTANCE
             )
         assert _codes(excinfo) == ["application_not_found"]
         # A private application refuses another client.
         with pytest.raises(UnprocessableError) as excinfo:
-            repo.create_deployment(
-                s, client="CLI-003", application="ENG-001", name="x", instance=INSTANCE
+            repo.create_deployment(s, purpose="client_own", client="CLI-003", application="ENG-001", name="x", instance=INSTANCE
             )
         assert _codes(excinfo) == ["application_private"]
         with pytest.raises(UnprocessableError) as excinfo:
-            repo.create_deployment(
-                s, client="CLI-001", application="ENG-001", name="x", hosting_provider="aws"
+            repo.create_deployment(s, purpose="client_own", client="CLI-001", application="ENG-001", name="x", hosting_provider="aws"
             )
         assert _codes(excinfo) == ["invalid_value"] or "hosting" in str(excinfo.value)
     with session_scope() as s:
@@ -194,20 +196,17 @@ def test_an_engagement_without_a_defining_client_is_not_an_application(db):
             engagement_identifier="ENG-003",
         )
         with pytest.raises(UnprocessableError) as excinfo:
-            repo.create_deployment(s, client="CLI-001", application="ENG-003", name="x")
+            repo.create_deployment(s, purpose="client_own", client="CLI-001", application="ENG-003", name="x")
         assert _codes(excinfo) == ["no_defining_client"]
 
 
 def test_public_application_accepts_any_client_and_identifiers_span_applications(db):
     with session_scope() as s:
-        first = repo.create_deployment(
-            s, client="CLI-001", application="ENG-001", name="Cleveland", instance=INSTANCE
+        first = repo.create_deployment(s, purpose="client_own", client="CLI-001", application="ENG-001", name="Cleveland", instance=INSTANCE
         )
-        second = repo.create_deployment(
-            s, client="CLI-003", application="ENG-002", name="Rochester on public"
+        second = repo.create_deployment(s, purpose="client_own", client="CLI-003", application="ENG-002", name="Rochester on public"
         )
-        third = repo.create_deployment(
-            s, client="CLI-001", application="ENG-002", name="Cleveland on public"
+        third = repo.create_deployment(s, purpose="client_own", client="CLI-001", application="ENG-002", name="Cleveland on public"
         )
     assert [d["deployment_identifier"] for d in (first, second, third)] == [
         "DPL-001",
@@ -227,8 +226,7 @@ def test_public_application_accepts_any_client_and_identifiers_span_applications
 
 def test_read_composes_under_the_application_scope_from_another_engagement(db):
     with session_scope() as s:
-        repo.create_deployment(
-            s, client="CLI-001", application="ENG-001", name="Cleveland", instance=INSTANCE
+        repo.create_deployment(s, purpose="client_own", client="CLI-001", application="ENG-001", name="Cleveland", instance=INSTANCE
         )
     with active_engagement("ENG-002"), session_scope() as s:
         d = repo.get_deployment(s, "DPL-001")
@@ -238,8 +236,8 @@ def test_read_composes_under_the_application_scope_from_another_engagement(db):
 
 def test_deployment_credentials_override_the_application_fallback(db):
     with session_scope() as s:
-        repo.create_deployment(s, client="CLI-001", application="ENG-001", name="A")
-        repo.create_deployment(s, client="CLI-001", application="ENG-001", name="B")
+        repo.create_deployment(s, purpose="client_own", client="CLI-001", application="ENG-001", name="A")
+        repo.create_deployment(s, purpose="client_own", client="CLI-001", application="ENG-001", name="B")
         credential_repo.upsert_provider_credential(
             s, "digitalocean", token_ref="crmbuilder:app-do", label="application"
         )
@@ -300,7 +298,7 @@ def test_deployment_credentials_override_the_application_fallback(db):
 
 def test_attach_patch_delete_restore(db):
     with session_scope() as s:
-        repo.create_deployment(s, client="CLI-001", application="ENG-001", name="Pending")
+        repo.create_deployment(s, purpose="client_own", client="CLI-001", application="ENG-001", name="Pending")
         instance_repo.create_instance(s, name="Built later", url="https://later.example.org")
         d = repo.attach_instance(s, "DPL-001", "INST-001")
         assert d["deployment_instance_identifier"] == "INST-001"

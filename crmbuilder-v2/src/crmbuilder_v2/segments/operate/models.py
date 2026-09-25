@@ -43,6 +43,7 @@ from crmbuilder_v2.segments.operate.vocab import (
     DEPLOY_RUN_PHASES,
     DEPLOY_RUN_STATUSES,
     DEPLOYMENT_HOSTING_PROVIDERS,
+    DEPLOYMENT_PURPOSES,
     DEPLOYMENT_STATUSES,
     INSTANCE_AUTH_METHODS,
     INSTANCE_ROLES,
@@ -119,12 +120,8 @@ class Instance(EngagementScopedPKMixin, Base):
     # instance holds; these columns are the fleet view's queryable copy of
     # that reading, never a substitute for it). A failed read leaves them
     # untouched; ``instance_stamp_read_at`` says how old the reading is.
-    instance_standard_version: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
-    instance_plan_fingerprint: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    instance_standard_version: Mapped[str | None] = mapped_column(Text, nullable=True)
+    instance_plan_fingerprint: Mapped[str | None] = mapped_column(Text, nullable=True)
     instance_stamp_read_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -166,8 +163,6 @@ class Instance(EngagementScopedPKMixin, Base):
         Index("ix_instances_instance_status", "instance_status"),
         Index("ix_instances_instance_deleted_at", "instance_deleted_at"),
     )
-
-
 
 
 class InstanceDeployConfig(EngagementScopedMixin, Base):
@@ -212,9 +207,7 @@ class InstanceDeployConfig(EngagementScopedMixin, Base):
     cert_expiry_date: Mapped[str | None] = mapped_column(String(32), nullable=True)
     last_backup_paths: Mapped[str | None] = mapped_column(Text, nullable=True)
     backups_enabled: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    last_record_version: Mapped[str | None] = mapped_column(
-        String(32), nullable=True
-    )
+    last_record_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     domain_registrar: Mapped[str | None] = mapped_column(Text, nullable=True)
     dns_provider: Mapped[str | None] = mapped_column(Text, nullable=True)
     droplet_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -248,13 +241,9 @@ class InstanceDeployConfig(EngagementScopedMixin, Base):
     hosting_console_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     dns_console_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     ssh_key_public: Mapped[str | None] = mapped_column(Text, nullable=True)
-    ssh_key_fingerprint: Mapped[str | None] = mapped_column(
-        String(128), nullable=True
-    )
+    ssh_key_fingerprint: Mapped[str | None] = mapped_column(String(128), nullable=True)
     ssh_key_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    ssh_key_provider_id: Mapped[str | None] = mapped_column(
-        String(64), nullable=True
-    )
+    ssh_key_provider_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     server_image: Mapped[str | None] = mapped_column(String(64), nullable=True)
     provisioned_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -267,9 +256,7 @@ class InstanceDeployConfig(EngagementScopedMixin, Base):
     # of objects, each with a key, a title, what was found, what to do, who
     # acts, how to confirm, and whether it is open. Written by the deploy run
     # and by Check DNS now; NULL on rows that predate the column.
-    open_items: Mapped[list | None] = mapped_column(
-        JSONColumnNoneAsNull, nullable=True
-    )
+    open_items: Mapped[list | None] = mapped_column(JSONColumnNoneAsNull, nullable=True)
     backup_schedule: Mapped[str | None] = mapped_column(Text, nullable=True)
     backup_retention: Mapped[str | None] = mapped_column(Text, nullable=True)
     backup_destination: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -306,8 +293,6 @@ class InstanceDeployConfig(EngagementScopedMixin, Base):
     )
 
 
-
-
 class Deployment(Base):
     """PI-576 (REQ-653, DEC-1155, DEC-1175) — one installation of one
     application on one hosting provider for one client.
@@ -332,14 +317,12 @@ class Deployment(Base):
 
     No ``change_log`` / ``refs`` participation in this item: the instance
     stays the governance entity references attach to. The purpose column
-    (client's own or demo/test) is PI-577's.
+    (client's own or demo/test) is PI-577's, REQ-654.
     """
 
     __tablename__ = "deployments"
 
-    deployment_identifier: Mapped[str] = mapped_column(
-        String(32), primary_key=True
-    )
+    deployment_identifier: Mapped[str] = mapped_column(String(32), primary_key=True)
     deployment_application: Mapped[str] = mapped_column(
         String(32),
         ForeignKey("engagements.engagement_identifier", ondelete="RESTRICT"),
@@ -356,6 +339,12 @@ class Deployment(Base):
     deployment_name: Mapped[str] = mapped_column(String(255), nullable=False)
     deployment_status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="active"
+    )
+    # PI-577 (REQ-654): the client's own deployment, or the defining client's
+    # demo/test deployment. Required on every save; the migration filled
+    # existing rows with ``client_own``, which is why a server default exists.
+    deployment_purpose: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'client_own'")
     )
     # The instance this deployment holds; null until the deploy run registers
     # it. Not a foreign key: instances are keyed per application and the
@@ -391,6 +380,10 @@ class Deployment(Base):
             _check_in("deployment_status", DEPLOYMENT_STATUSES),
             name="ck_deployment_status",
         ),
+        CheckConstraint(
+            _check_in("deployment_purpose", DEPLOYMENT_PURPOSES),
+            name="ck_deployment_purpose",
+        ),
         Index(
             "ux_deployments_instance",
             "deployment_application",
@@ -425,9 +418,7 @@ class DeployRun(EngagementScopedMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     deploy_run_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
-    instance_identifier: Mapped[str | None] = mapped_column(
-        String(32), nullable=True
-    )
+    instance_identifier: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # PI-576 (REQ-653): the deployment this run built or is building. Null on
     # rows that predate deployments and on runs queued before one existed; the
     # migration run (PI-579) fills it for the history it re-homes, and a run
@@ -458,15 +449,11 @@ class DeployRun(EngagementScopedMixin, Base):
     # (no CHECK): the run's provider is the service's choice today
     # (``digitalocean``) but the history must be able to name any provider a
     # future runner uses. NULL on rows that predate the column.
-    deploy_run_provider: Mapped[str | None] = mapped_column(
-        String(24), nullable=True
-    )
+    deploy_run_provider: Mapped[str | None] = mapped_column(String(24), nullable=True)
     deploy_run_requested_by: Mapped[str | None] = mapped_column(
         String(128), nullable=True
     )
-    deploy_run_worker_id: Mapped[str | None] = mapped_column(
-        String(64), nullable=True
-    )
+    deploy_run_worker_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     deploy_run_heartbeat_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -505,8 +492,6 @@ class DeployRun(EngagementScopedMixin, Base):
         Index("ix_deploy_runs_instance", "engagement_id", "instance_identifier"),
         Index("ix_deploy_runs_deployment", "deployment_identifier"),
     )
-
-
 
 
 class ProviderCredential(EngagementScopedMixin, Base):
@@ -557,5 +542,3 @@ class ProviderCredential(EngagementScopedMixin, Base):
             unique=True,
         ),
     )
-
-

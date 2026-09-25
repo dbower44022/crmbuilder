@@ -72,7 +72,9 @@ DEPLOY_RUN_PHASE_ORDER: tuple[str, ...] = (
 )
 #: Phases a run queued before PI-571 may still name in its checkpoint.
 DEPLOY_RUN_RETIRED_PHASES: frozenset[str] = frozenset({"wait_dns"})
-DEPLOY_RUN_PHASES: frozenset[str] = frozenset(DEPLOY_RUN_PHASE_ORDER) | DEPLOY_RUN_RETIRED_PHASES
+DEPLOY_RUN_PHASES: frozenset[str] = (
+    frozenset(DEPLOY_RUN_PHASE_ORDER) | DEPLOY_RUN_RETIRED_PHASES
+)
 
 # provider_credential (PI-419): an engagement-scoped API token for an
 # infrastructure provider, stored as an opaque secret ref (REQ-157).
@@ -98,3 +100,10 @@ DEPLOYMENT_HOSTING_PROVIDERS: frozenset[str] = frozenset({"digitalocean", "other
 DEPLOYMENT_STATUSES: frozenset[str] = frozenset({"active", "retired"})
 
 DEFAULT_DEPLOYMENT_HOSTING_PROVIDER: str = "digitalocean"
+
+# PI-577 (REQ-654, DEC-1156): what a deployment is for. ``client_own`` is a
+# client's own installation; ``demo_test`` is the one deployment the
+# application's defining client runs so other clients can try a release
+# before taking it (TERM-072). There is no default: a deployment cannot be
+# saved without a purpose.
+DEPLOYMENT_PURPOSES: frozenset[str] = frozenset({"client_own", "demo_test"})

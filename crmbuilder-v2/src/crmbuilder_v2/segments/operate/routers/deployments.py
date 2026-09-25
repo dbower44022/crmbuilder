@@ -73,9 +73,21 @@ def _require_visible(record: dict, identifier: str) -> dict:
 def list_all(
     application: str | None = None,
     client: str | None = None,
+    for_client: str | None = None,
     include_deleted: bool = False,
 ):
+    """Deployments, each carrying its purpose. ``client`` narrows to the
+    deployments a client runs; ``for_client`` (PI-577 / REQ-654) returns
+    what a client may see: its own, plus the demo/test deployment of every
+    application it may deploy."""
     with readonly_session() as s:
+        if for_client is not None:
+            rows = repo.list_deployments_for_client(
+                s, for_client, include_deleted=include_deleted
+            )
+            if application is not None:
+                rows = [r for r in rows if r["deployment_application"] == application]
+            return ok(_visible(rows))
         return ok(
             _visible(
                 repo.list_deployments(
@@ -140,6 +152,7 @@ def create(body: DeploymentCreateIn):
                 client=body.deployment_client,
                 application=application,
                 name=body.deployment_name,
+                purpose=body.deployment_purpose,
                 hosting_provider=body.deployment_hosting_provider,
                 status=body.deployment_status or "active",
                 notes=body.deployment_notes,
@@ -157,6 +170,7 @@ def patch(identifier: str, body: DeploymentPatchIn):
     renamed = {
         "deployment_name": "name",
         "deployment_status": "status",
+        "deployment_purpose": "purpose",
         "deployment_notes": "notes",
         "deployment_hosting_provider": "hosting_provider",
         "deployment_client": "client",

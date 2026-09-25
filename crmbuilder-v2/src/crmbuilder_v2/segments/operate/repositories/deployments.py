@@ -48,13 +48,16 @@ from crmbuilder_v2.segments.operate.repositories import (
 from crmbuilder_v2.segments.operate.vocab import (
     DEFAULT_DEPLOYMENT_HOSTING_PROVIDER,
     DEPLOYMENT_HOSTING_PROVIDERS,
+    DEPLOYMENT_PURPOSES,
     DEPLOYMENT_STATUSES,
 )
 
 _IDENTIFIER_PREFIX = "DPL"
 _IDENTIFIER_RE = re.compile(r"^DPL-\d{3,}$")
 _MAX_AUTOASSIGN_ATTEMPTS = 50
-_PATCHABLE_FIELDS = frozenset({"name", "status", "notes", "hosting_provider", "client"})
+_PATCHABLE_FIELDS = frozenset(
+    {"name", "status", "notes", "hosting_provider", "client", "purpose"}
+)
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +142,41 @@ def _require_hosting_provider(value: object) -> str:
 
 def _require_status(value: object) -> str:
     return gov.require_in(value, DEPLOYMENT_STATUSES, field="deployment_status")
+
+
+def _require_purpose(value: object) -> str:
+    """A deployment cannot be saved without a purpose (REQ-654)."""
+    if value is None or value == "":
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "deployment_purpose",
+                    "required",
+                    "deployment_purpose is required: client_own or demo_test",
+                )
+            ]
+        )
+    return gov.require_in(value, DEPLOYMENT_PURPOSES, field="deployment_purpose")
+
+
+def _require_purpose_client(application, client_identifier: str, purpose: str) -> None:
+    """A demo/test deployment names the application's defining client
+    (REQ-654); ``demo_test_requires_defining_client`` otherwise."""
+    if (
+        purpose == "demo_test"
+        and application.engagement_defining_client != client_identifier
+    ):
+        raise UnprocessableError(
+            [
+                FieldError(
+                    "deployment_purpose",
+                    "demo_test_requires_defining_client",
+                    f"only {application.engagement_defining_client!r}, the "
+                    f"defining client of {application.engagement_identifier!r}, "
+                    "may run its demo/test deployment",
+                )
+            ]
+        )
 
 
 def _require_instance(session: Session, application: str, identifier: str) -> dict:
@@ -265,6 +303,52 @@ def get_deployment(
     return compose(session, row) if row is not None else None
 
 
+def list_deployments_for_client(
+    session: Session, client: str, *, include_deleted: bool = False
+) -> list[dict]:
+    """What ``client`` may see (REQ-654): its own deployments, plus the
+    demo/test deployment of every application it may deploy (one it
+    defines, or a public one). Every other deployment stays visible to its
+    own client only."""
+    if session.get(ClientRow, client) is None:
+        raise NotFoundError("client", client)
+    own = list_deployments(session, client=client, include_deleted=include_deleted)
+    seen = {d["deployment_identifier"] for d in own}
+    stmt = select(Deployment).where(
+        Deployment.deployment_purpose == "demo_test",
+        Deployment.deployment_client != client,
+    )
+    if not include_deleted:
+        stmt = stmt.where(Deployment.deployment_deleted_at.is_(None))
+    extra = []
+    for row in session.scalars(stmt.order_by(Deployment.deployment_identifier)).all():
+        if row.deployment_identifier in seen:
+            continue
+        app = engagement_repo.get_engagement(session, row.deployment_application)
+        if app is None:
+            continue
+        may_deploy = (
+            app.engagement_visibility == "public"
+            or app.engagement_defining_client == client
+        )
+        if may_deploy:
+            extra.append(compose(session, row))
+    return sorted(own + extra, key=lambda d: d["deployment_identifier"])
+
+
+def demo_test_deployment(session: Session, application: str) -> dict | None:
+    """The application's demo/test deployment, if its defining client runs
+    one, with the release it runs once releases exist (PRJ-130)."""
+    row = session.scalars(
+        select(Deployment).where(
+            Deployment.deployment_application == application,
+            Deployment.deployment_purpose == "demo_test",
+            Deployment.deployment_deleted_at.is_(None),
+        )
+    ).first()
+    return compose(session, row) if row is not None else None
+
+
 def deployment_for_instance(
     session: Session, application: str, instance_identifier: str
 ) -> dict | None:
@@ -299,6 +383,7 @@ def _new_row(identifier: str, **kw) -> Deployment:
         deployment_hosting_provider=kw["hosting_provider"],
         deployment_name=kw["name"],
         deployment_status=kw["status"],
+        deployment_purpose=kw["purpose"],
         deployment_instance_identifier=kw.get("instance_identifier"),
         deployment_notes=kw.get("notes"),
     )
@@ -333,6 +418,7 @@ def create_deployment(
     client: str,
     application: str,
     name: str,
+    purpose: str | None = None,
     hosting_provider: str | None = None,
     status: str = "active",
     notes: str | None = None,
@@ -342,6 +428,10 @@ def create_deployment(
     deploy_config: dict | None = None,
 ) -> dict:
     """Create a deployment of ``application`` for ``client``.
+
+    ``purpose`` is required (REQ-654): ``client_own`` or ``demo_test``. A
+    demo/test deployment is refused for any client but the application's
+    defining client (``demo_test_requires_defining_client``).
 
     Refused before any row is written when the client or the application is
     missing (``client_not_found`` / ``application_not_found``), when the
@@ -362,9 +452,11 @@ def create_deployment(
         hosting_provider or DEFAULT_DEPLOYMENT_HOSTING_PROVIDER
     )
     status = _require_status(status or "active")
+    purpose = _require_purpose(purpose)
     _require_client(session, client)
     app = _require_application(session, application)
     _require_may_deploy(app, client)
+    _require_purpose_client(app, client, purpose)
     if instance is not None and instance_identifier is not None:
         raise UnprocessableError(
             [
@@ -389,6 +481,7 @@ def create_deployment(
         "hosting_provider": hosting_provider,
         "name": name,
         "status": status,
+        "purpose": purpose,
         "notes": notes,
         "instance_identifier": instance_identifier,
     }
@@ -444,12 +537,19 @@ def patch_deployment(session: Session, identifier: str, **fields) -> dict:
         )
     if "notes" in fields:
         row.deployment_notes = fields["notes"]
-    if "client" in fields:
-        client = gov.require_nonempty(fields["client"], field="deployment_client")
-        _require_client(session, client)
+    if "client" in fields or "purpose" in fields:
+        client = row.deployment_client
+        purpose = row.deployment_purpose
+        if "client" in fields:
+            client = gov.require_nonempty(fields["client"], field="deployment_client")
+            _require_client(session, client)
+        if "purpose" in fields:
+            purpose = _require_purpose(fields["purpose"])
         app = _require_application(session, row.deployment_application)
         _require_may_deploy(app, client)
+        _require_purpose_client(app, client, purpose)
         row.deployment_client = client
+        row.deployment_purpose = purpose
     session.flush()
     return compose(session, row)
 

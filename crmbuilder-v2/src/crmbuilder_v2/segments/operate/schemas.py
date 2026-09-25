@@ -199,6 +199,8 @@ class DeploymentInstanceIn(_Base):
 class DeploymentCreateIn(_Base):
     deployment_client: str
     deployment_name: str
+    # PI-577 (REQ-654): required; ``client_own`` or ``demo_test``.
+    deployment_purpose: str
     deployment_application: str | None = None
     deployment_hosting_provider: str | None = None
     deployment_status: str | None = None
@@ -212,7 +214,7 @@ class DeploymentCreateIn(_Base):
 class DeploymentPatchIn(_Base):
     deployment_name: str | None = None
     deployment_status: str | None = None
+    deployment_purpose: str | None = None
     deployment_notes: str | None = None
     deployment_hosting_provider: str | None = None
     deployment_client: str | None = None
-
