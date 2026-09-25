@@ -56,3 +56,15 @@ CLIENT_STATUS_TRANSITIONS: dict[str, frozenset[str]] = {
     "active": frozenset({"inactive"}),
     "inactive": frozenset({"active"}),
 }
+
+
+# ---------------------------------------------------------------------------
+# Application (PI-575 / REQ-653, DEC-1155, DEC-1183): the engagement row is
+# the application record. Its visibility says who may deploy it: private,
+# only its defining client; public, any client. The CHECK on
+# ``engagements.engagement_visibility`` is literal SQL in the migration.
+# ---------------------------------------------------------------------------
+
+ENGAGEMENT_VISIBILITIES: frozenset[str] = frozenset({"private", "public"})
+
+DEFAULT_ENGAGEMENT_VISIBILITY: str = "private"

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from crmbuilder_v2.segments.client_management.routers import (
+    applications,
     clients,
     engagements,
     participant,
@@ -14,6 +15,7 @@ from crmbuilder_v2.segments.client_management.routers import (
 routers = (
     principals.router,
     engagements.router,
+    applications.router,
     participant.router,
     clients.router,
 )

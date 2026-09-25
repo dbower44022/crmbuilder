@@ -126,6 +126,10 @@ def test_create_assign_enforce_and_drop() -> None:
     finally:
         eng.dispose()
 
-    # Heads: still seven, one per branch, and this revision is the client_management head.
+    # Heads: one per branch, and this revision sits on the client_management
+    # branch (it stopped being that branch's head at
+    # client_management_0003_application_attributes, PI-575).
     heads = _alembic(["heads"], db)
-    assert "client_management_0002_clients" in heads.stdout
+    assert sum(line.startswith("client_management_") for line in heads.stdout.splitlines()) == 1
+    history = _alembic(["history", "-r", "client_management_0001_branch:client_management@head"], db)
+    assert "client_management_0002_clients" in history.stdout

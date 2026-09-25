@@ -19,13 +19,19 @@ class _Base(BaseModel):
 
 class EngagementCreateIn(_Base):
     """POST /engagements body. ``engagement_identifier`` is server-assigned
-    when omitted; ``engagement_status`` defaults to ``active`` server-side."""
+    when omitted; ``engagement_status`` defaults to ``active`` server-side.
+
+    PI-575 / REQ-653: ``engagement_visibility`` (``private`` | ``public``)
+    defaults to ``private``; ``engagement_defining_client`` is optional on
+    this path and must name a live client when given."""
 
     engagement_code: str
     engagement_name: str
     engagement_purpose: str
     engagement_status: str | None = None
     engagement_identifier: str | None = None
+    engagement_visibility: str | None = None
+    engagement_defining_client: str | None = None
 
 
 class EngagementReplaceIn(_Base):
@@ -41,6 +47,10 @@ class EngagementReplaceIn(_Base):
     engagement_name: str
     engagement_purpose: str
     engagement_status: str
+    # PI-575: left unchanged when omitted, so callers that predate the
+    # application attributes keep working.
+    engagement_visibility: str | None = None
+    engagement_defining_client: str | None = None
 
 
 class EngagementPatchIn(_Base):
@@ -56,6 +66,44 @@ class EngagementPatchIn(_Base):
     engagement_last_opened_at: str | None = None
     # Accepted but rejected by the repository if it differs from current.
     engagement_code: str | None = None
+    # PI-575: a visibility change, or a defining-client change to a live
+    # client (``null`` is refused; the holding endpoint clears a client).
+    engagement_visibility: str | None = None
+    engagement_defining_client: str | None = None
+
+
+# ---------- Applications (PI-575 / REQ-653, DEC-1155, DEC-1183) ----------
+#
+# The application is the engagement row read with its defining client and
+# visibility. ``/applications`` serves the same rows as ``/engagements``
+# under the name the model uses; these bodies differ only in what they
+# require.
+
+
+class ApplicationCreateIn(_Base):
+    """POST /applications body: an application names its defining client.
+    ``engagement_visibility`` defaults to ``private``."""
+
+    engagement_code: str
+    engagement_name: str
+    engagement_purpose: str
+    engagement_defining_client: str
+    engagement_visibility: str | None = None
+    engagement_status: str | None = None
+    engagement_identifier: str | None = None
+
+
+class ApplicationReplaceIn(_Base):
+    """PUT /applications/{identifier} body, a full replace: the defining
+    client and the visibility are both required."""
+
+    engagement_identifier: str | None = None
+    engagement_code: str | None = None
+    engagement_name: str
+    engagement_purpose: str
+    engagement_status: str
+    engagement_defining_client: str
+    engagement_visibility: str
 
 
 # ---------- Participants (methodology entity, REL-040 / PI-094) ----------

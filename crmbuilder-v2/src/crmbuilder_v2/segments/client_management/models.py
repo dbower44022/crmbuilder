@@ -148,6 +148,16 @@ class EngagementRow(Base):
     engagement_name: Mapped[str] = mapped_column(String(255), nullable=False)
     engagement_purpose: Mapped[str] = mapped_column(Text, nullable=False)
     engagement_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    # PI-575 / REQ-653 (DEC-1183): the engagement row is the application
+    # record. Its visibility is private (deployable only by its defining
+    # client) or public (deployable by any client). The defining client is
+    # not a column here: it is the ``engagement_clients`` row marked primary.
+    engagement_visibility: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="private",
+        server_default=text("'private'"),
+    )
     engagement_last_opened_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -172,6 +182,10 @@ class EngagementRow(Base):
         CheckConstraint(
             "engagement_status IN ('active', 'paused', 'archived')",
             name="ck_engagement_status",
+        ),
+        CheckConstraint(
+            "engagement_visibility IN ('private', 'public')",
+            name="ck_engagement_visibility",
         ),
         Index(
             "ux_engagements_code_lower",

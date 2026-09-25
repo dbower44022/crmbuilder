@@ -1,5 +1,6 @@
 """Connector tools for clients (PI-512 / REQ-589): ``list_clients``,
-``get_client``, and ``get_active_engagement`` naming the primary client."""
+``get_client``, and ``get_active_engagement`` naming the primary client;
+and ``list_applications`` (PI-575 / REQ-653)."""
 
 from __future__ import annotations
 
@@ -37,6 +38,18 @@ def _store(request: httpx.Request) -> httpx.Response:
         )
     if path == "/engagements/ENG-003/clients":
         return _envelope({"engagement": "ENG-003", "clients": [], "primary": None})
+    if path == "/applications":
+        record = {
+            "engagement_identifier": "ENG-002",
+            "engagement_defining_client": "CLI-001",
+            "engagement_defining_client_name": "A",
+            "engagement_visibility": "private",
+        }
+        if request.url.params.get("client") == "CLI-404":
+            return httpx.Response(
+                404, json={"data": None, "meta": {}, "errors": [{"code": "not_found"}]}
+            )
+        return _envelope([dict(record, filtered=request.url.params.get("client"))])
     return httpx.Response(404, json={"data": None, "meta": {}, "errors": [{"code": "not_found"}]})
 
 
@@ -51,6 +64,22 @@ async def test_list_and_get_client_tools():
         assert listed[0]["engagements"] == ["ENG-002"]
         one = await _tool(funcs, "get_client").func("CLI-001")
         assert one["client_name"] == "A"
+    finally:
+        await http.aclose()
+
+
+async def test_list_applications_tool():
+    http = httpx.AsyncClient(base_url="http://testserver", transport=httpx.MockTransport(_store))
+    try:
+        funcs = tool_definitions(http)
+        tool = _tool(funcs, "list_applications")
+        assert not tool.is_write
+        listed = await tool.func()
+        assert listed[0]["engagement_defining_client"] == "CLI-001"
+        assert listed[0]["engagement_visibility"] == "private"
+        assert listed[0]["filtered"] is None
+        narrowed = await tool.func(client="CLI-001")
+        assert narrowed[0]["filtered"] == "CLI-001"
     finally:
         await http.aclose()
 
