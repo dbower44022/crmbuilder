@@ -87,6 +87,12 @@ def create(body: EngagementCreateIn):
                 else "active"
             ),
             engagement_identifier=body.engagement_identifier,
+            engagement_visibility=(
+                body.engagement_visibility
+                if body.engagement_visibility is not None
+                else "private"
+            ),
+            engagement_defining_client=body.engagement_defining_client,
         )
     return ok(engagement.to_dict())
 
@@ -102,6 +108,8 @@ def replace(identifier: str, body: EngagementReplaceIn):
             engagement_name=body.engagement_name,
             engagement_purpose=body.engagement_purpose,
             engagement_status=body.engagement_status,
+            engagement_visibility=body.engagement_visibility,
+            engagement_defining_client=body.engagement_defining_client,
         )
     return ok(engagement.to_dict())
 
