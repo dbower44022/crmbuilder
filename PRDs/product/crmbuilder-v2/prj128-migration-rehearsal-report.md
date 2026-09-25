@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | PRJ-128 migration run — rehearsal report and the ruling it needs |
-| Last Updated | 09-25-26 15:52 |
-| Revision | 1.1 |
-| Status | RULED. Doug accepted both kinds of difference on 09-25-26 (DEC-1189); the module names the ruling and the nine associations, the run applied cleanly on the production copy through the ordinary Alembic path, and it applies in the next production rollout. Not yet applied to production. |
+| Last Updated | 09-25-26 18:08 |
+| Revision | 1.2 |
+| Status | APPLIED. Ran in production on 09-25-26 at 22:04Z in the rollout of 4c053f27 (DEC-1190); every move matched this rehearsal. Section 4 remains the work order for a Cleveland design session. |
 | Source | PI-579; the approved mapping (`engagement-migration-mapping.md` revision 1.0, DEC-1176 to DEC-1182); rehearsal on a dump of production taken 09-25-26 at 13:10 and restored into the local Postgres as `crmb_rehearsal`. |
 | Read by | Doug, to rule; then whoever applies the run with the commands in section 5. |
 
@@ -153,5 +153,6 @@ With the ruling in the code, the data revision `operate_0005_prj128_migration_ru
 
 | Revision | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.2 | 09-25-26 18:08 | Claude (Claude Code) | Applied in production (DEC-1190); status updated. |
 | 1.1 | 09-25-26 15:52 | Claude (Claude Code) | Ruling recorded (DEC-1189); the run now applies in the rollout; rehearsed again through Alembic on the production copy. |
 | 1.0 | 09-25-26 13:19 | Claude (Claude Code), for Doug Bower | First version from the rehearsal of 09-25-26. |

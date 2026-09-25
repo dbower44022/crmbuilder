@@ -3,13 +3,13 @@
 | Field | Value |
 |---|---|
 | Title | PRJ-128 — rollout steps and comprehensive test plan |
-| Last Updated | 09-25-26 15:52 |
-| Revision | 1.1 |
-| Status | Ready for Doug's rollout and test. PI-575, PI-576, PI-577, PI-578 and PI-580 are Resolved; PI-579 is built, ruled on (DEC-1189) and applies in the rollout. |
+| Last Updated | 09-25-26 18:08 |
+| Revision | 1.2 |
+| Status | ROLLED OUT 09-25-26 22:04Z (commit 4c053f27, v0.7.0, store head operate_0005_prj128_migration_run; migration applied, DEC-1190). All six items Resolved. Section 4 is the comprehensive test still to be done. |
 | Source | Session SES-439 (delegation DEC-1184; decisions DEC-1185 to DEC-1188), on top of SES-437 (mapping, DEC-1176 to DEC-1182) and SES-438 (PI-575, DEC-1183). |
 | Read by | Doug, to roll out and to test; the follow-up session that applies the migration run after the ruling. |
 
-## 1. What is on main and what is not yet in production
+## 1. What is in production
 
 Main carries, in this order after the PI-575 rollout of this morning (v0.7.0): PI-576 the deployment record, PI-577 the purpose, PI-579 the migration run (code and its non-applying Alembic revision), and PI-580 the desktop and connector rename. None of it is in production yet; the store head there is still `client_management_0003_application_attributes` on the client-management branch and `operate_0002_deploy_needs_action` on the operate branch. The rollout adds three operate revisions: `operate_0003_deployments`, `operate_0004_deployment_purpose` and `operate_0005_prj128_migration_run`. The third records itself as run without moving anything, because the Rochester comparison needs the ruling in section 3.
 
@@ -100,5 +100,6 @@ Each item names where you are, what to do, what you should see. Anything else: s
 
 | Revision | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.2 | 09-25-26 18:08 | Claude (Claude Code) | Rollout done and recorded (DEC-1190); section 2 is history, section 4 is the open work. |
 | 1.1 | 09-25-26 15:52 | Claude (Claude Code) | The ruling is in the code, so the rollout applies the migration run; expectations updated accordingly. |
 | 1.0 | 09-25-26 13:52 | Claude (Claude Code), for Doug Bower | First version at the close of the PRJ-128 build. |
