@@ -17,6 +17,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
+from crmbuilder_v2.access.engagement_scope import get_active_engagement
 from crmbuilder_v2.access.exceptions import (
     FieldError,
     NotFoundError,
@@ -32,6 +33,9 @@ from crmbuilder_v2.deploy.spec import is_protected_host, validate_spec
 from crmbuilder_v2.segments.operate.repositories import (
     deploy_runs,
     provider_credentials,
+)
+from crmbuilder_v2.segments.operate.repositories import (
+    deployments as deployments_repo,
 )
 from crmbuilder_v2.segments.operate.schemas import DeployRunCreateIn, DeployRunRetryIn
 
@@ -97,11 +101,21 @@ def dns_lookup(domain: str):
 
 
 @router.get("")
-def list_all(instance: str | None = None, status: str | None = None, limit: int | None = None):
-    """Deploy runs newest first (log omitted), optionally filtered."""
+def list_all(
+    instance: str | None = None,
+    status: str | None = None,
+    limit: int | None = None,
+    deployment: str | None = None,
+):
+    """Deploy runs newest first (log omitted), optionally filtered by
+    instance, status or the deployment they built (PI-576)."""
     with readonly_session() as s:
         rows = deploy_runs.list_deploy_runs(
-            s, instance_identifier=instance, status=status, limit=limit
+            s,
+            instance_identifier=instance,
+            status=status,
+            limit=limit,
+            deployment_identifier=deployment,
         )
         return ok([_public(r) for r in rows])
 
@@ -119,11 +133,51 @@ def get(identifier: str, log_after: int | None = None):
 @router.post("", status_code=202)
 def create(body: DeployRunCreateIn):
     """Validate and queue a deploy run; the worker picks it up."""
-    spec = validate_spec(body.model_dump(exclude={"admin_password", "db_password", "db_root_password"}))
+    spec = validate_spec(
+        body.model_dump(
+            exclude={
+                "admin_password",
+                "db_password",
+                "db_root_password",
+                "deployment_identifier",
+            }
+        )
+    )
     if not body.admin_password.strip():
         raise UnprocessableError([FieldError("admin_password", "required", "admin_password is required")])
+    deployment = body.deployment_identifier
     with readonly_session() as s:
-        have = {r["provider"] for r in provider_credentials.list_provider_credentials(s)}
+        if deployment is not None:
+            # PI-576: the run builds a deployment of the active application;
+            # its credentials (falling back to the application's) are used.
+            record = deployments_repo.get_deployment(s, deployment)
+            if record is None or record["deployment_application"] != get_active_engagement():
+                raise UnprocessableError(
+                    [
+                        FieldError(
+                            "deployment_identifier",
+                            "deployment_not_found",
+                            f"deployment {deployment!r} is not a deployment of "
+                            "the active application",
+                        )
+                    ]
+                )
+            if record.get("deployment_instance_identifier"):
+                raise UnprocessableError(
+                    [
+                        FieldError(
+                            "deployment_identifier",
+                            "deployment_already_holds_instance",
+                            f"deployment {deployment!r} already holds "
+                            f"{record['deployment_instance_identifier']}",
+                        )
+                    ]
+                )
+        have = set(
+            provider_credentials.effective_provider_credentials(
+                s, deployment_identifier=deployment
+            )
+        )
         active = deploy_runs.active_run_for_domain(s, spec.domain)
     # Manual DNS (PI-566 / REQ-642) never touches Cloudflare.
     needed = {"digitalocean"} if spec.manual_dns else {"digitalocean", "cloudflare"}
@@ -168,6 +222,7 @@ def create(body: DeployRunCreateIn):
             # PI-442 (REQ-544): the service provisions on DigitalOcean today;
             # the history row names the provider rather than implying it.
             provider="digitalocean",
+            deployment_identifier=deployment,
         )
         return ok(_public(row))
 

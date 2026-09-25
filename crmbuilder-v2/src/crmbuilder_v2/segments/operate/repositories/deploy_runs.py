@@ -81,6 +81,7 @@ def list_deploy_runs(
     status: str | None = None,
     limit: int | None = None,
     include_log: bool = False,
+    deployment_identifier: str | None = None,
 ) -> list[dict]:
     """Return deploy runs (newest first), optionally filtered.
 
@@ -90,6 +91,8 @@ def list_deploy_runs(
     stmt = select(DeployRun).order_by(DeployRun.id.desc())
     if instance_identifier is not None:
         stmt = stmt.where(DeployRun.instance_identifier == instance_identifier)
+    if deployment_identifier is not None:
+        stmt = stmt.where(DeployRun.deployment_identifier == deployment_identifier)
     if status is not None:
         status = gov.require_in(status, DEPLOY_RUN_STATUSES, field="status")
         stmt = stmt.where(DeployRun.deploy_run_status == status)
@@ -131,6 +134,7 @@ def create_deploy_run(
     requested_by: str | None = None,
     instance_identifier: str | None = None,
     provider: str | None = None,
+    deployment_identifier: str | None = None,
 ) -> dict:
     """Queue one deploy run, auto-assigning the next ``DEP-NNN`` identifier.
 
@@ -141,6 +145,8 @@ def create_deploy_run(
     :param instance_identifier: set only when re-provisioning a known instance.
     :param provider: the hosting provider this run provisions against
         (PI-442 / REQ-544), stamped so the history row is self-describing.
+    :param deployment_identifier: the deployment this run builds (PI-576);
+        the created instance attaches to it and its credentials are used.
     """
     if not isinstance(spec, dict) or not spec:
         raise UnprocessableError(
@@ -161,6 +167,7 @@ def create_deploy_run(
             deploy_run_log=[],
             deploy_run_provider=provider,
             deploy_run_requested_by=requested_by,
+            deployment_identifier=deployment_identifier,
         )
         session.add(row)
         try:

@@ -11,8 +11,14 @@ from __future__ import annotations
 
 from crmbuilder_v2.segments.operate.routers import (
     deploy_runs,
+    deployments,
     instances,
     provider_credentials,
 )
 
-routers = (instances.router, deploy_runs.router, provider_credentials.router)
+routers = (
+    instances.router,
+    deploy_runs.router,
+    provider_credentials.router,
+    deployments.router,
+)

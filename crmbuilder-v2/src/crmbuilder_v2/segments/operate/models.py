@@ -17,12 +17,14 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Float,
+    ForeignKey,
     ForeignKeyConstraint,
     Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -40,6 +42,8 @@ from crmbuilder_v2.segments.operate.vocab import (
     DEPLOY_CONFIG_SSH_AUTH_TYPES,
     DEPLOY_RUN_PHASES,
     DEPLOY_RUN_STATUSES,
+    DEPLOYMENT_HOSTING_PROVIDERS,
+    DEPLOYMENT_STATUSES,
     INSTANCE_AUTH_METHODS,
     INSTANCE_ROLES,
     INSTANCE_STATUSES,
@@ -48,6 +52,7 @@ from crmbuilder_v2.segments.operate.vocab import (
 )
 
 __all__ = [
+    "Deployment",
     "DeployRun",
     "Instance",
     "InstanceDeployConfig",
@@ -303,6 +308,101 @@ class InstanceDeployConfig(EngagementScopedMixin, Base):
 
 
 
+class Deployment(Base):
+    """PI-576 (REQ-653, DEC-1155, DEC-1175) — one installation of one
+    application on one hosting provider for one client.
+
+    The deployment is the user-facing record; it holds the instance (the CRM
+    connection, ``INST-NNN``), that instance's deploy configuration and the
+    deploying client's provider credentials **by composition**: the three
+    tables stay, keyed as they are, because the audit, publish, conformance,
+    membership and run-history code all key on ``(engagement, instance)``.
+    The instance row is the internal key; the deployment identifier
+    (``DPL-NNN``) is the key people and the connector use.
+
+    The table is system-wide, like ``clients`` and ``engagement_clients``:
+    it carries no ``engagement_id`` discriminator and is not filtered by the
+    active-engagement scope, because a client's deployments span
+    applications (Rochester and Boston deploy Cleveland's application) and
+    must be listable per client. ``deployment_application`` names the
+    application (the engagement row, which keeps its ``ENG`` identifier) and
+    the row is read under that application's scope when its instance and
+    configuration are composed in. The identifier is unique across
+    applications, which three instances sharing ``INST-001`` are not.
+
+    No ``change_log`` / ``refs`` participation in this item: the instance
+    stays the governance entity references attach to. The purpose column
+    (client's own or demo/test) is PI-577's.
+    """
+
+    __tablename__ = "deployments"
+
+    deployment_identifier: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )
+    deployment_application: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("engagements.engagement_identifier", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    deployment_client: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("clients.client_identifier", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    deployment_hosting_provider: Mapped[str] = mapped_column(
+        String(24), nullable=False, default="digitalocean"
+    )
+    deployment_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    deployment_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="active"
+    )
+    # The instance this deployment holds; null until the deploy run registers
+    # it. Not a foreign key: instances are keyed per application and the
+    # composite key would tie this row's application column to the
+    # instance's delete behaviour. The pair is unique instead.
+    deployment_instance_identifier: Mapped[str | None] = mapped_column(
+        String(32), nullable=True
+    )
+    deployment_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deployment_created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow
+    )
+    deployment_updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=_utcnow,
+        onupdate=_utcnow,
+    )
+    deployment_deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            _IdentifierFormatCheck("deployment_identifier", ["DPL"]),
+            name="ck_deployment_identifier_format",
+        ),
+        CheckConstraint(
+            _check_in("deployment_hosting_provider", DEPLOYMENT_HOSTING_PROVIDERS),
+            name="ck_deployment_hosting_provider",
+        ),
+        CheckConstraint(
+            _check_in("deployment_status", DEPLOYMENT_STATUSES),
+            name="ck_deployment_status",
+        ),
+        Index(
+            "ux_deployments_instance",
+            "deployment_application",
+            "deployment_instance_identifier",
+            unique=True,
+        ),
+        Index("ix_deployments_application", "deployment_application"),
+        Index("ix_deployments_client", "deployment_client"),
+        Index("ix_deployments_deleted_at", "deployment_deleted_at"),
+    )
+
+
 class DeployRun(EngagementScopedMixin, Base):
     """PI-419 (REQ-522, PRJ-111) — one recorded execution of a provisioning job.
 
@@ -327,6 +427,16 @@ class DeployRun(EngagementScopedMixin, Base):
     deploy_run_identifier: Mapped[str] = mapped_column(String(32), nullable=False)
     instance_identifier: Mapped[str | None] = mapped_column(
         String(32), nullable=True
+    )
+    # PI-576 (REQ-653): the deployment this run built or is building. Null on
+    # rows that predate deployments and on runs queued before one existed; the
+    # migration run (PI-579) fills it for the history it re-homes, and a run
+    # queued from a deployment carries it from the start so the credentials
+    # and the created instance attach to the right deployment.
+    deployment_identifier: Mapped[str | None] = mapped_column(
+        String(32),
+        ForeignKey("deployments.deployment_identifier", ondelete="SET NULL"),
+        nullable=True,
     )
     deploy_run_status: Mapped[str] = mapped_column(String(24), nullable=False)
     deploy_run_phase: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -393,6 +503,7 @@ class DeployRun(EngagementScopedMixin, Base):
         ),
         Index("ix_deploy_runs_status", "engagement_id", "deploy_run_status"),
         Index("ix_deploy_runs_instance", "engagement_id", "instance_identifier"),
+        Index("ix_deploy_runs_deployment", "deployment_identifier"),
     )
 
 
@@ -415,6 +526,17 @@ class ProviderCredential(EngagementScopedMixin, Base):
     provider: Mapped[str] = mapped_column(String(24), nullable=False)
     token_ref: Mapped[str] = mapped_column(Text, nullable=False)
     label: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # PI-576 (REQ-653, DEC-1155): the credential belongs to the deploying
+    # client, so a row may name the deployment it serves. Null means the
+    # application-level credential, which every deployment of the application
+    # falls back to (DEC-945: CRMBuilder's own accounts by default). The
+    # uniqueness rule is one row per (application, provider, deployment or
+    # none), enforced by the expression index below.
+    deployment_identifier: Mapped[str | None] = mapped_column(
+        String(32),
+        ForeignKey("deployments.deployment_identifier", ondelete="CASCADE"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=_utcnow
     )
@@ -427,8 +549,12 @@ class ProviderCredential(EngagementScopedMixin, Base):
             _check_in("provider", PROVIDER_CREDENTIAL_PROVIDERS),
             name="ck_provider_credential_provider",
         ),
-        UniqueConstraint(
-            "engagement_id", "provider", name="uq_provider_credential_provider"
+        Index(
+            "ux_provider_credential_scope",
+            "engagement_id",
+            "provider",
+            text("COALESCE(deployment_identifier, '')"),
+            unique=True,
         ),
     )
 

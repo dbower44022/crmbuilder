@@ -6677,6 +6677,7 @@ from crmbuilder_v2.segments.client_management.models import (  # noqa: E402, F40
     RoleAssignmentRow,
 )
 from crmbuilder_v2.segments.operate.models import (  # noqa: E402, F401
+    Deployment,
     DeployRun,
     Instance,
     InstanceDeployConfig,

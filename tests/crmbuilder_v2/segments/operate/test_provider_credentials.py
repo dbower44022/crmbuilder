@@ -11,7 +11,10 @@ from sqlalchemy import inspect
 
 def test_table_shape(v2_env):
     cols = {c["name"] for c in inspect(get_engine()).get_columns("provider_credentials")}
-    assert cols == {"id", "provider", "token_ref", "label", "created_at", "updated_at", "engagement_id"}
+    assert cols == {
+        "id", "provider", "token_ref", "label", "created_at", "updated_at",
+        "engagement_id", "deployment_identifier",
+    }
 
 
 def test_upsert_replace_list_delete(v2_env):

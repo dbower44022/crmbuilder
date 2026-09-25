@@ -218,6 +218,110 @@ class OperateMethods:
         result = self._request("GET", "/provider-credentials/cloudflare/zones")
         return result if isinstance(result, list) else []
 
+    # --- deployments (PI-576 / REQ-653) ---------------------------------------
+
+    def list_deployments(
+        self,
+        *,
+        application: str | None = None,
+        client: str | None = None,
+        include_deleted: bool = False,
+    ) -> list[dict[str, Any]]:
+        """GET /deployments — every deployment the principal may see, each
+        composed with the instance, deploy configuration and credential
+        flags it holds; narrowed to one application and/or client."""
+        query: list[str] = []
+        if application:
+            query.append(f"application={application}")
+        if client:
+            query.append(f"client={client}")
+        if include_deleted:
+            query.append("include_deleted=true")
+        path = "/deployments" + (f"?{'&'.join(query)}" if query else "")
+        result = self._request("GET", path)
+        return result if isinstance(result, list) else []
+
+    def get_deployment(self, identifier: str) -> dict[str, Any]:
+        """GET /deployments/{identifier}."""
+        result = self._request("GET", f"/deployments/{identifier}")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for get_deployment",
+            )
+        return result
+
+    def create_deployment(self, body: dict[str, Any]) -> dict[str, Any]:
+        """POST /deployments — create a deployment, optionally with its
+        instance, in one request (201)."""
+        result = self._request("POST", "/deployments", json_body=body)
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for create_deployment",
+            )
+        return result
+
+    def patch_deployment(
+        self, identifier: str, fields: dict[str, Any]
+    ) -> dict[str, Any]:
+        """PATCH /deployments/{identifier}."""
+        result = self._request(
+            "PATCH", f"/deployments/{identifier}", json_body=fields
+        )
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for patch_deployment",
+            )
+        return result
+
+    def delete_deployment(self, identifier: str) -> None:
+        """DELETE /deployments/{identifier} (soft delete)."""
+        self._request("DELETE", f"/deployments/{identifier}")
+
+    def restore_deployment(self, identifier: str) -> dict[str, Any]:
+        """POST /deployments/{identifier}/restore."""
+        result = self._request("POST", f"/deployments/{identifier}/restore")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for restore_deployment",
+            )
+        return result
+
+    def list_deployment_provider_credentials(
+        self, identifier: str
+    ) -> list[dict[str, Any]]:
+        """GET /deployments/{identifier}/provider-credentials — the
+        credentials that apply, each with its scope; never tokens."""
+        result = self._request(
+            "GET", f"/deployments/{identifier}/provider-credentials"
+        )
+        return result if isinstance(result, list) else []
+
+    def put_deployment_provider_credential(
+        self, identifier: str, provider: str, token: str, label: str | None = None
+    ) -> list[dict[str, Any]]:
+        """PUT /deployments/{identifier}/provider-credentials/{provider}."""
+        body: dict[str, Any] = {"token": token}
+        if label:
+            body["label"] = label
+        result = self._request(
+            "PUT",
+            f"/deployments/{identifier}/provider-credentials/{provider}",
+            json_body=body,
+        )
+        return result if isinstance(result, list) else []
+
+    def delete_deployment_provider_credential(
+        self, identifier: str, provider: str
+    ) -> None:
+        """DELETE /deployments/{identifier}/provider-credentials/{provider}."""
+        self._request(
+            "DELETE", f"/deployments/{identifier}/provider-credentials/{provider}"
+        )
+
     # --- deploy runs (PI-419 / REQ-522) ---------------------------------------
 
     def create_deploy_run(self, body: dict[str, Any]) -> dict[str, Any]:

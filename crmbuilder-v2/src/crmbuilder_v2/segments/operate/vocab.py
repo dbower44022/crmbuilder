@@ -79,3 +79,22 @@ DEPLOY_RUN_PHASES: frozenset[str] = frozenset(DEPLOY_RUN_PHASE_ORDER) | DEPLOY_R
 PROVIDER_CREDENTIAL_PROVIDERS: frozenset[str] = frozenset(
     {"digitalocean", "cloudflare"}
 )
+
+
+# ---------------------------------------------------------------------------
+# Deployment (PI-576 / REQ-653, DEC-1155): one installation of one
+# application on one hosting provider for one client. The row holds the
+# instance, its deploy configuration and the client's provider credentials
+# by composition; these sets constrain its own two columns.
+# ---------------------------------------------------------------------------
+
+# The hosting provider a deployment runs on. ``digitalocean`` is the one the
+# service provisions today; ``other`` records an installation CRMBuilder did
+# not provision (a client's own host) without inventing a provider list.
+DEPLOYMENT_HOSTING_PROVIDERS: frozenset[str] = frozenset({"digitalocean", "other"})
+
+# A retired deployment is kept, not deleted (retain-not-delete); ``active``
+# is the default.
+DEPLOYMENT_STATUSES: frozenset[str] = frozenset({"active", "retired"})
+
+DEFAULT_DEPLOYMENT_HOSTING_PROVIDER: str = "digitalocean"

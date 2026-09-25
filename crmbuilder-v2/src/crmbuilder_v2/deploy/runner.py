@@ -76,6 +76,7 @@ from crmbuilder_v2.deploy.keys import (
 from crmbuilder_v2.deploy.providers.cloudflare import CloudflareClient
 from crmbuilder_v2.deploy.providers.digitalocean import DigitalOceanClient
 from crmbuilder_v2.deploy.spec import DeploySpec, is_protected_host
+from crmbuilder_v2.segments.operate.repositories import deployments
 
 _log = logging.getLogger("crmbuilder_v2.deploy.runner")
 
@@ -188,6 +189,10 @@ class _Run:
     secrets: dict[str, str] = field(default_factory=dict)
     do: Any = None
     cf: Any = None
+    # PI-576: the deployment this run builds, or None for a run queued
+    # before deployments existed (the instance then belongs to no deployment
+    # until the migration run or a later attach).
+    deployment_identifier: str | None = None
 
 
 class _Log:
@@ -242,6 +247,7 @@ def run_deploy(
             spec=DeploySpec.from_dict(record.get("deploy_run_spec") or {}),
             secret_refs=dict(record.get("deploy_run_secret_refs") or {}),
             state=dict(record.get("deploy_run_state") or {}),
+            deployment_identifier=record.get("deployment_identifier"),
         )
         log = _Log(identifier)
         resumed = any(
@@ -403,9 +409,17 @@ def _phase_validate(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
         )
     manual = run.spec.manual_dns
     with session_scope() as s:
-        do_row = provider_credentials.get_provider_credential(s, "digitalocean")
+        # PI-576: a run that builds a deployment uses that deployment's own
+        # credentials where set, the application's otherwise.
+        do_row = provider_credentials.resolve_provider_credential(
+            s, "digitalocean", deployment_identifier=run.deployment_identifier
+        )
         cf_row = (
-            None if manual else provider_credentials.get_provider_credential(s, "cloudflare")
+            None
+            if manual
+            else provider_credentials.resolve_provider_credential(
+                s, "cloudflare", deployment_identifier=run.deployment_identifier
+            )
         )
     needed = (("digitalocean", do_row),) if manual else (
         ("digitalocean", do_row), ("cloudflare", cf_row)
@@ -880,7 +894,11 @@ def _phase_create_instance(run: _Run, deps: RunnerDeps, log: _Log) -> dict:
             last_verified_at=_parse_iso(run.state.get("verified_at")),
             open_items=_open_items_list(run),
         )
+        if run.deployment_identifier:
+            deployments.attach_instance(s, run.deployment_identifier, ident)
     log(f"Registered instance {ident} at https://{run.spec.domain}", "success")
+    if run.deployment_identifier:
+        log(f"Deployment {run.deployment_identifier} now holds {ident}", "info")
     return {"instance_identifier": ident}
 
 

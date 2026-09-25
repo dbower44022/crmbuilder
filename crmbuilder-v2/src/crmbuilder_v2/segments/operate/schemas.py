@@ -147,6 +147,11 @@ class DeployRunCreateIn(_Base):
     admin_password: str
     db_password: str | None = None
     db_root_password: str | None = None
+    # PI-576 (REQ-653): the deployment this run builds. When set, the run
+    # uses that deployment's credentials (falling back to the application's)
+    # and attaches the instance it registers to it. Optional until the
+    # deploy wizard creates the deployment first (PI-580).
+    deployment_identifier: str | None = None
 
 
 # POST body for /deploy-runs/{id}/retry (PI-571 / REQ-650): an optional
@@ -166,3 +171,48 @@ class DeployRunRetryIn(_Base):
 class ProviderCredentialIn(_Base):
     token: str
     label: str | None = None
+
+
+# --- Deployment (PI-576 / REQ-653, DEC-1155) ---------------------------------
+# A deployment names its client, its application (the engagement identifier,
+# defaulting to the active engagement) and its hosting provider, and holds an
+# instance either by naming an existing one (``instance_identifier``) or by
+# describing a new one (``instance``), created under the application in the
+# same request. The instance's ``secret`` / ``secret_key`` are write-only
+# plaintext that the router stores behind the secret boundary (REQ-157).
+# ``deploy_config`` carries the non-secret configuration fields of
+# ``PUT /instances/{id}/deploy-config``; the secret-bearing ones still go
+# through that route.
+class DeploymentInstanceIn(_Base):
+    instance_name: str
+    instance_url: str
+    instance_vendor: str | None = None
+    instance_role: str | None = None
+    instance_auth_method: str | None = None
+    secret: str | None = None
+    secret_key: str | None = None
+    instance_status: str | None = None
+    instance_notes: str | None = None
+    instance_feature_selection: list[str] | None = None
+
+
+class DeploymentCreateIn(_Base):
+    deployment_client: str
+    deployment_name: str
+    deployment_application: str | None = None
+    deployment_hosting_provider: str | None = None
+    deployment_status: str | None = None
+    deployment_notes: str | None = None
+    deployment_identifier: str | None = None
+    instance_identifier: str | None = None
+    instance: DeploymentInstanceIn | None = None
+    deploy_config: dict[str, Any] | None = None
+
+
+class DeploymentPatchIn(_Base):
+    deployment_name: str | None = None
+    deployment_status: str | None = None
+    deployment_notes: str | None = None
+    deployment_hosting_provider: str | None = None
+    deployment_client: str | None = None
+

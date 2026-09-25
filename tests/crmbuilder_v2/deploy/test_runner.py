@@ -607,3 +607,57 @@ def test_a_server_that_never_accepts_ssh_fails_with_try_again(v2_env):
     err = _run(ident)["deploy_run_error"]
     assert "did not accept an SSH login within 5 minutes" in err and "Try again" in err
     assert _run(ident)["deploy_run_state"]["phases"]["server_prep"]["status"] == "failed"
+
+
+def test_a_run_for_a_deployment_uses_its_credentials_and_attaches_the_instance(v2_env):
+    """PI-576: a run queued for a deployment resolves the deployment's own
+    DigitalOcean token over the application's and attaches the instance it
+    registers to that deployment."""
+    from crmbuilder_v2.segments.client_management.repositories import (
+        client as client_repo,
+    )
+    from crmbuilder_v2.segments.operate.repositories import deployments
+
+    with session_scope() as s:
+        client_repo.create_client(s, name="Rochester Business Mentors")
+        client_repo.set_engagement_clients(
+            s, "ENG-001", clients=["CLI-001"], primary="CLI-001"
+        )
+        deployments.create_deployment(
+            s, client="CLI-001", application="ENG-001", name="Rochester"
+        )
+        provider_credentials.upsert_provider_credential(
+            s, "digitalocean", token_ref=secrets.put_secret("app-do-tok")
+        )
+        provider_credentials.upsert_provider_credential(
+            s, "cloudflare", token_ref=secrets.put_secret("cf-tok")
+        )
+        provider_credentials.upsert_provider_credential(
+            s,
+            "digitalocean",
+            token_ref=secrets.put_secret("dpl-do-tok"),
+            deployment_identifier="DPL-001",
+        )
+        row = deploy_runs.create_deploy_run(
+            s,
+            spec=SPEC,
+            secret_refs={
+                "admin_password": secrets.put_secret("Adm1n!"),
+                "db_password": secrets.put_secret("dbpw"),
+                "db_root_password": secrets.put_secret("rootpw"),
+            },
+            deployment_identifier="DPL-001",
+        )
+        deploy_runs.claim_next_run(s, worker_id="w1")
+        ident = row["deploy_run_identifier"]
+    deps = _deps()
+    assert run_deploy(ident, engagement_id="ENG-001", worker_id="w1", deps=deps) == "succeeded"
+    assert deps.holder["do"].token == "dpl-do-tok"
+    run = _run(ident)
+    assert run["deployment_identifier"] == "DPL-001"
+    with session_scope() as s:
+        d = deployments.get_deployment(s, "DPL-001")
+    assert d["deployment_instance_identifier"] == run["instance_identifier"]
+    assert d["instance"]["instance_url"] == "https://crm.example.org"
+    log_text = "\n".join(e[2] for e in run["deploy_run_log"])
+    assert "Deployment DPL-001 now holds" in log_text

@@ -37,6 +37,7 @@ _EXPECTED_COLUMNS = {
     "created_at",
     "updated_at",
     "engagement_id",
+    "deployment_identifier",
 }
 
 _SPEC = {"domain": "crm.example.org", "region": "nyc3", "size": "s-2vcpu-4gb"}
