@@ -1,6 +1,8 @@
 """The Client Management connector tools (PI-508 / REQ-591): engagement
-selection, and the client records above the engagement (PI-512 / REQ-589). ``mcp_server.tools`` appends these to the shared list, so tool
-names are unchanged for the connector and the chat dispatcher.
+selection, the client records above the engagement (PI-512 / REQ-589), and
+the application reading of the engagement (PI-575 / REQ-653).
+``mcp_server.tools`` appends these to the shared list, so tool names are
+unchanged for the connector and the chat dispatcher.
 """
 
 from __future__ import annotations
@@ -68,7 +70,30 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         identifiers of the engagements it holds."""
         return await _unwrap(await http.get(f"/clients/{identifier}"))
 
-    funcs = [select_engagement, get_active_engagement, list_clients, get_client]
+    async def list_applications(
+        client: str | None = None, include_deleted: bool = False
+    ) -> Any:
+        """List application records: the engagements that name a defining
+        client, each with ``engagement_defining_client`` (a ``CLI-NNN``
+        identifier), ``engagement_defining_client_name`` and
+        ``engagement_visibility`` (``private`` or ``public``). ``client``
+        narrows the list to the applications that client defines. An
+        engagement no client holds is not listed here; ``list_clients``
+        still shows what each client holds."""
+        params: dict[str, str] = {}
+        if client:
+            params["client"] = client
+        if include_deleted:
+            params["include_deleted"] = "true"
+        return await _unwrap(await http.get("/applications", params=params or None))
+
+    funcs = [
+        select_engagement,
+        get_active_engagement,
+        list_clients,
+        get_client,
+        list_applications,
+    ]
     return [
         ToolDefinition(
             name=f.__name__,
