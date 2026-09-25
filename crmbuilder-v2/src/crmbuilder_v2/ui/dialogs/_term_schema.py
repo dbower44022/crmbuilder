@@ -35,7 +35,7 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         label="Name",
         widget="line",
         required=True,
-        placeholder="The term itself, e.g. Engagement",
+        placeholder="The term itself, e.g. Deployment",
     ),
     FieldSchema(
         key="definition",

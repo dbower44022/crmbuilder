@@ -50,7 +50,43 @@ def _store(request: httpx.Request) -> httpx.Response:
                 404, json={"data": None, "meta": {}, "errors": [{"code": "not_found"}]}
             )
         return _envelope([dict(record, filtered=request.url.params.get("client"))])
+    if path == "/applications/ENG-002":
+        return _envelope({"engagement_identifier": "ENG-002", "engagement_defining_client": "CLI-001", "engagement_visibility": "private"})
+    if path == "/deployments":
+        return _envelope([
+            {
+                "deployment_identifier": "DPL-001",
+                "deployment_application": "ENG-002",
+                "deployment_client": "CLI-001",
+                "deployment_purpose": "client_own",
+                "params": dict(request.url.params),
+            }
+        ])
+    if path == "/deployments/DPL-001":
+        return _envelope({"deployment_identifier": "DPL-001", "deployment_purpose": "client_own", "instance": {"instance_identifier": "INST-001"}, "provider_credentials": []})
     return httpx.Response(404, json={"data": None, "meta": {}, "errors": [{"code": "not_found"}]})
+
+
+async def test_application_and_deployment_read_tools():
+    """PI-580: get_application, list_deployments (purpose on every row, the
+    three filters) and get_deployment are read tools."""
+    http = httpx.AsyncClient(base_url="http://testserver", transport=httpx.MockTransport(_store))
+    try:
+        funcs = tool_definitions(http)
+        get_app = _tool(funcs, "get_application")
+        assert not get_app.is_write
+        assert (await get_app.func("ENG-002"))["engagement_defining_client"] == "CLI-001"
+        listed = _tool(funcs, "list_deployments")
+        assert not listed.is_write
+        rows = await listed.func()
+        assert rows[0]["deployment_purpose"] == "client_own" and rows[0]["params"] == {}
+        rows = await listed.func(application="ENG-002", client="CLI-001", for_client="CLI-003", include_deleted=True)
+        assert rows[0]["params"] == {"application": "ENG-002", "client": "CLI-001", "for_client": "CLI-003", "include_deleted": "true"}
+        one = await _tool(funcs, "get_deployment").func("DPL-001")
+        assert one["instance"]["instance_identifier"] == "INST-001"
+        assert {"get_application", "list_deployments", "get_deployment"} <= {f.name for f in funcs}
+    finally:
+        await http.aclose()
 
 
 async def test_list_and_get_client_tools():

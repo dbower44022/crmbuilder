@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
 _SYSTEM_SCOPE = "system"
 
-_AREA_HINT = "A system area (e.g. storage, access, api, ui) or an engagement area."
+_AREA_HINT = "A system area (e.g. storage, access, api, ui) or an application area."
 
 
 def _identifier_field() -> FieldSchema:

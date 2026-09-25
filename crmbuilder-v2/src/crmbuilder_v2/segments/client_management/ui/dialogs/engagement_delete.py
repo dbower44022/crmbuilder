@@ -70,7 +70,7 @@ class EngagementDeleteDialog(EntityCrudDeleteDialog):
             identifier,
             title,
             client.delete_engagement,
-            entity_label="engagement",
+            entity_label="application",
             parent=parent,
         )
         self._active_context = active_context
@@ -114,7 +114,7 @@ class EngagementDeleteDialog(EntityCrudDeleteDialog):
         self._body_label.setText(
             f"Delete {self._identifier} — {self._title or '(unnamed)'}?\n\n"
             "Type the identifier below to confirm. This soft-deletes the "
-            "engagement; it can be restored from the Show soft-deleted view."
+            "application; it can be restored from the Show soft-deleted view."
         )
         self._confirm_edit = QLineEdit()
         self._confirm_edit.setObjectName("delete_confirm_edit")
@@ -135,10 +135,10 @@ class EngagementDeleteDialog(EntityCrudDeleteDialog):
     def _render_case_b_switch(self, title: str) -> None:
         self._body_label.setText(
             f"{title or self._identifier} is currently active. "
-            "Switch to a different engagement first, then soft-delete this one."
+            "Switch to a different application first, then soft-delete this one."
         )
         self._delete_btn.hide()
-        self._switch_btn = QPushButton("Switch engagement")
+        self._switch_btn = QPushButton("Switch application")
         self._switch_btn.setObjectName("switch_engagement_button")
         self._switch_btn.setDefault(True)
         self._switch_btn.clicked.connect(self._invoke_switch_handler)
@@ -146,11 +146,11 @@ class EngagementDeleteDialog(EntityCrudDeleteDialog):
 
     def _render_case_b_create(self, title: str) -> None:
         self._body_label.setText(
-            f"{title or self._identifier} is the only engagement on this "
-            "install. Create another engagement before soft-deleting this one."
+            f"{title or self._identifier} is the only application on this "
+            "install. Create another application before soft-deleting this one."
         )
         self._delete_btn.hide()
-        self._create_btn = QPushButton("Create engagement")
+        self._create_btn = QPushButton("Create application")
         self._create_btn.setObjectName("create_engagement_button")
         self._create_btn.setDefault(True)
         self._create_btn.clicked.connect(self._invoke_create_handler)

@@ -44,7 +44,8 @@ def test_columns_and_rows(qtbot, store_client):
         "Identifier",
         "Name",
         "Status",
-        "Engagements",
+        "Applications",
+        "Deployments",
         "Created",
     ]
     _wait_rows(qtbot, panel, 1)

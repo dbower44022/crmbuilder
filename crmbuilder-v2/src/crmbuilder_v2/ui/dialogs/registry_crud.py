@@ -632,14 +632,14 @@ class CrossEngagementCandidatesDialog(QDialog):
     def __init__(self, client: StorageClient, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._client = client
-        self.setWindowTitle("Cross-engagement learning candidates")
+        self.setWindowTitle("Cross-application learning candidates")
         self.setMinimumWidth(620)
         self.setMinimumHeight(360)
 
         layout = QVBoxLayout(self)
         layout.addWidget(
             QLabel(
-                "Learnings seen in 2+ engagements — promote one to a system default "
+                "Learnings seen in 2+ applications — promote one to a system default "
                 "so every engagement inherits it."
             )
         )
@@ -670,7 +670,7 @@ class CrossEngagementCandidatesDialog(QDialog):
             self._show_error(str(exc))
             return
         if not candidates:
-            item = QListWidgetItem("(no cross-engagement candidates)")
+            item = QListWidgetItem("(no cross-application candidates)")
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable)
             self._list.addItem(item)
             self._promote_btn.setEnabled(False)
@@ -683,7 +683,7 @@ class CrossEngagementCandidatesDialog(QDialog):
                 content = content[:77] + "…"
             label = (
                 f"{group.get('area')}/{group.get('tier')} — {content}  "
-                f"[{len(group.get('engagements') or [])} engagements: {engs}]"
+                f"[{len(group.get('engagements') or [])} applications: {engs}]"
             )
             item = QListWidgetItem(label)
             item.setData(Qt.ItemDataRole.UserRole, group)
@@ -742,7 +742,7 @@ class CurateAreaDialog(QDialog):
         self._area.setCurrentText("")
         form.addRow("Area", self._area)
         self._scope = QLineEdit()
-        self._scope.setPlaceholderText("Optional engagement (e.g. ENG-001); blank = system")
+        self._scope.setPlaceholderText("Optional application (e.g. ENG-001); blank = system")
         form.addRow("Scope", self._scope)
         layout.addLayout(form)
 

@@ -87,8 +87,8 @@ def test_engagements_is_registered_and_in_operate_phase():
     # phase tab and in the Operate CRMBuilder pseudo-phase.
     from crmbuilder_v2.ui.navigation import OPERATE_KEY, PhaseMap  # noqa: PLC0415
 
-    assert "Engagements" in SIDEBAR_GROUPS[0][1]
-    assert "Engagements" in PhaseMap().steps_for(OPERATE_KEY)
+    assert "Applications" in SIDEBAR_GROUPS[0][1]
+    assert "Applications" in PhaseMap().steps_for(OPERATE_KEY)
 
 
 def test_sidebar_renders_engagements_entry(qtbot):
@@ -100,7 +100,7 @@ def test_sidebar_renders_engagements_entry(qtbot):
     entries = {
         item.text(): i for i, item in enumerate(items) if not item.data(_HEADER_ROLE)
     }
-    assert "Engagements" in entries
+    assert "Applications" in entries
 
 
 def test_main_window_engagements_page_is_panel(
@@ -108,7 +108,7 @@ def test_main_window_engagements_page_is_panel(
 ):
     window = MainWindow(lifecycle=lifecycle_stub, client=engagement_client)
     qtbot.addWidget(window)
-    page = window._stack.widget(window._pages_by_entry["Engagements"])
+    page = window._stack.widget(window._pages_by_entry["Applications"])
     assert isinstance(page, EngagementsPanel)
 
 
@@ -125,6 +125,8 @@ def test_master_pane_five_columns(qtbot, engagement_client):
         "Identifier",
         "Code",
         "Name",
+        "Defined by",
+        "Visibility",
         "Status",
         "Last Opened",
         "Created",
@@ -443,7 +445,7 @@ def test_empty_state_create_button_opens_create_dialog(
 
 
 def test_engagement_entity_type_maps_to_sidebar_label():
-    assert ENTITY_TYPE_TO_SIDEBAR_LABEL["engagement"] == "Engagements"
+    assert ENTITY_TYPE_TO_SIDEBAR_LABEL["engagement"] == "Applications"
 
 
 def test_format_relative_date_handles_null():

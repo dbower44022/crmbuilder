@@ -68,7 +68,7 @@ _CONTENT_FIELDS: list[FieldSchema] = [
         widget="text",
         required=True,
         placeholder=(
-            "What about this CRM made it worth considering for the engagement"
+            "What about this CRM made it worth considering for the application"
         ),
     ),
     FieldSchema(

@@ -77,11 +77,11 @@ def _value_widget(*, mono: bool) -> QLabel:
 
 
 class ConnectionInfoDialog(QDialog):
-    """Modal dialog reporting the live API's active engagement + database."""
+    """Modal dialog reporting the live API's active application + database."""
 
     # Row labels in display order; mono labels are listed in _MONO_LABELS.
     _ROWS: tuple[str, ...] = (
-        "Active engagement",
+        "Active application",
         "API base URL",
         "API reachable",
         "API version",
@@ -161,7 +161,7 @@ class ConnectionInfoDialog(QDialog):
         except StorageClientError as exc:
             error_text = f"error — {exc}"
 
-        self._set("Active engagement", self._engagement_display(info))
+        self._set("Active application", self._engagement_display(info))
         self._set(
             "API base URL",
             (info or {}).get("api_base_url") or "—",

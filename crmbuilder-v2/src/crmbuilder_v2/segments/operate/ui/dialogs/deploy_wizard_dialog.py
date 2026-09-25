@@ -1,25 +1,30 @@
 """Deploy wizard — PI-419 (REQ-522, DEC-945); manual DNS PI-566 (REQ-642);
-redesigned by PI-571 (REQ-648, REQ-652).
+redesigned by PI-571 (REQ-648, REQ-652); creates the deployment PI-580.
 
 A large, resizable window in three columns: the steps on the left, the
 questions in the middle, and on the right a help panel that explains whichever
 field is in use. Six pages collect what a deploy run needs and queue it:
 
-1. **Before you start** — what to have ready, and whether the DigitalOcean
-   credential (required) and the Cloudflare credential (optional) are set.
+1. **Before you start** — what to have ready, whether the DigitalOcean
+   credential (required) and the Cloudflare credential (optional) are set,
+   and who the deployment is for: the client (the application's defining
+   client by default) and the purpose (the client's own, or demo/test).
 2. **Web address** — the full address first. The wizard looks up who hosts
    its DNS and whether the name already points somewhere.
 3. **DNS** — who creates the record: CRMBuilder in Cloudflare (offered only
-   when the address is in a Cloudflare zone this engagement's credential can
+   when the address is in a Cloudflare zone this application's credential can
    edit, and that zone is the one the internet uses), or by hand (manual DNS).
    Either way the CRM is installed without waiting for DNS.
-4. **Server** — the instance's name, a size described in plain words with its
-   monthly cost (the recommended one pre-selected), the region, and extra SSH
-   keys. The operating system is the one supported image, not a choice.
+4. **Server** — the deployment's name, a size described in plain words with
+   its monthly cost (the recommended one pre-selected), the region, and extra
+   SSH keys. The operating system is the one supported image, not a choice.
 5. **Administrator** — the CRM's first login, and the email for certificate
    notices (the administrator's unless another is given).
-6. **Review** — a formatted summary of what will happen; Deploy queues the
-   run and emits :attr:`run_queued`.
+6. **Review** — a formatted summary of what will happen. Deploy first creates
+   the deployment record (PI-576) and emits :attr:`deployment_created`, then
+   queues the run against it and emits :attr:`run_queued`. A 422 from either
+   step is shown under the page; a deployment already created is reused when
+   Deploy is clicked again.
 
 Next is never disabled (GVR-217): a page that is not complete explains what is
 missing when Next is clicked. All network calls run off the UI thread.
@@ -54,6 +59,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from crmbuilder_v2.segments.operate.ui.dialogs.deployment_register_dialog import (
+    PURPOSE_LABELS,
+)
 from crmbuilder_v2.segments.operate.ui.dialogs.handover_dialog import fit_to_screen
 from crmbuilder_v2.segments.operate.ui.dialogs.provider_credentials_dialog import (
     ProviderCredentialsDialog,
@@ -130,13 +138,15 @@ def _hint(text: str) -> QLabel:
 
 
 class DeployWizardDialog(QDialog):
-    """Collect a provisioning request and queue it as a deploy run."""
+    """Collect a provisioning request, create its deployment and queue the run."""
 
     #: Emitted with the new run's identifier after a successful queue.
     run_queued = Signal(str)
+    #: Emitted with the deployment's identifier once it is created (PI-580).
+    deployment_created = Signal(str)
     connection_lost = Signal(str)
 
-    def __init__(self, client, parent=None) -> None:
+    def __init__(self, client, parent=None, *, active_context=None) -> None:
         super().__init__(parent)
         self._client = client
         self._in_flight: list = []
@@ -149,8 +159,15 @@ class DeployWizardDialog(QDialog):
         self._advance_after_lookup = False
         #: Set once the operator picks a DNS option, so it is not overridden.
         self._dns_choice_made = False
+        #: The deployment Deploy created; reused if the run is refused.
+        self._deployment_identifier: str | None = None
+        #: The application's defining client, when the desktop already knows it.
+        engagement = active_context.engagement() if active_context is not None else None
+        self._defining_client_hint = getattr(
+            engagement, "engagement_defining_client", None
+        )
         self._help: dict[QObject, str] = {}
-        self.setWindowTitle("Deploy a new CRM instance")
+        self.setWindowTitle("Deploy a new CRM")
         fit_to_screen(self, 0.75, (980, 680))
         self.setStyleSheet(_WIZARD_STYLE.format(
             large=t("font.size.body_large"), body=t("font.size.body"),
@@ -224,6 +241,7 @@ class DeployWizardDialog(QDialog):
         self._pages.addWidget(self._build_review_page())
         self._show_page(PAGE_START)
         self._load_providers()
+        self._load_clients()
 
     # -- help panel ----------------------------------------------------------
 
@@ -241,7 +259,8 @@ class DeployWizardDialog(QDialog):
         texts = {
             PAGE_START: (
                 "<h3>How a deploy works</h3><p>CRMBuilder rents a server from DigitalOcean, "
-                "prepares it, installs the CRM, and registers it as an instance.</p>"
+                "prepares it, installs the CRM, and records it as a deployment of this "
+                "application for the client you choose.</p>"
                 "<p><b>DNS never stops the install.</b> If the web address does not point at "
                 "the server yet, the CRM is installed anyway and the security certificate is "
                 "added automatically once it does.</p><p>If something needs a person, the "
@@ -256,7 +275,7 @@ class DeployWizardDialog(QDialog):
             ),
             PAGE_DNS: (
                 "<h3>Who creates the record</h3><p><b>CRMBuilder</b> can create it only when the "
-                "domain's DNS is in Cloudflare, in an account this engagement's Cloudflare "
+                "domain's DNS is in Cloudflare, in an account this application's Cloudflare "
                 "credential can edit.</p><p>Otherwise it is created <b>by hand</b> at the "
                 "domain's DNS host. The progress window and the handover sheet give the exact "
                 "record. Nothing waits for it.</p>"
@@ -310,8 +329,71 @@ class DeployWizardDialog(QDialog):
         btn.setObjectName("wizard_set_credentials")
         btn.clicked.connect(self._open_credentials)
         v.addWidget(btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        # PI-580: who the deployment is for. The run builds a deployment of
+        # the active application for one client (PI-576 / PI-577).
+        who = QLabel("<p><b>Who is this deployment for?</b></p>")
+        v.addWidget(who)
+        who_form = QFormLayout()
+        who_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        self.deployment_client = QComboBox()
+        self.deployment_client.setObjectName("wizard_client")
+        self.deployment_client.addItem("Loading clients…", None)
+        who_form.addRow(required_label("Client"), self.deployment_client)
+        self._explain(self.deployment_client, (
+            "<h3>Client</h3><p>The organisation this CRM is for. The application's "
+            "defining client is pre-selected; a private application accepts only that "
+            "client.</p>"
+        ))
+        self.deployment_purpose = QComboBox()
+        self.deployment_purpose.setObjectName("wizard_purpose")
+        for value, label in PURPOSE_LABELS.items():
+            self.deployment_purpose.addItem(label, value)
+        who_form.addRow(required_label("Purpose"), self.deployment_purpose)
+        self._explain(self.deployment_purpose, (
+            "<h3>Purpose</h3><p><b>Client's own</b> is the CRM the client runs. "
+            "<b>Demo/test</b> is the one deployment the application's defining client "
+            "runs to show or test the application; only that client may have one.</p>"
+        ))
+        v.addLayout(who_form)
         v.addStretch(1)
         return page
+
+    def _load_clients(self) -> None:
+        """The clients to choose from, and the application's defining client."""
+
+        def fetch() -> tuple[list[dict[str, Any]], str | None]:
+            clients = self._client.list_clients()
+            defining = self._defining_client_hint
+            application = self._client.active_engagement()
+            if defining is None and application:
+                try:
+                    defining = self._client.get_engagement(application).get(
+                        "engagement_defining_client"
+                    )
+                except StorageClientError:
+                    defining = None
+            return clients, defining
+
+        self._in_flight.append(
+            run_in_thread(
+                fetch, on_success=self._clients_loaded, on_error=self._on_error, parent=self
+            )
+        )
+
+    def _clients_loaded(self, result: tuple[list[dict[str, Any]], str | None]) -> None:
+        clients, defining = result
+        self.deployment_client.clear()
+        for c in clients:
+            self.deployment_client.addItem(
+                c.get("client_name") or c.get("client_identifier") or "",
+                c.get("client_identifier"),
+            )
+        if defining:
+            index = self.deployment_client.findData(defining)
+            if index >= 0:
+                self.deployment_client.setCurrentIndex(index)
+        if not clients:
+            self.deployment_client.addItem("No clients recorded yet", None)
 
     def _build_address_page(self) -> QWidget:
         page = QWidget()
@@ -386,12 +468,13 @@ class DeployWizardDialog(QDialog):
         page = QWidget()
         form = QFormLayout(page)
         form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
+        # The deployment's name; the run body still calls it ``instance_name``.
         self.instance_name = QLineEdit()
-        self.instance_name.setObjectName("wizard_instance_name")
+        self.instance_name.setObjectName("wizard_deployment_name")
         self.instance_name.setPlaceholderText("Cleveland Business Mentors CRM")
-        form.addRow(required_label("What should CRMBuilder call this CRM?"), self.instance_name)
-        form.addRow("", _hint("Shown in CRMBuilder's list of instances. It does not appear to the CRM's users."))
-        self._explain(self.instance_name, "<h3>Instance name</h3><p>How this CRM appears in "
+        form.addRow(required_label("What should CRMBuilder call this deployment?"), self.instance_name)
+        form.addRow("", _hint("Shown in CRMBuilder's list of deployments. It does not appear to the CRM's users."))
+        self._explain(self.instance_name, "<h3>Deployment name</h3><p>How this CRM appears in "
                       "CRMBuilder, for example <b>Cleveland Business Mentors CRM</b>.</p>")
         self.size = QComboBox()
         self.size.setObjectName("wizard_size")
@@ -547,6 +630,8 @@ class DeployWizardDialog(QDialog):
         if index == PAGE_START:
             if not self._configured("digitalocean"):
                 return "Set the DigitalOcean credential first (Set credentials…)."
+            if not self.deployment_client.currentData():
+                return "Choose the client this deployment is for."
         elif index == PAGE_ADDRESS:
             if "." not in self.address():
                 return "Enter the CRM's full web address, for example crm.yourdomain.org."
@@ -555,7 +640,7 @@ class DeployWizardDialog(QDialog):
                 return "CRMBuilder cannot create this record in Cloudflare; choose manual DNS."
         elif index == PAGE_SERVER:
             if not self.instance_name.text().strip():
-                return "Give the instance a name."
+                return "Give the deployment a name."
             if not (self.region.currentData() and self.size.currentData() and self.image.currentData()):
                 return "Choose a size and a region (the DigitalOcean catalog must have loaded)."
         elif index == PAGE_ACCOUNTS:
@@ -684,7 +769,7 @@ class DeployWizardDialog(QDialog):
                 self.dns_cloudflare.setChecked(True)
         else:
             if not self._configured("cloudflare"):
-                why = "no Cloudflare credential is set for this engagement."
+                why = "no Cloudflare credential is set for this application."
             elif not info.get("zone"):
                 why = "the address has not been looked up, or no DNS host answers for it."
             elif not info.get("uses_cloudflare"):
@@ -730,6 +815,15 @@ class DeployWizardDialog(QDialog):
                 body["db_root_password"] = self.db_root_password.text()
         return body
 
+    def build_deployment_body(self) -> dict[str, Any]:
+        """The POST /deployments body Deploy sends before queueing the run."""
+        return {
+            "deployment_client": self.deployment_client.currentData(),
+            "deployment_purpose": self.deployment_purpose.currentData(),
+            "deployment_name": self.instance_name.text().strip(),
+            "deployment_hosting_provider": "digitalocean",
+        }
+
     def render_review_html(self) -> str:
         b = self.build_body()
         e = html.escape
@@ -745,6 +839,8 @@ class DeployWizardDialog(QDialog):
         return (
             f"<h2>{e(b['instance_name'])}</h2>"
             "<table cellpadding='4'>"
+            f"<tr><td>Client</td><td>{e(self.deployment_client.currentText())}</td></tr>"
+            f"<tr><td>Purpose</td><td>{e(self.deployment_purpose.currentText())}</td></tr>"
             f"<tr><td>Web address</td><td><b>https://{e(self.address())}</b></td></tr>"
             f"<tr><td>DNS</td><td>{e(dns)}</td></tr>"
             f"<tr><td>Server</td><td>{e(describe_size(size) if size else str(b['size']))}, "
@@ -761,7 +857,7 @@ class DeployWizardDialog(QDialog):
             "the CRM stays installed.</li>"
             "<li>The certificate is added — at once if DNS is ready, otherwise automatically "
             "within 15 minutes of it becoming ready.</li>"
-            "<li>The instance appears in CRMBuilder, with any open items listed on it.</li></ol>"
+            "<li>The deployment appears in CRMBuilder, with any open items listed on it.</li></ol>"
         )
 
     def render_review(self) -> str:
@@ -773,9 +869,16 @@ class DeployWizardDialog(QDialog):
     # -- loading -------------------------------------------------------------
 
     def _load_providers(self) -> None:
+        """The credentials the run will use: the deployment's effective set once
+        it exists (its own, then the application's), else the application's."""
+        deployment = self._deployment_identifier
         self._in_flight.append(
             run_in_thread(
-                self._client.list_provider_credentials,
+                (
+                    (lambda: self._client.list_deployment_provider_credentials(deployment))
+                    if deployment
+                    else self._client.list_provider_credentials
+                ),
                 on_success=self._providers_loaded,
                 on_error=self._on_error,
                 parent=self,
@@ -878,7 +981,9 @@ class DeployWizardDialog(QDialog):
         self.db_root_password.setVisible(not auto)
 
     def _open_credentials(self) -> None:
-        dialog = ProviderCredentialsDialog(self._client, parent=self)
+        dialog = ProviderCredentialsDialog(
+            self._client, parent=self, deployment_identifier=self._deployment_identifier
+        )
         dialog.connection_lost.connect(self.connection_lost)
         try:
             dialog.exec()
@@ -894,8 +999,34 @@ class DeployWizardDialog(QDialog):
     # -- deploy --------------------------------------------------------------
 
     def _deploy(self) -> None:
+        """Create the deployment (once), then queue the run against it (PI-580)."""
+        if not self.deployment_client.currentData():
+            self._notice.setText("Choose the client this deployment is for (step 1).")
+            return
         self._next_btn.setEnabled(False)
+        if self._deployment_identifier:
+            self._queue_run()
+            return
+        deployment_body = self.build_deployment_body()
+        self._in_flight.append(
+            run_in_thread(
+                lambda: self._client.create_deployment(deployment_body),
+                on_success=self._deployment_ready,
+                on_error=self._deploy_failed,
+                parent=self,
+            )
+        )
+
+    def _deployment_ready(self, record: dict[str, Any]) -> None:
+        self._deployment_identifier = record.get("deployment_identifier") or None
+        if self._deployment_identifier:
+            self.deployment_created.emit(self._deployment_identifier)
+        self._queue_run()
+
+    def _queue_run(self) -> None:
         body = self.build_body()
+        if self._deployment_identifier:
+            body["deployment_identifier"] = self._deployment_identifier
         self._in_flight.append(
             run_in_thread(
                 lambda: self._client.create_deploy_run(body),

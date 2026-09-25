@@ -17,7 +17,7 @@ What the operator sees, top to bottom:
 
 Try again resumes the run on the same server. Change web address… tries again
 with a corrected address. Handover sheet opens the page for the client once
-the run has registered the instance.
+the run has recorded the deployment's CRM connection.
 """
 
 from __future__ import annotations
@@ -77,7 +77,7 @@ PHASE_LABELS = {
     "check_dns": "Checking DNS",
     "certificate": "Certificate",
     "verify": "Verifying",
-    "create_instance": "Registering instance",
+    "create_instance": "Registering deployment",
 }
 
 #: Each step as a sentence with its expected time (PI-571 / REQ-652).
@@ -93,7 +93,7 @@ STEP_SENTENCES = {
     "check_dns": "Checking DNS — up to 15 minutes if it is still spreading",
     "certificate": "Securing the site with a certificate — about 2 minutes once DNS is correct",
     "verify": "Final checks — about 1 minute",
-    "create_instance": "Registering the instance in CRMBuilder — a few seconds",
+    "create_instance": "Recording the deployment in CRMBuilder — a few seconds",
 }
 
 STATUS_TEXT = {

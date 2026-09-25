@@ -16,17 +16,18 @@ from crmbuilder_v2.segments.client_management.ui.panels.participant import (
     ParticipantsPanel,
 )
 
-# Label → factory(client, active_context). Engagements takes the active
-# context so the picker and the top strip follow the selection.
+# Label → factory(client, active_context). Applications (the engagement rows
+# read as applications, PI-580 / DEC-1155) takes the active context so the
+# picker and the top strip follow the selection.
 PANELS = {
     "Clients": lambda client, _ctx: ClientsPanel(client),
-    "Engagements": lambda client, ctx: EngagementsPanel(client, active_context=ctx),
+    "Applications": lambda client, ctx: EngagementsPanel(client, active_context=ctx),
     "Participants": lambda client, _ctx: ParticipantsPanel(client),
 }
 
 # Reference ``entity_type`` values → the panel label that opens them.
 ENTITY_TYPE_TO_LABEL = {
     "client": "Clients",
-    "engagement": "Engagements",
+    "engagement": "Applications",
     "participant": "Participants",
 }

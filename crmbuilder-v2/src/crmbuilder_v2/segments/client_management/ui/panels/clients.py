@@ -118,9 +118,19 @@ class ClientsPanel(ListDetailPanel):
 
     def fetch_records(self) -> list[dict[str, Any]]:
         records = self._client.list_clients(include_deleted=self._include_deleted)
+        # PI-580: the applications a client defines and the deployments it
+        # runs, counted per client; an unreachable deployments read shows 0.
+        try:
+            deployments = self._client.list_deployments()
+        except Exception:  # noqa: BLE001 - the list must still render
+            deployments = []
+        runs: dict[str, int] = {}
+        for d in deployments:
+            runs[d.get("deployment_client") or ""] = runs.get(d.get("deployment_client") or "", 0) + 1
         for r in records:
             r["created_at_display"] = format_timestamp(r.get("client_created_at"))
             r["engagement_count"] = len(r.get("engagements") or [])
+            r["deployment_count"] = runs.get(r.get("client_identifier") or "", 0)
         return records
 
     def list_columns(self) -> list[ColumnSpec]:
@@ -128,7 +138,8 @@ class ClientsPanel(ListDetailPanel):
             ColumnSpec(field="client_identifier", title="Identifier", width=110),
             ColumnSpec(field="client_name", title="Name"),
             ColumnSpec(field="client_status", title="Status", width=90),
-            ColumnSpec(field="engagement_count", title="Engagements", width=110),
+            ColumnSpec(field="engagement_count", title="Applications", width=110),
+            ColumnSpec(field="deployment_count", title="Deployments", width=110),
             ColumnSpec(field="created_at_display", title="Created", width=140),
         ]
 
@@ -142,10 +153,15 @@ class ClientsPanel(ListDetailPanel):
     def fetch_detail_extras(self, record: dict[str, Any]) -> dict[str, Any]:
         identifier = record.get("client_identifier")
         if not identifier:
-            return {"engagements": [], "all_engagements": []}
+            return {"engagements": [], "all_engagements": [], "deployments": []}
+        try:
+            deployments = self._client.list_deployments(client=identifier)
+        except Exception:  # noqa: BLE001 - the detail must still render
+            deployments = []
         return {
             "engagements": self._client.list_client_engagements(identifier),
             "all_engagements": self._client.list_engagements(),
+            "deployments": deployments,
         }
 
     def render_detail(self, record: dict[str, Any], extras: dict[str, Any]) -> QWidget:
@@ -214,6 +230,9 @@ class ClientsPanel(ListDetailPanel):
         outer.addWidget(self._build_engagements_section(record, extras))
 
         outer.addWidget(_separator())
+        outer.addWidget(self._build_deployments_section(extras))
+
+        outer.addWidget(_separator())
         outer.addWidget(created_updated_section(record, "client_created_at", "client_updated_at"))
 
         outer.addStretch(1)
@@ -225,7 +244,8 @@ class ClientsPanel(ListDetailPanel):
     def _build_engagements_section(
         self, record: dict[str, Any], extras: dict[str, Any]
     ) -> QWidget:
-        """The engagements this client holds, with add and remove."""
+        """The applications this client defines, with add and remove (the
+        holding is the defining-client link, DEC-1183)."""
         identifier = record.get("client_identifier") or ""
         held: list[dict[str, Any]] = extras.get("engagements") or []
         all_engagements: list[dict[str, Any]] = extras.get("all_engagements") or []
@@ -237,14 +257,14 @@ class ClientsPanel(ListDetailPanel):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        title = QLabel("Engagements")
+        title = QLabel("Applications defined")
         font = QFont(title.font())
         font.setBold(True)
         title.setFont(font)
         layout.addWidget(title)
 
         if not held:
-            empty = QLabel("This client holds no engagements.")
+            empty = QLabel("This client defines no applications.")
             empty.setObjectName("client_engagements_empty")
             layout.addWidget(empty)
         for engagement in held:
@@ -281,7 +301,7 @@ class ClientsPanel(ListDetailPanel):
                 f"{eng_id} — {engagement.get('engagement_name') or '(unnamed)'}", eng_id
             )
         add_layout.addWidget(combo, stretch=1)
-        add_button = QPushButton("Add engagement")
+        add_button = QPushButton("Add application")
         add_button.setObjectName("add_engagement_button")
         add_button.setEnabled(combo.count() > 0 and bool(identifier))
         add_button.clicked.connect(
@@ -289,6 +309,35 @@ class ClientsPanel(ListDetailPanel):
         )
         add_layout.addWidget(add_button)
         layout.addWidget(add_row)
+        return section
+
+    def _build_deployments_section(self, extras: dict[str, Any]) -> QWidget:
+        """The deployments this client runs (PI-580 / REQ-653), each with its
+        application and purpose; read-only here, managed on Deployments."""
+        deployments: list[dict[str, Any]] = extras.get("deployments") or []
+        section = QWidget()
+        section.setObjectName("client_deployments_section")
+        layout = QVBoxLayout(section)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        title = QLabel("Deployments")
+        font = QFont(title.font())
+        font.setBold(True)
+        title.setFont(font)
+        layout.addWidget(title)
+        if not deployments:
+            empty = QLabel("This client runs no deployments.")
+            empty.setObjectName("client_deployments_empty")
+            layout.addWidget(empty)
+        for d in deployments:
+            ident = d.get("deployment_identifier") or ""
+            purpose = "demo/test" if d.get("deployment_purpose") == "demo_test" else "client's own"
+            label = QLabel(
+                f"{ident} — {d.get('deployment_name') or '(unnamed)'} · "
+                f"{d.get('deployment_application') or ''} · {purpose}"
+            )
+            label.setObjectName(f"client_deployment_{ident}")
+            layout.addWidget(label)
         return section
 
     def _on_add_engagement(self, client_identifier: str, engagement_identifier: Any) -> None:
@@ -311,8 +360,8 @@ class ClientsPanel(ListDetailPanel):
             return
         except StorageClientError as exc:
             ErrorDialog(
-                title="Could not assign engagement",
-                message="The engagement could not be assigned to this client.",
+                title="Could not assign application",
+                message="The application could not be assigned to this client.",
                 detail=str(exc),
                 parent=self,
             ).exec()
@@ -334,8 +383,8 @@ class ClientsPanel(ListDetailPanel):
             return
         except StorageClientError as exc:
             ErrorDialog(
-                title="Could not remove engagement",
-                message="The engagement could not be removed from this client.",
+                title="Could not remove application",
+                message="The application could not be removed from this client.",
                 detail=str(exc),
                 parent=self,
             ).exec()

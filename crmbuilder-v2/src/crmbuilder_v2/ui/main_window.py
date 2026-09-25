@@ -976,7 +976,7 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _on_top_strip_clicked(self) -> None:
-        """Open the engagement picker below the top-strip."""
+        """Open the application picker below the top-strip."""
         from crmbuilder_v2.ui.widgets.engagement_picker import EngagementPicker
 
         try:
@@ -1099,5 +1099,5 @@ class MainWindow(QMainWindow):
             self._load_step_counts(current)
 
     def _on_picker_manage_requested(self) -> None:
-        """Picker footer clicked: show the Engagements panel."""
-        self._go_to("Engagements", None)
+        """Picker footer clicked: show the Applications panel."""
+        self._go_to("Applications", None)

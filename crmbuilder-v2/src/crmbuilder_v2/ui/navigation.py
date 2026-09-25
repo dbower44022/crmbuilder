@@ -84,13 +84,14 @@ OPERATE_PANELS: tuple[str, ...] = tuple(
     sorted(
         (
             "Agent Profiles",
+            "Applications",
             "Clients",
             "Close-Out Payloads",
             "Commits",
             "Conversations",
             "Cost",
+            "Deployments",
             "Deposit Events",
-            "Engagements",
             "Governance Rules",
             "Learnings",
             "Projects",
@@ -110,11 +111,11 @@ OPERATE_PANELS: tuple[str, ...] = tuple(
 # phases follow the legacy 13-phase process until their PRD section is
 # drafted. Every label is an existing panel — the design's "Audit" and
 # "Findings" steps map onto the panels that host those actions today
-# (Instances hosts the audit action; Candidate Review hosts findings review).
+# (Deployments hosts the audit action; Candidate Review hosts findings review).
 DEFAULT_PHASE_STEPS: dict[str, tuple[str, ...]] = {
     "1": ("Charter", "Personas", "Domains", "Processes", "References", "Glossary"),
     "1.5": (
-        "Instances",
+        "Deployments",
         "Entities",
         "Fields",
         "Personas",
@@ -137,8 +138,8 @@ DEFAULT_PHASE_STEPS: dict[str, tuple[str, ...]] = {
     "8": ("Requirements Review", "Test Specs", "Topics"),
     "9": ("Reference Books",),
     "10": ("CRM Candidates",),
-    "11": ("Instances", "Deploy History"),
-    "12": ("Instances", "Publish History", "Manual Configs"),
+    "11": ("Deployments", "Deploy History"),
+    "12": ("Deployments", "Publish History", "Manual Configs"),
     "13": ("Reconcile", "Candidate Review", "Test Specs", "Risks"),
     OPERATE_KEY: OPERATE_PANELS,
 }

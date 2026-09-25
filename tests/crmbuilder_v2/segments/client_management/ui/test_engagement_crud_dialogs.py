@@ -244,7 +244,7 @@ def test_delete_dialog_case_b_switch_button(qtbot, engagement_client, capsys):
     assert dialog._confirm_edit is None
     # Switch-engagement button replaces Delete.
     assert dialog._switch_btn is not None
-    assert dialog._switch_btn.text() == "Switch engagement"
+    assert dialog._switch_btn.text() == "Switch application"
     assert dialog._delete_btn.isHidden() is True
     # Body message names the switch-first guidance.
     assert "switch" in dialog._body_label.text().lower()
@@ -269,8 +269,8 @@ def test_delete_dialog_case_b_only_engagement_create_button(
     )
     qtbot.addWidget(dialog)
     assert dialog._create_btn is not None
-    assert dialog._create_btn.text() == "Create engagement"
-    assert "only engagement" in dialog._body_label.text().lower()
+    assert dialog._create_btn.text() == "Create application"
+    assert "only application" in dialog._body_label.text().lower()
 
     # Clicking opens the slice-C EngagementCreateDialog (stubbed here so
     # the test doesn't depend on async event-loop interactions).
@@ -326,3 +326,37 @@ def test_delete_slice_d_create_todo_marker_string_present():
     assert _SLICE_D_TODO_SWITCH.startswith("[TODO slice D]")
 
 
+
+
+# ---------------------------------------------------------------------------
+# PI-580: the New application dialog asks for the defining client and the
+# visibility, and maps the client label back to its identifier
+# ---------------------------------------------------------------------------
+
+
+def test_create_dialog_asks_for_defining_client_and_visibility(qtbot, engagement_client):
+    from PySide6.QtWidgets import QComboBox  # noqa: PLC0415
+
+    engagement_client.create_client({"client_name": "Cleveland Business Mentors"})
+    dialog = EngagementCreateDialog(engagement_client)
+    qtbot.addWidget(dialog)
+    assert dialog.windowTitle() == "New application"
+    client_combo = dialog._widgets["engagement_defining_client"]
+    visibility = dialog._widgets["engagement_visibility"]
+    assert isinstance(client_combo, QComboBox) and isinstance(visibility, QComboBox)
+    assert [client_combo.itemText(i) for i in range(client_combo.count())] == [
+        "CLI-001 — Cleveland Business Mentors"
+    ]
+    assert visibility.currentText() == "private"
+    dialog._widgets["engagement_code"].setText("ALPHA")
+    dialog._widgets["engagement_name"].setText("Alpha")
+    dialog._widgets["engagement_purpose"].setPlainText("test")
+    visibility.setCurrentText("public")
+    body = dialog._build_request_body()
+    assert body["engagement_defining_client"] == "CLI-001"
+    assert body["engagement_visibility"] == "public"
+    dialog._on_save_clicked()
+    qtbot.waitUntil(lambda: dialog.result() == QDialog.DialogCode.Accepted, timeout=5000)
+    created = engagement_client.get_engagement(dialog.created_identifier())
+    assert created["engagement_defining_client"] == "CLI-001"
+    assert created["engagement_visibility"] == "public"

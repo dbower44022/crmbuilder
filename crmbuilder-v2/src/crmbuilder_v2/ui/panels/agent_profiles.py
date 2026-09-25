@@ -287,7 +287,7 @@ class AgentProfilesPanel(RegistryCrudPanel):
         header = QHBoxLayout()
         header.addWidget(field_label("Effective contract (resolved)"))
         header.addStretch(1)
-        header.addWidget(QLabel("Engagement:"))
+        header.addWidget(QLabel("Application:"))
         combo = QComboBox()
         combo.addItem("System defaults only", _SYSTEM_ONLY)
         for eng in extras.get("engagements", []):

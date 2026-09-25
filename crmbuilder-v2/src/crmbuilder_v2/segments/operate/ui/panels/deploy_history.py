@@ -98,13 +98,25 @@ def _kept_line(record: dict[str, Any]) -> str | None:
 
 
 class DeployHistoryPanel(ListDetailPanel):
-    """Browse deploy runs; reopen progress, retry, copy the server id."""
+    """Browse deploy runs; reopen progress, retry, copy the server id.
+
+    ``deployment_identifier`` narrows the list to the runs that built one
+    deployment (PI-580): the Deployments panel's Run history… opens the
+    panel this way.
+    """
+
+    def __init__(self, client, parent=None, *, deployment_identifier: str | None = None):
+        self._deployment_identifier = deployment_identifier or None
+        super().__init__(client, parent)
 
     def entity_title(self) -> str:
         return "Deploy History"
 
     def fetch_records(self) -> list[dict[str, Any]]:
-        return self._client.list_deploy_runs()
+        records = self._client.list_deploy_runs(
+            deployment=self._deployment_identifier
+        )
+        return records
 
     def list_columns(self) -> list[ColumnSpec]:
         return [
@@ -112,7 +124,8 @@ class DeployHistoryPanel(ListDetailPanel):
             ColumnSpec(field="status_display", title="Status", width=150),
             ColumnSpec(field="phase_display", title="Phase", width=150),
             ColumnSpec(field="domain_display", title="Address", width=200),
-            ColumnSpec(field="instance_identifier", title="Instance", width=100),
+            ColumnSpec(field="deployment_identifier", title="Deployment", width=100),
+            ColumnSpec(field="instance_identifier", title="CRM connection", width=110),
             ColumnSpec(field="started_display", title="Started", width=150),
         ]
 
@@ -185,7 +198,8 @@ class DeployHistoryPanel(ListDetailPanel):
         form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapAllRows)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         form.addRow("Status", read_only_line(describe_run(full)))
-        form.addRow("Instance", read_only_line(full.get("instance_identifier") or "—"))
+        form.addRow("Deployment", read_only_line(full.get("deployment_identifier") or "—"))
+        form.addRow("CRM connection", read_only_line(full.get("instance_identifier") or "—"))
         form.addRow("Address", read_only_line(f"https://{spec.get('domain', '')}" if spec.get("domain") else "—"))
         form.addRow("Server", read_only_line(
             f"{spec.get('size', '')} in {spec.get('region', '')} ({spec.get('image', '')})"

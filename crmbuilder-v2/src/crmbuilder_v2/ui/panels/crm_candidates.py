@@ -250,7 +250,7 @@ class CrmCandidatesPanel(ListDetailPanel):
         fit_reason_value = _read_only_text(
             record.get("crm_candidate_fit_reason") or "",
             placeholder=(
-                "What about this CRM made it worth considering for the engagement"
+                "What about this CRM made it worth considering for the application"
             ),
         )
         fit_reason_value.setObjectName("crm_candidate_fit_reason_value")

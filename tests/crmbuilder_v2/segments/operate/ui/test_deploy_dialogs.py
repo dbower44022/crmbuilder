@@ -5,9 +5,10 @@ The wizard is driven page by page against a real in-process API with the
 provider catalogs and the DNS lookup faked; Next explains what is missing
 instead of being disabled; the address is looked up before the DNS choice,
 which offers Cloudflare only when CRMBuilder can edit the zone the internet
-uses; Deploy queues a run and emits its identifier. The progress dialog shows
-every step in words, a message when something needs action, Try again with a
-corrected address, and the handover sheet.
+uses; Deploy creates the deployment record (PI-580) and then queues a run
+against it, emitting both identifiers. The progress dialog shows every step
+in words, a message when something needs action, Try again with a corrected
+address, and the handover sheet.
 """
 
 from __future__ import annotations
@@ -19,7 +20,11 @@ from crmbuilder_v2.access.repositories import deploy_runs
 from crmbuilder_v2.api.main import create_app
 from crmbuilder_v2.api.routers import provider_credentials as pc_router
 from crmbuilder_v2.deploy import dns_check
+from crmbuilder_v2.segments.client_management.repositories import (
+    client as client_repo,
+)
 from crmbuilder_v2.segments.operate.ui.handover import render_handover_html
+from crmbuilder_v2.segments.operate.ui.panels.deployments import DeploymentsPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.dialogs.deploy_progress_dialog import (
     DeployProgressDialog,
@@ -36,7 +41,6 @@ from crmbuilder_v2.ui.dialogs.deploy_wizard_dialog import (
     DeployWizardDialog,
     describe_size,
 )
-from crmbuilder_v2.ui.panels.instances import InstancesPanel
 from fastapi.testclient import TestClient
 from PySide6.QtCore import Qt
 
@@ -106,9 +110,21 @@ def ui_client(v2_env, monkeypatch) -> StorageClient:
             return 300
 
     monkeypatch.setattr(dns_check, "PublicDnsLookup", Lookups)
+    # PI-580: the wizard creates a deployment, so ENG-001 must be an application
+    # defined by a client; CLI-002 may not deploy the private application.
+    with session_scope() as s:
+        client_repo.create_client(s, name="Cleveland Business Mentors")
+        client_repo.create_client(s, name="Rochester Business Mentors")
+        client_repo.set_engagement_clients(
+            s, "ENG-001", clients=["CLI-001"], primary="CLI-001"
+        )
     sc = StorageClient(base_url="http://testserver", client=TestClient(create_app()))
     sc.set_active_engagement("ENG-001")
     return sc
+
+
+def _clients_loaded(qtbot, wizard):
+    qtbot.waitUntil(lambda: wizard.deployment_client.currentData() == "CLI-001", timeout=5000)
 
 
 def _to_address_page(qtbot, wizard):
@@ -146,6 +162,10 @@ def test_wizard_needs_only_digitalocean_then_queues_a_cloudflare_run(qtbot, ui_c
     ui_client.put_provider_credential("cloudflare", "cf")
     wizard._load_providers()
     qtbot.waitUntil(lambda: wizard.region.count() == 2 and bool(wizard._zones), timeout=5000)
+    # The application's defining client is pre-selected (PI-580).
+    _clients_loaded(qtbot, wizard)
+    assert wizard.deployment_client.currentText() == "Cleveland Business Mentors"
+    assert wizard.deployment_purpose.currentData() == "client_own"
     wizard._next_btn.click()
     assert wizard.page == PAGE_ADDRESS
 
@@ -173,6 +193,8 @@ def test_wizard_needs_only_digitalocean_then_queues_a_cloudflare_run(qtbot, ui_c
 
     review = wizard.review.toPlainText()
     assert "https://crm.example.org" in review and "CRMBuilder creates the record in Cloudflare" in review
+    assert "Cleveland Business Mentors" in review and "Client's own" in review
+    assert "instance" not in review.lower()
     body = wizard.build_body()
     assert body["dns_mode"] == "cloudflare"
     assert (body["zone_id"], body["zone_name"], body["subdomain"]) == ("z1", "example.org", "crm")
@@ -180,12 +202,23 @@ def test_wizard_needs_only_digitalocean_then_queues_a_cloudflare_run(qtbot, ui_c
     assert body["letsencrypt_email"] == "admin@example.org"  # defaults to the administrator's
 
     queued: list[str] = []
+    created: list[str] = []
     wizard.run_queued.connect(queued.append)
+    wizard.deployment_created.connect(created.append)
     wizard._next_btn.click()
     qtbot.waitUntil(lambda: bool(queued), timeout=5000)
+    # Deploy created the deployment first, then queued the run against it.
+    assert created == ["DPL-001"]
     run = ui_client.get_deploy_run(queued[0])
     assert run["deploy_run_status"] == "queued"
     assert run["deploy_run_spec"]["domain"] == "crm.example.org"
+    assert run["deployment_identifier"] == "DPL-001"
+    deployment = ui_client.get_deployment("DPL-001")
+    assert deployment["deployment_client"] == "CLI-001"
+    assert deployment["deployment_purpose"] == "client_own"
+    assert deployment["deployment_name"] == "Chapter CRM"
+    assert deployment["deployment_hosting_provider"] == "digitalocean"
+    assert deployment["deployment_instance_identifier"] is None  # the run registers it
 
 
 def test_wizard_offers_only_manual_dns_when_another_host_serves_the_domain(qtbot, ui_client):
@@ -242,6 +275,7 @@ def test_wizard_surfaces_server_rejection_inline(qtbot, ui_client):
     wizard = DeployWizardDialog(ui_client)
     qtbot.addWidget(wizard)
     qtbot.waitUntil(lambda: wizard.region.count() == 2, timeout=5000)
+    _clients_loaded(qtbot, wizard)
     wizard.instance_name.setText("x")
     wizard.full_address.setText("api.crmbuilder.ai")
     wizard.admin_email.setText("a@b.co")
@@ -251,6 +285,34 @@ def test_wizard_surfaces_server_rejection_inline(qtbot, ui_client):
     qtbot.waitUntil(lambda: "Not queued" in wizard._notice.text(), timeout=5000)
     assert "production host" in wizard._notice.text()
     assert wizard.page == PAGE_REVIEW
+    # The deployment was created before the run was refused; a second Deploy
+    # reuses it instead of creating another (PI-580).
+    assert [d["deployment_identifier"] for d in ui_client.list_deployments()] == ["DPL-001"]
+    wizard._notice.setText("")
+    wizard._next_btn.click()
+    qtbot.waitUntil(lambda: "Not queued" in wizard._notice.text(), timeout=5000)
+    assert [d["deployment_identifier"] for d in ui_client.list_deployments()] == ["DPL-001"]
+
+
+def test_wizard_surfaces_a_refused_deployment_inline(qtbot, ui_client):
+    """A 422 from POST /deployments (PI-577: demo/test is only for the defining
+    client) is shown under the page, and no run is queued."""
+    ui_client.put_provider_credential("digitalocean", "do")
+    wizard = DeployWizardDialog(ui_client)
+    qtbot.addWidget(wizard)
+    qtbot.waitUntil(lambda: wizard.region.count() == 2, timeout=5000)
+    _clients_loaded(qtbot, wizard)
+    wizard.deployment_client.setCurrentIndex(wizard.deployment_client.findData("CLI-002"))
+    wizard.deployment_purpose.setCurrentIndex(wizard.deployment_purpose.findData("demo_test"))
+    wizard.instance_name.setText("Demo")
+    wizard.full_address.setText("demo.example.org")
+    wizard.admin_email.setText("a@b.co")
+    wizard.admin_password.setText("longenoughpassword")
+    wizard._show_page(PAGE_REVIEW)
+    wizard._next_btn.click()
+    qtbot.waitUntil(lambda: "Not queued" in wizard._notice.text(), timeout=5000)
+    assert ui_client.list_deployments() == [] and ui_client.list_deploy_runs() == []
+    assert wizard._next_btn.isEnabled()
 
 
 def test_describe_size_in_plain_words():
@@ -393,10 +455,11 @@ def test_describe_run_shows_the_manual_dns_record_while_it_is_being_created():
     assert "Add this DNS record" not in describe_run(later)
 
 
-def test_instances_panel_has_deploy_button(qtbot, ui_client):
-    panel = InstancesPanel(ui_client)
+def test_deployments_panel_has_new_deployment_button(qtbot, ui_client):
+    panel = DeploymentsPanel(ui_client)
     qtbot.addWidget(panel)
-    assert panel.findChild(type(panel._deploy_button), "deploy_new_instance_button") is not None
+    assert panel.findChild(type(panel._new_button), "new_deployment_button") is not None
+    assert panel.findChild(type(panel._new_button), "register_deployment_button") is not None
 
 
 def test_handover_sheet_gives_the_record_the_checks_and_the_troubleshooting():

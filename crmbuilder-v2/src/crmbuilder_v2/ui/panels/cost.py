@@ -96,7 +96,7 @@ class CostPanel(ListDetailPanel):
         outer.setContentsMargins(12, 12, 12, 12)
         outer.setSpacing(10)
 
-        title = "All spend (this engagement)" if scope == _ALL else f"Release {scope}"
+        title = "All spend (this application)" if scope == _ALL else f"Release {scope}"
         outer.addWidget(heading_label(title))
 
         form = QFormLayout()

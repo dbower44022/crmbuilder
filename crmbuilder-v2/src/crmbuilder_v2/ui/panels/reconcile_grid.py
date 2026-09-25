@@ -670,7 +670,7 @@ class ReconcileGridPanel(QWidget):
             self._combo_b.setCurrentIndex(1)
         if not self._instances:
             self._summary.setText(
-                "This engagement has no instances yet. Add a source and a target "
+                "This application has no deployments yet. Add a source and a target "
                 "instance, run an audit, then come back to reconcile."
             )
 

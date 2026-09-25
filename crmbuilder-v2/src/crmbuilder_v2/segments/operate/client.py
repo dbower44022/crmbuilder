@@ -340,10 +340,13 @@ class OperateMethods:
         instance: str | None = None,
         status: str | None = None,
         limit: int | None = None,
+        deployment: str | None = None,
     ) -> list[dict[str, Any]]:
-        """GET /deploy-runs (newest first, log omitted)."""
+        """GET /deploy-runs (newest first, log omitted); ``deployment``
+        narrows to the runs that built one deployment (PI-580)."""
         params = [f"{k}={v}" for k, v in (
-            ("instance", instance), ("status", status), ("limit", limit)
+            ("instance", instance), ("status", status), ("limit", limit),
+            ("deployment", deployment),
         ) if v is not None]
         path = "/deploy-runs" + (f"?{'&'.join(params)}" if params else "")
         result = self._request("GET", path)

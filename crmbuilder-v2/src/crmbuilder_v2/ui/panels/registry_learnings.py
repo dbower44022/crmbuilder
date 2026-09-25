@@ -54,7 +54,7 @@ class LearningsPanel(RegistryCrudPanel):
         super().__init__(client, parent)
         # Cross-engagement promotion + curation are area/lifecycle actions, so
         # they live on the toolbar next to "New Learning" rather than the detail.
-        candidates_btn = primary_button("Cross-engagement candidates…")
+        candidates_btn = primary_button("Cross-application candidates…")
         candidates_btn.setObjectName("cross_engagement_candidates_button")
         candidates_btn.clicked.connect(self._open_candidates)
         self._action_layout.addWidget(candidates_btn)
@@ -121,7 +121,7 @@ class LearningsPanel(RegistryCrudPanel):
         if (record.get("scope") or "system") != "system":
             system_btn = QPushButton("Promote to system")
             system_btn.setToolTip(
-                "Promote this engagement learning to a system default (all engagements inherit it)."
+                "Promote this application's learning to a system default (all applications inherit it)."
             )
             system_btn.clicked.connect(
                 lambda _c=False, r=record: self._promote_to_system(r)

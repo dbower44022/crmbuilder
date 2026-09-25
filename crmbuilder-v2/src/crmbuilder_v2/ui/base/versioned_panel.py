@@ -186,7 +186,7 @@ class VersionedPanel(ListDetailPanel):
         label.setObjectName("engagement_value_label")
         label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         label.setStyleSheet(READ_ONLY_STYLE)
-        layout.addRow("Engagement", label)
+        layout.addRow("Application", label)
         return container
 
     def _post_process_records(

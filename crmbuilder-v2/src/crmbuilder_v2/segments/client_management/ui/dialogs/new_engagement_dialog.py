@@ -52,7 +52,7 @@ class NewEngagementDialog(EngagementCreateDialog):
     ) -> None:
         super().__init__(client, parent)
         self._active_context = active_context
-        self.setWindowTitle("New engagement (create + select)")
+        self.setWindowTitle("New application (create + select)")
 
     def _on_save_success(self, result: Any) -> None:
         # The base dialog records the created identifier and accepts; we

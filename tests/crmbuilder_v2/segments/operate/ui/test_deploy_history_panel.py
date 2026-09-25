@@ -1,4 +1,5 @@
-"""Deploy History panel tests — PI-419 (REQ-522)."""
+"""Deploy History panel tests — PI-419 (REQ-522); the Deployment column and
+the per-deployment filter PI-580 (PRJ-128)."""
 
 from __future__ import annotations
 
@@ -7,6 +8,9 @@ from crmbuilder_v2 import secrets
 from crmbuilder_v2.access.db import session_scope
 from crmbuilder_v2.access.repositories import deploy_runs
 from crmbuilder_v2.api.main import create_app
+from crmbuilder_v2.segments.client_management.repositories import (
+    client as client_repo,
+)
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.panels.deploy_history import DeployHistoryPanel, _kept_line
 from crmbuilder_v2.ui.sidebar import SIDEBAR_GROUPS
@@ -74,3 +78,40 @@ def test_kept_line_only_for_failed_or_cancelled():
     assert _kept_line({"deploy_run_status": "succeeded", "deploy_run_state": {"droplet_id": "1"}}) is None
     assert _kept_line({"deploy_run_status": "failed", "deploy_run_state": {}}) is None
     assert "server 9" in _kept_line({"deploy_run_status": "cancelled", "deploy_run_state": {"droplet_id": "9"}})
+
+
+def test_deployment_column_and_filter(qtbot, ui_client):
+    with session_scope() as s:
+        client_repo.create_client(s, name="Cleveland Business Mentors")
+        client_repo.set_engagement_clients(
+            s, "ENG-001", clients=["CLI-001"], primary="CLI-001"
+        )
+    for name in ("One", "Two"):
+        ui_client.create_deployment({
+            "deployment_client": "CLI-001", "deployment_purpose": "client_own",
+            "deployment_name": name,
+        })
+    with session_scope() as s:
+        deploy_runs.create_deploy_run(
+            s, spec={"domain": "one.example.org"}, deployment_identifier="DPL-001"
+        )
+        deploy_runs.create_deploy_run(
+            s, spec={"domain": "two.example.org"}, deployment_identifier="DPL-002"
+        )
+    panel = DeployHistoryPanel(ui_client)
+    qtbot.addWidget(panel)
+    columns = {c.title: c.field for c in panel.list_columns()}
+    assert columns["Deployment"] == "deployment_identifier"
+    assert "Instance" not in columns and columns["CRM connection"] == "instance_identifier"
+    assert {r["deployment_identifier"] for r in panel.fetch_records()} == {"DPL-001", "DPL-002"}
+
+    narrowed = DeployHistoryPanel(ui_client, deployment_identifier="DPL-002")
+    qtbot.addWidget(narrowed)
+    records = narrowed.fetch_records()
+    assert [r["deployment_identifier"] for r in records] == ["DPL-002"]
+    detail = narrowed.render_detail(
+        narrowed._post_process_records(records)[0], narrowed.fetch_detail_extras(records[0])
+    )
+    qtbot.addWidget(detail)
+    from PySide6.QtWidgets import QLineEdit
+    assert "DPL-002" in [w.text() for w in detail.findChildren(QLineEdit)]

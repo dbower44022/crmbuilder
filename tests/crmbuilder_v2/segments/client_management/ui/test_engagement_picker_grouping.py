@@ -105,7 +105,7 @@ def _engagement(identifier="ENG-002", code="CBM", name="Cleveland Business Mento
     )
 
 
-def test_top_strip_shows_client_then_engagement(qtbot, qapp):
+def test_top_strip_names_the_application_and_its_defining_client(qtbot, qapp):
     context = ActiveEngagementContext()
     context.set_engagement(_engagement())
     strip = EngagementTopStrip(
@@ -114,21 +114,23 @@ def test_top_strip_shows_client_then_engagement(qtbot, qapp):
     )
     qtbot.addWidget(strip)
     text = strip._label.text()
-    assert "Cleveland Business Mentors, then " in text
+    # PI-580: "Name (CODE) · defined by Client".
     assert "Cleveland Business Mentoring" in text and "(CBM)" in text
+    assert "defined by" in text and "Cleveland Business Mentors" in text
+    assert text.index("(CBM)") < text.index("defined by")
 
 
-def test_top_strip_shows_engagement_alone_without_client_or_on_failure(qtbot, qapp):
+def test_top_strip_shows_the_application_alone_without_client_or_on_failure(qtbot, qapp):
     context = ActiveEngagementContext()
     context.set_engagement(_engagement())
     strip = EngagementTopStrip(context, client_name_lookup=lambda _ident: None)
     qtbot.addWidget(strip)
-    assert ", then " not in strip._label.text()
+    assert "defined by" not in strip._label.text()
 
     def _boom(_ident):
         raise RuntimeError("store unreachable")
 
     strip = EngagementTopStrip(context, client_name_lookup=_boom)
     qtbot.addWidget(strip)
-    assert ", then " not in strip._label.text()
+    assert "defined by" not in strip._label.text()
     assert "Cleveland Business Mentoring" in strip._label.text()

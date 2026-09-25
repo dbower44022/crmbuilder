@@ -1,9 +1,10 @@
 """Instances panel / dialog tests — PI-186 (PRJ-027).
 
-Covers the "Instances" sidebar registration (Governance group + entity-type
-label map + build_panel wiring), the master-pane columns, the create/edit
-dialog round-trips through a real API, and the detail pane never exposing a
-secret value — only whether one is configured (REQ-157).
+Covers the master-pane columns, the create/edit dialog round-trips through a
+real API, and the detail pane never exposing a secret value — only whether
+one is configured (REQ-157). Since PI-580 the panel is retained but no longer
+registered: the ``instance`` entity type opens the Deployments panel, which
+``test_deployments_panel.py`` covers; the registry checks here say so.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import pytest
 from crmbuilder_v2 import secrets
 from crmbuilder_v2.access.vocab import ENTITY_TYPES
 from crmbuilder_v2.api.main import create_app
+from crmbuilder_v2.segments.operate.ui.panels.deployments import DeploymentsPanel
 from crmbuilder_v2.ui.client import StorageClient
 from crmbuilder_v2.ui.dialogs.instance_crud import (
     InstanceCreateDialog,
@@ -51,23 +53,28 @@ def _seed(client: StorageClient, name: str, **overrides) -> dict:
     return client.create_instance(body)
 
 
-def test_entity_type_registered():
+def test_entity_type_opens_deployments():
+    # PI-580: a reference to an instance opens the Deployments panel.
     assert "instance" in ENTITY_TYPES
-    assert ENTITY_TYPE_TO_SIDEBAR_LABEL["instance"] == "Instances"
+    assert ENTITY_TYPE_TO_SIDEBAR_LABEL["instance"] == "Deployments"
 
 
-def test_sidebar_has_instances_in_governance():
-    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the legacy
-    # fixed groups are retired. These panels stay registered and reachable
-    # through the All-panels index of every phase tab.
+def test_sidebar_lists_deployments_not_instances():
+    # REQ-526 / PI-432: the sidebar is phase-scoped (DEC-953); the All-panels
+    # index of every phase tab reaches every registered panel. The Instances
+    # panel is retained in code but unregistered (PI-580).
     all_panels = dict(SIDEBAR_GROUPS)["All panels"]
-    assert "Instances" in all_panels
+    assert "Deployments" in all_panels and "Instances" not in all_panels
 
 
-def test_build_panel_returns_instances_panel(qtbot, instance_client):
-    panel = build_panel("Instances", instance_client)
+def test_build_panel_returns_deployments_panel(qtbot, instance_client):
+    panel = build_panel("Deployments", instance_client)
     qtbot.addWidget(panel)
-    assert isinstance(panel, InstancesPanel)
+    assert isinstance(panel, DeploymentsPanel)
+    # The retained class still constructs on its own.
+    legacy = InstancesPanel(instance_client)
+    qtbot.addWidget(legacy)
+    assert legacy.entity_title() == "Instances"
 
 
 def test_master_columns(qtbot, instance_client):

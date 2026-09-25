@@ -123,7 +123,7 @@ def test_picker_footer_present(qtbot, qapp):
     records = [_record("ENG-001", name="A")]
     picker = EngagementPicker(records, active_identifier="ENG-001")
     qtbot.addWidget(picker)
-    assert picker._footer_button.text() == "Manage engagements…"
+    assert picker._footer_button.text() == "Manage applications…"
 
 
 def test_picker_row_click_emits_activation_for_non_active(qtbot, qapp):

@@ -84,7 +84,7 @@ class ClientDeleteDialog(EntityCrudDeleteDialog):
             f"Delete {identifier} — {title or '(unnamed)'}?\n\n"
             "Type the identifier below to confirm. This soft-deletes the client; "
             "it can be restored from the Show-deleted view. A client that still "
-            "holds engagements is refused: unlink them first."
+            "defines applications is refused: unlink them first."
         )
         self._confirm_edit = QLineEdit()
         self._confirm_edit.setObjectName("delete_confirm_edit")

@@ -182,7 +182,11 @@ def _separator() -> QFrame:
 
 
 class EngagementsPanel(ListDetailPanel):
-    """Engagement management panel with read + write surfaces."""
+    """Application management panel with read + write surfaces (PI-580).
+
+    The rows are the engagement records read as applications (DEC-1155,
+    DEC-1183): each names the client that defines it and its visibility.
+    """
 
     def __init__(
         self,
@@ -200,7 +204,7 @@ class EngagementsPanel(ListDetailPanel):
         self._show_deleted_check.toggled.connect(self._on_show_deleted_toggled)
         self._action_layout.addWidget(self._show_deleted_check)
 
-        self._new_button = primary_button("New Engagement")
+        self._new_button = primary_button("New Application")
         self._new_button.setObjectName("new_engagement_button")
         self._new_button.clicked.connect(self._on_new_engagement_clicked)
         self._action_layout.addWidget(self._new_button)
@@ -224,7 +228,7 @@ class EngagementsPanel(ListDetailPanel):
     # ------------------------------------------------------------------
 
     def entity_title(self) -> str:
-        return "Engagements"
+        return "Applications"
 
     def fetch_records(self) -> list[dict[str, Any]]:
         return self._client.list_engagements(
@@ -238,6 +242,12 @@ class EngagementsPanel(ListDetailPanel):
             ),
             ColumnSpec(field="engagement_code", title="Code", width=100),
             ColumnSpec(field="engagement_name", title="Name"),
+            ColumnSpec(
+                field="_display_defining_client", title="Defined by", width=180
+            ),
+            ColumnSpec(
+                field="engagement_visibility", title="Visibility", width=90
+            ),
             ColumnSpec(
                 field="engagement_status", title="Status", width=90
             ),
@@ -284,6 +294,11 @@ class EngagementsPanel(ListDetailPanel):
                     **r,
                     "_display_identifier": display_id,
                     "_display_last_opened": display_last_opened,
+                    "_display_defining_client": (
+                        r.get("engagement_defining_client_name")
+                        or r.get("engagement_defining_client")
+                        or ""
+                    ),
                     "_is_active_engagement": is_active,
                     "_last_opened_dt": last_opened,
                     # PI-108: formatted Created column for the master pane.
@@ -394,10 +409,22 @@ class EngagementsPanel(ListDetailPanel):
 
         purpose_value = _read_only_text(
             record.get("engagement_purpose") or "",
-            placeholder="What this engagement covers",
+            placeholder="What this application covers",
         )
         purpose_value.setObjectName("engagement_purpose_value")
         form.addRow(required_label("Purpose"), purpose_value)
+
+        defining_value = _read_only_line(
+            record.get("engagement_defining_client_name")
+            or record.get("engagement_defining_client")
+            or "(no defining client)"
+        )
+        defining_value.setObjectName("engagement_defining_client_value")
+        form.addRow(required_label("Defined by"), defining_value)
+
+        visibility_value = _read_only_line(record.get("engagement_visibility") or "private")
+        visibility_value.setObjectName("engagement_visibility_value")
+        form.addRow(required_label("Visibility"), visibility_value)
 
         status_value = _read_only_line(record.get("engagement_status") or "")
         status_value.setObjectName("engagement_status_value")
@@ -525,19 +552,19 @@ class EngagementsPanel(ListDetailPanel):
         layout.setContentsMargins(24, 32, 24, 32)
         layout.setSpacing(8)
         layout.addStretch(1)
-        heading = QLabel("No engagements yet")
+        heading = QLabel("No applications yet")
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
         heading_font = QFont(heading.font())
         heading_font.setBold(True)
         heading_font.setPointSize(heading_font.pointSize() + 2)
         heading.setFont(heading_font)
         layout.addWidget(heading)
-        body = QLabel("Create your first engagement to begin")
+        body = QLabel("Create your first application to begin")
         body.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(body)
         button_row = QHBoxLayout()
         button_row.addStretch(1)
-        create_btn = primary_button("Create Engagement")
+        create_btn = primary_button("Create Application")
         create_btn.setObjectName("empty_state_create_engagement_button")
         create_btn.clicked.connect(self._on_new_engagement_clicked)
         button_row.addWidget(create_btn)
@@ -589,8 +616,8 @@ class EngagementsPanel(ListDetailPanel):
         except StorageClientError as exc:
             _log.warning("Engagement error loading %s for edit: %s", identifier, exc)
             ErrorDialog(
-                title="Could not load engagement",
-                message="Could not load the latest version of this engagement.",
+                title="Could not load application",
+                message="Could not load the latest version of this application.",
                 detail=str(exc),
                 parent=self,
             ).exec()

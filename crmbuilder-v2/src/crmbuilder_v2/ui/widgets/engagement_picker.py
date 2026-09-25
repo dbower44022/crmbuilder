@@ -46,7 +46,7 @@ _HEADING_COLOR = "#555555"
 
 
 class EngagementPicker(QWidget):
-    """Popup dropdown listing engagements + a Manage footer."""
+    """Popup dropdown listing applications + a Manage footer."""
 
     activation_requested = Signal(str)
     manage_requested = Signal()
@@ -90,7 +90,7 @@ class EngagementPicker(QWidget):
         # Footer divider + Manage engagements row.
         if live or non_live:
             layout.addWidget(_hairline())
-        footer = QPushButton("Manage engagements…")
+        footer = QPushButton("Manage applications…")
         footer.setObjectName("manage_engagements_button")
         footer.setFlat(True)
         footer.setCursor(Qt.CursorShape.PointingHandCursor)

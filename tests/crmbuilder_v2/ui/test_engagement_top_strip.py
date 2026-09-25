@@ -44,7 +44,7 @@ def test_top_strip_renders_placeholder_when_no_engagement(qtbot, qapp):
     ctx = ActiveEngagementContext()
     strip = EngagementTopStrip(ctx)
     qtbot.addWidget(strip)
-    assert "No engagement selected" in strip._label.text()
+    assert "No application selected" in strip._label.text()
 
 
 def test_top_strip_re_renders_on_active_engagement_changed(qtbot, qapp):
@@ -52,7 +52,7 @@ def test_top_strip_re_renders_on_active_engagement_changed(qtbot, qapp):
     strip = EngagementTopStrip(ctx)
     qtbot.addWidget(strip)
     initial = strip._label.text()
-    assert "No engagement selected" in initial
+    assert "No application selected" in initial
     ctx.set_engagement(_eng(identifier="ENG-002", code="BRAVO", name="Bravo"))
     assert "Bravo" in strip._label.text()
     assert "BRAVO" in strip._label.text()
