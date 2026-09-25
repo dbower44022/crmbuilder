@@ -111,6 +111,31 @@ ACCEPTED_TYPE_DIFFERENCES: frozenset[tuple[str, str, str, str]] = frozenset(
     }
 )
 
+# DEC-1189 (Doug's ruling on the rehearsal, 2026-09-25): the nine copied
+# associations with no match by name in Cleveland's design, accepted as
+# candidate corrections. (source entity name, target entity name, name)
+ACCEPTED_UNMATCHED_ASSOCIATIONS: frozenset[tuple[str, str, str]] = frozenset(
+    {
+        ("Account", "Engagement", "engagements"),
+        ("Account", "SponsorProfile", "sponsorProfiles"),
+        ("Case", "User", "collaborators"),
+        ("Contact", "SponsorProfile", "sponsorProfiles"),
+        ("Contact", "User", "assignedUsers"),
+        ("Conversation", "PartnerProfile", "partnerProfiles"),
+        ("Conversation", "SponsorProfile", "sponsorProfiles"),
+        ("Conversation", "User", "assignedUsers"),
+        ("MentorProfile", "User", "assignedUsers"),
+    }
+)
+
+# DEC-1189 also accepted the attribute differences on matched records
+# (entity attributes, read-only flags, option sets, role scopes, layout
+# contents) as candidate corrections; naming the ruling here lets the Alembic
+# revision apply the run in the ordinary rollout. ``None`` would restore
+# DEC-1181's strict reading, where only the command line with ``--ruling``
+# applies.
+ATTRIBUTE_DIFFERENCES_ACCEPTED_BY: str | None = "DEC-1189"
+
 _SOURCE = "ENG-006"  # the copy
 _TARGET = "ENG-002"  # Cleveland's live design and the application everything joins
 
@@ -446,7 +471,9 @@ def compare_rochester(
             e=target,
         )
     }
-    a_missing = sorted(k for k in s_assoc if k not in t_assoc)
+    a_all_missing = sorted(k for k in s_assoc if k not in t_assoc)
+    a_accepted = [k for k in a_all_missing if k in ACCEPTED_UNMATCHED_ASSOCIATIONS]
+    a_missing = [k for k in a_all_missing if k not in ACCEPTED_UNMATCHED_ASSOCIATIONS]
     a_diffs = [
         (k, a, s_assoc[k].get(a), t_assoc[k].get(a))
         for k in s_assoc
@@ -456,8 +483,9 @@ def compare_rochester(
     ]
     report["associations"] = {
         "total": len(s_assoc),
-        "matched": len(s_assoc) - len(a_missing),
+        "matched": len(s_assoc) - len(a_all_missing),
         "unmatched": a_missing,
+        "unmatched_accepted": a_accepted,
         "attribute_differences": a_diffs,
     }
     if a_missing:
@@ -1155,6 +1183,9 @@ def run(
             "the Rochester copy does not structurally match Cleveland's design; "
             "nothing moved. Stops: " + " | ".join(report["stops"])
         )
+    if ATTRIBUTE_DIFFERENCES_ACCEPTED_BY and not accept_attribute_differences:
+        accept_attribute_differences = True
+        log(f"attribute differences accepted under {ATTRIBUTE_DIFFERENCES_ACCEPTED_BY}")
     if not report["passes"] and not accept_attribute_differences and not force_dry_run:
         raise MigrationStop(
             "the Rochester copy matches Cleveland's design record for record but "

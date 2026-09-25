@@ -274,3 +274,38 @@ def test_a_role_on_a_moving_engagement_stops_the_run(v2_env):
         with pytest.raises(mig.MigrationStop) as excinfo:
             mig.run(conn, log=lambda m: None)
     assert "role assignments exist" in str(excinfo.value)
+
+
+def test_attribute_differences_are_accepted_under_the_ruling_and_reported(v2_env):
+    """DEC-1189: a matched field that differs in an attribute no longer stops
+    the run; the difference is in the report as a candidate correction."""
+    _seed_production_like(v2_env)
+    with get_engine().begin() as conn:
+        conn.execute(text("UPDATE fields SET field_read_only = 1 WHERE engagement_id = 'ENG-006' AND field_name = 'name'"))
+    lines: list[str] = []
+    with get_engine().begin() as conn:
+        report = mig.compare_rochester(conn)
+        assert report["structurally_matches"] and not report["passes"]
+        assert report["fields"]["attribute_differences"]
+        result = mig.run(conn, log=lines.append)
+    assert result["applied"] is True
+    assert any("accepted under DEC-1189" in line for line in lines)
+
+
+def test_an_unlisted_unmatched_association_still_stops(v2_env):
+    """DEC-1189 named nine associations; any other copied association with no
+    match in Cleveland's design is a structural stop."""
+    _seed_production_like(v2_env)
+    from crmbuilder_v2.access.repositories import association as association_repo
+
+    with session_scope() as s, active_engagement("ENG-006"):
+        a = _entity_id(s, "ENG-006", "Account")
+        c = _entity_id(s, "ENG-006", "Contact")
+        association_repo.create_association(
+            s, name="mystery", source_entity=a, target_entity=c, cardinality="one_to_many", description="d"
+        )
+    with get_engine().begin() as conn:
+        with pytest.raises(mig.MigrationStop) as excinfo:
+            mig.run(conn, log=lambda m: None)
+    assert "mystery" in str(excinfo.value)
+    assert _q("SELECT COUNT(*) AS n FROM deployments")[0]["n"] == 0
