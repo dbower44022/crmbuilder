@@ -125,7 +125,7 @@ async def test_open_without_answer_and_miss(mcp_env):
     server, http = mcp_env
     await _seed(http)
     empty = await _call(server, "open_session", {})
-    assert empty["kind_of_work"] is None and empty["first_line"] == so.NO_KIND_OF_WORK_LINE
+    assert empty["kind_of_work"] is None and empty["first_line"].startswith(so.NO_KIND_OF_WORK_LINE)
     miss = await _call(server, "open_session", {"opening_answer": "send birthday cards"})
     assert miss["follow_up_question"] == so.FOLLOW_UP_QUESTION
     assert miss["planning_item"]["title"].startswith("Catalogue miss:")

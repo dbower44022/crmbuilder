@@ -183,12 +183,61 @@ def test_same_answer_classifies_the_same_way(client, seeded):
     assert a["session"]["session_identifier"] != b["session"]["session_identifier"]
 
 
-def test_open_without_project_uses_latest_in_flight(client, seeded):
-    d = client.post("/sessions/open", json={"opening_answer": "upgrade the platform"}).json()["data"]
-    edges = client.get(f"/references?source_id={d['session']['session_identifier']}").json()["data"]
-    assert edges[0]["target_id"] == seeded["project"]
-    assert d["kind_of_work"] == seeded["upgrade"]
-    assert d["contract"]["enforced_ruleset"][0]["identifier"] == seeded["release_rule"]
+def test_open_without_project_files_under_the_named_work(client, seeded):
+    """PI-582 / REQ-568: the project comes from the record the answer names,
+    never from the newest project in flight."""
+    other = _post(client, "/projects", {"project_name": "Newer but unrelated", "project_purpose": "p",
+                                        "project_description": "d", "project_status": "in_flight"})["project_identifier"]
+    from crmbuilder_v2.access.db import session_scope
+
+    from tests.crmbuilder_v2._records import ensure
+
+    with session_scope() as s:
+        ensure(s, "planning_item", "PI-900")
+        ensure(s, "requirement", "REQ-900")
+        ensure(s, "decision", "DEC-900")
+    _post(client, "/references", {"source_type": "planning_item", "source_id": "PI-900", "target_type": "project",
+                                  "target_id": seeded["project"], "relationship": "planning_item_belongs_to_project"})
+    _post(client, "/references", {"source_type": "planning_item", "source_id": "PI-900", "target_type": "requirement",
+                                  "target_id": "REQ-900", "relationship": "planning_item_implements_requirement"})
+    _post(client, "/references", {"source_type": "planning_item", "source_id": "PI-900", "target_type": "decision",
+                                  "target_id": "DEC-900", "relationship": "references"})
+
+    def project_of(answer):
+        d = client.post("/sessions/open", json={"opening_answer": answer}).json()["data"]
+        edges = client.get(f"/references?source_id={d['session']['session_identifier']}").json()["data"]
+        return [e["target_id"] for e in edges if e["relationship"] == "session_belongs_to_project"], d
+
+    # A planning item, a requirement and a decision each resolve to the item's project.
+    for answer in ("upgrade the platform per PI-900", "upgrade the platform for REQ-900", "upgrade the platform under DEC-900"):
+        projects, d = project_of(answer)
+        assert projects == [seeded["project"]], answer
+        assert d["project"] == seeded["project"]
+        assert "Filed under" in d["first_line"] and other not in d["first_line"]
+    # A project named directly wins.
+    projects, d = project_of(f"upgrade the platform in {other}")
+    assert projects == [other]
+    # An explicit project still wins over the answer.
+    d = client.post("/sessions/open", json={"opening_answer": "upgrade the platform per PI-900",
+                                            "project_identifier": other}).json()["data"]
+    assert d["project"] == other and d["project_note"] is None
+
+
+def test_open_naming_nothing_files_under_the_holding_project_and_says_so(client, seeded):
+    """PI-582: nothing named means the visibly unfiled project, created once."""
+    _post(client, "/projects", {"project_name": "Newer but unrelated", "project_purpose": "p",
+                                "project_description": "d", "project_status": "in_flight"})
+    first = client.post("/sessions/open", json={"opening_answer": "upgrade the platform"}).json()["data"]
+    second = client.post("/sessions/open", json={"opening_answer": "upgrade the platform again"}).json()["data"]
+    holding = first["project"]
+    assert second["project"] == holding
+    assert holding != seeded["project"]
+    row = client.get(f"/projects/{holding}").json()["data"]
+    assert row["project_name"] == "Unfiled sessions" and row["project_status"] == "in_flight"
+    assert "Unfiled sessions" in first["first_line"] and "close-out" in first["first_line"]
+    assert first["kind_of_work"] == seeded["upgrade"]
+    names = [p["project_name"] for p in client.get("/projects").json()["data"]]
+    assert names.count("Unfiled sessions") == 1
 
 
 # --- REQ-571: no answer ---------------------------------------------------------
@@ -199,7 +248,8 @@ def test_open_without_answer_loads_cross_cutting_only_and_says_so(client, seeded
     assert r.status_code == 201, r.text
     d = r.json()["data"]
     assert d["kind_of_work"] is None
-    assert d["first_line"] == so.NO_KIND_OF_WORK_LINE
+    assert d["first_line"].startswith(so.NO_KIND_OF_WORK_LINE)
+    assert "Unfiled sessions" in d["first_line"]  # PI-582: nothing named, filed visibly
     assert d["follow_up_question"] is None
     assert d["planning_item"] is None
     assert _rule_ids(d["contract"]) == set(seeded["cross_rules"])
@@ -296,7 +346,8 @@ def test_open_with_no_cross_cutting_profile_still_opens(client):
                                 "project_status": "in_flight"})
     d = client.post("/sessions/open", json={"opening_answer": ""}).json()["data"]
     assert d["contract"]["missing_cross_cutting_profile"] is True
-    assert d["first_line"] == so.NO_KIND_OF_WORK_LINE
+    assert d["first_line"].startswith(so.NO_KIND_OF_WORK_LINE)
+    assert "Unfiled sessions" in d["first_line"]  # PI-582: nothing named, filed visibly
 
 
 # --- classification unit checks (DEC-1061) ------------------------------------------

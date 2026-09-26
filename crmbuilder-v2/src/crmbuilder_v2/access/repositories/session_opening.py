@@ -38,6 +38,7 @@ from crmbuilder_v2.access.exceptions import (
     NotFoundError,
     UnprocessableError,
 )
+from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.access.repositories import (
     agent_profiles,
     planning_items,
@@ -86,7 +87,7 @@ NO_KIND_OF_WORK_LINE = (
 FIRST_REPLY_INSTRUCTION = (
     "Begin your first reply to the user with this confirmation line, word for "
     "word, on its own line, so they can correct the kind of work if it is "
-    "wrong: \"{line}\""
+    'wrong: "{line}"'
 )
 
 
@@ -97,7 +98,9 @@ def first_reply_instruction(confirmation_line: str | None) -> str | None:
     return FIRST_REPLY_INSTRUCTION.format(line=confirmation_line)
 
 
-def _with_first_reply_instruction(contract: dict, confirmation_line: str | None) -> dict:
+def _with_first_reply_instruction(
+    contract: dict, confirmation_line: str | None
+) -> dict:
     """Return the contract carrying the restatement instruction (REQ-595).
 
     The instruction is placed both as its own key, for a surface that reads the
@@ -112,6 +115,8 @@ def _with_first_reply_instruction(contract: dict, confirmation_line: str | None)
     prompt = out.get("system_prompt") or ""
     out["system_prompt"] = f"{instruction}\n\n{prompt}" if prompt else instruction
     return out
+
+
 #: Catalogue entries offered as examples with the opening question (three or
 #: four, plan Part 4), by entry name; the first four that exist are used.
 EXAMPLE_NAMES = (
@@ -167,7 +172,9 @@ def parse_catalogue_entry(record: dict) -> dict | None:
         "domain": record["process_domain_identifier"],
         "catalogue_version": block.get("catalogue_version"),
         "segments": [
-            {k: seg.get(k) for k in _SEGMENT_KEYS} for seg in segments if isinstance(seg, dict)
+            {k: seg.get(k) for k in _SEGMENT_KEYS}
+            for seg in segments
+            if isinstance(seg, dict)
         ],
         "trigger_phrases": phrases,
     }
@@ -206,9 +213,13 @@ def validate_segments(session: DbSession, segments: list[dict]) -> list[str]:
             except NotFoundError:
                 rec = None
             if rec is None or rec.get("status") != "active":
-                problems.append(f"segment {i}: profile {profile!r} is not an active agent profile")
+                problems.append(
+                    f"segment {i}: profile {profile!r} is not an active agent profile"
+                )
         elif not seg.get("area"):
-            problems.append(f"segment {i}: a pending segment names the planned profile area")
+            problems.append(
+                f"segment {i}: a pending segment names the planned profile area"
+            )
     return problems
 
 
@@ -330,16 +341,25 @@ def merge_contracts(segment_contract: dict | None, cross: dict) -> dict:
     merged["segment_profile_id"] = segment_contract.get("profile_id")
     merged["cross_cutting_profile_id"] = cross.get("profile_id")
     for key in ("advisory_rules", "enforced_ruleset", "tools", "active_learnings"):
-        merged[key] = _merge_unique(segment_contract.get(key) or [], cross.get(key) or [])
+        merged[key] = _merge_unique(
+            segment_contract.get(key) or [], cross.get(key) or []
+        )
     parts = [segment_contract.get("system_prompt") or ""]
     if cross.get("system_prompt"):
-        parts.append("CROSS-CUTTING RULES — these apply in every phase segment.\n\n" + cross["system_prompt"])
+        parts.append(
+            "CROSS-CUTTING RULES — these apply in every phase segment.\n\n"
+            + cross["system_prompt"]
+        )
     merged["system_prompt"] = "\n\n".join(p for p in parts if p)
-    merged["version_stamp"] = f"{segment_contract.get('version_stamp', '')}+{cross.get('version_stamp', '')}"
+    merged["version_stamp"] = (
+        f"{segment_contract.get('version_stamp', '')}+{cross.get('version_stamp', '')}"
+    )
     return merged
 
 
-def _segment_contract(session: DbSession, segment: dict, engagement_id: str | None) -> tuple[dict | None, str | None]:
+def _segment_contract(
+    session: DbSession, segment: dict, engagement_id: str | None
+) -> tuple[dict | None, str | None]:
     """``(contract, note)`` for entering a segment: the profile's contract when
     the segment is active, else ``None`` and a line saying the profile is pending."""
     if segment.get("status") == "active" and segment.get("profile"):
@@ -365,7 +385,11 @@ def preview(answer: str, entries: list[dict]) -> dict:
     follow-up question. Lets a surface show the line before it creates the
     session (REQ-576) while the server still does every classification."""
     answer = " ".join((answer or "").split())
-    result = classify(answer, entries) if answer else {"entry": None, "confidence": 0.0, "ranked": []}
+    result = (
+        classify(answer, entries)
+        if answer
+        else {"entry": None, "confidence": 0.0, "ranked": []}
+    )
     entry = result["entry"]
     if entry is not None:
         line = confirmation_line_for(entry)
@@ -385,13 +409,17 @@ def preview(answer: str, entries: list[dict]) -> dict:
         "kind_of_work_name": None,
         "confidence": result["confidence"],
         "confirmation_line": None,
-        "first_line": NO_KIND_OF_WORK_LINE if not answer else f"{NO_KIND_OF_WORK_LINE} {FOLLOW_UP_QUESTION}",
+        "first_line": NO_KIND_OF_WORK_LINE
+        if not answer
+        else f"{NO_KIND_OF_WORK_LINE} {FOLLOW_UP_QUESTION}",
         "follow_up_question": FOLLOW_UP_QUESTION if answer else None,
         "segments": [],
     }
 
 
-def opening(session: DbSession, engagement_id: str | None, *, answer: str | None = None) -> dict:
+def opening(
+    session: DbSession, engagement_id: str | None, *, answer: str | None = None
+) -> dict:
     """The opening question, its examples, the catalogue and the cross-cutting
     contract — everything a surface needs before the user answers. With
     ``answer`` the result also carries ``preview``: what the operation would
@@ -425,23 +453,98 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
-def _default_project(session: DbSession) -> str:
-    """The project that holds a session opened without a named project: the
-    latest project in flight, else the latest planned one."""
-    for status in ("in_flight", "planned"):
-        rows = projects.list_projects(session, status=status)
-        if rows:
-            return rows[-1]["project_identifier"]
-    raise UnprocessableError(
-        [
-            FieldError(
-                "project_identifier",
-                "no_project",
-                "no project in flight or planned to hold the session; pass "
-                "project_identifier",
-            )
-        ]
+HOLDING_PROJECT_NAME = "Unfiled sessions"
+_NAMED_RECORD_RE = re.compile(r"\b(PRJ|PI|REQ|DEC)-(\d{3,})\b")
+
+
+def _project_of_planning_item(session: DbSession, identifier: str) -> str | None:
+    edges = gov.outbound_edges(
+        session,
+        source_type="planning_item",
+        source_id=identifier,
+        relationship="planning_item_belongs_to_project",
+        target_type="project",
     )
+    return edges[0].target_id if edges else None
+
+
+def project_from_answer(
+    session: DbSession, answer: str
+) -> tuple[str | None, str | None]:
+    """The project the opening answer names, and the record it named it
+    through (PI-582 / REQ-568): a project by its own identifier; a planning
+    item through the project it belongs to; a requirement through an
+    implementing planning item's project; a decision through the project
+    it affects, else through a planning item that references it. The first
+    identifier in the answer that resolves wins. ``(None, None)`` when the
+    answer names nothing that resolves."""
+    for match in _NAMED_RECORD_RE.finditer(answer or ""):
+        prefix, ident = match.group(1), match.group(0)
+        if prefix == "PRJ":
+            if projects.get_project(session, ident) is not None:
+                return ident, ident
+        elif prefix == "PI":
+            project = _project_of_planning_item(session, ident)
+            if project:
+                return project, ident
+        elif prefix == "REQ":
+            for edge in gov.inbound_edges(
+                session,
+                target_type="requirement",
+                target_id=ident,
+                relationship="planning_item_implements_requirement",
+                source_type="planning_item",
+            ):
+                project = _project_of_planning_item(session, edge.source_id)
+                if project:
+                    return project, ident
+        elif prefix == "DEC":
+            affects = gov.outbound_edges(
+                session,
+                source_type="decision",
+                source_id=ident,
+                relationship="affects",
+                target_type="project",
+            )
+            if affects:
+                return affects[0].target_id, ident
+            for edge in gov.inbound_edges(
+                session,
+                target_type="decision",
+                target_id=ident,
+                relationship="references",
+                source_type="planning_item",
+            ):
+                project = _project_of_planning_item(session, edge.source_id)
+                if project:
+                    return project, ident
+    return None, None
+
+
+def _holding_project(session: DbSession) -> str:
+    """The one project that holds sessions whose opening answer named no
+    project (PI-582): found by name, created in flight the first time. Its
+    name says what it is, so a session filed there is visibly unfiled, and
+    the close-out moves it to the project the work turned out to belong to."""
+    for row in projects.list_projects(session):
+        if (
+            str(row.get("project_name") or "").strip().lower()
+            == HOLDING_PROJECT_NAME.lower()
+        ):
+            return row["project_identifier"]
+    created = projects.create_project(
+        session,
+        name=HOLDING_PROJECT_NAME,
+        purpose="Hold sessions opened without a named project until their close-out files them.",
+        description=(
+            "Created by the session-open operation (PI-582 / REQ-568). A session lands "
+            "here only when its opening answer names no project, planning item, "
+            "requirement or decision that resolves to a project; the confirmation line "
+            "says so, and the session is re-filed at close-out. Nothing else belongs here."
+        ),
+        status="in_flight",
+    )
+    return created["project_identifier"]
 
 
 def _lower_first(text: str) -> str:
@@ -470,15 +573,15 @@ def confirmation_line_for(entry: dict) -> str:
 def _executive_summary(answer: str, entry: dict | None, line: str) -> str:
     if entry is not None:
         text = (
-            f"A session opened with the answer \"{answer}\", classified as the kind of "
-            f"work \"{entry['name']}\". {line} The session record carries the answer "
+            f'A session opened with the answer "{answer}", classified as the kind of '
+            f'work "{entry["name"]}". {line} The session record carries the answer '
             "as given, the kind of work, the confirmation line and the phase "
             "segments run, each with the profile it loaded and the moments it was "
             "entered and left, so the work done here can be read back later."
         )
     elif answer:
         text = (
-            f"A session opened with the answer \"{answer}\", which matched no kind of "
+            f'A session opened with the answer "{answer}", which matched no kind of '
             "work in the catalogue with confidence. Only the cross-cutting rules were "
             "loaded and the miss was recorded as a planning item so the catalogue "
             "grows from real use. The session record carries the answer as given "
@@ -504,13 +607,13 @@ def _record_miss(session: DbSession, answer: str, session_identifier: str) -> di
         item_type="pending_work",
         status="Draft",
         description=(
-            f"The opening answer \"{answer}\" given in session {session_identifier} "
+            f'The opening answer "{answer}" given in session {session_identifier} '
             "matched no kind of work in the catalogue with confidence. Decide whether "
             "an existing catalogue entry needs a new trigger phrase or a new kind of "
             "work is needed, then update the process record."
         ),
         executive_summary=(
-            f"A session opened with the answer \"{short}\" and the catalogue of kinds "
+            f'A session opened with the answer "{short}" and the catalogue of kinds '
             "of work did not recognise it. This item asks for the catalogue to grow: "
             "either an existing entry gains the phrase that would have matched, or a "
             "new kind of work is written as a process record with its phase segments "
@@ -547,7 +650,11 @@ def open_session(
     """
     answer = " ".join((opening_answer or "").split())
     entries = list_catalogue(session)
-    result = classify(answer, entries) if answer else {"entry": None, "confidence": 0.0, "ranked": []}
+    result = (
+        classify(answer, entries)
+        if answer
+        else {"entry": None, "confidence": 0.0, "ranked": []}
+    )
     entry = result["entry"]
     cross = cross_cutting_contract(session, engagement_id)
 
@@ -560,17 +667,37 @@ def open_session(
         confirmation = confirmation_line_for(entry)
         if segments:
             segments[0]["entered_at"] = _now()
-            segment_contract, note = _segment_contract(session, segments[0], engagement_id)
+            segment_contract, note = _segment_contract(
+                session, segments[0], engagement_id
+            )
         first_line = confirmation if note is None else f"{confirmation} {note}"
         follow_up = None
     else:
         confirmation = None
         follow_up = FOLLOW_UP_QUESTION if answer else None
-        first_line = NO_KIND_OF_WORK_LINE if not answer else (
-            f"{NO_KIND_OF_WORK_LINE} {FOLLOW_UP_QUESTION}"
+        first_line = (
+            NO_KIND_OF_WORK_LINE
+            if not answer
+            else (f"{NO_KIND_OF_WORK_LINE} {FOLLOW_UP_QUESTION}")
         )
 
-    project = project_identifier or _default_project(session)
+    # PI-582 (REQ-568): the project comes from the work the answer names,
+    # never from whichever project happens to be newest.
+    project_note: str | None = None
+    if project_identifier:
+        project = project_identifier
+    else:
+        project, named = project_from_answer(session, answer)
+        if project:
+            project_note = f"Filed under {project}, the project of {named}."
+        else:
+            project = _holding_project(session)
+            project_note = (
+                f"No project was named, so the session is filed under "
+                f"{HOLDING_PROJECT_NAME} ({project}); name its project at close-out."
+            )
+    if project_note:
+        first_line = f"{first_line} {project_note}"
     identifier = sessions.next_session_identifier(session)
     # The identifier keeps the title unique when several sessions open at once.
     session_title = title or (
@@ -587,17 +714,20 @@ def open_session(
         session,
         identifier=identifier,
         title=session_title,
-        description=description or (
+        description=description
+        or (
             f"Opened through the session-open operation with the opening answer "
-            f"\"{answer}\"." if answer else
-            "Opened through the session-open operation without an opening answer."
+            f'"{answer}".'
+            if answer
+            else "Opened through the session-open operation without an opening answer."
         ),
         medium=medium,
         status="in_flight",
         notes=notes,
         participants=participants,
         medium_metadata=metadata,
-        executive_summary=executive_summary or _executive_summary(answer, entry, confirmation or first_line),
+        executive_summary=executive_summary
+        or _executive_summary(answer, entry, confirmation or first_line),
         opening_answer=answer or None,
         kind_of_work=entry["process_identifier"] if entry else None,
         confirmation_line=confirmation,
@@ -630,6 +760,8 @@ def open_session(
         "confirmation_line": confirmation,
         "first_line": first_line,
         "follow_up_question": follow_up,
+        "project": project,
+        "project_note": project_note,
         "segment": segments[0] if segments else None,
         "contract": _with_first_reply_instruction(
             merge_contracts(segment_contract, cross), confirmation
@@ -664,7 +796,9 @@ def advance_segment(
             ]
         )
     now = _now()
-    current = next((s for s in segments if s.get("entered_at") and not s.get("left_at")), None)
+    current = next(
+        (s for s in segments if s.get("entered_at") and not s.get("left_at")), None
+    )
     if current is None:
         if all(s.get("left_at") for s in segments):
             return {
@@ -696,7 +830,11 @@ def advance_segment(
     segment_contract, note = _segment_contract(session, nxt, engagement_id)
     cross = cross_cutting_contract(session, engagement_id)
     label = nxt.get("label") or nxt.get("area") or "the next phase"
-    line = f"Entering the {label} segment." if note is None else f"Entering the {label} segment. {note}"
+    line = (
+        f"Entering the {label} segment."
+        if note is None
+        else f"Entering the {label} segment. {note}"
+    )
     return {
         "session": updated,
         "completed": False,
