@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | PRJ-128 — rollout steps and comprehensive test plan |
-| Last Updated | 09-26-26 00:58 |
-| Revision | 1.3 |
-| Status | ACCEPTED. The 35-step acceptance walkthrough (claude.ai/artifact/VhWW7sBMPPfGRnqTEnaELU) ran clean on 09-26-26 after one fix (PI-584, the Run history window loading on open) and one corrected expectation (the private-application refusal comes before the demo/test rule). All six items Resolved. |
+| Last Updated | 09-26-26 01:01 |
+| Revision | 1.4 |
+| Status | PROJECT COMPLETE (09-26-26, DEC-1191). ACCEPTED. The 35-step acceptance walkthrough (claude.ai/artifact/VhWW7sBMPPfGRnqTEnaELU) ran clean on 09-26-26 after one fix (PI-584, the Run history window loading on open) and one corrected expectation (the private-application refusal comes before the demo/test rule). All six items Resolved. |
 | Source | Session SES-439 (delegation DEC-1184; decisions DEC-1185 to DEC-1188), on top of SES-437 (mapping, DEC-1176 to DEC-1182) and SES-438 (PI-575, DEC-1183). |
 | Read by | Doug, to roll out and to test; the follow-up session that applies the migration run after the ruling. |
 
@@ -100,6 +100,7 @@ Each item names where you are, what to do, what you should see. Anything else: s
 
 | Revision | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.4 | 09-26-26 01:01 | Claude (Claude Code) | PRJ-128 marked complete at Doug's word. |
 | 1.3 | 09-26-26 00:58 | Claude (Claude Code) | Acceptance walkthrough ran clean; status set to ACCEPTED. |
 | 1.2 | 09-25-26 18:08 | Claude (Claude Code) | Rollout done and recorded (DEC-1190); section 2 is history, section 4 is the open work. |
 | 1.1 | 09-25-26 15:52 | Claude (Claude Code) | The ruling is in the code, so the rollout applies the migration run; expectations updated accordingly. |
