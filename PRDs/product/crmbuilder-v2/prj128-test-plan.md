@@ -55,7 +55,7 @@ Doug ruled on 09-25-26 (DEC-1189): the nine associations and the attribute diffe
 
 Each item names where you are, what to do, what you should see. Anything else: stop and tell me exactly what you see.
 
-### 4.1 Desktop, after the rollout (start the desktop from main with `uv run crmbuilder`)
+### 4.1 Desktop, after the rollout (start the version 2 desktop from the main clone with `cd ~/Dropbox/Projects/crmbuilder && uv run crmbuilder-v2-ui`; plain `uv run crmbuilder` opens the old version 1 window)
 
 1. **Top strip.** With the CRMBuilder application active, the strip reads `CRMBuilder v2 (CRMBUILDER) · defined by CRMBuilder`. Click it: the picker groups applications under their clients and its footer reads `Manage applications…`.
 2. **Applications panel.** Sidebar entry `Applications` opens a list with columns Identifier, Code, Name, Defined by, Visibility, Status, Last Opened, Created. ENG-001, ENG-002, ENG-004 and ENG-005 show their client under Defined by and `private` under Visibility; ENG-003 shows CRMBuilder and `archived`; ENG-005, ENG-006 and ENG-007 show `archived`. No label on the panel says engagement.
