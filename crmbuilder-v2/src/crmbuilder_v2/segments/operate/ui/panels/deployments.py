@@ -823,11 +823,13 @@ class DeploymentsPanel(ListDetailPanel):
         else:
             self.refresh()
 
-    def _on_run_history_clicked(self, deployment: dict[str, Any]) -> None:
-        """The deploy runs of this deployment, in the history panel."""
-        identifier = deployment.get("deployment_identifier") or ""
-        if not identifier:
-            return
+    def _run_history_dialog(
+        self, identifier: str
+    ) -> tuple[QDialog, DeployHistoryPanel]:
+        """Build the Run history window for ``identifier`` and start its
+        first load. A list-detail panel fetches only when asked (the main
+        window asks when it shows a page), so the window asks here; without
+        it the runs appeared only after Refresh (PI-584)."""
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Run history — {identifier}")
         fit_to_screen(dialog, 0.7, (900, 600))
@@ -839,6 +841,15 @@ class DeploymentsPanel(ListDetailPanel):
         close_btn.setObjectName("run_history_close")
         close_btn.clicked.connect(dialog.accept)
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignRight)
+        panel.refresh()
+        return dialog, panel
+
+    def _on_run_history_clicked(self, deployment: dict[str, Any]) -> None:
+        """The deploy runs of this deployment, in the history panel."""
+        identifier = deployment.get("deployment_identifier") or ""
+        if not identifier:
+            return
+        dialog, panel = self._run_history_dialog(identifier)
         try:
             dialog.exec()
         finally:

@@ -363,3 +363,29 @@ def test_register_existing_shows_the_apis_refusal_inline(qtbot, ui_client):
     assert dialog.created_identifier() is None
     assert ui_client.list_deployments() == []
     assert dialog._save_btn.isEnabled()
+
+
+def test_run_history_window_opens_with_the_runs_listed(qtbot, ui_client):
+    """PI-584: the Run history window loads the deployment's runs as it
+    opens; it must not wait for Refresh."""
+    from crmbuilder_v2.segments.operate.repositories import deploy_runs
+
+    created = _seed_deployment(ui_client, "History")
+    ident = created["deployment_identifier"]
+    with session_scope() as s:
+        deploy_runs.create_deploy_run(
+            s, spec={"domain": "crm.example.org"}, deployment_identifier=ident
+        )
+        deploy_runs.create_deploy_run(
+            s, spec={"domain": "other.example.org"}
+        )
+    panel = DeploymentsPanel(ui_client)
+    qtbot.addWidget(panel)
+    dialog, history = panel._run_history_dialog(ident)
+    qtbot.addWidget(dialog)
+    try:
+        qtbot.waitUntil(lambda: len(history._records) == 1, timeout=5000)
+        assert history._records[0]["deployment_identifier"] == ident
+        assert dialog.windowTitle() == f"Run history — {ident}"
+    finally:
+        history.drain_workers()
