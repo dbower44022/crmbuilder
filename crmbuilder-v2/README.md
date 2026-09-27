@@ -570,7 +570,11 @@ Each tool wraps a single REST call. To add a tool, add a wrapper in
 > PI-488 / REQ-575), which classifies the answer against the catalogue of
 > kinds of work (process records whose steps field carries the phase
 > segments), creates the session record carrying the answer, the kind of
-> work, the confirmation line and the segments, and returns the first
+> work, the confirmation line and the segments, files it under the project
+> its opening answer names — a `PRJ-NNN`, or the project of a named planning
+> item, requirement or decision — else under the holding project PRJ-132
+> "Unfiled sessions" (PI-582 / DEC-1192, in production since 09-27-26), and
+> returns the first
 > segment's profile contract merged with the cross-cutting rules (such a
 > session, run with the live store reachable, records `session_medium =
 > claude_code`; a claude.ai sandbox conversation records `chat` — REQ-561 /
