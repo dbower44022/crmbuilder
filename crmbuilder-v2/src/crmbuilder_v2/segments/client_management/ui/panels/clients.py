@@ -3,9 +3,13 @@
 A ``ListDetailPanel`` for the ``client`` record, mirroring the Participants
 panel: a master table with a Show-deleted toggle and a New button, a
 read-only detail pane with Edit / Delete (or Restore), a right-click context
-menu, and an Engagements section where the engagements a client holds are
-listed, added and removed. Assigning an engagement here makes this client its
-primary; an engagement already held by another client is moved.
+menu, and an Applications section where the applications a client holds are
+listed, added and removed. A client holds an application either as its
+defining client or through a deployment grant, a client's recorded permission
+to deploy a private application it did not define (PI-588 / REQ-664). Adding
+an application that already has a defining client adds a deployment grant and
+never moves the defining client; adding one with no defining client makes this
+client its defining client.
 """
 
 from __future__ import annotations
@@ -244,12 +248,15 @@ class ClientsPanel(ListDetailPanel):
     def _build_engagements_section(
         self, record: dict[str, Any], extras: dict[str, Any]
     ) -> QWidget:
-        """The applications this client defines, with add and remove (the
-        holding is the defining-client link, DEC-1183)."""
+        """The applications this client defines and those it holds a
+        deployment grant for, each with Remove, and one Add control
+        (DEC-1183, DEC-1196)."""
         identifier = record.get("client_identifier") or ""
         held: list[dict[str, Any]] = extras.get("engagements") or []
         all_engagements: list[dict[str, Any]] = extras.get("all_engagements") or []
         held_ids = {e.get("engagement_identifier") for e in held}
+        defined = [e for e in held if e.get("is_primary")]
+        granted = [e for e in held if not e.get("is_primary")]
 
         section = QWidget()
         section.setObjectName("client_engagements_section")
@@ -257,34 +264,34 @@ class ClientsPanel(ListDetailPanel):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        title = QLabel("Applications defined")
-        font = QFont(title.font())
-        font.setBold(True)
-        title.setFont(font)
-        layout.addWidget(title)
-
-        if not held:
+        layout.addWidget(self._section_title("Applications defined"))
+        if not defined:
             empty = QLabel("This client defines no applications.")
             empty.setObjectName("client_engagements_empty")
             layout.addWidget(empty)
-        for engagement in held:
-            row = QWidget()
-            row_layout = QHBoxLayout(row)
-            row_layout.setContentsMargins(0, 0, 0, 0)
-            eng_id = engagement.get("engagement_identifier") or ""
-            name = engagement.get("engagement_name") or "(unnamed)"
-            code = engagement.get("engagement_code") or ""
-            marker = " (primary)" if engagement.get("is_primary") else ""
-            label = QLabel(f"{eng_id} — {name} ({code}){marker}")
-            label.setObjectName(f"client_engagement_{eng_id}")
-            row_layout.addWidget(label, stretch=1)
-            remove = QPushButton("Remove")
-            remove.setObjectName(f"remove_engagement_{eng_id}")
-            remove.clicked.connect(
-                lambda _c=False, e=eng_id: self._on_remove_engagement(e)
-            )
-            row_layout.addWidget(remove)
-            layout.addWidget(row)
+        for engagement in defined:
+            layout.addWidget(self._held_row(engagement, suffix=""))
+
+        layout.addWidget(self._section_title("Deployment grants"))
+        hint = QLabel(
+            "Private applications this client may deploy although another "
+            "client defines them. A deployment grant permits deployment only, "
+            "not seeing or changing the design."
+        )
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+        if not granted:
+            empty = QLabel("This client holds no deployment grants.")
+            empty.setObjectName("client_grants_empty")
+            layout.addWidget(empty)
+        defined_by = {
+            e.get("engagement_identifier"): e.get("engagement_defining_client")
+            for e in all_engagements
+        }
+        for engagement in granted:
+            defining = defined_by.get(engagement.get("engagement_identifier")) or ""
+            suffix = f" — defined by {defining}" if defining else ""
+            layout.addWidget(self._held_row(engagement, suffix=suffix))
 
         add_row = QWidget()
         add_layout = QHBoxLayout(add_row)
@@ -297,8 +304,14 @@ class ClientsPanel(ListDetailPanel):
                 continue
             if engagement.get("engagement_deleted_at") is not None:
                 continue
+            effect = (
+                "adds a deployment grant"
+                if engagement.get("engagement_defining_client")
+                else "this client will define it"
+            )
             combo.addItem(
-                f"{eng_id} — {engagement.get('engagement_name') or '(unnamed)'}", eng_id
+                f"{eng_id} — {engagement.get('engagement_name') or '(unnamed)'} ({effect})",
+                eng_id,
             )
         add_layout.addWidget(combo, stretch=1)
         add_button = QPushButton("Add application")
@@ -310,6 +323,30 @@ class ClientsPanel(ListDetailPanel):
         add_layout.addWidget(add_button)
         layout.addWidget(add_row)
         return section
+
+    @staticmethod
+    def _section_title(text: str) -> QLabel:
+        title = QLabel(text)
+        font = QFont(title.font())
+        font.setBold(True)
+        title.setFont(font)
+        return title
+
+    def _held_row(self, engagement: dict[str, Any], *, suffix: str) -> QWidget:
+        row = QWidget()
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        eng_id = engagement.get("engagement_identifier") or ""
+        name = engagement.get("engagement_name") or "(unnamed)"
+        code = engagement.get("engagement_code") or ""
+        label = QLabel(f"{eng_id} — {name} ({code}){suffix}")
+        label.setObjectName(f"client_engagement_{eng_id}")
+        row_layout.addWidget(label, stretch=1)
+        remove = QPushButton("Remove")
+        remove.setObjectName(f"remove_engagement_{eng_id}")
+        remove.clicked.connect(lambda _c=False, e=eng_id: self._on_remove_engagement(e))
+        row_layout.addWidget(remove)
+        return row
 
     def _build_deployments_section(self, extras: dict[str, Any]) -> QWidget:
         """The deployments this client runs (PI-580 / REQ-653), each with its
@@ -341,20 +378,29 @@ class ClientsPanel(ListDetailPanel):
         return section
 
     def _on_add_engagement(self, client_identifier: str, engagement_identifier: Any) -> None:
+        """Add an application to this client. An application that already has
+        a defining client gets a deployment grant for this client and its
+        defining client does not move; one with no defining client is made
+        this client's."""
         if not client_identifier or not engagement_identifier:
             return
+        engagement_identifier = str(engagement_identifier)
         try:
-            current = self._client.get_engagement_clients(str(engagement_identifier))
-            others = [
-                c.get("client_identifier")
-                for c in current.get("clients") or []
-                if c.get("client_identifier") and c.get("client_identifier") != client_identifier
-            ]
-            self._client.set_engagement_clients(
-                str(engagement_identifier),
-                [client_identifier, *others],
-                primary=client_identifier,
-            )
+            current = self._client.get_engagement_clients(engagement_identifier)
+            if current.get("primary"):
+                self._client.add_deployment_grant(engagement_identifier, client_identifier)
+            else:
+                others = [
+                    c.get("client_identifier")
+                    for c in current.get("clients") or []
+                    if c.get("client_identifier")
+                    and c.get("client_identifier") != client_identifier
+                ]
+                self._client.set_engagement_clients(
+                    engagement_identifier,
+                    [client_identifier, *others],
+                    primary=client_identifier,
+                )
         except StorageConnectionError as exc:
             self.connection_lost.emit(str(exc))
             return
@@ -369,15 +415,33 @@ class ClientsPanel(ListDetailPanel):
         self.refresh()
 
     def _on_remove_engagement(self, engagement_identifier: str) -> None:
+        """Remove an application from the selected client. A deployment grant
+        is withdrawn on its own. The defining client is removed only when no
+        other client holds the application, so no deployment-grant holder is
+        ever made the defining client by accident."""
         selected = self._currently_selected_identifier()
+        if not selected:
+            return
         try:
             current = self._client.get_engagement_clients(engagement_identifier)
-            remaining = [
-                c.get("client_identifier")
-                for c in current.get("clients") or []
-                if c.get("client_identifier") and c.get("client_identifier") != selected
-            ]
-            self._client.set_engagement_clients(engagement_identifier, remaining)
+            if current.get("primary") != selected:
+                self._client.remove_deployment_grant(engagement_identifier, selected)
+            else:
+                grant_holders = [
+                    c.get("client_identifier")
+                    for c in current.get("clients") or []
+                    if c.get("client_identifier") and not c.get("is_primary")
+                ]
+                if grant_holders:
+                    self._explain_refusal(
+                        "Defining client not removed",
+                        f"{selected} defines {engagement_identifier}, and "
+                        f"{', '.join(grant_holders)} hold deployment grants for it. "
+                        "Removing the defining client would leave the application "
+                        "without one. Remove the deployment grants first.",
+                    )
+                    return
+                self._client.set_engagement_clients(engagement_identifier, [])
         except StorageConnectionError as exc:
             self.connection_lost.emit(str(exc))
             return
@@ -390,6 +454,14 @@ class ClientsPanel(ListDetailPanel):
             ).exec()
             return
         self.refresh()
+
+    def _explain_refusal(self, title: str, text: str) -> None:
+        """Say why an action was not taken (buttons are never disabled)."""
+        box = CopyableMessageBox(self)
+        box.setWindowTitle(title)
+        box.setText(text)
+        box.setStandardButtons(QMessageBox.StandardButton.Ok)
+        box.exec()
 
     # -- Identifier addressing --------------------------------------------
 

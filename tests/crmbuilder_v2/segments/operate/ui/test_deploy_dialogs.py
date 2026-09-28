@@ -164,7 +164,9 @@ def test_wizard_needs_only_digitalocean_then_queues_a_cloudflare_run(qtbot, ui_c
     qtbot.waitUntil(lambda: wizard.region.count() == 2 and bool(wizard._zones), timeout=5000)
     # The application's defining client is pre-selected (PI-580).
     _clients_loaded(qtbot, wizard)
-    assert wizard.deployment_client.currentText() == "Cleveland Business Mentors"
+    assert wizard.deployment_client.currentText() == (
+        "Cleveland Business Mentors — defines this application"
+    )
     assert wizard.deployment_purpose.currentData() == "client_own"
     wizard._next_btn.click()
     assert wizard.page == PAGE_ADDRESS

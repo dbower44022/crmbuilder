@@ -316,7 +316,9 @@ def test_register_existing_creates_deployment_with_connection(qtbot, ui_client):
     qtbot.waitUntil(
         lambda: dialog.client_combo.currentData() == "CLI-001", timeout=5000
     )
-    assert dialog.client_combo.currentText() == "Cleveland Business Mentors"
+    assert dialog.client_combo.currentText() == (
+        "Cleveland Business Mentors — defines this application"
+    )
     # Nothing is disabled: Register explains what is missing.
     dialog._save_btn.click()
     assert "name" in dialog._notice.text()
@@ -363,6 +365,39 @@ def test_register_existing_shows_the_apis_refusal_inline(qtbot, ui_client):
     assert dialog.created_identifier() is None
     assert ui_client.list_deployments() == []
     assert dialog._save_btn.isEnabled()
+
+
+def test_register_names_the_deployment_grant_holders_and_accepts_them(qtbot, ui_client):
+    """PI-588 / REQ-664: a client holding a deployment grant is labelled so,
+    and registering its own deployment of the private application succeeds."""
+    ui_client.add_deployment_grant("ENG-001", "CLI-002")
+    dialog = DeploymentRegisterDialog(ui_client)
+    qtbot.addWidget(dialog)
+    qtbot.waitUntil(lambda: dialog.client_combo.count() == 2, timeout=5000)
+    index = dialog.client_combo.findData("CLI-002")
+    assert dialog.client_combo.itemText(index) == (
+        "Rochester Business Mentors — holds a deployment grant"
+    )
+    dialog.client_combo.setCurrentIndex(index)
+    dialog.deployment_name.setText("Rochester CRM")
+    dialog.instance_url.setText("https://roc.example.org")
+    dialog._save_btn.click()
+    qtbot.waitUntil(lambda: dialog.created_identifier() == "DPL-001", timeout=5000)
+    assert ui_client.get_deployment("DPL-001")["deployment_client"] == "CLI-002"
+
+
+def test_register_refusal_names_the_deployment_grant(qtbot, ui_client):
+    dialog = DeploymentRegisterDialog(ui_client)
+    qtbot.addWidget(dialog)
+    qtbot.waitUntil(lambda: dialog.client_combo.count() == 2, timeout=5000)
+    dialog.client_combo.setCurrentIndex(dialog.client_combo.findData("CLI-002"))
+    dialog.deployment_name.setText("Not allowed")
+    dialog.instance_url.setText("https://x.example.org")
+    dialog._save_btn.click()
+    qtbot.waitUntil(
+        lambda: dialog._notice.text().startswith("Not registered"), timeout=5000
+    )
+    assert "deployment grant" in dialog._notice.text()
 
 
 def test_run_history_window_opens_with_the_runs_listed(qtbot, ui_client):

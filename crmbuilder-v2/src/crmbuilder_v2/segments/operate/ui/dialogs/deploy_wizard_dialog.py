@@ -61,6 +61,8 @@ from PySide6.QtWidgets import (
 
 from crmbuilder_v2.segments.operate.ui.dialogs.deployment_register_dialog import (
     PURPOSE_LABELS,
+    fetch_client_choices,
+    fill_client_combo,
 )
 from crmbuilder_v2.segments.operate.ui.dialogs.handover_dialog import fit_to_screen
 from crmbuilder_v2.segments.operate.ui.dialogs.provider_credentials_dialog import (
@@ -342,7 +344,7 @@ class DeployWizardDialog(QDialog):
         self._explain(self.deployment_client, (
             "<h3>Client</h3><p>The organisation this CRM is for. The application's "
             "defining client is pre-selected; a private application accepts only that "
-            "client.</p>"
+            "client and the clients holding a deployment grant for it.</p>"
         ))
         self.deployment_purpose = QComboBox()
         self.deployment_purpose.setObjectName("wizard_purpose")
@@ -359,41 +361,23 @@ class DeployWizardDialog(QDialog):
         return page
 
     def _load_clients(self) -> None:
-        """The clients to choose from, and the application's defining client."""
-
-        def fetch() -> tuple[list[dict[str, Any]], str | None]:
-            clients = self._client.list_clients()
-            defining = self._defining_client_hint
-            application = self._client.active_engagement()
-            if defining is None and application:
-                try:
-                    defining = self._client.get_engagement(application).get(
-                        "engagement_defining_client"
-                    )
-                except StorageClientError:
-                    defining = None
-            return clients, defining
-
+        """The clients to choose from, the application's defining client and
+        the clients holding a deployment grant for it."""
         self._in_flight.append(
             run_in_thread(
-                fetch, on_success=self._clients_loaded, on_error=self._on_error, parent=self
+                lambda: fetch_client_choices(
+                    self._client, defining_hint=self._defining_client_hint
+                ),
+                on_success=self._clients_loaded,
+                on_error=self._on_error,
+                parent=self,
             )
         )
 
-    def _clients_loaded(self, result: tuple[list[dict[str, Any]], str | None]) -> None:
-        clients, defining = result
-        self.deployment_client.clear()
-        for c in clients:
-            self.deployment_client.addItem(
-                c.get("client_name") or c.get("client_identifier") or "",
-                c.get("client_identifier"),
-            )
-        if defining:
-            index = self.deployment_client.findData(defining)
-            if index >= 0:
-                self.deployment_client.setCurrentIndex(index)
-        if not clients:
-            self.deployment_client.addItem("No clients recorded yet", None)
+    def _clients_loaded(
+        self, result: tuple[list[dict[str, Any]], str | None, set[str]]
+    ) -> None:
+        fill_client_combo(self.deployment_client, *result)
 
     def _build_address_page(self) -> QWidget:
         page = QWidget()

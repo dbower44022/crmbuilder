@@ -18,6 +18,12 @@ client routes on ``/engagements``:
   engagements cannot be deleted (DEC-1092, question 6)
 * :func:`list_client_engagements` / :func:`get_engagement_clients` /
   :func:`set_engagement_clients` / :func:`primary_client_for_engagement`
+* :func:`list_deployment_grants` / :func:`add_deployment_grant` /
+  :func:`remove_deployment_grant` / :func:`holds_deployment_grant` (PI-588 /
+  REQ-664, DEC-1194, DEC-1196). A deployment grant is a client's recorded
+  permission to deploy a private application it did not define: a holding
+  row without the primary mark. These change one row at a time and never
+  move the primary mark, which is the defining client.
 
 No change-log rows are emitted for clients in this planning item, matching
 the engagement record (DEC-1092, question 4).
@@ -267,6 +273,31 @@ def primary_client_for_engagement(
     return None if row is None else to_dict(row)
 
 
+def holds_deployment_grant(
+    session: Session, engagement_identifier: str, client_identifier: str
+) -> bool:
+    """Whether ``client_identifier`` holds a deployment grant for the
+    engagement: a holding row without the primary mark."""
+    stmt = select(EngagementClientRow.client_id).where(
+        EngagementClientRow.engagement_id == engagement_identifier,
+        EngagementClientRow.client_id == client_identifier,
+        EngagementClientRow.is_primary.is_(False),
+    )
+    return session.scalar(stmt) is not None
+
+
+def list_deployment_grants(session: Session, engagement_identifier: str) -> dict:
+    """``{"engagement": ..., "defining_client": ..., "deployment_grants":
+    [...]}`` for one engagement: the defining client's identifier (or
+    ``None``) and the client records holding a deployment grant."""
+    holding = get_engagement_clients(session, engagement_identifier)
+    return {
+        "engagement": engagement_identifier,
+        "defining_client": holding["primary"],
+        "deployment_grants": [c for c in holding["clients"] if not c["is_primary"]],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Writes
 # ---------------------------------------------------------------------------
@@ -508,3 +539,87 @@ def set_engagement_clients(
         )
     session.flush()
     return get_engagement_clients(session, engagement_identifier)
+
+
+def _grant_refusal(field: str, code: str, message: str) -> UnprocessableError:
+    return UnprocessableError([FieldError(field, code, message)])
+
+
+def add_deployment_grant(
+    session: Session, engagement_identifier: str, client_identifier: str
+) -> dict:
+    """Give ``client_identifier`` a deployment grant for the engagement.
+
+    Refused before any row changes when the client is missing or deleted
+    (``client_not_found``), when the engagement has no defining client and so
+    is not an application (``no_defining_client``), or when the client is the
+    defining client (``is_defining_client``). Adding a grant the client
+    already holds changes nothing. Returns :func:`list_deployment_grants`.
+    """
+    _get_engagement_row(session, engagement_identifier)
+    client_identifier = _require_nonempty(client_identifier, field="client")
+    row = session.get(ClientRow, client_identifier)
+    if row is None or row.client_deleted_at is not None:
+        raise _grant_refusal(
+            "client",
+            "client_not_found",
+            f"client {client_identifier!r} does not exist or is deleted",
+        )
+    defining = primary_client_for_engagement(session, engagement_identifier)
+    if defining is None:
+        raise _grant_refusal(
+            "engagement",
+            "no_defining_client",
+            f"engagement {engagement_identifier!r} has no defining client and "
+            "is not an application, so it cannot carry a deployment grant",
+        )
+    if defining["client_identifier"] == client_identifier:
+        raise _grant_refusal(
+            "client",
+            "is_defining_client",
+            f"{client_identifier!r} defines {engagement_identifier!r}; the "
+            "defining client needs no deployment grant",
+        )
+    if not holds_deployment_grant(session, engagement_identifier, client_identifier):
+        session.add(
+            EngagementClientRow(
+                engagement_id=engagement_identifier,
+                client_id=client_identifier,
+                is_primary=False,
+                created_at=datetime.now(UTC),
+            )
+        )
+        session.flush()
+    return list_deployment_grants(session, engagement_identifier)
+
+
+def remove_deployment_grant(
+    session: Session, engagement_identifier: str, client_identifier: str
+) -> dict:
+    """Withdraw ``client_identifier``'s deployment grant for the engagement.
+
+    The defining client's holding is refused (``is_defining_client``): it is
+    not a deployment grant. A client that holds no deployment grant for the
+    engagement is ``NotFoundError``. Returns :func:`list_deployment_grants`.
+    """
+    _get_engagement_row(session, engagement_identifier)
+    link = session.scalar(
+        select(EngagementClientRow).where(
+            EngagementClientRow.engagement_id == engagement_identifier,
+            EngagementClientRow.client_id == client_identifier,
+        )
+    )
+    if link is None:
+        raise NotFoundError(
+            "deployment_grant", f"{engagement_identifier}/{client_identifier}"
+        )
+    if link.is_primary:
+        raise _grant_refusal(
+            "client",
+            "is_defining_client",
+            f"{client_identifier!r} defines {engagement_identifier!r}; its "
+            "holding is not a deployment grant and cannot be removed here",
+        )
+    session.delete(link)
+    session.flush()
+    return list_deployment_grants(session, engagement_identifier)

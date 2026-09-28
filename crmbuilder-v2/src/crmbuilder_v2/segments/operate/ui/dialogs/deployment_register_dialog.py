@@ -5,7 +5,8 @@ for a CRM that already runs. It asks who the deployment is for (the client
 and the purpose), how it is hosted and what to call it, then the CRM
 connection details the Instances create dialog used to take, and posts them
 in one ``POST /deployments`` request with a nested ``instance``. The API's
-refusals (a client the application may not deploy for, a demo/test
+refusals (a client that neither defines a private application nor holds a
+deployment grant for it, a demo/test
 deployment for a client that does not define the application) come back as
 a 422 and are shown under the form. Secrets cross once and are never read
 back (REQ-157).
@@ -53,6 +54,63 @@ _log = logging.getLogger("crmbuilder_v2.ui.dialogs.deployment_register_dialog")
 PURPOSE_LABELS = {"client_own": "Client's own", "demo_test": "Demo/test"}
 #: API value → what people see (PI-576 / REQ-653).
 HOSTING_PROVIDER_LABELS = {"digitalocean": "DigitalOcean", "other": "Other"}
+
+
+def fetch_client_choices(
+    client, *, defining_hint: str | None = None
+) -> tuple[list[dict[str, Any]], str | None, set[str]]:
+    """The clients to offer, the active application's defining client, and
+    the clients holding a deployment grant for it (PI-588 / REQ-664). A
+    deployment grant is a client's recorded permission to deploy a private
+    application it did not define. Runs off the UI thread."""
+    clients = client.list_clients()
+    defining = defining_hint
+    grant_holders: set[str] = set()
+    application = client.active_engagement()
+    if application:
+        try:
+            grants = client.list_deployment_grants(application)
+            defining = defining or grants.get("defining_client")
+            grant_holders = {
+                g.get("client_identifier")
+                for g in grants.get("deployment_grants") or []
+                if g.get("client_identifier")
+            }
+        except StorageClientError:
+            pass
+        if defining is None:
+            try:
+                defining = client.get_engagement(application).get(
+                    "engagement_defining_client"
+                )
+            except StorageClientError:
+                defining = None
+    return clients, defining, grant_holders
+
+
+def fill_client_combo(
+    combo: QComboBox,
+    clients: list[dict[str, Any]],
+    defining: str | None,
+    grant_holders: set[str],
+) -> None:
+    """Fill ``combo`` with every client, each labelled with its role for the
+    application, and pre-select the defining client."""
+    combo.clear()
+    for c in clients:
+        identifier = c.get("client_identifier")
+        label = c.get("client_name") or identifier or ""
+        if identifier and identifier == defining:
+            label += " — defines this application"
+        elif identifier in grant_holders:
+            label += " — holds a deployment grant"
+        combo.addItem(label, identifier)
+    if defining:
+        index = combo.findData(defining)
+        if index >= 0:
+            combo.setCurrentIndex(index)
+    if not clients:
+        combo.addItem("No clients recorded yet", None)
 
 
 def _combo(options: dict[str, str], *, default: str | None = None) -> QComboBox:
@@ -190,42 +248,19 @@ class DeploymentRegisterDialog(QDialog):
     # -- clients ---------------------------------------------------------------
 
     def _load_clients(self) -> None:
-        def fetch() -> tuple[list[dict[str, Any]], str | None]:
-            clients = self._client.list_clients()
-            defining = None
-            application = self._client.active_engagement()
-            if application:
-                try:
-                    defining = self._client.get_engagement(application).get(
-                        "engagement_defining_client"
-                    )
-                except StorageClientError:
-                    defining = None
-            return clients, defining
-
         self._in_flight.append(
             run_in_thread(
-                fetch,
+                lambda: fetch_client_choices(self._client),
                 on_success=self._clients_loaded,
                 on_error=self._on_error,
                 parent=self,
             )
         )
 
-    def _clients_loaded(self, result: tuple[list[dict[str, Any]], str | None]) -> None:
-        clients, defining = result
-        self.client_combo.clear()
-        for c in clients:
-            self.client_combo.addItem(
-                c.get("client_name") or c.get("client_identifier") or "",
-                c.get("client_identifier"),
-            )
-        if defining:
-            index = self.client_combo.findData(defining)
-            if index >= 0:
-                self.client_combo.setCurrentIndex(index)
-        if not clients:
-            self.client_combo.addItem("No clients recorded yet", None)
+    def _clients_loaded(
+        self, result: tuple[list[dict[str, Any]], str | None, set[str]]
+    ) -> None:
+        fill_client_combo(self.client_combo, *result)
 
     # -- data ------------------------------------------------------------------
 

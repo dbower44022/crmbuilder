@@ -37,6 +37,9 @@ from crmbuilder_v2.access.exceptions import (
 from crmbuilder_v2.access.repositories import _governance as gov
 from crmbuilder_v2.segments.client_management.models import ClientRow
 from crmbuilder_v2.segments.client_management.repositories import (
+    client as client_repo,
+)
+from crmbuilder_v2.segments.client_management.repositories import (
     engagement as engagement_repo,
 )
 from crmbuilder_v2.segments.operate.models import Deployment
@@ -114,24 +117,30 @@ def _require_application(session: Session, identifier: object):
     return engagement
 
 
-def _require_may_deploy(application, client_identifier: str) -> None:
-    """A private application accepts a deployment only from its defining
-    client (REQ-653); ``application_private`` otherwise."""
-    if (
-        application.engagement_visibility == "private"
-        and application.engagement_defining_client != client_identifier
+def _require_may_deploy(session: Session, application, client_identifier: str) -> None:
+    """A private application accepts a deployment from its defining client
+    (REQ-653) or from a client holding a deployment grant for it (REQ-664,
+    DEC-1194); ``application_private`` otherwise."""
+    if application.engagement_visibility != "private":
+        return
+    if application.engagement_defining_client == client_identifier:
+        return
+    if client_repo.holds_deployment_grant(
+        session, application.engagement_identifier, client_identifier
     ):
-        raise UnprocessableError(
-            [
-                FieldError(
-                    "deployment_client",
-                    "application_private",
-                    f"application {application.engagement_identifier!r} is "
-                    f"private to {application.engagement_defining_client!r}; "
-                    f"{client_identifier!r} may not deploy it",
-                )
-            ]
-        )
+        return
+    raise UnprocessableError(
+        [
+            FieldError(
+                "deployment_client",
+                "application_private",
+                f"application {application.engagement_identifier!r} is "
+                f"private to {application.engagement_defining_client!r}; "
+                f"{client_identifier!r} holds no deployment grant for it and "
+                "may not deploy it",
+            )
+        ]
+    )
 
 
 def _require_hosting_provider(value: object) -> str:
@@ -436,7 +445,8 @@ def create_deployment(
     Refused before any row is written when the client or the application is
     missing (``client_not_found`` / ``application_not_found``), when the
     application has no defining client (``no_defining_client``), or when the
-    application is private to another client (``application_private``).
+    application is private and the client neither defines it nor holds a
+    deployment grant for it (``application_private``).
 
     Either ``instance_identifier`` names an existing instance of the
     application to hold, or ``instance`` is a dict of
@@ -455,7 +465,7 @@ def create_deployment(
     purpose = _require_purpose(purpose)
     _require_client(session, client)
     app = _require_application(session, application)
-    _require_may_deploy(app, client)
+    _require_may_deploy(session, app, client)
     _require_purpose_client(app, client, purpose)
     if instance is not None and instance_identifier is not None:
         raise UnprocessableError(
@@ -546,7 +556,7 @@ def patch_deployment(session: Session, identifier: str, **fields) -> dict:
         if "purpose" in fields:
             purpose = _require_purpose(fields["purpose"])
         app = _require_application(session, row.deployment_application)
-        _require_may_deploy(app, client)
+        _require_may_deploy(session, app, client)
         _require_purpose_client(app, client, purpose)
         row.deployment_client = client
         row.deployment_purpose = purpose

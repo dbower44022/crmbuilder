@@ -27,6 +27,7 @@ from crmbuilder_v2.segments.client_management.repositories import (
     engagement as engagement_repo,
 )
 from crmbuilder_v2.segments.client_management.schemas import (
+    DeploymentGrantIn,
     EngagementClientsIn,
     EngagementCreateIn,
     EngagementPatchIn,
@@ -162,3 +163,34 @@ def set_clients(identifier: str, body: EngagementClientsIn):
                 s, identifier, clients=body.clients, primary=body.primary
             )
         )
+
+
+# ---------- Deployment grants (PI-588 / REQ-664, DEC-1196) ----------
+# A deployment grant is a client's recorded permission to deploy a private
+# application it did not define. These routes change one grant at a time
+# and never move the defining client.
+
+
+@router.get("/{identifier}/deployment-grants")
+def deployment_grants_of(identifier: str):
+    """The engagement's ``defining_client`` and the client records holding
+    a deployment grant for it (``deployment_grants``)."""
+    with readonly_session() as s:
+        return ok(client_repo.list_deployment_grants(s, identifier))
+
+
+@router.post("/{identifier}/deployment-grants")
+def add_deployment_grant(identifier: str, body: DeploymentGrantIn):
+    """Give a client a deployment grant. Refused for the defining client
+    (``is_defining_client``), a missing client (``client_not_found``) and an
+    engagement no client defines (``no_defining_client``)."""
+    with writable_session() as s:
+        return ok(client_repo.add_deployment_grant(s, identifier, body.client))
+
+
+@router.delete("/{identifier}/deployment-grants/{client}")
+def remove_deployment_grant(identifier: str, client: str):
+    """Withdraw a client's deployment grant. Refused for the defining client
+    (``is_defining_client``); 404 when the client holds no grant."""
+    with writable_session() as s:
+        return ok(client_repo.remove_deployment_grant(s, identifier, client))

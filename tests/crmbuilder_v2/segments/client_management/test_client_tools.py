@@ -20,6 +20,17 @@ def _envelope(data) -> httpx.Response:
 
 def _store(request: httpx.Request) -> httpx.Response:
     path = request.url.path
+    if path.startswith("/engagements/ENG-002/deployment-grants"):
+        grants = {
+            "engagement": "ENG-002",
+            "defining_client": "CLI-001",
+            "deployment_grants": [],
+            "method": request.method,
+            "path": path,
+        }
+        if request.method == "POST":
+            grants["body"] = json.loads(request.content)
+        return _envelope(grants)
     if path == "/clients":
         return _envelope(
             [
@@ -152,3 +163,26 @@ def test_tool_docstrings_are_plain_text():
     funcs = tool_definitions(httpx.AsyncClient(base_url="http://testserver"))
     for name in ("list_clients", "get_client"):
         assert json.dumps(_tool(funcs, name).description)
+
+
+async def test_deployment_grant_tools():
+    """PI-588 / REQ-664, DEC-1196: list is a read tool; add and remove are
+    write tools calling the one-grant-at-a-time routes."""
+    http = httpx.AsyncClient(base_url="http://testserver", transport=httpx.MockTransport(_store))
+    try:
+        funcs = tool_definitions(http)
+        listed = _tool(funcs, "list_deployment_grants")
+        added = _tool(funcs, "add_deployment_grant")
+        removed = _tool(funcs, "remove_deployment_grant")
+        assert not listed.is_write
+        assert added.is_write and removed.is_write
+        assert "deployment grant" in listed.description
+        answer = await listed.func("ENG-002")
+        assert (answer["method"], answer["defining_client"]) == ("GET", "CLI-001")
+        answer = await added.func("ENG-002", "CLI-003")
+        assert answer["method"] == "POST" and answer["body"] == {"client": "CLI-003"}
+        answer = await removed.func("ENG-002", "CLI-003")
+        assert answer["method"] == "DELETE"
+        assert answer["path"] == "/engagements/ENG-002/deployment-grants/CLI-003"
+    finally:
+        await http.aclose()

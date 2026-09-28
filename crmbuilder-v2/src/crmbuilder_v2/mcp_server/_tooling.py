@@ -15,7 +15,9 @@ import httpx
 
 # Name-prefix → write classification (design §4). Consumed by the chat
 # tool dispatcher's mode toggle (Full / Read-only / Ask before write).
-_WRITE_PREFIXES = ("create_", "update_", "delete_", "add_", "replace_", "open_", "advance_")
+_WRITE_PREFIXES = (
+    "create_", "update_", "delete_", "add_", "remove_", "replace_", "open_", "advance_",
+)
 
 
 def _is_write(name: str) -> bool:

@@ -368,5 +368,42 @@ class ClientManagementMethods:
         )
         return result if isinstance(result, dict) else {"clients": [], "primary": None}
 
+    # -- Deployment grants (PI-588 / REQ-664, DEC-1196) -------------------
+
+    def list_deployment_grants(self, engagement_identifier: str) -> dict[str, Any]:
+        """GET /engagements/{identifier}/deployment-grants:
+        ``defining_client`` and ``deployment_grants`` (client records)."""
+        result = self._request(
+            "GET", f"/engagements/{engagement_identifier}/deployment-grants"
+        )
+        return (
+            result
+            if isinstance(result, dict)
+            else {"defining_client": None, "deployment_grants": []}
+        )
+
+    def add_deployment_grant(
+        self, engagement_identifier: str, client_identifier: str
+    ) -> dict[str, Any]:
+        """POST /engagements/{identifier}/deployment-grants; the defining
+        client never moves."""
+        result = self._request(
+            "POST",
+            f"/engagements/{engagement_identifier}/deployment-grants",
+            json_body={"client": client_identifier},
+        )
+        return result if isinstance(result, dict) else {}
+
+    def remove_deployment_grant(
+        self, engagement_identifier: str, client_identifier: str
+    ) -> dict[str, Any]:
+        """DELETE /engagements/{identifier}/deployment-grants/{client};
+        refused for the defining client."""
+        result = self._request(
+            "DELETE",
+            f"/engagements/{engagement_identifier}/deployment-grants/{client_identifier}",
+        )
+        return result if isinstance(result, dict) else {}
+
 
 MIXIN = ClientManagementMethods

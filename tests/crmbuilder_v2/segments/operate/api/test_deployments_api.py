@@ -278,3 +278,20 @@ def test_purpose_required_demo_test_gate_and_for_client_listing(seeded):
     # Every listing carries the purpose.
     assert all("deployment_purpose" in d for d in seeded.get("/deployments").json()["data"])
 
+
+def test_a_deployment_grant_holder_is_accepted_over_the_api(seeded):
+    """PI-588 / REQ-664: once Rochester holds a deployment grant for the
+    private application it may register a deployment; the refusal before
+    that names the deployment grant."""
+    body = {"deployment_client": "CLI-002", "deployment_purpose": "client_own", "deployment_name": "Rochester"}
+    r = seeded.post("/deployments", json=body)
+    assert r.status_code == 422 and _codes(r) == ["application_private"]
+    assert "deployment grant" in r.json()["errors"][0]["message"]
+    r = seeded.post("/engagements/ENG-001/deployment-grants", json={"client": "CLI-002"})
+    assert r.status_code == 200, r.text
+    r = seeded.post("/deployments", json=body)
+    assert r.status_code == 201, r.text
+    assert r.json()["data"]["deployment_client"] == "CLI-002"
+    r = seeded.post("/deployments", json=dict(body, deployment_purpose="demo_test", deployment_name="demo"))
+    assert r.status_code == 422 and _codes(r) == ["demo_test_requires_defining_client"]
+    assert seeded.get("/applications/ENG-001").json()["data"]["engagement_defining_client"] == "CLI-001"

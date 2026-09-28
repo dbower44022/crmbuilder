@@ -232,3 +232,11 @@ class EngagementClientsIn(_Base):
 
     clients: list[str]
     primary: str | None = None
+
+
+class DeploymentGrantIn(_Base):
+    """POST /engagements/{identifier}/deployment-grants body: the client
+    given a deployment grant, a client's recorded permission to deploy a
+    private application it did not define (PI-588 / REQ-664, DEC-1196)."""
+
+    client: str

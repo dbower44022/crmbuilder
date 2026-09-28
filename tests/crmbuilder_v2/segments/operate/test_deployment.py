@@ -4,8 +4,9 @@ A deployment names one client, one application and one hosting provider and
 holds an instance, its deploy configuration and the client's provider
 credentials by composition. The refusals fire before any row is written; the
 identifier is unique across applications; a private application accepts a
-deployment only from its defining client; a deployment's own credential wins
-over the application's fallback.
+deployment only from its defining client or a client holding a deployment
+grant for it (PI-588 / REQ-664); a deployment's own credential wins over the
+application's fallback.
 """
 
 from __future__ import annotations
@@ -330,3 +331,31 @@ def test_attach_patch_delete_restore(db):
         assert back["deployment_deleted_at"] is None
         with pytest.raises(NotFoundError):
             repo.patch_deployment(s, "DPL-404", name="x")
+
+
+def test_a_deployment_grant_holder_may_deploy_a_private_application(db):
+    """PI-588 / REQ-664: Rochester holds a deployment grant for Cleveland's
+    private application and may register its own deployment of it; Boston,
+    with neither role, is refused; the defining client does not move."""
+    with session_scope() as s:
+        client_repo.create_client(s, name="Boston Business Mentors")  # CLI-004
+        client_repo.add_deployment_grant(s, "ENG-001", "CLI-003")
+        d = repo.create_deployment(
+            s, purpose="client_own", client="CLI-003", application="ENG-001",
+            name="Rochester production", instance=INSTANCE,
+        )
+        assert d["deployment_client"] == "CLI-003"
+        with pytest.raises(UnprocessableError) as excinfo:
+            repo.create_deployment(
+                s, purpose="client_own", client="CLI-004", application="ENG-001", name="x"
+            )
+        assert _codes(excinfo) == ["application_private"]
+        assert "deployment grant" in excinfo.value.errors[0].message
+        # A change of client obeys the same rule.
+        with pytest.raises(UnprocessableError) as excinfo:
+            repo.patch_deployment(s, d["deployment_identifier"], client="CLI-004")
+        assert _codes(excinfo) == ["application_private"]
+        client_repo.add_deployment_grant(s, "ENG-001", "CLI-004")
+        moved = repo.patch_deployment(s, d["deployment_identifier"], client="CLI-004")
+        assert moved["deployment_client"] == "CLI-004"
+        assert engagement_repo.get_engagement(s, "ENG-001").engagement_defining_client == "CLI-001"

@@ -1,6 +1,7 @@
 """The Client Management connector tools (PI-508 / REQ-591): engagement
-selection, the client records above the engagement (PI-512 / REQ-589), and
-the application reading of the engagement (PI-575 / REQ-653).
+selection, the client records above the engagement (PI-512 / REQ-589), the
+application reading of the engagement (PI-575 / REQ-653), and the
+deployment grants of an application (PI-588 / REQ-664, DEC-1196).
 ``mcp_server.tools`` appends these to the shared list, so tool names are
 unchanged for the connector and the chat dispatcher.
 """
@@ -125,6 +126,43 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         the provider credentials that apply (never a token)."""
         return await _unwrap(await http.get(f"/deployments/{identifier}"))
 
+    async def list_deployment_grants(application: str) -> Any:
+        """List the deployment grants of one application (``ENG-NNN``). A
+        deployment grant is a client's recorded permission to deploy a
+        private application it did not define; it permits deployment only,
+        not seeing or changing the design. Returns ``defining_client`` (a
+        ``CLI-NNN`` identifier) and ``deployment_grants`` (client records)."""
+        return await _unwrap(
+            await http.get(f"/engagements/{application}/deployment-grants")
+        )
+
+    async def add_deployment_grant(application: str, client: str) -> Any:
+        """Give ``client`` (``CLI-NNN``) a deployment grant for
+        ``application`` (``ENG-NNN``), so it may deploy that private
+        application. The defining client never moves. Refused for the
+        defining client (``is_defining_client``), a missing client
+        (``client_not_found``) and an application no client defines
+        (``no_defining_client``). Adding a grant already held changes
+        nothing."""
+        return await _unwrap(
+            await http.post(
+                f"/engagements/{application}/deployment-grants",
+                json={"client": client},
+            )
+        )
+
+    async def remove_deployment_grant(application: str, client: str) -> Any:
+        """Withdraw ``client``'s (``CLI-NNN``) deployment grant for
+        ``application`` (``ENG-NNN``). Refused for the defining client
+        (``is_defining_client``), whose holding is not a deployment grant;
+        not found when the client holds no deployment grant. Deployments the
+        client already runs are not touched."""
+        return await _unwrap(
+            await http.delete(
+                f"/engagements/{application}/deployment-grants/{client}"
+            )
+        )
+
     funcs = [
         select_engagement,
         get_active_engagement,
@@ -134,6 +172,9 @@ def tool_definitions(http: httpx.AsyncClient) -> list[ToolDefinition]:
         get_application,
         list_deployments,
         get_deployment,
+        list_deployment_grants,
+        add_deployment_grant,
+        remove_deployment_grant,
     ]
     return [
         ToolDefinition(

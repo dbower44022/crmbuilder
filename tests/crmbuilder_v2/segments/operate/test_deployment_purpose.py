@@ -97,6 +97,22 @@ def test_demo_test_is_only_for_the_defining_client(db):
         assert back["deployment_purpose"] == "client_own"
 
 
+def test_a_deployment_grant_holder_is_refused_a_demo_test_deployment(db):
+    """PI-588 / REQ-664: a deployment grant permits the client's own
+    deployment, never the demo/test deployment."""
+    with session_scope() as s:
+        client_repo.add_deployment_grant(s, "ENG-001", "CLI-003")
+        with pytest.raises(UnprocessableError) as excinfo:
+            repo.create_deployment(
+                s, client="CLI-003", application="ENG-001", name="x", purpose="demo_test"
+            )
+        assert _codes(excinfo) == ["demo_test_requires_defining_client"]
+        own = repo.create_deployment(
+            s, client="CLI-003", application="ENG-001", name="own", purpose="client_own"
+        )
+        assert own["deployment_purpose"] == "client_own"
+
+
 def test_a_client_sees_its_own_and_the_demo_test_of_what_it_may_deploy(db):
     with session_scope() as s:
         repo.create_deployment(

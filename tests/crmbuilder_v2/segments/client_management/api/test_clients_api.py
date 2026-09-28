@@ -100,3 +100,41 @@ def test_engagement_clients_round_trip(client):
     # Empty set: no client.
     r = client.put("/engagements/ENG-002/clients", json={"clients": []})
     assert _ok(r.json())["primary"] is None
+
+
+def test_deployment_grant_routes(client):
+    """PI-588 / REQ-664, DEC-1196: one deployment grant at a time; the
+    defining client never moves and cannot be granted or removed here."""
+    _make_engagement(client, "ENG-002", "ALPHA")
+    _make_engagement(client, "ENG-003", "BETA")
+    a = _ok(client.post("/clients", json={"client_name": "A"}).json())["client_identifier"]
+    b = _ok(client.post("/clients", json={"client_name": "B"}).json())["client_identifier"]
+    client.put("/engagements/ENG-002/clients", json={"clients": [a], "primary": a})
+
+    r = client.get("/engagements/ENG-002/deployment-grants")
+    assert _ok(r.json()) == {
+        "engagement": "ENG-002",
+        "defining_client": a,
+        "deployment_grants": [],
+    }
+    r = client.post("/engagements/ENG-002/deployment-grants", json={"client": b})
+    assert r.status_code == 200, r.text
+    answer = _ok(r.json())
+    assert answer["defining_client"] == a
+    assert [g["client_identifier"] for g in answer["deployment_grants"]] == [b]
+    assert _ok(client.get("/engagements/ENG-002/clients").json())["primary"] == a
+
+    r = client.post("/engagements/ENG-002/deployment-grants", json={"client": a})
+    assert r.status_code == 422 and r.json()["errors"][0]["code"] == "is_defining_client"
+    r = client.post("/engagements/ENG-003/deployment-grants", json={"client": b})
+    assert r.status_code == 422 and r.json()["errors"][0]["code"] == "no_defining_client"
+    r = client.post("/engagements/ENG-002/deployment-grants", json={"client": "CLI-404"})
+    assert r.status_code == 422 and r.json()["errors"][0]["code"] == "client_not_found"
+    r = client.delete(f"/engagements/ENG-002/deployment-grants/{a}")
+    assert r.status_code == 422 and r.json()["errors"][0]["code"] == "is_defining_client"
+
+    r = client.delete(f"/engagements/ENG-002/deployment-grants/{b}")
+    assert r.status_code == 200
+    assert _ok(r.json())["deployment_grants"] == []
+    assert client.delete(f"/engagements/ENG-002/deployment-grants/{b}").status_code == 404
+    assert _ok(client.get("/engagements/ENG-002/clients").json())["primary"] == a
