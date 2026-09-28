@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | Kickoff — who may deploy a private application: Cleveland's visibility and the per-client grant |
-| Last Updated | 09-27-26 00:30 |
-| Revision | 1.0 |
-| Status | Ready to run. PRJ-128 is complete (DEC-1191). DEC-1177 left Cleveland's visibility private and named this as the separate later decision. |
+| Last Updated | 09-27-26 22:30 |
+| Revision | 1.1 |
+| Status | Run in SES-443 on 09-27-26. Option B chosen (DEC-1194); REQ-664 confirmed (DEC-1195); PI-588 Draft in PRJ-133; build prompt `kickoff-pi-588-deployment-grant-build.md`. |
 | Governs | One session: the decision, its requirement and planning item, and, if Doug approves in the same session, the build. |
 | Source | SES-437 (DEC-1177), SES-439 and the PRJ-128 acceptance walkthrough (test plan step 7), the PI-582 close-out on 09-27-26 |
 
@@ -73,4 +73,5 @@ Present in the consequential-decision form, one turn, before any other work.
 
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.1 | 09-27-26 22:30 | Claude (Claude Code) | Status set to run: outcome of SES-443 recorded and the build prompt named. |
 | 1.0 | 09-27-26 00:30 | Claude (Claude Code) | First version, written at the PI-582 close-out after the 09-27-26 rollout of e9fd5418. |
