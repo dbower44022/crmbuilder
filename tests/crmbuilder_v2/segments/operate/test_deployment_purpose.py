@@ -113,6 +113,22 @@ def test_a_deployment_grant_holder_is_refused_a_demo_test_deployment(db):
         assert own["deployment_purpose"] == "client_own"
 
 
+def test_a_deployment_grant_does_not_show_the_demo_test_deployment(db):
+    """DEC-1197: a deployment-grant holder sees its own deployment of the
+    private application, not the defining client's demo/test deployment."""
+    with session_scope() as s:
+        demo = repo.create_deployment(
+            s, client="CLI-001", application="ENG-001", name="Try it", purpose="demo_test"
+        )
+        client_repo.add_deployment_grant(s, "ENG-001", "CLI-003")
+        own = repo.create_deployment(
+            s, client="CLI-003", application="ENG-001", name="Rochester", purpose="client_own"
+        )
+        seen = [d["deployment_identifier"] for d in repo.list_deployments_for_client(s, "CLI-003")]
+        assert own["deployment_identifier"] in seen
+        assert demo["deployment_identifier"] not in seen
+
+
 def test_a_client_sees_its_own_and_the_demo_test_of_what_it_may_deploy(db):
     with session_scope() as s:
         repo.create_deployment(

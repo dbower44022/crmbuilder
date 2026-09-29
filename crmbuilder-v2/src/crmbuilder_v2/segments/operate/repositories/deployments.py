@@ -316,9 +316,14 @@ def list_deployments_for_client(
     session: Session, client: str, *, include_deleted: bool = False
 ) -> list[dict]:
     """What ``client`` may see (REQ-654): its own deployments, plus the
-    demo/test deployment of every application it may deploy (one it
-    defines, or a public one). Every other deployment stays visible to its
-    own client only."""
+    demo/test deployment of every application it defines or that is public.
+    Every other deployment stays visible to its own client only.
+
+    A deployment grant (REQ-664) lets a client deploy a private application
+    it did not define, but does not add that application's demo/test
+    deployment here: a deployment grant permits deployment only, not seeing
+    the design (DEC-1197). So "may deploy" is wider in
+    :func:`_require_may_deploy` than in this list."""
     if session.get(ClientRow, client) is None:
         raise NotFoundError("client", client)
     own = list_deployments(session, client=client, include_deleted=include_deleted)
