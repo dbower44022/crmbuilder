@@ -15,7 +15,11 @@ says the session is opened.
 
 A pasted prompt file supplies its answer on a line beginning ``Opening
 answer:`` (any case, colon or dash); when no line is marked, the first
-non-empty line is the answer, with heading and bullet marks stripped.
+non-empty line is the answer, with heading and bullet marks stripped. A first
+prompt that is exactly the path of such a file — an existing ``.md`` file under
+the hook's working directory — is read, and the same rule is applied to the
+file's contents (REQ-665 / PI-589, DEC-1200); the session's medium metadata
+records the file the answer came from. Any other prompt is the answer itself.
 
 When the operation cannot be reached the hook prints a notice, marks the
 attempt so the next prompt is not mistaken for the answer, and names the
@@ -71,13 +75,53 @@ def extract_opening_answer(prompt: str) -> str:
     """The opening answer in a prompt: the marked line, else the first line."""
     lines = [ln for ln in (prompt or "").splitlines() if ln.strip()]
     for ln in lines:
-        m = _MARKED_LINE_RE.match(ln)
+        # A kickoff file quotes its marked line ("> Opening answer: ..."), so
+        # the leading quote, heading and bullet marks are stripped first.
+        m = _MARKED_LINE_RE.match(_LEADING_MARKS_RE.sub("", ln))
         if m:
             return " ".join(m.group("answer").split())[:MAX_ANSWER_CHARS]
     if not lines:
         return ""
     first = _LEADING_MARKS_RE.sub("", lines[0])
     return " ".join(first.split())[:MAX_ANSWER_CHARS]
+
+
+def prompt_file(prompt: str, cwd: Path) -> Path | None:
+    """The Markdown file a first prompt names, or ``None`` (REQ-665).
+
+    The whole prompt, trimmed, must be one path on one line ending in ``.md``
+    that resolves to an existing regular file under ``cwd``. Anything else —
+    a sentence, a missing file, a directory, another extension, a path outside
+    the working directory — is not a prompt file, so the prompt text itself
+    stays the answer. The hook never reads a file a prompt merely mentions.
+    """
+    text = (prompt or "").strip()
+    if not text or "\n" in text or not text.lower().endswith(".md"):
+        return None
+    try:
+        root = Path(cwd).resolve()
+        candidate = (root / Path(text).expanduser()).resolve()
+        if not candidate.is_relative_to(root) or not candidate.is_file():
+            return None
+    except (OSError, ValueError):
+        return None
+    return candidate
+
+
+def resolve_opening_answer(prompt: str, cwd: Path) -> tuple[str, str | None]:
+    """The opening answer and the file it was read from, if any.
+
+    A prompt naming a prompt file (see :func:`prompt_file`) yields that file's
+    answer and the file's path; any other prompt yields its own answer and
+    ``None``. A file that cannot be read falls back to the prompt text.
+    """
+    path = prompt_file(prompt, cwd)
+    if path is not None:
+        try:
+            return extract_opening_answer(path.read_text(encoding="utf-8", errors="replace")), str(path)
+        except OSError:
+            pass
+    return extract_opening_answer(prompt), None
 
 
 # --- rendering -------------------------------------------------------------------
@@ -221,9 +265,11 @@ def open_from_prompt_with_message(
     marker = read_marker(project_dir, session_id) or {}
     if marker.get("session_identifier") or marker.get("open_failed_at"):
         return "", ""
-    answer = extract_opening_answer(prompt)
+    answer, answer_file = resolve_opening_answer(prompt, Path(cwd or project_dir))
     base, token, engagement = resolve_config(project_dir)
     metadata = {"claude_session_id": session_id, "cwd": cwd or str(project_dir)}
+    if answer_file:
+        metadata["opening_answer_file"] = answer_file
     body = {
         "opening_answer": answer,
         "medium": "claude_code",

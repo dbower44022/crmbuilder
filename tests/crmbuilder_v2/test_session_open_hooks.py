@@ -154,9 +154,67 @@ def test_extract_opening_answer_prefers_marked_line_then_first_line():
     pasted = "# CLAUDE-CODE-PROMPT: Step 3\n\nOpening answer: add a field to the intake screen\n\nOperating mode: DETAIL"
     assert so.extract_opening_answer(pasted) == "add a field to the intake screen"
     assert so.extract_opening_answer("## Heading line\nsecond") == "Heading line"
+    assert so.extract_opening_answer("# Kickoff\n\n> Opening answer: close it out\n") == "close it out"
     assert so.extract_opening_answer("- upgrade the platform\n") == "upgrade the platform"
     assert so.extract_opening_answer("   \n\n") == ""
     assert len(so.extract_opening_answer("x" * 1000)) == so.MAX_ANSWER_CHARS
+
+
+KICKOFF = (
+    "# Kickoff — close out PRJ-133\n\n| Field | Value |\n|---|---|\n\n## Opening answer\n\n"
+    "Paste this as the first line of the new session:\n\n"
+    "> Opening answer: Close out PRJ-133 and mark the project complete.\n\nOperating mode: DETAIL.\n"
+)
+
+
+def test_a_prompt_that_is_a_kickoff_path_supplies_the_answer_from_the_file(tmp_path: Path):
+    """REQ-665 (1): the file's marked line is the answer and the file is recorded."""
+    kickoff = tmp_path / "PRDs" / "kickoff-prj-133-close-out.md"
+    kickoff.parent.mkdir()
+    kickoff.write_text(KICKOFF, encoding="utf-8")
+    assert so.resolve_opening_answer(str(kickoff), tmp_path) == (
+        "Close out PRJ-133 and mark the project complete.", str(kickoff.resolve()))
+    assert so.resolve_opening_answer("PRDs/kickoff-prj-133-close-out.md\n", tmp_path)[0] == (
+        "Close out PRJ-133 and mark the project complete.")
+    store = FakeStore()
+    _start(tmp_path, store)
+    text = so.open_from_prompt(tmp_path, "abc-123", str(kickoff), call=store.call, cwd=str(tmp_path))
+    body = next(b for m, p, b in store.calls if p == so.OPEN_PATH)
+    assert body["opening_answer"] == "Close out PRJ-133 and mark the project complete."
+    assert body["medium_metadata"]["opening_answer_file"] == str(kickoff.resolve())
+    assert "# Session opened — SES-410" in text
+
+
+def test_a_prompt_file_without_a_marked_line_supplies_its_first_line(tmp_path: Path):
+    """REQ-665 (2): no marked line → the first non-empty line, marks stripped."""
+    note = tmp_path / "note.md"
+    note.write_text("\n## Upgrade the platform to 10.0\n\nmore text\n", encoding="utf-8")
+    assert so.resolve_opening_answer("note.md", tmp_path) == (
+        "Upgrade the platform to 10.0", str(note.resolve()))
+
+
+def test_anything_but_a_readable_markdown_file_under_cwd_is_the_answer_itself(tmp_path: Path):
+    """REQ-665 (3): missing, outside, directory, or non-.md → the prompt text is the answer."""
+    cwd = tmp_path / "work"
+    cwd.mkdir()
+    outside = tmp_path / "outside.md"
+    outside.write_text("Opening answer: never read\n", encoding="utf-8")
+    (cwd / "plain.txt").write_text("Opening answer: never read\n", encoding="utf-8")
+    (cwd / "folder.md").mkdir()
+    for prompt in ["missing.md", str(outside), "../outside.md", "plain.txt", "folder.md",
+                   "define new business processes", "read notes.md and act on it"]:
+        assert so.prompt_file(prompt, cwd) is None, prompt
+        assert so.resolve_opening_answer(prompt, cwd) == (so.extract_opening_answer(prompt), None), prompt
+
+
+def test_a_pasted_prompt_body_still_supplies_its_marked_line(tmp_path: Path):
+    """REQ-665 (4): pasted contents behave exactly as before."""
+    store = FakeStore()
+    _start(tmp_path, store)
+    so.open_from_prompt(tmp_path, "abc-123", KICKOFF, call=store.call, cwd=str(tmp_path))
+    body = next(b for m, p, b in store.calls if p == so.OPEN_PATH)
+    assert body["opening_answer"] == "Close out PRJ-133 and mark the project complete."
+    assert "opening_answer_file" not in body["medium_metadata"]
 
 
 # --- prompt submission -----------------------------------------------------------
