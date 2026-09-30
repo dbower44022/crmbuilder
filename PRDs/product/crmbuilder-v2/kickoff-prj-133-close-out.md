@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | Kickoff — close out "Deploying another client's application" (PRJ-133) |
-| Last Updated | 09-30-26 15:05 |
-| Revision | 1.0 |
-| Status | Ready to run. The project's one planning item is resolved; the project is still in flight. |
+| Last Updated | 09-30-26 15:12 |
+| Revision | 1.1 |
+| Status | Run in SES-445 on 09-30-26. Doug ruled A: PRJ-133 complete (DEC-1198). |
 | Governs | One session: decide whether the project's purpose is met, and either mark PRJ-133 complete or open the one planning item that still stands between it and completion. |
 | Source | SES-444 on 09-28-26 to 09-30-26: PI-588 built, rolled out as commit `41f3b35b`, accepted in CNV-413; DEC-1196, DEC-1197. |
 
@@ -67,3 +67,4 @@ Requirement-first applies even to a proof run: a confirmed requirement, then the
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
 | 1.0 | 09-30-26 15:05 | Claude (Claude Code) | First version, written at the close of SES-444 after PI-588 was accepted in production. |
+| 1.1 | 09-30-26 15:12 | Claude (Claude Code) | Status updated after the session ran: ruling A recorded as DEC-1198, PRJ-133 marked complete, SES-445 re-filed under PRJ-133. |
