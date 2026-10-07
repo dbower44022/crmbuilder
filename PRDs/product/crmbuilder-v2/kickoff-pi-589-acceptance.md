@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | Kickoff — accept PI-589: the session-open hook reads a pasted kickoff file path |
-| Last Updated | 10-07-26 00:56 |
-| Revision | 1.0 |
-| Status | Ready to run. PI-589 is In Review; its build is merged to main as commit `9b39501b`. |
+| Last Updated | 10-07-26 04:12 |
+| Revision | 1.1 |
+| Status | Ready to run. PI-589 is In Review; its build is merged to main as commit `9b39501b`. First attempt SES-447 (10-07-26) did not run the test: the first prompt was a sentence containing the path, not the bare path, so the hook correctly took the sentence as the answer (CNV-416). Paste the path alone. |
 | Governs | One session: the session's own opening is the acceptance test. Record the result as the conversation that resolves PI-589, or record what failed. |
 | Source | SES-445 and SES-446 on 09-30-26: DEC-1199, REQ-665, DEC-1200, commit `9b39501b`. |
 
@@ -70,4 +70,5 @@ State the result of each check in the first reply, in one line each, before anyt
 
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.1 | 10-07-26 04:12 | Claude (Claude Code) | Status notes the first attempt, SES-447: the test did not run because the first prompt was "Please review and run the prompt: <path>" rather than the bare path; the hook behaved as designed. Recorded as CNV-416 addressing PI-589; the spurious catalogue-miss item PI-590 was cancelled. Still ready to run. |
 | 1.0 | 10-07-26 00:56 | Claude (Claude Code) | First version, written after PI-589 merged to main as `9b39501b` and moved to In Review. |
