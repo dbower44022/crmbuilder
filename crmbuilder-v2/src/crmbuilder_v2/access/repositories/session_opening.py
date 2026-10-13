@@ -227,11 +227,19 @@ def validate_segments(session: DbSession, segments: list[dict]) -> list[str]:
 
 
 def _phrase_score(answer_tokens: list[str], answer_text: str, phrase: str) -> float:
+    """1.0 when the normalised phrase appears in the answer; otherwise the
+    fraction of the phrase's tokens found in the answer, but only for a phrase
+    that keeps at least two tokens after stopword removal (REQ-666). A
+    one-token phrase such as ``what is`` (tokens: ``what``) would otherwise
+    score 1.0 on any answer containing that one word, which tied PROC-019 and
+    PROC-020 on "Review what has been delivered ..." (PI-592); it now matches
+    only as an exact phrase.
+    """
     phrase_norm = " ".join(_WORD_RE.findall(phrase.lower()))
     if phrase_norm and phrase_norm in answer_text:
         return 1.0
     ptoks = _tokens(phrase)
-    if not ptoks:
+    if len(ptoks) < 2:
         return 0.0
     aset = set(answer_tokens)
     hit = sum(1 for t in ptoks if t in aset)

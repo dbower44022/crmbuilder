@@ -75,6 +75,24 @@ def test_every_plan_example_classifies_to_its_entry():
     assert so.classify("teach the mentoring app to send birthday cards", entries)["entry"] is None
 
 
+def test_one_token_phrases_match_only_exactly_against_the_catalogue():
+    """REQ-666 / PI-592: 'what is', 'show me', 'explain' and 'where is' on the
+    question entry keep one token after stopword removal and match only as
+    exact phrases, so 'Review what has been delivered ...' no longer ties."""
+    entries = [
+        so.parse_catalogue_entry({**b, "process_identifier": f"PROC-{i:03d}"})
+        for i, b in enumerate(kw.entries_as_process_bodies(), start=1)
+    ]
+    review = so.classify("Review what has been delivered for the Boston test system.", entries)
+    assert review["entry"] is not None and review["entry"]["name"] == "Review what has been delivered", review["ranked"][:2]
+    assert review["ranked"][0]["score"] - review["ranked"][1]["score"] >= so.AMBIGUITY_MARGIN
+    for answer in ("What is a deployment grant?", "Explain the readiness list", "Show me the deployments",
+                   "Where is the handover file?"):
+        result = so.classify(answer, entries)
+        assert result["entry"] is not None and result["entry"]["name"].startswith("Ask a question"), (answer, result["ranked"][:2])
+    assert so.classify("Build what the readiness list needs for Boston", entries)["entry"] is None
+
+
 def test_write_catalogue_over_the_api(client):
     """Written through the REST API, the nine entries read back as the catalogue."""
     for key, ident in kw.DOM.items():

@@ -418,3 +418,37 @@ def test_opening_without_a_kind_of_work_carries_no_restatement_instruction(clien
     for d in (empty, miss):
         assert "first_reply_instruction" not in d["contract"]
         assert "word for word" not in (d["contract"].get("system_prompt") or "")
+
+
+def test_one_token_phrase_scores_only_by_exact_match():
+    """REQ-666 / PI-592: a phrase that keeps one token after stopword removal
+    gets no token-overlap score. ``what is`` keeps only ``what``; before the
+    rule, any answer containing that word scored 1.0 on it."""
+    tokens = so._tokens("review what has been delivered for the boston test system")
+    text = "review what has been delivered for the boston test system"
+    # Exact phrase still wins.
+    assert so._phrase_score(so._tokens("what is a deployment grant"), "what is a deployment grant", "what is") == 1.0
+    # A mere word hit on a one-token phrase scores nothing.
+    assert so._phrase_score(tokens, text, "what is") == 0.0
+    assert so._phrase_score(tokens, text, "explain") == 0.0
+    # A phrase that keeps two tokens still earns its fraction.
+    assert so._phrase_score(tokens, text, "what does") == 0.5
+    assert so._phrase_score(tokens, text, "review the delivery") == 0.5
+    # Nothing left after stopwords still scores nothing.
+    assert so._phrase_score(tokens, text, "is the") == 0.0
+
+
+def test_one_token_phrase_no_longer_ties_the_exact_match():
+    entries = [
+        {"process_identifier": "PROC-019", "name": "Review what has been delivered",
+         "segments": [], "trigger_phrases": ["review what has been delivered", "review the delivery"]},
+        {"process_identifier": "PROC-020", "name": "Ask a question about the system or its records",
+         "segments": [], "trigger_phrases": ["ask a question", "what is", "what does", "explain"]},
+    ]
+    review = so.classify("Review what has been delivered for the Boston test system.", entries)
+    assert review["entry"]["process_identifier"] == "PROC-019" and review["confidence"] == 1.0
+    assert review["ranked"][1]["score"] < so.MATCH_THRESHOLD
+    question = so.classify("What is a deployment grant?", entries)
+    assert question["entry"]["process_identifier"] == "PROC-020" and question["confidence"] == 1.0
+    # One word of a one-token phrase is not a question.
+    assert so.classify("Build what the readiness list needs for Boston", entries)["entry"] is None
