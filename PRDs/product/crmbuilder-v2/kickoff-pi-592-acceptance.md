@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | Kickoff — accept PI-592: a one-token trigger phrase gets no token-overlap score |
-| Last Updated | 10-18-26 23:05 |
-| Revision | 1.0 |
-| Status | Ready to run after Doug rolls the API out with `scripts/deploy-production.sh`. PI-592 is In Review; its build is on `main` as commit `0f1e59e1`. |
+| Last Updated | 10-18-26 23:16 |
+| Revision | 1.1 |
+| Status | Run and accepted 10-18-26 in SES-452: all three checks passed; CNV-420 resolves PI-592. Section 6's PI-593 was ruled the same night (DEC-1203, SES-454). Kept as the record of the test. |
 | Governs | One session: the session's own opening is the acceptance test. Record the result as the conversation that resolves PI-592, or record what failed. |
 | Source | SES-451 on 10-13-26: REQ-666, DEC-1202, CNV-419, commit `0f1e59e1`. |
 
@@ -66,4 +66,5 @@ PI-593 records this build session's own opening answer, "Build the PI-592 scorer
 
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.1 | 10-18-26 23:16 | Claude (Claude Code) | Status: run and accepted in SES-452 (CNV-420); PI-593 ruled in SES-454 (DEC-1203). |
 | 1.0 | 10-18-26 23:05 | Claude (Claude Code) | First version, written after commit `0f1e59e1` was pushed and PI-592 moved to In Review. |
