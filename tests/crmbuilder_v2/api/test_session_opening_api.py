@@ -452,3 +452,40 @@ def test_one_token_phrase_no_longer_ties_the_exact_match():
     assert question["entry"]["process_identifier"] == "PROC-020" and question["confidence"] == 1.0
     # One word of a one-token phrase is not a question.
     assert so.classify("Build what the readiness list needs for Boston", entries)["entry"] is None
+
+
+def test_token_overlap_match_is_capped_below_an_exact_phrase():
+    """REQ-667 / PI-596: a phrase whose words all appear somewhere in the
+    answer scores at most ``TOKEN_OVERLAP_CAP``; only the phrase itself, in
+    order, scores 1.0. ``build PI`` found both its words in "Review the build
+    of PI-592" and tied the exact phrase ``review the build`` (PI-595)."""
+    text = "review the build of pi 592"
+    tokens = so._tokens(text)
+    assert so.TOKEN_OVERLAP_CAP == 0.75
+    assert so._phrase_score(tokens, text, "build PI") == 0.75
+    assert so._phrase_score(tokens, text, "review the build") == 1.0
+    # A partial overlap below the cap is unchanged.
+    boston = "review what has been delivered for the boston test system"
+    assert so._phrase_score(so._tokens(boston), boston, "review the delivery") == 0.5
+
+
+def test_exact_phrase_outranks_a_full_token_overlap_on_another_entry():
+    """REQ-667 / PI-596, with the two catalogue edits DEC-1204 makes after
+    the rollout: PROC-016 without "review and build", PROC-019 with
+    "review the build"."""
+    entries = [
+        {"process_identifier": "PROC-016", "name": "Build a new application or module from approved requirements",
+         "segments": [], "trigger_phrases": ["build PI", "build the kickoff"]},
+        {"process_identifier": "PROC-019", "name": "Review what has been delivered",
+         "segments": [], "trigger_phrases": ["review the build", "accept PI"]},
+    ]
+    review = so.classify("Review the build of PI-592", entries)
+    assert review["entry"]["process_identifier"] == "PROC-019" and review["confidence"] == 1.0
+    assert review["ranked"][1]["process_identifier"] == "PROC-016"
+    assert review["ranked"][1]["score"] == 0.75
+    build = so.classify("Review and build the kickoff for PI-588", entries)
+    assert build["entry"]["process_identifier"] == "PROC-016" and build["confidence"] == 1.0
+    capped = so.classify("Build the PI-592 scorer rule in PRJ-023", entries)
+    assert capped["entry"]["process_identifier"] == "PROC-016" and capped["confidence"] == 0.75
+    accept = so.classify("Accept PI-592 after the build", entries)
+    assert accept["entry"]["process_identifier"] == "PROC-019" and accept["confidence"] == 1.0

@@ -65,6 +65,11 @@ CROSS_CUTTING_AREA = "cross-cutting"
 MATCH_THRESHOLD = 0.6
 #: Two entries this close in score are ambiguous — treated as no confident match.
 AMBIGUITY_MARGIN = 0.15
+#: The most a token-overlap match can score (REQ-667 / DEC-1204). Only an exact
+#: trigger phrase scores a full match; a phrase whose words merely all appear
+#: somewhere in the answer is capped here, so an exact phrase on another entry
+#: wins by more than the ambiguity margin.
+TOKEN_OVERLAP_CAP = 0.75
 #: The one follow-up question for an unrecognised answer (REQ-572). It never
 #: asks for a phase or a role.
 FOLLOW_UP_QUESTION = (
@@ -233,7 +238,11 @@ def _phrase_score(answer_tokens: list[str], answer_text: str, phrase: str) -> fl
     one-token phrase such as ``what is`` (tokens: ``what``) would otherwise
     score 1.0 on any answer containing that one word, which tied PROC-019 and
     PROC-020 on "Review what has been delivered ..." (PI-592); it now matches
-    only as an exact phrase.
+    only as an exact phrase. The token fraction is capped at
+    ``TOKEN_OVERLAP_CAP`` (REQ-667): ``build PI`` found both its words in
+    "Review the build of PI-592" and scored 1.0, tying the exact phrase
+    ``review the build`` on another entry (PI-595); only an exact phrase now
+    scores a full match.
     """
     phrase_norm = " ".join(_WORD_RE.findall(phrase.lower()))
     if phrase_norm and phrase_norm in answer_text:
@@ -243,7 +252,7 @@ def _phrase_score(answer_tokens: list[str], answer_text: str, phrase: str) -> fl
         return 0.0
     aset = set(answer_tokens)
     hit = sum(1 for t in ptoks if t in aset)
-    return hit / len(ptoks)
+    return min(hit / len(ptoks), TOKEN_OVERLAP_CAP)
 
 
 def classify(answer: str, entries: list[dict]) -> dict:
