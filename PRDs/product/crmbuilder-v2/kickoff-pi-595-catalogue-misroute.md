@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | Kickoff — rule on PI-595: "Review the build of PI-NNN" opens as Build |
-| Last Updated | 10-18-26 23:16 |
-| Revision | 1.0 |
-| Status | Ready to run. PI-595 is Draft in PRJ-023 and needs Doug's ruling. |
+| Last Updated | 10-22-26 22:48 |
+| Revision | 1.1 |
+| Status | Run on 10-22-26 as SES-455. Doug ruled option (d), a scorer change, recorded as DEC-1204; REQ-667 confirmed, PI-596 queued in PRJ-023. PI-595 stays open until PI-596 is accepted. The catalogue was not edited. |
 | Governs | One session: measure the options offline against the live catalogue, put one decision to Doug, apply the ruling in the store, verify it in production, and resolve PI-595. |
 | Source | Claude Code session of 10-18-26 (SES-452, SES-454): found while measuring options for PI-593; DEC-1203; PI-595. |
 
@@ -75,4 +75,5 @@ Put one decision to Doug in the consequential decision template: the plain quest
 
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.1 | 10-22-26 22:48 | Claude (Claude Code) | Marked run (SES-455, CNV-422). Measured result: "review and build" was no longer the cause after DEC-1203 added "build PI"; options (a) and (b) could not make a review open as a review. Doug ruled a fourth option, (d): the scorer caps a token-overlap match at 0.75 so only an exact phrase scores a full match (DEC-1204, REQ-667, PI-596), with the two catalogue edits deferred until that lands. Note: the session opened as Build because the first prompt was "run " plus this file's path, not the bare path. |
 | 1.0 | 10-18-26 23:16 | Claude (Claude Code) | First version, written after PI-595 was queued and its opening answer was previewed in production. |
