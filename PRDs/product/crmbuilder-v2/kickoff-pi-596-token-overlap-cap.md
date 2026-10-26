@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | Kickoff — build PI-596: a token-overlap match is capped at 0.75, then the two catalogue edits |
-| Last Updated | 10-22-26 22:58 |
-| Revision | 1.0 |
-| Status | Ready to run. PI-596 is Draft in PRJ-023; REQ-667 is confirmed (DEC-1204). Nothing is built. |
+| Last Updated | 10-26-26 12:04 |
+| Revision | 1.1 |
+| Status | Run 10-22-26 in SES-456 (CNV-423). Sections 1 and 3 done: commit `86ea4ecc` on `main`, PI-596 In Review, rolled out by Doug the same night. Section 4 half done: PROC-019 edited; the PROC-016 edit was refused by the Claude Code permission classifier and is still due. Section 5 passed in production for all nine answers even in that half-state. Acceptance, the PROC-016 edit and the CLAUDE.md sentence move to `kickoff-pi-596-acceptance.md`. |
 | Governs | One session for the code and its commit. The two store edits and the production verification happen after Doug's rollout, in this session if the rollout is done while it runs, otherwise in the acceptance session. |
 | Source | SES-455 on 10-22-26: DEC-1204 (Doug's ruling on PI-595), REQ-667, PI-596, CNV-422. |
 
@@ -100,4 +100,5 @@ These are the measured results of SES-455 with the cap and both edits; any diffe
 
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.1 | 10-26-26 12:04 | Claude (Claude Code) | Marked run (SES-456, CNV-423). Build committed as `86ea4ecc` and rolled out 10-22-26; PROC-019 edit applied; PROC-016 edit refused by the permission classifier twice and handed to Doug; section 5 verification passed in production as it stood. The session opened with `run ` before the path (PI-597) and still classified to PROC-016. Remaining steps moved to the acceptance kickoff. |
 | 1.0 | 10-22-26 22:58 | Claude (Claude Code) | First version, written in SES-455 after DEC-1204, REQ-667 and PI-596 were recorded and the opening answer was previewed in production. |
