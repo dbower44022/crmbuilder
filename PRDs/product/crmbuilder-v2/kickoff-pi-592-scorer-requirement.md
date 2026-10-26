@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | Kickoff — PI-592: a one-token trigger phrase gets no token-overlap score |
-| Last Updated | 10-11-26 12:05 |
-| Revision | 1.0 |
-| Status | Ready to run. PI-592 is Draft in PRJ-023, ruled on 10-11-26: fix the scorer, do not edit the store. |
+| Last Updated | 10-26-26 12:02 |
+| Revision | 1.1 |
+| Status | Run and accepted. SES-451 (10-13-26) authored REQ-666, confirmed by DEC-1202, and built the rule as commit `0f1e59e1`; Doug rolled the API out and accepted PI-592 in SES-452 on 10-19-26 (CNV-420). Kept as the record of the session. |
 | Governs | One session: author the requirement, confirm it by decision, make PI-592 implement it, then build and test. |
 | Source | SES-450 and the Claude Code session that followed it on 10-11-26: DEC-1201, PI-592. |
 
@@ -47,4 +47,5 @@ One requirement under TOP-118, in the store's wording conventions: the token-ove
 
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.1 | 10-26-26 12:02 | Claude (Claude Code) | Status marked run and accepted: REQ-666, DEC-1202, commit `0f1e59e1`, acceptance in SES-452 (CNV-420). |
 | 1.0 | 10-11-26 12:05 | Claude (Claude Code) | First version, after Doug ruled on PI-592 to fix the scorer rather than edit the store. |
