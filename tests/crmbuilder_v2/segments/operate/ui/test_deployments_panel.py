@@ -424,3 +424,80 @@ def test_run_history_window_opens_with_the_runs_listed(qtbot, ui_client):
         assert dialog.windowTitle() == f"Run history — {ident}"
     finally:
         history.drain_workers()
+
+
+# --- PI-600 (REQ-670): not yet run, and Remove ------------------------------
+
+
+def _unrun(client: StorageClient, name: str) -> str:
+    """A deployment as an abandoned deploy wizard leaves it: no instance, no run."""
+    return client.create_deployment(
+        {"deployment_client": "CLI-001", "deployment_purpose": "client_own", "deployment_name": name}
+    )["deployment_identifier"]
+
+
+def _answer_message_boxes(monkeypatch, answer, seen: list[str]):
+    from crmbuilder_v2.segments.operate.ui.panels import deployments as panel_module
+
+    def fake_exec(box):
+        seen.append(box.text())
+        return answer
+
+    monkeypatch.setattr(panel_module.CopyableMessageBox, "exec", fake_exec)
+
+
+def test_a_deployment_never_run_is_marked_not_yet_run(qtbot, ui_client):
+    """REQ-670 (1), (2)."""
+    _seed_deployment(ui_client, "Live")  # holds a CRM connection: it has run
+    _unrun(ui_client, "Abandoned")
+    panel = DeploymentsPanel(ui_client)
+    qtbot.addWidget(panel)
+    status = {r["deployment_name"]: r["status_display"] for r in panel.fetch_records()}
+    assert status == {"Live": "active", "Abandoned": "active — not yet run"}
+    assert "status_display" in [c.field for c in panel.list_columns()]
+
+
+def test_remove_a_deployment_never_run_deletes_its_tokens(qtbot, ui_client, monkeypatch):
+    """REQ-670 (3): confirmed, soft-deleted, its own tokens deleted."""
+    from PySide6.QtWidgets import QMessageBox
+
+    ui_client.put_provider_credential("digitalocean", "app-token", "crmbuilder-eng002-readonly")
+    ident = _unrun(ui_client, "Abandoned")
+    ui_client.put_deployment_provider_credential(ident, "digitalocean", "bma-do")
+    ui_client.put_deployment_provider_credential(ident, "cloudflare", "bma-cf")
+    panel = DeploymentsPanel(ui_client)
+    qtbot.addWidget(panel)
+    record = next(r for r in panel.fetch_records() if r["deployment_identifier"] == ident)
+
+    seen: list[str] = []
+    _answer_message_boxes(monkeypatch, QMessageBox.StandardButton.No, seen)
+    panel._on_remove_clicked(record)
+    assert "never run" in seen[-1] and "tokens are deleted" in seen[-1]
+    assert [r["deployment_identifier"] for r in panel.fetch_records()] == [ident]
+
+    _answer_message_boxes(monkeypatch, QMessageBox.StandardButton.Yes, seen)
+    panel._on_remove_clicked(record)
+    assert panel.fetch_records() == []
+    panel._show_retired_check.setChecked(True)
+    gone = panel.fetch_records()[0]
+    assert gone["deployment_deleted_at"] is not None
+    # Its own tokens are gone; the application's stays.
+    assert [c["scope"] for c in gone["provider_credentials"]] == ["application"]
+    assert ui_client.list_provider_credentials()[0]["label"] == "crmbuilder-eng002-readonly"
+
+
+def test_remove_is_refused_with_the_reason_for_a_deployment_that_has_run(
+    qtbot, ui_client, monkeypatch
+):
+    """REQ-670 (4): the button is there, and explains instead of removing."""
+    from PySide6.QtWidgets import QMessageBox
+
+    _seed_deployment(ui_client, "Live")
+    panel = DeploymentsPanel(ui_client)
+    qtbot.addWidget(panel)
+    record = panel.fetch_records()[0]
+    seen: list[str] = []
+    _answer_message_boxes(monkeypatch, QMessageBox.StandardButton.Yes, seen)
+    panel._on_remove_clicked(record)
+    assert len(seen) == 1 and "has run, so it cannot be removed" in seen[0]
+    assert [r["deployment_identifier"] for r in panel.fetch_records()] == ["DPL-001"]

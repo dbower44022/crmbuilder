@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -42,7 +42,7 @@ from crmbuilder_v2.segments.client_management.repositories import (
 from crmbuilder_v2.segments.client_management.repositories import (
     engagement as engagement_repo,
 )
-from crmbuilder_v2.segments.operate.models import Deployment
+from crmbuilder_v2.segments.operate.models import Deployment, DeployRun
 from crmbuilder_v2.segments.operate.repositories import instance_deploy_config
 from crmbuilder_v2.segments.operate.repositories import instances as instance_repo
 from crmbuilder_v2.segments.operate.repositories import (
@@ -53,6 +53,7 @@ from crmbuilder_v2.segments.operate.vocab import (
     DEPLOYMENT_HOSTING_PROVIDERS,
     DEPLOYMENT_PURPOSES,
     DEPLOYMENT_STATUSES,
+    PROVIDER_CREDENTIAL_PROVIDERS,
 )
 
 _IDENTIFIER_PREFIX = "DPL"
@@ -269,7 +270,11 @@ def compose(session: Session, row: Deployment) -> dict:
         effective = credential_repo.effective_provider_credentials(
             session, deployment_identifier=row.deployment_identifier
         )
+        run_count = _run_count(session, row.deployment_identifier)
     out["instance"] = instance
+    # PI-600 (REQ-670): derived, not a status value. A deployment that holds
+    # an instance has been built even when its runs predate deployments.
+    out["deployment_has_run"] = bool(run_count or row.deployment_instance_identifier)
     out["deploy_config"] = deploy_config
     out["provider_credentials"] = [
         _credential_public(
@@ -588,6 +593,56 @@ def attach_instance(
     row.deployment_instance_identifier = instance_identifier
     session.flush()
     return compose(session, row)
+
+
+def _run_count(session: Session, identifier: str) -> int:
+    """How many deploy runs name the deployment (read under its application)."""
+    return session.scalar(
+        select(func.count())
+        .select_from(DeployRun)
+        .where(DeployRun.deployment_identifier == identifier)
+    ) or 0
+
+
+def remove_unrun_deployment(session: Session, identifier: str) -> tuple[dict, list[str]]:
+    """Remove a deployment that has never run (PI-600, REQ-670).
+
+    Soft-deletes the deployment (retain, not delete) and deletes its own
+    provider credentials. Returns the deleted record and the secret
+    references the caller must delete; the repository never touches the
+    secret store. A deployment that has run is refused with
+    ``deployment_has_run``.
+    """
+    row = _get_row(session, identifier)
+    if row is None:
+        raise NotFoundError("deployment", identifier)
+    with active_engagement(row.deployment_application):
+        has_run = bool(
+            _run_count(session, identifier) or row.deployment_instance_identifier
+        )
+        if has_run:
+            raise UnprocessableError(
+                [
+                    FieldError(
+                        "deployment_identifier",
+                        "deployment_has_run",
+                        f"deployment {identifier!r} has run, so it is not removed "
+                        "this way; retire it instead",
+                    )
+                ]
+            )
+        refs = [
+            ref
+            for provider in sorted(PROVIDER_CREDENTIAL_PROVIDERS)
+            if (
+                ref := credential_repo.delete_provider_credential(
+                    session, provider, deployment_identifier=identifier
+                )
+            )
+        ]
+    row.deployment_deleted_at = datetime.now(UTC)
+    session.flush()
+    return compose(session, row), refs
 
 
 def delete_deployment(session: Session, identifier: str) -> dict:

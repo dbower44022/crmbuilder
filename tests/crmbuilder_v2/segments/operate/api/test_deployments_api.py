@@ -295,3 +295,153 @@ def test_a_deployment_grant_holder_is_accepted_over_the_api(seeded):
     r = seeded.post("/deployments", json=dict(body, deployment_purpose="demo_test", deployment_name="demo"))
     assert r.status_code == 422 and _codes(r) == ["demo_test_requires_defining_client"]
     assert seeded.get("/applications/ENG-001").json()["data"]["engagement_defining_client"] == "CLI-001"
+
+
+# --- PI-600: the deployment's own catalogues, and removing one never run ----
+
+
+def _fake_providers(monkeypatch):
+    """DigitalOcean and Cloudflare fakes whose answers depend on the token,
+    so a test can tell whose account was read."""
+    from crmbuilder_v2.segments.operate.routers import provider_credentials as pc
+
+    class FakeDO:
+        def __init__(self, token, **_):
+            self.token = token
+
+        def list_regions(self):
+            return [{"slug": "nyc3", "name": "New York 3"}]
+
+        def list_sizes(self):
+            return [{"slug": "s-2vcpu-4gb"}]
+
+        def list_images(self):
+            return [{"slug": "ubuntu-24-04-x64"}]
+
+        def list_ssh_keys(self):
+            return [{"id": 1, "name": f"key of {self.token}", "fingerprint": "aa"}]
+
+    class FakeCF:
+        def __init__(self, token, **_):
+            self.token = token
+
+        def list_zones(self):
+            return [{"id": "z1", "name": f"{self.token}.org"}]
+
+    monkeypatch.setattr(pc, "DigitalOceanClient", FakeDO)
+    monkeypatch.setattr(pc, "CloudflareClient", FakeCF)
+
+
+def _new_deployment(api, name="Association CRM") -> str:
+    r = api.post(
+        "/deployments",
+        json={"deployment_client": "CLI-001", "deployment_purpose": "client_own", "deployment_name": name},
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["data"]["deployment_identifier"]
+
+
+def test_deployment_catalogues_use_its_own_token_else_the_applications(seeded, monkeypatch):
+    """REQ-669 (1) to (4)."""
+    _fake_providers(monkeypatch)
+    seeded.put("/provider-credentials/digitalocean", json={"token": "cleveland"})
+    seeded.put("/provider-credentials/cloudflare", json={"token": "cleveland"})
+    own = _new_deployment(seeded)
+    inherits = _new_deployment(seeded, "Inherits")
+    seeded.put(f"/deployments/{own}/provider-credentials/digitalocean", json={"token": "association"})
+    seeded.put(f"/deployments/{own}/provider-credentials/cloudflare", json={"token": "association"})
+
+    def keys(path):
+        r = seeded.get(path)
+        assert r.status_code == 200, r.text
+        return [k["name"] for k in r.json()["data"]["ssh_keys"]]
+
+    def zones(path):
+        r = seeded.get(path)
+        assert r.status_code == 200, r.text
+        return [z["name"] for z in r.json()["data"]]
+
+    # (2), (3): the deployment's own accounts.
+    assert keys(f"/deployments/{own}/digitalocean/options") == ["key of association"]
+    assert zones(f"/deployments/{own}/cloudflare/zones") == ["association.org"]
+    # (4): no token of its own, exactly what the application's token lists.
+    assert keys(f"/deployments/{inherits}/digitalocean/options") == keys(
+        "/provider-credentials/digitalocean/options"
+    ) == ["key of cleveland"]
+    assert zones(f"/deployments/{inherits}/cloudflare/zones") == zones(
+        "/provider-credentials/cloudflare/zones"
+    ) == ["cleveland.org"]
+    # (1): the application-scope routes are unchanged.
+    assert keys("/provider-credentials/digitalocean/options") == ["key of cleveland"]
+    # Unknown deployment: 404; no credential anywhere: the usual 422.
+    assert seeded.get("/deployments/DPL-404/digitalocean/options").status_code == 404
+    seeded.delete("/provider-credentials/cloudflare")
+    r = seeded.get(f"/deployments/{inherits}/cloudflare/zones")
+    assert r.status_code == 422 and _codes(r) == ["missing_provider_credential"]
+
+
+def test_a_deployment_never_run_is_marked_and_removed_with_its_credentials(seeded):
+    """REQ-670 (1), (3)."""
+    seeded.put("/provider-credentials/digitalocean", json={"token": "cleveland"})
+    ident = _new_deployment(seeded)
+    assert seeded.get(f"/deployments/{ident}").json()["data"]["deployment_has_run"] is False
+    for provider in ("digitalocean", "cloudflare"):
+        seeded.put(f"/deployments/{ident}/provider-credentials/{provider}", json={"token": f"bma-{provider}"})
+    with session_scope() as s:
+        refs = [
+            credential_repo.get_provider_credential(s, p, deployment_identifier=ident)["token_ref"]
+            for p in ("digitalocean", "cloudflare")
+        ]
+
+    r = seeded.post(f"/deployments/{ident}/remove-unrun")
+    assert r.status_code == 200, r.text
+    assert r.json()["data"]["deployment_deleted_at"] is not None
+    assert seeded.get(f"/deployments/{ident}").status_code == 404
+    assert ident not in [d["deployment_identifier"] for d in seeded.get("/deployments").json()["data"]]
+    with session_scope() as s:
+        for p in ("digitalocean", "cloudflare"):
+            assert credential_repo.get_provider_credential(s, p, deployment_identifier=ident) is None
+        # The application's credential stays.
+        assert credential_repo.get_provider_credential(s, "digitalocean") is not None
+    for ref in refs:
+        with pytest.raises(KeyError):
+            secrets.get_secret(ref)
+
+
+def test_a_deployment_that_has_run_is_not_marked_and_is_refused_removal(seeded):
+    """REQ-670 (2), (4): a deploy run, or an instance held, means it has run."""
+    ran = _new_deployment(seeded, "Ran")
+    seeded.put(f"/deployments/{ran}/provider-credentials/digitalocean", json={"token": "dpl-do"})
+    r = seeded.post(
+        "/deploy-runs",
+        json={
+            "instance_name": "Ran CRM", "region": "nyc3", "size": "s-1vcpu-1gb",
+            "image": "ubuntu-24-04-x64", "dns_mode": "manual", "domain": "crm.ran.org",
+            "letsencrypt_email": "ops@example.org", "admin_email": "ops@example.org",
+            "admin_password": "Adm1n!", "deployment_identifier": ran,
+        },
+    )
+    assert r.status_code == 202, r.text
+    assert seeded.get(f"/deployments/{ran}").json()["data"]["deployment_has_run"] is True
+    r = seeded.post(f"/deployments/{ran}/remove-unrun")
+    assert r.status_code == 422 and _codes(r) == ["deployment_has_run"]
+    assert seeded.get(f"/deployments/{ran}").status_code == 200
+    with session_scope() as s:
+        assert credential_repo.get_provider_credential(
+            s, "digitalocean", deployment_identifier=ran
+        ) is not None
+
+    registered = seeded.post(
+        "/deployments",
+        json={
+            "deployment_client": "CLI-001", "deployment_purpose": "client_own",
+            "deployment_name": "Registered",
+            "instance": {
+                "instance_name": "Registered", "instance_url": "https://crm.reg.org",
+                "instance_auth_method": "basic", "secret": "admin", "secret_key": "x",
+            },
+        },
+    ).json()["data"]["deployment_identifier"]
+    assert seeded.get(f"/deployments/{registered}").json()["data"]["deployment_has_run"] is True
+    assert _codes(seeded.post(f"/deployments/{registered}/remove-unrun")) == ["deployment_has_run"]
+    assert seeded.post("/deployments/DPL-404/remove-unrun").status_code == 404

@@ -6,7 +6,9 @@ API tokens — the *provider credentials* a deploy run uses to create a server
 and its DNS record. Opened without a deployment it edits the application's
 defaults; opened with ``deployment_identifier`` it edits that deployment's
 own tokens, showing for each provider whether the token that applies is the
-deployment's own or the application default (PI-576 / REQ-653). The dialog
+deployment's own or the application default (PI-576 / REQ-653). The deploy
+wizard always opens it on a deployment and passes the deployment's name, which
+the dialog shows (PI-600, REQ-668). The dialog
 never sees a stored token: the API reports only whether one is configured
 (REQ-157), and a token typed here crosses to the service once and is stored
 behind the secret boundary. Every network call runs off the UI thread via
@@ -120,25 +122,34 @@ class ProviderCredentialsDialog(QDialog):
     connection_lost = Signal(str)
 
     def __init__(
-        self, client, parent=None, *, deployment_identifier: str | None = None
+        self,
+        client,
+        parent=None,
+        *,
+        deployment_identifier: str | None = None,
+        deployment_name: str | None = None,
     ) -> None:
         super().__init__(parent)
         self._client = client
         self._deployment = deployment_identifier or None
         self._in_flight: list = []
         self._rows: dict[str, _ProviderRow] = {}
-        self.setWindowTitle("Hosting credentials")
         self.resize(560, 540)
 
         layout = QVBoxLayout(self)
         if self._deployment:
+            which = (
+                f"{self._deployment} — {deployment_name}" if deployment_name else self._deployment
+            )
+            self.setWindowTitle(f"Hosting credentials for deployment {which}")
             intro_text = (
-                f"Tokens for deployment {self._deployment}. A token set here applies "
+                f"Tokens for deployment {which}. A token set here applies "
                 "to this deployment only and overrides the application default. "
                 "Tokens are stored encrypted by the service and never shown again; "
                 "leave a token blank to keep the one already stored."
             )
         else:
+            self.setWindowTitle("Hosting credentials")
             intro_text = (
                 "The application's default tokens; a deployment may override them "
                 "with its own. Tokens are stored encrypted by the service and never "

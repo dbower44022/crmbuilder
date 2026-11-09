@@ -280,6 +280,33 @@ class OperateMethods:
         """DELETE /deployments/{identifier} (soft delete)."""
         self._request("DELETE", f"/deployments/{identifier}")
 
+    def remove_unrun_deployment(self, identifier: str) -> dict[str, Any]:
+        """POST /deployments/{identifier}/remove-unrun — remove a deployment
+        that has never run, with its own credentials (PI-600, REQ-670)."""
+        result = self._request("POST", f"/deployments/{identifier}/remove-unrun")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for remove_unrun_deployment",
+            )
+        return result
+
+    def get_deployment_digitalocean_options(self, identifier: str) -> dict[str, Any]:
+        """GET /deployments/{identifier}/digitalocean/options — the catalogue
+        read with the deployment's own token, else the application's."""
+        result = self._request("GET", f"/deployments/{identifier}/digitalocean/options")
+        if not isinstance(result, dict):
+            raise ServerError(
+                status_code=200, errors=[],
+                message="Expected dict body for get_deployment_digitalocean_options",
+            )
+        return result
+
+    def list_deployment_cloudflare_zones(self, identifier: str) -> list[dict[str, Any]]:
+        """GET /deployments/{identifier}/cloudflare/zones."""
+        result = self._request("GET", f"/deployments/{identifier}/cloudflare/zones")
+        return result if isinstance(result, list) else []
+
     def restore_deployment(self, identifier: str) -> dict[str, Any]:
         """POST /deployments/{identifier}/restore."""
         result = self._request("POST", f"/deployments/{identifier}/restore")

@@ -5,8 +5,9 @@ The wizard is driven page by page against a real in-process API with the
 provider catalogs and the DNS lookup faked; Next explains what is missing
 instead of being disabled; the address is looked up before the DNS choice,
 which offers Cloudflare only when CRMBuilder can edit the zone the internet
-uses; Deploy creates the deployment record (PI-580) and then queues a run
-against it, emitting both identifiers. The progress dialog shows every step
+uses; leaving page 1 or Set credentials… creates the deployment record
+(PI-580, PI-600) and Deploy queues a run against it, emitting both
+identifiers. The progress dialog shows every step
 in words, a message when something needs action, Try again with a corrected
 address, and the handover sheet.
 """
@@ -127,17 +128,18 @@ def _clients_loaded(qtbot, wizard):
     qtbot.waitUntil(lambda: wizard.deployment_client.currentData() == "CLI-001", timeout=5000)
 
 
-def _to_address_page(qtbot, wizard):
-    qtbot.waitUntil(lambda: wizard.region.count() == 2, timeout=5000)
+def _to_address_page(qtbot, wizard, name="Chapter CRM"):
+    """Fill page 1 and leave it, which creates the deployment (PI-600)."""
+    _clients_loaded(qtbot, wizard)
+    qtbot.waitUntil(lambda: wizard._configured("digitalocean"), timeout=5000)
+    wizard.instance_name.setText(name)
     wizard._next_btn.click()
-    assert wizard.page == PAGE_ADDRESS
+    qtbot.waitUntil(lambda: wizard.page == PAGE_ADDRESS, timeout=5000)
+    qtbot.waitUntil(lambda: wizard.region.count() == 2, timeout=5000)
 
 
 def _through_server_and_accounts(qtbot, wizard):
     assert wizard.page == PAGE_SERVER
-    wizard._next_btn.click()
-    assert wizard.page == PAGE_SERVER and "name" in wizard._notice.text()
-    wizard.instance_name.setText("Chapter CRM")
     wizard._next_btn.click()
     assert wizard.page == PAGE_ACCOUNTS
     wizard.admin_email.setText("admin@example.org")
@@ -153,23 +155,38 @@ def test_wizard_needs_only_digitalocean_then_queues_a_cloudflare_run(qtbot, ui_c
     wizard = DeployWizardDialog(ui_client)
     qtbot.addWidget(wizard)
     qtbot.waitUntil(lambda: wizard._do_status.text() == "Not set", timeout=5000)
+    _clients_loaded(qtbot, wizard)
     assert wizard.page == PAGE_START
     wizard._next_btn.click()
     assert wizard.page == PAGE_START  # never disabled — explains instead
+    assert "name" in wizard._notice.text()
+    wizard.instance_name.setText("Chapter CRM")
+    wizard._next_btn.click()
+    assert wizard.page == PAGE_START
     assert "DigitalOcean" in wizard._notice.text() and "Cloudflare" not in wizard._notice.text()
+    assert ui_client.list_deployments() == []  # nothing recorded while page 1 is incomplete
 
     ui_client.put_provider_credential("digitalocean", "do")
     ui_client.put_provider_credential("cloudflare", "cf")
     wizard._load_providers()
-    qtbot.waitUntil(lambda: wizard.region.count() == 2 and bool(wizard._zones), timeout=5000)
+    qtbot.waitUntil(lambda: wizard._configured("cloudflare"), timeout=5000)
+    # Before the deployment exists the tokens shown are the application's.
+    assert wizard._do_status.text().endswith("(the application's)")
     # The application's defining client is pre-selected (PI-580).
-    _clients_loaded(qtbot, wizard)
     assert wizard.deployment_client.currentText() == (
         "Cleveland Business Mentors — defines this application"
     )
     assert wizard.deployment_purpose.currentData() == "client_own"
+    queued: list[str] = []
+    created: list[str] = []
+    wizard.run_queued.connect(queued.append)
+    wizard.deployment_created.connect(created.append)
     wizard._next_btn.click()
-    assert wizard.page == PAGE_ADDRESS
+    qtbot.waitUntil(lambda: wizard.page == PAGE_ADDRESS, timeout=5000)
+    # Leaving page 1 created the deployment (PI-600, REQ-668 (2)); the lists
+    # are read through it, falling back to the application's tokens.
+    assert created == ["DPL-001"]
+    qtbot.waitUntil(lambda: wizard.region.count() == 2 and bool(wizard._zones), timeout=5000)
 
     wizard._next_btn.click()
     assert "full web address" in wizard._notice.text()
@@ -203,14 +220,11 @@ def test_wizard_needs_only_digitalocean_then_queues_a_cloudflare_run(qtbot, ui_c
     assert body["ssh_key_ids"] == [11] and "db_password" not in body
     assert body["letsencrypt_email"] == "admin@example.org"  # defaults to the administrator's
 
-    queued: list[str] = []
-    created: list[str] = []
-    wizard.run_queued.connect(queued.append)
-    wizard.deployment_created.connect(created.append)
     wizard._next_btn.click()
     qtbot.waitUntil(lambda: bool(queued), timeout=5000)
-    # Deploy created the deployment first, then queued the run against it.
+    # Deploy queued the run against the deployment page 1 created; no second one.
     assert created == ["DPL-001"]
+    assert [d["deployment_identifier"] for d in ui_client.list_deployments()] == ["DPL-001"]
     run = ui_client.get_deploy_run(queued[0])
     assert run["deploy_run_status"] == "queued"
     assert run["deploy_run_spec"]["domain"] == "crm.example.org"
@@ -249,8 +263,8 @@ def test_wizard_keeps_the_operators_dns_choice(qtbot, ui_client):
     ui_client.put_provider_credential("cloudflare", "cf")
     wizard = DeployWizardDialog(ui_client)
     qtbot.addWidget(wizard)
-    qtbot.waitUntil(lambda: bool(wizard._zones), timeout=5000)
     _to_address_page(qtbot, wizard)
+    qtbot.waitUntil(lambda: bool(wizard._zones), timeout=5000)
     wizard.full_address.setText("crm.example.org")
     wizard._next_btn.click()
     qtbot.waitUntil(lambda: wizard.page == PAGE_DNS, timeout=5000)
@@ -276,9 +290,7 @@ def test_wizard_surfaces_server_rejection_inline(qtbot, ui_client):
     ui_client.put_provider_credential("digitalocean", "do")
     wizard = DeployWizardDialog(ui_client)
     qtbot.addWidget(wizard)
-    qtbot.waitUntil(lambda: wizard.region.count() == 2, timeout=5000)
-    _clients_loaded(qtbot, wizard)
-    wizard.instance_name.setText("x")
+    _to_address_page(qtbot, wizard, name="x")
     wizard.full_address.setText("api.crmbuilder.ai")
     wizard.admin_email.setText("a@b.co")
     wizard.admin_password.setText("longenoughpassword")
@@ -287,8 +299,8 @@ def test_wizard_surfaces_server_rejection_inline(qtbot, ui_client):
     qtbot.waitUntil(lambda: "Not queued" in wizard._notice.text(), timeout=5000)
     assert "production host" in wizard._notice.text()
     assert wizard.page == PAGE_REVIEW
-    # The deployment was created before the run was refused; a second Deploy
-    # reuses it instead of creating another (PI-580).
+    # The deployment page 1 created is used; a second Deploy creates no
+    # other (PI-580, REQ-668 (3)).
     assert [d["deployment_identifier"] for d in ui_client.list_deployments()] == ["DPL-001"]
     wizard._notice.setText("")
     wizard._next_btn.click()
@@ -298,23 +310,177 @@ def test_wizard_surfaces_server_rejection_inline(qtbot, ui_client):
 
 def test_wizard_surfaces_a_refused_deployment_inline(qtbot, ui_client):
     """A 422 from POST /deployments (PI-577: demo/test is only for the defining
-    client) is shown under the page, and no run is queued."""
+    client) is shown under page 1 when it is left, and the wizard stays there."""
     ui_client.put_provider_credential("digitalocean", "do")
     wizard = DeployWizardDialog(ui_client)
     qtbot.addWidget(wizard)
-    qtbot.waitUntil(lambda: wizard.region.count() == 2, timeout=5000)
     _clients_loaded(qtbot, wizard)
+    qtbot.waitUntil(lambda: wizard._configured("digitalocean"), timeout=5000)
     wizard.deployment_client.setCurrentIndex(wizard.deployment_client.findData("CLI-002"))
     wizard.deployment_purpose.setCurrentIndex(wizard.deployment_purpose.findData("demo_test"))
     wizard.instance_name.setText("Demo")
-    wizard.full_address.setText("demo.example.org")
-    wizard.admin_email.setText("a@b.co")
-    wizard.admin_password.setText("longenoughpassword")
-    wizard._show_page(PAGE_REVIEW)
     wizard._next_btn.click()
-    qtbot.waitUntil(lambda: "Not queued" in wizard._notice.text(), timeout=5000)
+    qtbot.waitUntil(lambda: "not recorded" in wizard._notice.text(), timeout=5000)
+    assert wizard.page == PAGE_START
     assert ui_client.list_deployments() == [] and ui_client.list_deploy_runs() == []
     assert wizard._next_btn.isEnabled()
+
+
+def _token_aware_providers(monkeypatch):
+    """Provider fakes whose SSH keys and zones name the token's owner."""
+
+    class FakeDO:
+        def __init__(self, token, **_):
+            self.token = token
+
+        def list_regions(self):
+            return [{"slug": "nyc3", "name": "New York 3"}, {"slug": "sfo3", "name": "San Francisco 3"}]
+
+        def list_sizes(self):
+            return [{"slug": "s-2vcpu-4gb", "vcpus": 2, "memory": 4096, "price_monthly": 24.0}]
+
+        def list_images(self):
+            return [{"slug": "ubuntu-24-04-x64", "name": "Ubuntu 24.04 LTS"}]
+
+        def list_ssh_keys(self):
+            return [{"id": 1, "name": f"key of {self.token}", "fingerprint": "aa"}]
+
+    class FakeCF:
+        def __init__(self, token, **_):
+            self.token = token
+
+        def list_zones(self):
+            return [{"id": "z1", "name": f"{self.token}.org"}]
+
+    monkeypatch.setattr(pc_router, "DigitalOceanClient", FakeDO)
+    monkeypatch.setattr(pc_router, "CloudflareClient", FakeCF)
+
+
+def _credentials_dialog_that_saves(monkeypatch, opened: list, tokens: dict[str, str]):
+    """Replace the wizard's credentials dialog with the real one, driven: on
+    exec it pastes ``tokens`` and presses Save token for each, then closes."""
+    from crmbuilder_v2.segments.operate.ui.dialogs import (
+        deploy_wizard_dialog as wizard_module,
+    )
+    from PySide6.QtCore import QCoreApplication, QDeadlineTimer
+
+    real = wizard_module.ProviderCredentialsDialog
+
+    class Driven(real):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            opened.append({"kwargs": kwargs, "title": self.windowTitle(),
+                           "intro": self.findChild(type(self._rows["digitalocean"].status),
+                                                   "provider_credentials_intro").text()})
+
+        def exec(self):
+            for provider, token in tokens.items():
+                row = self._rows[provider]
+                row.token.setText(token)
+                row.save_btn.click()
+                deadline = QDeadlineTimer(5000)
+                while "this deployment" not in row.status.text() and not deadline.hasExpired():
+                    QCoreApplication.processEvents()
+            self.done(0)
+            return 0
+
+    monkeypatch.setattr(wizard_module, "ProviderCredentialsDialog", Driven)
+
+
+def test_set_credentials_creates_one_deployment_and_saves_its_own_tokens(
+    qtbot, ui_client, monkeypatch
+):
+    """REQ-668 (1), (3), (4), (5) and REQ-669 (5): the Association's case."""
+    _token_aware_providers(monkeypatch)
+    ui_client.put_provider_credential("digitalocean", "cleveland", "crmbuilder-eng002-readonly")
+    ui_client.put_provider_credential("cloudflare", "cleveland")
+    application_writes: list = []
+    real_put = ui_client.put_provider_credential
+    monkeypatch.setattr(
+        ui_client, "put_provider_credential",
+        lambda *a, **k: application_writes.append(a) or real_put(*a, **k),
+    )
+    opened: list = []
+    _credentials_dialog_that_saves(
+        monkeypatch, opened, {"digitalocean": "association", "cloudflare": "association"}
+    )
+    wizard = DeployWizardDialog(ui_client)
+    qtbot.addWidget(wizard)
+    _clients_loaded(qtbot, wizard)
+    created: list[str] = []
+    wizard.deployment_created.connect(created.append)
+
+    # Set credentials… before a name is given explains instead of creating.
+    wizard.findChild(type(wizard._next_btn), "wizard_set_credentials").click()
+    assert "name" in wizard._notice.text() and not opened and created == []
+
+    wizard.instance_name.setText("Association CRM")
+    wizard.findChild(type(wizard._next_btn), "wizard_set_credentials").click()
+    qtbot.waitUntil(lambda: bool(opened), timeout=5000)
+    # (1) one deployment, and the dialog says which one.
+    assert created == ["DPL-001"]
+    assert opened[0]["kwargs"]["deployment_identifier"] == "DPL-001"
+    assert "DPL-001 — Association CRM" in opened[0]["title"]
+    assert "DPL-001 — Association CRM" in opened[0]["intro"]
+    # REQ-669 (5): the lists are read again, from the deployment's own accounts.
+    qtbot.waitUntil(lambda: wizard.ssh_keys.count() == 1, timeout=5000)
+    qtbot.waitUntil(
+        lambda: wizard.ssh_keys.item(0).text().startswith("key of association"), timeout=5000
+    )
+    qtbot.waitUntil(lambda: [z["name"] for z in wizard._zones] == ["association.org"], timeout=5000)
+    assert wizard._do_status.text().endswith("(this deployment's own)")
+
+    # (4) the tokens are the deployment's; the application's is unchanged.
+    own = ui_client.list_deployment_provider_credentials("DPL-001")
+    assert sorted((c["provider"], c["scope"]) for c in own) == [
+        ("cloudflare", "deployment"), ("digitalocean", "deployment")
+    ]
+    app = {c["provider"]: c for c in ui_client.list_provider_credentials()}
+    assert app["digitalocean"]["label"] == "crmbuilder-eng002-readonly"
+
+    # (3) Set credentials again, Next, Back and Next again: still one deployment.
+    wizard.findChild(type(wizard._next_btn), "wizard_set_credentials").click()
+    qtbot.waitUntil(lambda: len(opened) == 2, timeout=5000)
+    wizard._next_btn.click()
+    qtbot.waitUntil(lambda: wizard.page == PAGE_ADDRESS, timeout=5000)
+    wizard._back_btn.click()
+    wizard.instance_name.setText("Business Mentors Association CRM")
+    wizard._next_btn.click()
+    qtbot.waitUntil(lambda: wizard.page == PAGE_ADDRESS, timeout=5000)
+    assert created == ["DPL-001"]
+    deployments = ui_client.list_deployments()
+    assert [d["deployment_identifier"] for d in deployments] == ["DPL-001"]
+    # A change on page 1 is carried to the same deployment.
+    assert deployments[0]["deployment_name"] == "Business Mentors Association CRM"
+    # (5) the wizard never wrote an application token.
+    assert application_writes == []
+    wizard.reject()  # finishes the lists still loading before teardown
+
+
+def test_the_wizard_has_no_path_to_an_application_token():
+    """REQ-668 (5): no code path in the wizard calls put_provider_credential."""
+    import inspect
+
+    from crmbuilder_v2.segments.operate.ui.dialogs import (
+        deploy_wizard_dialog as wizard_module,
+    )
+
+    assert "put_provider_credential(" not in inspect.getsource(wizard_module)
+
+
+def test_leaving_page_one_by_next_creates_the_deployment(qtbot, ui_client):
+    """REQ-668 (2): Next on page 1 without Set credentials… creates it."""
+    ui_client.put_provider_credential("digitalocean", "do")
+    wizard = DeployWizardDialog(ui_client)
+    qtbot.addWidget(wizard)
+    created: list[str] = []
+    wizard.deployment_created.connect(created.append)
+    _to_address_page(qtbot, wizard, name="Chapter CRM")
+    assert created == ["DPL-001"] and wizard.deployment_identifier == "DPL-001"
+    record = ui_client.get_deployment("DPL-001")
+    assert (record["deployment_client"], record["deployment_name"]) == ("CLI-001", "Chapter CRM")
+    assert record["deployment_has_run"] is False
+    wizard.reject()
 
 
 def test_describe_size_in_plain_words():

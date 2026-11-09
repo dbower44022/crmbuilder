@@ -92,6 +92,20 @@ _EMPTY_LIST_TEXT = "No deployments yet"
 _EMPTY_DETAIL_TEXT = "Select a record to see its detail."
 
 
+#: How the panel marks a deployment that has never had a deploy run (PI-600).
+NOT_YET_RUN = "not yet run"
+
+
+def status_display(deployment: dict[str, Any]) -> str:
+    """The deployment's status, marked "not yet run" when it has never had a
+    deploy run (PI-600, REQ-670). The mark is derived by the service
+    (``deployment_has_run``), not a status value."""
+    status = deployment.get("deployment_status") or ""
+    if deployment.get("deployment_has_run") is False:
+        return f"{status} — {NOT_YET_RUN}" if status else NOT_YET_RUN
+    return status
+
+
 def _value(value: Any) -> str:
     return str(value) if value not in (None, "") else "—"
 
@@ -164,6 +178,7 @@ class DeploymentsPanel(ListDetailPanel):
                 provider, provider
             )
             r["created_at_display"] = format_timestamp(r.get("deployment_created_at"))
+            r["status_display"] = status_display(r)
         if not self._include_retired:
             records = [r for r in records if r.get("deployment_status") != "retired"]
         return records
@@ -178,7 +193,7 @@ class DeploymentsPanel(ListDetailPanel):
                 field="hosting_provider_display", title="Hosting provider", width=120
             ),
             ColumnSpec(field="purpose_display", title="Purpose", width=100),
-            ColumnSpec(field="deployment_status", title="Status", width=80),
+            ColumnSpec(field="status_display", title="Status", width=130),
             ColumnSpec(field="created_at_display", title="Created", width=140),
         ]
 
@@ -349,8 +364,8 @@ class DeploymentsPanel(ListDetailPanel):
             remove_btn = destructive_button("Remove")
             remove_btn.setObjectName("remove_deployment_button")
             remove_btn.setToolTip(
-                "Remove this deployment from the list. Nothing on the server "
-                "changes; Show retired brings it back for Restore."
+                "Remove a deployment that has never run, with its own hosting "
+                "tokens. A deployment that has run is not removed this way."
             )
             remove_btn.clicked.connect(
                 lambda _checked=False, d=deployment: self._on_remove_clicked(d)
@@ -402,7 +417,7 @@ class DeploymentsPanel(ListDetailPanel):
         _row(
             "Purpose", PURPOSE_LABELS.get(purpose, purpose), "deployment_purpose_value"
         )
-        _row("Status", deployment.get("deployment_status"), "deployment_status_value")
+        _row("Status", status_display(deployment), "deployment_status_value")
         return form
 
     def _connection_section(self, instance: dict[str, Any] | None) -> QWidget:
@@ -931,16 +946,33 @@ class DeploymentsPanel(ListDetailPanel):
             self.refresh()
 
     def _on_remove_clicked(self, deployment: dict[str, Any]) -> None:
+        """Remove a deployment that has never run, with its own tokens
+        (PI-600, REQ-670). One that has run is refused with the reason; the
+        button is never disabled (GVR-217)."""
         identifier = deployment.get("deployment_identifier") or ""
         name = deployment.get("deployment_name") or ""
         if not identifier:
             return
+        label = f"{identifier} — {name or '(unnamed)'}"
+        if deployment.get("deployment_has_run") is not False:
+            refusal = CopyableMessageBox(self)
+            refusal.setWindowTitle("Remove deployment")
+            refusal.setText(
+                f"{label} has run, so it cannot be removed.\n\n"
+                "Only a deployment that has never run can be removed, for example "
+                "one left behind when the deploy wizard was cancelled. A deployment "
+                "that has run may have a server, a DNS record and a CRM in use."
+            )
+            refusal.setStandardButtons(QMessageBox.StandardButton.Ok)
+            refusal.exec()
+            return
         confirm = CopyableMessageBox(self)
         confirm.setWindowTitle("Remove deployment")
         confirm.setText(
-            f"Remove {identifier} — {name or '(unnamed)'} from the list?\n\n"
-            "Nothing on the server changes. Tick Show retired to see it again "
-            "and Restore it."
+            f"Remove {label}?\n\n"
+            "It has never run. Its own DigitalOcean and Cloudflare tokens are "
+            "deleted, and it leaves the list. The application's tokens are not "
+            "changed. Tick Show retired to see it again."
         )
         confirm.setStandardButtons(
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
@@ -949,7 +981,7 @@ class DeploymentsPanel(ListDetailPanel):
         if confirm.exec() != QMessageBox.StandardButton.Yes:
             return
         self._write(
-            lambda: self._client.delete_deployment(identifier),
+            lambda: self._client.remove_unrun_deployment(identifier),
             identifier,
             title="Could not remove the deployment",
         )

@@ -59,26 +59,60 @@ def _provider_error(exc: ProviderError) -> UnprocessableError:
     )
 
 
-def _token(provider: str) -> str:
-    """Resolve the engagement's token for ``provider`` or raise a 422.
+def _token(provider: str, deployment_identifier: str | None = None) -> str:
+    """Resolve the token for ``provider`` or raise a 422.
 
-    A missing credential and an unreachable secret store are both told apart
-    from a provider rejecting the token (which is a ``provider_error``).
+    With ``deployment_identifier`` the deployment's own credential is used
+    first and the application's second, as the deploy run resolves it
+    (PI-600, REQ-669); without it, the application's. The caller has the
+    deployment's application active. A missing credential and an unreachable
+    secret store are both told apart from a provider rejecting the token
+    (which is a ``provider_error``).
     """
     with readonly_session() as s:
-        row = repo.get_provider_credential(s, provider)
+        row = repo.resolve_provider_credential(
+            s, provider, deployment_identifier=deployment_identifier
+        )
     token = resolve_secret_or_none(row["token_ref"] if row else None, field=provider)
     if not token:
+        where = (
+            f"deployment {deployment_identifier} or its application"
+            if deployment_identifier
+            else "this engagement"
+        )
         raise UnprocessableError(
             [
                 FieldError(
                     provider,
                     "missing_provider_credential",
-                    f"no {provider} credential is configured for this engagement",
+                    f"no {provider} credential is configured for {where}",
                 )
             ]
         )
     return token
+
+
+def digitalocean_catalog(deployment_identifier: str | None = None) -> dict:
+    """Regions, sizes, images and SSH keys the resolved DigitalOcean token sees."""
+    do = DigitalOceanClient(_token("digitalocean", deployment_identifier))
+    try:
+        return {
+            "regions": do.list_regions(),
+            "sizes": do.list_sizes(),
+            "images": do.list_images(),
+            "ssh_keys": do.list_ssh_keys(),
+        }
+    except ProviderError as exc:
+        raise _provider_error(exc) from exc
+
+
+def cloudflare_zone_list(deployment_identifier: str | None = None) -> list:
+    """The zones the resolved Cloudflare token can manage."""
+    cf = CloudflareClient(_token("cloudflare", deployment_identifier))
+    try:
+        return cf.list_zones()
+    except ProviderError as exc:
+        raise _provider_error(exc) from exc
 
 
 # -- literal sub-paths first (GVR-153) ----------------------------------------
@@ -87,28 +121,13 @@ def _token(provider: str) -> str:
 @router.get("/digitalocean/options")
 def digitalocean_options():
     """Live DigitalOcean catalog for the deploy wizard: regions, sizes, images, keys."""
-    do = DigitalOceanClient(_token("digitalocean"))
-    try:
-        return ok(
-            {
-                "regions": do.list_regions(),
-                "sizes": do.list_sizes(),
-                "images": do.list_images(),
-                "ssh_keys": do.list_ssh_keys(),
-            }
-        )
-    except ProviderError as exc:
-        raise _provider_error(exc) from exc
+    return ok(digitalocean_catalog())
 
 
 @router.get("/cloudflare/zones")
 def cloudflare_zones():
     """Zones the engagement's Cloudflare token can manage."""
-    cf = CloudflareClient(_token("cloudflare"))
-    try:
-        return ok(cf.list_zones())
-    except ProviderError as exc:
-        raise _provider_error(exc) from exc
+    return ok(cloudflare_zone_list())
 
 
 # -- the credential rows ------------------------------------------------------

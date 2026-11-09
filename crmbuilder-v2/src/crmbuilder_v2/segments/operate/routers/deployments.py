@@ -39,6 +39,9 @@ from crmbuilder_v2.segments.operate.repositories import deployments as repo
 from crmbuilder_v2.segments.operate.repositories import (
     provider_credentials as credential_repo,
 )
+from crmbuilder_v2.segments.operate.routers import (
+    provider_credentials as credential_routes,
+)
 from crmbuilder_v2.segments.operate.schemas import (
     DeploymentCreateIn,
     DeploymentPatchIn,
@@ -189,6 +192,23 @@ def delete(identifier: str):
         return ok(repo.delete_deployment(s, identifier))
 
 
+@router.post("/{identifier}/remove-unrun", dependencies=[_admin])
+def remove_unrun(identifier: str):
+    """Remove a deployment that has never run (PI-600, REQ-670): soft-delete
+    it and delete its own provider credentials and their secrets. A
+    deployment that has run is refused (``deployment_has_run``)."""
+    with writable_session() as s:
+        record = repo.get_deployment(s, identifier)
+        if record is None:
+            raise NotFoundError("deployment", identifier)
+        _require_visible(record, identifier)
+        removed, refs = repo.remove_unrun_deployment(s, identifier)
+    for ref in refs:
+        if secrets.is_ref(ref):
+            secrets.delete_secret(ref)
+    return ok(removed)
+
+
 @router.post("/{identifier}/restore", dependencies=[_admin])
 def restore(identifier: str):
     with writable_session() as s:
@@ -257,3 +277,26 @@ def delete_credential(identifier: str, provider: str):
     if secrets.is_ref(ref):
         secrets.delete_secret(ref)
     return ok({"provider": provider, "deleted": True, "scope": "deployment"})
+
+
+# --- the provider catalogues as the deployment sees them (PI-600, REQ-669) --
+
+
+@router.get("/{identifier}/digitalocean/options", dependencies=[_admin])
+def digitalocean_options(identifier: str):
+    """The DigitalOcean catalogue (regions, sizes, images, SSH keys) read with
+    the deployment's own token, else the application's."""
+    with readonly_session() as s:
+        application = _application_of(s, identifier)
+    with active_engagement(application):
+        return ok(credential_routes.digitalocean_catalog(identifier))
+
+
+@router.get("/{identifier}/cloudflare/zones", dependencies=[_admin])
+def cloudflare_zones(identifier: str):
+    """The Cloudflare zones the deployment's own token can manage, else the
+    application's."""
+    with readonly_session() as s:
+        application = _application_of(s, identifier)
+    with active_engagement(application):
+        return ok(credential_routes.cloudflare_zone_list(identifier))
