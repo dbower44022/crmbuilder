@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Title | Kickoff — accept PI-600 against production (the Business Mentors Association's deployment of ENG-002) |
-| Last Updated | 11-09-26 08:54 |
-| Revision | 1.0 |
-| Status | Ready to run once Doug has rolled out commit `e155d670` with `scripts/deploy-production.sh`. |
+| Last Updated | 11-09-26 12:02 |
+| Revision | 1.1 |
+| Status | Run in SES-459 on 11-09-26, without a separate session: rollout of `def69cc6`, then the review runbook (artifact XVHN3wKnWvkoycjKubDQ5R). Every step passed; CNV-426 resolves PI-600. Do not run again. |
 | Governs | One acceptance session: the check in section 5 of `kickoff-pi-600-deployment-credentials-build.md`, then PI-600 resolved through a conversation's `resolves` edge. |
 | Source | SES-459 on 11-09-26: PI-600 built and pushed to `main` as `e155d670`; PI-600 is In Review. |
 
@@ -46,4 +46,5 @@ Also confirm that DPL-001..DPL-004 show no "not yet run" mark, and that Remove o
 
 | Rev | Date (MM-DD-YY HH:MM) | Author | Change |
 |---|---|---|---|
+| 1.1 | 11-09-26 12:02 | Claude (Claude Code) | Marked run: the check was done in SES-459 itself; CNV-426 resolves PI-600. |
 | 1.0 | 11-09-26 08:54 | Claude (Claude Code) | First version, written at the end of the PI-600 build in SES-459. |
