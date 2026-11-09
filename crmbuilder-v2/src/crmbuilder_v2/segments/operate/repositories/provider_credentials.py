@@ -3,7 +3,10 @@
 An API token for an infrastructure provider (DigitalOcean, Cloudflare). One
 row per provider at the application level, and since PI-576 one row per
 provider per deployment as well: a deployment's own row wins, the
-application's is the fallback (DEC-945). The row holds only an opaque secret
+application's is the fallback (DEC-945). Since PI-602 (DEC-1206, REQ-671)
+the fallback applies only to a deployment for the application's defining
+client: a deployment for a client that only holds a deployment grant uses
+its own rows and nothing else. The row holds only an opaque secret
 reference — translating a plaintext token into a ref is the router's job (the
 REQ-157 boundary, as in ``instances`` / ``instance_deploy_config``). Engagement
 scoping is applied by the session, so this repo resolves, upserts and deletes
@@ -38,6 +41,28 @@ def _find(
     ).first()
 
 
+def application_fallback_applies(session: Session, deployment_identifier: str) -> bool:
+    """Whether the application's credentials may stand in for the
+    deployment's own (PI-602, DEC-1206, REQ-671).
+
+    Only for a deployment whose client is the application's defining client.
+    A deployment for a client that only holds a deployment grant never uses
+    the application's tokens, so its server can never be built in another
+    organisation's hosting account by omission. An unknown deployment, or an
+    application with no defining client, keeps the old behaviour."""
+    from crmbuilder_v2.segments.client_management.repositories import (
+        engagement as engagement_repo,
+    )
+    from crmbuilder_v2.segments.operate.models import Deployment
+
+    row = session.get(Deployment, deployment_identifier)
+    if row is None:
+        return True
+    application = engagement_repo.get_engagement(session, row.deployment_application)
+    defining = getattr(application, "engagement_defining_client", None)
+    return defining is None or defining == row.deployment_client
+
+
 def list_provider_credentials(
     session: Session, *, deployment_identifier: str | None = None
 ) -> list[dict]:
@@ -57,7 +82,12 @@ def effective_provider_credentials(
     """The credentials that apply to a deployment, by provider: the
     deployment's own row where one exists, else the application's
     (PI-576 / DEC-1185; DEC-945 for the application-level default)."""
-    out = {r["provider"]: r for r in list_provider_credentials(session)}
+    if deployment_identifier is not None and not application_fallback_applies(
+        session, deployment_identifier
+    ):
+        out: dict[str, dict] = {}
+    else:
+        out = {r["provider"]: r for r in list_provider_credentials(session)}
     if deployment_identifier is not None:
         for r in list_provider_credentials(
             session, deployment_identifier=deployment_identifier
@@ -79,12 +109,15 @@ def resolve_provider_credential(
     session: Session, provider: str, *, deployment_identifier: str | None = None
 ) -> dict | None:
     """The credential a deployment uses for ``provider``: its own, else the
-    application's, else ``None``."""
+    application's (for the defining client's deployments only, REQ-671),
+    else ``None``."""
     provider = gov.require_in(provider, PROVIDER_CREDENTIAL_PROVIDERS, field="provider")
     if deployment_identifier is not None:
         row = _find(session, provider, deployment_identifier)
         if row is not None:
             return to_dict(row)
+        if not application_fallback_applies(session, deployment_identifier):
+            return None
     row = _find(session, provider, None)
     return to_dict(row) if row is not None else None
 

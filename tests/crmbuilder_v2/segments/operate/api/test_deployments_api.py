@@ -445,3 +445,80 @@ def test_a_deployment_that_has_run_is_not_marked_and_is_refused_removal(seeded):
     assert seeded.get(f"/deployments/{registered}").json()["data"]["deployment_has_run"] is True
     assert _codes(seeded.post(f"/deployments/{registered}/remove-unrun")) == ["deployment_has_run"]
     assert seeded.post("/deployments/DPL-404/remove-unrun").status_code == 404
+
+
+# --- PI-602 (REQ-671): a grant holder's deployment uses only its own tokens --
+
+
+def _grant_holder_deployment(api) -> str:
+    """Rochester (CLI-002) holds a deployment grant on ENG-001, whose
+    defining client is Cleveland (CLI-001)."""
+    assert api.post("/engagements/ENG-001/deployment-grants", json={"client": "CLI-002"}).status_code == 200
+    r = api.post(
+        "/deployments",
+        json={"deployment_client": "CLI-002", "deployment_purpose": "client_own", "deployment_name": "Rochester"},
+    )
+    assert r.status_code == 201, r.text
+    return r.json()["data"]["deployment_identifier"]
+
+
+def _run_body(deployment: str, domain: str) -> dict:
+    return {
+        "instance_name": "CRM", "region": "nyc3", "size": "s-1vcpu-1gb",
+        "image": "ubuntu-24-04-x64", "dns_mode": "manual", "domain": domain,
+        "letsencrypt_email": "ops@example.org", "admin_email": "ops@example.org",
+        "admin_password": "Adm1n!", "deployment_identifier": deployment,
+    }
+
+
+def test_a_grant_holders_deployment_never_uses_the_applications_tokens(seeded, monkeypatch):
+    """REQ-671 (3), (4) and the panel's credential list."""
+    _fake_providers(monkeypatch)
+    seeded.put("/provider-credentials/digitalocean", json={"token": "cleveland"})
+    seeded.put("/provider-credentials/cloudflare", json={"token": "cleveland"})
+    ident = _grant_holder_deployment(seeded)
+
+    # No fallback shown, and the lists refuse rather than read Cleveland's account.
+    assert seeded.get(f"/deployments/{ident}/provider-credentials").json()["data"] == []
+    for path in (f"/deployments/{ident}/digitalocean/options", f"/deployments/{ident}/cloudflare/zones"):
+        r = seeded.get(path)
+        assert r.status_code == 422 and _codes(r) == ["deployment_needs_own_credential"], r.text
+    # A run is refused the same way.
+    r = seeded.post("/deploy-runs", json=_run_body(ident, "crm.rochester.org"))
+    assert r.status_code == 422 and _codes(r) == ["deployment_needs_own_credential"], r.text
+    with session_scope() as s:
+        assert credential_repo.resolve_provider_credential(
+            s, "digitalocean", deployment_identifier=ident
+        ) is None
+
+    # With its own tokens it reads its own accounts and may be queued.
+    seeded.put(f"/deployments/{ident}/provider-credentials/digitalocean", json={"token": "rochester"})
+    keys = seeded.get(f"/deployments/{ident}/digitalocean/options").json()["data"]["ssh_keys"]
+    assert [k["name"] for k in keys] == ["key of rochester"]
+    # Cloudflare is still its own or nothing: manual DNS needs none.
+    r = seeded.get(f"/deployments/{ident}/cloudflare/zones")
+    assert _codes(r) == ["deployment_needs_own_credential"]
+    r = seeded.post("/deploy-runs", json=_run_body(ident, "crm.rochester.org"))
+    assert r.status_code == 202, r.text
+    # A Cloudflare-DNS run without its own Cloudflare token is refused.
+    other = seeded.post(
+        "/deployments",
+        json={"deployment_client": "CLI-002", "deployment_purpose": "client_own", "deployment_name": "Rochester 2"},
+    ).json()["data"]["deployment_identifier"]
+    seeded.put(f"/deployments/{other}/provider-credentials/digitalocean", json={"token": "rochester"})
+    cf_body = {k: v for k, v in _run_body(other, "x").items() if k not in ("dns_mode", "domain")}
+    cf_body.update({"dns_mode": "cloudflare", "zone_id": "z1", "zone_name": "rochester.org", "subdomain": "crm"})
+    r = seeded.post("/deploy-runs", json=cf_body)
+    assert r.status_code == 422 and _codes(r) == ["deployment_needs_own_credential"], r.text
+
+
+def test_the_defining_clients_deployment_keeps_the_fallback(seeded, monkeypatch):
+    """REQ-671 (5)."""
+    _fake_providers(monkeypatch)
+    seeded.put("/provider-credentials/digitalocean", json={"token": "cleveland"})
+    ident = _new_deployment(seeded, "Cleveland")
+    creds = seeded.get(f"/deployments/{ident}/provider-credentials").json()["data"]
+    assert [(c["provider"], c["scope"]) for c in creds] == [("digitalocean", "application")]
+    keys = seeded.get(f"/deployments/{ident}/digitalocean/options").json()["data"]["ssh_keys"]
+    assert [k["name"] for k in keys] == ["key of cleveland"]
+    assert seeded.post("/deploy-runs", json=_run_body(ident, "crm.cleveland.org")).status_code == 202

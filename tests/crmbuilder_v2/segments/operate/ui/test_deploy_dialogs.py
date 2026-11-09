@@ -310,7 +310,9 @@ def test_wizard_surfaces_server_rejection_inline(qtbot, ui_client):
 
 def test_wizard_surfaces_a_refused_deployment_inline(qtbot, ui_client):
     """A 422 from POST /deployments (PI-577: demo/test is only for the defining
-    client) is shown under page 1 when it is left, and the wizard stays there."""
+    client) is shown under page 1, and the wizard stays there. Set credentials…
+    is used: Next would first ask this non-defining client for its own token
+    (PI-602)."""
     ui_client.put_provider_credential("digitalocean", "do")
     wizard = DeployWizardDialog(ui_client)
     qtbot.addWidget(wizard)
@@ -319,7 +321,7 @@ def test_wizard_surfaces_a_refused_deployment_inline(qtbot, ui_client):
     wizard.deployment_client.setCurrentIndex(wizard.deployment_client.findData("CLI-002"))
     wizard.deployment_purpose.setCurrentIndex(wizard.deployment_purpose.findData("demo_test"))
     wizard.instance_name.setText("Demo")
-    wizard._next_btn.click()
+    wizard.findChild(type(wizard._next_btn), "wizard_set_credentials").click()
     qtbot.waitUntil(lambda: "not recorded" in wizard._notice.text(), timeout=5000)
     assert wizard.page == PAGE_START
     assert ui_client.list_deployments() == [] and ui_client.list_deploy_runs() == []
@@ -481,6 +483,76 @@ def test_leaving_page_one_by_next_creates_the_deployment(qtbot, ui_client):
     assert (record["deployment_client"], record["deployment_name"]) == ("CLI-001", "Chapter CRM")
     assert record["deployment_has_run"] is False
     wizard.reject()
+
+
+def test_a_grant_holder_needs_its_own_tokens_in_the_wizard(qtbot, ui_client, monkeypatch):
+    """REQ-671 (1), (5): Rochester (CLI-002) holds a grant on ENG-001, whose
+    defining client Cleveland has an application token."""
+    _token_aware_providers(monkeypatch)
+    ui_client.put_provider_credential("digitalocean", "cleveland")
+    assert ui_client._request(
+        "POST", "/engagements/ENG-001/deployment-grants", json_body={"client": "CLI-002"}
+    )
+    opened: list = []
+    _credentials_dialog_that_saves(monkeypatch, opened, {"digitalocean": "rochester"})
+    wizard = DeployWizardDialog(ui_client)
+    qtbot.addWidget(wizard)
+    _clients_loaded(qtbot, wizard)
+    qtbot.waitUntil(lambda: wizard._configured("digitalocean"), timeout=5000)
+    # (5) Cleveland, the defining client, may use the application's token.
+    assert wizard._do_status.text().endswith("(the application's)")
+
+    wizard.deployment_client.setCurrentIndex(wizard.deployment_client.findData("CLI-002"))
+    assert wizard.needs_own_credentials()
+    assert wizard._do_status.text() == "Not set — this deployment needs its own token"
+    wizard.instance_name.setText("Rochester CRM")
+    wizard._next_btn.click()
+    assert wizard.page == PAGE_START
+    assert "needs its own DigitalOcean token" in wizard._notice.text()
+    assert ui_client.list_deployments() == []  # refused before anything is recorded
+
+    wizard.findChild(type(wizard._next_btn), "wizard_set_credentials").click()
+    qtbot.waitUntil(lambda: bool(opened), timeout=5000)
+    qtbot.waitUntil(
+        lambda: wizard._do_status.text().endswith("(this deployment's own)"), timeout=5000
+    )
+    qtbot.waitUntil(
+        lambda: wizard.ssh_keys.count() == 1
+        and wizard.ssh_keys.item(0).text().startswith("key of rochester"),
+        timeout=5000,
+    )
+    wizard._next_btn.click()
+    qtbot.waitUntil(lambda: wizard.page == PAGE_ADDRESS, timeout=5000)
+    wizard.reject()
+
+
+def test_enter_never_closes_the_wizard(qtbot, ui_client):
+    """REQ-672 (1), (2), (3)."""
+    from PySide6.QtWidgets import QDialog
+
+    ui_client.put_provider_credential("digitalocean", "do")
+    wizard = DeployWizardDialog(ui_client)
+    qtbot.addWidget(wizard)
+    wizard.show()
+    _clients_loaded(qtbot, wizard)
+    # (1) Enter in a step-1 text box: still open, same page, nothing recorded.
+    wizard.instance_name.setFocus()
+    qtbot.keyClick(wizard.instance_name, Qt.Key.Key_Return)
+    assert wizard.isVisible() and wizard.page == PAGE_START
+    assert ui_client.list_deployments() == []
+
+    _to_address_page(qtbot, wizard)
+    # (2) Enter in the web address box checks the address.
+    wizard.full_address.setText("crm.example.org")
+    wizard.full_address.setFocus()
+    qtbot.keyClick(wizard.full_address, Qt.Key.Key_Enter)
+    assert wizard.isVisible() and wizard.page == PAGE_ADDRESS
+    qtbot.waitUntil(lambda: "Cloudflare" in wizard.address_result.text(), timeout=5000)
+    assert wizard.isVisible()
+
+    # (3) Cancel still closes the wizard.
+    wizard.findChild(type(wizard._next_btn), "wizard_cancel").click()
+    assert wizard.result() == QDialog.DialogCode.Rejected and not wizard.isVisible()
 
 
 def test_describe_size_in_plain_words():

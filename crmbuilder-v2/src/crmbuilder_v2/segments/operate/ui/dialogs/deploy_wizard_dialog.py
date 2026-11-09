@@ -31,6 +31,11 @@ field is in use. Six pages collect what a deploy run needs and queue it:
    422 is shown under the page; the same deployment is used when Deploy is
    clicked again.
 
+A deployment for a client that only holds a deployment grant uses only its
+own tokens (PI-602, DEC-1206, REQ-671): before it exists, step 1 does not count
+the application's tokens for such a client. Enter in a text box never closes
+the wizard (REQ-672); on the Web address page it checks the address.
+
 Next is never disabled (GVR-217): a page that is not complete explains what is
 missing when Next is clicked. All network calls run off the UI thread.
 """
@@ -43,7 +48,7 @@ import secrets as _random
 from typing import Any
 
 from PySide6.QtCore import QEvent, QObject, Qt, Signal
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QKeyEvent
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -183,6 +188,10 @@ class DeployWizardDialog(QDialog):
         self._defining_client_hint = getattr(
             engagement, "engagement_defining_client", None
         )
+        #: The application's defining client, once the client list has loaded.
+        self._defining_client: str | None = self._defining_client_hint
+        #: The provider records last read, before step 1's own-token rule.
+        self._provider_records: list[dict[str, Any]] = []
         self._help: dict[QObject, str] = {}
         self.setWindowTitle("Deploy a new CRM")
         fit_to_screen(self, 0.75, (980, 680))
@@ -341,6 +350,9 @@ class DeployWizardDialog(QDialog):
         self.deployment_client = QComboBox()
         self.deployment_client.setObjectName("wizard_client")
         self.deployment_client.addItem("Loading clients…", None)
+        # A bound method, not a lambda: Qt drops the connection when the
+        # wizard is destroyed, so the combo cannot call into a dead wizard.
+        self.deployment_client.currentIndexChanged.connect(self._client_changed)
         who_form.addRow(required_label("Client"), self.deployment_client)
         self._explain(self.deployment_client, (
             "<h3>Client</h3><p>The organisation this CRM is for. The application's "
@@ -415,6 +427,8 @@ class DeployWizardDialog(QDialog):
         self, result: tuple[list[dict[str, Any]], str | None, set[str]]
     ) -> None:
         fill_client_combo(self.deployment_client, *result)
+        self._defining_client = result[1] or self._defining_client
+        self._render_providers()
 
     def _build_address_page(self) -> QWidget:
         page = QWidget()
@@ -653,6 +667,11 @@ class DeployWizardDialog(QDialog):
             if problem:
                 return problem
             if not self._configured("digitalocean"):
+                if self.needs_own_credentials():
+                    return (
+                        "This client deploys into its own accounts, so this deployment "
+                        "needs its own DigitalOcean token: press Set credentials…."
+                    )
                 return "Set the DigitalOcean credential first (Set credentials…)."
         elif index == PAGE_ADDRESS:
             if "." not in self.address():
@@ -909,7 +928,27 @@ class DeployWizardDialog(QDialog):
         )
 
     def _providers_loaded(self, records: list[dict[str, Any]]) -> None:
-        self._providers = {r["provider"]: r for r in records or []}
+        self._provider_records = list(records or [])
+        self._render_providers()
+        self._load_catalogs()
+
+    def _client_changed(self, _index: int) -> None:
+        if not self._closing:
+            self._render_providers()
+
+    def needs_own_credentials(self) -> bool:
+        """Whether the chosen client only holds a deployment grant, so the
+        application's tokens do not apply to its deployment (REQ-671)."""
+        client = self.deployment_client.currentData()
+        return bool(client and self._defining_client and client != self._defining_client)
+
+    def _render_providers(self) -> None:
+        """Show the tokens that apply. Before the deployment exists the list
+        read is the application's, which a grant holder may not use."""
+        records = self._provider_records
+        if not self._deployment_identifier and self.needs_own_credentials():
+            records = []
+        self._providers = {r["provider"]: r for r in records}
         for key, label in (("digitalocean", self._do_status), ("cloudflare", self._cf_status)):
             rec = self._providers.get(key)
             if rec and rec.get("configured"):
@@ -924,10 +963,12 @@ class DeployWizardDialog(QDialog):
                     + f" ({whose})"
                 )
                 label.setStyleSheet(f"color: {t('color.success.default')};")
+            elif self.needs_own_credentials():
+                label.setText("Not set — this deployment needs its own token")
+                label.setStyleSheet(f"color: {t('color.warning.default')};")
             else:
                 label.setText("Not set")
                 label.setStyleSheet(f"color: {t('color.warning.default')};")
-        self._load_catalogs()
 
     def _configured(self, provider: str) -> bool:
         return bool((self._providers.get(provider) or {}).get("configured"))
@@ -1127,6 +1168,20 @@ class DeployWizardDialog(QDialog):
             self._notice.setText(f"The deployment was not recorded — {problems}")
             return
         self._on_error(exc)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802 - Qt override
+        """Enter never closes the wizard (PI-602, REQ-672). In the web address
+        box it checks the address; on a focused button it presses that
+        button; anywhere else it does nothing."""
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            focus = self.focusWidget()
+            if focus is self.full_address:
+                self.start_lookup()
+            elif isinstance(focus, QPushButton):
+                focus.click()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def done(self, result: int) -> None:  # noqa: D401 - Qt override
         """Finish the in-flight workers before the dialog is torn down."""

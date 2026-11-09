@@ -73,7 +73,12 @@ def _token(provider: str, deployment_identifier: str | None = None) -> str:
         row = repo.resolve_provider_credential(
             s, provider, deployment_identifier=deployment_identifier
         )
+        own_only = deployment_identifier is not None and not (
+            repo.application_fallback_applies(s, deployment_identifier)
+        )
     token = resolve_secret_or_none(row["token_ref"] if row else None, field=provider)
+    if not token and own_only:
+        raise UnprocessableError([needs_own_credential(provider, deployment_identifier)])
     if not token:
         where = (
             f"deployment {deployment_identifier} or its application"
@@ -90,6 +95,18 @@ def _token(provider: str, deployment_identifier: str | None = None) -> str:
             ]
         )
     return token
+
+
+def needs_own_credential(provider: str, deployment_identifier: str) -> FieldError:
+    """The refusal for a grant holder's deployment without its own token
+    (PI-602, DEC-1206, REQ-671)."""
+    return FieldError(
+        provider,
+        "deployment_needs_own_credential",
+        f"deployment {deployment_identifier} is for a client that only holds a "
+        f"deployment grant, so it needs its own {provider} credential; the "
+        "application's is not used",
+    )
 
 
 def digitalocean_catalog(deployment_identifier: str | None = None) -> dict:

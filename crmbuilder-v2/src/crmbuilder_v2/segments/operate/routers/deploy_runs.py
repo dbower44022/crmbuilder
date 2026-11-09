@@ -178,10 +178,20 @@ def create(body: DeployRunCreateIn):
                 s, deployment_identifier=deployment
             )
         )
+        # PI-602 (REQ-671): a grant holder's deployment has no fallback.
+        own_only = deployment is not None and not (
+            provider_credentials.application_fallback_applies(s, deployment)
+        )
         active = deploy_runs.active_run_for_domain(s, spec.domain)
     # Manual DNS (PI-566 / REQ-642) never touches Cloudflare.
     needed = {"digitalocean"} if spec.manual_dns else {"digitalocean", "cloudflare"}
     missing = sorted(needed - have)
+    if missing and own_only:
+        from crmbuilder_v2.segments.operate.routers.provider_credentials import (
+            needs_own_credential,
+        )
+
+        raise UnprocessableError([needs_own_credential(p, deployment) for p in missing])
     if missing:
         raise UnprocessableError(
             [
